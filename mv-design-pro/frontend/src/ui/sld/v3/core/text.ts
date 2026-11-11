@@ -299,9 +299,25 @@ export function minReadableFontSize(cls: LabelClass, scale: number): number {
  * jest dowodem niczego, więc nie odbiera etykiety).
  */
 export function enlargedFontSizeWithinProportion(cls: LabelClass, scale: number): number | null {
+  return fontSizeForScreenFloorWithinProportion(cls, scale, MIN_READABLE_LABEL_SCREEN_PX);
+}
+
+/**
+ * Ta sama para granic co `enlargedFontSizeWithinProportion`, z podłogą ekranową
+ * `screenPx` podaną przez wołającego. Jedyny inny konsument: podłoga OPISÓW CELU
+ * KADRU (karta K2b §0.2 (b), `canvas/zakresKadru.ts` `podlogaOpisowCelu`) —
+ * opisy wykadrowanego celu mają na ekranie ≥ 13 px, w granicy tego samego sufitu
+ * proporcji klasy (`maxEnlargement`). Jedna formuła dla obu podłóg — podłoga
+ * celu nie jest drugim systemem pisma.
+ */
+export function fontSizeForScreenFloorWithinProportion(
+  cls: LabelClass,
+  scale: number,
+  screenPx: number,
+): number | null {
   const { fontSize: naturalny, maxEnlargement } = LABEL_TYPOGRAPHY[cls];
   if (!Number.isFinite(scale) || scale <= 0) return naturalny;
-  const potrzebny = MIN_READABLE_LABEL_SCREEN_PX / scale;
+  const potrzebny = screenPx / scale;
   if (potrzebny <= naturalny) return naturalny;
   // Tolerancja 1e-9: sufit ma być osiągalny DOKŁADNIE na skali granicznej
   // (`MIN_READABLE_LABEL_SCREEN_PX / (naturalny · sufit)`), a nie o epsilon

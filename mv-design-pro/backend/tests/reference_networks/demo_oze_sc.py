@@ -129,7 +129,6 @@ def _add_der_sn_block(
                     "snapshot_mapping_version": "1.0",
                 },
             },
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": sn_ref,
             "mv_field_configuration": {
                 "switching_device": "CB",
@@ -328,8 +327,6 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _GPZ_SOURCE_REF,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
 

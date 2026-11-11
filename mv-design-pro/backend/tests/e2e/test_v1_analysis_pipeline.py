@@ -112,8 +112,6 @@ def _build_v1_network() -> dict:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert r.get("error") is None, f"GPZ: {r.get('error')}"
@@ -432,8 +430,6 @@ class TestV1ReadinessPipeline:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ: {r.get('error')}"
@@ -474,8 +470,6 @@ class TestV1ReadinessPipeline:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ: {r.get('error')}"

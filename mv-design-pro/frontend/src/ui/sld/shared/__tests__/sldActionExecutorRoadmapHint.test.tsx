@@ -242,7 +242,6 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
       { actionId: 'add-load', kind: 'station', elementId: 'stn/ST-1/station', oczekiwanyOp: 'add_nn_load' },
       // W5-E-TTIT: wyłącznik różnicowoprądowy z menu stacji — kreator wybiera odbiór nN.
       { actionId: 'add-rcd', kind: 'station', elementId: 'stn/ST-1/station', oczekiwanyOp: 'add_nn_rcd' },
-      { actionId: 'set-switch-state', kind: 'bay', elementId: 'bay/B-1', oczekiwanyOp: 'set_normal_open_point' },
       // continue-trunk: od karty S95-START operacja powstaje WYŁĄCZNIE z punktem
       // startu ciągu (dla KAŻDEGO rodzaju obiektu, także stacji — dawniej tu
       // przypięte „dla stacji zawsze zwraca operację" było właśnie defektem).
@@ -258,6 +257,42 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
         expect(context?.op).toBe(oczekiwanyOp);
       },
     );
+
+    // W5-C: dawny klucz `set-switch-state` zastąpiły trzy pozycje menu z operacjami
+    // kanonicznymi; `set-normal-open-point` buduje kontekst z łącznikiem POLA (jeden resolver
+    // `lacznikTematu`), a bez łącznika z pozycją normalną nie zwraca operacji (pozycja menu
+    // jest zablokowana z powodem, executor nie otwiera kreatora bez łącznika).
+    const MIGAWKA_POLA = {
+      branches: [
+        { ref_id: 'sw-1', id: 'sw-1', name: 'Q1', type: 'switch', status: 'closed' },
+        { ref_id: 'fu-1', id: 'fu-1', name: 'F1', type: 'fuse', status: 'closed' },
+      ],
+      bays: [
+        { ref_id: 'bay/B-1', id: 'bay/B-1', equipment_refs: ['sw-1'] },
+        { ref_id: 'bay/B-2', id: 'bay/B-2', equipment_refs: ['fu-1'] },
+        { ref_id: 'bay/B-3', id: 'bay/B-3', equipment_refs: [] },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    it.each([
+      ['bay/B-1', 'sw-1'],
+      ['bay/B-1#cb', 'sw-1'],
+      ['sw-1', 'sw-1'],
+      ['bay/B-2', null],
+      ['bay/B-3', null],
+    ])('set-normal-open-point na %s → switch_ref %s', (elementId, oczekiwany) => {
+      const context = buildSldOperationContext('set-normal-open-point', 'bay', elementId, MIGAWKA_POLA, null);
+      if (oczekiwany === null) {
+        expect(context).toBeNull();
+      } else {
+        expect(context?.op).toBe('set_normal_open_point');
+        expect(context?.context.switch_ref).toBe(oczekiwany);
+      }
+    });
+
+    it('set-switch-state: klucz skasowany — nie buduje żadnej operacji', () => {
+      expect(buildSldOperationContext('set-switch-state', 'bay', 'bay/B-1', MIGAWKA_POLA, null)).toBeNull();
+    });
 
     it('insert-gpz: buildSldOperationContext zwraca operację BEZ wymogu elementId (gałąź bezwarunkowa)', () => {
       const context = buildSldOperationContext('insert-gpz', 'background', null, null, null);

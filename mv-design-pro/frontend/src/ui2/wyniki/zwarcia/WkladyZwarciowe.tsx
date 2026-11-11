@@ -18,7 +18,6 @@
  */
 
 import { useState } from 'react';
-import type { AdvancementMode } from '../../shell/modeModel';
 import type { DanePrzyjeteWyniku } from './api';
 import {
   SladSekcyjny,
@@ -30,6 +29,7 @@ import {
   type PozycjaWalidacji,
   type SekcjaWywodu,
 } from '../wzorzec';
+import type { OdczytPunktuZwarcia } from './api';
 import { ZWARCIA_STRINGS } from './strings';
 import { WykresUdzialowChart } from './WykresUdzialowChart';
 import {
@@ -45,12 +45,13 @@ import {
 export interface WkladyZwarcioweProps {
   /** Nazwa wybranego punktu zwarcia (nagłówek sekcji, pierwszy plan). */
   punktNazwa: string;
-  /** Wkłady źródeł dla wybranego punktu; `null` = dane niedostępne w przebiegu. */
+  /** Wkłady źródeł dla wybranego punktu; `null` = dane niedostępne (brak migawki modelu). */
   wklady: WkladZwarciowy[] | null;
-  /** Błąd pobrania wkładów (HTTP/sieć) — komunikat błędu, nie „dane niedostępne". */
-  blad: boolean;
-  /** Pobieranie wkładów punktu w toku — komunikat pobierania, nie „nie udało się pobrać". */
-  ladowanie: boolean;
+  /**
+   * Stan odczytu dostawcy (`useWkladyZwarciowe`) — rozstrzyga PRZED `wklady`:
+   * `wczytywanie`/`blad` to stany zapytania, nie „dane niedostępne".
+   */
+  odczyt: OdczytPunktuZwarcia;
   /**
    * Wywód {tekst, latex} z backendu (zasada KaTeX 2026-07-22) — ślad obliczeń
    * na żądanie pod tabelą wkładów. Pusta lista → przycisk śladu nie renderuje się.
@@ -70,7 +71,7 @@ export interface WkladyZwarcioweProps {
    * wynik na danych projektu — sekcja nie pokazuje nic.
    */
   danePrzyjete?: DanePrzyjeteWyniku | null;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
@@ -118,13 +119,12 @@ function SzczegolWkladuPanel({ wklad }: { wklad: WkladZwarciowy }) {
 export function WkladyZwarciowe({
   punktNazwa,
   wklady,
-  blad,
-  ladowanie,
+  odczyt,
   wywod = [],
   wywodSekcje = [],
   walidacjaIec = [],
   danePrzyjete = null,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
   const [filtr, setFiltr] = useState('');
@@ -151,15 +151,19 @@ export function WkladyZwarciowe({
         {': '}
         <span className="mvd-zwarcia-wklady-punkt">{punktNazwa}</span>
       </h3>
-      {wklady === null && blad ? (
-        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-wklady-blad">
+      {odczyt === 'wczytywanie' ? (
+        <p
+          className="mvd-zwarcia-wklady-brak-desc"
+          data-testid="mvd-zwarcia-wklady-wczytywanie"
+          aria-busy="true"
+        >
+          {ZWARCIA_STRINGS.wkladyWczytywanie}
+        </p>
+      ) : odczyt === 'blad' ? (
+        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-wklady-blad" role="alert">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladyBlad}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.wkladyBladOpis}</p>
         </div>
-      ) : wklady === null && ladowanie ? (
-        <p className="mvd-zwarcia-wklady-brak-desc" data-testid="mvd-zwarcia-wklady-ladowanie">
-          {ZWARCIA_STRINGS.wkladyLadowanie}
-        </p>
       ) : wklady === null ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-wklady-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladyNiedostepne}</p>
@@ -193,7 +197,7 @@ export function WkladyZwarciowe({
               kolumny={KOLUMNY_WKLADOW}
               wiersze={wiersze}
               onOtworzDowod={onOtworzDowod}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_WKLAD}
               onWybierzWiersz={przelaczWklad}
               wybranyWiersz={wybranyWklad}

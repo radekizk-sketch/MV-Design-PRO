@@ -154,7 +154,7 @@ function odpowiedz(items: readonly PozycjaCieplna[]): WytrzymaloscCieplnaRespons
 function props(over = {}) {
   return {
     przebieg: przebiegTestowy('sc-1', 'SC_3F'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -167,7 +167,7 @@ function odpowiedzOk(body: unknown) {
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
-  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
 });
 
 afterEach(() => {
@@ -287,7 +287,15 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
     fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz([pozycja()])));
     render(<SekcjaWytrzymaloscCieplna {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
-    expect(screen.getByText(/I_th ≤ I_th\(1s\)/)).toBeTruthy();
+    // Kryterium jest wzorem KaTeX (`ui_math_guard`), nie tekstem ASCII `I_th ≤ I_th(1s)`.
+    expect(
+      screen
+        .getAllByTestId('math-rendered')
+        .some(
+          (wzor) =>
+            wzor.getAttribute('data-latex') === '$I_{th} \\leq I_{th(1\\,\\mathrm{s})} / \\sqrt{t}$',
+        ),
+    ).toBe(true);
     expect(screen.getByText('BUS-02')).toBeTruthy();
   });
 });

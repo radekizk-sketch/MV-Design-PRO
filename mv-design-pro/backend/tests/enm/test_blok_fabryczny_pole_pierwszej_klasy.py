@@ -7,14 +7,14 @@ nazewnictwami tej samej prawdy:
   wpisu pola — operacja wcięcia w odcinek gubiła ją bez śladu, operacja końca
   ciągu przepisywała ją do `field_spec` jako martwy słownik, którego NIKT nie
   czytał;
-* operacja `add_sn_bay_from_catalog` miała `factory_configuration_ref` +
+* operacja katalogowa pola (dziś plan katalogowy `add_sn_bay`) miała `factory_configuration_ref` +
   `factory_unit_index` jako pola pierwszej klasy payloadu, ale wyniku swojego
   rozstrzygnięcia NIE ZAPISYWAŁA — blok widać było wyłącznie w podglądzie trybu
   próby, czyli w odpowiedzi, która niczego nie utrwala.
 
 Skutek zmierzony przed naprawą: zapis stacji z rodziny o torze BLOK_RMU kończył
 się twardym błędem `sn.pole_katalogowe_niezgodne` z komunikatem „uzyj operacji
-add_sn_bay_from_catalog z factory_configuration_ref i factory_unit_index" —
+<operacja katalogowa pola> z factory_configuration_ref i factory_unit_index" —
 operacji, której kreator nie woła, przy nazwie pola, której nie wysyłał. Tor
 BLOK_RMU kreatora stacji nie miał drogi zapisu.
 
@@ -44,6 +44,7 @@ from enm.domain_operations import (
     POLE_JEDNOSTKI_BLOKU,
     execute_domain_operation,
 )
+from enm.pola import pola
 from enm.pole_katalogowe import KOD_BLEDU_POLA_KATALOGOWEGO, pole_katalogowe
 from network_model.catalog.switchgear import (
     FactoryConfiguration,
@@ -159,11 +160,7 @@ def _payload_stacji(sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
         "sn_fields": sn_fields,
         "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
         "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
-        "nn_block": {
-            "create_nn_bus": True,
-            "main_breaker_nn": True,
-            "outgoing_feeders_nn_count": 1,
-        },
+        "nn_block": {"outgoing_feeders_nn_count": 1},
     }
 
 
@@ -213,7 +210,7 @@ def _uruchom(operacja: str, sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
                 "catalog_namespace": "APARAT_SN",
                 "catalog_item_id": CATALOG_APARAT_SN,
             }
-            odpowiedz = execute_domain_operation(snapshot, "add_sn_bay_from_catalog", payload)
+            odpowiedz = execute_domain_operation(snapshot, "add_sn_bay", payload)
             if odpowiedz.get("error"):
                 return odpowiedz
             snapshot = odpowiedz["snapshot"]
@@ -224,21 +221,12 @@ def _uruchom(operacja: str, sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
 def _pola_z_blokiem(odpowiedz: dict[str, Any]) -> list[dict[str, Any]]:
     """Specyfikacje pól niosące referencję bloku fabrycznego."""
     snapshot = odpowiedz.get("snapshot") or {}
-    pola: list[dict[str, Any]] = []
-    for stacja in snapshot.get("substations", []):
-        for spec in (stacja.get("meta") or {}).get("field_specs", []):
-            if spec.get(POLE_BLOKU_FABRYCZNEGO):
-                pola.append(spec)
-    return pola
+    return [spec for spec in pola(snapshot) if spec.get("wybor_bloku")]
 
 
 def _wszystkie_pola(odpowiedz: dict[str, Any]) -> list[dict[str, Any]]:
     snapshot = odpowiedz.get("snapshot") or {}
-    return [
-        spec
-        for stacja in snapshot.get("substations", [])
-        for spec in (stacja.get("meta") or {}).get("field_specs", [])
-    ]
+    return [spec for spec in pola(snapshot) if spec.get("substation_ref")]
 
 
 # ---------------------------------------------------------------------------
@@ -258,8 +246,10 @@ def test_kazda_operacja_zapisuje_blok_i_jednostke_pod_ta_sama_nazwa(operacja: st
         f"operacja {operacja} zgubila przynaleznosc pol do bloku: " f"{len(pola)} z {len(wpisy)}"
     )
     for spec, wpis in zip(pola, wpisy, strict=True):
-        assert spec[POLE_BLOKU_FABRYCZNEGO] == BLOK_ROZNE_JEDNOSTKI
-        assert spec[POLE_JEDNOSTKI_BLOKU] == wpis[POLE_JEDNOSTKI_BLOKU]
+        # Nazwy kluczy payloadu (`POLE_BLOKU_FABRYCZNEGO`, `POLE_JEDNOSTKI_BLOKU`) są nazwami pól
+        # typowanych `Bay.wybor_bloku` (karta W5-B) — jedno nazewnictwo obu stron kontraktu.
+        assert spec["wybor_bloku"][POLE_BLOKU_FABRYCZNEGO] == BLOK_ROZNE_JEDNOSTKI
+        assert spec["wybor_bloku"][POLE_JEDNOSTKI_BLOKU] == wpis[POLE_JEDNOSTKI_BLOKU]
 
 
 @pytest.mark.parametrize("operacja", OPERACJE_KLASY)
@@ -308,6 +298,8 @@ def test_rodzina_modulowa_nie_dostaje_kluczy_bloku(operacja: str) -> None:
     pola = _wszystkie_pola(odpowiedz)
     assert pola
     for spec in pola:
+        # Pole rodziny modułowej nie niesie wyboru bloku (pole typowane `Bay.wybor_bloku`).
+        assert spec["wybor_bloku"] is None
         assert POLE_BLOKU_FABRYCZNEGO not in spec
         assert POLE_JEDNOSTKI_BLOKU not in spec
 
@@ -393,6 +385,9 @@ def test_blok_spoza_katalogu_konczy_sie_twardym_bledem(operacja: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+# Ładunek CELOWO niesie usuniętą metadaną `sn_fields[].catalog_bindings` — test
+# pilnuje, że żaden handler jej nie czyta; czujnik ładunku melduje to zgodnie z prawdą.
+@pytest.mark.ladunek_spoza_kontraktu
 def test_zadna_operacja_nie_czyta_bloku_z_metadanej_wiazan() -> None:
     """Wybór bloku podany DAWNĄ drogą nie działa — nie ma warstwy zgodności.
 

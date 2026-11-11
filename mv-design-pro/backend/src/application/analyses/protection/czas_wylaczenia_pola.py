@@ -65,10 +65,10 @@ from application.analyses.aparaty_pol import (
     znajdz_stacje,
 )
 from application.analyses.protection.ocena_nadpradowa import czas_urzadzenia, rozwiaz_nastawy
-from application.field_read_model import collect_bays
 from enm.mapping import ref_to_graph_id
 from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import pola_stacji, pola_wszystkich_stacji
 from enm.tor_pola import szyna_raportowa
 from network_model.catalog.wartosci_robocze import (
     PARAMETR_CZAS_WLASNY,
@@ -178,9 +178,10 @@ def czasy_wylaczenia_pol_stacji(
 
     aparaty = aparaty_pol_stacji(enm, stacja)
     wynik: dict[str, dict[str, Any]] = {}
-    for bay in collect_bays(enm):
-        if bay.substation_ref != stacja.ref_id:
-            continue
+
+    # Pola stacji z rekordów `bays` (jedyny nośnik pól, karta W5-B) — w kolejności
+    # identyfikatorów, jak read-model pola.
+    for bay in sorted(pola_stacji(enm, stacja.ref_id), key=lambda b: b.ref_id):
         ik_pola = ik_pol_ka.get(bay.ref_id)
         wynik[bay.ref_id] = _czas_wylaczenia_pola(
             enm,
@@ -354,7 +355,9 @@ def pola_lokalne_wezlow(enm: EnergyNetworkModel) -> dict[str, tuple[PoleLokalne,
     migawka = enm.model_dump(mode="json")
     aparaty_stacji: dict[str, dict[str, list[AparatPola]]] = {}
     wynik: dict[str, list[PoleLokalne]] = {}
-    for bay in sorted(collect_bays(enm), key=lambda b: b.ref_id):
+    # Pola stacji z rekordów `bays` (karta W5-B) — pole ZKSN nie ma stacji ani aparatów
+    # pól stacji, więc nie jest polem lokalnym punktu zwarcia w tym rozstrzygnięciu.
+    for bay in sorted(pola_wszystkich_stacji(enm), key=lambda b: b.ref_id):
         if bay.substation_ref not in aparaty_stacji:
             stacja = znajdz_stacje(enm, bay.substation_ref)
             aparaty_stacji[bay.substation_ref] = (

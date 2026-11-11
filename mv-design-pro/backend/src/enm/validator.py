@@ -16,34 +16,64 @@ from network_model.catalog.governance import (
     brakuje_wymaganej_referencji,
     wymagalnosc_katalogu,
 )
+from network_model.catalog.rodzaje_aparatury import (
+    LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII,
+    RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+    RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
+)
+from network_model.catalog.wartosci_robocze import (
+    PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE,
+    PARAMETR_BATERII_UKLAD,
+)
+from network_model.core.bateria_kondensatorow import (
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+    PODSTAWA_POLA_BKR_PL,
+    PODSTAWA_WYLACZENIA_OD_TR_PL,
+    UKLADY_Z_PRZEKLADNIKIEM_NIEZROWNOWAZENIA,
+)
+from network_model.core.topologia import skladowe_spojne
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
+    ETYKIETA_PL_WARIANTU_UZIEMIENIA,
 )
 from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from network_model.pochodne.pasma_napieciowe import (
+    OPIS_PASMA_SN,
+    napiecie_baterii_pasuje_do_sieci,
     pasmo_napieciowe,
     powyzej_pasma_nn,
+    to_samo_napiecie_znamionowe,
     w_pasmie_nn,
 )
 from pydantic import BaseModel
 
+from .bateria_kondensatorow import (
+    niezgodnosc_stopni,
+    parametry_baterii,
+    pole_baterii,
+    rodzaje_aparatow_pola,
+    stacja_gpz_baterii,
+    transformatory_zasilajace_baterie,
+)
 from .fix_actions import FixAction
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
-from .migrations.nn_field_specs_promocja import (
-    META_KLUCZ_GALAZ_ZRODLO_FIELD_REF,
-    META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
-)
+from .migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
+    Bus,
     Cable,
     EnergyNetworkModel,
+    GPZSection,
     OverheadLine,
+    Substation,
     SwitchBranch,
+    Transformer,
 )
-from .nazwy_elementow import nazwa_pola_ze_specyfikacji
+from .pola import czy_pole_nn, pola_stacji, pole_aparatu, poziom_pol, stacja_pola
+from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .rodzaj_stacji import (
     KOD_WALIDATORA_RODZAJ_NIEZGODNY,
@@ -64,16 +94,24 @@ from .severity import (
     is_warning_severity,
     severity_rank,
 )
+from .skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from .slownik_komunikatow import (
     NAZWY_RODZAJOW_STACJI_PL,
     NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
+    lista_pl,
     nazwa_rodzaju_generatora,
     opis_elementu,
     opis_nazwy,
     opis_obiektu,
     pole,
 )
-from .topology import derive
+from .topology import (
+    TYPY_LACZNIKOW_ENM,
+    derive,
+    podziel_krawedzie,
+    punkty_podzialu_korytarza,
+    transformatory_zasilajace_gpz,
+)
 from .tor_pola import (
     KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
     OPERACJA_PRZEPIECIA,
@@ -81,11 +119,22 @@ from .tor_pola import (
 )
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .uziemienie_sekcji import (
+    czesci_zespolu_bez_katalogu,
+    impedancja_zerowa_zrodla_dozwolona,
+    punkt_zespolu,
+    tor_odlaczonego_pola_zu,
+    uziemienie_sieci,
+)
 from .wartosci_projektanta import blad_wartosci_projektanta_elementu, rodzina_generatora
 from .zajetosc_pol import zajetosc_pol
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
+
+#: Role kanoniczne pól liniowych SN (`enm.rola_pola_sn`), które stacja przelotowa łączy
+#: wspólną magistralą SN (E021).
+_ROLE_LINIOWE_SN: frozenset[str] = frozenset({"LINIA_IN", "LINIA_OUT"})
 
 
 def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
@@ -96,21 +145,23 @@ def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
     )
 
 
-def _pole_nn_i_stacja(enm: EnergyNetworkModel, field_ref: object) -> tuple[str | None, str | None]:
-    """Nazwa pola nN (`Substation.meta.nn_field_specs`) o danym `field_ref` i nazwa
-    jego stacji — do pozycji gotowości aparatu z automigracji; ``(None, None)``,
-    gdy wpisu nie ma (ref osierocony)."""
-    if not isinstance(field_ref, str) or not field_ref:
-        return None, None
-    for stacja in enm.substations:
-        meta = stacja.meta if isinstance(stacja.meta, dict) else {}
-        for spec in meta.get("nn_field_specs") or []:
-            if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
-                # Jedna reguła nazwy (`network_model.nazwy`): pusty napis i same spacje
-                # to brak nazwy — także dla nazwy stacji, bo zdanie pozycji gotowości
-                # opisuje pole tylko wtedy, gdy obie nazwy są nadane.
-                return nazwa_nadana(spec.get("name")), nazwa_nadana(stacja.name)
-    return None, None
+def _pole_nn_i_stacja(
+    enm: EnergyNetworkModel, aparat_ref: str
+) -> tuple[str | None, str | None, str | None]:
+    """Pole nN, którego `equipment_refs` wskazuje aparat z automigracji: identyfikator pola,
+    jego nazwa (`Bay.name`, nadana przez builder albo migrację) i nazwa stacji — do pozycji
+    gotowości aparatu; ``(None, None, None)``, gdy żaden rekord `bays` aparatu nie wskazuje."""
+    rekord = pole_aparatu(enm, aparat_ref)
+    if rekord is None:
+        return None, None, None
+    stacja = stacja_pola(enm, rekord.ref_id)
+    # Jedna reguła nazwy (`network_model.nazwy`): napis z samych spacji nie jest nazwą pola
+    # ani stacji — komunikat W061 pomija wtedy opis pola.
+    return (
+        rekord.ref_id,
+        nazwa_nadana(rekord.name),
+        nazwa_nadana(stacja.name) if stacja is not None else None,
+    )
 
 
 def _strict_port_binding_enabled() -> bool:
@@ -151,6 +202,218 @@ class ReadinessResult(BaseModel):
     blockers: list[ValidationIssue] = []
 
 
+#: Kod ostrzeżenia: napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym paśmie.
+KOD_PRZEKLADNI_NIEZNAMIONOWEJ = "W023"
+
+
+def _w023_przekladnia_nieznamionowa(
+    enm: EnergyNetworkModel,
+    trafo: Transformer,
+    strona: str,
+    napiecie_uzwojenia_kv: float,
+    szyna_ref: str,
+    napiecie_szyny_kv: float,
+) -> ValidationIssue:
+    """W023 — wyjaśnienie wg kontraktu werdyktu: co oceniono, obie wartości z jednostką,
+    odchylenie, podstawa, skutek dla obliczeń i akcja naprawcza (przypisanie typu o napięciu
+    szyny). Poziom IMPORTANT: model liczy się poprawnie z przekładnią rzeczywistą."""
+    odchylenie_pct = (napiecie_uzwojenia_kv / napiecie_szyny_kv - 1.0) * 100.0
+    return ValidationIssue(
+        code=KOD_PRZEKLADNI_NIEZNAMIONOWEJ,
+        severity=SEVERITY_IMPORTANT,
+        message_pl=(
+            f"{opis_obiektu(trafo, 'Transformator')}: napięcie znamionowe uzwojenia strony "
+            f"{strona} napięcia {napiecie_uzwojenia_kv:g} kV różni się od napięcia "
+            f"znamionowego szyny {opis_elementu(enm, szyna_ref, 'szyna')} "
+            f"{napiecie_szyny_kv:g} kV (to samo pasmo {pasmo_napieciowe(napiecie_szyny_kv)}, "
+            f"odchylenie {odchylenie_pct:+.2f} %). Przekładnia transformatora jest "
+            "nieznamionowa: rozpływ mocy i zwarcia liczą się z przekładnią rzeczywistą "
+            "z napięć uzwojeń, a współczynnik korekcyjny impedancji transformatora "
+            "z napięcia uzwojenia (IEC 60909-0 §6.3.3), nie ze stosunku napięć sieci."
+        ),
+        element_refs=[trafo.ref_id, szyna_ref],
+        wizard_step_hint="K5",
+        suggested_fix=(
+            "Przypisz transformatorowi typ o napięciach znamionowych równych napięciom jego "
+            "szyn albo zostaw przekładnię nieznamionową, jeśli tabliczka urządzenia ją ma."
+        ),
+        fix_action=FixAction(
+            action_type="SELECT_CATALOG",
+            element_ref=trafo.ref_id,
+            modal_type="TransformerModal",
+            payload_hint={"required": "catalog_ref"},
+        ),
+    )
+
+
+def _sekcje_gpz_wg_szyny(enm: EnergyNetworkModel) -> dict[str, tuple[Substation, GPZSection]]:
+    """Szyna sekcji SN GPZ → (stacja GPZ, sekcja) — z jawnego rejestru `gpz_sections`."""
+    wynik: dict[str, tuple[Substation, GPZSection]] = {}
+    for stacja in enm.substations:
+        if stacja.station_type != "gpz":
+            continue
+        for sekcja in stacja.gpz_sections:
+            if sekcja.bus_ref:
+                wynik[sekcja.bus_ref] = (stacja, sekcja)
+    return wynik
+
+
+def _sekcja_gpz_bez_zasilania(
+    enm: EnergyNetworkModel,
+    sekcje_wyspy: list[tuple[Substation, GPZSection]],
+    szyny_wyspy: list[str],
+) -> ValidationIssue:
+    """Zgłoszenie E065 — sekcja GPZ bez zasilania (przyczyna: otwarte sprzęgło sekcji)."""
+    szyny = set(szyny_wyspy)
+    otwarte_sprzegla = sorted(
+        (
+            galaz
+            for galaz in enm.branches
+            if isinstance(galaz, SwitchBranch)
+            and galaz.type == "bus_coupler"
+            and galaz.status == "open"
+            and (galaz.from_bus_ref in szyny) != (galaz.to_bus_ref in szyny)
+        ),
+        key=lambda galaz: galaz.ref_id,
+    )
+    stacja = sekcje_wyspy[0][0]
+    opis_sekcji = lista_pl(
+        (opis_nazwy(sekcja.name, "sekcja") for _stacja, sekcja in sekcje_wyspy), "i"
+    )
+    przyczyna = (
+        f"{lista_pl((opis_obiektu(g, 'sprzęgło') for g in otwarte_sprzegla), 'i')} "
+        f"{'jest otwarte' if len(otwarte_sprzegla) == 1 else 'są otwarte'}"
+        if otwarte_sprzegla
+        else "żadna zamknięta gałąź nie łączy jej z sekcją zasilaną"
+    )
+    cel = otwarte_sprzegla[0].ref_id if otwarte_sprzegla else sekcje_wyspy[0][1].bus_ref
+    return ValidationIssue(
+        code="E065",
+        severity=SEVERITY_BLOCKER,
+        message_pl=(
+            f"Sekcja GPZ bez zasilania: {opis_sekcji} ({opis_obiektu(stacja, 'GPZ')}) nie ma "
+            f"własnego równoważnika sieci, a {przyczyna} — szyny sekcji i zasilane z niej "
+            "odpływy są odcięte od źródła."
+        ),
+        element_refs=[
+            *(sekcja.bus_ref for _stacja, sekcja in sekcje_wyspy),
+            *(g.ref_id for g in otwarte_sprzegla),
+        ],
+        wizard_step_hint="K1",
+        suggested_fix=(
+            "Zamknij sprzęgło sekcji GPZ albo zasil sekcję własnym równoważnikiem sieci."
+        ),
+        fix_action=FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=cel),
+    )
+
+
+def transformatory_gpz_bez_zasilania_wn(
+    enm: EnergyNetworkModel,
+) -> list[tuple[Transformer, Substation, str]]:
+    """Transformatory WN/SN GPZ, których strona 110 kV nie ma równoważnika sieci (E066).
+
+    Karta GPZ-MODEL: transformator WN/SN GPZ (strona dolna na szynie sekcji SN z rejestru
+    `gpz_sections`) jest elementem modelu WYŁĄCZNIE wtedy, gdy jego strona górna jest
+    zasilana od strony sieci WN — przy równoważniku po stronie 110 kV. Przy równoważniku na
+    szynach SN operacja `add_grid_source_sn` transformatora nie tworzy
+    (`domain_operations._granica_zasilania_gpz`, kod
+    `source.transformer_requires_hv_equivalent`), bo moc zwarciowa szyn SN zawiera już jego
+    impedancję. Model zapisany przed kartą (albo złożony z pominięciem operacji) może jednak
+    nieść transformator do martwej szyny pomocniczej 110 kV: rysunek pokazuje tor zasilania,
+    którego obliczenie nie ma. Model NIE jest migrowany (zasady inżynierskie repo) —
+    walidator wskazuje transformator.
+
+    Predykat: składowa spójna szyny górnej w grafie elementów „w ruchu" (jedno źródło
+    krawędzi `enm.topology.podziel_krawedzie`) BEZ transformatorów WN/SN GPZ — inaczej
+    transformator wróciłby przez sekcję SN do równoważnika na szynach SN i „zasiliłby się"
+    sam — jest MARTWA: nie ma w niej źródła sieciowego, odbioru ani generatora. Transformator
+    sieci WN (np. 220/110 kV) przed szyną 110 kV GPZ prowadzi zasilanie normalnie, a
+    transformator podwyższający, który z sekcji zasila odbiory po stronie górnej (sieci
+    benchmarkowe: węzeł bilansujący na sekcji, sieć 345 kV za transformatorem), przenosi moc
+    w górę — żaden z nich nie jest fikcją. Wynik: (transformator, GPZ, szyna górna),
+    kolejność po `ref_id` transformatora."""
+    sekcje_gpz = _sekcje_gpz_wg_szyny(enm)
+    refy_gpz = transformatory_zasilajace_gpz(enm)
+    trafa_gpz = sorted(
+        (t for t in enm.transformers if t.ref_id in refy_gpz), key=lambda t: t.ref_id
+    )
+    if not trafa_gpz:
+        return []
+    podzial = podziel_krawedzie(enm)
+    skladowe = skladowe_spojne(
+        podzial.szyny,
+        ((k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.ref_id not in refy_gpz),
+    )
+    skladowa_szyny = {szyna: skladowa for skladowa in skladowe for szyna in skladowa}
+    szyny_zywe = {
+        element.bus_ref
+        for kolekcja in (enm.sources, enm.loads, enm.generators)
+        for element in kolekcja
+    }
+    return [
+        (trafo, sekcje_gpz[trafo.lv_bus_ref][0], trafo.hv_bus_ref)
+        for trafo in trafa_gpz
+        if szyny_zywe.isdisjoint(skladowa_szyny.get(trafo.hv_bus_ref, (trafo.hv_bus_ref,)))
+    ]
+
+
+def _transformator_gpz_bez_zasilania_wn(
+    enm: EnergyNetworkModel, trafo: Transformer, stacja: Substation, szyna_wn: str
+) -> ValidationIssue:
+    """Zgłoszenie E066 — transformator WN/SN GPZ bez równoważnika sieci po stronie 110 kV."""
+    szyna = next((b for b in enm.buses if b.ref_id == szyna_wn), None)
+    zrodla_sn = sorted(
+        (z for z in enm.sources if z.bus_ref in _sekcje_gpz_wg_szyny(enm)),
+        key=lambda z: z.ref_id,
+    )
+    przyczyna = (
+        f"równoważnik sieci {lista_pl((opis_obiektu(z, 'źródło') for z in zrodla_sn), 'i')} "
+        "jest podany na szynach SN GPZ, więc moc zwarciowa szyn SN zawiera już impedancję "
+        "transformatorów 110/SN"
+        if zrodla_sn
+        else "w modelu nie ma równoważnika sieci po stronie 110 kV"
+    )
+    return ValidationIssue(
+        code="E066",
+        severity=SEVERITY_BLOCKER,
+        message_pl=(
+            f"Transformator GPZ bez zasilania od strony 110 kV: "
+            f"{opis_obiektu(trafo, 'transformator')} ({opis_obiektu(stacja, 'GPZ')}) łączy "
+            f"sekcję SN z {opis_obiektu(szyna, 'szyną')}, za którą nie ma równoważnika sieci, "
+            f"odbioru ani generatora, a {przyczyna} — transformator nie przenosi mocy, a rysunek "
+            "pokazuje tor zasilania, którego obliczenie nie ma."
+        ),
+        element_refs=[trafo.ref_id, szyna_wn],
+        wizard_step_hint="K1",
+        suggested_fix=(
+            "Zbuduj GPZ od nowa: z równoważnikiem sieci po stronie 110 kV (wspólna szyna "
+            "110 kV, transformatory 110/SN do sekcji SN) albo z równoważnikiem na szynach SN "
+            "bez transformatorów 110/SN."
+        ),
+        fix_action=FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=trafo.ref_id),
+    )
+
+
+def _transformator_wn_sn_sieci(
+    trafo: Transformer, szyny_sieci: Sequence[str], szyny: Mapping[str, Bus]
+) -> bool:
+    """Transformator WN/SN zasilający sieć SN o szynach ``szyny_sieci``: jedna strona w tej
+    sieci, druga w paśmie WN (reguła IRiESD II.4.5.4.3.5 dotyczy pól SN transformatorów
+    110 kV/SN)."""
+    for nasza, druga in (
+        (trafo.lv_bus_ref, trafo.hv_bus_ref),
+        (trafo.hv_bus_ref, trafo.lv_bus_ref),
+    ):
+        szyna_drugiej = szyny.get(druga)
+        if (
+            nasza in szyny_sieci
+            and szyna_drugiej is not None
+            and pasmo_napieciowe(szyna_drugiej.voltage_kv) == "WN"
+        ):
+            return True
+    return False
+
+
 class ENMValidator:
     """Walidator energetyczny modelu sieci."""
 
@@ -165,6 +428,9 @@ class ENMValidator:
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
         self._check_shunt_capacitors(enm, issues)
+        self._check_baterie_pola_bkr(enm, issues)
+        # KATALOG-APARATURA-WN: łącznik topologii zasilania 110 kV bez typu katalogowego
+        self._check_lacznik_wn_bez_typu(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stację przelotową
         self._check_voltage_band_consistency(enm, issues)
         self._check_frequency_consistency(enm, issues)
@@ -173,6 +439,9 @@ class ENMValidator:
         self._check_line_field_single_segment(enm, issues)
         # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
         self._check_transformer_sn_bay(enm, issues)
+        # GPZ-MODEL: transformator WN/SN GPZ bez równoważnika sieci po stronie 110 kV (E066)
+        for trafo, stacja, szyna_wn in transformatory_gpz_bez_zasilania_wn(enm):
+            issues.append(_transformator_gpz_bez_zasilania_wn(enm, trafo, stacja, szyna_wn))
         # POLA-W-TORZE: element na szynie głównej stacji z pominięciem pola, które mu służy
         self._check_zasada_toru(enm, issues)
         # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
@@ -181,6 +450,8 @@ class ENMValidator:
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
         self._check_uziemienie_w5(enm, issues)
+        # UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające SN — E-ZU-01..02, W-ZU-01..06
+        self._check_zespoly_uziemiajace(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -358,14 +629,20 @@ class ENMValidator:
                     )
                 )
 
-        # E023: napięcie znamionowe strony transformatora w innym paśmie napięć niż szyna, do
-        # której ta strona jest przyłączona (partia integracji 11). Do tej pory model przyjmował
-        # np. transformator 15/0,4 kV wpięty między szyny 110 kV i 15 kV (pozycja katalogu
-        # SN/nN przypisana transformatorowi GPZ) — przekładnia, impedancja i współczynnik
-        # korekcyjny K_T (IEC 60909-0 eq. 12a, c strony dolnej) liczyły się z napięć, których
-        # sieć nie ma, a wynik wychodził bez ostrzeżenia. Porównanie PASMEM (nN/SN/WN, jedno
-        # źródło `pasma_napieciowe`), nie wartością: napięcie znamionowe uzwojenia różni się od
-        # napięcia sieci w obrębie pasma (np. 15,75 kV na szynie 15 kV, 0,42 kV na 0,4 kV).
+        # E023 / W023: napięcie znamionowe strony transformatora wobec napięcia szyny, do której
+        # ta strona jest przyłączona. JEDEN podział (predykaty parami, wzajemnie rozłączne):
+        #   * to samo napięcie (`to_samo_napiecie_znamionowe`, ta sama równość co wszystkie tory
+        #     tworzenia i przypisania typu transformatora) — nic;
+        #   * inne napięcie w TYM SAMYM paśmie (nN/SN/WN, `pasma_napieciowe`) — W023,
+        #     OSTRZEŻENIE: przekładnia nieznamionowa jest fizycznie liczalna (IEC 60909-0 §6.3.3:
+        #     przekładnia rzeczywista t_r = U_rTHV/U_rTLV i K_T z napięcia uzwojenia), ale
+        #     rozpływ i zwarcia liczą się z przekładnią inną niż stosunek napięć sieci, więc
+        #     projektant ma ją widzieć w gotowości. Drogi, które ją tworzą: import (tabliczka
+        #     arkusza 15,75/0,42 kV na szynach 15/0,4 kV) i jawne nadpisanie
+        #     `update_element_parameters`; tory tworzenia i przypisanie typu jej odmawiają;
+        #   * napięcie z INNEGO pasma — E023, BLOKER (partia integracji 11): np. transformator
+        #     15/0,4 kV wpięty między szyny 110 kV i 15 kV — przekładnia, impedancja i K_T
+        #     (IEC 60909-0 eq. 12a, c strony dolnej) liczyłyby się z napięć, których sieć nie ma.
         napiecia_szyn = {b.ref_id: b.voltage_kv for b in enm.buses}
         for trafo in enm.transformers:
             for strona, napiecie_znamionowe, szyna_ref in (
@@ -375,9 +652,16 @@ class ENMValidator:
                 napiecie_szyny = napiecia_szyn.get(szyna_ref)
                 if napiecie_szyny is None or napiecie_szyny <= 0 or napiecie_znamionowe <= 0:
                     continue  # brak szyny i napięcia zerowe zgłaszają inne kontrole
+                if to_samo_napiecie_znamionowe(napiecie_znamionowe, napiecie_szyny):
+                    continue
                 pasmo_uzwojenia = pasmo_napieciowe(napiecie_znamionowe)
                 pasmo_szyny = pasmo_napieciowe(napiecie_szyny)
                 if pasmo_uzwojenia == pasmo_szyny:
+                    issues.append(
+                        _w023_przekladnia_nieznamionowa(
+                            enm, trafo, strona, napiecie_znamionowe, szyna_ref, napiecie_szyny
+                        )
+                    )
                     continue
                 issues.append(
                     ValidationIssue(
@@ -906,6 +1190,36 @@ class ENMValidator:
                     )
                 )
 
+        # E009 zespołu uziemiającego SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, Catalog Binding
+        # Rule): transformator uziemiający i element punktu neutralnego — jeden predykat części
+        # z bramami importu i gotowością (`czesci_zespolu_bez_katalogu`).
+        poziom_zespolu = wymagalnosc_katalogu("zespol_uziemiajacy").walidacja
+        for zu in sorted(enm.zespoly_uziemiajace, key=lambda z: z.ref_id):
+            czesci = czesci_zespolu_bez_katalogu(zu, poziom_zespolu)
+            if not czesci:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E009",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"{opis_obiektu(zu, 'Zespół uziemiający')}: brak pozycji katalogowej — "
+                        f"{lista_pl(list(czesci), 'i')}."
+                    ),
+                    element_refs=[zu.ref_id],
+                    wizard_step_hint="K1",
+                    suggested_fix=(
+                        "Wybierz typ transformatora uziemiającego i elementu punktu neutralnego "
+                        "z katalogu."
+                    ),
+                    fix_action=FixAction(
+                        action_type="SELECT_CATALOG",
+                        element_ref=zu.ref_id,
+                        payload_hint={"required": "catalog_ref"},
+                    ),
+                )
+            )
+
         # W010: Generator przekształtnikowy bez ŻADNEJ referencji katalogowej —
         # karta W3-I (§0.15 karty konwergencji fizyki), NOWY kod. Przed tą kartą
         # E009 milczał dla generatorów (nie iterował `enm.generators` wcale),
@@ -1159,17 +1473,26 @@ class ENMValidator:
                 )
             )
 
-        # W001: Brak Z₀ na linii
+        # W001: składowa zerowa odcinka nieznana i bez podstawy wartości roboczej. Ten sam
+        # predykat co sieć zerowa zwarć i rozpływ niesymetryczny (``enm.skladowa_zerowa_galezi``):
+        # odcinek bez R′0/X′0 w modelu liczy się z wartością roboczą R′0 = 3·R′1, X′0 = 3·X′1
+        # (sieć SN; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE — zasada nr 4, dana przyjęta
+        # ESTIMATED w wyniku). W001 zostaje wyłącznie, gdy wartości roboczej nie da się przyjąć
+        # (``brak_podstawy_pl``: R′1/X′1 niedodatnie, kabel nN bez żyły powrotnej, linia nN,
+        # odcinek WN, napięcie szyny nieznane).
+        napiecia_szyn = napiecia_szyn_kv(enm)
         for branch in enm.branches:
             if isinstance(branch, OverheadLine | Cable):
-                if branch.r0_ohm_per_km is None and branch.x0_ohm_per_km is None:
+                skladowa = skladowa_zerowa_galezi(branch, napiecia_szyn.get(branch.from_bus_ref))
+                if not skladowa.znana:
                     issues.append(
                         ValidationIssue(
                             code="W001",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
                                 f"{opis_obiektu(branch, 'Gałąź')} nie ma składowej zerowej "
-                                f"(Z₀) — zwarcia 1F/2F-Z niedostępne."
+                                "(Z₀), a wartości roboczej nie da się przyjąć "
+                                f"({skladowa.brak_podstawy_pl}) — zwarcia 1F/2F-Z niedostępne."
                             ),
                             element_refs=[branch.ref_id],
                             wizard_step_hint="K7",
@@ -1184,7 +1507,17 @@ class ENMValidator:
                     )
 
         # W002: Brak Z₀ źródła — predykat `dane_zerowe` z `enm/zrodlo_zwarcie.py` (K7).
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: Z₀ niesie wyłącznie źródło poza pasmem
+        # SN — ten sam predykat co mapowanie składowej zerowej
+        # (`impedancja_zerowa_zrodla_dozwolona`); od źródła SN Z₀ nie jest wymagane, bo
+        # obliczenia go nie czytają (uziemienie sieci SN = zespół uziemiający sekcji).
+        napiecie_szyny = {b.ref_id: b.voltage_kv for b in enm.buses}
         for source in enm.sources:
+            napiecie_zrodla = napiecie_szyny.get(source.bus_ref)
+            if napiecie_zrodla is not None and not impedancja_zerowa_zrodla_dozwolona(
+                napiecie_zrodla
+            ):
+                continue
             if not dane_zwarciowe_zrodla(source).z0:
                 issues.append(
                     ValidationIssue(
@@ -1192,7 +1525,10 @@ class ENMValidator:
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')} nie ma składowej "
-                            f"zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne."
+                            "zerowej (Z₀) — zwarcia doziemne w węzłach sieci składowej zerowej "
+                            "tego źródła nie są liczone (przyczyna: brak danych Z₀ sieci "
+                            "zasilającej). Sieć SN za transformatorem o grupie przerywającej "
+                            "drogę prądu zerowego liczy się z zespołu uziemiającego sekcji."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
@@ -1345,16 +1681,23 @@ class ENMValidator:
 
     def _check_info(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         # I001: Łącznik otwarty
+        # W5-C: komunikat nazywa, czy otwarcie to pozycja normalna (punkt podziału),
+        # odejście od pozycji normalnej, czy stan bez zadeklarowanej pozycji normalnej.
         for branch in enm.branches:
             if isinstance(branch, SwitchBranch) and branch.status == "open":
+                if branch.normal_state == "open":
+                    przyczyna = "jest punktem normalnie otwartym — dzieli sieć"
+                elif branch.normal_state == "closed":
+                    przyczyna = (
+                        "jest otwarty wbrew pozycji normalnej (zamkniętej) — odcina część sieci"
+                    )
+                else:
+                    przyczyna = "jest otwarty — odcina część sieci"
                 issues.append(
                     ValidationIssue(
                         code="I001",
                         severity=SEVERITY_INFO,
-                        message_pl=(
-                            f"{opis_obiektu(branch, 'Łącznik')} jest otwarty — odcina część "
-                            "sieci."
-                        ),
+                        message_pl=f"{opis_obiektu(branch, 'Łącznik')} {przyczyna}.",
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K3",
                     )
@@ -1429,9 +1772,26 @@ class ENMValidator:
                         )
                     )
 
-        # W006: Pole (Bay) referencja do nieistniejącej stacji lub szyny
+        # W006: Pole (Bay) referencja do nieistniejącego właściciela (stacji albo — pole
+        # rozdzielnicy odgałęźnej ZKSN, karta W5-B — punktu rozgałęzienia) lub szyny.
+        branch_point_refs = {p.ref_id for p in enm.branch_points}
         for bay in enm.bays:
-            if bay.substation_ref not in substation_refs:
+            if bay.branch_point_ref is not None:
+                if bay.branch_point_ref not in branch_point_refs:
+                    issues.append(
+                        ValidationIssue(
+                            code="W006",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis_obiektu(bay, 'Pole')} odwołuje się do punktu "
+                                "rozgałęzienia, którego nie ma w modelu sieci."
+                            ),
+                            element_refs=[bay.ref_id, bay.branch_point_ref],
+                            wizard_step_hint="K3",
+                            suggested_fix="Przypisz pole do istniejącego punktu rozgałęzienia.",
+                        )
+                    )
+            elif bay.substation_ref not in substation_refs:
                 issues.append(
                     ValidationIssue(
                         code="W006",
@@ -1440,7 +1800,7 @@ class ENMValidator:
                             f"{opis_obiektu(bay, 'Pole')} odwołuje się do stacji, której nie ma "
                             "w modelu sieci."
                         ),
-                        element_refs=[bay.ref_id, bay.substation_ref],
+                        element_refs=[bay.ref_id, str(bay.substation_ref)],
                         wizard_step_hint="K3",
                         suggested_fix="Przypisz pole do istniejącej stacji.",
                     )
@@ -1510,21 +1870,10 @@ class ENMValidator:
                         )
                     )
 
-        # I003: Stacja bez pól (bayów)
-        substations_with_bays = {bay.substation_ref for bay in enm.bays}
-        for sub in enm.substations:
-            meta = sub.meta if isinstance(sub.meta, dict) else {}
-            field_specs = meta.get("field_specs")
-            nn_field_specs = meta.get("nn_field_specs")
-            has_field_specs = (
-                isinstance(field_specs, list)
-                and any(isinstance(spec, dict) and spec.get("field_ref") for spec in field_specs)
-            ) or (
-                isinstance(nn_field_specs, list)
-                and any(isinstance(spec, dict) and spec.get("field_ref") for spec in nn_field_specs)
-            )
-            if has_field_specs:
-                substations_with_bays.add(sub.ref_id)
+        # I003: Stacja bez pól — rekordy `bays` stacji (jedyny nośnik pól SN i nN, karta W5-B).
+        substations_with_bays = {
+            sub.ref_id for sub in enm.substations if pola_stacji(enm, sub.ref_id)
+        }
         for sub in enm.substations:
             if sub.ref_id not in substations_with_bays:
                 issues.append(
@@ -1554,8 +1903,12 @@ class ENMValidator:
                 )
 
         # I005: Pierścień bez punktu NO
+        # W5-C: punkt podziału magistrali wyprowadzany z pozycji normalnej łączników
+        # (`punkty_podzialu_korytarza`), nie z dawnej kopii przy magistrali.
         for corr in enm.corridors:
-            if corr.corridor_type == "ring" and not corr.no_point_ref:
+            if corr.corridor_type == "ring" and not punkty_podzialu_korytarza(
+                enm, corr.ordered_segment_refs
+            ):
                 issues.append(
                     ValidationIssue(
                         code="I005",
@@ -1625,6 +1978,10 @@ class ENMValidator:
         Predykat: JEDNO źródło `enm.tor_pola.naruszenia_zasady_toru`.
         """
         widok = {
+            # Karta W5-B: zasada toru czyta zaciski pól z rekordów `bays`, a poziom pola
+            # (SN/nN) z napięcia szyny — widok niesie obie kolekcje.
+            "bays": [b.model_dump(mode="json") for b in enm.bays],
+            "buses": [{"ref_id": b.ref_id, "voltage_kv": b.voltage_kv} for b in enm.buses],
             "substations": [
                 {"ref_id": s.ref_id, "name": s.name, "bus_refs": list(s.bus_refs), "meta": s.meta}
                 for s in enm.substations
@@ -1709,42 +2066,14 @@ class ENMValidator:
 
     @staticmethod
     def _rodzaje_stacji(enm: EnergyNetworkModel) -> dict[str, RodzajStacji]:
-        """Rodzaj każdej stacji z JEDNEJ reguły `enm.rodzaj_stacji` (widok słownikowy modelu)."""
-        return rodzaje_stacji(
-            {
-                "substations": [
-                    {
-                        "ref_id": s.ref_id,
-                        "id": s.id,
-                        "name": s.name,
-                        "station_type": s.station_type,
-                        "bus_refs": list(s.bus_refs),
-                        "meta": s.meta,
-                    }
-                    for s in enm.substations
-                ],
-                "branches": [
-                    {
-                        "ref_id": b.ref_id,
-                        "type": getattr(b, "type", None),
-                        "from_bus_ref": getattr(b, "from_bus_ref", None),
-                        "to_bus_ref": getattr(b, "to_bus_ref", None),
-                        "meta": b.meta,
-                    }
-                    for b in enm.branches
-                ],
-                "bays": [
-                    {
-                        "ref_id": b.ref_id,
-                        "name": b.name,
-                        "substation_ref": b.substation_ref,
-                        "bay_role": b.bay_role,
-                        "meta": b.meta,
-                    }
-                    for b in enm.bays
-                ],
-            }
-        )
+        """Rodzaj każdej stacji z JEDNEJ reguły `enm.rodzaj_stacji` na PEŁNEJ migawce modelu.
+
+        Dawny zawężony widok słownikowy (wybrane klucze stacji, gałęzi i pól) był drugą
+        projekcją tego samego modelu: po karcie W5-B (rekord `bays` jedynym nośnikiem pól)
+        gubił szyny (poziom pola SN/nN z napięcia szyny), `bus_ref`, rolę kanoniczną,
+        metadane pochodzenia i zaciski pól, więc walidator liczył pola nN jako liniowe SN
+        i rozjeżdżał się z operacjami, read-modelem i frontem."""
+        return rodzaje_stacji(enm.model_dump(mode="json"))
 
     def _check_rodzaj_stacji(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """W043 / W044: rodzaj stacji wobec topologii (karta ETYKIETA-STACJI-PRZELOTOWEJ).
@@ -1828,7 +2157,7 @@ class ENMValidator:
         E040: bus_ref nie istnieje.
         E041: rated_mvar <= 0 (brak / niepoprawna moc bierna — nie zgadujemy).
         E042: rated_kv <= 0 (brak / niepoprawne napięcie znamionowe).
-        W040: rated_kv niespójne z napięciem szyny (>5% różnicy).
+        W040: rated_kv poza przedziałem U_n ≤ U_N ≤ U_s szyny (`napiecie_baterii_pasuje_do_sieci`).
         """
         bus_by_ref = {b.ref_id: b for b in enm.buses}
         for cap in enm.shunt_capacitors:
@@ -1903,12 +2232,12 @@ class ENMValidator:
                 continue
 
             bus = bus_by_ref.get(cap.bus_ref)
+            # JEDEN predykat z operacją zapisu baterii (`odmowa_tabliczki_baterii`):
+            # U_n ≤ U_N ≤ U_s (IEC 60871-1, IEC 60038) — dawny próg ±5 % ostrzegał przed baterią,
+            # którą operacja przyjmowała (17 kV na 15 kV), i milczał przy 14,5 kV, której odmawia.
             if (
                 bus is not None
-                and bus.voltage_kv
-                and bus.voltage_kv > 0
-                and cap.rated_kv > 0
-                and abs(cap.rated_kv - bus.voltage_kv) / bus.voltage_kv > 0.05
+                and napiecie_baterii_pasuje_do_sieci(cap.rated_kv, bus.voltage_kv) is False
             ):
                 issues.append(
                     ValidationIssue(
@@ -1932,6 +2261,256 @@ class ENMValidator:
                 )
 
     # ------------------------------------------------------------------
+    # Bateria kondensatorów: stopnie i pole BKR (E043, W045–W048) — karta UX-04/POLE-BKR-MODEL
+    # ------------------------------------------------------------------
+
+    def _check_baterie_pola_bkr(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Reguły baterii kondensatorów i pola BKR, każda z wyjaśnieniem (kontrakt werdyktu
+        wyjaśnialnego): co oceniono, kryterium z podstawą, stan modelu, skutek, naprawa.
+
+        E043 (BLOCKER): stan stopni niezgodny z liczbą stopni — ten sam predykat co odmowa
+            assemblera (``enm.bateria_kondensatorow.niezgodnosc_stopni``).
+        W045: bateria w rozdzielni SN GPZ bez pola BKR (Zeszyt 1 §13, §17).
+        W046: podwójna gwiazda izolowana bez przekładnika niezrównoważenia w polu BKR
+            (Zeszyt 1 §17, Zał. 16 — zabezpieczenie Ir>).
+        W047: jednostki bez wewnętrznych rezystorów rozładowczych, a pole BKR ma mniej niż
+            dwa przekładniki napięciowe międzyfazowe (Zeszyt 1 §17).
+        W048: lista transformatorów, których wyłączenie wyłącza baterię, nie obejmuje
+            transformatorów zasilających sekcję baterii albo wskazuje nieistniejące
+            (IRiESD II.4.5.4.4.2). Skutek łączeniowy realizuje logika łączeniowa; tu — dane.
+
+        Poziom W: stan jest legalnym stanem roboczym (koncepcja), nie wpływa na liczby
+        rozpływu ani zwarć — wymagania OSD dotyczą wyposażenia i automatyki pola.
+        """
+        transformatory = {t.ref_id for t in enm.transformers}
+        for bateria in sorted(enm.shunt_capacitors, key=lambda b: b.ref_id):
+            opis = opis_obiektu(bateria, "Bateria kondensatorów")
+            dane = parametry_baterii(bateria)
+            niezgodnosc = niezgodnosc_stopni(bateria, dane)
+            if niezgodnosc is not None:
+                issues.append(
+                    ValidationIssue(
+                        code="E043",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"{opis}: {niezgodnosc}. Udział stopni załączonych u = n_zał/n "
+                            "wchodzi do mocy biernej baterii w rozpływie i do jej admitancji "
+                            "zerowej, więc bez zgodnego stanu stopni nie da się go policzyć."
+                        ),
+                        element_refs=[bateria.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Podaj stan każdego stopnia (tyle pozycji, ile stopni ma bateria) "
+                            "albo zmień liczbę stopni baterii."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=bateria.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "stopnie_zalaczone"},
+                        ),
+                    )
+                )
+            nieznane = [r for r in bateria.wylaczenie_od_transformatorow if r not in transformatory]
+            stacja = stacja_gpz_baterii(enm, bateria)
+            pole = pole_baterii(enm, bateria)
+            if stacja is not None and (pole is None or pole.bay_role != "BKR"):
+                issues.append(
+                    ValidationIssue(
+                        code="W045",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis} stoi w rozdzielni SN {opis_obiektu(stacja, 'GPZ')} "
+                            + (
+                                "wprost na szynie, bez pola"
+                                if pole is None
+                                else f"na końcu pola {opis_obiektu(pole, 'pole')} roli innej niż "
+                                "pole baterii kondensatorów"
+                            )
+                            + f". Kryterium: bateria GPZ przyłączona przez pole BKR z wyłącznikiem, "
+                            f"zabezpieczeniami i przekładnikami ({PODSTAWA_POLA_BKR_PL}). Liczby "
+                            "rozpływu i zwarć są poprawne; brakuje pola, które baterię łączy, "
+                            "zabezpiecza i rozładowuje."
+                        ),
+                        element_refs=[bateria.ref_id, stacja.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Dodaj do sekcji rozdzielni SN pole baterii kondensatorów (BKR) "
+                            "i przyłącz baterię do jego zacisku."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=stacja.ref_id,
+                            modal_type="add_sn_bay",
+                            payload_hint={"bay_role": "BKR"},
+                        ),
+                    )
+                )
+            if pole is not None and pole.bay_role == "BKR":
+                rodzaje = rodzaje_aparatow_pola(pole)
+                uklad = dane[PARAMETR_BATERII_UKLAD]
+                if (
+                    str(uklad.wartosc) in UKLADY_Z_PRZEKLADNIKIEM_NIEZROWNOWAZENIA
+                    and RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA not in rodzaje
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            code="W046",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: układ „{NAZWY_UKLADOW_POLACZEN_BATERII_PL[str(uklad.wartosc)]}"
+                                f"” ({uklad.opis_zrodla_pl()}), a pole "
+                                f"{opis_obiektu(pole, 'pole')} nie ma przekładnika "
+                                "niezrównoważenia w połączeniu międzygwiazdowym. Kryterium: "
+                                "zabezpieczenie niezrównoważeniowe Ir> mierzy prąd między "
+                                f"punktami gwiazd ({PODSTAWA_POLA_BKR_PL}). Bez przekładnika "
+                                "uszkodzenie jednostki baterii nie jest wykrywane."
+                            ),
+                            element_refs=[bateria.ref_id, pole.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Dodaj do wyposażenia pola przekładnik niezrównoważenia "
+                                "baterii (port obwodu międzygwiazdowego)."
+                            ),
+                            # Wyposażenie pola edytuje karta pola (ekran E-11, jedyny
+                            # dostawca `set_bay_equipment`) — otwiera ją zaznaczenie pola.
+                            fix_action=FixAction(
+                                action_type="NAVIGATE_TO_ELEMENT", element_ref=pole.ref_id
+                            ),
+                        )
+                    )
+                rezystory = dane[PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE]
+                liczba_vt = rodzaje.count(RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO)
+                if not rezystory.wartosc and liczba_vt < LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII:
+                    issues.append(
+                        ValidationIssue(
+                            code="W047",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: jednostki bez wewnętrznych rezystorów rozładowczych "
+                                f"({rezystory.opis_zrodla_pl()}), a pole "
+                                f"{opis_obiektu(pole, 'pole')} ma {liczba_vt} z "
+                                f"{LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII} wymaganych "
+                                "przekładników napięciowych międzyfazowych do rozładowania "
+                                f"baterii (L1-L2 i L2-L3; {PODSTAWA_POLA_BKR_PL}). Bez nich "
+                                "bateria po wyłączeniu zostaje naładowana."
+                            ),
+                            element_refs=[bateria.ref_id, pole.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Dodaj do wyposażenia pola dwa przekładniki napięciowe "
+                                "międzyfazowe albo wskaż typ baterii z wewnętrznymi "
+                                "rezystorami rozładowczymi."
+                            ),
+                            # Wyposażenie pola edytuje karta pola (ekran E-11, jedyny
+                            # dostawca `set_bay_equipment`) — otwiera ją zaznaczenie pola.
+                            fix_action=FixAction(
+                                action_type="NAVIGATE_TO_ELEMENT", element_ref=pole.ref_id
+                            ),
+                        )
+                    )
+            wymagane = transformatory_zasilajace_baterie(enm, bateria) if stacja else []
+            brakujace = [t for t in wymagane if t not in bateria.wylaczenie_od_transformatorow]
+            if brakujace or nieznane:
+                opis_brakujacych = (
+                    "nie obejmuje transformatorów zasilających sekcję baterii: "
+                    + lista_pl((opis_elementu(enm, t, "transformator") for t in brakujace), "i")
+                    if brakujace
+                    else ""
+                )
+                opis_nieznanych = (
+                    f"wskazuje {len(nieznane)} "
+                    + (
+                        "transformator, którego"
+                        if len(nieznane) == 1
+                        else "transformatory, których"
+                    )
+                    + " nie ma w modelu"
+                    if nieznane
+                    else ""
+                )
+                opis_listy = (
+                    f"{opis_brakujacych}; {opis_nieznanych}"
+                    if brakujace and nieznane
+                    else opis_brakujacych or opis_nieznanych
+                )
+                issues.append(
+                    ValidationIssue(
+                        code="W048",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis}: lista transformatorów, których wyłączenie wyłącza baterię, "
+                            + opis_listy
+                            + f". Kryterium: {PODSTAWA_WYLACZENIA_OD_TR_PL}. Logika łączeniowa "
+                            "pola BKR czyta tę listę — bez kompletu bateria zostałaby załączona "
+                            "na sekcji po wyłączeniu jej transformatora."
+                        ),
+                        element_refs=[bateria.ref_id, *brakujace, *nieznane],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Uzupełnij w parametrach baterii listę transformatorów, których "
+                            "wyłączenie ją wyłącza."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=bateria.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "wylaczenie_od_transformatorow"},
+                        ),
+                    )
+                )
+
+    def _check_lacznik_wn_bez_typu(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Łącznik topologii zasilania 110 kV bez wiązania katalogowego.
+
+        Strona 110 kV jest funkcjonalną granicą zasilania GPZ (decyzja właściciela
+        2026-10-22): łącznik 110 kV wchodzi do modelu wyłącznie jako łącznik topologii ze
+        stanem łączeniowym, a reguła wiązania katalogowego wymaga mu typu — katalog ma jeden
+        typ minimalny na rodzaj (``sw-cb-110kv``, ``sw-ds-110kv``). Gałąź łącznikowa
+        (``TYPY_LACZNIKOW_ENM``) z co najmniej jednym końcem na szynie pasma WN bez
+        ``catalog_ref`` — z operacji bez wskazanego aparatu albo z modelu zewnętrznego —
+        nie jest przyjmowana po cichu. Ostrzeżenie nie blokuje obliczeń: łącznik bez
+        impedancji nie wnosi parametru do solvera (Zasada nr 4)."""
+        napiecia = {b.ref_id: b.voltage_kv for b in enm.buses}
+        for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
+            if galaz.type not in TYPY_LACZNIKOW_ENM or galaz.catalog_ref:
+                continue
+            napiecia_koncow = [
+                napiecia.get(ref) for ref in (galaz.from_bus_ref, galaz.to_bus_ref) if ref
+            ]
+            napiecie_wn = max(
+                (u for u in napiecia_koncow if u is not None and pasmo_napieciowe(u) == "WN"),
+                default=None,
+            )
+            if napiecie_wn is None:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="apparatus.hv_switch_catalog_missing",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"{opis_obiektu(galaz, 'Łącznik')} na szynie "
+                        f"{napiecie_wn:g} kV nie ma typu z katalogu — łącznik topologii "
+                        "zasilania 110 kV wymaga wiązania katalogowego (typ minimalny "
+                        "wyłącznika albo odłącznika 110 kV)."
+                    ),
+                    element_refs=[galaz.ref_id],
+                    wizard_step_hint="K4",
+                    suggested_fix="Przypisz łącznikowi typ wyłącznika albo odłącznika 110 kV.",
+                    fix_action=FixAction(
+                        action_type="SELECT_CATALOG",
+                        element_ref=galaz.ref_id,
+                        modal_type="BranchModal",
+                        payload_hint={"required": "catalog_ref"},
+                    ),
+                )
+            )
+
+    # ------------------------------------------------------------------
     # Graph connectivity check
     # ------------------------------------------------------------------
 
@@ -1947,9 +2526,24 @@ class ENMValidator:
         # Szyny nazywa ich nazwa z modelu (karta #142) — indeks raz na przebieg, nie
         # przeszukanie całego modelu dla każdej szyny każdej wyspy.
         szyny_wg_ref = {b.ref_id: b for b in enm.buses}
+        sekcje_gpz = _sekcje_gpz_wg_szyny(enm)
         for wyspa in widok.wyspy:
             if not wyspa.zasilona:
                 island_refs = list(wyspa.szyny)
+                if tor_odlaczonego_pola_zu(enm, island_refs):
+                    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający za otwartym
+                    # wyłącznikiem pola ZU jest wyłączony z ruchu (stan ruchowy przypadku),
+                    # nie wyspą sieci — ten sam predykat co uziemienie sieci SN.
+                    continue
+                sekcje_wyspy = [sekcje_gpz[ref] for ref in island_refs if ref in sekcje_gpz]
+                if sekcje_wyspy:
+                    # E065 (karta GPZ-MODEL): wyspa bez zasilania zawiera sekcję szyn SN
+                    # GPZ — ten sam predykat co E003 (`wyspa.zasilona`, jedna topologia),
+                    # nazwany przyczyną: sekcja bez własnego równoważnika zasilana wyłącznie
+                    # przez sprzęgło, a sprzęgło jest otwarte. Zastępuje E003 dla tej wyspy
+                    # (jeden fakt — jeden kod).
+                    issues.append(_sekcja_gpz_bez_zasilania(enm, sekcje_wyspy, island_refs))
+                    continue
                 issues.append(
                     ValidationIssue(
                         code="E003",
@@ -1981,8 +2575,16 @@ class ENMValidator:
                 load_flow=False,
             )
 
-        # SC 1F requires Z₀ on all lines and sources
-        has_z0_warnings = any(i.code in ("W001", "W002") for i in issues)
+        # SC 1F requires Z₀ on all lines. Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3):
+        # brak Z₀ źródła (sieć 110 kV / nN za granicą modelu, W002) nie odbiera modelowi
+        # zdolności zwarcia doziemnego — o uziemieniu sieci SN źródło nie decyduje; węzły
+        # składowej sieci zerowej tego źródła dostają w biegu nazwaną przyczynę ``brak_danych``
+        # (``enm.mapping._przyczyny_braku_zerowej``), sieć SN za grupą Yd/Dy liczy się
+        # z zespołu uziemiającego. Gałąź bez R′0/X′0 i bez podstawy wartości roboczej (W001)
+        # blokuje dalej: przy drodze równoległej jej brak zaniżyłby admitancję zerową bez śladu
+        # w klasyfikacji węzłów. Gałąź bez R′0/X′0 z podstawą wartości roboczej liczy się z nią
+        # (zasada nr 4) i W001 nie dostaje.
+        has_z0_warnings = any(i.code == "W001" for i in issues)
         sc_1f = not has_z0_warnings
 
         # Load flow requires at least one load or generator
@@ -2122,8 +2724,19 @@ class ENMValidator:
         bus_by_ref = {b.ref_id: b for b in enm.buses}
 
         # Group bays by substation_ref
+        # Karta W5-B: kolekcja `bays` niesie pola SN, nN i ZKSN. Ciągłość SN przez stację
+        # dotyczy pól liniowych rozdzielnicy SN stacji: pole na szynie nN BEZ jawnej roli
+        # liniowej SN jest polem nN z definicji poziomu (`enm.pola.czy_pole_nn` — np.
+        # wyłącznik główny nN roli IN); pole z jawną rolą liniową SN (`field_role`
+        # LINIA_IN/LINIA_OUT) na szynie nN jest naruszeniem, które ta reguła zgłasza.
+        # Pole ZKSN nie należy do stacji.
+        poziom = poziom_pol(enm)
         bays_by_station: dict[str, list] = {}
         for bay in enm.bays:
+            if bay.substation_ref is None:
+                continue
+            if czy_pole_nn(enm, bay, poziom) and bay.field_role not in _ROLE_LINIOWE_SN:
+                continue
             bays_by_station.setdefault(bay.substation_ref, []).append(bay)
 
         for sub in enm.substations:
@@ -2246,10 +2859,14 @@ class ENMValidator:
         archiwum albo zbudowany przed kartą POLE-ZAJĘTE może ten stan nieść. Zajętość liczy
         JEDNO źródło prawdy (`enm.zajetosc_pol`, przyłączenie fizyczne: reguły R1 i R2).
         """
+        # Widok słownikowy dla `enm.zajetosc_pol` (postać operacji domenowych): pola z rekordów
+        # `bays`, szyny z napięciem — poziom pola (SN/nN) rozstrzyga napięcie szyny pola.
         widok = {
             "substations": [
                 {"ref_id": s.ref_id, "name": s.name, "meta": s.meta} for s in enm.substations
             ],
+            "buses": [{"ref_id": b.ref_id, "voltage_kv": b.voltage_kv} for b in enm.buses],
+            "bays": [b.model_dump(mode="json") for b in enm.bays],
             "branches": [
                 {
                     "ref_id": b.ref_id,
@@ -2266,19 +2883,12 @@ class ENMValidator:
             ],
         }
         stacje = {s.ref_id: s for s in enm.substations}
-        nazwy_pol: dict[object, object] = {b.ref_id: b.name for b in enm.bays}
         for zajetosc in zajetosc_pol(widok).values():
             if not zajetosc.przeciazone:
                 continue
             stacja = stacje.get(zajetosc.station_ref)
-            spec = next(
-                (
-                    f
-                    for f in ((stacja.meta if stacja else {}) or {}).get("field_specs") or []
-                    if isinstance(f, dict) and f.get("field_ref") == zajetosc.field_ref
-                ),
-                {},
-            )
+            rekord_pola = pole_modelu(enm, zajetosc.field_ref)
+            nazwa_pola = rekord_pola.name if rekord_pola is not None else "Pole liniowe"
             odcinki = ", ".join(
                 opis_elementu(enm, ref, "odcinek") for ref in zajetosc.odcinki_fizyczne
             )
@@ -2287,7 +2897,7 @@ class ENMValidator:
                     code="E022",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"{nazwa_pola_ze_specyfikacji(spec, nazwy_pol)} w "
+                        f"{nazwa_pola} w "
                         f"{opis_obiektu(stacja, 'stacji')}: z jednego pola liniowego wychodzi "
                         f"{len(zajetosc.odcinki_fizyczne)} odcinków ({odcinki}). Z jednego "
                         "pola liniowego wolno wyprowadzić tylko jeden kabel."
@@ -2320,6 +2930,10 @@ class ENMValidator:
     def _check_uziemienie_w5(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """W5-A: spojnosc jednej reprezentacji uziemienia punktu neutralnego.
 
+        W-W5-02 - zrodlo na szynie SN z opisem punktu neutralnego albo Z0 (karta
+               UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3): dane pominiete w skladowej
+               zerowej (`impedancja_zerowa_zrodla_dozwolona`), uziemienie sieci SN
+               wynika z zespolu uziemiajacego albo uzwojenia transformatora.
         E-W5-01 - konfiguracja punktu neutralnego niespojna z fizyka, ktora ja
                czyta (JEDEN predykat `enm/uziemienie.py`, ten sam co operacje
                domenowe i model skladowej zerowej): rezystor bez R_N, dlawik bez
@@ -2349,8 +2963,63 @@ class ENMValidator:
             )
 
         # --- zrodla: Source.neutral_grounding vs r0/x0 | z0_z1 ---------------
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3): opis punktu neutralnego i Z0 źródła
+        # dotyczą WYŁĄCZNIE sieci za granicą modelu po stronie WN (sieć 110 kV) albo nN.
+        # Uziemienie sieci SN opisuje jedna prawda — zespół uziemiający albo punkt neutralny
+        # uzwojenia transformatora (``enm.uziemienie_sekcji``). Źródło na szynie SN z opisem
+        # punktu neutralnego albo z Z0 jest sprzecznością nazwaną: mapowanie składowej
+        # zerowej pomija Z0 takiego źródła (ten sam predykat
+        # ``impedancja_zerowa_zrodla_dozwolona``), więc dane nie mogą udawać uziemienia.
         for source in enm.sources:
             cfg = source.neutral_grounding
+            bus = bus_by_ref.get(source.bus_ref)
+            ma_z0 = (
+                source.r0_ohm is not None
+                or source.x0_ohm is not None
+                or source.z0_z1_ratio is not None
+            )
+            if bus is not None and not impedancja_zerowa_zrodla_dozwolona(bus.voltage_kv):
+                if cfg is None and not ma_z0:
+                    continue
+                opisane = lista_pl(
+                    [
+                        *(
+                            [
+                                "opis punktu neutralnego "
+                                f"({ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(cfg.type, cfg.type)})"
+                            ]
+                            if cfg is not None
+                            else []
+                        ),
+                        *(["impedancję zerową (R0/X0 albo Z0/Z1)"] if ma_z0 else []),
+                    ],
+                    "i",
+                )
+                issues.append(
+                    ValidationIssue(
+                        code="W-W5-02",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis_obiektu(source, 'Źródło zasilania')} na szynie SN niesie "
+                            f"{opisane} — te dane nie wchodzą do obliczeń. Uziemienie punktu "
+                            "neutralnego sieci SN wynika wyłącznie z zespołu uziemiającego na "
+                            "szynach SN albo z punktu neutralnego uzwojenia transformatora; "
+                            "zwarcie doziemne i doziemienie liczone są z tych elementów."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Usuń opis punktu neutralnego i impedancję zerową źródła na szynie "
+                            "SN; uziemienie sieci SN zamodeluj zespołem uziemiającym (dławik "
+                            "gaszący, rezystor albo oba równolegle — ENEA Zeszyt 1 §16) albo "
+                            "uziemieniem punktu neutralnego uzwojenia SN transformatora."
+                        ),
+                        fix_action=FixAction(
+                            action_type="NAVIGATE_TO_ELEMENT", element_ref=source.ref_id
+                        ),
+                    )
+                )
+                continue
             if cfg is None:
                 continue
             blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
@@ -2367,19 +3036,9 @@ class ENMValidator:
                     )
                 )
                 continue
-            bus = bus_by_ref.get(source.bus_ref)
-            po_stronie_sn = (
-                source.source_side != "HV_110"
-                and bus is not None
-                and pasmo_napieciowe(bus.voltage_kv) == "SN"
-            )
-            if not po_stronie_sn:
-                continue
-            ma_z0 = (
-                source.r0_ohm is not None
-                or source.x0_ohm is not None
-                or source.z0_z1_ratio is not None
-            )
+            # Źródło WN albo nN: opis punktu neutralnego sieci za granicą modelu i jej Z0
+            # muszą mówić to samo (sieć izolowana nie ma bocznika zerowego; sieć uziemiona
+            # bez Z0 byłaby liczona bez bocznika, wbrew opisowi).
             if cfg.type == "isolated" and ma_z0:
                 issues.append(
                     ValidationIssue(
@@ -2387,9 +3046,9 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')}: punkt neutralny "
-                            "opisany jako izolowany, a podano skończoną impedancję zerową "
-                            "(R0/X0 albo Z0/Z1) — opis i liczby są sprzeczne (sieć izolowana "
-                            "nie ma bocznika zerowego)."
+                            "sieci zasilającej opisany jako izolowany, a podano skończoną "
+                            "impedancję zerową (R0/X0 albo Z0/Z1) — opis i liczby są sprzeczne "
+                            "(sieć izolowana nie ma bocznika zerowego)."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
@@ -2406,7 +3065,7 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')}: punkt neutralny "
-                            "opisany jako uziemiony "
+                            "sieci zasilającej opisany jako uziemiony "
                             f"({ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(cfg.type, 'uziemiony')}), "
                             "a źródło nie ma impedancji zerowej (R0/X0 albo Z0/Z1) — zwarcie 1F "
                             "liczyłoby sieć bez bocznika zerowego źródła, wbrew opisowi."
@@ -2414,9 +3073,8 @@ class ENMValidator:
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
                         suggested_fix=(
-                            "Podaj R0/X0 (Z0/Z1) źródła albo zbuduj GPZ kreatorem z "
-                            "transformatorem WN/SN — Z0 zostanie wyprowadzone z opisu punktu "
-                            "neutralnego."
+                            "Podaj R0/X0 (Z0/Z1) sieci zasilającej z danych operatora albo "
+                            "usuń opis punktu neutralnego."
                         ),
                         fix_action=_fix(source.ref_id, "SourceModal", "zero_sequence"),
                     )
@@ -2533,6 +3191,265 @@ class ENMValidator:
                 )
             )
 
+    def _check_zespoly_uziemiajace(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Zespoły uziemiające SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) — reguły z wyjaśnieniem.
+
+        Każda reguła czyta JEDNĄ prawdę o uziemieniu sieci (``enm.uziemienie_sekcji``), więc
+        walidator, mapowanie składowej zerowej i analizy nie mogą się rozjechać.
+
+        E-ZU-01 - zespół na szynie, której nie ma, albo poza pasmem SN (zespół uziemia punkt
+               neutralny sieci SN — Zeszyt 1 §16).
+        E-ZU-02 - zespół bez elementu w punkcie neutralnym albo z deklaracją sprzeczną
+               (uziemienie bezpośrednie razem z dławikiem lub rezystorem) — brak modelu.
+        W-ZU-01 - SPZ transformatora uziemiającego bez rezystora (Zeszyt 1 §26.9.6 s. 54: SPZ
+               transformatorów uziemiających tylko w sieci z rezystorem).
+        W-ZU-02 - zespół z rezystorem, którego nie wyłącza automatyczne wyłączenie pola SN
+               któregoś transformatora WN/SN tej sieci (IRiESD II.4.5.4.3.5 s. 53).
+        W-ZU-03 - odbiór potrzeb własnych uzwojenia PW wskazany, a nie istnieje albo nie stoi
+               na szynie zespołu (Zeszyt 1 §27.1 s. 59: potrzeby własne GPZ zasila uzwojenie
+               PW zespołu; moc odbioru pobiera z sieci SN przez zespół — założenie jawne:
+               impedancja i straty uzwojenia PW pominięte).
+        W-ZU-04 - ostrzeżenia sieci: więcej niż jeden zespół na połączoną sieć SN (§16 s. 29,
+               §26.10.7 s. 56), nastawa dławików w punkcie rezonansowym (§16 s. 30).
+        W-ZU-05 - uziemienie bezpośrednie punktu neutralnego zespołu — poza rozwiązaniami
+               Zeszytu 1 §16 (dławik, rezystor, oba równolegle).
+        W-ZU-06 - transformator uziemiający o napięciu znamionowym innym niż napięcie szyny.
+        """
+        if not enm.zespoly_uziemiajace:
+            return
+        szyny = {b.ref_id: b for b in enm.buses}
+        transformatory = {t.ref_id: t for t in enm.transformers}
+        odbiory = {o.ref_id: o for o in enm.loads}
+        sieci = uziemienie_sieci(enm)
+        sekcja_szyny = {szyna: sekcja for sekcja in sieci for szyna in sekcja.szyny}
+        szyna_pola_zu = {
+            b.terminal_bus_ref: b.bus_ref
+            for b in enm.bays
+            if b.bay_role == "ZU" and b.terminal_bus_ref and b.bus_ref
+        }
+
+        def _do_zespolu(ref: str) -> FixAction:
+            return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=ref)
+
+        for zu in sorted(enm.zespoly_uziemiajace, key=lambda z: z.ref_id):
+            opis = opis_obiektu(zu, "Zespół uziemiający")
+            szyna = szyny.get(zu.bus_ref)
+            if szyna is None or pasmo_napieciowe(szyna.voltage_kv) != "SN":
+                issues.append(
+                    ValidationIssue(
+                        code="E-ZU-01",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"{opis}: "
+                            + (
+                                "szyna przyłączenia nie istnieje w modelu"
+                                if szyna is None
+                                else f"szyna przyłączenia ma napięcie {szyna.voltage_kv:g} kV "
+                                f"— poza pasmem SN ({OPIS_PASMA_SN})"
+                            )
+                            + ". Zespół uziemiający uziemia punkt neutralny sieci SN (ENEA "
+                            "Zeszyt 1 §16) — bez szyny SN nie ma sieci, którą uziemia."
+                        ),
+                        element_refs=[zu.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix="Przyłącz zespół do szyny SN (pole zespołu uziemiającego).",
+                        fix_action=_do_zespolu(zu.ref_id),
+                    )
+                )
+                continue
+            punkt = punkt_zespolu(zu, szyna.voltage_kv)
+            if punkt.odmowa_pl is not None:
+                issues.append(
+                    ValidationIssue(
+                        code="E-ZU-02",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"{punkt.odmowa_pl} Zwarcie doziemne i analizy uziemienia sieci "
+                            "nie mają czego liczyć — zespół nie wchodzi do składowej zerowej."
+                        ),
+                        element_refs=[zu.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Dobierz z katalogu dławik gaszący, rezystor uziemiający albo oba "
+                            "(układ równoległy Z.14), albo zadeklaruj uziemienie bezpośrednie "
+                            "bez elementów w punkcie neutralnym."
+                        ),
+                        fix_action=_do_zespolu(zu.ref_id),
+                    )
+                )
+            z_rezystorem = zu.rezystor is not None
+            if zu.spz and not z_rezystorem:
+                issues.append(
+                    ValidationIssue(
+                        code="W-ZU-01",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis}: zadeklarowano SPZ transformatora uziemiającego, a punkt "
+                            "neutralny nie ma rezystora (wariant: "
+                            f"{ETYKIETA_PL_WARIANTU_UZIEMIENIA[punkt.wariant()]}). Kryterium: "
+                            "ENEA Zeszyt 1 §26.9.6 s. 54 — SPZ transformatorów uziemiających "
+                            "wyłącznie w sieci z rezystorem; wynik: niespełnione."
+                        ),
+                        element_refs=[zu.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Usuń deklarację SPZ zespołu albo zastosuj rezystor w punkcie "
+                            "neutralnym (Z.14 albo Z.15)."
+                        ),
+                        fix_action=_do_zespolu(zu.ref_id),
+                    )
+                )
+            # Reguła wyłączenia od TR jest cechą projektu pola (automatyka), nie stanu łącznika:
+            # zespół w polu ZU należy do sieci szyny pola także przy otwartym wyłączniku pola.
+            sekcja = sekcja_szyny.get(szyna_pola_zu.get(zu.bus_ref, zu.bus_ref))
+            if z_rezystorem and sekcja is not None:
+                zasilajace = sorted(
+                    t.ref_id
+                    for t in enm.transformers
+                    if _transformator_wn_sn_sieci(t, sekcja.szyny, szyny)
+                )
+                brakujace = [
+                    ref for ref in zasilajace if ref not in zu.wylaczenie_od_transformatorow_refs
+                ]
+                if brakujace:
+                    issues.append(
+                        ValidationIssue(
+                            code="W-ZU-02",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: punkt neutralny z rezystorem, a automatyczne "
+                                "wyłączenie pola SN "
+                                + lista_pl(
+                                    (
+                                        opis_obiektu(transformatory[r], "transformatora")
+                                        for r in brakujace
+                                    ),
+                                    "i",
+                                )
+                                + " nie wyłącza zespołu. Kryterium: IRiESD II.4.5.4.3.5 s. 53 "
+                                "— przy rezystorze każde automatyczne wyłączenie pola SN "
+                                "transformatora WN/SN wyłącza pole transformatora "
+                                "uziemiającego lub rezystor; wynik: niespełnione."
+                            ),
+                            element_refs=[zu.ref_id, *brakujace],
+                            wizard_step_hint="K1",
+                            suggested_fix=(
+                                "Wskaż transformatory WN/SN, których wyłączenie wyłącza zespół "
+                                "(wyłączenie od transformatorów)."
+                            ),
+                            fix_action=_do_zespolu(zu.ref_id),
+                        )
+                    )
+            nieznane = [
+                ref for ref in zu.wylaczenie_od_transformatorow_refs if ref not in transformatory
+            ]
+            if nieznane:
+                issues.append(
+                    ValidationIssue(
+                        code="W-ZU-02",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis}: wyłączenie od transformatorów wskazuje elementy, których "
+                            f"nie ma w modelu (liczba: {len(nieznane)}) — reguła IRiESD "
+                            "II.4.5.4.3.5 nie ma czego sprawdzić."
+                        ),
+                        element_refs=[zu.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix="Usuń nieistniejące transformatory z listy wyłączenia.",
+                        fix_action=_do_zespolu(zu.ref_id),
+                    )
+                )
+            if zu.odbior_pw_ref is not None:
+                odbior = odbiory.get(zu.odbior_pw_ref)
+                if odbior is None or odbior.bus_ref != zu.bus_ref:
+                    issues.append(
+                        ValidationIssue(
+                            code="W-ZU-03",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: odbiór potrzeb własnych uzwojenia PW "
+                                + (
+                                    "nie istnieje w modelu"
+                                    if odbior is None
+                                    else f"({opis_obiektu(odbior, 'odbiór')}) stoi na innej "
+                                    "szynie niż zespół"
+                                )
+                                + " — potrzeby własne GPZ zasila uzwojenie PW zespołu (ENEA "
+                                "Zeszyt 1 §27.1 s. 59), więc ich moc płynie z szyny zespołu."
+                            ),
+                            element_refs=[zu.ref_id],
+                            wizard_step_hint="K1",
+                            suggested_fix=(
+                                "Wskaż odbiór potrzeb własnych stacji na szynie zespołu albo "
+                                "usuń wskazanie."
+                            ),
+                            fix_action=_do_zespolu(zu.ref_id),
+                        )
+                    )
+            if punkt.odmowa_pl is None and punkt.wariant() == "bezposrednie":
+                issues.append(
+                    ValidationIssue(
+                        code="W-ZU-05",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis}: punkt neutralny uziemiony bezpośrednio — poza "
+                            "rozwiązaniami ENEA Zeszyt 1 §16 s. 29–31 (dławik gaszący, rezystor "
+                            "albo oba równolegle); prąd zwarcia doziemnego ogranicza wyłącznie "
+                            "impedancja zerowa transformatora uziemiającego."
+                        ),
+                        element_refs=[zu.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix="Zastosuj dławik gaszący albo rezystor w punkcie neutralnym.",
+                        fix_action=_do_zespolu(zu.ref_id),
+                    )
+                )
+            u_tu = zu.u_n_kv
+            if u_tu is None and isinstance(zu.materialized_params, dict):
+                u_kat = zu.materialized_params.get("u_n_kv")
+                u_tu = float(u_kat) if isinstance(u_kat, int | float) else None
+            if u_tu is not None and not to_samo_napiecie_znamionowe(u_tu, szyna.voltage_kv):
+                issues.append(
+                    ValidationIssue(
+                        code="W-ZU-06",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis}: napięcie znamionowe transformatora uziemiającego "
+                            f"{u_tu:g} kV, a szyny {szyna.voltage_kv:g} kV — impedancja zerowa "
+                            "i prądy elementów punktu neutralnego są liczone przy napięciu "
+                            "sieci."
+                        ),
+                        element_refs=[zu.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix="Dobierz transformator uziemiający na napięcie sieci.",
+                        fix_action=_do_zespolu(zu.ref_id),
+                    )
+                )
+
+        for sekcja in sieci:
+            if not sekcja.ostrzezenia:
+                continue
+            zespoly = [p.element_ref for p in sekcja.punkty if p.rodzaj == "zespol_uziemiajacy"]
+            if not zespoly:
+                continue
+            for ostrzezenie in sekcja.ostrzezenia:
+                issues.append(
+                    ValidationIssue(
+                        code="W-ZU-04",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=ostrzezenie,
+                        element_refs=zespoly,
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Pozostaw jeden zespół w ruchu na połączoną sieć SN (otwórz pole "
+                            "drugiego albo łącznik szyn) i nastaw dławik z rozstrojeniem od "
+                            "prądu pojemnościowego."
+                        ),
+                        fix_action=_do_zespolu(zespoly[0]),
+                    )
+                )
+
     def _check_nn_topology(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """P0.1 nN (karta P0.1; C §5; D LV-INV-01/03/11/12).
 
@@ -2546,7 +3463,7 @@ class ENMValidator:
         E061 - galaz z OBOMA koncami w pasmie nN bez wiazania katalogowego
                KABEL_NN/APARAT_NN (catalog_ref); wyjatek: galaz z automigracji
                promocji pol nN (meta `nn_promocja_bez_wiazania_katalogowej`,
-               `enm/migrations/nn_field_specs_promocja.py`) bez wiazania -> W061
+               `enm/migrations/promocja_aparatow_nn.py`) bez wiazania -> W061
                (LV-INV-12, C §4.2 — dane historyczne, ktorych katalog nie widzial).
         E062 - dwie szyny nN o ROZNYCH napieciach znamionowych polaczone galezia
                NIE-transformatorowa. Zaostrzenie E020 WEWNATRZ pasma nN: E020
@@ -2661,8 +3578,7 @@ class ENMValidator:
                 # TEN aparat i TO pole — projektant nie szuka, którego z odpływów
                 # dotyczy brak. Brak katalogu blokuje analizy czytające dane aparatu
                 # nN (bramka kwalifikacji SWZ nN), nie rysunek.
-                field_ref = branch_meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF)
-                nazwa_pola, nazwa_stacji = _pole_nn_i_stacja(enm, field_ref)
+                field_ref, nazwa_pola, nazwa_stacji = _pole_nn_i_stacja(enm, branch.ref_id)
                 opis_pola = (
                     f" — pole „{nazwa_pola}” stacji „{nazwa_stacji}”"
                     if nazwa_pola and nazwa_stacji
@@ -2723,7 +3639,7 @@ class ENMValidator:
                 continue
             if not (w_pasmie_nn(from_bus.voltage_kv) and w_pasmie_nn(to_bus.voltage_kv)):
                 continue
-            if abs(from_bus.voltage_kv - to_bus.voltage_kv) <= 1e-9:
+            if to_samo_napiecie_znamionowe(from_bus.voltage_kv, to_bus.voltage_kv):
                 continue
             issues.append(
                 ValidationIssue(

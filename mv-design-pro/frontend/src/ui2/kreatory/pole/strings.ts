@@ -43,6 +43,12 @@ export const POLE_STRINGS = {
   szablon: 'Szablon pola',
   szablonPlaceholder: '— wybierz szablon pola —',
   szablonBrak: 'Brak szablonu dla tej rodziny i roli — skonfiguruj aparat ekspercko poniżej.',
+  kontrolaKatalogowaSprawdzanie: 'Sprawdzam konfigurację pola w katalogu rozdzielnic…',
+  kontrolaKatalogowaZgodna: (opis: string, rola: string): string =>
+    `Konfiguracja zgodna z katalogiem rozdzielnic (karta rodziny, napięcie szyny, skład pola): ${opis}. `
+    + `Rola pola wynika z katalogu: ${rola}.`,
+  kontrolaKatalogowaNiezgodna: (komunikat: string): string =>
+    `Konfiguracja niezgodna z katalogiem rozdzielnic — zapis zostanie odrzucony: ${komunikat}`,
   aparatSekcja: 'Aparat główny (konfiguracja ekspercka)',
   wierszSzablon: 'Szablon',
 

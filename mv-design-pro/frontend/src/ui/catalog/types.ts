@@ -207,9 +207,16 @@ export interface SwitchEquipmentType extends CatalogType {
   equipment_kind: string;
   un_kv: number;
   in_a: number;
-  ik_ka: number;
-  icw_ka: number;
+  /**
+   * Znamionowy prąd zwarciowy łączeniowy [kA]; `null` = brak danej z karty (nigdy 0 —
+   * bramka rekordu KAT-T-050). Dla rozłącznika/odłącznika/uziemnika wielkość nie dotyczy.
+   */
+  ik_ka: number | null;
+  /** Prąd krótkotrwały wytrzymywany I_cw [kA], 1 s; `null` = brak danej z karty. */
+  icw_ka: number | null;
   medium?: string;
+  /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
+  card_field_status?: StatusPolKarty;
 }
 
 /**
@@ -311,6 +318,17 @@ export interface LVCableType extends CatalogType {
  * Load Type (OBCIAZENIE).
  * Source: backend LoadType dataclass.
  */
+/**
+ * Generator synchroniczny SN (przestrzeń `GENERATOR_SN`) — tabliczka znamionowa maszyny
+ * dołączonej wprost do szyny. Mirror `SynchronousGeneratorType.to_dict` (backend).
+ */
+export interface SynchronousGeneratorCatalogType extends CatalogType {
+  rated_mva: number;
+  rated_kv: number;
+  q_min_mvar: number;
+  q_max_mvar: number;
+}
+
 export interface LoadCatalogType extends CatalogType {
   model: string;
   p_kw: number;
@@ -357,6 +375,8 @@ export interface MVApparatusType extends CatalogType {
   /** Propozycje wartości roboczych dla parametrów, których karta nie podaje (zasada nr 4,
    *  V12K-351) — `GET /api/catalog/mv-apparatus-types`; rejestr backendu jest jedynym źródłem. */
   wartosci_robocze?: readonly PropozycjaWartosciRoboczej[];
+  /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
+  card_field_status?: StatusPolKarty;
 }
 
 /** Rodzaj źródła propozycji wartości roboczej (rejestr `network_model/catalog/wartosci_robocze.py`). */
@@ -399,7 +419,11 @@ export interface ParametrMaszynyRejestru {
   readonly parametr: string;
   readonly nazwa_pl: string;
   readonly symbol: string;
+  /** Symbol jako LaTeX — postać ekranowa (`$…$` przez `TekstZWzorami`); `symbol` to identyfikator. */
+  readonly symbol_latex: string;
   readonly jednostka: string;
+  /** Jednostka jako LaTeX, gdy niesie symbole (baza p.u.); pusta — ekran pokazuje `jednostka`. */
+  readonly jednostka_latex: string;
   readonly dopuszczalne_od: number;
   readonly dopuszczalne_do: number;
   readonly calkowita: boolean;
@@ -415,6 +439,21 @@ export interface RejestrMaszynWirujacych {
   readonly rodzaj_generatora: Readonly<Record<string, RodzinaMaszyny>>;
   readonly rodziny: Readonly<Record<RodzinaMaszyny, readonly ParametrMaszynyRejestru[]>>;
 }
+
+/**
+ * Jakość danej jednego pola pozycji katalogu (`card_field_status` backendu — kształt
+ * `CardFieldStatus.to_dict()`): wartość robocza ma `quality: 'ESTIMATED'` z podstawą
+ * (`source_ref`: norma z tablicą / standard OSD z punktem i stroną) albo z jawnym
+ * założeniem (`note`). Brak klucza `card_field_status` = dane przepisane z karty producenta.
+ */
+export interface StatusPolaKarty {
+  readonly field_name: string;
+  readonly quality: string;
+  readonly source_ref?: string | null;
+  readonly note?: string | null;
+}
+
+export type StatusPolKarty = Readonly<Record<string, StatusPolaKarty>>;
 
 /**
  * LV Apparatus Type (APARAT_NN).
@@ -622,6 +661,44 @@ export interface SurgeArresterCatalogType extends CatalogType {
   standard?: string;
 }
 
+/** Mapa „pole → podstawa” wartości roboczych pozycji typowej (zasada nr 4, `ESTIMATED`). */
+export type WartosciRoboczeKatalogu = Readonly<Record<string, string>>;
+
+/**
+ * Transformator uziemiający ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — backend
+ * `EarthingTransformerType.to_dict` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+ */
+export interface EarthingTransformerCatalogType extends CatalogType {
+  u_n_kv: number;
+  s_n_kva: number;
+  grupa_polaczen: string;
+  r0_ohm: number;
+  x0_ohm: number;
+  s_pw_kva: number | null;
+  u_pw_kv: number | null;
+  wartosci_robocze?: WartosciRoboczeKatalogu | null;
+}
+
+/** Dławik gaszący (DLAWIK_GASZACY) — backend `ArcSuppressionCoilType.to_dict`. */
+export interface ArcSuppressionCoilCatalogType extends CatalogType {
+  u_n_kv: number;
+  i_min_a: number;
+  i_max_a: number;
+  regulacja: 'ciagla' | 'zaczepy';
+  liczba_zaczepow: number | null;
+  u_wtorne_v: number | null;
+  wartosci_robocze?: WartosciRoboczeKatalogu | null;
+}
+
+/** Rezystor uziemiający (REZYSTOR_UZIEMIAJACY) — backend `NeutralEarthingResistorType.to_dict`. */
+export interface NeutralEarthingResistorCatalogType extends CatalogType {
+  u_n_kv: number;
+  r_ohm: number;
+  i_n_a: number;
+  t_s: number;
+  wartosci_robocze?: WartosciRoboczeKatalogu | null;
+}
+
 /**
  * Shunt capacitor bank type (KOMPENSATOR_SN).
  * Source: backend ShuntCapacitorType dataclass.
@@ -718,6 +795,9 @@ export type CatalogNamespace =
   | 'VT'
   | 'OGRANICZNIK_SN'
   | 'KOMPENSATOR_SN'
+  | 'TRANSFORMATOR_UZIEMIAJACY'
+  | 'DLAWIK_GASZACY'
+  | 'REZYSTOR_UZIEMIAJACY'
   | 'OBCIAZENIE'
   | 'ZRODLO_NN_PV'
   | 'ZRODLO_NN_BESS'
@@ -734,7 +814,8 @@ export type TypeCategory = 'LINE' | 'HV_OVERHEAD_CONDUCTOR' | 'CABLE' | 'TRANSFO
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
-  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
+  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN'
+  | 'EARTHING_TRANSFORMER' | 'ARC_SUPPRESSION_COIL' | 'NEUTRAL_EARTHING_RESISTOR';
 
 /**
  * Type reference in element (points to catalog).

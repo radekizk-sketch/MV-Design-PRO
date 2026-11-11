@@ -38,8 +38,6 @@ def _siec_ze_stacja() -> dict:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": ZRODLO,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snapshot = _op(

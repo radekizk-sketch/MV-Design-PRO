@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD-nN-TOPOLOGIA T0→T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.4) —
  * WYROCZNIA ZGODNOŚCI SCENY. Buduje scenę Stacji B DZISIEJSZYM pipeline
@@ -34,9 +35,15 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { buildSceneV3, sceneConnectivityIndex, type PreviewSegment, type SceneV3 } from '../../scene/buildScene';
+import type { PreviewSegment } from '../../compose/preview';
+import { buildSceneV3, sceneConnectivityIndex, type SceneV3 } from '../../scene/buildScene';
 import { buildTerminalGraph } from '../terminalGraph';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
+
+// GEOMETRIA-STACJI (Z-03, §0 pkt 1): odcinek szyny SN należy do REKORDU `Bus` sekcji
+// (`${busRef}#sn-bus`), nie do kompozytu stacji — intencja kontroli bez zmian (ta sama
+// szyna SN Stacji B, te same wymagania klasyfikacji i spójności), zmieniła się tożsamość.
+const SN_BUS_OWNER_REF = `${STACJA_B_REFS.snBusRef}#sn-bus`;
 
 const enm = buildStacjaBFixture();
 const scene: SceneV3 = buildSceneV3(enm, 2);
@@ -147,7 +154,7 @@ describe('Check A2 — DOWÓD DEFEKTU B-02: DWIE strukturalnie identyczne szyny 
   });
 
   it('DOWÓD BEZPOŚREDNI (bez pętli, dla czytelności meldunku): #sn-bus I #lv-bus TEJ SAMEJ stacji są OBIE kind="bus"/elementKind="bus" — symetria naprawiona T1 (przed T1: #lv-bus miała kind="lv"/elementKind="segment", asymetria zmierzona w T0)', () => {
-    const snBusSeg = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#sn-bus`);
+    const snBusSeg = scene.segments.find((s) => s.meta?.ownerRef === SN_BUS_OWNER_REF);
     const lvBusSeg = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#lv-bus`);
     expect(snBusSeg?.meta?.kind).toBe('bus');
     expect(snBusSeg?.meta?.elementKind).toBe('bus');
@@ -190,8 +197,13 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
       justification: 'zejście z portu symbolu źródła sieciowego (gridSource) do jego bus_ref — Source ENM ma JEDEN bus_ref, nie osobną gałąź do szyny.',
     },
     {
-      match: (r) => r.endsWith('#source-bus-extension'),
-      justification: 'przedłużenie szyny WN pod symbol źródła (rezerwacja miejsca rysunkowego) — compose/gpz.ts, nie odpowiada żadnej gałęzi ENM.',
+      // Karta GPZ-MODEL: obie strony zaczepu źródła — szyna SN sekcji (`#source-bus-extension`,
+      // równoważnik na szynach SN) i szyna WN (`#hv-bus-source-extension`, równoważnik po
+      // stronie 110 kV) — ta sama para sufiksów co produkcyjny predykat szyny przedłużonej
+      // w `scene/buildScene.ts` (predykaty parami). Dawny wpis znał tylko pierwszy sufiks,
+      // a jego uzasadnienie mówiło o szynie WN.
+      match: (r) => r.endsWith('#source-bus-extension') || r.endsWith('#hv-bus-source-extension'),
+      justification: 'przedłużenie szyny pod zaczep symbolu źródła (szyna SN sekcji albo szyna WN — strona z Source.bus_ref; rezerwacja miejsca rysunkowego) — compose/gpz.ts `rysujBlokZrodel`, nie odpowiada żadnej gałęzi ENM.',
     },
     {
       match: (r) => r.includes('#lv-drop-'),
@@ -260,7 +272,7 @@ describe('Check C — LV DOMAIN PROJECTION: sceneConnectivityIndex spójna SN �
 
   it('kontrola: zacisk nN (#lv-bus), szyna SN (#sn-bus) i pion portalu (#lv-portal-drop) ISTNIEJĄ na scenie jako odrębne segmenty', () => {
     expect(() => segmentIndexByOwnerRef(lvBusOwnerRef)).not.toThrow();
-    expect(() => segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`)).not.toThrow();
+    expect(() => segmentIndexByOwnerRef(SN_BUS_OWNER_REF)).not.toThrow();
     expect(() => segmentIndexByOwnerRef(portalDropOwnerRef)).not.toThrow();
   });
 
@@ -271,7 +283,7 @@ describe('Check C — LV DOMAIN PROJECTION: sceneConnectivityIndex spójna SN �
 
   it('zacisk nN i szyna SN SĄ w jednej składowej sceny (transformator FIZYCZNIE łączy obie strony przez port symbolu) — Check C mierzy realną spójność, nie wysepki per domena', () => {
     const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
-    const snBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`));
+    const snBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(SN_BUS_OWNER_REF));
     expect(snBusRoot).toBe(lvBusRoot);
   });
 

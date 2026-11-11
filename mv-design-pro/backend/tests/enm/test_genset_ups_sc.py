@@ -24,7 +24,6 @@ def _base_enm() -> dict:
                 "name": "ST-1",
                 "station_type": "mv_lv",
                 "bus_refs": ["bus-nn"],
-                "field_specs": [],
             }
         ],
     }

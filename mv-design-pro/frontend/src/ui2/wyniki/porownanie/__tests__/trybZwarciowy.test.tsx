@@ -45,7 +45,7 @@ function przypadek(over: Partial<StudyCaseListItem> = {}): StudyCaseListItem {
 }
 
 function props(over: Partial<Parameters<typeof EkranPorownania>[0]> = {}) {
-  return { projektId: 'proj-1', trybZaawansowania: 'basic' as const, ...over };
+  return { projektId: 'proj-1', szczegolyAudytowe: false as const, ...over };
 }
 
 /** Zasila runStore mieszanką przebiegów (SC × 2, LOAD_FLOW, niezakończony). */

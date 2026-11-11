@@ -54,6 +54,10 @@ export const STUDIUM_STRINGS = {
     + 'rodzaju. Konsekwencja: z karty typu bierzemy moc znamionową i krzywą zdolności P–Q '
     + 'do oceny pokrycia wymagania operatora.',
   paramTypBrak: 'Brak typu katalogowego dla wybranego rodzaju.',
+  paramTypWczytywanie: 'Trwa odczyt katalogu konwerterów…',
+  paramTypBlad:
+    'Odczyt katalogu konwerterów nie powiódł się — dostępność typów jest nieznana ' +
+    '(to nie jest brak typu katalogowego); otwórz kreator ponownie.',
   paramMocTypu: 'Moc znamionowa typu',
   paramMocTypuHint:
     'Co to jest: maksymalna moc czynna źródła wg karty typu. Skąd wartość: pole '
@@ -69,6 +73,10 @@ export const STUDIUM_STRINGS = {
     + 'prostokątne wymaganie zakresu Q (typ modułu NC RfG wyznacza klasyfikacja art. 5 '
     + 'backendu z mocy przyłączalnej i napięcia węzła).',
   paramOperatorBrak: 'Brak operatorów w katalogu — pokrycie pokaże „—".',
+  paramOperatorWczytywanie: 'Trwa odczyt katalogu operatorów NC RfG…',
+  paramOperatorBlad:
+    'Odczyt katalogu operatorów NC RfG nie powiódł się — lista operatorów jest nieznana ' +
+    '(to nie jest brak operatorów); pokrycie pokaże „—".',
 
   // Krok 3 — analizy
   krok3Naglowek: 'Przeprowadź sekwencję analiz dla każdego wariantu',

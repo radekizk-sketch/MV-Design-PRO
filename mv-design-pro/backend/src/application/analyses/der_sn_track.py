@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import pole
 
 
 def _as_float(value: Any) -> float | None:
@@ -34,8 +35,9 @@ class DerSnTrack:
     """Zmaterializowany tor DER-SN złożony z REALNYCH elementów ENM.
 
     Każde pole to słownik elementu ze snapshotu ENM (albo ``None``, gdy ogniwo nie
-    zostało odnalezione — uczciwy brak, nie fabrykacja). ``field_spec`` pochodzi z
-    ``meta.field_specs`` stacji; ``apparatus`` to gałąź aparatu głównego pola SN.
+    zostało odnalezione — uczciwy brak, nie fabrykacja). ``pole`` to rekord pola SN z
+    kolekcji ``bays`` (jedyny nośnik pól, karta W5-B); ``apparatus`` to gałąź aparatu
+    głównego pola SN.
     """
 
     generator: dict[str, Any]
@@ -43,7 +45,7 @@ class DerSnTrack:
     block_hv_bus: dict[str, Any] | None
     block_transformer: dict[str, Any] | None
     mv_cable: dict[str, Any] | None
-    field_spec: dict[str, Any] | None
+    pole: dict[str, Any] | None
     apparatus: dict[str, Any] | None
     mv_bus: dict[str, Any] | None
     transformatory_grupy: tuple[dict[str, Any], ...]
@@ -106,21 +108,6 @@ def resolve_generator(enm: dict[str, Any], generator_ref: str | None) -> dict[st
     return der_generators[-1] if der_generators else None
 
 
-def _field_spec_for(enm: dict[str, Any], field_ref: str | None) -> dict[str, Any] | None:
-    if not field_ref:
-        return None
-    for station in enm.get("substations") or []:
-        if not isinstance(station, dict):
-            continue
-        meta = station.get("meta")
-        if not isinstance(meta, dict):
-            continue
-        for spec in meta.get("field_specs") or []:
-            if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
-                return spec
-    return None
-
-
 def _apparatus_for(
     branch_index: dict[str, dict[str, Any]], field_ref: str | None
 ) -> dict[str, Any] | None:
@@ -157,7 +144,7 @@ def extract_der_sn_track(
     branch_index = _index_by_ref(enm.get("branches") or [])
 
     field_ref = meta.get("der_mv_field_ref")
-    field_spec = _field_spec_for(enm, field_ref if isinstance(field_ref, str) else None)
+    rekord_pola = pole(enm, field_ref)
     from enm.domain_operations_v2 import grupa_kontroli_mocy
 
     grupa = grupa_kontroli_mocy(enm, generator)
@@ -173,7 +160,7 @@ def extract_der_sn_track(
         # transformator niż operacja, która model przyjęła.
         block_transformer=tr_index.get(str(generator.get("blocking_transformer_ref") or "")),
         mv_cable=branch_index.get(str(meta.get("der_mv_cable_ref") or "")),
-        field_spec=field_spec,
+        pole=dict(rekord_pola) if rekord_pola is not None else None,
         apparatus=_apparatus_for(branch_index, field_ref if isinstance(field_ref, str) else None),
         mv_bus=bus_index.get(str(meta.get("der_mv_bus_ref") or "")),
         transformatory_grupy=grupa.transformatory,

@@ -30,6 +30,7 @@ import { dirname, resolve } from 'node:path';
 
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 import { transformatoryStacjiSnNn } from './transformatoryStacji';
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
  *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
@@ -113,8 +114,6 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};
@@ -244,7 +243,6 @@ async function otworzSchematZBiegiem(
           activeCaseResultStatus: 'FRESH',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -270,7 +268,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect

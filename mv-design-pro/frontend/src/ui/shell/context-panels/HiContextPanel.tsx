@@ -11,13 +11,14 @@
 
 import { RunHistoryPanel } from '../../study-cases/RunHistoryPanel';
 import { useAppStateStore } from '../../app-state/store';
+import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 
 function formatPublicContextLabel(value: string | null, activeLabel: string, emptyLabel: string): string {
   return value ? activeLabel : emptyLabel;
 }
 
 export function HiContextPanel() {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const activeSnapshotId = useAppStateStore((s) => s.activeSnapshotId);
 
   return (
@@ -32,7 +33,7 @@ export function HiContextPanel() {
         <div className="mt-1 grid grid-cols-1 gap-0.5 text-[11px] text-scada-text">
           <div data-testid="hi-active-run">
             <span className="text-scada-muted">Aktywne obliczenie: </span>
-            <span className="font-mono">{formatPublicContextLabel(activeRunId, 'wybrane w historii', 'nie wybrano')}</span>
+            <span className="font-mono">{formatPublicContextLabel(runIdOgladany, 'wybrane w historii', 'nie wybrano')}</span>
           </div>
           <div data-testid="hi-active-snapshot">
             <span className="text-scada-muted">Wersja układu: </span>
@@ -44,7 +45,7 @@ export function HiContextPanel() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto" data-testid="hi-run-history">
-        <RunHistoryPanel selectedRunId={activeRunId} />
+        <RunHistoryPanel selectedRunId={runIdOgladany} />
       </div>
 
       <div className="shrink-0 border-t border-scada-border bg-scada-bg p-2 text-[10px] text-scada-muted">

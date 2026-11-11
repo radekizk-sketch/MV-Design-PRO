@@ -166,7 +166,6 @@ export function useCatalogAssignment(): [CatalogAssignmentState, CatalogAssignme
           catalog_binding: state.namespace
             ? buildCatalogBinding(state.namespace, typeId)
             : undefined,
-          source_mode: 'KATALOG',
         });
 
         setState((prev) => ({

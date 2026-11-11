@@ -196,12 +196,7 @@
   color: var(--mvd-muted);
   font-size: 12px;
 }
-.mvd-wkrotce {
-  font-style: italic;
-}
-.mvd-wkrotce-wartosc {
-  color: var(--mvd-muted);
-}
+
 .mvd-przebieg-blad {
   color: var(--mvd-err);
   font-size: 13px;
@@ -286,66 +281,4 @@
   filter: brightness(1.08);
 }
 
-/* ---- prymitywy współdzielone ---- */
-.mvd-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.mvd-tag {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--mvd-chip);
-  color: var(--mvd-ink);
-}
-.mvd-tag-ok {
-  background: var(--mvd-ok-bg);
-  color: var(--mvd-ok);
-}
-.mvd-tag-warn {
-  background: var(--mvd-warn-bg);
-  color: var(--mvd-warn);
-}
-.mvd-tag-mut {
-  background: var(--mvd-chip);
-  color: var(--mvd-muted);
-}
-.mvd-tag-err {
-  background: var(--mvd-err-bg);
-  color: var(--mvd-err);
-}
-.mvd-btn {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  padding: 6px 12px;
-  border-radius: 6px;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.mvd-btn:hover {
-  background: var(--mvd-panel-2);
-}
-.mvd-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.mvd-btn-primary {
-  background: var(--mvd-accent);
-  color: var(--mvd-accent-ink);
-  border-color: var(--mvd-accent);
-}
+

@@ -20,7 +20,7 @@ const mockedWalidacja = vi.mocked(fetchWalidacjaEnergetyczna);
 function propsWiarygodnosc(over = {}) {
   return {
     przebieg: przebiegTestowy('sc-1', 'SC_3F'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -28,7 +28,7 @@ function propsWiarygodnosc(over = {}) {
 function propsWalidacja(over = {}) {
   return {
     przebieg: przebiegTestowy('pf-1', 'LOAD_FLOW'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -95,7 +95,7 @@ describe('SekcjaWiarygodnosci — stany', () => {
 
   it('identyfikator węzła nie stoi na pierwszym planie także w trybie eksperckim (karta #145)', async () => {
     mockedWiarygodnosc.mockResolvedValue(WIARYGODNOSC_FIXTURE);
-    render(<SekcjaWiarygodnosci {...propsWiarygodnosc({ trybZaawansowania: 'expert' })} />);
+    render(<SekcjaWiarygodnosci {...propsWiarygodnosc({ szczegolyAudytowe: true })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-wiarygodnosc')).toBeTruthy());
     expect(screen.queryAllByText('bus-A')).toHaveLength(0);
   });
@@ -161,7 +161,7 @@ describe('SekcjaWalidacji — stany', () => {
 describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () => {
   it('tryb ekspercki: wybór pozycji z wywodem → przycisk śladu → pełny wywód', async () => {
     mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
-    render(<SekcjaWalidacji {...propsWalidacja({ trybZaawansowania: 'expert' })} />);
+    render(<SekcjaWalidacji {...propsWalidacja({ szczegolyAudytowe: true })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
     fireEvent.click(screen.getByText('Odchylenie napięcia').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-wal-slad-otworz'));
@@ -189,7 +189,7 @@ describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () =>
 
 describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () => {
   beforeEach(() => {
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null });
   });
 
@@ -210,7 +210,7 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
     fireEvent.click(within(wierszNapiecia).getByTestId('mvd-wyn-popraw'));
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toMatchObject({ id: 'bus-B', type: 'Bus' });
-    expect(sel.sldCenterOnElement).toBe('bus-B');
+    expect(sel.sldWskazanie?.ref).toBe('bus-B');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
@@ -245,7 +245,7 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
       type: 'Bus',
     });
     // Schemat nie jest celem tej akcji — bez odroczonego zoomu SLD.
-    expect(sel.sldCenterOnElement).toBeNull();
+    expect(sel.sldWskazanie).toBeNull();
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(useShellStore.getState().wynikiTab).toBe('kompensacja');
     // R2-B: deep-link niesie ref węzła przekroczenia — okno „Dobór kompensacji"
@@ -274,7 +274,7 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
 
 describe('SekcjaWalidacji — klik NATYWNY na wierszu (karta TODO-UI2 p.6, poprawka KLASA NIE INSTANCJA)', () => {
   beforeEach(() => {
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
   });
 
   // `KLUCZ_WIERSZA_WALIDACJI` jest KOMPOZYTEM tabeli (`check_type::target_id::

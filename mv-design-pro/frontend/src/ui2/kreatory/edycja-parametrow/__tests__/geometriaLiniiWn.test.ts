@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Model formularza linii 110 kV (przewód z katalogu + geometria słupa) — iloczyn cech:
  * {fazy: puste, pełne, częściowe, nie-liczba} × {przewody odgromowe: wartość robocza, brak,

@@ -1,6 +1,12 @@
-"""Kontrakt endpointów `GET /api/cases/{case_id}/enm/lv-domain/{station_ref}`,
-`.../upstream-equivalent` i `.../projection/v1` (karta T5b,
-docs/nn/KONCEPCJA_LOD_NN_2026-08.md; karta B-02 — projekcja atomowa).
+"""Kontrakt końcówki `GET /api/cases/{case_id}/enm/lv-domain/{station_ref}/projection/v1`
+(karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md; karta B-02 — projekcja atomowa).
+
+Dawne końcówki `GET …/lv-domain/{station_ref}` (sam graf) i `…/upstream-equivalent` (sama
+kotwica SN) skasowane (karta V12K-352, 2026-10-22): obie były dublem projekcji — ta niesie
+TEN SAM graf (`graph`, `build_lv_domain_view`) i kotwicę SN każdego transformatora domeny
+(`upstream_equivalents`, `build_upstream_equivalent_snapshot`) w jednym odczycie związanym
+z rewizją modelu — i nie miały konsumenta. Ich asercje przeniesione na projekcję niżej;
+`test_skasowane_koncowki_nie_istnieja` pilnuje, że nie wrócą.
 """
 
 from __future__ import annotations
@@ -71,7 +77,7 @@ def _zasiej(client, case_id: str, enm: EnergyNetworkModel) -> None:
     set_enm(_klucz(client, case_id), enm)
 
 
-def _seed_enm(client, case_id: str) -> None:
+def _seed_enm(client, case_id: str, station_ref: str = "stn") -> None:
     enm = EnergyNetworkModel(
         header=ENMHeader(name="t5b-api", defaults=ENMDefaults(sn_nominal_kv=15.0)),
         buses=[
@@ -98,7 +104,7 @@ def _seed_enm(client, case_id: str) -> None:
         ],
         substations=[
             Substation(
-                ref_id="stn",
+                ref_id=station_ref,
                 name="Stacja",
                 station_type="mv_lv",
                 bus_refs=["nn"],
@@ -109,83 +115,107 @@ def _seed_enm(client, case_id: str) -> None:
     _zasiej(client, case_id, enm)
 
 
-class TestLvDomainViewEndpoint:
+# Ref stacji budowanej operacjami ma ukośniki (`stn/<ziarno>/station`). Klient koduje ref
+# (`encodeURIComponent` → %2F), a serwer dekoduje ścieżkę PRZED dopasowaniem trasy — bez
+# konwertera `:path` końcówka dawała 404 na każdej realnej stacji (wykryte biegiem e2e
+# `menu-schematu-nn.spec.ts`). ILOCZYN CECH: zapis refu {ukośniki, %2F} × ref {z ukośnikami, bez}.
+# Scalenie z gałęzią UI/UX (2026-10-22): klasa `TestStationRefZUkosnikiem` karty W5-E-TTIT
+# ({trzy trasy lv-domain} × {ref zakodowany, surowy}) wchłonięta tutaj — dwie z jej trzech tras
+# skasowano (V12K-352), trzecia (projekcja) jest pokryta tym iloczynem, a 404 skasowanych
+# tras z refem z ukośnikami pilnuje `test_skasowane_koncowki_nie_istnieja`.
+_REF_Z_UKOSNIKAMI = "stn/0a1b2c/station"
+_PROJEKCJA = "/projection/v1"
+
+
+@pytest.mark.parametrize("zapis", ["ukosniki", "zakodowany"])
+@pytest.mark.parametrize("station_ref", [_REF_Z_UKOSNIKAMI, "stn"])
+def test_ref_stacji_z_ukosnikami_trafia_w_projekcje(
+    app_client, zapis: str, station_ref: str
+) -> None:
+    from urllib.parse import quote
+
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id, station_ref=station_ref)
+    ref = quote(station_ref, safe="") if zapis == "zakodowany" else station_ref
+    resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/{ref}{_PROJEKCJA}")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["contract"] == "LvDomainProjectionV1"
+    assert body["station_ref"] == station_ref
+    assert body["graph"]["station_ref"] == station_ref
+    assert body["status"] == "OK"
+    assert {b["ref_id"] for b in body["graph"]["buses"]} == {"nn"}
+
+
+@pytest.mark.parametrize("station_ref", [_REF_Z_UKOSNIKAMI, "stn"])
+@pytest.mark.parametrize("sufiks", ["", "/upstream-equivalent"])
+def test_skasowane_koncowki_nie_istnieja(app_client, station_ref: str, sufiks: str) -> None:
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id, station_ref=station_ref)
+    resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/{station_ref}{sufiks}")
+    assert resp.status_code == 404, resp.text
+
+
+class TestProjectionGraph:
+    """Graf domeny nN w projekcji (dawniej osobna końcówka `…/lv-domain/{station_ref}`)."""
+
     def test_success_returns_domain_graph(self, app_client) -> None:
         case_id = _nowy_przypadek(app_client)
         _seed_enm(app_client, case_id)
-        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn")
+        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn{_PROJEKCJA}")
         assert resp.status_code == 200
-        body = resp.json()
-        assert body["status"] == "OK"
-        assert body["station_ref"] == "stn"
-        assert {b["ref_id"] for b in body["buses"]} == {"nn"}
-        assert {t["ref_id"] for t in body["transformers"]} == {"tr"}
-        assert body["boundary_links"] == []
+        graf = resp.json()["graph"]
+        assert graf["status"] == "OK"
+        assert graf["station_ref"] == "stn"
+        assert {b["ref_id"] for b in graf["buses"]} == {"nn"}
+        assert {t["ref_id"] for t in graf["transformers"]} == {"tr"}
+        assert graf["boundary_links"] == []
 
     def test_unknown_station_returns_200_with_honest_brak_danych(self, app_client) -> None:
         case_id = _nowy_przypadek(app_client)
         _seed_enm(app_client, case_id)
-        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/nieistniejaca")
+        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/nieistniejaca{_PROJEKCJA}")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["status"] == "brak danych"
+        assert body["graph"]["status"] == "brak danych"
+        assert body["completeness"] == "UNAVAILABLE"
+        assert body["upstream_equivalents"] == []
 
 
-class TestUpstreamEquivalentEndpoint:
-    def test_success_returns_snapshot(self, app_client) -> None:
+class TestProjectionUpstreamEquivalents:
+    """Kotwica SN w projekcji (dawniej osobna końcówka `…/upstream-equivalent`)."""
+
+    def _kotwica(self, app_client, **params) -> dict:
         case_id = _nowy_przypadek(app_client)
         _seed_enm(app_client, case_id)
-        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["status"] == "OK"
-        assert body["source_node_id"] is not None
-        assert body["voltage_level_id"] == "kv:15"
-        assert body["scenario_id"] == "MAX"
-        assert body["z1_ohm"]["r"] > 0
-        assert body["calculation_run_id"] is not None
+        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn{_PROJEKCJA}", params=params)
+        assert resp.status_code == 200, resp.text
+        kotwice = resp.json()["upstream_equivalents"]
+        assert [k["transformer_ref"] for k in kotwice] == ["tr"]
+        return kotwice[0]
+
+    def test_success_returns_snapshot(self, app_client) -> None:
+        kotwica = self._kotwica(app_client)
+        assert kotwica["status"] == "OK"
+        assert kotwica["source_node_id"] is not None
+        assert kotwica["voltage_level_id"] == "kv:15"
+        assert kotwica["scenario_id"] == "MAX"
+        assert kotwica["z1_ohm"]["r"] > 0
+        assert kotwica["calculation_run_id"] is not None
 
     def test_scenario_query_param_selects_min(self, app_client) -> None:
-        case_id = _nowy_przypadek(app_client)
-        _seed_enm(app_client, case_id)
-        resp = app_client.get(
-            f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent",
-            params={"scenario": "MIN"},
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["scenario_id"] == "MIN"
-        assert body["c_factor"] == 1.00
+        kotwica = self._kotwica(app_client, scenario="MIN")
+        assert kotwica["scenario_id"] == "MIN"
+        assert kotwica["c_factor"] == 1.00
 
     def test_invalid_scenario_value_returns_422(self, app_client) -> None:
         case_id = _nowy_przypadek(app_client)
         _seed_enm(app_client, case_id)
         resp = app_client.get(
-            f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent",
+            f"/api/cases/{case_id}/enm/lv-domain/stn{_PROJEKCJA}",
             params={"scenario": "NIEPOPRAWNY"},
         )
         assert resp.status_code == 422
-
-    def test_unknown_station_returns_200_with_honest_brak_danych(self, app_client) -> None:
-        case_id = _nowy_przypadek(app_client)
-        _seed_enm(app_client, case_id)
-        resp = app_client.get(
-            f"/api/cases/{case_id}/enm/lv-domain/nieistniejaca/upstream-equivalent"
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["status"] == "brak danych"
-
-    def test_two_calls_are_deterministic(self, app_client) -> None:
-        case_id = _nowy_przypadek(app_client)
-        _seed_enm(app_client, case_id)
-        resp1 = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
-        resp2 = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
-        # Asercja statusu ZANIM porówna treść — bez niej dwie identyczne
-        # odpowiedzi błędu (np. 404 przy nieprzetłumaczalnym `case_id`)
-        # "zdałyby" ten test z niewłaściwego powodu (test maskujący defekt).
-        assert resp1.status_code == 200, resp1.text
-        assert resp1.json() == resp2.json()
 
 
 class TestLvDomainProjectionV1Endpoint:
@@ -402,34 +432,3 @@ class TestLvDomainProjectionV1Endpoint:
         assert body["model_snapshot"]["model_hash"] == wzorzec["model_snapshot"]["model_hash"]
         assert body["projection_hash"] == wzorzec["projection_hash"]
         assert [row["transformer_ref"] for row in body["swz_snapshot"]["transformers"]] == ["tr1"]
-
-
-class TestStationRefZUkosnikiem:
-    """Identyfikatory stacji z operacji domenowych niosą ukośniki (`stn/<ziarno>/...`), a
-    serwer ASGI dekoduje `%2F` przed dopasowaniem trasy. Do karty W5-E-TTIT parametr
-    jednosegmentowy `{station_ref}` dawał 404 dla KAŻDEJ takiej stacji — portal projekcji nN
-    na żywej aplikacji nie otwierał się nigdy (wykryte natywnym klikiem e2e). Iloczyn cech:
-    {trzy trasy lv-domain} × {ref z ukośnikami, zakodowany i surowy}.
-    """
-
-    REF = "stn/abc123/station"
-
-    def _zasiej_z_ukosnikami(self, client, case_id: str) -> None:
-        enm = zbuduj_stacje_nn()
-        stacja = enm.substations[0].model_copy(update={"ref_id": self.REF})
-        _zasiej(client, case_id, enm.model_copy(update={"substations": [stacja]}))
-
-    @pytest.mark.parametrize("sufiks", ["", "/upstream-equivalent", "/projection/v1"])
-    @pytest.mark.parametrize("kodowany", [True, False])
-    def test_trasy_lv_domain_przyjmuja_ref_z_ukosnikami(self, app_client, sufiks, kodowany):
-        case_id = _nowy_przypadek(app_client)
-        self._zasiej_z_ukosnikami(app_client, case_id)
-        ref = self.REF.replace("/", "%2F") if kodowany else self.REF
-        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/{ref}{sufiks}")
-        assert resp.status_code == 200, resp.text
-        body = resp.json()
-        assert body.get("status") == "OK", body
-        if sufiks == "/projection/v1":
-            assert body["graph"]["station_ref"] == self.REF
-        elif sufiks == "":
-            assert body["station_ref"] == self.REF

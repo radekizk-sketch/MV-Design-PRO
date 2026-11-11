@@ -24,7 +24,6 @@ import type {
   ObiektInspektora,
   ZakladkaInspektora,
 } from './inspectorModel';
-import type { AdvancementMode } from '../shell/modeModel';
 import { czyNieaktualne } from './inspectorModel';
 import { INSPECTOR_STRINGS } from './strings';
 import { usePinStore } from './pinStore';
@@ -40,7 +39,7 @@ export function InspectorPanel({
   onOtworzDowod,
   onNawiguj,
   onPrzelicz,
-  trybZaawansowania,
+  szczegolyAudytowe,
 }: InspectorPanelProps) {
   // Snapshot przypiętego obiektu — projekcja propa uchwycona w chwili przypięcia
   // (nie dane modelu; identyfikator intencji trzyma pinStore w localStorage).
@@ -96,7 +95,7 @@ export function InspectorPanel({
             <InspectorView
               obiekt={pinnedObiekt}
               rewizjaModelu={rewizjaModelu}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               onOtworzDowod={onOtworzDowod}
               onNawiguj={onNawiguj}
               onPrzelicz={onPrzelicz}
@@ -111,7 +110,7 @@ export function InspectorPanel({
               <InspectorView
                 obiekt={obiekt}
                 rewizjaModelu={rewizjaModelu}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onOtworzDowod={onOtworzDowod}
                 onNawiguj={onNawiguj}
                 onPrzelicz={onPrzelicz}
@@ -128,7 +127,7 @@ export function InspectorPanel({
         <InspectorView
           obiekt={obiekt}
           rewizjaModelu={rewizjaModelu}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           onOtworzDowod={onOtworzDowod}
           onNawiguj={onNawiguj}
           onPrzelicz={onPrzelicz}
@@ -144,7 +143,7 @@ export function InspectorPanel({
 interface InspectorViewProps {
   obiekt: ObiektInspektora;
   rewizjaModelu: number;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
   onNawiguj: (cel: CelNawigacji) => void;
   onPrzelicz: () => void;
@@ -157,7 +156,7 @@ interface InspectorViewProps {
 function InspectorView({
   obiekt,
   rewizjaModelu,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
   onNawiguj,
   onPrzelicz,
@@ -173,7 +172,7 @@ function InspectorView({
     if (aktywna !== 'wlasciwosci') setAktywna('wlasciwosci');
   }
 
-  const ekspercki = trybZaawansowania === 'expert';
+  const ekspercki = szczegolyAudytowe;
 
   return (
     <div className="mvd-insp-view" data-mvd-obiekt-typ={obiekt.typ}>

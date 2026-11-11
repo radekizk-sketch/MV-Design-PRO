@@ -35,6 +35,7 @@ import { ETYKIETY_RODZAJOW } from '../strings';
 import { SCREEN_CANON_REGISTRY } from '../../../../ui/workspace/screenCanonRegistry';
 import type { KartaKatalogu } from '../api';
 import { CASE_ID, KATALOG, ODPOWIEDZI, migawkaSieciZlotej, ustawFetchV126 } from './atrapyV126';
+import { czekajNaKatalogKart } from './katalogKart';
 
 /** Komplet rodzajów kontraktu — tak jak go wystawia katalog backendu. */
 const KATALOG_BACKENDU = KATALOG.map((karta) => karta.kod);
@@ -132,8 +133,8 @@ describe('tylkoPrezentowane — co filtr odsiewa, a czego NIE wolno mu ruszyć',
 describe('katalog kart — wejście projektanta', () => {
   it('katalog z kompletem rodzajów → karty bez rodzajów wycofanych', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await czekajNaKatalogKart();
     const karty = Array.from(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).map((el) =>
       (el.getAttribute('data-testid') ?? '').replace('mvd-akad-karta-otworz-', ''),
     );
@@ -146,14 +147,14 @@ describe('katalog kart — wejście projektanta', () => {
 
   it('rodzaj nowy w katalogu backendu dostaje kartę bez zmiany kodu okna', async () => {
     ustawFetchV126({ katalog: [...KATALOG, kartaNieznana()] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     const karta = await screen.findByTestId('mvd-akad-karta-rodzaj_dodany_w_backendzie');
     expect(karta).toHaveTextContent('Rodzaj dodany w backendzie');
   });
 
   it('katalog zwracający WYŁĄCZNIE rodzaje wycofane → uczciwy stan zerowy, nie pusta siatka', async () => {
     ustawFetchV126({ katalog: KATALOG.filter((k) => WYCOFANE.includes(k.kod)) });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     expect(await screen.findByTestId('mvd-akad-katalog-pusty')).toBeInTheDocument();
     expect(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).toHaveLength(0);
   });
@@ -162,8 +163,8 @@ describe('katalog kart — wejście projektanta', () => {
     // Oś „backend wycofał, front jeszcze nie wie": pole `prezentowany` samo wystarcza,
     // żeby karta zeszła z ekranu — bez czekania na wpis w rejestrze.
     ustawFetchV126({ katalog: [...KATALOG, { ...kartaNieznana(), prezentowany: false, powod_wycofania_pl: 'Wycofana decyzją backendu.' }] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await czekajNaKatalogKart();
     expect(screen.queryByTestId('mvd-akad-karta-rodzaj_dodany_w_backendzie')).toBeNull();
   });
 });
@@ -197,8 +198,8 @@ describe('stabilność napięciowa — rodzaj wycofany w całości', () => {
 
   it('znika z katalogu kart okna, a sąsiedzi zostają', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await czekajNaKatalogKart();
     expect(screen.queryByTestId('mvd-akad-karta-voltage_stability')).toBeNull();
     expect(screen.getByTestId('mvd-akad-karta-reliability_contingency')).toBeInTheDocument();
   });
@@ -240,8 +241,8 @@ describe('hosting_capacity / opf_loss_lcc — duplikat kanonu schodzi z powierzc
 
   it('znikają z katalogu kart okna, sąsiedzi z tego samego obszaru zostają', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await czekajNaKatalogKart();
     expect(screen.queryByTestId('mvd-akad-karta-hosting_capacity')).toBeNull();
     expect(screen.queryByTestId('mvd-akad-karta-opf_loss_lcc')).toBeNull();
     expect(screen.getByTestId('mvd-akad-karta-earthing_safety')).toBeInTheDocument();
@@ -273,8 +274,8 @@ describe('hosting_capacity / opf_loss_lcc — duplikat kanonu schodzi z powierzc
     );
     expect(WYCOFANE).toHaveLength(4);
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await czekajNaKatalogKart();
     expect(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).toHaveLength(10);
   });
 });

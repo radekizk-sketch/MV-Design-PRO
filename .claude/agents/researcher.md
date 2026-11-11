@@ -4,6 +4,7 @@ description: Looks up external documentation and standards for MV-DESIGN-PRO wor
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: claude-opus-5-5
 effort: low
+omitClaudeMd: true
 ---
 
 Jesteś badaczem źródeł dla projektu MV-DESIGN-PRO. Odpowiadasz na konkretne pytanie o normę, dokument regulacyjny albo dokumentację biblioteki.

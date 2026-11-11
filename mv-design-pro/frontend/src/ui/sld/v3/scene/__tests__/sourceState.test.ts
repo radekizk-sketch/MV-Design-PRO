@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * F11.3 (SLD_CAD_SPEC_V3 §13.3, finał F9.6b) — stan operacyjny źródła jako
  * NAKŁADKA (kolor + `data-source-state`), czytany z REALNEGO kanału

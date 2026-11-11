@@ -1,6 +1,6 @@
 {
   "case_id": "case-demo",
-  "model_hash": "34a95eb3e86dfbf260f064bc5befa05db44ed92b097e9a073f738dcc25e74f82",
+  "model_hash": "58004f8d217723cc75620090437c130a464f52a7fa01ec06c46d420924a2aef4",
   "przedmiot": {
     "liczba_szyn": 8,
     "liczba_galezi": 6,
@@ -37,7 +37,7 @@
     },
     "earthing_safety": {
       "earthing": {
-        "gpz_ref": "bus_hv",
+        "bus_ref": "bus_sn_main",
         "rho1_ohm_m": 100,
         "rho2_ohm_m": 300,
         "h1_m": 2,
@@ -47,28 +47,23 @@
         "buried_depth_m": 0.7,
         "rods_total_length_m": 60,
         "split_factor": 0.6,
-        "fault_current_ka": 8,
         "fault_clearing_time_s": 0.5,
         "surface_layer_rho_ohm_m": 3000,
         "surface_layer_derating": 0.7
       }
     },
     "earth_fault_detection": {
-      "neutral_grounding": "petersen_tuned",
       "relay_methods": [
         "wattmetric",
         "admittance"
       ]
     },
-    "neutral_earthing_design": {
-      "neutral_earthing_type": "petersen_coil"
-    },
+    "neutral_earthing_design": {},
     "transient_trv": {
       "breaker_rated_voltage_kv": 17.5,
       "trv_natural_frequency_hz": 12000,
       "trv_tau_s": 0.00018,
-      "inrush_multiple_in": 8,
-      "neutral_grounding": "petersen_tuned"
+      "inrush_multiple_in": 8
     },
     "motor_starting": {
       "motors": [
@@ -148,7 +143,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -251,7 +246,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -296,9 +291,19 @@
         },
         {
           "kod": "parametr.earthing",
-          "opis_pl": "Dane uziomu stacji podane przez projektanta (geometria siatki, grunt, prąd i czas zwarcia, warstwa powierzchniowa)",
+          "opis_pl": "Dane uziomu stacji podane przez projektanta (geometria siatki, grunt, czas zwarcia, warstwa powierzchniowa)",
           "spelniony": true,
           "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "earthing"
+        },
+        {
+          "kod": "model.prad_uziomowy",
+          "opis_pl": "Prąd zwarcia doziemnego stacji „GPZ” z modelu (EN 50522 tab. 1, 2 z 2 przypadków policzonych)",
+          "spelniony": true,
+          "elementy": [
+            "bus_sn_main"
+          ],
           "blokujacy": true,
           "klucz_parametru": "earthing"
         }
@@ -332,7 +337,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -344,6 +349,20 @@
           "nazwa_pl": "Częstotliwość sieci",
           "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
           "elementy": []
+        },
+        {
+          "nazwa_pl": "Prąd zwarcia doziemnego stacji — sieć SN 15 kV — Szyna SN",
+          "wartosc_pl": "$\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ = 294,1 A",
+          "elementy": [
+            "bus_sn_main"
+          ]
+        },
+        {
+          "nazwa_pl": "Prąd zwarcia doziemnego stacji — sieć WN 110 kV — GPZ 110 kV",
+          "wartosc_pl": "$I''_{k1}$ = 13560 A",
+          "elementy": [
+            "bus_hv"
+          ]
         },
         {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",
@@ -369,19 +388,19 @@
           "klucz_parametru": null
         },
         {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
+          "klucz_parametru": null
         },
         {
           "kod": "parametr.relay_methods",
           "opis_pl": "Metody detekcji dostępne w przekaźniku wskazane przez projektanta",
           "spelniony": true,
           "elementy": [],
-          "blokujacy": true,
+          "blokujacy": false,
           "klucz_parametru": "relay_methods"
         }
       ],
@@ -414,7 +433,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -425,6 +444,11 @@
         {
           "nazwa_pl": "Częstotliwość sieci",
           "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "elementy": []
         },
         {
@@ -452,150 +476,31 @@
         },
         {
           "kod": "galezie.b0",
-          "opis_pl": "Linie i kable z susceptancją zerową (pojemność doziemna): 1 z 3",
+          "opis_pl": "Linie i kable sieci SN z susceptancją zerową (pojemność doziemna): 3 z 3",
           "spelniony": true,
           "elementy": [
-            "cab_main_b"
+            "cab_main_b",
+            "line_b_c",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ],
           "blokujacy": true,
           "klucz_parametru": null
         },
         {
           "kod": "model.napiecie_sieci",
-          "opis_pl": "Napięcie znamionowe sieci znane (najwyższe napięcie szyny modelu)",
+          "opis_pl": "Napięcie znamionowe sieci SN znane (15 kV)",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": null
         },
         {
-          "kod": "parametr.neutral_earthing_type",
-          "opis_pl": "Schemat uziemienia punktu neutralnego (dławik albo rezystor; z modelu albo od projektanta)",
-          "spelniony": true,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "neutral_earthing_type"
-        },
-        {
-          "kod": "galezie.bez_b0",
-          "opis_pl": "2 z 3 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
-          "spelniony": false,
-          "elementy": [
-            "line_b_c",
-            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
-          ],
-          "blokujacy": false,
-          "klucz_parametru": null
-        }
-      ],
-      "braki": [],
-      "uwagi": [
-        {
-          "kod": "galezie.bez_b0",
-          "opis_pl": "2 z 3 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
-          "spelniony": false,
-          "elementy": [
-            "line_b_c",
-            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
-          ],
-          "blokujacy": false,
-          "klucz_parametru": null
-        }
-      ],
-      "dane_z_modelu": [
-        {
-          "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
-          "elementy": [
-            "bus_hv",
-            "bus_sn_main",
-            "bus_sn_b",
-            "bus_sn_c",
-            "bus_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
-          ]
-        },
-        {
-          "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "5",
-          "elementy": [
-            "cab_main_b",
-            "line_b_c",
-            "sw_coupler",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
-            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
-          ]
-        },
-        {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "3",
-          "elementy": [
-            "tr_hv_sn",
-            "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
-          ]
-        },
-        {
-          "nazwa_pl": "Częstotliwość sieci",
-          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
-          "elementy": []
-        },
-        {
-          "nazwa_pl": "Szyny z mocą zwarciową źródła",
-          "wartosc_pl": "1",
-          "elementy": [
-            "bus_hv"
-          ]
-        }
-      ],
-      "proponowane": {},
-      "powod_wycofania_pl": null
-    },
-    {
-      "kod": "transient_trv",
-      "gotowosc": "POTWIERDZONA",
-      "warunki": [
-        {
-          "kod": "model.wezly",
-          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": null
-        },
-        {
-          "kod": "parametr.trv_natural_frequency_hz",
-          "opis_pl": "Częstotliwość własna napięcia powrotnego obwodu",
-          "spelniony": true,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "trv_natural_frequency_hz"
-        },
-        {
-          "kod": "parametr.trv_tau_s",
-          "opis_pl": "Stała czasowa napięcia powrotnego",
-          "spelniony": true,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "trv_tau_s"
-        },
-        {
-          "kod": "parametr.inrush_multiple_in",
-          "opis_pl": "Krotność prądu załączania transformatora",
-          "spelniony": true,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "inrush_multiple_in"
-        },
-        {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
-          "spelniony": true,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
         }
       ],
       "braki": [],
@@ -627,7 +532,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -641,6 +546,131 @@
           "elementy": []
         },
         {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Sieć SN 15 kV — Szyna SN (napięcie znamionowe, linie i kable)",
+          "wartosc_pl": "15 kV, 3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+          ]
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "transient_trv",
+      "gotowosc": "POTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.breaker_rated_voltage_kv",
+          "opis_pl": "Napięcie znamionowe wyłącznika",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "breaker_rated_voltage_kv"
+        },
+        {
+          "kod": "parametr.trv_natural_frequency_hz",
+          "opis_pl": "Częstotliwość własna napięcia powrotnego obwodu",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "trv_natural_frequency_hz"
+        },
+        {
+          "kod": "parametr.trv_tau_s",
+          "opis_pl": "Stała czasowa napięcia powrotnego",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "trv_tau_s"
+        },
+        {
+          "kod": "parametr.inrush_multiple_in",
+          "opis_pl": "Krotność prądu załączania transformatora",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "inrush_multiple_in"
+        },
+        {
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": false,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "8",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "elementy": []
+        },
+        {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",
           "wartosc_pl": "1",
           "elementy": [
@@ -650,8 +680,8 @@
       ],
       "proponowane": {
         "breaker_rated_voltage_kv": {
-          "wartosc": 110.0,
-          "zrodlo_pl": "najwyższe napięcie znamionowe szyny modelu (110 kV)"
+          "wartosc": 17.5,
+          "zrodlo_pl": "napięcie najwyższe urządzenia $U_m$ sieci SN 15 kV (17,5 kV, IEC 60038 tab. 3–5; $U_r$ aparatu $= U_m$, IEC 62271-1)"
         }
       },
       "powod_wycofania_pl": null
@@ -706,7 +736,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -720,10 +750,17 @@
           "elementy": []
         },
         {
-          "nazwa_pl": "Szyny z mocą zwarciową źródła",
-          "wartosc_pl": "1",
+          "nazwa_pl": "Szyny z impedancją zastępczą sieci (macierz Z-bus IEC 60909)",
+          "wartosc_pl": "8",
           "elementy": [
-            "bus_hv"
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         }
       ],
@@ -823,7 +860,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",

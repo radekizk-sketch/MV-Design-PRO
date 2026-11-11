@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { operatorEfektywny, operatorZModelu } from '../operator';
 import type { ProfilOperatoraNcRfg } from '../typy';
-import { WyborOperatora } from '../WyborOperatora';
+import { ETYKIETY_ODCZYTU_KATALOGU, WyborOperatora } from '../WyborOperatora';
 
 const modul = (profil: string | null) => ({ profiles: { nc_rfg_profile_ref: profil } });
 
@@ -49,6 +49,7 @@ describe('WyborOperatora', () => {
       <WyborOperatora
         zModelu={{ rodzaj: 'z_modelu', operatorId: 'enea' }}
         operatorzy={OPERATORZY}
+        bladKatalogu={null}
         wybor={null}
         onWybor={vi.fn()}
         etykieta="Operator"
@@ -67,6 +68,7 @@ describe('WyborOperatora', () => {
       <WyborOperatora
         zModelu={{ rodzaj: 'wymaga_wyboru', powod: 'rozni_operatorzy' }}
         operatorzy={OPERATORZY}
+        bladKatalogu={null}
         wybor={null}
         onWybor={onWybor}
         etykieta="Operator"
@@ -82,17 +84,38 @@ describe('WyborOperatora', () => {
     expect(onWybor).toHaveBeenLastCalledWith(null);
   });
 
-  it('katalog niewczytany: pole wyboru nieaktywne (bez listy nie ma czego wybrać)', () => {
-    render(
-      <WyborOperatora
-        zModelu={{ rodzaj: 'wymaga_wyboru', powod: 'brak_profilu' }}
-        operatorzy={null}
-        wybor={null}
-        onWybor={vi.fn()}
-        etykieta="Operator"
-        testid="op"
-      />,
-    );
-    expect(screen.getByTestId('op-wybor')).toBeDisabled();
-  });
+  it.each([
+    { odczyt: 'wczytywanie', operatorzy: null, blad: null },
+    { odczyt: 'blad', operatorzy: null, blad: 'HTTP 500' },
+    { odczyt: 'gotowy', operatorzy: OPERATORZY, blad: null },
+  ] as const)(
+    'katalog — odczyt $odczyt: pierwsza opcja i stan pola mówią, czym jest pusty wybór (odczyt ≠ brak operatorów)',
+    ({ odczyt, operatorzy, blad }) => {
+      render(
+        <WyborOperatora
+          zModelu={{ rodzaj: 'wymaga_wyboru', powod: 'brak_profilu' }}
+          operatorzy={operatorzy}
+          bladKatalogu={blad}
+          wybor={null}
+          onWybor={vi.fn()}
+          etykieta="Operator"
+          testid="op"
+        />,
+      );
+      const pole = screen.getByTestId('op-wybor') as HTMLSelectElement;
+      expect(pole).toHaveAttribute('data-odczyt', odczyt);
+      expect(pole.options[0].textContent).toBe(ETYKIETY_ODCZYTU_KATALOGU[odczyt]);
+      if (odczyt === 'gotowy') {
+        expect(pole).toBeEnabled();
+        expect(pole.options).toHaveLength(OPERATORZY.length + 1);
+      } else {
+        // Bez listy nie ma czego wybrać — pole nieaktywne, a nie „puste jak brak operatorów".
+        expect(pole).toBeDisabled();
+        expect(pole.options).toHaveLength(1);
+      }
+      expect(pole).toHaveAttribute('aria-busy', String(odczyt === 'wczytywanie'));
+      if (odczyt === 'blad') expect(screen.getByTestId('op-blad-katalogu')).toHaveTextContent('HTTP 500');
+      else expect(screen.queryByTestId('op-blad-katalogu')).toBeNull();
+    },
+  );
 });

@@ -176,12 +176,6 @@ def _operacja(snapshot: dict[str, Any], nazwa: str, payload: dict[str, Any]) -> 
     if nazwa == "add_grid_source_sn":
         payload = {
             "catalog_ref": CATALOG_ZRODLO_250,
-            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
-            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref) —
-            # odtwarzamy jako dana fikstury zalozenie, ktore wczesniej wchodzilo
-            # domyslnie (25 MVA @ 110 kV).
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {
@@ -392,7 +386,6 @@ def test_wstawienie_stacji_na_odcinku_zachowuje_dane_cieplne_obu_polowek() -> No
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja SN/nN", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
         },
     )
     assert not wynik.get("error"), f"{wynik.get('error')} ({wynik.get('error_code')})"

@@ -21,8 +21,6 @@ export {
   useActiveSnapshotId,
   useActiveAnalysisType,
   useActiveAnalysisTypeLabel,
-  useActiveRunId,
-  useUIContext,
 } from './store';
 
 export type { CaseKind, AnalysisType, WorkMode, EnmHashChainState } from './store';

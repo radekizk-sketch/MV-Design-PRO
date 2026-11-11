@@ -40,7 +40,7 @@ from typing import Any
 
 import pytest
 from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
-from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
+from enm.migrations.promocja_aparatow_nn import migruj as promuj_aparaty_nn
 from enm.models import EnergyNetworkModel
 
 from tests.ci.tolerancja_fikstur import (
@@ -384,8 +384,16 @@ def test_pasmo_bezwymiarowych_dziala_tylko_dla_swojej_klasy_i_tylko_przy_zerze()
     assert liczby_rowne(0.95, 0.95 * (1 + 0.5 * RTOL_FIXTUR), "cos_phi")
     assert not liczby_rowne(0.95, 0.95 * (1 + 2 * RTOL_FIXTUR), "cos_phi")
 
-    # (5) zapas nad pomiarem jest taki, jak deklaruje komentarz stalej.
-    assert PASMO_BEZWYMIAROWYCH / abs(runner - sesja) > 10.0
+    # (1b) drugi pomiar: liczba watkow BLAS (4 wobec 1 w procesie roboczym xdist),
+    #      nakladka rozplywu `s92Rozplyw`, cos phi odcinka bez mocy czynnej.
+    watki_4, watki_1 = 2.41665643322e-08, 2.52370154876e-08
+    assert liczby_rowne(watki_4, watki_1, "cos_phi")
+    assert not liczby_rowne(watki_4, watki_1, None)
+
+    # (5) zapas nad NAJWIEKSZYM pomiarem jest taki, jak deklaruje komentarz stalej:
+    #     dodatni i nie wiekszy niz limit karty x10 (pasmo nie rosnie bez pomiaru).
+    najwiekszy = max(abs(runner - sesja), abs(watki_1 - watki_4))
+    assert 1.0 < PASMO_BEZWYMIAROWYCH / najwiekszy <= 10.0
 
 
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
@@ -648,6 +656,36 @@ def test_gotowosc_z_parametrami_rozni_sie_od_gotowosci_bez_parametrow() -> None:
         assert z_parametrami[kod] == "POTWIERDZONA", kod
         if any(pole["wymagane"] for pole in katalog[kod]["dane"]["od_uzytkownika"]):
             assert bez[kod] == "NIEPOTWIERDZONA", kod
+
+
+def test_parametr_wymagany_karty_jest_warunkiem_blokujacym_gotowosci() -> None:
+    """Predykaty parami (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek 3): parametr karty
+    katalogu oznaczony `wymagane` MUSI być warunkiem blokującym gotowości tego rodzaju, a
+    warunek parametru NIEBLOKUJĄCY nie może mieć na karcie pola wymaganego. Dawniej
+    `relay_methods` przestał blokować gotowość (zasada nr 4 — kryterium dostępności funkcji
+    jest NIE_OCENIONO), a karta dalej mówiła projektantowi „wymagane”. Odwrotna implikacja
+    nie obowiązuje: parametr z propozycją z modelu (U_r wyłącznika, widma z kart widmowych)
+    nie jest wymagany od projektanta, a jednak blokuje, gdy model go też nie niesie."""
+    katalog = {item["kod"]: item for item in eksport.katalog_analiz_v126()["items"]}
+    sprawdzone = 0
+    for analiza in eksport.gotowosc_v126_scena_akademickie()["analizy"]:
+        pola = katalog[analiza["kod"]]["dane"]["od_uzytkownika"]
+        for warunek in analiza["warunki"]:
+            klucz = warunek.get("klucz_parametru")
+            if not klucz:
+                continue
+            wymagane = [p for p in pola if _klucz_najwyzszy(p["klucz"]) == klucz and p["wymagane"]]
+            if not warunek["blokujacy"]:
+                assert wymagane == [], (analiza["kod"], klucz)
+            sprawdzone += 1
+        for pole in pola:
+            if not pole["wymagane"]:
+                continue
+            klucz = _klucz_najwyzszy(pole["klucz"])
+            assert any(
+                w.get("klucz_parametru") == klucz and w["blokujacy"] for w in analiza["warunki"]
+            ), (analiza["kod"], pole["klucz"])
+    assert sprawdzone >= 9
 
 
 #: Rodzaje POTWIERDZONE na sieci sceny, dla których scena ŚWIADOMIE nie niesie biegu —
@@ -935,12 +973,10 @@ def _falownik_sceny_oze() -> dict[str, Any]:
     przepisywać je ręcznie — intencja bez zmian: wpis dotyczy węzła z falownikiem
     katalogowym, a moc/współczynnik pochodzą z karty. Szyna: magazyn modelu
     (`enm/store.py`) promuje pole źródłowe nN do realnego aparatu i szyny odpływu
-    (`enm/migrations/nn_field_specs_promocja.py`, LV-INV-12), więc falownik wariantu
+    (`enm/migrations/promocja_aparatow_nn.py`, LV-INV-12), więc falownik wariantu
     `nn_side` stoi w biegu na szynie odpływu za aparatem pola, nie na szynie
     zbiorczej nN — test stosuje TĘ SAMĄ migrację."""
-    model, _ = promuj_nn_field_specs(
-        EnergyNetworkModel.model_validate(eksport._enm_sceny_oze_analiz())
-    )
+    model, _ = promuj_aparaty_nn(EnergyNetworkModel.model_validate(eksport._enm_sceny_oze_analiz()))
     falowniki = [
         g.model_dump(mode="json")
         for g in model.generators
@@ -1390,14 +1426,23 @@ def test_wniosek_zadanie_wskazuje_przebiegi_sceny_i_szyne_sn(
     assert zadanie["nazwa_przypadku"] == eksport.NAZWA_PRZYPADKU_SCEN_OZE
     assert zadanie["wnioskodawca"] is None and zadanie["adres_przylaczenia"] is None
     assert zadanie["operator_id"] == _operator_z_modelu(model)
-    # Węzeł przyłączenia = strona SN transformatora WN/SN GPZ, na napięciu górnej strony
-    # transformatorów blokowych modułów (wyprowadzone z topologii modelu, nie z nazwy szyny).
+    # Węzeł przyłączenia = szyna SN sekcji GPZ, na napięciu górnej strony transformatorów
+    # blokowych modułów (wyprowadzone z topologii modelu, nie z nazwy szyny). GPZ-MODEL:
+    # scena ma równoważnik sieci na szynach SN (tryb B) — granica modelu to szyny SN GPZ,
+    # transformatora WN/SN w modelu nie ma (dawna wersja szukała węzła jako „strony SN TR
+    # GPZ", czyli elementu, którego obliczenie nie zawierało).
     napiecia = {szyna.ref_id: szyna.voltage_kv for szyna in model.buses}
     szyny_wytworcow = {generator.bus_ref for generator in model.generators}
     bloki = [t for t in model.transformers if t.lv_bus_ref in szyny_wytworcow]
-    gpz = [t for t in model.transformers if t.lv_bus_ref not in szyny_wytworcow]
-    assert bloki and gpz
-    assert zadanie["bus_ref"] in {t.lv_bus_ref for t in gpz}
+    sekcje_gpz = {
+        sekcja.bus_ref
+        for stacja in model.substations
+        if stacja.station_type == "gpz"
+        for sekcja in (stacja.gpz_sections or [])
+    }
+    assert bloki and sekcje_gpz
+    assert [t for t in model.transformers if t.lv_bus_ref in sekcje_gpz] == []
+    assert zadanie["bus_ref"] in sekcje_gpz
     assert {napiecia[t.hv_bus_ref] for t in bloki} == {napiecia[zadanie["bus_ref"]]}
     assert [(p["id"], p["analysis_type"], p["status"]) for p in przebiegi] == [
         (zadanie["pf_run_id"], "LOAD_FLOW", "DONE"),

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Canon Guard: Global Codename BAN
  *

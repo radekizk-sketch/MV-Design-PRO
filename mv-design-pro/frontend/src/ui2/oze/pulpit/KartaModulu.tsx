@@ -14,7 +14,7 @@ import { SekcjaAdekwatnosciQ } from './SekcjaAdekwatnosciQ';
 import { SekcjaMagazynu } from './SekcjaMagazynu';
 import { SekcjaSilySieci } from './SekcjaSilySieci';
 import { SekcjaZgodnosci } from './SekcjaZgodnosci';
-import { daneModulu, type PozycjaModulu } from './pulpitModel';
+import { daneModulu, type PozycjaModulu, type StanOcenyModelu } from './pulpitModel';
 import { ETYKIETY_STRONY, PULPIT_STRINGS } from './strings';
 
 export interface KartaModuluProps {
@@ -22,10 +22,10 @@ export interface KartaModuluProps {
   readonly der: StationDerConnection;
   /** Pozycja modułu (wynik modułu i rekordy wymagań z oceny zatwierdzonego modelu). */
   readonly pozycja: PozycjaModulu;
-  /** Czy ocena modelu jest wczytana (stan zerowy sekcji zgodności). */
-  readonly ocenaWczytana: boolean;
+  /** Stan odczytu oceny modelu (stan zerowy sekcji zgodności). */
+  readonly stanOceny: StanOcenyModelu;
   /** Tryb ekspercki odsłania identyfikatory katalogowe. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   /** Nawigacja do dokumentacji modułu (implementacja poza tą kartą). */
   readonly onNawiguj: (cel: 'dokumentacja') => void;
   /** Referencja wyróżnionego modułu (klik w pulpicie) — podświetla wiersze węzła. */
@@ -36,8 +36,8 @@ export function KartaModulu({
   opis,
   der,
   pozycja,
-  ocenaWczytana,
-  trybEkspercki,
+  stanOceny,
+  szczegolyAudytowe,
   onNawiguj,
   wyroznionyModul = null,
 }: KartaModuluProps): JSX.Element {
@@ -84,7 +84,7 @@ export function KartaModulu({
           {/* Karta #145: identyfikatory pozycji katalogowych wyłącznie w „Informacjach
               audytowych" (tryb ekspercki, zwinięte) — pierwszy plan nazywa rodzaj odnośnika. */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-pulpit-odnosniki-audyt"
             wiersze={dane.odnosniki.map((o) => ({ etykieta: o.etykieta, wartosc: o.wartosc }))}
           />
@@ -92,16 +92,16 @@ export function KartaModulu({
       </section>
 
       {/* Sekcja 2 — zgodność NC RfG. */}
-      <SekcjaZgodnosci pozycja={pozycja} ocenaWczytana={ocenaWczytana} />
+      <SekcjaZgodnosci pozycja={pozycja} stanOceny={stanOceny} />
 
       {/* Sekcja 3 — praca magazynu (BESS z katalogu konwerterów). */}
-      <SekcjaMagazynu der={der} trybEkspercki={trybEkspercki} />
+      <SekcjaMagazynu der={der} szczegolyAudytowe={szczegolyAudytowe} />
 
       {/* Sekcja 4a — zdolność punktu przyłączenia (siła sieci, SCR/WSCR). */}
-      <SekcjaSilySieci trybEkspercki={trybEkspercki} wyroznionyModul={wyroznionyModul} />
+      <SekcjaSilySieci szczegolyAudytowe={szczegolyAudytowe} wyroznionyModul={wyroznionyModul} />
 
       {/* Sekcja 4b — adekwatność mocy biernej. */}
-      <SekcjaAdekwatnosciQ trybEkspercki={trybEkspercki} wyroznionyModul={wyroznionyModul} />
+      <SekcjaAdekwatnosciQ szczegolyAudytowe={szczegolyAudytowe} wyroznionyModul={wyroznionyModul} />
 
       {/* Sekcja 5 — dokumenty. */}
       <section

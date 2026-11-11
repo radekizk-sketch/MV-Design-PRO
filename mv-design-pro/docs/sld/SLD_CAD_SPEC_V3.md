@@ -304,7 +304,9 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
 - **ARCH-4 — usunięcie ścieżki renderu v2: OTWARTE po domknięciu ARCH-3 i pełnej
   migracji budowniczych danych drawera** (jedyna pozostała OSIĄGALNA różnica
   funkcjonalna). Zakres kasacji wyznacza mapa importów (współdzielone moduły —
-  adapter elektryczny, SupplyPathHighlighter, SldDetailDrawer, useDerDragDrop,
+  adapter elektryczny, SupplyPathHighlighter, dane elementu kanwy `shared/daneElementuKanwy.ts`
+  (szuflada `SldDetailDrawer` skasowana kartą UI-02b JEDEN-INSPEKTOR 2026-10-21 — widok
+  elementu przejął prawy inspektor), useDerDragDrop,
   v2/command, matematyka ViewportController używana przez kamerę v3 — ZOSTAJĄ
   lub są przenoszone, nie kasowane).
 
@@ -351,6 +353,22 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
 
 ### 12.1 Prymat danych nad konwencją (rozstrzygnięcie „dane vs konwencja")
 
+> **KOREKTA 2026-10-21 (karta GEOMETRIA-STACJI §0 pkt 4, wpis
+> `GEOMETRIA-STACJI-BRAK-WYPOSAZENIA` w `docs/v12xx/REJESTR_KONFLIKTOW.md`) — wiąże przed
+> treścią §12.1/§12.3/§12.4 poniżej.** Fallback konwencji §12.4 jest SKASOWANY (dyrektywa
+> właściciela 2026-10-21 „zero fabrykacji" jest późniejsza od tej specyfikacji). Pole stacji
+> i GPZ rysowane jest w jednym z trzech przypadków: (a) rekordy aparatów modelu
+> (`Bay.primary_devices`, a przy ich braku gałęzie łączeniowe z `Bay.equipment_refs`) →
+> symbol, oznaczenie, typ (`data-apparatus-type`), stan z rekordu, `data-apparatus-source="dane"`,
+> `data-apparatus-origin="rekord_pola|galaz_pola"`; (b) propozycja szablonu w podglądzie
+> kreatora stacji (niezapisana) → kreska przerywana, `data-propozycja-szablonu`, opis
+> „propozycja szablonu", bez stanu; (c) brak rekordów → JEDNA sylwetka `bayNoEquipment`
+> („brak danych wyposażenia pola"), bez barwy i rysunku stanu, `data-apparatus-source="brak"`;
+> elementy modelu, których pole jest nośnikiem (transformator pola TR, źródło OZE), są
+> rysowane w obu ścieżkach. Pole rezerwowe/wolne traci głowicę i kończy się symbolem
+> `bayReserve`. Wartość `"konwencja"` znacznika `data-apparatus-source` nie istnieje.
+> Wyrocznia `bay_template_probe` zastąpiona przez `bay_equipment_probe` (`bayEquipmentGaps`).
+
 - **Wymaganie:** stos aparatów pola jest budowany z `Bay.primary_devices` (ENM), gdy lista jest niepusta.
   Kolejność aparatów wynika z `placement` (UPSTREAM przy szynie → MIDSTREAM → DOWNSTREAM przy głowicy)
   oraz `section_side`; symbol z `kind`→`ApparatusKind` (`apparatusContracts.ts`). Konwencja-wg-roli
@@ -394,11 +412,17 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
 
 - **Wymaganie:** każde pole liniowe/odgałęźne, którego kabel jest fizycznym wejściem, kończy stos symbolem
   głowicy kablowej (`cableHead`), a kabel wchodzi/wychodzi od głowicy — nigdy „od szyny" bez głowicy.
-- **Źródło danych:** `kind='CABLE_HEAD'` (ENM) lub konwencja (§12.4) z oznaczeniem.
+- **Źródło danych:** `kind='CABLE_HEAD'` (ENM). (Korekta 2026-10-21: bez konwencji §12.4 —
+  pole bez rekordu głowicy nie dostaje głowicy dorysowanej; patrz nota w §12.1.)
 - **Wyrocznia odbioru:** `field_entry_probe` — 0 pól liniowych, w których zejście kablowe zaczyna się
   bez symbolu głowicy na końcu toru pola (gdy pole ma kabel).
 
 ### 12.4 Kompozycja typowa celki wg roli (KONWENCJA RYSUNKOWA — fallback)
+
+> **SKASOWANE 2026-10-21 (nota w §12.1, wpis rejestru `GEOMETRIA-STACJI-BRAK-WYPOSAZENIA`).**
+> Treść poniżej zostaje jako zapis historyczny; słownik sekwencji typowych żyje dalej
+> WYŁĄCZNIE jako profile referencyjne pakietu `iec62271` Reference Engine (walidacja
+> i szablony kreatora), nie jako rysunek pola bez danych.
 
 - **Wymaganie:** znormalizowane stosy fallback (gdy `primary_devices` puste), PER TECHNOLOGIA
   rozdzielnicy (recenzja NO-GO właściciela 2026-07-17 pkt 5 — słownik szablonów §12.4a):
@@ -450,7 +474,9 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
   **Rozstrzygnięcie (V12K-029, nadzorca, 2026-07-11):** DER (PV/BESS/generator/farma wiatrowa) jest
   pełnoprawnym WIDOCZNYM źródłem z dedykowanym symbolem w punkcie przyłączenia (realizacja F9.4);
   dotychczasowy badge DER (`derBadges`) znika z chwilą wdrożenia F9.4. Patrz
-  `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-029.
+  `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-029. Stan: pole `derBadges` widoku stacji
+  przetrwało F9.4 bez czytelnika rysunku i zostało skasowane 2026-10-21 (karta GPZ-PARYTET
+  cz. 3) razem z budową i testami; źródła DER niesie wyłącznie `SldDataPayload.sources`.
 - **Źródło danych:** `Substation`(GPZ), `Source`(model thevenin/external_grid), `Generator`,
   `BaySourceEndpoint`(PV/BESS/FW) — ENM (`models.py:253-277,333-355,1004-1015`).
 - **Wyrocznia odbioru:** `sources_visible_probe` — liczba narysowanych symboli źródeł == liczba źródeł
@@ -641,8 +667,9 @@ jako WARSTWA ADNOTACJI schematu.
 
 ### 17.6 Zakres globalny i koordynacja międzywątkowa
 
-- Konwencja obowiązuje render v3 (docelowy); v2 GPZ już rysuje `protection_codes`
-  (`GpzSwitchgearRenderer`) — semantyka wspólna, parytet wymagany przy F8c (§10).
+- Konwencja obowiązuje render v3 (jedyny renderer od karty GPZ-PARYTET cz. 2, 2026-10-21 —
+  dawny renderer rozdzielni GPZ v2 rysujący `protection_codes` skasowany; kody zabezpieczeń GPZ
+  rysuje v3 wg doprecyzowań F9.9/F11.1 poniżej).
 - **Doprecyzowanie (rozstrzygnięcie architekta, runda korekcyjna F9.9) — ZNIESIONE w F11.1:** w GPZ
   v3 rysowany był w F9.9 SAM OKRĄG przekaźnika z kodami (`CanonicalGpzBay.protectionCodes`), BEZ
   toru wyzwalania — kompozycja GPZ nie śledziła `deviceRef` per aparat, więc tor bez rejestru
@@ -989,6 +1016,23 @@ K-D2-B → V12K-034; K-D2-C → V12K-035; K-D2-D → V12K-036; K-D2-E → V12K-0
   jest FAŁSZEM PREZENTACJI: trójka Sk″/Ik″/U przestaje być spójna (Ik″=Sk″/(√3·U)).
   Spójność pilnowana także w domenie: walidator ENM `sources.sk_ik_voltage_inconsistent`
   (IMPORTANT) przy rozjeździe > 5%.
+- **Pasmo nad szyną SN (GPZ-PARYTET, 2026-10-21 — WIĄŻĄCE):** jedna arytmetyka
+  (`compose/gpz.ts` `layoutSections`) rezerwuje w każdej sekcji, od lewej: etykietę sekcji
+  (wyśrodkowaną na lewym końcu szyny), grupę wież transformatorów (pole WN TR → TR2W → pole TR)
+  i blok źródła-ekwiwalentu SN przy prawym końcu szyny. Wieże transformatorów tej samej sekcji
+  stoją obok siebie w porządku `transformerRef` (zasięg wieży z tej samej arytmetyki co jej
+  budowa: plany stosów, kolumny adnotacji pól, tabliczka TR), grupa jest wyśrodkowana na sekcji,
+  ale nie wchodzi na etykietę sekcji, a każde zejście trafia w szynę sekcji. Sekcja następna
+  zaczyna się za całą zajętością pasma poprzedniej o pas sprzęgła (wyłącznik i jego oznacznik)
+  i połowę swojej etykiety. Sekcja docelowa transformatora i sekcja źródła SN wynikają wyłącznie
+  z szyny w modelu (`Transformer.lv_bus_ref`, `Source.bus_ref` = szyna sekcji); transformator
+  bez sekcji o swojej szynie dostaje wieżę na prawo od sekcji bez zejścia do szyny SN
+  (`gpz.transformer.section.missing:<ref>`), źródło SN bez takiej sekcji nie jest rysowane
+  (`gpz.source.unattached`). Dawny przydział zastępczy (transformator po indeksie, źródło do
+  sekcji `order = 0`) dowiązywał je do cudzej szyny. Test:
+  `scene/__tests__/buildScene.gpzWiezeTransformatorow.test.ts` (iloczyn liczba TR × sekcja ×
+  szerokość sekcji × sekcja źródła × sprzęgło × LOD, brak przecięć prostokątów, żadna etykieta
+  GPZ nieusunięta przez silnik etykiet, determinizm).
 - **Wyrocznia:** `gpz_hv_column_probe` — gdy ENM niesie TR WN/SN: na scenie istnieje symbol
   transformatora WN/SN, szyna WN nad nim i przyłącze systemowe zaczepione na szynie ŹRÓDŁA
   (WN ⇒ `#hv-bus-source-extension`, SN ⇒ `#source-bus-extension`), połączone torem;

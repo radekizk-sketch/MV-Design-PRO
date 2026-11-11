@@ -4,7 +4,7 @@ export const LACZNIK_STRINGS = {
   eyebrow: 'MODEL SIECI · ŁĄCZNIK SEKCYJNY SN',
   cel:
     'Wstaw łącznik na odcinku SN — dzieli ciąg na sekcje i pozwala go sekcjonować. '
-    + 'Stan normalny (zamknięty/otwarty) wyznacza punkt normalnie otwarty (NOP); '
+    + 'Pozycja normalna (zamknięty/otwarty) wyznacza punkt normalnie otwarty (NOP); '
     + 'rozpływ mocy honoruje go realnie — otwarty łącznik daje pracę radialną.',
   odznaka: 'Nowy łącznik SN',
 
@@ -24,11 +24,18 @@ export const LACZNIK_STRINGS = {
     { id: 'WYLACZNIK', etykieta: 'Wyłącznik' },
     { id: 'ODLACZNIK', etykieta: 'Odłącznik' },
   ],
-  stan: 'Stan normalny',
+  stan: 'Pozycja normalna',
   stanOpcje: [
+    { id: '', etykieta: 'Niezadeklarowana (zamknięty)' },
     { id: 'closed', etykieta: 'Zamknięty' },
     { id: 'open', etykieta: 'Otwarty (NOP)' },
   ],
+  stanPomoc:
+    'Otwarty = nowy punkt normalnie otwarty: dotychczasowy punkt podziału tego pierścienia '
+    + 'zostanie zamknięty w tej samej operacji. Niezadeklarowana = łącznik zamknięty bez '
+    + 'deklaracji pozycji normalnej.',
+  zamknijPoprzedni: 'Dotychczasowy punkt podziału do zamknięcia',
+  zamknijPoprzedniAutomatycznie: '— punkt podziału tego pierścienia (wyznaczy model) —',
   polozenie: 'Położenie na odcinku',
   polozeniePomoc: 'Ułamek długości odcinka (0–1): 0,5 = w połowie. Dzieli odcinek na dwie sekcje.',
 
@@ -44,7 +51,7 @@ export const LACZNIK_STRINGS = {
   kontrolaTytul: 'Kontrola łącznika',
   wierszOdcinek: 'Odcinek',
   wierszAparat: 'Aparat',
-  wierszStan: 'Stan normalny',
+  wierszStan: 'Pozycja normalna',
   wierszPolozenie: 'Położenie',
 
   brakOdcinkaTytul: 'Brak wskazania odcinka',

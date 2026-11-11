@@ -16,7 +16,7 @@
  *  3. Barwa nie niesie tożsamości akcji (PV/BESS/FW rozróżnia ETYKIETA, nie
  *     kolor obrysu) — barwa jest zarezerwowana dla stanu i hierarchii.
  *
- * Klasy idą z tokenów motywu (`--scada-*`), więc system stanów działa
+ * Klasy idą z tokenów motywu (`--mvd-*`, aliasy `scada-*`), więc system stanów działa
  * identycznie w obu motywach.
  */
 

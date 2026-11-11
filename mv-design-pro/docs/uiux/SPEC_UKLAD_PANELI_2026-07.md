@@ -13,7 +13,7 @@ i ukrywane; bardziej zaawansowane okna ukrywane")
 ```
 ┌─ pasek tytułowy + pasek aktywnego przypadku ──────────────────────────────┐
 │ LEWY (nawigacja+kontekst) │  ŚRODKOWY (warsztat)   │ PRAWY (inspektor)    │
-│ 48–320 px, chowany do     │  elastyczny, karty     │ 280–560 px, chowany, │
+│ 220–260 px, chowany do    │  elastyczny, karty     │ 340–420 px, chowany, │
 │ listwy ikon               │  + podział 2 widoków   │ sekcje akordeonowe   │
 └─ opcjonalny panel dolny (problemy/przebiegi) ── pasek stanu ──────────────┘
 ```
@@ -39,8 +39,14 @@ i ukrywane; bardziej zaawansowane okna ukrywane")
 - **Zakładki stałe:** Właściwości · Wyniki · Dowód · Powiązania (nawigacja wychodząca).
 - **Sekcje akordeonowe** wewnątrz zakładki: podstawowe rozwinięte, „Zaawansowane" zwinięte
   domyślnie (patrz §2). Stan rozwinięcia zapamiętywany per typ obiektu.
-- **Stany:** pełny (320 px domyślnie, uchwyt 280–560 px) → schowany (przywołanie: klik na
-  dowolny obiekt otwiera inspektor automatycznie; skrót `Ctrl+I`).
+- **Stany:** pełny (360 px domyślnie, uchwyt i klawiatura 340–420 px — kontrakt UI-02,
+  `KONTRAKT_UIUX_PRZEMYSLOWY_2026-10.md`) → schowany (przywołanie: klik na dowolny obiekt
+  otwiera inspektor automatycznie; skrót `Ctrl+I`). **Tryb szeroki 560 px** (karta K6,
+  2026-10-21) wyłącznie jako jawne polecenie: przycisk „Tryb szeroki" w nagłówku inspektora
+  i pozycja „Tryb szeroki inspektora" w menu Widok, odwracalne tym samym poleceniem, zapis
+  per przestrzeń; zmiana z uchwytu kończy tryb szeroki; selekcja obiektu nigdy nie zmienia
+  szerokości. Stan przed korektą 2026-10-21 (lewy 48–320, inspektor 280–560 px) był
+  nieaktualny względem kodu (`ui2/shell/useShellStore.ts`).
 - **Przypięcie:** „pinezka" blokuje inspektor na wybranym obiekcie (porównywanie dwóch
   obiektów: przypięty + podgląd bieżącej selekcji w podzielonym inspektorze).
 

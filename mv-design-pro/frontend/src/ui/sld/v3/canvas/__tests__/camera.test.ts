@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F6b — testy `canvas/camera.ts` (logika WŁASNA: histereza LOD
  * 3-poziomowa, pinch geometry, viewBox pochodny). Matematyka pan/zoom/fit

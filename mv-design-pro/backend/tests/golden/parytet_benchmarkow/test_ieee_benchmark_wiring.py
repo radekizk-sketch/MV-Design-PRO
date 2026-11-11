@@ -5,7 +5,8 @@ This proves the wiring between the committed IEEE references and the V12.6
 academic benchmark validation:
   - references come from pandapower (independent), calculated from our PRODUCTION
     solver (power_flow_newton, via the canonical ENM twin / tor kanoniczny),
-  - the verdict is a genuine cross-validation, not the "dane niekompletne" path,
+  - the deltas are a genuine cross-validation, not the "dane niekompletne" path (the
+    verdict record states that the run compares declared values — NIE_OCENIONO),
   - the proof type is the cross-validation marker (K-09).
 
 Kontrola jakości zdolności WYCOFANEJ `V126AnalysisType.BENCHMARK_VALIDATION`
@@ -65,13 +66,28 @@ class TestIeeeFrozenSolverBenchmarkWiring:
         assert all(row["solver"] == "power_flow_newton" for row in refs)
         assert all(row["test"].startswith("PF_prod_|V|_") for row in refs)
 
-    def test_production_verdict_passes(self) -> None:
+    def test_production_deltas_within_tolerance_and_record_states_declared_values(self) -> None:
+        """Wiersze walidacji niosą odchyłkę i tolerancję każdej referencji; rekord oceny nie
+        wystawia werdyktu, bo bieg analizy porównuje dwie liczby podane w danych (wartość
+        „calculated” policzył test, nie ten bieg) — status NIE_OCENIONO z przyczyną
+        „deklaracja” i wartością informacyjną. Dowodem zgodności solvera produkcyjnego
+        z pandapower jest odchyłka zmierzona w tym pliku (`worst < 1e-5 %`), nie status."""
+        from application.analyses.v126_oceny import oceny_wyniku_v126
+
         refs = build_ieee_frozen_solver_benchmark_references()
         result = _run_benchmark(refs)
         assert result["references_provided"] is True
-        assert result["status"] == "PASS"
+        assert "status" not in result
         assert result["proof_type"] == FROZEN_SOLVER_CROSS_VALIDATION_PROOF_TYPE
-        assert all(row["status"] == "PASS" for row in result["validation_report"])
+        assert all(
+            row["delta_percent"] <= row["tolerance_percent"] for row in result["validation_report"]
+        )
+        oceny = oceny_wyniku_v126(
+            "benchmark_validation", result, wersja_silnika=None, odcisk=None, nazwy={}
+        )
+        assert oceny is not None and len(oceny) == len(refs)
+        assert {o["status_maszynowy"] for o in oceny} == {"NIE_OCENIONO"}
+        assert all("deklaracja" in o["wyjasnienie"]["przyczyna_pl"] for o in oceny)
 
     def test_production_worst_delta_far_below_half_percent(self) -> None:
         refs = build_ieee_frozen_solver_benchmark_references()

@@ -14,7 +14,8 @@
  *     ścieżka sygnału, dla spójności z kartą E15.1).
  *   Emituje: `selekcja` — POŚREDNIO, przez prop `onSelekcja` (wzorzec z
  *     `ui2/AppRoot.tsx`: każda przestrzeń woła prop, integrator wywołuje
- *     `emituj({ typ: 'selekcja', obiektId, zrodlo: 'panel-gotowosci' })` —
+ *     `pokazElementNaSchemacie(ref, 'panel-gotowosci')` — zaznaczenie, zdarzenie
+ *     `selekcja`, przejście na schemat i kadr elementu, karta K2 W5-UI-14 —
  *     ta karta nie importuje `ui2/events` do zapisu, aby nie dublować
  *     odpowiedzialności integracyjnej).
  *   Rewizja: ND — gotowość nie jest daną pochodną z osobną rewizją
@@ -27,7 +28,6 @@
 
 import { useMemo, useState } from 'react';
 import './gotowosc.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useBusEvent } from '../../events';
 import { PanelNastepnejAkcji, useNastepnaAkcja } from '../../proces';
@@ -52,8 +52,8 @@ import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import { ETYKIETA_CELU } from './grupowanieCelow';
 
 export interface PanelGotowosciProps {
-  /** Tryb zaawansowania powłoki — koduje widoczny kod techniczny (karta §2.7). */
-  trybZaawansowania: AdvancementMode;
+  /** „Szczegóły audytowe” powłoki — odsłaniają kod techniczny problemu (karta §2.7). */
+  szczegolyAudytowe: boolean;
   /** Klik wiersza problemu → selekcja globalna (integrator emituje na magistralę). */
   onSelekcja: (elementRef: string) => void;
   /** Klik „Napraw…" → wykonanie fix-action (integrator otwiera właściwy edytor). */
@@ -61,7 +61,7 @@ export interface PanelGotowosciProps {
 }
 
 export function PanelGotowosci({
-  trybZaawansowania,
+  szczegolyAudytowe,
   onSelekcja,
   onAkcjaNaprawcza,
 }: PanelGotowosciProps) {
@@ -70,7 +70,6 @@ export function PanelGotowosci({
   const nazwaElementu = useNazwaObiektu();
   const ponowOdczytGotowosci = usePonowOdczytGotowosci();
   const nastepnaAkcja = useNastepnaAkcja();
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   const grupyPelne = useMemo(() => grupujProblemyWgCelu(issues), [issues]);
   const [filtry, setFiltry] = useState<FiltryGotowosci>(FILTRY_PUSTE);
@@ -195,7 +194,7 @@ export function PanelGotowosci({
                 problemyWidoczne={filtrujProblemy(grupa.problemy, filtry)}
                 rozwinieta={!zwiniete.has(grupa.cel)}
                 onPrzelacz={() => przelaczSekcje(grupa.cel)}
-                trybEkspercki={trybEkspercki}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onKlikWiersza={onSelekcja}
                 onNaprawa={onAkcjaNaprawcza}
                 nazwaElementu={nazwaElementu}

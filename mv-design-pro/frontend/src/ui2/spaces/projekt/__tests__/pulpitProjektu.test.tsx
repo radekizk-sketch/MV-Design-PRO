@@ -127,14 +127,13 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
   // jest DOKŁADNIE jeden kafel-zaślepka „wkrótce". Karta PULPIT-NBA usunęła
   // zaślepkę (ZASADA NR 1), więc test pilnuje teraz, że nie wróciła.
   it.each([
-    ['basic', false],
-    ['extended', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ] as const)(
     'odcisk modelu poza kaflami — informacje audytowe pulpitu tylko w trybie %s → %s',
     async (tryb, widoczne) => {
-      const poprzedni = useShellStore.getState().advancementMode;
-      useShellStore.setState({ advancementMode: tryb });
+      const poprzedni = useShellStore.getState().szczegolyAudytowe;
+      useShellStore.setState({ szczegolyAudytowe: tryb });
       try {
         const odcisk = useSnapshotStore.getState().snapshot!.header.hash_sha256;
         const { container, unmount } = render(<PulpitProjektu {...props()} />);
@@ -151,7 +150,7 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
         );
         unmount();
       } finally {
-        useShellStore.setState({ advancementMode: poprzedni });
+        useShellStore.setState({ szczegolyAudytowe: poprzedni });
       }
     },
   );

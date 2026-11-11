@@ -22,6 +22,7 @@ import {
   SCREEN_MATRIX,
   SURFACE_REGISTRY,
 } from '../types';
+import { ustawBiegOgladany } from '../../../test/kontekstBiegu';
 
 const fetchMock = vi.fn();
 
@@ -214,7 +215,7 @@ describe('workspace shell V12.5 surfaces', () => {
   });
 
   it('renderuje panelowy surface E-31 jako realny ekran stanu fazowego', () => {
-    useAppStateStore.getState().setActiveRun('run-1');
+    ustawBiegOgladany('run-1');
     useNetworkBuildStore.getState().openRouteSurface('E-31', {
       titlePl: SURFACE_REGISTRY['E-31'].titlePl,
       sizeClass: 'B',
@@ -239,7 +240,7 @@ describe('workspace shell V12.5 surfaces', () => {
   });
 
   it('renderuje surface E-37 z kontraktem eksportu dla aktywnego runu', async () => {
-    useAppStateStore.getState().setActiveRun('run-1');
+    ustawBiegOgladany('run-1');
     useNetworkBuildStore.getState().openRouteSurface('E-37', {
       titlePl: SURFACE_REGISTRY['E-37'].titlePl,
       sizeClass: 'C',
@@ -456,7 +457,7 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
       }
       return mockJsonResponse(mockAnalysisRunDetail);
     });
-    useAppStateStore.getState().setActiveRun('run-1');
+    ustawBiegOgladany('run-1');
     useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
       titlePl: 'Ślad obliczeń',
       tabId: 'trace',
@@ -525,9 +526,8 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
       return mockJsonResponse({ ...mockAnalysisRunDetail, id: 'run-sc', analysis_type: 'SC_3F' });
     });
 
-    useAppStateStore.getState().setActiveRun('run-sc');
+    ustawBiegOgladany('run-sc');
     useExecutionRunsStore.setState({
-      activeRunId: 'run-sc',
       runs: [
         {
           id: 'run-sc',

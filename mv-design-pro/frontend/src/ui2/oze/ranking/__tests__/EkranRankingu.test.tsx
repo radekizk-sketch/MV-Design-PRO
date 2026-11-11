@@ -31,14 +31,13 @@ const fetchKlasyfikacji = vi.fn(async (url: string) => {
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-    activeRunId: 'lf-run',
   });
   useSnapshotStore.setState({ snapshot: snapshotFixture() });
 }
 
-async function zbudujRanking(tryb: 'basic' | 'expert' = 'basic') {
+async function zbudujRanking(tryb = false) {
   pobierz.mockResolvedValue(widokRankinguFixture());
-  render(<EkranRankingu trybZaawansowania={tryb} />);
+  render(<EkranRankingu szczegolyAudytowe={tryb} />);
   fireEvent.click(screen.getByTestId('mvd-rank-oblicz'));
   await screen.findByTestId('mvd-rank-wynik');
 }
@@ -57,7 +56,7 @@ afterEach(() => {
 
 describe('EkranRankingu — brak przebiegu rozpływu (kryterium 1)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', async () => {
-    render(<EkranRankingu trybZaawansowania="basic" />);
+    render(<EkranRankingu szczegolyAudytowe={false} />);
     // Bez przebiegu nie ma wyniku, więc nie ma też zapytań o klasyfikację modułu.
     await act(async () => {});
     expect(screen.getByTestId('mvd-rank-brak-przebiegu')).toHaveTextContent(
@@ -73,7 +72,7 @@ describe('EkranRankingu — jawny bieg (kryterium 1)', () => {
   beforeEach(ustawGotowyRozplyw);
 
   it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła zdolności przed kliknięciem', async () => {
-    render(<EkranRankingu trybZaawansowania="basic" />);
+    render(<EkranRankingu szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-rank-parametry')).toBeInTheDocument();
     // Operator nie jest parametrem rankingu: klasyfikacja art. 5 nie zależy od profilu
     // operatora, a zdolność przyłączeniowa go nie przyjmuje (zero kontrolki-fantomu).
@@ -94,7 +93,7 @@ describe('EkranRankingu — jawny bieg (kryterium 1)', () => {
 
   it('wybór węzłów przekazuje candidate_bus_refs do zapytania', async () => {
     pobierz.mockResolvedValue(widokRankinguFixture());
-    render(<EkranRankingu trybZaawansowania="basic" />);
+    render(<EkranRankingu szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-rank-wybor-bus-a'));
     fireEvent.click(screen.getByTestId('mvd-rank-oblicz'));
     await screen.findByTestId('mvd-rank-wynik');
@@ -103,7 +102,7 @@ describe('EkranRankingu — jawny bieg (kryterium 1)', () => {
 
   it('błąd końcówki → jawny stan błędu z komunikatem', async () => {
     pobierz.mockRejectedValue(new Error('422 zły przebieg'));
-    render(<EkranRankingu trybZaawansowania="basic" />);
+    render(<EkranRankingu szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-rank-oblicz'));
     expect(await screen.findByTestId('mvd-rank-blad')).toHaveTextContent('422 zły przebieg');
   });
@@ -181,13 +180,13 @@ describe('EkranRankingu — tryb ekspercki (identyfikatory)', () => {
   beforeEach(ustawGotowyRozplyw);
 
   it('tryb podstawowy ukrywa kolumnę identyfikatora i identyfikator przebiegu', async () => {
-    await zbudujRanking('basic');
+    await zbudujRanking(false);
     expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
   });
 
   it('tryb ekspercki: identyfikator przebiegu w „Informacjach audytowych", bez kolumny identyfikatora', async () => {
-    await zbudujRanking('expert');
+    await zbudujRanking(true);
     // Karta #145: identyfikator węzła nie jest kolumną tabeli w żadnym trybie.
     expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
     // Intencja BEZ ZMIAN: w trybie eksperckim widać identyfikator przebiegu.

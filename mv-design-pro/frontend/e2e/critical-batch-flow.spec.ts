@@ -119,8 +119,6 @@ async function seedCaseAndActivate(
       catalog_item_id: SOURCE_ID,
       catalog_item_version: CATALOG_VERSION,
     },
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   const busRef = op.snapshot?.buses?.[0]?.ref_id;
   expect(busRef).toBeTruthy();
@@ -142,7 +140,6 @@ async function seedCaseAndActivate(
             activeCaseResultStatus: 'NONE',
             activeSnapshotId: null,
             activeMode: 'MODEL_EDIT',
-            activeRunId: null,
             activeAnalysisType: 'SHORT_CIRCUIT',
             caseManagerOpen: false,
             issuePanelOpen: false,

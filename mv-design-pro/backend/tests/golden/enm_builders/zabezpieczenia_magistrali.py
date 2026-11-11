@@ -131,8 +131,6 @@ def siec_magistrali(
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": KATALOG_ZRODLA,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     enm = operacja(
@@ -200,7 +198,7 @@ def siec_magistrali(
             "add_load_sn",
             {
                 "bus_ref": szyna_nn,
-                "name": "Odbiór stacji",
+                "load_name": "Odbiór stacji",
                 "active_power_kw": MOC_ODBIORU_STACJI_KW,
                 "cos_phi": COS_PHI_ODBIORU_STACJI,
             },

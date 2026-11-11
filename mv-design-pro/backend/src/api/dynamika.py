@@ -44,6 +44,7 @@ from enm.scenariusze import (
     wczytaj_scenariusz,
     zapisz_scenariusz,
 )
+from enm.slownik_komunikatow import opis_pozycji_walidacji
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field, ValidationError
@@ -125,8 +126,11 @@ def post_scenariusz_dynamiki(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=[
-                {"pole": ".".join(str(c) for c in blad["loc"]), "komunikat": blad["msg"]}
-                for blad in exc.errors(include_url=False, include_context=False)
+                {
+                    "pole": ".".join(str(c) for c in blad["loc"]),
+                    "komunikat": opis_pozycji_walidacji(blad),
+                }
+                for blad in exc.errors(include_url=False)
             ],
         ) from exc
     if pola_stanowiska := pola_stanowiska_ustawione(harmonogram):
@@ -144,16 +148,24 @@ def post_scenariusz_dynamiki(
                 for pole in pola_stanowiska
             ],
         )
+    poprzedni: OperatingScenario | None = None
     if zadanie.scenario_id is not None:
         try:
-            wczytaj_scenariusz(klucz, zadanie.scenario_id)
+            poprzedni = wczytaj_scenariusz(klucz, zadanie.scenario_id)
         except ScenariuszNieistniejeError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    scenariusz = OperatingScenario(
-        scenario_id=zadanie.scenario_id or str(uuid4()),
-        name=zadanie.name,
-        kind=RodzajScenariusza.CUSTOM,
-        dynamika=harmonogram,
+    # W5-C: nowa rewizja zmienia WYŁĄCZNIE nazwę i harmonogram — pozostałe nadpisania
+    # scenariusza (stany łączników z ekranu scenariuszy łączeniowych, nastawy) zostają;
+    # dawniej rewizja budowana od zera kasowała je po cichu.
+    scenariusz = (
+        poprzedni.model_copy(update={"name": zadanie.name, "dynamika": harmonogram})
+        if poprzedni is not None
+        else OperatingScenario(
+            scenario_id=str(uuid4()),
+            name=zadanie.name,
+            kind=RodzajScenariusza.CUSTOM,
+            dynamika=harmonogram,
+        )
     )
     try:
         apply_scenario(get_enm(klucz), scenariusz)

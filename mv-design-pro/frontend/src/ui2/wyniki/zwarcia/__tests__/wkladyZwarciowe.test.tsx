@@ -1,7 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { WkladyZwarciowe } from '../WkladyZwarciowe';
-import { kluczWkladow, naWklady, parametryWkladowZKonfiguracji, useWkladyZwarciowe } from '../api';
+import {
+  kluczWkladow,
+  naWklady,
+  parametryWkladowZKonfiguracji,
+  useWkladyZwarciowe,
+  type ParametryWkladowBiegu,
+} from '../api';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { ZWARCIA_STRINGS } from '../strings';
 import { wkladyFixture, wkladyZeSzczegolemFixture } from './fixtures';
@@ -11,9 +17,8 @@ function renderuj(wklady = wkladyFixture()) {
     <WkladyZwarciowe
       punktNazwa="Szyna GPZ 15 kV"
       wklady={wklady}
-      blad={false}
-      ladowanie={false}
-      trybZaawansowania="basic"
+      odczyt="gotowe"
+      szczegolyAudytowe={false}
       onOtworzDowod={vi.fn()}
     />,
   );
@@ -123,9 +128,8 @@ describe('WkladyZwarciowe — wykres udziałów procentowych (karta W-A F2)', ()
       <WkladyZwarciowe
         punktNazwa="Szyna GPZ 15 kV"
         wklady={null}
-        blad={false}
-        ladowanie={false}
-        trybZaawansowania="basic"
+        odczyt="gotowe"
+        szczegolyAudytowe={false}
         onOtworzDowod={vi.fn()}
       />,
     );
@@ -139,15 +143,14 @@ describe('WkladyZwarciowe — wykres udziałów procentowych (karta W-A F2)', ()
   // trafia w „dane niedostępne" (dawniej pobieranie mówiło „nie udało się pobrać").
   it.each([
     ['blad', 'mvd-zwarcia-wklady-blad', ZWARCIA_STRINGS.wkladyBlad],
-    ['ladowanie', 'mvd-zwarcia-wklady-ladowanie', ZWARCIA_STRINGS.wkladyLadowanie],
+    ['wczytywanie', 'mvd-zwarcia-wklady-wczytywanie', ZWARCIA_STRINGS.wkladyWczytywanie],
   ] as const)('stan %s → własny komunikat, nie „dane niedostępne"', (stan, testId, tekst) => {
     render(
       <WkladyZwarciowe
         punktNazwa="Szyna GPZ 15 kV"
         wklady={null}
-        blad={stan === 'blad'}
-        ladowanie={stan === 'ladowanie'}
-        trybZaawansowania="basic"
+        odczyt={stan}
+        szczegolyAudytowe={false}
         onOtworzDowod={vi.fn()}
       />,
     );
@@ -297,14 +300,14 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     const { result } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', null));
-    expect(result.current).toEqual({ dane: null, ladowanie: false, blad: false });
+    expect(result.current).toEqual({ odczyt: 'niezlecony' });
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
-  const PARAMETRY = { scenariusz: 'MAX' as const, nadpisanieC: null, tMinS: null };
+  const PARAMETRY: ParametryWkladowBiegu = { scenariusz: 'MAX', nadpisanieC: null, tMinS: null };
 
-  it('pobieranie → ladowanie; odpowiedź → dane (bez flag)', async () => {
+  it('pobieranie → wczytywanie; odpowiedź → gotowe z danymi', async () => {
     useSnapshotStore.setState({
       snapshot: { header: { name: 'Siec' }, buses: [] },
     } as never);
@@ -314,10 +317,10 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
     });
     vi.stubGlobal('fetch', fetchMock);
     const { result } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', PARAMETRY));
-    expect(result.current).toEqual({ dane: null, ladowanie: true, blad: false });
-    await waitFor(() => expect(result.current.dane?.wklady).toEqual([]));
-    expect(result.current.ladowanie).toBe(false);
-    expect(result.current.blad).toBe(false);
+    expect(result.current).toEqual({ odczyt: 'wczytywanie' });
+    await waitFor(() => expect(result.current.odczyt).toBe('gotowe'));
+    const stan = result.current;
+    expect(stan.odczyt === 'gotowe' ? stan.dane.wklady : null).toEqual([]);
     vi.unstubAllGlobals();
   });
 
@@ -331,9 +334,42 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
     const fetchMock = vi.fn().mockImplementation(odp);
     vi.stubGlobal('fetch', fetchMock);
     const { result, rerender } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', PARAMETRY));
-    await waitFor(() => expect(result.current).toEqual({ dane: null, ladowanie: false, blad: true }));
+    await waitFor(() => expect(result.current).toEqual({ odczyt: 'blad' }));
     rerender();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  // Scalenie partii 13 z kartą NCRFG-LADOWANIE: klucz pamięci = migawka modelu × punkt ×
+  // parametry biegu. Iloczyn {ta sama / nowa migawka} × {te same / inne parametry}: wpis
+  // innej migawki to wynik innej sieci — nowa migawka przy TYCH SAMYCH parametrach musi
+  // pobrać ponownie i wrócić do „wczytywanie", a nie podać wkładów starej sieci.
+  it('nowa migawka modelu × te same parametry → nowe żądanie; ta sama migawka → bez żądania', async () => {
+    const pierwsza = { header: { name: 'Siec A' }, buses: [] };
+    useSnapshotStore.setState({ snapshot: pierwsza } as never);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ contributions: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { result, rerender } = renderHook(
+      ({ p }: { p: ParametryWkladowBiegu }) => useWkladyZwarciowe('BUS-GPZ', p),
+      {
+        initialProps: { p: PARAMETRY },
+      },
+    );
+    await waitFor(() => expect(result.current.odczyt).toBe('gotowe'));
+    rerender({ p: { ...PARAMETRY } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    act(() => {
+      useSnapshotStore.setState({ snapshot: { header: { name: 'Siec B' }, buses: [] } } as never);
+    });
+    rerender({ p: PARAMETRY });
+    expect(result.current.odczyt).toBe('wczytywanie');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.odczyt).toBe('gotowe'));
+    rerender({ p: { scenariusz: 'MIN', nadpisanieC: null, tMinS: null } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     vi.unstubAllGlobals();
   });
 
@@ -342,7 +378,7 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     const { result } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', PARAMETRY));
-    expect(result.current).toEqual({ dane: null, ladowanie: false, blad: false });
+    expect(result.current).toEqual({ odczyt: 'niezlecony' });
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });

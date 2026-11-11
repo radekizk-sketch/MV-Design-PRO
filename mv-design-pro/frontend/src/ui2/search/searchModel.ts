@@ -5,11 +5,9 @@
  * w pełni sterowany propsami i agnostyczny wobec źródła danych — budowa
  * indeksu jest zakresem `searchIndex.ts`.
  *
- * `TrybZaawansowania` jest zduplikowany strukturalnie względem
- * `ui2/shell/modeModel.ts` (AdvancementMode): search NIE importuje z
- * ui2/shell poza jawnie wskazanym w karcie rejestrem przestrzeni
- * (`../shell/spaces`, wyłącznie w `searchIndex.ts`) — granica kart
- * równoległych, ta sama decyzja co `ui2/nav/treeModel.ts` (TrybMin).
+ * Karta K1 POWLOKA: pozycja nie ma już progu trybu zaawansowania — trzy tryby
+ * ukrywały wyłącznie kontrolki i zostały zastąpione jednym przełącznikiem
+ * „Szczegóły audytowe", który jest zwykłym poleceniem palety.
  */
 
 /** Grupa wyniku wyszukiwania — stała kolejność nagłówków (karta §4). */
@@ -32,16 +30,11 @@ export const KOLEJNOSC_GRUP: readonly GrupaWyszukiwania[] = [
   'pomoc',
 ];
 
-/** Tryb zaawansowania — wartości zamrożone jak `ui2/shell/modeModel.ts` (AdvancementMode). */
-export type TrybZaawansowania = 'basic' | 'extended' | 'expert';
-
-/** Pozycja wyniku wyszukiwania (karta §2: id, etykietaPL, grupa, trybMin?, akcja). */
+/** Pozycja wyniku wyszukiwania (karta §2: id, etykietaPL, grupa, akcja). */
 export interface PozycjaWyszukiwania {
   id: string;
   etykietaPL: string;
   grupa: GrupaWyszukiwania;
-  /** Minimalny tryb zaawansowania wymagany do wykonania (brak = dostępne zawsze). */
-  trybMin?: TrybZaawansowania;
   /**
    * Dodatkowe słowa, po których pozycja ma być odnajdywana, choć nie widać ich
    * w etykiecie (D4, parytet ze skasowaną paletą `ui/network-build`: okno E-XX
@@ -55,14 +48,4 @@ export interface PozycjaWyszukiwania {
    * sterowany propsami, karta §2).
    */
   akcja: () => void;
-}
-
-const KOLEJNOSC_TRYBOW: Record<TrybZaawansowania, number> = { basic: 0, extended: 1, expert: 2 };
-
-/** Czy `trybAktualny` udostępnia pozycję o wymaganym `trybMin`. */
-export function trybWystarczajacy(
-  trybAktualny: TrybZaawansowania,
-  trybMin: TrybZaawansowania,
-): boolean {
-  return KOLEJNOSC_TRYBOW[trybAktualny] >= KOLEJNOSC_TRYBOW[trybMin];
 }

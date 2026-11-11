@@ -53,6 +53,7 @@ from enm.domain_operations_v2 import (
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.katalog_projektu import kontekst_katalogu
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_nn_stacji, pola_sn_stacji
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 
@@ -143,8 +144,6 @@ def _siec_ze_stacja(nn_block: dict[str, Any] | None = None) -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": REF_ZRODLO,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snapshot = _wykonaj(
@@ -186,16 +185,18 @@ def _szyna_sn_ref(snapshot: dict[str, Any]) -> str:
 
 def _pole_sn_ref(snapshot: dict[str, Any]) -> str:
     stacja = next(s for s in snapshot["substations"] if s.get("station_type") != "gpz")
-    specyfikacje = (stacja.get("meta") or {}).get("field_specs") or []
+    specyfikacje = pola_sn_stacji(snapshot, stacja["ref_id"])
     assert specyfikacje, "Stacja nie ma pól SN"
-    return str(specyfikacje[0]["field_ref"])
+    return str(specyfikacje[0]["ref_id"])
 
 
 def _pole_nn_ref(snapshot: dict[str, Any]) -> str:
     stacja = next(s for s in snapshot["substations"] if s.get("station_type") != "gpz")
-    specyfikacje = (stacja.get("meta") or {}).get("nn_field_specs") or []
+    specyfikacje = [
+        p for p in pola_nn_stacji(snapshot, stacja["ref_id"]) if p.get("bay_role") == "FEEDER"
+    ]
     assert specyfikacje, "Stacja nie ma odpływów nN"
-    return str(specyfikacje[0]["field_ref"])
+    return str(specyfikacje[0]["ref_id"])
 
 
 def _payload_zrodla(
@@ -312,7 +313,7 @@ def _payload_sn_bay(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
-        "bay_role": "LINIA_OUT",
+        "bay_role": "OUT",  # rola modelu; kanoniczna `LINIA_OUT` → sn.bay_role_unknown
         "apparatus_kind": "BREAKER",
         "catalog_ref": REF_APARAT_SN,
     }
@@ -406,7 +407,6 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
                     "materialize": True,
                 },
             },
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": _szyna_sn_ref(snapshot),
             "mv_field_configuration": {
                 "switching_device": "CB",
@@ -437,13 +437,27 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def _payload_kompensator(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
-        "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
         "catalog_binding": {
             "catalog_namespace": "KOMPENSATOR_SN",
             "catalog_item_id": REF_KOMPENSATOR,
             "catalog_item_version": "2024.1",
         },
+    }
+
+
+REF_TU = "TU_ZNYN11_15KV_PW160"
+REF_DLAWIK = "DL_40_400A_15KV_CIAGLY"
+REF_REZYSTOR = "REZ_200A_15KV"
+
+
+def _payload_zespol_uziemiajacy(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół Z.14 (dławik ‖ rezystor) na szynie SN."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "catalog_ref": REF_TU,
+        "dlawik": {"catalog_ref": REF_DLAWIK},
+        "rezystor": {"catalog_ref": REF_REZYSTOR},
     }
 
 
@@ -513,6 +527,31 @@ def _druga_szyna_nn_ref(snapshot: dict[str, Any]) -> str:
         kandydaci
     ), "Sieć testowa nie ma drugiej szyny nN (prep add_nn_cable_segment nie wykonany)"
     return str(kandydaci[-1]["ref_id"])
+
+
+def _payload_pole_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Odpływ nN z aparatem wskazanym referencją (szablon stacji — `apply.py`)."""
+    return {
+        "station_ref": _stacja_ref(snapshot),
+        "bus_nn_ref": _szyna_nn_ref(snapshot),
+        "field_role": "OUTGOING",
+        "catalog_ref": REF_APARAT_NN,
+    }
+
+
+def _payload_pole_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Pole źródłowe nN z aparatem wskazanym wiązaniem — druga droga i druga rola pola."""
+    return {
+        "station_ref": _stacja_ref(snapshot),
+        "bus_nn_ref": _szyna_nn_ref(snapshot),
+        "field_role": "SOURCE",
+        "source_field_kind": "PV",
+        "catalog_binding": {
+            "catalog_namespace": "APARAT_NN",
+            "catalog_item_id": REF_APARAT_NN,
+            "catalog_item_version": "2024.1",
+        },
+    }
 
 
 def _payload_aparat_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -625,6 +664,42 @@ def _zepsuj_liste_kart(payload: dict[str, Any]) -> None:
     payload["karty_widmowe_ref"] = [str(payload["karty_widmowe_ref"][0]) + LITEROWKA]
 
 
+def _payload_rozdzielnicy_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Rozdzielnica nN zasilana kablem nN z szyny nN stacji (`payload.supply`)."""
+    return {
+        "voltage_kv": 0.4,
+        "name": "RGnN zasilana",
+        "supply": {
+            "from_bus_ref": _szyna_nn_ref(snapshot),
+            "length_m": 20.0,
+            "catalog_ref": REF_KABEL_NN,
+        },
+    }
+
+
+def _payload_rozdzielnicy_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    payload = _payload_rozdzielnicy_nn(snapshot)
+    del payload["supply"]["catalog_ref"]
+    payload["supply"]["catalog_binding"] = {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_item_id": REF_KABEL_NN,
+        "catalog_item_version": "2024.1",
+    }
+    return payload
+
+
+def _payload_wyposazenia_pola(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Wyposażenie pola SN stacji: wyłącznik (APARAT_SN) i przekładnik prądowy (CT)."""
+    return {
+        "bay_ref": _pole_sn_ref(snapshot),
+        "mode": "katalog",
+        "devices": [
+            {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": REF_APARAT_SN},
+            {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": REF_CT},
+        ],
+    }
+
+
 INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     PrzypadekIniekcji(
         "catalog_ref", "add_ct", _payload_ct, lambda p: _zepsuj_klucz(p, "catalog_ref")
@@ -661,9 +736,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     PrzypadekIniekcji(
         "catalog_binding", "add_sn_bay", _payload_sn_bay, lambda p: _zepsuj_klucz(p, "catalog_ref")
     ),
+    # Plan pola z katalogu rozdzielnic tej samej operacji (wybór katalogowy w payloadzie).
     PrzypadekIniekcji(
         "catalog_binding",
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         _payload_sn_bay_z_katalogu,
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
@@ -718,6 +794,53 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_KOMPENSATOR + LITEROWKA}),
         oczekiwany_kod="shunt.catalog_not_found",
     ),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy elementy zespołu uziemiającego — każdy
+    # wskazany w swojej przestrzeni i każdy bramkowany (iloczyn element × wskazanie).
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update({"catalog_ref": REF_TU + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "dlawik.catalog_ref",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p["dlawik"].update({"catalog_ref": REF_DLAWIK + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "rezystor.catalog_ref",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p["rezystor"].update({"catalog_ref": REF_REZYSTOR + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update(
+            {
+                "catalog_ref": None,
+                "catalog_binding": {"catalog_item_id": REF_TU + LITEROWKA},
+            }
+        ),
+    ),
+    PrzypadekIniekcji(
+        "dlawik.catalog_binding",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update(
+            {"dlawik": {"catalog_binding": {"catalog_item_id": REF_DLAWIK + LITEROWKA}}}
+        ),
+    ),
+    PrzypadekIniekcji(
+        "rezystor.catalog_binding",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update(
+            {"rezystor": {"catalog_binding": {"catalog_item_id": REF_REZYSTOR + LITEROWKA}}}
+        ),
+    ),
     # CV-4.3 K1: `add_load_sn` (odbiór wprost na szynie, bez feeder_ref) — ta
     # sama brama katalogowa co `add_nn_load` (opcjonalny, ale wskazana pozycja
     # musi istnieć — `_pozycja_katalogu`, kod jak przy `add_nn_load` powyżej).
@@ -755,6 +878,21 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         _payload_kabel_nn_binding,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_KABEL_NN + LITEROWKA}),
     ),
+    # Aparat pola nN (karta W5-B): wskazanie odpływu albo pola źródłowego przechodzi bramę
+    # i ląduje na polu dla promocji aparatów nN — iloczyn {referencja, wiązanie} × {odpływ,
+    # pole źródłowe}.
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_nn_outgoing_field",
+        _payload_pole_nn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_nn_outgoing_field",
+        _payload_pole_nn_binding,
+        lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
+    ),
     PrzypadekIniekcji(
         "catalog_ref",
         "add_nn_switch_device",
@@ -791,6 +929,30 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         "add_nn_section_coupler",
         _payload_sprzeglo_nn_binding,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
+    ),
+    # Zasilenie rozdzielnicy nN — referencja czytana przez funkcję wołaną z handlera
+    # (`_add_nn_cable_segment_internal`); przed kartą W5-C brama API jej nie znała.
+    PrzypadekIniekcji(
+        "supply.catalog_ref",
+        "add_nn_distribution_board",
+        _payload_rozdzielnicy_nn,
+        lambda p: p["supply"].update({"catalog_ref": REF_KABEL_NN + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "supply.catalog_binding",
+        "add_nn_distribution_board",
+        _payload_rozdzielnicy_nn_binding,
+        lambda p: p["supply"]["catalog_binding"].update(
+            {"catalog_item_id": REF_KABEL_NN + LITEROWKA}
+        ),
+    ),
+    # W5-C: wyposażenie pola SN — zepsuty DRUGI aparat listy (CT), pierwszy poprawny:
+    # brama musi przejść całą listę, nie tylko pierwszy wpis.
+    PrzypadekIniekcji(
+        "devices[].catalog_ref",
+        "set_bay_equipment",
+        _payload_wyposazenia_pola,
+        lambda p: p["devices"][1].update({"catalog_ref": REF_CT + LITEROWKA}),
     ),
 )
 
@@ -903,8 +1065,6 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": REF_ZRODLO,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snapshot = _operacja_api(
@@ -941,6 +1101,63 @@ def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
 # ---------------------------------------------------------------------------
 # (a) KLASA — inwentarz kompletny i pilnowany skanem modułu
 # ---------------------------------------------------------------------------
+
+
+def _funkcje_modulow_handlerow() -> dict[str, ast.FunctionDef]:
+    """Funkcje WSZYSTKICH modułów, w których zdefiniowano handlery V2 (nazwa → węzeł).
+
+    Rejestr V2 importuje handlery z modułów obok `domain_operations_v2` (W5-C: operacje
+    łączników, wyposażenie pola) — skan ograniczony do jednego pliku tracił je w ciszy.
+    """
+    pliki = sorted({inspect.getsourcefile(h) or "" for h in ALL_V2_HANDLERS.values()})
+    assert Path(inspect.getfile(domain_operations_v2)).as_posix() in {
+        Path(p).as_posix() for p in pliki
+    }
+    funkcje: dict[str, ast.FunctionDef] = {}
+    for plik in pliki:
+        drzewo = ast.parse(Path(plik).read_text(encoding="utf-8"))
+        for wezel in ast.walk(drzewo):
+            if isinstance(wezel, ast.FunctionDef):
+                assert wezel.name not in funkcje, f"Dwie funkcje o nazwie {wezel.name}"
+                funkcje[wezel.name] = wezel
+    return funkcje
+
+
+#: Funkcje czytające referencję katalogową z MODELU (dane już zmaterializowane), nie
+#: z payloadu — domknięcie wywołań handlera do nich nie schodzi. Każda z uzasadnieniem.
+FUNKCJE_KATALOGU_MODELU: dict[str, str] = {
+    "_ta_sama_niepusta_pozycja_katalogowa": (
+        "porównanie `catalog_ref` dwóch odcinków JUŻ W MODELU (`merge_nn_segments`) — "
+        "nic nie materializuje i niczego nie czyta z payloadu"
+    ),
+}
+
+
+def _czyta_katalog(funkcja: ast.FunctionDef) -> bool:
+    for wezel in ast.walk(funkcja):
+        if isinstance(wezel, ast.Constant) and isinstance(wezel.value, str):
+            if wezel.value.endswith("catalog_ref") or "catalog_binding" in wezel.value:
+                return True
+    return False
+
+
+def _domkniecie_wywolan(nazwa: str, funkcje: dict[str, ast.FunctionDef]) -> set[str]:
+    """Handler + każda funkcja skanowanych modułów osiągalna z niego wywołaniem po nazwie."""
+    odwiedzone: set[str] = set()
+    stos = [nazwa]
+    while stos:
+        biezaca = stos.pop()
+        if biezaca in odwiedzone or biezaca in FUNKCJE_KATALOGU_MODELU:
+            continue
+        odwiedzone.add(biezaca)
+        for wezel in ast.walk(funkcje[biezaca]):
+            if (
+                isinstance(wezel, ast.Call)
+                and isinstance(wezel.func, ast.Name)
+                and wezel.func.id in funkcje
+            ):
+                stos.append(wezel.func.id)
+    return odwiedzone
 
 
 def test_kazda_pozycja_inwentarza_ma_pokrycie() -> None:
@@ -991,7 +1208,7 @@ def test_inwentarz_i_zbiory_kluczy_pochodza_z_jednego_zrodla() -> None:
 def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
     """Skan klasy: żadna referencja katalogowa modułu V2 nie omija inwentarza.
 
-    Skanujemy DRZEWO SKŁADNIOWE wszystkich FUNKCJI `domain_operations_v2` (sam
+    Skanujemy DRZEWO SKŁADNIOWE wszystkich FUNKCJI modułów handlerów V2 (sam
     inwentarz jest stałą modułu i do skanu nie wchodzi — inaczej test badałby
     własny zapis zamiast kodu). Każdy literał kończący się na `catalog_ref` jest
     kluczem payloadu albo polem zapisywanym do migawki — musi należeć do zbioru
@@ -999,12 +1216,9 @@ def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
     (np. ogranicznik przepięć pola nN) zapali ten test, ZANIM referencja trafi do
     modelu bez kontroli istnienia.
     """
-    zrodlo = Path(inspect.getfile(domain_operations_v2)).read_text(encoding="utf-8")
-    drzewo = ast.parse(zrodlo)
-
     referencje: set[str] = set()
     wiazania: set[str] = set()
-    funkcje = [w for w in ast.walk(drzewo) if isinstance(w, ast.FunctionDef)]
+    funkcje = list(_funkcje_modulow_handlerow().values())
     assert len(funkcje) > 50, "Skan stracił kotwicę — moduł nie ma funkcji do przejrzenia"
     for funkcja in funkcje:
         for wezel in ast.walk(funkcja):
@@ -1042,33 +1256,26 @@ def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
 def test_kazdy_handler_v2_z_referencja_katalogowa_ma_werdykt() -> None:
     """Handler czytający referencję katalogową MUSI mieć wiersz w inwentarzu.
 
-    Iloczyn cech, nie przykład: skanujemy CIAŁA wszystkich handlerów V2, nie samą
-    operację z karty. Handler, który zacznie czytać katalog bez wpisu inwentarza,
-    zapali ten test — dokładnie ten mechanizm, którego zabrakło, gdy `add_ct`,
-    `add_nn_load` i aparaty pól zostały poza bramą.
+    Iloczyn cech, nie przykład: skanujemy CIAŁA wszystkich handlerów V2 RAZEM z każdą
+    funkcją, którą handler woła (domknięcie wywołań w modułach handlerów), nie samą
+    operację z karty. Handler, który zacznie czytać katalog bez wpisu inwentarza —
+    wprost albo przez funkcję pomocniczą — zapali ten test. Skan samych ciał przepuścił
+    `add_nn_distribution_board` (zasilenie `supply.catalog_ref` czytane przez
+    `_add_nn_cable_segment_internal`) i `set_bay_equipment` (karta W5-C).
     """
-    zrodlo = Path(inspect.getfile(domain_operations_v2)).read_text(encoding="utf-8")
-    drzewo = ast.parse(zrodlo)
+    funkcje = _funkcje_modulow_handlerow()
     z_inwentarza = {p.operacja for p in V2_CATALOG_GATE_INVENTORY}
 
-    nazwy_handlerow = set(ALL_V2_HANDLERS)
-    znalezione: set[str] = set()
-    czytajace_katalog: set[str] = set()
-    for wezel in ast.walk(drzewo):
-        if not isinstance(wezel, ast.FunctionDef) or wezel.name not in nazwy_handlerow:
-            continue
-        znalezione.add(wezel.name)
-        for potomek in ast.walk(wezel):
-            if not (isinstance(potomek, ast.Constant) and isinstance(potomek.value, str)):
-                continue
-            if potomek.value.endswith("catalog_ref") or "catalog_binding" in potomek.value:
-                czytajace_katalog.add(wezel.name)
-                break
-
-    assert znalezione == nazwy_handlerow, (
-        "Skan stracił kotwicę — handlery bez definicji w module: "
-        f"{sorted(nazwy_handlerow - znalezione)}"
-    )
+    nazwy_handlerow = {nazwa: handler.__name__ for nazwa, handler in ALL_V2_HANDLERS.items()}
+    bez_definicji = sorted(n for n, f in nazwy_handlerow.items() if f not in funkcje)
+    assert (
+        not bez_definicji
+    ), f"Skan stracił kotwicę — handlery bez definicji w skanowanych modułach: {bez_definicji}"
+    czytajace_katalog = {
+        operacja
+        for operacja, funkcja in nazwy_handlerow.items()
+        if any(_czyta_katalog(funkcje[f]) for f in _domkniecie_wywolan(funkcja, funkcje))
+    }
     bez_werdyktu = czytajace_katalog - z_inwentarza
     assert (
         not bez_werdyktu

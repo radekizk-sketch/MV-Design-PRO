@@ -105,7 +105,8 @@ G5. Wynik pracy subagenta nie jest widoczny dla właściciela — po każdej int
 <zakres>
 **Realizuj zintegrowaną kolejkę UX-00…UX-09 z Programu §12.3 w kolejności i ze statusem z
 `PLANS.md` część A §C** (tor U: UX-00 → UX-04 → UX-01 → UX-02 → UX-03 → UX-05 → UX-06 → UX-07 →
-UX-08; UX-09 STOP). Fazy U0–U5 i epiki E1–E15 (Program §6, §8) służą wyłącznie do mapowania
+UX-08; UX-09 = GIS na samym końcu kolejki). Karta UX-04 realizuje przebudowę rozdzielni SN 15 kV GPZ wg
+`docs/uiux/PRZEKAZANIE_GPZ_SN_15KV_2026-10-28.md` (najpierw wzorzec pola liniowego). Fazy U0–U5 i epiki E1–E15 (Program §6, §8) służą wyłącznie do mapowania
 zakresu kart; U0/U1 są zamknięte, U2–U5 nie są zadaniami — ich zakres niosą karty UX-xx.
 Nie planujesz od U0, nie piszesz nowych kart per epik, nie tworzysz makiet do zatwierdzenia:
 ekrany ocenia właściciel na żywej aplikacji (zrzuty obu motywów, B-02).

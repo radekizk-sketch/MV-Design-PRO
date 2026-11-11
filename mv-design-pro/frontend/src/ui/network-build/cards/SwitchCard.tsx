@@ -2,8 +2,13 @@
  * SwitchCard — karta obiektu łącznika / wyłącznika SN.
  *
  * Wyświetla typ aparatu (łącznik, wyłącznik, odłącznik, sprzęgło, bezpiecznik),
- * topologię (szyny od/do), stan eksploatacyjny (otwarty/zamknięty, NPO),
- * oraz referencję katalogową.
+ * topologię (szyny od/do), stan łączeniowy i referencję katalogową.
+ *
+ * W5-C (jedna prawda stanu łącznika): bieżące położenie to `status` gałęzi i zmieniają je
+ * WYŁĄCZNIE operacje `open_switch` / `close_switch`; pozycja normalna (punkt normalnie
+ * otwarty) to `normal_state` i ustawia ją WYŁĄCZNIE `set_normal_open_point`. Dawna karta
+ * czytała punkt podziału z kopii przy magistrali i „przełączała" łącznik korektą
+ * parametrów (`toggle_status`), której backend nie zna — zapis był fantomem.
  *
  * BINDING: 100% PL etykiety.
  */
@@ -13,7 +18,14 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import { notify } from '../../notifications/store';
 import type { SwitchBranch, FuseBranch } from '../../../types/enm';
+import {
+  czyLacznikZPozycjaNormalna,
+  czyPunktPodzialu,
+  etykietaPozycjiNormalnej,
+  pozycjaNormalna,
+} from '../../shared/stanLacznika';
 
 // =============================================================================
 // Helpers
@@ -72,13 +84,6 @@ function statusSeverity(status: string): 'ok' | 'warning' {
   return status === 'closed' ? 'ok' : 'warning';
 }
 
-function isNopSwitch(
-  elementId: string,
-  corridors: Array<{ no_point_ref?: string | null }>,
-): boolean {
-  return corridors.some((c) => c.no_point_ref === elementId);
-}
-
 function statusDotFromReadiness(
   elementId: string,
   readiness: { blockers: Array<{ element_ref: string | null }> } | null,
@@ -117,10 +122,9 @@ export function SwitchCard({ elementId }: { elementId: string }) {
     [snapshot, branch],
   );
 
-  const isNop = useMemo(
-    () => isNopSwitch(elementId, snapshot?.corridors ?? []),
-    [snapshot, elementId],
-  );
+  const isNop = czyPunktPodzialu(branch);
+  const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   // Find bay containing this switch via equipment_refs
   const parentBay = useMemo(
@@ -225,16 +229,20 @@ export function SwitchCard({ elementId }: { elementId: string }) {
       fields: [
         {
           key: 'status',
-          label: 'Stan',
+          label: 'Bieżące położenie',
           value: statusLabel(branch.status),
           severity: statusSeverity(branch.status),
         },
-        {
-          key: 'is_nop',
-          label: 'Normalny punkt otwarcia (NPO)',
-          value: isNop ? 'Tak — NPO aktywny' : 'Nie',
-          severity: isNop ? 'warning' : 'ok',
-        },
+        ...(czyLacznikZPozycjaNormalna(branch)
+          ? [
+              {
+                key: 'normal_state',
+                label: 'Pozycja normalna',
+                value: etykietaPozycjiNormalnej(pozycjaNormalna(branch)),
+                severity: isNop ? ('warning' as const) : ('ok' as const),
+              },
+            ]
+          : []),
       ],
     };
 
@@ -279,12 +287,20 @@ export function SwitchCard({ elementId }: { elementId: string }) {
   }, [branch, fromBus, toBus, isNop, parentBay, parentStation, activeMode]);
 
   const handleToggleState = useCallback(() => {
-    openOperationForm('update_element_parameters', {
-      element_ref: elementId,
-      element_type: 'switch',
-      toggle_status: true,
+    if (!branch) return;
+    if (!activeCaseId) {
+      notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+      return;
+    }
+    const operacja = branch.status === 'closed' ? 'open_switch' : 'close_switch';
+    void executeDomainOperation(activeCaseId, operacja, { switch_ref: elementId }).then((odpowiedz) => {
+      // Sukces potwierdza centralny komunikat magazynu (`operationSuccessMessages`); tu
+      // wyłącznie odmowa — karta łącznika nie ma własnego miejsca na błąd operacji.
+      if (!odpowiedz || odpowiedz.error) {
+        notify(odpowiedz?.error ?? useSnapshotStore.getState().error ?? 'Nie zmieniono stanu łącznika.', 'error');
+      }
     });
-  }, [openOperationForm, elementId]);
+  }, [activeCaseId, branch, elementId, executeDomainOperation]);
 
   const handleAssignCatalog = useCallback(() => {
     openOperationForm('assign_catalog_to_element', {
@@ -313,22 +329,20 @@ export function SwitchCard({ elementId }: { elementId: string }) {
       },
     ];
 
-    // NPO action only for main line switches/breakers, not fuses or bus-couplers
-    if (
-      branch?.type === 'switch' ||
-      branch?.type === 'breaker' ||
-      branch?.type === 'disconnector'
-    ) {
+    // Punkt normalnie otwarty: łącznik z pozycją normalną (bez bezpiecznika), który nim
+    // jeszcze nie jest. Przeniesienie punktu = wskazanie innego łącznika pierścienia
+    // (operacja zamyka poprzedni punkt) — osobnego „zdjęcia" punktu backend nie ma.
+    if (czyLacznikZPozycjaNormalna(branch) && !isNop) {
       acts.push({
         id: 'set_normal_open_point',
-        label: isNop ? 'Usuń oznaczenie NPO' : 'Ustaw jako NPO',
-        variant: isNop ? 'danger' : 'secondary',
+        label: 'Ustaw jako punkt normalnie otwarty',
+        variant: 'secondary',
         onClick: handleSetNop,
       });
     }
 
     return acts;
-  }, [branch?.status, branch?.type, handleToggleState, handleAssignCatalog, handleSetNop, isNop]);
+  }, [branch, handleToggleState, handleAssignCatalog, handleSetNop, isNop]);
 
   if (!branch) return null;
 

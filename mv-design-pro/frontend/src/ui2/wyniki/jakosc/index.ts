@@ -17,8 +17,6 @@ export {
 export type { EkranJakosciProps } from './EkranJakosci';
 
 export {
-  przebiegZwarciowy,
-  przebiegRozplywu,
   jestPrzebiegiemZwarciowym,
   kluczWalidacji,
   KOLUMNY_WIARYGODNOSCI,

@@ -65,11 +65,6 @@
   color: var(--mvd-muted);
 }
 
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
 /* --- Stan zerowy ---------------------------------------------------------- */
 
 .mvd-arch-pusty {

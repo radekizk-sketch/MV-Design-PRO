@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W2C-PLAN-ETYKIET — kontrakt planu etykiet APARATÓW BOCZNYCH (ES/VT/SA) pól SN.
  *
@@ -43,7 +44,7 @@ import {
   plannedLabelsOutsideSheet,
 } from '../../canvas/labelLegibility';
 import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import { rectsOverlap } from '../../core/grid';
 import { LATERAL_APPARATUS_SYMBOLS } from '../../compose/apparatusSequence';
 import { composeStation, type ComposeStationInput } from '../../compose/station';
@@ -108,12 +109,15 @@ function sequence(
   return out;
 }
 
-type FieldSpec = { field_ref: string; primary_devices?: BayPrimaryDevice[] };
+/** Rekord pola stacji (karta W5-B: typowany `Bay` w kolekcji `bays` jest jedynym nośnikiem
+ *  pól — dawny słownik pól w `meta` stacji skasowany). Test podmienia sekwencję aparatów
+ *  rekordu w miejscu, więc zwraca rekordy modelu, nie kopie. */
+type RekordPola = { ref_id: string; primary_devices?: BayPrimaryDevice[] };
 
-function fieldSpecs(enm: EnergyNetworkModel, stationRef: string): FieldSpec[] {
-  const st = (enm.substations ?? []).find((s) => s.ref_id === stationRef);
-  const meta = (st?.meta ?? {}) as { field_specs?: FieldSpec[] };
-  return meta.field_specs ?? [];
+function polaStacji(enm: EnergyNetworkModel, stationRef: string): RekordPola[] {
+  return ((enm.bays ?? []) as unknown as (RekordPola & { substation_ref?: string | null })[]).filter(
+    (b) => b.substation_ref === stationRef,
+  );
 }
 
 interface Scenario {
@@ -134,21 +138,21 @@ function scenario(role: string, laterals: readonly LateralKind[], order: Order):
       },
     ]);
     const fieldRef = injected[0].ozeFieldRef;
-    const spec = fieldSpecs(enm, stationRef).find((s) => s.field_ref === fieldRef)!;
+    const spec = polaStacji(enm, stationRef).find((s) => s.ref_id === fieldRef)!;
     // Fixtura niesie kolejność surową backendu (VT po CT, ES/SA po drugim DS).
     if (order === 'posortowana') spec.primary_devices = orderByPrimaryPlacement(spec.primary_devices ?? []);
     return { role, enm, fieldRef, lateralCount: laterals.length };
   }
   const { enm, stationRef } = buildDerSnFixture([]);
-  const specs = fieldSpecs(enm, stationRef);
+  const specs = polaStacji(enm, stationRef);
   const suffix = role === 'RMU_LINE' ? '/sn_field/000' : '/sn_field/002';
-  const spec = specs.find((s) => s.field_ref.endsWith(suffix))!;
+  const spec = specs.find((s) => s.ref_id.endsWith(suffix))!;
   const main: readonly (readonly [BayPrimaryDeviceKind, BayPrimaryPlacement])[] =
     role === 'RMU_LINE'
       ? [['LOAD_SWITCH', 'UPSTREAM'], ['CT', 'MIDSTREAM'], ['CABLE_HEAD', 'DOWNSTREAM']]
       : [['FUSE', 'UPSTREAM'], ['CT', 'MIDSTREAM'], ['TRANSFORMER_DEVICE', 'DOWNSTREAM']];
-  spec.primary_devices = sequence(spec.field_ref, main, laterals, order);
-  return { role, enm, fieldRef: spec.field_ref, lateralCount: laterals.length };
+  spec.primary_devices = sequence(spec.ref_id, main, laterals, order);
+  return { role, enm, fieldRef: spec.ref_id, lateralCount: laterals.length };
 }
 
 function lateralSymbols(scene: SceneV3, fieldRef: string) {
@@ -235,8 +239,23 @@ describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych
     }
   }
 
-  it('pola GPZ (konwencja, uziemnik boczny) — scena niesie aparaty boczne GPZ, plan bez kolizji na każdym LOD i skali', () => {
+  // Scalenie z gałęzią UI/UX (karta GEOMETRIA-STACJI §0 pkt 4, przepisanie do kanonu z
+  // zachowaniem intencji): aparaty pola GPZ pochodzą WYŁĄCZNIE z rekordów modelu — stos
+  // konwencji roli zniknął, a pole bez rekordów ma jedną sylwetkę „brak danych wyposażenia
+  // pola". Uziemnik boczny GPZ istnieje więc tylko wtedy, gdy rekord pola go niesie: test
+  // dopisuje polom GPZ fikstury rekordy aparatów z uziemnikiem (GROUND_BRANCH) i dalej
+  // sprawdza to samo — scena niesie aparaty boczne GPZ, plan etykiet bez kolizji.
+  it('pola GPZ (rekordy modelu, uziemnik boczny) — scena niesie aparaty boczne GPZ, plan bez kolizji na każdym LOD i skali', () => {
     const { enm } = buildDerSnFixture([]);
+    for (const bay of (enm.bays ?? []) as unknown as RekordPola[]) {
+      if (!bay.ref_id.startsWith('gpz/')) continue;
+      bay.primary_devices = sequence(
+        bay.ref_id,
+        [['DS', 'UPSTREAM'], ['CB', 'MIDSTREAM'], ['CT', 'MIDSTREAM'], ['CABLE_HEAD', 'DOWNSTREAM']],
+        ['ES'],
+        'surowa-przeplot',
+      );
+    }
     const gpzLaterals = buildSceneV3(enm, 2).symbols.filter(
       (s) => LATERAL_APPARATUS_SYMBOLS.has(s.symbolId) && String(s.meta?.ownerRef ?? '').startsWith('gpz/'),
     );

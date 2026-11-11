@@ -31,7 +31,7 @@ export interface SekcjaZgodnosciPrzekrojowejProps {
   /** der_ref → nazwa wyświetlana, z tego samego źródła co kolumny macierzy obok. */
   readonly nazwyModulow: Readonly<Record<string, string>>;
   /** Tryb ekspercki — odciski biegu w informacjach audytowych. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   /**
    * Odesłanie do macierzy: wybiera moduł (panel modułu + kolumna). Renderowane tylko dla
    * modułów znanych macierzy (klucz w `nazwyModulow`) — bez martwego kliku.
@@ -43,7 +43,7 @@ export function SekcjaZgodnosciPrzekrojowej({
   caseId,
   operatorId,
   nazwyModulow,
-  trybEkspercki,
+  szczegolyAudytowe,
   onWybierzModul,
 }: SekcjaZgodnosciPrzekrojowejProps): JSX.Element {
   const [wynik, setWynik] = useState<ZgodnoscPrzypadkuNcRfg | null>(null);
@@ -181,7 +181,7 @@ export function SekcjaZgodnosciPrzekrojowej({
 
           {bieg ? (
             <InformacjeAudytowe
-              trybEkspercki={trybEkspercki}
+              szczegolyAudytowe={szczegolyAudytowe}
               testid="mvd-oze-zgodnosc-przekrojowa-audyt"
               wiersze={[
                 { etykieta: MACIERZ_STRINGS.odciskWejsciaBiegu, wartosc: bieg.input_hash },

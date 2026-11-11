@@ -173,7 +173,7 @@ describe('Drzewo Projektu', () => {
       store.centerSldOnElement('line-001');
 
       const state = useSelectionStore.getState();
-      expect(state.sldCenterOnElement).toBe('line-001');
+      expect(state.sldWskazanie?.ref).toBe('line-001');
     });
 
     it('should open property grid on selection', () => {
@@ -296,7 +296,7 @@ describe('Synchronizacja selekcji (Drzewo ↔ Siatka ↔ SLD)', () => {
     store.centerSldOnElement('line-001');
 
     const state = useSelectionStore.getState();
-    expect(state.sldCenterOnElement).toBe('line-001');
+    expect(state.sldWskazanie?.ref).toBe('line-001');
   });
 
   it('should preserve selection across mode changes', () => {

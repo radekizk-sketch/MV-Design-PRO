@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Mapowanie kod → zdanie inżynierskie (karta DIAGNOZA-PRZEBIEGU §0.2).
  *

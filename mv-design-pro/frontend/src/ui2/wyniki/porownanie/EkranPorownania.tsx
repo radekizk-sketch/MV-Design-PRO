@@ -27,7 +27,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import './porownanie.css';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import {
   InformacjeAudytowe,
@@ -94,7 +93,7 @@ const ZAKLADKI: readonly { id: Zakladka; etykieta: string }[] = [
 export interface EkranPorownaniaProps {
   /** Identyfikator projektu — źródło listy przebiegów rozpływu (klient API). */
   projektId: string;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
 /** Tryb porównania: rozpływ mocy (E12.1), zwarcia (E12.2) lub zabezpieczenia (CV-3.3-B2). */
@@ -106,7 +105,7 @@ type TrybPorownania = 'rozplyw' | 'zwarcia' | 'zabezpieczenia';
  * Domyślnie tryb rozpływu (dzisiejsze zachowanie, bez regresji). Każdy tryb ma
  * własny stan i własne źródło danych; JEDEN ekran, zero drugiej strony.
  */
-export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
+export function EkranPorownania({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
   const [tryb, setTryb] = useState<TrybPorownania>('rozplyw');
 
   return (
@@ -149,18 +148,17 @@ export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownani
         </button>
       </div>
       {tryb === 'rozplyw' && (
-        <TrybRozplywu projektId={projektId} trybZaawansowania={trybZaawansowania} />
+        <TrybRozplywu projektId={projektId} szczegolyAudytowe={szczegolyAudytowe} />
       )}
-      {tryb === 'zwarcia' && <TrybZwarciowy trybZaawansowania={trybZaawansowania} />}
+      {tryb === 'zwarcia' && <TrybZwarciowy szczegolyAudytowe={szczegolyAudytowe} />}
       {tryb === 'zabezpieczenia' && (
-        <TrybZabezpieczen projektId={projektId} trybZaawansowania={trybZaawansowania} />
+        <TrybZabezpieczen projektId={projektId} szczegolyAudytowe={szczegolyAudytowe} />
       )}
     </div>
   );
 }
 
-function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
+function TrybRozplywu({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
 
   const [przebiegi, setPrzebiegi] = useState<PowerFlowRunItem[]>([]);
   const [stanListy, setStanListy] = useState<StanListy>('ladowanie');
@@ -355,7 +353,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
               i proweniencja obu biegów (rodzaj, status, rewizja/scenariusz koperty, odciski).
               Karta #145: metadane produkcyjne wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-por-informacje-audytowe"
             wiersze={naWierszeAudytuPorownania(
               wynik.comparison_id,
@@ -406,7 +404,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 kolumny={KOLUMNY_SZYN_DIFF}
                 wiersze={wierszeSzyn}
                 onOtworzDowod={otworzDowodPrzebiegu}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 kluczWiersza={KLUCZ_ID_ELEMENTU}
                 onPoprawWModelu={(klucz) =>
                   poprawWModelu(klucz, 'Bus', nazwaObiektu(klucz), 'inspekcja-elementu')
@@ -425,7 +423,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 kolumny={KOLUMNY_GALEZI}
                 wiersze={wierszeGalezi}
                 onOtworzDowod={otworzDowodPrzebiegu}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 kluczWiersza={KLUCZ_ID_ELEMENTU}
                 onPoprawWModelu={(klucz) =>
                   poprawWModelu(klucz, 'LineBranch', nazwaObiektu(klucz), 'inspekcja-elementu')
@@ -445,7 +443,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                   kolumny={KOLUMNY_RANKINGU}
                   wiersze={wierszeRankingu}
                   onOtworzDowod={BEZ_DOWODU}
-                  trybZaawansowania={trybZaawansowania}
+                  szczegolyAudytowe={szczegolyAudytowe}
                   kluczWiersza={KLUCZ_PROBLEM}
                   onWybierzWiersz={setWybranyProblem}
                   wybranyWiersz={wybranyProblem}

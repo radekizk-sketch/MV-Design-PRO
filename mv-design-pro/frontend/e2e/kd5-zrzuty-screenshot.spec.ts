@@ -105,8 +105,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [400, 350, 300, 250].entries()) {
@@ -157,7 +155,6 @@ async function otworzSchemat(page: Page, scena: Scena, motyw: string): Promise<v
             activeCaseResultStatus: 'NONE',
             activeSnapshotId: null,
             activeMode: 'MODEL_EDIT',
-            activeRunId: null,
             activeAnalysisType: 'SHORT_CIRCUIT',
             caseManagerOpen: false,
             issuePanelOpen: false,
@@ -220,8 +217,14 @@ test.describe('kd5:zrzuty', () => {
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
       // Klik w blok to TAKZE selekcja (element GPZ), wiec otwiera panele
       // elementu — na zrzucie „po rozwinieciu" chcemy zobaczyc SCHEMAT, nie
-      // panele. Zdejmujemy selekcje realna sciezka uzytkownika (Escape).
+      // panele. Zdejmujemy selekcje realna sciezka uzytkownika (K11-A): jeden
+      // Escape zdejmuje selekcje (UI-02b: klik nie otwiera juz panelu szczegolow
+      // nad kanwa, wiec nie ma czego zamykac pierwszym Escape).
       await page.keyboard.press('Escape');
+      // Dowód zdjęcia selekcji: adres bez parametru zaznaczenia (`sel`). Panel
+      // prawy NIE jest tu sygnałem — stacja ma własną powierzchnię konfiguratora,
+      // która zostaje otwarta po odznaczeniu (inaczej niż karta selekcji transformatora).
+      await expect(page).not.toHaveURL(/[?&]sel=/, { timeout: 10000 });
       // Panele elementu gasna z animacja — czekamy, zeby zrzut pokazal SCHEMAT,
       // a nie klatke posrednia zanikania.
       await page.waitForTimeout(1200);

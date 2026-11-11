@@ -55,7 +55,7 @@ export interface ShortCircuitBranchFlowV1 {
 
 export interface ShortCircuitFlowOverlayInput {
   run_id: string;
-  /** Token rodzaju zwarcia wiersza kanonicznego („3F"/„2F"/„2F+Z"/„1F"). */
+  /** Token rodzaju zwarcia wiersza kanonicznego („3F"/„2F"/„2F+G"/„1F"). */
   fault_type: string | null;
   /** Ref elementu punktu zwarcia (element_id wiersza kanonicznego). */
   fault_element_ref: string;
@@ -67,7 +67,7 @@ export interface ShortCircuitFlowOverlayInput {
 export function faultTypeToOverlayAnalysisType(faultType: string | null): string {
   const token = (faultType ?? '').trim().toUpperCase().replace(/^SC_/, '');
   if (token === '1F') return 'SC_1F';
-  if (token === '2F' || token === '2F+Z') return 'SC_2F';
+  if (token === '2F' || token === '2F+G') return 'SC_2F';
   // „3F" oraz wiersze bez tokenu (defensywnie — wiersz kanoniczny niosący
   // rozpływ zawsze niesie fault_type) → typ trójfazowy rodziny SC.
   return 'SC_3F';

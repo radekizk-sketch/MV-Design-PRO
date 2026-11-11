@@ -29,10 +29,13 @@ wewnętrzne SLD stacji, LOD, widoki raportowe i testy wizualne.
 
 Źródła wdrożenia:
 
-- `frontend/src/ui/sld/v2/renderer/DeviceRenderer.tsx`
-- `frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx`
-- `frontend/src/ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx`
-- `frontend/src/ui/sld/v2/renderer/StationOnRunRenderer.tsx`
+- `frontend/src/ui/sld/v3/symbols/glyphs.tsx` (glify aparatów jedynego renderera `SldCanvasV3`)
+- `frontend/src/ui/sld/v3/compose/station.ts` (kompozycja pól stacji SN/nN)
+- `frontend/src/ui/sld/v3/compose/gpz.ts` (kompozycja rozdzielni GPZ)
+- `frontend/src/ui/sld/v2/station-rozdzielnia/GpzApparatusSymbols.tsx` (widok rozdzielni stacji)
+
+Dawne renderery v2 (`v2/renderer/**`) skasowane w karcie GPZ-PARYTET cz. 2 (2026-10-21) — nie miały
+konsumenta produkcyjnego.
 
 Testy muszą sprawdzać atrybuty `data-symbol-canon`:
 
@@ -261,4 +264,4 @@ DER badge color = akcent typu (PV=żółty, BESS=niebieski, FW=cyjan). NIE słu�
 
 ## 9. Phase 1 — co dochodzi
 
-Phase 0A dostarcza kontrakty i polityki. Phase 1 wprowadzi pełne renderery aparatury w `BayRenderer`, drugi rząd nN w `MiniBlockRmuRenderer.detail`, oraz aparaty z stanem ApparatusVisualState w GpzSwitchgearRenderer dla LOD 2+.
+Phase 0A dostarczyła kontrakty i polityki. Plan Phase 1 dla rendererów v2 (`BayRenderer`, `MiniBlockRmuRenderer`, `GpzSwitchgearRenderer`) jest nieaktualny: renderery skasowane w karcie GPZ-PARYTET cz. 2 (2026-10-21); aparaty ze stanem z modelu rysuje `SldCanvasV3` (`v3/compose/station.ts`, `v3/compose/gpz.ts`, stan z `v2/model/stanAparatowPola.ts`).

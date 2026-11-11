@@ -1,6 +1,7 @@
 import { clsx } from 'clsx';
 import { useAppStateStore } from '../../app-state/store';
 import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
+import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 
 function resultLabel(status: string): string {
   if (status === 'FRESH') return 'Wyniki aktualne';
@@ -8,17 +9,17 @@ function resultLabel(status: string): string {
   return 'Wyniki do obliczenia';
 }
 
-function resultScopeLabel(activeRunId: string | null, status: string): string {
-  if (activeRunId && status === 'FRESH') return 'Aktywne wyniki obliczeń';
-  if (activeRunId) return 'Wynik wybrany do analizy';
+function resultScopeLabel(runIdOgladany: string | null, status: string): string {
+  if (runIdOgladany && status === 'FRESH') return 'Aktywne wyniki obliczeń';
+  if (runIdOgladany) return 'Wynik wybrany do analizy';
   return 'Nie wybrano wyniku';
 }
 
 export function WynikiContextPanel() {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
   const setActiveWorkMode = useAppStateStore((s) => s.setActiveWorkMode);
-  const hasResults = resultStatus === 'FRESH' || Boolean(activeRunId);
+  const hasResults = resultStatus === 'FRESH' || Boolean(runIdOgladany);
 
   return (
     <div
@@ -44,7 +45,7 @@ export function WynikiContextPanel() {
         <div data-testid="wyniki-active-run">
           <span className="text-scada-muted">Zakres wyników: </span>
           <span data-testid="wyniki-active-run-label" className="font-semibold">
-            {resultScopeLabel(activeRunId, resultStatus)}
+            {resultScopeLabel(runIdOgladany, resultStatus)}
           </span>
         </div>
       </div>

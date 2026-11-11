@@ -16,7 +16,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useResultsInspectorStore } from '../store';
-import { useSelectionStore } from '../../selection/store';
+import { useCanEdit, useIsMutationBlocked, useSelectionStore } from '../../selection/store';
 import type { ResultsInspectorTab, BusResultRow, BranchResultRow } from '../types';
 import {
   RESULTS_TAB_LABELS,
@@ -148,10 +148,7 @@ describe('RESULT_VIEW Mode Gating', () => {
 
   describe('Selection Store Mode Hooks', () => {
     it('useCanEdit returns false in RESULT_VIEW', () => {
-      const { result } = renderHook(() => {
-        const canEdit = useSelectionStore((s) => s.mode === 'MODEL_EDIT');
-        return canEdit;
-      });
+      const { result } = renderHook(() => useCanEdit());
 
       expect(result.current).toBe(true); // MODEL_EDIT initially
 
@@ -160,16 +157,13 @@ describe('RESULT_VIEW Mode Gating', () => {
       });
 
       // Re-render hook
-      const { result: result2 } = renderHook(() =>
-        useSelectionStore((s) => s.mode === 'MODEL_EDIT')
-      );
+      const { result: result2 } = renderHook(() => useCanEdit());
       expect(result2.current).toBe(false);
     });
 
     it('useIsMutationBlocked returns true in RESULT_VIEW', () => {
-      const { result } = renderHook(() =>
-        useSelectionStore((s) => s.mode === 'RESULT_VIEW' || s.mode === 'CASE_CONFIG')
-      );
+      // Realny hook (dawniej kopia predykatu z nieistniejącym już trybem CASE_CONFIG).
+      const { result } = renderHook(() => useIsMutationBlocked());
 
       expect(result.current).toBe(false); // MODEL_EDIT initially
 
@@ -177,9 +171,7 @@ describe('RESULT_VIEW Mode Gating', () => {
         useSelectionStore.getState().setMode('RESULT_VIEW');
       });
 
-      const { result: result2 } = renderHook(() =>
-        useSelectionStore((s) => s.mode === 'RESULT_VIEW' || s.mode === 'CASE_CONFIG')
-      );
+      const { result: result2 } = renderHook(() => useIsMutationBlocked());
       expect(result2.current).toBe(true);
     });
 

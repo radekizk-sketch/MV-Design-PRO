@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * D2 (RECENZJA_DER_SN_DOBORY_2026-07): testy modelu DOBORU kreatora — budowa zapytania,
  * payload z propozycji, ostrzeżenia odstępstwa, komunikaty ❌ z backendu.

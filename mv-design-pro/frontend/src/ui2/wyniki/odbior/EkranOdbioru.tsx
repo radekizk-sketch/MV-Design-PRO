@@ -16,11 +16,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './odbior.css';
-import type { AdvancementMode } from '../../shell/modeModel';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { EkranAnalizy, InformacjeAudytowe, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
-import { przebiegRozplywu } from '../jakosc';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchZaciskiGalezi,
@@ -57,6 +54,7 @@ import {
 } from './strings';
 import { PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 const WIELKOSCI: readonly WielkoscPomiaru[] = ['U', 'P', 'Q'];
 
@@ -132,10 +130,10 @@ function wartoscZJedn(v: number | null, jednostka: string, format: (n: number) =
 
 function SzczegolWiersza({
   wiersz,
-  trybZaawansowania,
+  szczegolyAudytowe,
 }: {
   wiersz: WierszZgodnosci | null;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }) {
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const nazwaObiektu = useNazwaObiektu();
@@ -149,7 +147,6 @@ function SzczegolWiersza({
       </section>
     );
   }
-  const trybEkspercki = trybZaawansowania === 'expert';
   const odchylkaPct =
     wiersz.odchylka_pct === null
       ? ODBIOR_STRINGS.kreska
@@ -191,7 +188,7 @@ function SzczegolWiersza({
         </div>
       </dl>
 
-      {trybEkspercki && wiersz.slad_pl.length > 0 && (
+      {szczegolyAudytowe && wiersz.slad_pl.length > 0 && (
         <div className="mvd-odbior-slad-blok">
           <button
             type="button"
@@ -228,12 +225,12 @@ function SzczegolWiersza({
 function WynikZgodnosci({
   dane,
   runId,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokZgodnosci;
   runId: string;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
   const [wybrany, setWybrany] = useState<string | null>(null);
@@ -271,7 +268,7 @@ function WynikZgodnosci({
         // K3/C1: 2× klik na wartości z modelu → dowód przebiegu rozpływu
         // (ref = element_ref z kontraktu; odbiorca: zakładka „Dowód obliczeń").
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_WIERSZA_ZGODNOSCI}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
@@ -311,10 +308,10 @@ function WynikZgodnosci({
         <span className="mvd-num">{najwieksza}</span>
       </p>
 
-      <SzczegolWiersza wiersz={wybranyWiersz} trybZaawansowania={trybZaawansowania} />
+      <SzczegolWiersza wiersz={wybranyWiersz} szczegolyAudytowe={szczegolyAudytowe} />
 
       <InformacjeAudytowe
-        trybEkspercki={trybZaawansowania === 'expert'}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-odbior-eksp"
         wiersze={[{ etykieta: ODBIOR_STRINGS.ekspHash, wartosc: dane.input_hash }]}
       />
@@ -635,16 +632,15 @@ function Formularz({
 // ---------------------------------------------------------------------------
 
 export interface EkranOdbioruProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Dowód WHITE BOX (K3/C1): 2× klik na wartości z modelu — jak w siostrzanych
    * ekranach wyników; odbiorcę (zakładka „Dowód obliczeń") wpina warsztat. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+export function EkranOdbioru({ szczegolyAudytowe, onOtworzDowod }: EkranOdbioruProps) {
+  // Karta K8: bieg z magazynu kontekstu wyniku (aktywny bieg rodziny) — jedna prawda wyboru.
+  const przebieg = useAktywnyBieg('rozplyw');
   // K6 / H-5: zgodność powykonawcza porównuje pomiary z wynikiem rozpływu —
   // stan zerowy uruchamia brakujący przebieg zamiast tylko o nim informować.
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
@@ -741,7 +737,6 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
     );
   }
 
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   return (
     <div className="mvd-odbior" data-testid="mvd-odbior-ekran">
@@ -752,7 +747,7 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
 
       {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-odbior-przebieg-informacje-audytowe"
         wiersze={[{ etykieta: ODBIOR_STRINGS.przebiegRunId, wartosc: przebieg.id }]}
       />
@@ -823,7 +818,7 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
         <WynikZgodnosci
           dane={stan.dane}
           runId={przebieg.id}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           onOtworzDowod={onOtworzDowod}
         />
       )}

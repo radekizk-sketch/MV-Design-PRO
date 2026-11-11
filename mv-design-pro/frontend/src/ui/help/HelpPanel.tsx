@@ -26,7 +26,6 @@ const CATEGORY_LABELS: Record<KeyboardCategory, string> = {
   NAWIGACJA: 'Nawigacja',
   EDYCJA_MODELU: 'Edycja modelu',
   WIDOKI: 'Widoki',
-  ANALIZA: 'Analiza',
   NARZEDZIA: 'Narzędzia',
 };
 
@@ -134,7 +133,6 @@ export function HelpPanel({ isOpen, onClose, initialTab = 'docs' }: HelpPanelPro
       NAWIGACJA: [],
       EDYCJA_MODELU: [],
       WIDOKI: [],
-      ANALIZA: [],
       NARZEDZIA: [],
     };
     for (const shortcut of KEYBOARD_SHORTCUTS) {

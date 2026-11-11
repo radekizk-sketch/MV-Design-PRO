@@ -60,8 +60,6 @@ def _build_radial_with_segments(segment_count: int) -> dict:
                 "sk3_mva": 500.0,
                 "rx_ratio": 0.1,
                 "catalog_ref": "src-gpz-15kv-500mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         ),
         "add_grid_source_sn",
@@ -99,7 +97,11 @@ def test_topology_radial_10_stations_deterministic() -> None:
         sn_buses = [bus for bus in enm["buses"] if bus.get("voltage_kv") == 15.0]
         wn_buses = [bus for bus in enm["buses"] if bus.get("voltage_kv") == 110.0]
         assert len(sn_buses) == 11
-        assert len(wn_buses) == 1
+        # Karta GPZ-MODEL: równoważnik sieci na szynach SN to granica zasilania — GPZ
+        # nie ma wtedy transformatorów 110/SN ani szyn 110 kV (dawniej powstawała
+        # martwa szyna pomocnicza 110 kV bez źródła, rysowana jak tor zasilania).
+        assert wn_buses == []
+        assert enm["transformers"] == []
 
     assert hash_runs[0] == hash_runs[1] == hash_runs[2]
 

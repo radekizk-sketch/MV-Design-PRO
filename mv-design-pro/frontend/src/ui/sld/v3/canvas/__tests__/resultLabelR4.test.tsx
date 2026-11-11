@@ -34,6 +34,7 @@ import {
 } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import type { SldV3Overlay } from '../overlay';
+import { wyczyscRejestrBiegow, zasiejBiegiNieaktualne } from '../../../../../test/biegNieaktualny';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -78,6 +79,7 @@ beforeEach(() => {
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   useSnapshotStore.getState().reset();
+  wyczyscRejestrBiegow();
   useSelectionStore.getState().clearSelection();
   useRawResultOverlayStore.getState().clear();
   useOverlayStore.getState().clearOverlay();
@@ -125,7 +127,8 @@ describe('R4 — tryb porównawczy: bramkowanie dostępności (wym. 10)', () => 
   it('wyniki OUTDATED ⇒ tryb zablokowany z wyjaśnieniem (zero mylących delt)', () => {
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(68.0, 'r1'));
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(72.5, 'r2'));
-    useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
+    // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
+    zasiejBiegiNieaktualne([{ id: 'r2', analysisType: 'LOAD_FLOW' }]);
     render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
     openFilterPanel();
     expect(screen.getByTestId('sld-v3-result-comparison').getAttribute('data-comparison-available')).toBe('false');

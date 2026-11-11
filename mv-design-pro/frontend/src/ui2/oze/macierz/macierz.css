@@ -84,23 +84,6 @@
   word-break: break-all;
 }
 
-.mvd-btn {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  padding: 6px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-}
-.mvd-btn:hover:not(:disabled) {
-  border-color: var(--mvd-accent);
-}
-.mvd-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 .mvd-btn-glowny {
   background: var(--mvd-accent);
   color: var(--mvd-accent-ink);

@@ -220,7 +220,7 @@ def test_field_apparatus_selects_smallest_meeting_current() -> None:
     result = propose_mv_field_apparatus(
         FieldApparatusSelectionInput(
             transformer_current_a=100.0,
-            system_voltage_kv=12.0,
+            system_voltage_kv=10.0,
             candidates=_field_candidates(),
         )
     )
@@ -235,7 +235,7 @@ def test_field_apparatus_too_weak_proposes_stronger() -> None:
     result = propose_mv_field_apparatus(
         FieldApparatusSelectionInput(
             transformer_current_a=700.0,
-            system_voltage_kv=12.0,
+            system_voltage_kv=10.0,
             candidates=_field_candidates(),
         )
     )
@@ -258,6 +258,39 @@ def test_field_apparatus_voltage_too_low_rejected() -> None:
     assert result.error_code == "converter.der_sn.dobor_pole_brak_kandydata"
     reason_codes = {r.reason_code for r in result.rejected}
     assert "napiecie_aparatu_za_niskie" in reason_codes
+
+
+@pytest.mark.parametrize(
+    ("system_voltage_kv", "un_kv", "przyjety"),
+    [
+        (10.0, 12.0, True),  # U_s(10 kV) = 12 kV — brzeg równości dopuszczony
+        (15.0, 12.0, False),
+        (15.0, 15.0, False),  # U_r = U_n sieci nie pokrywa U_s = 17,5 kV (IEC 60038)
+        (15.0, 17.5, True),
+        (20.0, 17.5, False),
+        (20.0, 24.0, True),
+        (30.0, 24.0, False),
+        (30.0, 36.0, True),
+    ],
+)
+def test_napiecie_aparatu_pola_wobec_napiecia_najwyzszego_sieci(
+    system_voltage_kv: float, un_kv: float, przyjety: bool
+) -> None:
+    """Kryterium napięcia doboru: U_r aparatu ≥ U_s sieci (ten sam predykat co odmowa poziomu
+    izolacji operacji modelu), nie U_r ≥ U_n."""
+    result = propose_mv_field_apparatus(
+        FieldApparatusSelectionInput(
+            transformer_current_a=100.0,
+            system_voltage_kv=system_voltage_kv,
+            candidates=(
+                FieldApparatusCandidate("cb", "Wyłącznik", "CIRCUIT_BREAKER", un_kv, 630.0, 20.0),
+            ),
+        )
+    )
+    assert (result.proposal is not None) is przyjety
+    if not przyjety:
+        assert [r.reason_code for r in result.rejected] == ["napiecie_aparatu_za_niskie"]
+        assert "U_s" in result.rejected[0].reason_pl
 
 
 # ---------------------------------------------------------------------------

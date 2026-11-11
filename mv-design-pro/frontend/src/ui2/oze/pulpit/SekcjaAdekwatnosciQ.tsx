@@ -6,13 +6,13 @@
  * werdykty pochodzą wyłącznie z backendu. Brak przebiegu → jawna instrukcja.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useState } from 'react';
 
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
 import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { SladAnalizy } from './SladAnalizy';
-import { busRefModuluQ, wybierzPrzebiegRozplywu } from './pulpitModel';
+import { busRefModuluQ } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
   BRAKI_DANYCH_Q,
@@ -22,10 +22,11 @@ import {
   PULPIT_STRINGS,
   WERDYKTY_ADEKWATNOSCI_Q,
 } from './strings';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 export interface SekcjaAdekwatnosciQProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   /** Referencja wyróżnionego modułu (klik w pulpicie); `null` → brak wyróżnienia. */
   readonly wyroznionyModul?: string | null;
 }
@@ -85,7 +86,7 @@ function WpisZrodla({
       {wpis.missing_data.length > 0 ? (
         <div className="mvd-oze-metryka">
           <span>{PULPIT_STRINGS.adekwBrakDanych}</span>
-          <span>{wpis.missing_data.map((kod) => BRAKI_DANYCH_Q[kod]).join('; ')}</span>
+          <span><TekstZWzorami tekst={wpis.missing_data.map((kod) => BRAKI_DANYCH_Q[kod]).join('; ')} /></span>
         </div>
       ) : null}
       {wpis.white_box.length > 0 ? (
@@ -107,12 +108,11 @@ function WpisZrodla({
 }
 
 export function SekcjaAdekwatnosciQ({
-  trybEkspercki,
+  szczegolyAudytowe,
   wyroznionyModul = null,
 }: SekcjaAdekwatnosciQProps): JSX.Element {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = wybierzPrzebiegRozplywu(runs, activeRunId);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
   const stan = useAnaliza(runId, pobierzAdekwatnoscQ);
   const nazwaObiektu = useNazwaObiektu();
 
@@ -247,7 +247,7 @@ export function SekcjaAdekwatnosciQ({
 
           {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-adekw-analiza-id"
             wiersze={[{ etykieta: PULPIT_STRINGS.identyfikatorAnalizy, wartosc: stan.dane.analysis_id }]}
           />

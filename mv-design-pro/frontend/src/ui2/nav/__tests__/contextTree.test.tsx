@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ContextTree } from '../ContextTree';
@@ -11,7 +12,6 @@ function wezel(overrides: Partial<WezelDrzewa> & { id: string; etykietaPL: strin
     ikona: 'stacja',
     liczniki: { blokady: 0, ostrzezenia: 0 },
     dzieci: [],
-    trybMin: 'basic',
     ...overrides,
   };
 }
@@ -23,7 +23,7 @@ function drzewoFixture(): WezelDrzewa[] {
       etykietaPL: 'Alfa',
       dzieci: [
         wezel({ id: 'a1', etykietaPL: 'Alfa-jeden', liczniki: { blokady: 1, ostrzezenia: 0 } }),
-        wezel({ id: 'a2', etykietaPL: 'Alfa-dwa', trybMin: 'expert' }),
+        wezel({ id: 'a2', etykietaPL: 'Alfa-dwa' }),
       ],
     }),
     wezel({ id: 'b', etykietaPL: 'Beta', liczniki: { blokady: 0, ostrzezenia: 2 } }),
@@ -252,8 +252,11 @@ describe('ContextTree — liczniki problemów i filtr', () => {
   });
 });
 
-describe('ContextTree — tryb zaawansowania i tryb drzewa topologii', () => {
-  it('węzeł o trybMin wyższym niż trybAktualny jest ukryty', () => {
+describe('ContextTree — tryb drzewa topologii', () => {
+  // Karta K1 POWLOKA: drzewo nie ma już filtra trybu zaawansowania — każdy
+  // węzeł jest widoczny po rozwinięciu rodzica.
+  it('po rozwinięciu rodzica widoczne są wszystkie jego węzły', async () => {
+    const user = userEvent.setup();
     render(
       <ContextTree
         wezly={drzewoFixture()}
@@ -261,12 +264,11 @@ describe('ContextTree — tryb zaawansowania i tryb drzewa topologii', () => {
         onZaznacz={noop}
         onOtworz={noop}
         filtrProblemy={false}
-        trybAktualny="basic"
       />,
     );
-    fireEvent.click(screen.getByTestId('mvd-tree-chevron-a'));
-    expect(screen.queryByTestId('mvd-tree-row-a2')).toBeNull();
+    await user.click(screen.getByTestId('mvd-tree-chevron-a'));
     expect(screen.getByTestId('mvd-tree-row-a1')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-tree-row-a2')).toBeInTheDocument();
   });
 
   it('selektor trybu drzewa renderuje się tylko gdy podano `tryb` i wywołuje onZmienTryb', () => {

@@ -20,3 +20,20 @@
 .mvd-wyniki-zakladka.mvd-on { color: var(--mvd-accent); border-bottom-color: var(--mvd-accent); font-weight: 600; }
 .mvd-wyniki-tresc { flex: 1 1 auto; min-height: 0; min-width: 0; overflow: auto; }
 .mvd-wyniki-pusty { color: var(--mvd-muted); padding: 24px; text-align: center; }
+/* Karta K8: pas kontekstu biegu zakładki (aktywny bieg rodziny + różnica ze schematem). */
+.mvd-wyniki-kontekst {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+  font-size: var(--mvd-font-size-data);
+}
+.mvd-wyniki-kontekst-roznica {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mvd-warn-ink);
+}

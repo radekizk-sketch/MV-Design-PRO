@@ -100,8 +100,6 @@ async function przygotujKontekst(request: APIRequestContext): Promise<Kontekst> 
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [300, 250].entries()) {
@@ -160,7 +158,6 @@ async function otworzAplikacje(page: Page, kontekst: Kontekst, hash: string): Pr
           activeCaseResultStatus: 'FRESH',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: dane.runId,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,

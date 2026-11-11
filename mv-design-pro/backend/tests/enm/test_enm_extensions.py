@@ -162,18 +162,19 @@ class TestCorridor:
             ordered_segment_refs=["line_1", "line_2", "line_3"],
         )
         assert corr.corridor_type == "radial"
-        assert corr.no_point_ref is None
 
     def test_create_ring(self):
+        # W5-C: punkt podziału NIE jest polem magistrali (dawne `no_point_ref`) — to
+        # pozycja normalna łącznika (`SwitchBranch.normal_state`), wyprowadzana
+        # akcesorem `enm.topology.punkty_podzialu_korytarza`.
         corr = Corridor(
             ref_id="corr_b",
             name="Magistrala B",
             corridor_type="ring",
             ordered_segment_refs=["line_4", "line_5"],
-            no_point_ref="junc_no",
         )
         assert corr.corridor_type == "ring"
-        assert corr.no_point_ref == "junc_no"
+        assert "no_point_ref" not in Corridor.model_fields
 
 
 # ============================================================================
@@ -462,26 +463,23 @@ class TestValidatorTopologyEntities:
         codes = [i.code for i in result.issues]
         assert "I003" in codes
 
-    def test_i003_accepts_canonical_field_specs_without_legacy_bays(self):
+    def test_i003_accepts_station_with_field_record(self):
+        """Intencja (przepisana w W5-B): stacja z polem nie dostaje I003 — pole jest rekordem
+        `bays` (jedyny nośnik), dawniej wpisem dawny słownik pól SN w `meta` stacji przy pustym `bays`.
+        """
         enm = _base_enm()
         enm.substations = [
-            Substation(
-                ref_id="sub_1",
-                name="S1",
-                station_type="gpz",
-                bus_refs=["bus_sn_a"],
-                meta={
-                    "field_specs": [
-                        {
-                            "field_ref": "sub_1/bay/out",
-                            "bay_role": "OUT",
-                            "bus_ref": "bus_sn_a",
-                        }
-                    ]
-                },
-            ),
+            Substation(ref_id="sub_1", name="S1", station_type="gpz", bus_refs=["bus_sn_a"]),
         ]
-        enm.bays = []
+        enm.bays = [
+            Bay(
+                ref_id="sub_1/bay/out",
+                name="Pole liniowe wyjściowe",
+                bay_role="OUT",
+                substation_ref="sub_1",
+                bus_ref="bus_sn_a",
+            )
+        ]
 
         result = ENMValidator().validate(enm)
         codes = [i.code for i in result.issues]

@@ -14,7 +14,6 @@
 
 import { useMemo, useState } from 'react';
 import './zwarcia.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { useOtworzKonfiguracjeStacji, useZmienWartoscAparatu, WeryfikacjaAparatury } from './aparatura';
@@ -23,6 +22,7 @@ import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { SladPodzialuPradu } from './SladPodzialuPradu';
+import { SladSieciZerowej } from './SladSieciZerowej';
 import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
@@ -41,7 +41,7 @@ import {
 } from './zwarciaModel';
 
 export interface EkranZwarcProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
   /**
@@ -54,7 +54,7 @@ export interface EkranZwarcProps {
 }
 
 export function EkranZwarc({
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
   onEksport,
   wklady,
@@ -94,10 +94,15 @@ export function EkranZwarc({
   // obok tabeli biegu przez Z_f.
   // Karta WSPÓŁCZYNNIK-C: wkłady liczone ze scenariuszem i nadpisaniem c TEGO biegu
   // (końcówka dobiera c z tabeli 1 dla pasma węzła; bez scenariusza odmawia 422).
-  const wkladyPobrane = useWkladyZwarciowe(
+  const stanWkladow = useWkladyZwarciowe(
     wklady ? null : aktywnyPunkt,
     parametryWkladowZKonfiguracji(wynik?.konfiguracja_biegu),
   );
+  const wkladyPobrane = stanWkladow.odczyt === 'gotowe' ? stanWkladow.dane : null;
+  // Wkłady z props (testy/nadpisanie) są gotowe z definicji; od dostawcy —
+  // `wczytywanie`/`blad` przechodzą do sekcji jako stan odczytu (≠ brak danych).
+  const odczytWkladow =
+    wklady || stanWkladow.odczyt === 'niezlecony' ? 'gotowe' : stanWkladow.odczyt;
 
   // V12K-281 (K13): rozpływ gałęziowy wybranego punktu NA ŻĄDANIE — wiersze
   // zbiorcze nie niosą już rozpływu (odpowiedź 730 MB dla 50 stacji); dane
@@ -121,16 +126,16 @@ export function EkranZwarc({
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0];
   const nazwaAktywnego = nazwaPunktuZwarcia(wierszAktywny, nazwaObiektu);
   const wkladyAktywne =
-    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane.dane?.wklady ?? null;
+    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane?.wklady ?? null;
   // Wywod {tekst, latex} z backendu (zasada KaTeX) — tylko od realnego dostawcy;
   // przy wkladach z props (testy/nadpisanie) wywodu brak (zero fabrykacji).
-  const wywodWkladow = wklady ? [] : wkladyPobrane.dane?.wywod ?? [];
+  const wywodWkladow = wklady ? [] : wkladyPobrane?.wywod ?? [];
   // ZWARCIA-PRO F3: wywod sekcyjny + checklista walidacji IEC (addytywne pola
   // odpowiedzi contributions) — takze wylacznie od realnego dostawcy.
-  const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane.dane?.wywodSekcje ?? [];
-  const walidacjaIecWkladow = wklady ? [] : wkladyPobrane.dane?.walidacjaIec ?? [];
+  const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane?.wywodSekcje ?? [];
+  const walidacjaIecWkladow = wklady ? [] : wkladyPobrane?.walidacjaIec ?? [];
   // Partia 2 (zasada nr 4): dane przyjęte wkładów — wyłącznie od realnego dostawcy, jak wywód.
-  const danePrzyjeteWkladow = wklady ? null : wkladyPobrane.dane?.danePrzyjete ?? null;
+  const danePrzyjeteWkladow = wklady ? null : wkladyPobrane?.danePrzyjete ?? null;
 
   return (
     <div data-testid="mvd-zwarcia-ekran">
@@ -147,7 +152,7 @@ export function EkranZwarc({
         wykres={<WykresZwarc rows={rows} />}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_PUNKT}
         onWybierzWiersz={setWybranyPunkt}
         wybranyWiersz={aktywnyPunkt}
@@ -179,14 +184,22 @@ export function EkranZwarc({
           renderuje się wyżej, obok tabeli głównej, przed sekcjami per-punkt. */}
       <SladZrodelSieciowych
         zrodlaSieciowe={wynik.zrodla_sieciowe}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
+      />
+
+      {/* Ślad budowy sieci składowej zerowej — właściwość CAŁEGO biegu 1F/2F+G (jak ślad Z_Q):
+          z tej macierzy pochodzi Z0 każdego punktu zwarcia. */}
+      <SladSieciZerowej
+        siecZerowa={wynik.siec_zerowa}
+        rodzajZwarcia={rows[0].fault_type}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       {/* Karta W3-G3 (aneks D7): pasmo MIN/MAX — właściwość CAŁEGO biegu (jak
           ślad Z_Q wyżej), oba scenariusze c_max/c_min JEDNEGO przypadku obok
           siebie, z proweniencją każdej strony. */}
-      <PasmoMinMax runId={runId} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
+      <PasmoMinMax runId={runId} szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={onOtworzDowod} />
 
       {/* Karta TB-WARTOSC-ROBOCZA: „Zmień wartość" t_b roboczego → edycja t_b scenariusza
           zwarciowego TEGO biegu (albo nowy scenariusz z polem t_b dla biegu przypadku). */}
@@ -211,10 +224,9 @@ export function EkranZwarc({
         flows={rozplyw.flows}
         pominiete={rozplyw.pominiete}
         progA={rozplyw.progA}
-        blad={rozplyw.blad}
-        ladowanie={rozplyw.ladowanie}
+        odczyt={rozplyw.odczyt}
         danePrzyjete={rozplyw.danePrzyjete}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
 
@@ -223,21 +235,19 @@ export function EkranZwarc({
       <SladPodzialuPradu
         punktNazwa={nazwaAktywnego}
         trace={rozplyw.trace}
-        blad={rozplyw.blad}
-        ladowanie={rozplyw.ladowanie}
-        trybZaawansowania={trybZaawansowania}
+        odczyt={rozplyw.odczyt}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}
         wklady={wkladyAktywne}
-        blad={!wklady && wkladyPobrane.blad}
-        ladowanie={!wklady && wkladyPobrane.ladowanie}
+        odczyt={odczytWkladow}
         wywod={wywodWkladow}
         wywodSekcje={wywodSekcjeWkladow}
         walidacjaIec={walidacjaIecWkladow}
         danePrzyjete={danePrzyjeteWkladow}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
     </div>

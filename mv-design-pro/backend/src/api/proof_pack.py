@@ -18,6 +18,7 @@ from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FPro
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from enm.assembler import impedancja_zwarcia_z_opcji
 from enm.maszyny_robocze import parametry_robocze_maszyn_punktu
+from enm.slownik_komunikatow import opis_bledu_walidacji
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.wartosci_robocze import (
@@ -554,7 +555,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
+            detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {opis_bledu_walidacji(exc)}.",
         ) from exc
     try:
         # Graf solvera i c punktu z assemblera biegu (tożsamość punktu: ref ENM szyny
@@ -687,7 +688,7 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
     except ValidationError as exc:  # migawka z żądania — jak wyżej
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {exc}",
+            detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {opis_bledu_walidacji(exc)}.",
         ) from exc
     try:
         content = SC3FProofPack.generate_zip(pack_input, context)

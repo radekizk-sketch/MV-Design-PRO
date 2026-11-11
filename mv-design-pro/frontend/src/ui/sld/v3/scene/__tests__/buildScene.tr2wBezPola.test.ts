@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * TR2W-BEZ-POLA — transformator stacji SN/nN rysowany TAKŻE bez jawnego pola
  * roli TR (karta naprawcza; `REJESTR_KONFLIKTOW.md`, wiersz BUGI-PRODUKTU-E2E).
@@ -87,7 +88,7 @@ function stationOf(enm: EnergyNetworkModel): Record<string, any> {
 }
 
 /**
- * Usuwa JAWNE pole roli TR ze specyfikacji pól stacji — dokładnie ten kształt
+ * Usuwa JAWNE pole roli TR z rekordów pól stacji (`bays`) — dokładnie ten kształt
  * danych, który produkuje `insert_station_on_segment_sn` z
  * `sn_fields:['IN','OUT','FEEDER']` + `transformer:{create:true}`: rekord
  * `Transformer` zostaje (model liczy), pola transformatorowego nie ma.
@@ -96,15 +97,13 @@ function stationOf(enm: EnergyNetworkModel): Record<string, any> {
 function bezPolaTr(enm: EnergyNetworkModel): EnergyNetworkModel {
   const out = clone(enm);
   const station = stationOf(out);
-  const specs: Record<string, any>[] = station.meta.field_specs;
-  const trSpec = specs.find((s) => s.bay_role === 'TR');
+  const trSpec = (out.bays ?? []).find((b) => b.substation_ref === station.ref_id && b.bay_role === 'TR');
   if (!trSpec) throw new Error('fixtura wejściowa nie ma pola roli TR');
   const usunieteAparaty = new Set<string>(
-    (trSpec.equipment_refs as string[]).filter((ref) => !ref.endsWith('/transformer')),
+    trSpec.equipment_refs.filter((ref) => !ref.endsWith('/transformer')),
   );
-  station.meta.field_specs = specs.filter((s) => s.bay_role !== 'TR');
   (out as any).branches = (out.branches ?? []).filter((b) => !usunieteAparaty.has(b.ref_id));
-  (out as any).bays = (out.bays ?? []).filter((b) => !usunieteAparaty.has(b.ref_id));
+  (out as any).bays = (out.bays ?? []).filter((b) => b.ref_id !== trSpec.ref_id && !usunieteAparaty.has(b.ref_id));
   return out;
 }
 
@@ -246,9 +245,44 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // w miejsce wariantów „15.0 kV"). DOWÓD: sonda geometrii (symbole: rodzaj + x + y,
   // trasy: punkty) daje TE SAME skróty dla starej i nowej fikstury na L1 i L2 — rysunek
   // stacji z polem TR nie przesunął się ani o jednostkę; różnią się tylko napisy GPZ.
+  // AKTUALIZACJA ŚWIADOMA (GPZ-PARYTET, 2026-10-21): belka nagłówka GPZ ma cztery wiersze
+  // (nazwa, bilans zasilania, bilans odpływów, alarmy), a pod nią tabela „Pola GPZ"
+  // (karty pól łamane w szerokości treści — szerokość ramy GPZ bez zmian, 512). Rama
+  // rośnie WYŁĄCZNIE w pionie (552 → 752 na tej fiksturze), więc świat sieci przesuwa
+  // się w dół. DOWÓD: sonda (symbole: rodzaj + ownerRef + x + y, trasy: punkty,
+  // etykiety: tekst + x + y) poza GPZ, stan przed kartą (8cc1f5af) vs po niej — te same
+  // elementy w tej samej kolejności, KAŻDY przesunięty o jednakowy wektor (0, +200) na
+  // L1 i L2; rysunek stacji z polem TR nie zmienił się względnie ani o jednostkę.
+  // AKTUALIZACJA ŚWIADOMA (GEOMETRIA-STACJI §0 pkt 4, 2026-10-21): aparat pola WYŁĄCZNIE
+  // z rekordu modelu. Fikstura (migawka z operacji) niesie w każdym polu SN stacji tylko
+  // gałąź wyłącznika (`equipment_refs`), bez `primary_devices`, a pole GPZ — żadnego rekordu.
+  // DOWÓD (sonda pól L1/L2: symbole wg pola, stan sprzed karty na drzewie HEAD vs po niej):
+  // pola liniowe [rozłącznik, głowica, uziemnik] → [wyłącznik], pole pomiarowe
+  // [odłącznik, przekładnik napięciowy, uziemnik] → [wyłącznik], pole TR [bezpiecznik,
+  // transformator, uziemnik] → [wyłącznik, transformator]; scena 33 → 11 symboli,
+  // 27 → 20 tras, ramka 1296×886 → 1176×742 (krótsze stosy pól i tor TR GPZ bez rekordów).
+  // Kotwica topologiczna kolumny TR (temat tego pliku) — testy T2/T4–T8 bez zmian.
+  // AKTUALIZACJA ŚWIADOMA (GPZ-MODEL, 2026-10-22, na bazie GEOMETRIA-STACJI): fikstura z API
+  // dostaje GPZ z równoważnikiem sieci 110 kV i transformatorem WN/SN (tryb A,
+  // `b.gpz_110kv(1)` w `fikstury_enm_sld.py`) zamiast fikcji „równoważnik na szynach SN + TR
+  // obok"; ziarno GPZ obejmuje ładunek operacji, więc wszystkie ref-y są nowe. DOWÓD 2×2
+  // (sonda: symbole rodzaj + x + y, odcinki punkty, etykiety tekst + x + y):
+  //  · KOD karty na fiksturze bazy `f7235700e`: jedyna różnica wobec kodu bazy to prawy
+  //    koniec szyny WN GPZ 160 → 200 — szyna WN mieści własny podpis „Szyna WN · 110 kV"
+  //    (`compose/gpz.ts`; bez tego glif źródła nad szyną WN zasłaniał podpis).
+  //  · DANE: źródło stoi nad szyną WN zamiast na prawym końcu szyny SN (podpis źródła
+  //    2 wiersze zamiast 3 — etykiet 21 → 20 na L1, 28 → 27 na L2), GPZ wyższy o 48;
+  //    rysunek POZA GPZ, unormowany do transformatora stacji, IDENTYCZNY na L1 i L2 (świat
+  //    przesunięty o jednakowy wektor (−32, +48)); różni się WYŁĄCZNIE początek kabla
+  //    GPZ→S01 (pole GPZ bliżej stacji o 32).
+  //  · KOD karty, drugi krok (podpis kabla GPZ→S0 odsuwany także od TUSZU etykiet GPZ,
+  //    `odsunPodpisOdElementowGpz`): sonda L2 przed/po tym kroku — symbole, odcinki i bbox
+  //    identyczne, etykiet 27 → 28: podpis kabla „GPZ ↔ S01 · YAKXS 3×120/16 · Un=20 kV ·
+  //    l = 40 m" (x 296, y 424), dotąd stawiany na etykiecie GPZ i zdejmowany declutterem
+  //    (najniższy priorytet `segment-span`), jest teraz narysowany. L1 bez zmian.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '701cd8675169e8ea5889f62da50b7502',
-    2: '47945575ff7bc3b586507f9a149ae008',
+    1: '8f135f305dd1d8a38421e664f4c320c8',
+    2: '6de64cfc159da38853215a96aaf0f5d0',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
@@ -260,15 +294,16 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
     });
   }
 
-  it('L2: aparatura pola TR (rozłącznik/uziemnik) NADAL na rysunku — nie zniknęła przy naprawie', () => {
+  // GEOMETRIA-STACJI (§0 pkt 4): aparatura pola TR to rekord modelu — w tej migawce gałąź
+  // wyłącznika pola (dawniej konwencja RMU: bezpiecznik + uziemnik, których model nie ma).
+  it('L2: aparatura pola TR z modelu (wyłącznik z gałęzi pola) i transformator NADAL na rysunku', () => {
     const scene = buildSceneV3(enmZPolem, 2);
-    const aparatyPolaTr = scene.symbols.filter(
-      (s) =>
-        (s.meta?.ownerRef ?? '').includes('/sn_field/')
-        && s.symbolId !== 'transformer2W'
-        && s.symbolId !== 'cableHead',
+    const poleTr = (enmZPolem.bays ?? []).find((b) => b.bay_role === 'TR' && b.ref_id.includes('/sn_field/'))!;
+    const symbolePolaTr = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id);
+    expect(symbolePolaTr.map((s) => s.symbolId).sort()).toEqual(['breaker', 'transformer2W']);
+    expect(symbolePolaTr.find((s) => s.symbolId === 'breaker')?.meta?.deviceRef).toBe(
+      poleTr.equipment_refs.find((ref) => (enmZPolem.branches ?? []).some((g) => g.ref_id === ref && g.type === 'breaker')),
     );
-    expect(aparatyPolaTr.length).toBeGreaterThan(0);
   });
 });
 
@@ -280,8 +315,8 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
   const enm = bezPolaTr(enmZPolem);
 
   it('dane wejściowe naprawdę nie mają pola roli TR (zapadka na fikstury)', () => {
-    const specs = stationOf(enm).meta.field_specs as Record<string, any>[];
-    expect(specs.some((s) => s.bay_role === 'TR')).toBe(false);
+    const stacja = stationOf(enm);
+    expect((enm.bays ?? []).some((b) => b.substation_ref === stacja.ref_id && b.bay_role === 'TR')).toBe(false);
     // …a transformator w modelu JEST (inaczej test nie ćwiczyłby niczego).
     expect((enm.transformers ?? []).some((t) => t.ref_id.includes('/transformer'))).toBe(true);
   });
@@ -431,8 +466,8 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
     expect(obszary.filter((a) => a.tytul != null).every((a) => a.tytul === LV_PORTAL_TITLE_TEXT)).toBe(true);
   });
 
-  // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (szuflada
-  // szczegółów rozwiązuje rekord `Transformer` wprost), a nie w „nic".
+  // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (inspektor
+  // obiektu kanwy rozwiązuje rekord `Transformer` wprost), a nie w „nic".
   it('L2: symbol niesie kategorię `transformer` i realny ownerRef — cel kliku istnieje', () => {
     const scene = buildSceneV3(enm, 2);
     const tr = transformatoryStacji(scene)[0];

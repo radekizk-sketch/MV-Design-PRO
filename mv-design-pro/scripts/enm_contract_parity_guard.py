@@ -133,7 +133,10 @@ SPRAWDZANE: dict[str, str] = {
     "Load": "Load",
     "Measurement": "Measurement",
     "MeasurementRating": "MeasurementRating",
+    # Karta W5-B: struktury typowane rekordu pola `Bay` (dawne klucze wpisu dawny słownik pól SN w `meta` stacji).
+    "MetadanePochodzeniaPola": "MetadanePochodzeniaPola",
     "ModeleWidmoweElementu": "ModeleWidmoweElementu",
+    "OgranicznikPrzepiecPola": "OgranicznikPrzepiecPola",
     "OverheadLine": "OverheadLine",
     "ParameterOverride": "ParameterOverride",
     "Port": "Port",
@@ -151,6 +154,12 @@ SPRAWDZANE: dict[str, str] = {
     "TapChanger": "TapChanger",
     "Transformer": "Transformer",
     "TrendState": "TrendState",
+    "WyborBlokuPola": "WyborBlokuPola",
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN i elementy punktu neutralnego.
+    "ZespolUziemiajacy": "ZespolUziemiajacy",
+    "DlawikGaszacy": "DlawikGaszacy",
+    "RezystorUziemiajacy": "RezystorUziemiajacy",
+    "RezystorWymuszajacyAwsc": "RezystorWymuszajacyAwsc",
 }
 
 # Interfejsy TS, z ktorych encje dziedzicza pola. `ENMElement` obowiazuje

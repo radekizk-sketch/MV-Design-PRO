@@ -15,6 +15,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { podpisStacjiPl } from '../../shared/rodzajStacji';
 import { FIELD_SOURCE_LABEL_PL, fieldLabelPluralPl } from '../../sld/v2/station-rozdzielnia/contract';
+import { polaNnStacji } from '../../shared/polaStacji';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
@@ -79,12 +80,10 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
 
   const nnBusRefs = useMemo(() => new Set(nnBuses.map((b) => b.ref_id)), [nnBuses]);
 
-  // Bays with OZE role
+  // Pola źródłowe nN stacji (rekordy `bays` na szynie nN, rola OZE — karta W5-B).
   const ozeBays = useMemo(
-    () => (snapshot?.bays ?? []).filter(
-      (b) => b.substation_ref === elementId && b.bay_role === 'OZE',
-    ),
-    [snapshot, elementId],
+    () => polaNnStacji(snapshot, station?.ref_id ?? elementId).filter((b) => b.bay_role === 'OZE'),
+    [snapshot, station, elementId],
   );
 
   // Loads connected to nN buses of this station

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnergyNetworkModelV2Projection } from '../../../types/enm';
@@ -45,6 +46,7 @@ const V2_PROJECTION_RESPONSE: EnergyNetworkModelV2Projection = {
         {
           device_ref: 'sw-1',
           state: 'closed',
+          normal_state: null,
           device_type: 'breaker',
         },
       ],

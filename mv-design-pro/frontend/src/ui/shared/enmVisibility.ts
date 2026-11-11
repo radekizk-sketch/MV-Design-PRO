@@ -58,6 +58,19 @@ export function isOperationalBus(bus: MinimalBusLike): boolean {
   return !isInlineHelperBus(bus);
 }
 
+/**
+ * Długość odcinka terenowego [km] z danych modelu (`length_km`, zapasowo
+ * `lengthKm`/`length` z dawnych migawek); brak, wartość nieskończona albo ≤ 0
+ * = `null` (brak danej, nie 0 km). JEDNO źródło dla predykatu odcinka
+ * terenowego i dla sumy długości w licznikach powłoki (predykaty parami —
+ * karta K1 POWLOKA): odcinek policzony zawsze ma długość wliczoną do sumy.
+ */
+export function terrainSegmentLengthKm(branch: MinimalBranchLike): number | null {
+  const rawLength = branch.length_km ?? branch.lengthKm ?? branch.length;
+  const lengthKm = typeof rawLength === 'number' ? rawLength : Number(rawLength);
+  return Number.isFinite(lengthKm) && lengthKm > 0 ? lengthKm : null;
+}
+
 export function isTerrainSnSegment(branch: MinimalBranchLike): boolean {
   const type = normalizeBusToken(branch.type);
   if (type !== 'cable' && type !== 'line_overhead') {
@@ -80,9 +93,7 @@ export function isTerrainSnSegment(branch: MinimalBranchLike): boolean {
     return false;
   }
 
-  const rawLength = branch.length_km ?? branch.lengthKm ?? branch.length;
-  const lengthKm = typeof rawLength === 'number' ? rawLength : Number(rawLength);
-  if (!Number.isFinite(lengthKm) || lengthKm <= 0) {
+  if (terrainSegmentLengthKm(branch) === null) {
     return false;
   }
 

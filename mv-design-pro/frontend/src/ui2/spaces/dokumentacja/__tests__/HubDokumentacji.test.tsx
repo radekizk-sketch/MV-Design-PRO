@@ -17,7 +17,8 @@ import { useShellStore } from '../../../shell/useShellStore';
 import { ETAPY } from '../../../proces';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { HubDokumentacji } from '../HubDokumentacji';
-import { dokumentDostepny, formatujRozmiar, maZakonczonyPrzebieg, ostatniZakonczonyPrzebieg, rekordyDlaKarty, zawartoscZPrzebiegow } from '../model';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
+import { dokumentDostepny, formatujRozmiar, maZakonczonyPrzebieg, rekordyDlaKarty, zawartoscZPrzebiegow } from '../model';
 
 function snapshotTestowy(): EnergyNetworkModel {
   return {
@@ -47,6 +48,7 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
     });
     useSnapshotStore.setState({ snapshot: null });
     useExecutionRunsStore.setState({ runs: [] });
+    wyczyscKontekstWyniku();
     useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
     useShellStore.setState({
       activeSpace: 'dokumentacja',
@@ -84,6 +86,26 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
     expect(within(ok).getByText('Obliczenia zakończone')).toBeTruthy();
     expect(within(ok).getByText(/Rozpływ mocy · 2026-07-21 10:30/)).toBeTruthy();
     expect(within(ok).getByText(/rew\. 4 · deadbeef/)).toBeTruthy();
+  });
+
+  // Karta K8: status pokazuje bieg OGLĄDANY (ten, z którego powstaną dokumenty), nie
+  // „ostatni zakończony". Iloczyn: {bez wyboru → najnowszy DONE, jawny wybór starszego
+  // biegu innej rodziny → ten bieg}.
+  it('Q1 status: bieg oglądany z kontekstu wyniku (domyślnie najnowszy, jawny wybór starszego wygrywa)', () => {
+    useSnapshotStore.setState({ snapshot: snapshotTestowy() });
+    const starszy = przebiegZakonczony('SC_3F', '2026-07-17T08:00:00Z');
+    const nowszy = przebiegZakonczony('LOAD_FLOW', '2026-07-21T09:00:00Z');
+    useExecutionRunsStore.setState({ runs: [starszy, nowszy] });
+    const { unmount } = render(<HubDokumentacji />);
+    expect(screen.getByTestId('mvd-dok-status-ok')).toHaveAttribute('data-run-id', nowszy.id);
+    expect(within(screen.getByTestId('mvd-dok-status-ok')).getByText(/Rozpływ mocy/)).toBeTruthy();
+    unmount();
+
+    ustawBiegOgladany(starszy.id, { zrodlo: 'pasek' });
+    render(<HubDokumentacji />);
+    const ok = screen.getByTestId('mvd-dok-status-ok');
+    expect(ok).toHaveAttribute('data-run-id', starszy.id);
+    expect(within(ok).getByText(/2026-07-17 08:00/)).toBeTruthy();
   });
 
   it('Q2 karty: opis krótki, ikona per typ (data-akcent), WHITE BOX wyróżniony', () => {
@@ -291,15 +313,6 @@ describe('model dokumentacji — czyste selektory', () => {
     expect(dokumentDostepny('projekt', false, zPrzebiegiem)).toBe(false);
     expect(dokumentDostepny('przebieg', false, zPrzebiegiem)).toBe(true);
     expect(dokumentDostepny('przebieg', true, bezPrzebiegu)).toBe(false);
-  });
-
-  it('ostatniZakonczonyPrzebieg wybiera najnowszy po dacie zakończenia', () => {
-    const runs = [
-      { analysis_type: 'SC_3F', status: 'DONE', finished_at: '2026-07-17T08:00:00Z' },
-      { analysis_type: 'LOAD_FLOW', status: 'DONE', finished_at: '2026-07-21T09:00:00Z' },
-    ];
-    expect(ostatniZakonczonyPrzebieg(runs)?.analysis_type).toBe('LOAD_FLOW');
-    expect(ostatniZakonczonyPrzebieg([])).toBeNull();
   });
 
   it('zawartoscZPrzebiegow: rozpływ → 4 sekcje (z obciążalnością), zwarcie → IEC, tylko zakończone', () => {

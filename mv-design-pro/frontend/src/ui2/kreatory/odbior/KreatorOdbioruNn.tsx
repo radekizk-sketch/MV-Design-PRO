@@ -1,5 +1,10 @@
 /**
- * Kreator „Dodaj odbiór nN" (V12K-050, G-NN) — ui2, kreatory/rama.
+ * Kreator „Dodaj odbiór nN" (V12K-050, G-NN) i „Dodaj odbiór SN" — ui2, kreatory/rama.
+ *
+ * JEDNA formatka dla dwóch operacji domenowych o wspólnej semantyce P/Q/cosφ/ZIP/faz:
+ * `add_nn_load` (odpływ nN, kontekst `feeder_ref`) i `add_load_sn` (szyna SN wskazana
+ * w menu kontekstowym szyny na schemacie, kontekst `bus_ref`). Poziom przesądza wyłącznie
+ * miejsce przyłączenia, operację zapisu i opis (`OPERACJA_ODBIORU`, `ODBIOR_SN_STRINGS`).
  *
  * Katalog-first domyślnie (typ OBCIAZENIE wymagany); tryb ręczny (ekspercki,
  * karta D4) zwalnia z katalogu JAWNIE, przez przełącznik, i wysyła
@@ -48,7 +53,8 @@ import {
   fmtA,
   fmtKva,
   fmtKw,
-  maOdplyw,
+  maMiejscePrzylaczenia,
+  OPERACJA_ODBIORU,
   prefillZKatalogu,
   sumaUdzialowZip,
   walidujFormularz,
@@ -59,26 +65,29 @@ import {
   type LoadKind,
   type OdbiorFormData,
   type PoleZip,
+  type PoziomOdbioru,
 } from './odbiorModel';
-import { ODBIOR_STRINGS as T } from './strings';
+import { ODBIOR_SN_STRINGS, ODBIOR_STRINGS } from './strings';
 import { WykresTrojkatMocy } from './WykresTrojkatMocy';
 import type { PhaseSet } from '../../../types/enm';
 
+const T_NN = ODBIOR_STRINGS;
+
 /** Etykieta wskazanych faz (z listy opcji — jedna prawda nazw) albo uczciwy brak. */
 function etykietaFaz(phases: PhaseSet | null): string {
-  if (phases === null) return T.fazyNieWskazano;
-  return T.fazyOpcje.find((o) => o.id === phases)?.etykieta ?? phases;
+  if (phases === null) return T_NN.fazyNieWskazano;
+  return T_NN.fazyOpcje.find((o) => o.id === phases)?.etykieta ?? phases;
 }
 
 /** Etykieta uziomu instalacji R_A (format PL) albo uczciwy brak z nazwanym skutkiem. */
 function etykietaUziomu(r_a: number | null): string {
-  if (r_a === null) return T.uziomNiePodano;
+  if (r_a === null) return T_NN.uziomNiePodano;
   return `${r_a.toFixed(1).replace('.', ',')} Ω`;
 }
 
 const KROKI: readonly KrokKreatora[] = [
-  { id: 'dane', tytul: T.krokDane },
-  { id: 'zapis', tytul: T.krokZapis },
+  { id: 'dane', tytul: T_NN.krokDane },
+  { id: 'zapis', tytul: T_NN.krokZapis },
 ];
 
 function trimmed(value: unknown): string {
@@ -92,11 +101,25 @@ function kontekstZOperacji(context: Record<string, unknown> | null): KontekstOdb
     feeder_ref: trimmed(context.feeder_ref) || undefined,
     bus_nn_ref: trimmed(context.bus_nn_ref) || undefined,
     feeder_name: trimmed(context.feeder_name ?? context.field_name) || undefined,
+    bus_ref: trimmed(context.bus_ref) || undefined,
+    bus_name: trimmed(context.bus_name) || undefined,
     bus_voltage_kv: Number.isFinite(v) && v > 0 ? v : undefined,
   };
 }
 
+/** Odbiór na odpływie nN — formularz operacji `add_nn_load`. */
 export function KreatorOdbioruNn() {
+  return <KreatorOdbioru poziom="nn" />;
+}
+
+/** Odbiór wprost na szynie SN — formularz operacji `add_load_sn` (menu szyny SN). */
+export function KreatorOdbioruSn() {
+  return <KreatorOdbioru poziom="sn" />;
+}
+
+function KreatorOdbioru({ poziom }: { readonly poziom: PoziomOdbioru }) {
+  const T = poziom === 'sn' ? ODBIOR_SN_STRINGS : ODBIOR_STRINGS;
+  const operacja = OPERACJA_ODBIORU[poziom];
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
@@ -104,8 +127,10 @@ export function KreatorOdbioruNn() {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
-  const hasOdplyw = maOdplyw(kontekst);
-  const napiecieV = (kontekst.bus_voltage_kv ?? 0.4) * 1000;
+  const hasOdplyw = maMiejscePrzylaczenia(kontekst, poziom);
+  // Odbiór nN bez napięcia w kontekście liczy podgląd przy napięciu znamionowym nN 0,4 kV;
+  // odbiór SN bez napięcia szyny nie ma podstawy podglądu (brak napięcia ≠ 0,4 kV).
+  const napiecieV = (kontekst.bus_voltage_kv ?? (poziom === 'nn' ? 0.4 : 0)) * 1000;
 
   const [dane, setDane] = useState<OdbiorFormData>(() => ({ ...DANE_DOMYSLNE }));
   const [bledy, setBledy] = useState<BladPola[]>([]);
@@ -200,15 +225,15 @@ export function KreatorOdbioruNn() {
       setBladGlobalny(T.brakZakresu);
       return;
     }
-    const payload = zbudujPayload(dane, kontekst);
-    const bladKatalogFirst = validateCatalogFirst('add_nn_load', payload);
+    const payload = zbudujPayload(dane, kontekst, poziom);
+    const bladKatalogFirst = validateCatalogFirst(operacja, payload);
     if (bladKatalogFirst) {
       setBladGlobalny(bladKatalogFirst);
       return;
     }
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'add_nn_load', payload);
+      const response = await executeDomainOperation(activeCaseId, operacja, payload);
       if (!response) {
         setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
         return;
@@ -218,17 +243,24 @@ export function KreatorOdbioruNn() {
         return;
       }
       closeForm();
-      selekcjaPoOperacji(response, { type: 'LoadNN', name: dane.nazwa.trim() || 'Odbiór nN' });
+      selekcjaPoOperacji(
+        response,
+        poziom === 'sn'
+          ? { type: 'Load', name: dane.nazwa.trim() || 'Odbiór SN' }
+          : { type: 'LoadNN', name: dane.nazwa.trim() || 'Odbiór nN' },
+      );
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdplyw, kontekst, selekcjaPoOperacji]);
+  }, [T, activeCaseId, closeForm, dane, executeDomainOperation, hasOdplyw, kontekst, operacja, poziom, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszOdplyw,
       stan: hasOdplyw ? 'kompletne' : 'brak',
-      wartosc: kontekst.feeder_name || (hasOdplyw ? 'Wskazany' : 'Brak'),
+      wartosc:
+        (poziom === 'sn' ? kontekst.bus_name : kontekst.feeder_name)
+        || (hasOdplyw ? (poziom === 'sn' ? 'Wskazana' : 'Wskazany') : 'Brak'),
     },
     {
       etykieta: T.pochodzenieDanychTytul,

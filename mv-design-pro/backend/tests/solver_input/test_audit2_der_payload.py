@@ -94,16 +94,16 @@ def test_build_der_payload_block_trafo_kind_mismatch_emits_issue():
     assert any("nie jest przeznaczony dla DER WIATRAK" in i for i in payload.issues)
 
 
-def test_build_station_payload_with_grounding_and_tap_changers():
+def test_build_station_payload_with_tap_changers_bez_uziemienia_sn():
     payload = build_station_audit2_payload(
         station_id="station_001",
-        mv_neutral_grounding_ref="mng_petersen",
         tap_changer_refs=["tc_oltc_110sn_19_125", "tc_detc_snnn_5_25"],
         der_specs=[],
     )
     assert payload.station_id == "station_001"
-    assert payload.mv_neutral_grounding is not None
-    assert payload.mv_neutral_grounding["grounding_type"] == "petersen_coil"
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: payload stacji nie niesie sposobu uziemienia SN
+    # (druga prawda skasowana; uziemienie czytają solvery z modelu — zespoły uziemiające).
+    assert not any("grounding" in klucz for klucz in payload.to_dict())
     assert len(payload.tap_changers) == 2
     types = {tc["type"] for tc in payload.tap_changers}
     assert "oltc" in types
@@ -113,7 +113,6 @@ def test_build_station_payload_with_grounding_and_tap_changers():
 def test_build_station_payload_with_ders():
     payload = build_station_audit2_payload(
         station_id="station_002",
-        mv_neutral_grounding_ref="mng_resistor_low",
         der_specs=[
             {
                 "der_id": "der_pv_001",
@@ -138,10 +137,9 @@ def test_build_station_payload_with_ders():
 
 
 def test_extract_solver_extensions_short_circuit():
-    """SC IEC 60909 dostaje grounding type + block-trafos."""
+    """SC IEC 60909 dostaje block-trafo; sposobu uziemienia SN NIE (czyta go z modelu)."""
     payload = build_station_audit2_payload(
         station_id="station_003",
-        mv_neutral_grounding_ref="mng_petersen",
         der_specs=[
             {
                 "der_id": "der_001",
@@ -151,10 +149,7 @@ def test_extract_solver_extensions_short_circuit():
         ],
     )
     ext = extract_solver_extensions_from_payload(payload)
-    assert "mv_neutral_grounding" in ext["sc_iec60909_extensions"]
-    assert (
-        ext["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"] == "petersen_coil"
-    )
+    assert set(ext["sc_iec60909_extensions"]) == {"block_transformers"}
     assert "block_transformers" in ext["sc_iec60909_extensions"]
     assert len(ext["sc_iec60909_extensions"]["block_transformers"]) == 1
 
@@ -180,10 +175,9 @@ def test_extract_solver_extensions_power_flow():
 
 
 def test_extract_solver_extensions_protection():
-    """Protection IEC 60255 dostaje grounding type + P(f) curves."""
+    """Protection IEC 60255 dostaje krzywe P(f); typu uziemienia SN nie (czyta go z modelu)."""
     payload = build_station_audit2_payload(
         station_id="station_005",
-        mv_neutral_grounding_ref="mng_petersen",
         der_specs=[
             {
                 "der_id": "der_001",
@@ -193,7 +187,7 @@ def test_extract_solver_extensions_protection():
         ],
     )
     ext = extract_solver_extensions_from_payload(payload)
-    assert ext["protection_extensions"]["grounding_type"] == "petersen_coil"
+    assert "grounding_type" not in ext["protection_extensions"]
     assert "frequency_protection_curves" in ext["protection_extensions"]
 
 
@@ -201,7 +195,6 @@ def test_determinism_same_input_same_output():
     """Identyczny input -> identyczny payload (deterministic)."""
     spec = {
         "station_id": "station_det",
-        "mv_neutral_grounding_ref": "mng_petersen",
         "tap_changer_refs": ["tc_oltc_110sn_19_125"],
         "der_specs": [
             {

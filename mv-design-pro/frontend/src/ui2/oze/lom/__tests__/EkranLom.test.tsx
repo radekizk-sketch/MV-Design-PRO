@@ -35,7 +35,7 @@ afterEach(() => {
 
 describe('EkranLom — stany wejściowe', () => {
   it('bez aktywnego przypadku → uczciwy stan, bez wołań API', () => {
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-lom-brak-przypadku')).toBeInTheDocument();
     expect(pobierz).not.toHaveBeenCalled();
   });
@@ -43,7 +43,7 @@ describe('EkranLom — stany wejściowe', () => {
   it('aktywny przypadek → pobiera po case_id i renderuje wynik', async () => {
     aktywnyPrzypadek = { id: 'case-1' };
     pobierz.mockResolvedValue(widokOchronyLomFixture());
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-lom-wynik')).toBeInTheDocument();
     expect(pobierz).toHaveBeenCalledWith('case-1');
   });
@@ -51,7 +51,7 @@ describe('EkranLom — stany wejściowe', () => {
   it('błąd końcówki → jawny stan błędu z komunikatem PL', async () => {
     aktywnyPrzypadek = { id: 'case-x' };
     pobierz.mockRejectedValue(new Error('Przypadek case-x nie ma dokumentu ENM.'));
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-lom-blad')).toHaveTextContent(
       'nie ma dokumentu ENM',
     );
@@ -59,10 +59,10 @@ describe('EkranLom — stany wejściowe', () => {
 });
 
 describe('EkranLom — prezentacja wyniku', () => {
-  async function renderGotowe(tryb: 'basic' | 'expert' = 'basic') {
+  async function renderGotowe(tryb = false) {
     aktywnyPrzypadek = { id: 'case-1' };
     pobierz.mockResolvedValue(widokOchronyLomFixture());
-    render(<EkranLom trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={tryb} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-lom-wynik');
   }
 
@@ -170,7 +170,7 @@ describe('EkranLom — prezentacja wyniku', () => {
   });
 
   it('odciski danych wyłącznie w „Informacjach audytowych" trybu eksperckiego (karta #145)', async () => {
-    await renderGotowe('basic');
+    await renderGotowe(false);
     expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
     expect(screen.getByTestId('mvd-lom-wynik')).not.toHaveTextContent(
       widokOchronyLomFixture().input_hash,
@@ -178,7 +178,7 @@ describe('EkranLom — prezentacja wyniku', () => {
     cleanup();
     aktywnyPrzypadek = { id: 'case-1' };
     pobierz.mockResolvedValue(widokOchronyLomFixture());
-    render(<EkranLom trybZaawansowania="expert" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe onOtworzDowod={vi.fn()} />);
     const przelacz = await screen.findByTestId('mvd-wyn-informacje-audytowe-przelacz');
     expect(screen.getByTestId('mvd-lom-wynik')).not.toHaveTextContent(
       widokOchronyLomFixture().input_hash,
@@ -192,7 +192,7 @@ describe('EkranLom — prezentacja wyniku', () => {
   it('brak pól i brak modułów bez pola → uczciwy stan „brak pól"', async () => {
     aktywnyPrzypadek = { id: 'case-pusty' };
     pobierz.mockResolvedValue(widokLomPustyFixture());
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-lom-brak-pol')).toBeInTheDocument();
   });
 });

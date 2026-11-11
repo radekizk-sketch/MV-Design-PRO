@@ -10,7 +10,7 @@ Ten dokument wiąże kanon UI/UX z aktywną implementacją frontendową. Nie jes
 | Rejestr ikon technicznych | `frontend/src/ui/icons/technicalIconRegistry.tsx` |
 | Rejestr ekranów E-00..E-39 | `frontend/src/ui/workspace/screenCanonRegistry.ts` |
 | Rejestr zakładek inspektora | `frontend/src/ui/inspector-panel/inspectorTabRegistry.ts` |
-| Rejestr menu pola SN i źródeł | `frontend/src/ui/context-menu/contextMenuRegistry.ts` |
+| Rejestr menu kontekstowego SLD (pole SN, odcinek SN, stacja, źródło; sekcje kanonu) — V12K-352 | `frontend/src/ui/sld/v2/command/SldCommandService.ts` (`SLD_MENU_REGISTRY`), wykonawca `frontend/src/ui/sld/shared/sldActionExecutor.ts` |
 | Tabela pokrycia zakresu obowiązkowego | `frontend/src/ui/canon/coverageMatrix.ts` |
 | Jawny rejestr długu technicznego | `frontend/src/ui/canon/technicalDebtRegistry.ts` |
 | Strażnik zakazanych etykiet | `frontend/src/ui/canon/labelGuards.ts` |

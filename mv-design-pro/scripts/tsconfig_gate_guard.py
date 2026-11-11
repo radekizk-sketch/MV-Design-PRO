@@ -425,13 +425,71 @@ POMIJANE_KATALOGI = {
 #: w `StationTemplateWizard.test.tsx` (karta SZYBKIE-TESTY) i TS2345 w
 #: `downloadSldExport.test.ts` (karta KASACJA-SCL-I-CIM-KLIENT, test eksportu przepisany).
 #: Zero nowych bledow.
+#: Karta W5-B/C (2026-10-15, pomiar `zmierz_dlug()` na drzewie bazowym ebab0f7d i na drzewie
+#: karty, listy bledow porownane): 81 -> 78. Zeszly: TS2532 w
+#: `ui/sld/shared/__tests__/szynyStacjiKonsumenci.test.ts` (czerwien bazy 81 > 80 — `gpzs[0]`
+#: zastapione `gpzs.slice(0, 1)` z jawna obsluga braku sekcji) oraz TS2339 + TS7006 w
+#: `ui/sld/v3/scene/__tests__/buildScene.gpzFeeder.test.ts` (rzutowany ksztalt dawny słownik pól SN w `meta` stacji
+#: zastapiony typowanymi rekordami `bays`). Zero nowych bledow. Scalenie z integracja PR477-481 (2026-10-16): POMIAR na drzewie scalonym 61.
+#: Scalenie W5-B z partia integracji 8 (2026-10-16, karta UIUX-PRZEMYSLOWY): POMIAR na drzewie
+#: scalonym 61 -> 59 — partia 8 i karta W5-B zdjely rozlaczne bledy (TS2532/TS2339/TS7006 karty).
+#: Karta K1 POWLOKA (2026-10-16, pomiar `tsc` zbioru pomiarowego guarda na drzewie karty):
+#: 59 -> 55. Zeszly TS2322 w `ui2/spaces/obliczenia/__tests__/uruchomObliczenie.test.tsx`
+#: (typ `Mock` toru biegu) i TS2322 w `ui2/spaces/wyniki/__tests__/dowodElementIZrodlo.test.tsx`
+#: (`'Branch'` spoza `ElementType` -> `'LineBranch'`) oraz dwa bledy znikly z kasacja testow
+#: skasowanych komponentow powloki (pasek tytulowy, pasek przypadku, przelacznik trybow,
+#: baner nastepnego kroku, pasek metryk). Zero nowych bledow (bledy nowych testow karty
+#: naprawione przed commitem). Zostaja dwa zastane TS2339 w `ui2/spaces/gotowosc/__tests__`
+#: (obszar poza granica karty K1).
+#: Karta K2 KADROWANIE-NAWIGACJA (2026-10-21, pomiar `tsc` zbioru pomiarowego guarda na drzewie
+#: karty, listy bledow porownane linia po linii przed i po poprawce): baza 55, drzewo karty przed
+#: poprawka 61 (+6 bledow nowych testow karty: TS2339 `Array.prototype.at` spoza `lib` ES2020 x5
+#: w `zakresKadru.test.ts`, TS2345 literalnego typu okna w `camera.kadr.test.ts`) -> 49. Szesc
+#: bledow karty naprawionych u zrodla oraz szesc zastanych w modulach, ktorych karta dotyka:
+#: TS2322 `'menu'` w `toolbarLayout.contract.test.ts`, TS2769 `reduce` bez typu akumulatora
+#: w `kotwicaJednoZrodlo.contract.test.ts`, TS2345 etykieta bez `labelRole` w
+#: `sldCanvasV3.test.tsx`, TS2459 `PreviewSymbol` importowany z `buildScene` zamiast
+#: z `compose/preview` w `buildScene.lvPortal.test.ts`, oba TS2339 `.mock` na typie unii
+#: w `ui2/spaces/gotowosc/__tests__` (`vi.mocked`). Zero nowych bledow.
+#: Karta GPZ-PARYTET cz. 2 (2026-10-21, pomiar `tsc` zbioru pomiarowego guarda na drzewie
+#: bazowym `git archive uiux-baza` = 56 i na drzewie karty = 51, listy bledow porownane):
+#: zeszlo piec bledow z kasacja martwych rendererow v2 — TS2352 w
+#: `sld/v2/__tests__/structuralSvgInvariants.test.tsx`, 2 x TS2741 w
+#: `sld/v2/renderer/__tests__/switchDisconnectorMissingDevice.test.tsx`, 2 x TS2322 w
+#: `sld/v2/renderer/__tests__/thirdAuditFixes.test.tsx` (pliki skasowane razem z rendererami).
+#: Zero nowych bledow (TS6133 i TS2352 w nowych testach karty naprawione przed commitem).
+#: Scalenie K2 × GPZ-PARYTET cz. 2 (2026-10-21, pomiar guarda na drzewie scalonym): 49 -> 45.
+#: Karta GPZ-PARYTET cz. 3 (2026-10-21, pomiar `tsc` zbioru pomiarowego guarda na drzewie
+#: bazowym = 45 i na drzewie karty przed poprawka typow = 51, potem 0): +6 bledow
+#: wprowadzonych przez karte (nowe wymagane pola `CanonicalGpzTransformer.poleTr/poleWn`
+#: x3 w fiksturach `gpz.test.ts`/`preview.test.tsx`, rola `SOURCE` w mapie rol testu,
+#: `snBays` opcjonalne w `enmToSldAdapter.test.ts`, `hvSections` opcjonalne w
+#: `enmToCanonicalGpzAdapter.test.ts`) naprawione u zrodla oraz WSZYSTKIE 45 zastanych:
+#: fikstury bez wymaganych pol kontraktu (`tags/meta`, `element_ref/severity`,
+#: `rewizjaModelu`, `wchodzi_w_segment`, `labelRole`, `poleTr/poleWn`, kategorie katalogu
+#: CT/VT/APARAT_NN/KABEL_NN, `StudyCaseConfig` z `DEFAULT_STUDY_CASE_CONFIG`), pola spoza
+#: kontraktu (`case_name` x4, `summary/checked_at`), typy `Mock`/`MockInstance` zamiast
+#: `ReturnType<typeof vi.fn>`, bledne sciezki `types/enm` x2, import `PreviewSegment`
+#: z `compose/preview`, zdublowany import `svgMarkupToDrawing`, test trybow wyboru czytajacy
+#: realne haki `useCanEdit`/`useIsMutationBlocked` zamiast kopii predykatu z nieistniejacym
+#: trybem `CASE_CONFIG`, `SnapshotLike` w `ui/shared/publicReadinessMessage.ts` zawezony do
+#: czytanych pol (bez rzutowan w kodzie produkcyjnym). 51 -> 0.
 #: Partia integracji 9 (2026-10-16, pomiar `zmierz_dlug()` na drzewie scalonym partii i na
 #: bazie partii `0aa21b4c7`, listy porownane linia po linii): baza 61 -> 59, roznica wylacznie
 #: ubytkowa: zeszly TS2345 w `protection-curves/__tests__/types.test.ts` (karta PROT-LTI)
 #: i TS2739 w `ui2/spaces/model/katalog/__tests__/fixtures.ts` (karta W5-E-TTIT, kategorie
 #: katalogu nN). Zero nowych bledow; jedyny blad W BRAMCE iloczynu kart (etykiety historii
 #: operacji bez `update_protection_settings` i `set_load_dynamic_binding`) naprawiony u zrodla.
-BUDZET_BLEDOW_POZA_BRAMKA = 59
+#: Scalenie galezi programu (partie 9-13) z galezia UI/UX (2026-10-22, pomiar `zmierz_dlug()`
+#: na drzewie scalonym): UI/UX 0, program 59 -> scalone 0 po naprawie u zrodla. Pierwszy pomiar
+#: po rozwiazaniu konfliktow = 4, wszystkie z iloczynu stron: TS2307 test programu
+#: `planEtykietAparatowBocznych.contract.test.ts` importowal typy pola ze skasowanego (UI/UX)
+#: `v2/renderer/MiniBlockRmuRenderer` -> `v2/model/widokPolStacji`; 2 x TS2353/TS2339 test
+#: programu `PanelScenariuszy.test.tsx` czytal `activeRunId` skasowany karta K8 -> oglądany
+#: bieg magazynu kontekstu wyniku; TS2322 literalu scenariusza w tescie iloczynu migawka x
+#: parametry wkladow (`wkladyZwarciowe.test.tsx`). 59 zastanych bledow programu zeszlo, bo
+#: galaz UI/UX zdjela je wczesniej (karty K1, K2, GPZ-PARYTET cz. 3). Zero bledow W BRAMCE.
+BUDZET_BLEDOW_POZA_BRAMKA = 0
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

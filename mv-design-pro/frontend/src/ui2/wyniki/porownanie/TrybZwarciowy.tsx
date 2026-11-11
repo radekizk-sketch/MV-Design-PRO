@@ -30,7 +30,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import './porownanie.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import {
   PrzyciskAkcjiStanu,
@@ -57,10 +56,10 @@ import {
 type StanPorownania = 'bezczynny' | 'wtrakcie' | 'blad';
 
 export interface TrybZwarciowyProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
-export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
+export function TrybZwarciowy({ szczegolyAudytowe }: TrybZwarciowyProps) {
   const nazwaObiektu = useNazwaObiektu();
 
   // Lista przebiegów zwarciowych — read-only ze store'u przebiegów (runStore),
@@ -225,7 +224,7 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
               kolumny={KOLUMNY_PUNKTOW_ZWARCIOWYCH}
               wiersze={wiersze}
               onOtworzDowod={otworzDowodPrzebiegu}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
             />
           )}
         </div>

@@ -165,7 +165,7 @@
 .mvd-koordynacja-nastawy [data-tone='bad'],
 .mvd-koordynacja-dopasowanie [data-tone='bad'] {
   font-weight: 600;
-  color: var(--mvd-bad, #c0392b);
+  color: var(--mvd-err);
 }
 
 .mvd-koordynacja-nastawy [data-tone='idle'] {

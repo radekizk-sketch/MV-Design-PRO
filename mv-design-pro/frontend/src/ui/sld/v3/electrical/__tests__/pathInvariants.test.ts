@@ -1,7 +1,8 @@
+// @vitest-environment node
 /**
  * SLD-nN-TOPOLOGIA T0 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3,
  * test ścieżkowy P0.12) — dowód na fixturze „Stacja B":
- * (a) istnieje ścieżka przewodząca SOURCE→…→T1→…→Odbiór-1 przechodząca przez
+ * (a) istnieje ścieżka przewodząca (szyna SN GPZ)→…→T1→…→Odbiór-1 przechodząca przez
  *     DOKŁADNIE jedną krawędź międzydomenową (T1);
  * (b) NIE istnieje ŻADNA ścieżka 15 kV→0,4 kV omijająca transformator —
  *     asercja na WSZYSTKICH parach (szyna SN, szyna nN);
@@ -13,11 +14,11 @@ import { createHash } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { resolveNnApparatusKind, validateElectricalGraph, type InvariantCode } from '../invariants';
 import { buildTerminalGraph, minTransformerCrossings, nonTransformerComponents } from '../terminalGraph';
 import { buildSldViewModel } from '../viewModel';
-import { wlasnyZaciskPola } from '../../../../shared/zaciskPola';
+import { polaSnStacji, wlasnyZaciskPola } from '../../../../shared/polaStacji';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 
 const enmBazowy = buildStacjaBFixture();
@@ -29,15 +30,38 @@ function sourceBusRef(): string {
   return source.busRef;
 }
 
-describe('P0.12(a) — ścieżka SOURCE→…→T1→…→Odbiór-1 z DOKŁADNIE jednym przejściem transformatorowym', () => {
-  it('minimalna liczba przejść transformatorowych SOURCE→Odbiór-1 wynosi dokładnie 1', () => {
-    const crossings = minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.odbior1BusRef);
-    expect(crossings).toBe(1);
+describe('P0.12(a) — ścieżka SOURCE→…→T1→…→Odbiór-1 z DOKŁADNIE jednym przejściem transformatorowym po stronie SN', () => {
+  // GPZ-MODEL (2026-10-21): fikstura bazowa (`openBranch.enm.json`, generator z operacji
+  // domenowych) ma GPZ z równoważnikiem sieci 110 kV i transformatorem WN/SN (tryb A) —
+  // źródło stoi na szynie WN GPZ, więc ścieżka od źródła przechodzi przez DWA
+  // transformatory: WN/SN GPZ i T1 stacji. Intencja P0.12(a) („od strony SN do odbioru
+  // nN — dokładnie jedno przejście, przez T1") jest mierzona od szyny SN GPZ; od źródła
+  // — przejścia = 1 (T1) + liczba transformatorów GPZ na drodze (tu 1).
+  function szynaSnGpz(): string {
+    const gpz = enmBazowy.substations.find((s) => s.station_type === 'gpz');
+    const sekcja = gpz?.gpz_sections?.[0]?.bus_ref;
+    if (!sekcja) throw new Error('fixtura Stacja B bez sekcji SN GPZ — pomiar błędny');
+    return sekcja;
+  }
+
+  it('źródło stoi na szynie WN GPZ, a GPZ ma dokładnie jeden transformator WN/SN do sekcji SN', () => {
+    const zrodlo = graphBazowy.nodes.get(sourceBusRef());
+    expect(zrodlo?.voltageKv).toBe(110);
+    const trGpz = (enmBazowy.transformers ?? []).filter((t) => t.hv_bus_ref === sourceBusRef());
+    expect(trGpz.map((t) => t.lv_bus_ref)).toEqual([szynaSnGpz()]);
   });
 
-  it('minimalna liczba przejść transformatorowych SOURCE→RGNN-1 (bezpośrednio) wynosi dokładnie 1', () => {
-    const crossings = minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.rgnn1BusRef);
-    expect(crossings).toBe(1);
+  it('minimalna liczba przejść transformatorowych szyna SN GPZ→Odbiór-1 wynosi dokładnie 1 (T1)', () => {
+    expect(minTransformerCrossings(graphBazowy, szynaSnGpz(), STACJA_B_REFS.odbior1BusRef)).toBe(1);
+  });
+
+  it('minimalna liczba przejść transformatorowych szyna SN GPZ→RGNN-1 (bezpośrednio) wynosi dokładnie 1 (T1)', () => {
+    expect(minTransformerCrossings(graphBazowy, szynaSnGpz(), STACJA_B_REFS.rgnn1BusRef)).toBe(1);
+  });
+
+  it('od źródła 110 kV: transformator WN/SN GPZ + T1 = dokładnie 2 przejścia (Odbiór-1 i RGNN-1)', () => {
+    expect(minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.odbior1BusRef)).toBe(2);
+    expect(minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.rgnn1BusRef)).toBe(2);
   });
 
   it('szyna SN i szyna nN Stacji B są w DWÓCH różnych domenach (dowód, że test w ogóle mierzy coś realnego)', () => {
@@ -103,8 +127,8 @@ describe('viewModel.ts — szkielet SLD VIEW MODEL buduje się na Stacji B (T1 s
     // „sekcja = każdy węzeł grafu” liczyło zaciski pól jako szyny.
     const zaciskiPol = new Set(
       (enmBazowy.substations ?? []).flatMap((s) =>
-        ((s.meta as { field_specs?: Record<string, unknown>[] } | undefined)?.field_specs ?? [])
-          .map((spec) => wlasnyZaciskPola(spec))
+        polaSnStacji(enmBazowy, s.ref_id)
+          .map((pole) => wlasnyZaciskPola(pole))
           .filter((ref): ref is string => ref !== null),
       ),
     );
@@ -169,14 +193,31 @@ describe('P0.12(d) — mutacje fixtury Stacja B, jedna na inwariant', () => {
     expect(violationCodes(enm)).toContain('TRANSFORMER_NOT_CROSSING_DOMAIN');
   });
 
-  it('inwariant 3 (BUS_VOLTAGE_INCONSISTENT): napięcie znamionowe uzwojenia LV T1 (0,23 kV) odbiega >10% od szyny (0,4 kV)', () => {
+  // Inwariant 3b jest lustrem E023 walidatora backendu: pasmo uzwojenia ≠ pasmo szyny.
+  // Iloczyn: strona {HV na szynie SN, LV na szynie nN} × napięcie uzwojenia {to samo, inne
+  // w obrębie pasma (tabliczka 15,75 / 0,42 / 0,23 kV), z innego pasma}. Dawny próg ±10 %
+  // meldował 0,23 kV na 0,4 kV, którego backend nie blokuje — dwie prawdy o jednym modelu.
+  it.each([
+    ['uhv_kv', 15, false],
+    ['uhv_kv', 15.75, false],
+    ['uhv_kv', 12, false],
+    ['uhv_kv', 0.4, true],
+    ['uhv_kv', 110, true],
+    ['ulv_kv', 0.4, false],
+    ['ulv_kv', 0.42, false],
+    ['ulv_kv', 0.23, false],
+    ['ulv_kv', 1.0, false],
+    ['ulv_kv', 1.001, true],
+    ['ulv_kv', 15, true],
+  ] as const)('inwariant 3 (BUS_VOLTAGE_INCONSISTENT): %s = %s kV — naruszenie: %s', (pole, napiecie, naruszenie) => {
     const enm = mutate((m) => {
       const transformers = m.transformers as unknown as Record<string, unknown>[];
       const t1 = transformers.find((t) => t.ref_id === STACJA_B_REFS.transformerRef);
       if (!t1) throw new Error('T1 nie istnieje w fixturze');
-      (t1 as { ulv_kv: number }).ulv_kv = 0.23;
+      t1[pole] = napiecie;
     });
-    expect(violationCodes(enm)).toContain('BUS_VOLTAGE_INCONSISTENT');
+    const kody = validateElectricalGraph(buildTerminalGraph(enm)).violations.map((v) => v.code);
+    expect(kody.includes('BUS_VOLTAGE_INCONSISTENT')).toBe(naruszenie);
   });
 
   it('inwariant 4 (DEVICE_TERMINAL_UNRESOLVED): dopisana gałąź wskazuje na nieistniejącą szynę', () => {
@@ -311,7 +352,7 @@ describe('treść naruszeń inwariantów — nazwy z modelu, nigdy identyfikator
   const MUTACJE: ReadonlyArray<readonly [InvariantCode, (m: EnergyNetworkModel) => void]> = [
     ['EDGE_VOLTAGE_MISMATCH', przepnij(STACJA_B_REFS.cableQf01Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
     ['TRANSFORMER_NOT_CROSSING_DOMAIN', trafo('lv_bus_ref', STACJA_B_REFS.snBusRef)],
-    ['BUS_VOLTAGE_INCONSISTENT', trafo('ulv_kv', 0.23)],
+    ['BUS_VOLTAGE_INCONSISTENT', trafo('ulv_kv', 15)],
     ['DEVICE_TERMINAL_UNRESOLVED', (m) => {
       (m.branches as unknown as Record<string, unknown>[]).push({
         id: 'galaz-osierocona', ref_id: 'galaz-osierocona', name: 'Gałąź osierocona', tags: [], meta: {}, type: 'cable',

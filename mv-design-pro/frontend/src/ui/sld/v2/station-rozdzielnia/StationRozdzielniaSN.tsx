@@ -34,16 +34,7 @@ import {
   FONT_MONO,
   FONT_SANS,
 } from '../theme/tokens';
-import {
-  ApparatusCableHead,
-  ApparatusCbSquare,
-  ApparatusEarthingSwitch,
-  ApparatusFuse,
-  ApparatusThreePositionSwitch,
-  ApparatusTransformerSymbol,
-  ApparatusVtThreePhase,
-  CtPrimary,
-} from '../renderer/GpzApparatusSymbols';
+import { ApparatusCableHead, ApparatusCbSquare, ApparatusEarthingSwitch, ApparatusFuse, ApparatusThreePositionSwitch, ApparatusTransformerSymbol, ApparatusVtThreePhase, CtPrimary } from './GpzApparatusSymbols';
 import type { MouseEvent } from 'react';
 import {
   buildPowerFlowIndex,

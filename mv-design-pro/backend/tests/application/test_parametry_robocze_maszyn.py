@@ -117,6 +117,7 @@ from tests.network_model.solvers.test_zalozenia_zaniku_werdykt import (
     _migawka_ze_stacja,
     _oceny_pola,
 )
+from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
 
 # =============================================================================
 # Wyrocznia i budowa sieci
@@ -386,7 +387,11 @@ KLUCZE_PARAMETRU_FORMULARZA = {
     "parametr",
     "nazwa_pl",
     "symbol",
+    # Postać ekranowa symbolu i jednostki niosącej symbole (karta UX-04/ZU, `ui_math_guard`):
+    # formularz składa je KaTeX-em, `symbol` zostaje identyfikatorem prozy śladu i raportu.
+    "symbol_latex",
     "jednostka",
+    "jednostka_latex",
     "dopuszczalne_od",
     "dopuszczalne_do",
     "calkowita",
@@ -406,6 +411,9 @@ def test_rejestr_dla_formularza_przez_http_i_ksztalt_kontraktu() -> None:
         assert [p["parametr"] for p in parametry] == list(PARAMETRY_MASZYNY[rodzina])
         for opis in parametry:
             assert set(opis) == KLUCZE_PARAMETRU_FORMULARZA
+            assert opis["symbol_latex"].strip(), opis["parametr"]
+            # Jednostka z symbolami bazy (`p.u. (S_rG, U_rG)`) ma postać LaTeX; zwykła — pustą.
+            assert (opis["jednostka_latex"] != "") is ("_" in opis["jednostka"]), opis["parametr"]
             # Propozycja rejestru sama przechodzi bramę wartości (inaczej obliczenie
             # przyjęłoby wartość, której projektant nie mógłby nadać). Moc znamionowa nie ma
             # liczby w rejestrze — propozycja zależy od punktu pracy elementu.
@@ -717,6 +725,13 @@ def test_p_maszyny_sn_2_mw_zmienia_r_x_i_wszystkie_pradow(maszyna: str) -> None:
 @pytest.mark.parametrize("maszyna", list(MASZYNY))
 def test_zwarcie_jednofazowe_bez_wpisow_tylko_ib(maszyna: str) -> None:
     migawka, wezel, _ = _migawka_a(maszyna, "propozycja", p_mw=0.5)
+    # Sieć 33 kV za transformatorem YNd11 nie ma drogi prądu zerowego (trójkąt po stronie SN) —
+    # zwarcie doziemne dostaje wtedy nazwaną przyczynę braku wyniku, nie liczbę (karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA). Zespół uziemiający na szynie maszyny daje drogę zerową.
+    szyna = next(g["bus_ref"] for g in migawka["generators"])
+    migawka["zespoly_uziemiajace"] = [
+        zespol_o_impedancji_zerowej("zu-33", szyna, r0_ohm=2.0, x0_ohm=20.0, u_kv=33.0)
+    ]
     wpisy_3f = _wiersz(_bieg_a(migawka), wezel)["parametry_robocze_maszyn"]
     wpisy_1f = _wiersz(_bieg_a(migawka, rodzaj="SC_1F"), wezel)["parametry_robocze_maszyn"]
     assert [w for w in wpisy_3f if w["wielkosci"] != ["ib"]] == wpisy_1f

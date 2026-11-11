@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA S9-10 — spłata długu `S9-4-DLUG-INSPEKTOR` (rejestr konfliktów):
  * scena NIE przenosiła refu POJEDYNCZEGO aparatu (`ComposedSymbolInstance.
@@ -13,7 +14,10 @@
  *
  * Wyrocznia „ref istnieje w modelu" (zero fabrykacji): każdy `deviceRef` na
  * scenie MUSI być `BayPrimaryDevice.device_ref` obecnym w migawce
- * (bays[].primary_devices lub substations[].meta.field_specs[].primary_devices).
+ * (`bays[].primary_devices` — karta W5-B: rekord `bays` jest jedynym nośnikiem pól)
+ * ALBO refem gałęzi łączeniowej modelu wskazanej przez `Bay.equipment_refs` (karta
+ * GEOMETRIA-STACJI §0 pkt 4a: aparat pola z rekordu gałęzi, gdy pole nie niesie
+ * `primary_devices` — dawniej ta sama gałąź była rysowana symbolem konwencji bez refu).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -46,18 +50,10 @@ function deviceRefyModelu(enm: EnergyNetworkModel): ReadonlySet<string> {
       if (typeof ref === 'string' && ref) refy.add(ref);
     }
   };
+  const galezie = new Set((enm.branches ?? []).filter((b) => b.type !== 'bus_coupler').map((b) => b.ref_id));
   for (const bay of enm.bays ?? []) {
     zbierz((bay as { primary_devices?: unknown }).primary_devices);
-  }
-  for (const sub of enm.substations ?? []) {
-    const specs = (sub as { meta?: { field_specs?: unknown } }).meta?.field_specs;
-    if (!Array.isArray(specs)) continue;
-    for (const spec of specs) {
-      zbierz((spec as { primary_devices?: unknown }).primary_devices);
-    }
-    for (const bay of (sub as { bays?: unknown[] }).bays ?? []) {
-      zbierz((bay as { primary_devices?: unknown }).primary_devices);
-    }
+    for (const ref of bay.equipment_refs ?? []) if (galezie.has(ref)) refy.add(ref);
   }
   return refy;
 }
@@ -96,7 +92,7 @@ describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => 
   );
 
   it.each([1, 2] as SceneLod[])(
-    'STACJA (ścieżka danych z field_specs, LOD %s): te same niezmienniki co GPZ',
+    'STACJA (ścieżka danych z rekordów pól, LOD %s): te same niezmienniki co GPZ',
     (lod) => {
       const { enm } = buildW1MatrixFixture();
       const scene = buildSceneV3(enm, lod);
@@ -119,11 +115,18 @@ describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => 
   );
 
   it.each([0, 1, 2] as SceneLod[])(
-    'NEGATYW (LOD %s): stos KONWENCJI (fixtura bez primary_devices) NIE fabrykuje deviceRef',
+    'NEGATYW (LOD %s): fixtura bez primary_devices — każdy deviceRef to gałąź łączeniowa pola z modelu, pole bez rekordów nie ma refu',
     (lod) => {
+      // KOREKTA (GEOMETRIA-STACJI §0 pkt 4): dawniej ta fixtura rysowała stosy konwencji
+      // i wyrocznia żądała ZERA refów. Konwencja skasowana — aparat pola rysuje się z gałęzi
+      // łączeniowej wskazanej w `equipment_refs` (ref = ta gałąź), a pole bez żadnego
+      // rekordu dostaje sylwetkę braku danych bez refu. Intencja (zero fabrykacji) bez zmian.
       const scene = buildSceneV3(substrateEnm, lod);
+      const dozwolone = deviceRefyModelu(substrateEnm);
       const zRefem = scene.symbols.filter((s) => s.meta?.deviceRef !== undefined);
-      expect(zRefem, 'zero zgadywanych refów urządzeń').toEqual([]);
+      expect(zRefem.filter((s) => !dozwolone.has(s.meta!.deviceRef!)), 'zero zgadywanych refów urządzeń').toEqual([]);
+      const bezDanych = scene.symbols.filter((s) => s.meta?.apparatusSource === 'brak');
+      expect(bezDanych.filter((s) => s.meta?.deviceRef !== undefined)).toEqual([]);
     },
   );
 

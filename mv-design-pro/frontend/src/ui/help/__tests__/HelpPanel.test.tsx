@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { HelpPanel } from '../HelpPanel';
+import { KEYBOARD_SHORTCUTS } from '../../sld/core/keyboardShortcuts';
 
 describe('HelpPanel', () => {
   it('nie renderuje gdy isOpen=false', () => {
@@ -49,10 +50,18 @@ describe('HelpPanel', () => {
     expect(screen.getByText(/Brak wyników/)).toBeInTheDocument();
   });
 
-  it('skróty zawierają min. 5 kategorii', () => {
+  // K2: rejestr skrótów zawiera WYŁĄCZNIE obsługiwane kombinacje (pustą
+  // kategorię „Analiza" usunięto razem z martwymi wpisami), więc kategorii jest
+  // cztery, a każdy wpis rejestru ma swój wiersz.
+  it('skróty: cztery kategorie i wiersz dla każdego wpisu rejestru', () => {
     render(<HelpPanel isOpen initialTab="shortcuts" onClose={vi.fn()} />);
-    expect(screen.getByText(/Nawigacja/)).toBeInTheDocument();
-    expect(screen.getByText(/Edycja modelu/)).toBeInTheDocument();
+    for (const kategoria of [/^Nawigacja \(/, /^Widoki \(/, /^Edycja modelu \(/, /^Narzędzia \(/]) {
+      expect(screen.getByText(kategoria)).toBeInTheDocument();
+    }
+    expect(screen.queryByText(/^Analiza/)).toBeNull();
+    for (const s of KEYBOARD_SHORTCUTS) {
+      expect(screen.getByTestId(`shortcut-${s.action_id}`)).toBeInTheDocument();
+    }
   });
 
   it('skróty renderują tabelę z kbd elements', () => {

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Engineering Readiness Store Tests — PR-13
  *

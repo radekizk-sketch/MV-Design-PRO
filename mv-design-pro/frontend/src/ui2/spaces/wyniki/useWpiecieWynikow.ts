@@ -8,33 +8,27 @@
  *   (`ui/results-inspector/store.ts:191-224,313-335`).
  * Zero nowych ścieżek API.
  *
- * Rodzaj analizy przebiegu pochodzi z rejestru przebiegów
- * (`useExecutionRunsStore.runs[].analysis_type` — `ui/study-cases/types.ts:237`);
- * ładujemy wyłącznie przebiegi zakończone („DONE"): rozpływ dla „LOAD_FLOW",
- * zwarcia dla typów „SC_*".
+ * Bieg każdej rodziny pochodzi z magazynu kontekstu wyniku (karta K8,
+ * `ui2/wyniki/kontekst`): aktywny bieg rodziny „rozpływ" (LOAD_FLOW) i „zwarcie"
+ * (SC_*), wyłącznie przebiegi zakończone („DONE").
  */
 import { useEffect } from 'react';
 
-import { subskrybuj } from '../../events';
 import { useAppStateStore } from '../../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import type { ExecutionRun } from '../../../ui/study-cases/types';
+import {
+  useAktywnyRunId,
+  useBiegOgladany,
+  useRunIdOgladany,
+  rodzinaAnalizy,
+} from '../../wyniki/kontekst/kontekstWyniku';
 
 type RodzajWyniku = 'rozplyw' | 'zwarcie' | null;
 
-function rodzajPrzebiegu(przebieg: ExecutionRun | undefined): RodzajWyniku {
-  if (!przebieg || przebieg.status !== 'DONE') return null;
-  if (przebieg.analysis_type === 'LOAD_FLOW') return 'rozplyw';
-  if (przebieg.analysis_type.startsWith('SC_')) return 'zwarcie';
-  return null;
-}
-
-function rodzajWyniku(runId: string | null): RodzajWyniku {
-  if (!runId) return null;
-  return rodzajPrzebiegu(useExecutionRunsStore.getState().runs.find((r) => r.id === runId));
-}
+/** Zakładka warsztatu, która współdzieli magazyn inspektora wyników (ślad dowodu). */
+const ZAKLADKA_DOWODU = 'dowod';
 
 async function zaladujRozplyw(runId: string): Promise<void> {
   const store = usePowerFlowResultsStore.getState();
@@ -50,52 +44,61 @@ async function zaladujZwarcia(runId: string): Promise<void> {
   await useResultsInspectorStore.getState().loadShortCircuitResults();
 }
 
-function zaladujWynik(runId: string): void {
-  const rodzaj = rodzajWyniku(runId);
-  if (rodzaj === 'rozplyw') void zaladujRozplyw(runId);
-  if (rodzaj === 'zwarcie') void zaladujZwarcia(runId);
-}
-
 /**
- * Hook integracyjny: ładuje wynik aktywnego przebiegu przy montażu oraz na
- * zdarzenie magistrali `wyniki-gotowe`. Zwraca rodzaj wyniku aktywnego
- * przebiegu (do wyboru zakładki startowej warsztatu wyników) oraz predykat
- * synchronizacji rejestru przebiegów z aktywnym zakresem obliczeń — dopóki
- * rejestr nie jest zsynchronizowany, rodzaj `null` NIE znaczy „brak przebiegu"
- * (warsztat nie może wtedy pokazać zakładki startowej, którą za chwilę zmieni).
+ * Hook integracyjny (karta K8): ładuje do magazynów okien wyników AKTYWNY bieg każdej
+ * rodziny z magazynu kontekstu wyniku — rozpływ do `usePowerFlowResultsStore`, zwarcie do
+ * `useResultsInspectorStore` — przy montażu, przy każdej zmianie aktywnego biegu rodziny
+ * (wybór w panelu, na pasku, na ekranie, z adresu, zakończenie biegu) i przy zmianie
+ * zakładki (`ponowKlucz`: magazyn inspektora wyników współdzieli „Dowód obliczeń", więc po
+ * powrocie na „Zwarcia" wynik aktywnego biegu zwarciowego jest odtwarzany). Ładowanie
+ * idempotentne. Zwraca rodzaj wyniku biegu OGLĄDANEGO (zakładka startowa warsztatu) oraz
+ * predykat synchronizacji rejestru przebiegów z aktywnym zakresem obliczeń — dopóki
+ * rejestr nie jest zsynchronizowany, rodzaj `null` NIE znaczy „brak przebiegu".
  */
-export function useWpiecieWynikow(): {
+export function useWpiecieWynikow(ponowKlucz: string | null = null): {
   aktywnyRodzaj: RodzajWyniku;
   rejestrZsynchronizowany: boolean;
+  /** Bieg wskazany (adres), którego rejestr jeszcze nie zna — start nieustalony. */
+  biegOczekujacy: boolean;
 } {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
-  const przebiegi = useExecutionRunsStore((s) => s.runs);
   const rejestrCaseId = useExecutionRunsStore((s) => s.activeStudyCaseId);
   const isLoadingRuns = useExecutionRunsStore((s) => s.isLoadingRuns);
+  const rozplywRunId = useAktywnyRunId('rozplyw');
+  const zwarcieRunId = useAktywnyRunId('zwarcie');
+  const ogladany = useBiegOgladany();
+  const runIdOgladany = useRunIdOgladany();
   // Rejestr przebiegów jest ZSYNCHRONIZOWANY z aktywnym zakresem obliczeń, gdy
   // został wczytany dla tego zakresu i nie trwa jego wczytywanie. Bez zakresu
   // nie ma rejestru do wczytania (stan ustalony natychmiast). Przed hydratacją
   // K2 po zimnym starcie (`useHydratacjaPowloki`: projekt → zakresy → rejestr)
   // rejestr należy jeszcze do poprzedniego kontekstu (albo do żadnego) — rodzaj
-  // aktywnego przebiegu jest wtedy NIEUSTALONY, a nie „brak przebiegu".
+  // biegu oglądanego jest wtedy NIEUSTALONY, a nie „brak przebiegu".
   const rejestrZsynchronizowany =
     activeCaseId == null || (rejestrCaseId === activeCaseId && !isLoadingRuns);
-  const aktywnyRodzaj =
-    activeRunId == null ? null : rodzajPrzebiegu(przebiegi.find((r) => r.id === activeRunId));
+  // Bieg OCZEKUJĄCY (wskazany adresem, rejestr jeszcze go nie zna) ma rodzinę NIEUSTALONĄ:
+  // rodzaj poprzednio oglądanego biegu nie może wybrać zakładki startowej, bo po
+  // dołożeniu biegu do rejestru zakładka przeskoczyłaby pod kursorem (klasa K3-A4).
+  const biegOczekujacy = runIdOgladany != null && ogladany?.id !== runIdOgladany;
+  const rodzina = ogladany && !biegOczekujacy ? rodzinaAnalizy(ogladany.analysis_type) : null;
+  const aktywnyRodzaj: RodzajWyniku =
+    rodzina === 'rozplyw' ? 'rozplyw' : rodzina === 'zwarcie' ? 'zwarcie' : null;
 
-  // Montaż + doładowanie rejestru przebiegów: aktywny zakończony przebieg →
-  // załaduj (idempotentnie). INTENCJA (K2, defekt H-0): po zimnym starcie
-  // rejestr przebiegów (`useExecutionRunsStore.runs`) hydratuje z serwera PO
-  // montażu tego hooka — zależność od `aktywnyRodzaj` (pochodna `przebiegi` +
-  // `activeRunId`) ponawia ładowanie, gdy rejestr doładuje się później; sam
-  // `activeRunId` nie wystarczał i ekran wyników zostawał w stanie zerowym.
+  // INTENCJA (K2, defekt H-0): po zimnym starcie rejestr przebiegów hydratuje z serwera
+  // PO montażu tego hooka — aktywny bieg rodziny pojawia się później i efekt go ładuje.
   useEffect(() => {
-    if (activeRunId) zaladujWynik(activeRunId);
-  }, [activeRunId, aktywnyRodzaj]);
+    if (rozplywRunId) void zaladujRozplyw(rozplywRunId);
+  }, [rozplywRunId, ponowKlucz]);
+  // Zakładka „Dowód obliczeń" trzyma w magazynie inspektora wyników ślad biegu
+  // OGLĄDANEGO (dowolnej rodziny) — ładowanie biegu zwarciowego w tym czasie nadpisałoby
+  // go (wyścig dwóch `selectRun`); wynik zwarcia wraca przy wyjściu z zakładki.
+  useEffect(() => {
+    if (zwarcieRunId && ponowKlucz !== ZAKLADKA_DOWODU) void zaladujZwarcia(zwarcieRunId);
+  }, [zwarcieRunId, ponowKlucz]);
 
-  // Nowe wyniki na magistrali: ładuj wg rodzaju analizy przebiegu.
-  useEffect(() => subskrybuj('wyniki-gotowe', (zdarzenie) => zaladujWynik(zdarzenie.runId)), []);
-
-  return { aktywnyRodzaj, rejestrZsynchronizowany };
+  return {
+    aktywnyRodzaj,
+    rejestrZsynchronizowany,
+    biegOczekujacy,
+  };
 }

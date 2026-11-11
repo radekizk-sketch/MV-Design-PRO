@@ -28,7 +28,6 @@ vi.mock('../../api', () => ({
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-    activeRunId: 'lf-run',
   });
   useSnapshotStore.setState({ snapshot: snapshotFixture() });
 }
@@ -45,7 +44,7 @@ afterEach(() => {
 
 describe('EkranOsd — stany wejściowe (kryterium 1)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez API', () => {
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-osd-brak-przebiegu')).toHaveTextContent(
       'Brak zakończonego przebiegu rozpływu mocy',
     );
@@ -56,10 +55,9 @@ describe('EkranOsd — stany wejściowe (kryterium 1)', () => {
   it('z przebiegiem ale bez źródeł w modelu pokazuje uczciwy stan „brak źródeł"', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-      activeRunId: 'lf-run',
     });
     useSnapshotStore.setState({ snapshot: snapshotBezZrodelFixture() });
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-osd-brak-zrodel')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-osd-parametry')).not.toBeInTheDocument();
   });
@@ -69,7 +67,7 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
   beforeEach(ustawGotowyRozplyw);
 
   it('z przebiegiem i źródłami pokazuje formularz i stan „uruchom", nie woła API', () => {
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-osd-parametry')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-osd-idle')).toBeInTheDocument();
     // Domyślne polecenie = ograniczenie P → pole limitu widoczne.
@@ -78,7 +76,7 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
   });
 
   it('przycisk biegu zablokowany bez wyboru źródła', () => {
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-osd-oblicz')).toBeDisabled();
     fireEvent.click(screen.getByTestId('mvd-osd-oblicz'));
     expect(pobierzOsd).not.toHaveBeenCalled();
@@ -86,7 +84,7 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
 
   it('po wyborze źródła bieg woła API z poleceniem ograniczenia P i wartością wstępną', async () => {
     pobierzOsd.mockResolvedValue(widokOsdFixture());
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-osd-zrodlo'), { target: { value: 'gen_sync' } });
     fireEvent.click(screen.getByTestId('mvd-osd-oblicz'));
     expect(await screen.findByTestId('mvd-osd-wynik')).toBeInTheDocument();
@@ -103,7 +101,7 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
 
   it('polecenie cosφ odsłania pola cosφ i charakteru oraz wysyła je do biegu', async () => {
     pobierzOsd.mockResolvedValue(widokOsdFixture());
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-osd-zrodlo'), { target: { value: 'gen_sync' } });
     fireEvent.change(screen.getByTestId('mvd-osd-polecenie'), { target: { value: 'cosfi' } });
     expect(screen.getByTestId('mvd-osd-cosfi')).toBeInTheDocument();
@@ -128,7 +126,7 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
 
   it('polecenie LFSM-O wysyła częstotliwość, statyzm i strefę martwą', async () => {
     pobierzOsd.mockResolvedValue(widokOsdFixture());
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-osd-zrodlo'), { target: { value: 'gen_sync' } });
     fireEvent.change(screen.getByTestId('mvd-osd-polecenie'), { target: { value: 'lfsm_o' } });
     fireEvent.change(screen.getByTestId('mvd-osd-czestotliwosc'), { target: { value: '50.5' } });
@@ -144,7 +142,7 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
 
   it('błąd końcówki → jawny stan błędu z komunikatem PL', async () => {
     pobierzOsd.mockRejectedValue(new Error('422 nieznane źródło'));
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-osd-zrodlo'), { target: { value: 'gen_sync' } });
     fireEvent.click(screen.getByTestId('mvd-osd-oblicz'));
     expect(await screen.findByTestId('mvd-osd-blad')).toHaveTextContent('422 nieznane źródło');
@@ -154,9 +152,9 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
 describe('EkranOsd — prezentacja wyniku (kryteria 2, 3, 4)', () => {
   beforeEach(ustawGotowyRozplyw);
 
-  async function uruchomBieg(tryb: 'basic' | 'expert' = 'basic') {
+  async function uruchomBieg(tryb = false) {
     pobierzOsd.mockResolvedValue(widokOsdFixture());
-    render(<EkranOsd trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={tryb} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-osd-zrodlo'), { target: { value: 'gen_sync' } });
     fireEvent.click(screen.getByTestId('mvd-osd-oblicz'));
     await screen.findByTestId('mvd-osd-wynik');
@@ -186,12 +184,12 @@ describe('EkranOsd — prezentacja wyniku (kryteria 2, 3, 4)', () => {
   });
 
   it('tryb podstawowy ukrywa identyfikator wejścia (hash)', async () => {
-    await uruchomBieg('basic');
+    await uruchomBieg(false);
     expect(screen.queryByTestId('mvd-osd-informacje-audytowe')).not.toBeInTheDocument();
   });
 
   it('tryb ekspercki: odcisk oraz identyfikatory źródła i przebiegu wyłącznie w „Informacjach audytowych"', async () => {
-    await uruchomBieg('expert');
+    await uruchomBieg(true);
     // Karta #145: pierwszy plan (zwinięte informacje audytowe) bez identyfikatorów.
     const wynik = screen.getByTestId('mvd-osd-wynik');
     expect(wynik).not.toHaveTextContent('gen_sync');
@@ -209,7 +207,7 @@ describe('EkranOsd — zapis trybu pracy źródła (K5-B / H-3 pkt 5)', () => {
 
   async function uruchomBiegDlaZapisu() {
     pobierzOsd.mockResolvedValue(widokOsdFixture());
-    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-osd-zrodlo'), { target: { value: 'gen_sync' } });
     fireEvent.click(screen.getByTestId('mvd-osd-oblicz'));
     await screen.findByTestId('mvd-osd-wynik');
@@ -243,10 +241,13 @@ describe('EkranOsd — zapis trybu pracy źródła (K5-B / H-3 pkt 5)', () => {
     fireEvent.click(screen.getByTestId('mvd-osd-tryb-zapisz'));
 
     await vi.waitFor(() =>
-      expect(wykonaj).toHaveBeenCalledWith('case-osd', 'set_source_operating_mode', {
-        source_ref: 'gen_sync',
-        mode: 'odstawione',
-      }),
+      expect(wykonaj).toHaveBeenCalledWith(
+        'case-osd',
+        'set_source_operating_mode',
+        { source_ref: 'gen_sync', mode: 'odstawione' },
+        // W5-C: jeden toast sukcesu — zdanie ekranu idzie do magazynu.
+        { komunikatSukcesuPl: OSD_STRINGS.trybZapisano },
+      ),
     );
     expect(screen.queryByTestId('mvd-osd-tryb-blad')).not.toBeInTheDocument();
     useAppStateStore.setState({ activeCaseId: null } as never);

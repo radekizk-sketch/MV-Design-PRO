@@ -38,6 +38,7 @@ _ELEMENT_KEYS = (
     "loads",
     "generators",
     "shunt_capacitors",
+    "zespoly_uziemiajace",
     "substations",
     "bays",
     "junctions",
@@ -88,7 +89,30 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
     # + karta LINIA-110: geometria słupa linii 110 kV i proweniencja parametrów z geometrii
     # (`None` = linia bez obliczenia z geometrii — każda linia SN sprzed karty).
-    "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii"),
+    # + W5-C: pozycja normalna łącznika (punkt normalnie otwarty). `None` =
+    # niezadeklarowana — poza odciskiem (gałęzie sprzed karty haszują jak przed nią);
+    # zadeklarowana jest treścią modelu i stanem łączeniowym (odcisk przełączeń).
+    "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii", "normal_state"),
+    # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
+    # dawny słownik pól SN w `meta` stacji). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
+    # `bays` istniejace przed karta (stacja konca ciagu) haszowaly jak przed nia; wartosc
+    # (zacisk, rola kanoniczna, pomiar, powiazania producenckie) jest trescia modelu.
+    "bays": (
+        "branch_point_ref",
+        "branch_point_port_id",
+        "field_role",
+        "terminal_bus_ref",
+        "funkcja_pomiaru",
+        "rodzaj_pomiaru",
+        "switchgear_family_ref",
+        "manufacturer_ref",
+        "apparatus_catalog_ref",
+        "config_id",
+        "catalog_bindings",
+        "wybor_bloku",
+        "metadane_pochodzenia",
+        "surge_arresters",
+    ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
     # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu
@@ -110,6 +134,22 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "nastawy_zabezpieczen",
         "deklaracje_modulu",
     ),
+    # + karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie
+    # (układ połączeń, stopnie, tolerancja pojemności, dławik ograniczający, rezystory
+    # rozładowcze). `None` = parametr nienadany przez projektanta (rozstrzyga typ katalogowy
+    # albo wartość robocza rejestru) — poza odciskiem, żeby bateria sprzed karty haszowała
+    # jak przed nią; podany zmienia wynik rozpływu (stopnie, dławik) albo zwarcia
+    # doziemnego (układ), więc zmienia odcisk.
+    "shunt_capacitors": (
+        "uklad_polaczen",
+        "liczba_stopni",
+        "stopnie_zalaczone",
+        "tolerancja_pojemnosci_min_proc",
+        "tolerancja_pojemnosci_max_proc",
+        "dlawik_ograniczajacy",
+        "dlawik_indukcyjnosc_mh",
+        "rezystory_rozladowcze_wewnetrzne",
+    ),
 }
 
 #: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja
@@ -121,7 +161,44 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
 #: wartosc, zmienia odcisk (wartosc przeniesiona na `Source.neutral_grounding`) —
 #: to zmiana swiadoma, nazwana w raporcie migracji (`enm/uziemienie.py`).
 #: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
-_POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
+#: W5-C: `Corridor.no_point_ref` skasowane (punkt podziału = `SwitchBranch.normal_state`) —
+#: ta sama zasada; magistrala bez punktu podziału haszuje jak przed kartą, magistrala,
+#: która go wskazywała, zmienia odcisk (pozycja przeniesiona na łącznik — raport
+#: `enm/stan_normalny.py`). Przypięte testem `tests/enm/test_stan_normalny_lacznikow.py`.
+#: `BranchPointSN.switch_state` skasowane tak samo (kopia stanu łączników portów); punkt
+#: rozgałęzienia z wartością (dawne uzupełnianie wpisywało „closed" domyślnie) zmienia
+#: odcisk — usunięcie kopii nazywa raport migracji.
+_POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
+    "buses": ("grounding",),
+    "corridors": ("no_point_ref",),
+    "branch_points": ("switch_state",),
+}
+
+#: W5-C: pola SKASOWANE z kolekcji `line_runs` — kolekcja stoi poza `_ELEMENT_KEYS`
+#: (jej `id` wchodzi do odcisku, pin `tests/enm/test_polityka_hash_kolekcji.py`), więc
+#: osobny wpis tej samej reguły „skasowane jako `null`": `LineRun.nop_station_ref` była
+#: martwą kopią punktu podziału (zawsze `null` w zapisie, bo ciąg powstaje z nowej
+#: magistrali), a jej zniknięcie nie może przestawić odcisku żadnej migawki z ciągiem.
+_POLA_SKASOWANE_W_ODCISKU_CIAGOW: tuple[str, ...] = ("nop_station_ref",)
+
+#: Karta W5-B: pola-LISTY rekordu pola dodane po zamrozeniu odciskow, ktorych wartosc
+#: domyslna to pusta lista (nie `None`). Pusta lista = dana nienadana — poza odciskiem
+#: (rekordy `bays` sprzed karty haszuja jak przed nia); lista niepusta jest trescia
+#: modelu. Osobny slownik, a nie rozszerzenie reguly `None`: pola z listy wyzej moga
+#: miec legalna pusta liste jako tresc zamrozona w odciskach sprzed karty.
+#: Przypiete testem `tests/enm/test_hash_w5b_bays.py`.
+_POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
+    "bays": ("surge_arresters",),
+    # Karta UX-04/POLE-BKR-MODEL: transformatory, których wyłączenie wyłącza baterię
+    # (IRiESD II.4.5.4.4.2). Pusta lista = powiązanie nienadane — poza odciskiem.
+    "shunt_capacitors": ("wylaczenie_od_transformatorow",),
+}
+
+#: Kolekcje elementow DODANE PO ZAMROZENIU odciskow: pusta kolekcja jest poza odciskiem
+#: (migawki sprzed karty haszuja bajtowo jak przed nia), niepusta — trescia modelu. Przypiete
+#: testem `tests/enm/test_hash_w5_uziemienie.py::test_pelny_odcisk_bez_danych_uziemienia_rowny_
+#: postaci_sprzed_karty` (hash bez zespolu = hash postaci sprzed karty, z kluczem i bez).
+_KOLEKCJE_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: tuple[str, ...] = ("zespoly_uziemiajace",)
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja
 #: semantyczna — tam ich nigdy nie bylo) zachowuje jako `null`, wedlug tej samej zasady co
@@ -135,11 +212,15 @@ _POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {"sources": ("c_m
 
 def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool = True) -> None:
     """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
-    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`
+    bez `id`, bez pol addytywnych o wartosci `None` (i pustej liście dla pol-list z
+    `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE`), ze skasowanymi polami jako `null`
     (pola skasowane spoza projekcji semantycznej — wylacznie w postaci pelnej)."""
     item.pop("id", None)
     for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ()):
         if pole in item and item[pole] is None:
+            del item[pole]
+    for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE.get(key, ()):
+        if pole in item and item[pole] == []:
             del item[pole]
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
@@ -170,11 +251,22 @@ def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
                 for klucz, wartosc in payload["katalog_projektu"].items()
                 if klucz != "karty_widmowe"
             }
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: kolekcja zespołów uziemiających jest addytywna —
+    # model bez zespołu (pusta lista albo brak klucza) haszuje bajtowo jak przed kartą;
+    # zespół w modelu jest treścią sieci (zmienia składową zerową), więc zmienia odcisk.
+    for key in _KOLEKCJE_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE:
+        if key in payload and payload[key] == []:
+            del payload[key]
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
             for item in payload[key]:
                 if isinstance(item, dict):
                     _postac_kanoniczna_elementu(item, key)
+    if isinstance(payload.get("line_runs"), list):
+        for ciag in payload["line_runs"]:
+            if isinstance(ciag, dict):
+                for pole in _POLA_SKASOWANE_W_ODCISKU_CIAGOW:
+                    ciag.setdefault(pole, None)
     return payload
 
 
@@ -250,6 +342,17 @@ _SEMANTIC_INCLUDE_SHUNT_CAPACITOR = (
     "catalog_ref",
     "catalog_namespace",
 )
+_SEMANTIC_INCLUDE_ZESPOL_UZIEMIAJACY = (
+    "ref_id",
+    "name",
+    "bus_ref",
+    "bay_ref",
+    "catalog_ref",
+    "catalog_namespace",
+    "dlawik",
+    "rezystor",
+    "uziemienie_bezposrednie",
+)
 _SEMANTIC_INCLUDE_BAY = (
     "ref_id",
     "name",
@@ -282,6 +385,18 @@ def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[s
     return wynik
 
 
+def _project_zespolu(item: dict[str, Any]) -> dict[str, Any]:
+    """Projekcja semantyczna zespołu: tożsamość, przyłączenie, katalog i RODZAJ elementów
+    punktu neutralnego (bez liczb — nastawa dławika czy R nie są semantyką)."""
+    wynik = _project(item, _SEMANTIC_INCLUDE_ZESPOL_UZIEMIAJACY, "zespoly_uziemiajace")
+    for urzadzenie in ("dlawik", "rezystor"):
+        if isinstance(wynik.get(urzadzenie), dict):
+            wynik[urzadzenie] = {
+                k: wynik[urzadzenie].get(k) for k in ("catalog_ref", "catalog_namespace")
+            }
+    return wynik
+
+
 def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     raw = enm.model_dump(mode="json", exclude={"header"})
     return {
@@ -305,6 +420,18 @@ def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
             _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR, "shunt_capacitors")
             for sc in raw.get("shunt_capacitors", [])
         ],
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: sposób uziemienia punktu neutralnego jest
+        # semantyką sieci — zespół uziemiający z rodzajem elementów punktu neutralnego
+        # (obecność dławika/rezystora, ich katalog). Klucz WYŁĄCZNIE dla modelu z zespołem.
+        **(
+            {
+                "zespoly_uziemiajace": [
+                    _project_zespolu(z) for z in raw.get("zespoly_uziemiajace", [])
+                ]
+            }
+            if raw.get("zespoly_uziemiajace")
+            else {}
+        ),
         "bays": [_project(b, _SEMANTIC_INCLUDE_BAY, "bays") for b in raw.get("bays", [])],
         "substations": [
             _project(s, _SEMANTIC_INCLUDE_SUBSTATION, "substations")
@@ -334,22 +461,31 @@ def _input_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     )
     _strip_uuids(data)
     # Switching state nie powinno wplywac na input_hash (V12S-010 ortogonalnosc).
+    # W5-C: pozycja normalna lacznika jest stanem laczeniowym tak samo jak `status`.
     for branch in data.get("branches", []):
         if isinstance(branch, dict):
             branch.pop("status", None)
+            branch.pop("normal_state", None)
     return data
 
 
 def _switching_snapshot_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
-    """TYLKO stany lacznikow — galezie z polem 'status' (open/closed)."""
+    """TYLKO stany lacznikow — galezie z polem 'status' (open/closed).
+
+    W5-C (ADR-017: odcisk przelaczen z PELNEGO stanu lacznikow): zadeklarowana
+    pozycja normalna (`normal_state`) wchodzi do odcisku obok `status`; `None` poza
+    odciskiem (gałęzie sprzed karty haszuja jak przed nia).
+    """
     raw = enm.model_dump(mode="json", exclude={"header"})
-    return {
-        "branches": [
-            {"ref_id": b.get("ref_id"), "status": b.get("status")}
-            for b in raw.get("branches", [])
-            if "status" in b
-        ],
-    }
+    galezie: list[dict[str, Any]] = []
+    for b in raw.get("branches", []):
+        if "status" not in b:
+            continue
+        rekord = {"ref_id": b.get("ref_id"), "status": b.get("status")}
+        if b.get("normal_state") is not None:
+            rekord["normal_state"] = b["normal_state"]
+        galezie.append(rekord)
+    return {"branches": galezie}
 
 
 # ---------------------------------------------------------------------------
@@ -487,7 +623,7 @@ def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
     for klucz, wartosc in snapshot.items():
         if klucz == "header" and isinstance(wartosc, dict):
             data[klucz] = {k: v for k, v in wartosc.items() if k not in _POLA_NAGLOWKA_POZA_HASHEM}
-        elif klucz in _ELEMENT_KEYS and isinstance(wartosc, list):
+        elif (klucz in _ELEMENT_KEYS or klucz == "line_runs") and isinstance(wartosc, list):
             data[klucz] = [dict(item) if isinstance(item, dict) else item for item in wartosc]
         else:
             data[klucz] = wartosc

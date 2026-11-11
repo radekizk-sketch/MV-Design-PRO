@@ -112,16 +112,25 @@ export interface WkladyZWywodem {
 }
 
 /**
- * Stan dostawcy wkładów punktu: `dane` — odpowiedź; `ladowanie` — pobieranie w toku;
- * `blad` — błąd pobrania (HTTP/sieć). Trzy stany rozpoznane OSOBNO od „dane niedostępne"
- * (brak migawki modelu / brak parametrów biegu) — sekcja nie mówi „nie udało się pobrać"
- * w trakcie pobierania, a błąd nie jest wchłaniany w brak danych.
+ * Stan ODCZYTU danych jednego punktu zwarcia (wkłady albo rozpływ gałęziowy) —
+ * wspólny dla obu dostawców per punkt. `wczytywanie` i `blad` to stany zapytania,
+ * NIE stany danych: sekcja nie wolno w nich pokazać „dane niedostępne w tym
+ * przebiegu" (KONTRAKT_WERDYKTU_WYJASNIALNEGO — odczyt w toku ≠ brak danych,
+ * błąd odczytu ≠ brak danych). `gotowe` = odczyt zakończony albo niepotrzebny
+ * (dane w polu wiersza, starszy wynik bez flagi dostępności).
  */
-export interface StanWkladowZwarciowych {
-  readonly dane: WkladyZWywodem | null;
-  readonly ladowanie: boolean;
-  readonly blad: boolean;
-}
+export type OdczytPunktuZwarcia = 'gotowe' | 'wczytywanie' | 'blad';
+
+/** Stan dostawcy wkładów dla punktu — rozłączne stany, jedna dana pochodna. */
+export type StanWkladowZwarciowych =
+  /**
+   * Brak punktu, migawki modelu albo parametrów biegu — nie ma czego pobrać (uczciwy brak;
+   * bieg bez zapisanego scenariusza nie ma odtwarzalnych wkładów).
+   */
+  | { readonly odczyt: 'niezlecony' }
+  | { readonly odczyt: 'wczytywanie' }
+  | { readonly odczyt: 'blad' }
+  | { readonly odczyt: 'gotowe'; readonly dane: WkladyZWywodem };
 
 /**
  * Parametry biegu, z którymi backend liczy wkłady punktu — ZAPISANE na biegu wyświetlanym
@@ -221,22 +230,27 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
 
 /**
  * Hook dostawcy wkładów dla aktywnego punktu zwarcia. Pobiera na zmianę punktu
- * albo parametrów biegu, cache per (punkt × parametry biegu) na życie ekranu
- * (deterministyczny snapshot → deterministyczna odpowiedź). Stany uczciwe
- * (`StanWkladowZwarciowych`): `dane: null` bez flag = dane niedostępne (brak snapshotu /
- * brak parametrów biegu); `ladowanie` = pobieranie w toku; `blad` = błąd pobrania
- * (zapamiętany per klucz — bez pętli ponowień); `dane.wklady` `[]` = sieć bez maszyn
- * wirujących (backend zwraca pustą listę deterministycznie). `punkt = null` wyłącza
- * pobieranie (dostawca zewnętrzny przez props ma pierwszeństwo).
+ * albo parametrów biegu; cache per (punkt × parametry biegu) W OBRĘBIE JEDNEJ migawki
+ * modelu (zmiana migawki unieważnia cache — wkłady liczone są z bieżącej migawki, więc
+ * wpis innej migawki byłby wynikiem innej sieci; ten sam punkt dwóch biegów o innym c,
+ * t_b albo Z_f to dwa różne wyniki wkładów). Stany rozłączne (`StanWkladowZwarciowych`):
+ * `niezlecony` = brak punktu/migawki/parametrów biegu, `wczytywanie` = zapytanie w toku,
+ * `blad` = błąd pobrania (HTTP/sieć, zapamiętany per klucz — bez pętli ponowień),
+ * `gotowe` = odpowiedź (`wklady: []` = sieć bez maszyn wirujących — backend zwraca pustą
+ * listę deterministycznie). `punkt = null` wyłącza pobieranie (dostawca zewnętrzny przez
+ * props ma pierwszeństwo).
  */
 export function useWkladyZwarciowe(
   punkt: string | null,
   parametry: ParametryWkladowBiegu | null,
 ): StanWkladowZwarciowych {
   const snapshot = useSnapshotStore((s) => s.snapshot);
-  const [cache, setCache] = useState<Record<string, WkladyZWywodem | 'blad'>>({});
-  // Klucz pamięci podręcznej = punkt × scenariusz × nadpisanie c × Z_f biegu: ten sam
-  // punkt dwóch biegów o innym c albo innej Z_f to dwa różne wyniki wkładów.
+  const [cache, setCache] = useState<{
+    readonly zrodlo: EnergyNetworkModel | null;
+    readonly wpisy: Readonly<Record<string, WkladyZWywodem | 'blad'>>;
+  }>({ zrodlo: null, wpisy: {} });
+  const wpisy = cache.zrodlo === snapshot ? cache.wpisy : null;
+  // Klucz pamięci podręcznej = punkt × scenariusz × nadpisanie c × t_b × Z_f biegu.
   const klucz = punkt === null || parametry === null ? null : kluczWkladow(punkt, parametry);
   // Zależności efektu to WARTOŚCI parametrów, nie obiekt: każde odświeżenie wyniku biegu
   // daje nowy obiekt konfiguracji o tych samych wartościach — zależność od obiektu
@@ -250,8 +264,13 @@ export function useWkladyZwarciowe(
 
   useEffect(() => {
     if (!punkt || !snapshot || klucz === null || scenariusz === undefined) return;
-    if (klucz in cache) return;
+    if (wpisy && klucz in wpisy) return;
     let anulowane = false;
+    const zapisz = (wpis: WkladyZWywodem | 'blad') =>
+      setCache((c) => ({
+        zrodlo: snapshot,
+        wpisy: { ...(c.zrodlo === snapshot ? c.wpisy : {}), [klucz]: wpis },
+      }));
     const parametryZadania: ParametryWkladowBiegu = {
       scenariusz,
       nadpisanieC:
@@ -266,33 +285,31 @@ export function useWkladyZwarciowe(
     fetchWkladyZwarciowe(snapshot, punkt, parametryZadania)
       .then((odpowiedz) => {
         if (!anulowane)
-          setCache((c) => ({
-            ...c,
-            [klucz]: {
-              wklady: naWklady(odpowiedz),
-              wywod: odpowiedz.wywod ?? [],
-              wywodSekcje: odpowiedz.wywod_sekcje ?? [],
-              walidacjaIec: odpowiedz.walidacja_iec ?? [],
-              danePrzyjete: naDanePrzyjete(odpowiedz),
-            },
-          }));
+          zapisz({
+            wklady: naWklady(odpowiedz),
+            wywod: odpowiedz.wywod ?? [],
+            wywodSekcje: odpowiedz.wywod_sekcje ?? [],
+            walidacjaIec: odpowiedz.walidacja_iec ?? [],
+            danePrzyjete: naDanePrzyjete(odpowiedz),
+          });
       })
       .catch(() => {
-        // Błąd pobrania ROZPOZNANY (nie wchłonięty w „dane niedostępne"), zapamiętany per
-        // klucz — sekcja pokazuje komunikat błędu, efekt nie ponawia żądania w pętli.
-        if (!anulowane) setCache((c) => ({ ...c, [klucz]: 'blad' }));
+        // Błąd pobrania ROZPOZNANY (stan `blad`), nie wchłonięty w „dane niedostępne";
+        // zapamiętany per klucz — efekt nie ponawia żądania w pętli.
+        if (!anulowane) zapisz('blad');
       });
     return () => {
       anulowane = true;
     };
-  }, [punkt, snapshot, cache, klucz, scenariusz, cWartosc, cUzasadnienie, tMinS, rF, xF]);
+  }, [punkt, snapshot, wpisy, klucz, scenariusz, cWartosc, cUzasadnienie, tMinS, rF, xF]);
 
-  if (!punkt || !snapshot || klucz === null || scenariusz === undefined)
-    return { dane: null, ladowanie: false, blad: false };
-  const wpis = cache[klucz];
-  if (wpis === undefined) return { dane: null, ladowanie: true, blad: false };
-  if (wpis === 'blad') return { dane: null, ladowanie: false, blad: true };
-  return { dane: wpis, ladowanie: false, blad: false };
+  if (!punkt || !snapshot || klucz === null || scenariusz === undefined) {
+    return { odczyt: 'niezlecony' };
+  }
+  const wpis = wpisy?.[klucz];
+  if (wpis === undefined) return { odczyt: 'wczytywanie' };
+  if (wpis === 'blad') return { odczyt: 'blad' };
+  return { odczyt: 'gotowe', dane: wpis };
 }
 
 /** Klucz wkładów punktu dla parametrów biegu (bez fizyki — sam zapis wartości). */
@@ -384,6 +401,11 @@ export interface RozplywZeSladem {
   readonly flows: ShortCircuitBranchFlow[] | null;
   readonly trace: TraceStep[] | null;
   /**
+   * Stan odczytu punktu: `wczytywanie` i `blad` rozpoznane OSOBNO od „brak danych"
+   * (`flows`/`trace` `null` starszego wyniku) — uczciwy stan, nie cisza.
+   */
+  readonly odczyt: OdczytPunktuZwarcia;
+  /**
    * Wkłady pominięte na podstawie tolerancji numerycznej (karta PROG-ZERA-WKLADOW) —
    * ta sama odpowiedź co `flows`/`trace`. `null` = brak danych (wiersz inline, starszy
    * wynik, pobieranie, błąd); `[]` = policzono, punkt bez wkładów pominiętych.
@@ -396,10 +418,6 @@ export interface RozplywZeSladem {
    * danych projektu albo brak odpowiedzi (wiersz inline, pobieranie, błąd).
    */
   readonly danePrzyjete: DanePrzyjeteWyniku | null;
-  /** Błąd pobrania (HTTP/sieć) rozpoznany OSOBNO od „brak danych" — uczciwy stan, nie cisza. */
-  readonly blad: boolean;
-  /** Pobieranie danych punktu w toku — stan ODRĘBNY od „starszy wynik bez danych" i od błędu. */
-  readonly ladowanie: boolean;
 }
 
 /**
@@ -416,12 +434,11 @@ export interface RozplywZeSladem {
  *   wołania; `trace` niedostępny tą ścieżką (`ShortCircuitRow` nie niesie
  *   śladu) → `null`,
  * - flaga dostępności nieprawdziwa → `flows`/`trace` `null` (starszy wynik —
- *   kreska), `blad: false`,
- * - pobieranie w toku → `flows`/`trace` `null`, `blad: false`, `ladowanie: true` — sekcje
- *   mówią „pobieranie”, nie „starszy wynik bez danych” (null bez flagi brał ten sam
- *   komunikat co wynik bez pola),
- * - błąd pobrania (HTTP/sieć) → `blad: true`, `flows`/`trace` `null` — sekcja
- *   śladu pokazuje KOMUNIKAT BŁĘDU, nie ciszę (karta WB-ROZPLYW, W4d),
+ *   kreska), `odczyt: 'gotowe'`,
+ * - pobieranie w toku → `flows`/`trace` `null`, `odczyt: 'wczytywanie'` — sekcje
+ *   pokazują stan odczytu, NIE „niedostępny w tym przebiegu" (odczyt w toku ≠ brak),
+ * - błąd pobrania (HTTP/sieć) → `odczyt: 'blad'`, `flows`/`trace` `null` — obie
+ *   sekcje pokazują KOMUNIKAT BŁĘDU, nie ciszę (karta WB-ROZPLYW, W4d),
  * - odpowiedź: `branch_contributions` `[]` = policzono, brak prądu w gałęziach;
  *   `branch_flow_trace` `[]` = policzono, brak kroków podziału Thevenina dla
  *   tego punktu (ślad dokumentuje WYŁĄCZNIE tę rodzinę wkładu — niezależne od
@@ -433,17 +450,20 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
   const inline = row?.branch_contributions ?? null;
   const dostepny = row?.branch_contributions_available === true;
   const punkt = row?.target_id ?? null;
+  // Klucz = przebieg × punkt: wpis należy do biegu, z którego powstał (ten sam
+  // punkt innego biegu to inny rozpływ — zero przecieku między przebiegami).
+  const klucz = runId && punkt ? `${runId}::${punkt}` : null;
 
   useEffect(() => {
-    if (!runId || !punkt || inline !== null || !dostepny) return;
-    if (punkt in cache) return;
+    if (!runId || !punkt || !klucz || inline !== null || !dostepny) return;
+    if (klucz in cache) return;
     let anulowane = false;
     fetchRozplywZwarciowy(runId, punkt)
       .then((odpowiedz) => {
         if (!anulowane)
           setCache((c) => ({
             ...c,
-            [punkt]: {
+            [klucz]: {
               flows: [...(odpowiedz.branch_contributions ?? [])],
               trace: odpowiedz.branch_flow_trace ? [...odpowiedz.branch_flow_trace] : null,
               pominiete: [...(odpowiedz.wklady_pominiete ?? [])],
@@ -455,31 +475,27 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
       .catch(() => {
         // Błąd pobrania (HTTP/sieć) — ROZPOZNANY, nie po cichu wchłonięty w
         // „brak danych": sekcja śladu (karta WB-ROZPLYW) pokazuje komunikat błędu.
-        if (!anulowane) setCache((c) => ({ ...c, [punkt]: 'blad' }));
+        if (!anulowane) setCache((c) => ({ ...c, [klucz]: 'blad' }));
       });
     return () => {
       anulowane = true;
     };
-  }, [runId, punkt, inline, dostepny, cache]);
+  }, [runId, punkt, klucz, inline, dostepny, cache]);
 
   const bezZestawienia = { pominiete: null, progA: null, danePrzyjete: null } as const;
-  if (inline !== null)
-    return { flows: inline, trace: null, ...bezZestawienia, blad: false, ladowanie: false };
-  if (!punkt || !dostepny)
-    return { flows: null, trace: null, ...bezZestawienia, blad: false, ladowanie: false };
-  const wpis = cache[punkt];
+  if (inline !== null) return { flows: inline, trace: null, ...bezZestawienia, odczyt: 'gotowe' };
+  if (!klucz || !dostepny) return { flows: null, trace: null, ...bezZestawienia, odczyt: 'gotowe' };
+  const wpis = cache[klucz];
   if (wpis === undefined)
-    return { flows: null, trace: null, ...bezZestawienia, blad: false, ladowanie: true };
-  if (wpis === 'blad')
-    return { flows: null, trace: null, ...bezZestawienia, blad: true, ladowanie: false };
+    return { flows: null, trace: null, ...bezZestawienia, odczyt: 'wczytywanie' };
+  if (wpis === 'blad') return { flows: null, trace: null, ...bezZestawienia, odczyt: 'blad' };
   return {
     flows: wpis.flows,
     trace: wpis.trace,
     pominiete: wpis.pominiete,
     progA: wpis.progA,
     danePrzyjete: wpis.danePrzyjete,
-    blad: false,
-    ladowanie: false,
+    odczyt: 'gotowe',
   };
 }
 

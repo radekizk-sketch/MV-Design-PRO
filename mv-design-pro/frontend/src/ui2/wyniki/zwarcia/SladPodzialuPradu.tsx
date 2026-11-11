@@ -15,10 +15,10 @@
  * Ta sekcja NIE buduje drugiego renderera kroku.
  *
  * Uczciwe stany (zero fabrykacji, zero fizyki — wyłącznie odczyt/prezentacja):
- * - `blad === true` → błąd pobrania (HTTP/sieć), rozpoznany OSOBNO od „brak
+ * - `odczyt === 'wczytywanie'` → zapytanie w toku — stan odczytu, NIE „ślad
+ *   niedostępny" starszego wyniku (odczyt w toku ≠ brak danych),
+ * - `odczyt === 'blad'` → błąd pobrania (HTTP/sieć), rozpoznany OSOBNO od „brak
  *   danych" — komunikat błędu, nie cisza,
- * - `ladowanie === true` → pobieranie w toku — komunikat pobierania, nie „starszy
- *   wynik bez śladu" (dawniej `trace === null` w trakcie pobierania brał ten komunikat),
  * - `trace === null` → starszy wynik bez kolumny śladu (kontrakt addytywny) —
  *   komunikat, nie pusta lista i nie ukrycie sekcji bez informacji,
  * - `trace.length === 0` → policzono, ale ten punkt nie ma wkładu prądu od
@@ -33,8 +33,8 @@
 import '../dowod/dowod.css';
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { KrokDowodu, mapujKroki } from '../dowod';
+import type { OdczytPunktuZwarcia } from './api';
 import { ZWARCIA_STRINGS } from './strings';
 
 export interface SladPodzialuPraduProps {
@@ -42,19 +42,16 @@ export interface SladPodzialuPraduProps {
   punktNazwa: string;
   /** Kroki śladu podziału Thevenina (TH-1); `null` = starszy wynik bez śladu. */
   trace: TraceStep[] | null;
-  /** Błąd pobrania (HTTP/sieć) z dostawcy, rozpoznany osobno od „brak danych". */
-  blad: boolean;
-  /** Pobieranie danych punktu w toku — osobno od „brak danych" i od błędu. */
-  ladowanie: boolean;
-  trybZaawansowania: AdvancementMode;
+  /** Stan odczytu z dostawcy — `wczytywanie`/`blad` rozpoznane osobno od „brak danych". */
+  odczyt: OdczytPunktuZwarcia;
+  szczegolyAudytowe: boolean;
 }
 
 export function SladPodzialuPradu({
   punktNazwa,
   trace,
-  blad,
-  ladowanie,
-  trybZaawansowania,
+  odczyt,
+  szczegolyAudytowe,
 }: SladPodzialuPraduProps) {
   const kroki = trace ? mapujKroki(trace) : [];
 
@@ -69,15 +66,19 @@ export function SladPodzialuPradu({
         {': '}
         <span className="mvd-zwarcia-wklady-punkt">{punktNazwa}</span>
       </h3>
-      {blad ? (
-        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-slad-rozplywu-blad">
+      {odczyt === 'wczytywanie' ? (
+        <p
+          className="mvd-zwarcia-wklady-brak-desc"
+          data-testid="mvd-zwarcia-slad-rozplywu-wczytywanie"
+          aria-busy="true"
+        >
+          {ZWARCIA_STRINGS.sladRozplywuWczytywanie}
+        </p>
+      ) : odczyt === 'blad' ? (
+        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-slad-rozplywu-blad" role="alert">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.sladRozplywuBlad}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.sladRozplywuBladOpis}</p>
         </div>
-      ) : ladowanie ? (
-        <p className="mvd-zwarcia-wklady-brak-desc" data-testid="mvd-zwarcia-slad-rozplywu-ladowanie">
-          {ZWARCIA_STRINGS.sladRozplywuLadowanie}
-        </p>
       ) : trace === null ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-slad-rozplywu-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.sladRozplywuNiedostepny}</p>
@@ -96,7 +97,7 @@ export function SladPodzialuPradu({
             data-testid="mvd-zwarcia-slad-rozplywu-lista"
           >
             {kroki.map((krok) => (
-              <KrokDowodu key={krok.numer} krok={krok} trybZaawansowania={trybZaawansowania} />
+              <KrokDowodu key={krok.numer} krok={krok} szczegolyAudytowe={szczegolyAudytowe} />
             ))}
           </div>
         </>

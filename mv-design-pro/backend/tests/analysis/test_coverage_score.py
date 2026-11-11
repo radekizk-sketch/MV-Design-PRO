@@ -3,7 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from analysis.coverage_score.builder import CoverageScoreBuilder
+import pytest
+from analysis.coverage_score.builder import (
+    BRAK_OCENY_UZIOMU_PL,
+    LUKA_UZIEMIENIA_PL,
+    CoverageScoreBuilder,
+)
 from analysis.normative.models import (
     NormativeContext,
     NormativeItem,
@@ -225,14 +230,51 @@ def test_coverage_score_gap_detection() -> None:
         protection_curves_it=None,
         sensitivity=_sensitivity_view(),
         recommendations=_recommendation_view(),
+        uziom_oceniony=False,
     )
 
-    # Intencja bez zmian: brak pakietu uziemienia jest wykryty jako brak i jako
+    # Intencja bez zmian: brak oceny uziemienia jest wykryty jako brak i jako
     # luka krytyczna. Etykiety przepisane na polskie BEZ kodenamów projektowych
-    # (ROUTERY-4A: lista braków trafia wprost do UI — CLAUDE.md §8).
-    assert any("uziemienie" in item for item in view.missing_items)
+    # (ROUTERY-4A: lista braków trafia wprost do UI — CLAUDE.md §8). Karta UX-04/
+    # POLE-ZU-SKLADOWA-ZEROWA (commit 5): źródłem jest bieg bezpieczeństwa uziomu V12.6,
+    # nie skasowany pakiet dowodu P19 bez producenta.
+    assert any("uziomu stacji" in item for item in view.missing_items)
     assert any("LUKA-UZIEMIENIE" in item for item in view.critical_gaps)
     assert view.total_score < 100.0
+
+
+@pytest.mark.parametrize("uziom_oceniony", (False, True))
+def test_luka_uziemienia_wylacznie_bez_oceny_uziomu(uziom_oceniony: bool) -> None:
+    """Predykat parą: brak na liście braków ⇔ luka krytyczna ⇔ −10 pkt — z jednej flagi."""
+    view = CoverageScoreBuilder().build(
+        proof_documents=(
+            _proof_doc(ProofType.SC3F_IEC60909, "11111111-1111-1111-1111-111111111111"),
+        ),
+        normative_report=_normative_report(),
+        voltage_profile=_voltage_profile(),
+        protection_insight=_protection_insight(),
+        protection_curves_it=None,
+        sensitivity=_sensitivity_view(),
+        recommendations=_recommendation_view(),
+        uziom_oceniony=uziom_oceniony,
+    )
+    odniesienie = CoverageScoreBuilder().build(
+        proof_documents=(
+            _proof_doc(ProofType.SC3F_IEC60909, "11111111-1111-1111-1111-111111111111"),
+        ),
+        normative_report=_normative_report(),
+        voltage_profile=_voltage_profile(),
+        protection_insight=_protection_insight(),
+        protection_curves_it=None,
+        sensitivity=_sensitivity_view(),
+        recommendations=_recommendation_view(),
+        uziom_oceniony=True,
+    )
+    assert (BRAK_OCENY_UZIOMU_PL in view.missing_items) is not uziom_oceniony
+    assert (LUKA_UZIEMIENIA_PL in view.critical_gaps) is not uziom_oceniony
+    assert view.total_score == pytest.approx(
+        odniesienie.total_score - (0.0 if uziom_oceniony else 10.0)
+    )
 
 
 def test_coverage_score_deterministic() -> None:
@@ -247,6 +289,7 @@ def test_coverage_score_deterministic() -> None:
         protection_curves_it=None,
         sensitivity=_sensitivity_view(),
         recommendations=_recommendation_view(),
+        uziom_oceniony=False,
     )
     view_b = builder.build(
         proof_documents=(
@@ -258,6 +301,7 @@ def test_coverage_score_deterministic() -> None:
         protection_curves_it=None,
         sensitivity=_sensitivity_view(),
         recommendations=_recommendation_view(),
+        uziom_oceniony=False,
     )
 
     assert view_a.to_dict() == view_b.to_dict()

@@ -6,8 +6,8 @@ czynnym sieci) — parafraza, ustalenie właściciela 2026-10-22; tekst
 w `network_model.core.ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`. Składowa zerowa:
 pkt 5.2 f) każe uwzględnić pojemności linii w sieciach uziemionych przez małą impedancję przy
 współczynniku zwarcia doziemnego > 1,4 (metoda składowych symetrycznych — pkt 5.3.2);
-obliczenie uwzględnia dziś pojemność doziemną B0 bezwarunkowo (także w sieci izolowanej, gdzie
-jest jedyną drogą prądu doziemnego) — warunek pkt 5.2 f) wdroży karta ZEROWA-POJEMNOSCI.
+warunek sprawdza złożenie macierzy składowej zerowej (karta ZEROWA-POJEMNOSCI, ``enm.mapping``:
+k z sieci bez pojemności; sieć izolowana i skompensowana — poza zakresem IEC 60909, rozdz. 1).
 
 Przed kartą `short_circuit_core.build_zbus` wstawiał B/2 linii i kabli na każdym końcu do sieci
 zgodnej (a przez Z_2 = Z_1 — także przeciwnej), a rozpływ prądu po gałęziach
@@ -24,8 +24,11 @@ wiersz wyniku. Wyrocznia RĘCZNA wg normy (niezależna od macierzy solvera):
 * pierścień: Z_k(B) = Z_Q + Z_AB ∥ (Z_BC + Z_CA) (prosta redukcja szeregowo-równoległa);
 * I″_k3 = c·U_n/(√3·|Z_k|), I″_k2 = c·U_n/|2·Z_k| (Z_2 = Z_1), κ = 1,02 + 0,98·e^{−3R/X},
   i_p = κ·√2·I″_k, I_th = I″_k·√(m + n) z m w postaci zamkniętej (p. 14) i n = 1;
-* 1F i 2F+G w sieci izolowanej z B0: Z_0 węzła z dwuwęzłowego modelu π składowej zerowej
-  (Y_0 = jB0ℓ/2 na każdym końcu, Z_L0 = (r0 + jx0)·ℓ szeregowo) — B0 ZOSTAJE;
+* 1F i 2F+G w sieci uziemionej przez rezystor (zespół uziemiający Z.15 na szynie GPZ): Z_0
+  węzła z dwuwęzłowego modelu π składowej zerowej (Y_0 = jB0ℓ/2 na każdym końcu, Z_L0 =
+  (r0 + jx0)·ℓ szeregowo) równolegle z bocznikiem Z_0,TU + 3·R_N — B0 ZOSTAJE; w sieci
+  izolowanej prąd doziemienia jest poza zakresem IEC 60909-0 (nazwana przyczyna), a B0 daje
+  prąd pojemnościowy I_C = √3·U_n·B0·ℓ (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA);
   I″_k1 = √3·c·U_n/|Z_1 + Z_2 + Z_0|, I″_k2E = c·U_n/|Z_1 + Z_2·Z_0/(Z_2 + Z_0)|.
 
 ILOCZYN CECH: susceptancja kabla {B = 0, kabel XLPE 240 mm² C = 500 nF/km (B ≈ 157 µS/km)}
@@ -36,7 +39,7 @@ maszyn wirujących (μ, q), Thevenin SN w zacisku HV transformatora SN/nN (pętl
 i kotwica nN)}; inwentarz miejsc budujących macierz sieci zgodnej przypięty testem AST. Iniekcje: przywrócenie B/2 w sieci zgodnej czerwieni
 wyrocznię (B/2 równolegle do indukcyjnej impedancji Thevenina PODNOSI |Z_k|: I″_k na końcu
 kabla 20 km niższe o 0,46 % — wynik maksymalny po niebezpiecznej stronie) i bilans KCL; zdjęcie B0 ze składowej
-zerowej daje odmowę (macierz osobliwa) zamiast prądu pojemnościowego.
+zerowej daje nazwaną przyczynę ``brak_drogi`` zamiast prądu pojemnościowego.
 """
 
 from __future__ import annotations
@@ -101,7 +104,7 @@ def _siec(susceptancja: str, topologia: str) -> tuple[dict[str, Any], dict[str, 
     enm, gpz = dodaj_zrodlo_slack(
         enm, voltage_kv=UN_KV, sk3_mva=SK_MVA, rx_ratio=RX_Q, line_fields_count=1
     )
-    pole = _gpz_line_fields(enm)[0]["field_ref"]
+    pole = _gpz_line_fields(enm)[0]["ref_id"]
     enm, szyna_b = kontynuuj_z_pola(
         enm,
         field_ref=pole,
@@ -291,19 +294,76 @@ def _para(
 @pytest.mark.parametrize("rodzaj", DOZIEMNE)
 @pytest.mark.parametrize("miejsce", MIEJSCA)
 @pytest.mark.parametrize("susceptancja", SUSCEPTANCJE)
-def test_doziemne_siec_izolowana_b0_zostaje_w_skladowej_zerowej(
+def test_doziemne_siec_izolowana_poza_zakresem_iec60909_a_b0_daje_prad_pojemnosciowy(
     biegi: dict[tuple[str, str, str], tuple[CanonicalRun, dict[str, str]]],
     susceptancja: str,
     miejsce: str,
     rodzaj: str,
 ) -> None:
-    """Zwarcia z ziemią w sieci izolowanej: Z_1 = Z_2 bez B (pkt 5.2 f)), Z_0 z pojemnością
-    doziemną B0 (jedyna droga prądu zerowego; B0 wchodzi dziś bezwarunkowo — warunek
-    pkt 5.2 f) wdroży karta ZEROWA-POJEMNOSCI) — prąd z rachunku ręcznego."""
+    """Zwarcia z ziemią w sieci IZOLOWANEJ (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 7):
+    jedyną drogą prądu zerowego są pojemności doziemne B0 — prąd doziemienia nie jest prądem
+    zwarciowym IEC 60909-0 (norma obejmuje sieci uziemione przez małą impedancję), więc wiersz
+    dostaje nazwaną przyczynę ``poza_zakresem_iec60909`` (NIE_DOTYCZY) zamiast liczby, a B0
+    zostaje w modelu jako prąd pojemnościowy sieci I_C = √3·U_n·B0·ℓ (jedna prawda
+    ``enm.uziemienie_sekcji``; ocenia go analiza projektu uziemienia punktu neutralnego)."""
+    from enm.uziemienie_sekcji import uziemienie_sieci
+
     run, szyny = biegi[(susceptancja, "promieniowa", rodzaj)]
     wiersz = _wiersz(run, szyny[miejsce])
+    assert wiersz["ikss_a"] is None
+    brak = wiersz["brak_wyniku_zerowego"]
+    assert brak["przyczyna"] == "poza_zakresem_iec60909"
+    assert brak["status"] == "NIE_DOTYCZY"
+    (sekcja,) = uziemienie_sieci(EnergyNetworkModel.model_validate(run.snapshot))
+    assert sekcja.wariant() == "izolowany"
+    i_c = math.sqrt(3.0) * UN_KV * 1e3 * B_KM_S * DLUGOSC_KM["AB"]
+    assert sekcja.prad_pojemnosciowy_a == pytest.approx(i_c, rel=1e-12)
+
+
+def _siec_z_zespolem(susceptancja: str) -> tuple[dict[str, Any], dict[str, str]]:
+    """Ta sama sieć promieniowa z zespołem uziemiającym z rezystorem na szynie GPZ (Z.15) —
+    operacja domenowa ``add_zespol_uziemiajacy_sn`` (ścieżka użytkownika)."""
+    from enm.domain_operations import execute_domain_operation
+
+    migawka, szyny = _siec(susceptancja, "promieniowa")
+    wynik = execute_domain_operation(
+        enm_dict=migawka,
+        op_name="add_zespol_uziemiajacy_sn",
+        payload={
+            "bus_ref": szyny["GPZ"],
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+        },
+    )
+    assert not wynik.get("error"), wynik.get("error")
+    return EnergyNetworkModel.model_validate(wynik["snapshot"]).model_dump(mode="json"), szyny
+
+
+def _z0_reczne_z_zespolem(miejsce: str) -> complex:
+    """Bocznik zespołu Z_0,ZU = Z_0,TU + 3·R_N na szynie GPZ (katalog: Z_0,TU = 1,5 + j6 Ω,
+    R_N = 43,3 Ω) równolegle z modelem π kabla (Y_0 = jB0ℓ/2 na końcach, Z_L0 szeregowo)."""
+    z0_zu = complex(1.5, 6.0) + 3.0 * 43.3
+    y_konca = 1j * B_KM_S * DLUGOSC_KM["AB"] / 2.0
+    z_l0 = complex(R0_KM, X0_KM) * DLUGOSC_KM["AB"]
+    y_gpz = 1.0 / z0_zu + y_konca
+    if miejsce == "GPZ":
+        return 1.0 / (y_gpz + 1.0 / (z_l0 + 1.0 / y_konca))
+    return 1.0 / (y_konca + 1.0 / (z_l0 + 1.0 / y_gpz))
+
+
+@pytest.mark.parametrize("rodzaj", DOZIEMNE)
+@pytest.mark.parametrize("miejsce", MIEJSCA)
+@pytest.mark.parametrize("susceptancja", SUSCEPTANCJE)
+def test_doziemne_siec_z_zespolem_rezystorowym_b0_zostaje_w_skladowej_zerowej(
+    susceptancja: str, miejsce: str, rodzaj: str
+) -> None:
+    """Sieć uziemiona przez rezystor (Z.15): Z_1 = Z_2 bez B (pkt 5.2 f)), Z_0 z bocznikiem
+    zespołu i pojemnością doziemną B0 (warunek pkt 5.2 f) spełniony: rezystor zespołu daje
+    Z0 ≫ Z1, k > 1,4 — karta ZEROWA-POJEMNOSCI) — prąd z rachunku ręcznego."""
+    migawka, szyny = _siec_z_zespolem(susceptancja)
+    wiersz = _wiersz(_bieg(migawka, rodzaj), szyny[miejsce])
     z1 = _z1_reczne("promieniowa", miejsce)
-    z0 = _z0_reczne_promieniowa(miejsce)
+    z0 = _z0_reczne_z_zespolem(miejsce)
     assert _zespolona(wiersz["z1_ohm"]) == pytest.approx(z1, rel=1e-12)
     assert _zespolona(wiersz["z2_ohm"]) == pytest.approx(z1, rel=1e-12)
     assert _zespolona(wiersz["z0_ohm"]) == pytest.approx(z0, rel=1e-9)
@@ -313,11 +373,8 @@ def test_doziemne_siec_izolowana_b0_zostaje_w_skladowej_zerowej(
         return
     ik1 = math.sqrt(3.0) * C_MAX * UN_KV * 1e3 / abs(2.0 * z1 + z0)
     assert wiersz["ikss_a"] == pytest.approx(ik1, rel=1e-9)
-    # Rząd wielkości: wzór inżynierski prądu pojemnościowego 3·ω·C0·ℓ·c·U_n/√3 (ℓ = 20 km)
-    # ok. 90 A, nie kA; różnica ok. 2 % to rezonans Z_L0 z B0 modelu π, którego wzór skupiony
-    # nie widzi.
-    i_c = 3.0 * B_KM_S * DLUGOSC_KM["AB"] * C_MAX * UN_KV * 1e3 / math.sqrt(3.0)
-    assert wiersz["ikss_a"] == pytest.approx(i_c, rel=0.05)
+    # Rząd wielkości: prąd rezystora ok. 200 A (I_R = U_f/R_N) + składowa pojemnościowa.
+    assert 150.0 < wiersz["ikss_a"] < 300.0
 
 
 @pytest.mark.parametrize("topologia", TOPOLOGIE)
@@ -346,7 +403,7 @@ def test_slad_white_box_nazywa_pominiete_admitancje_z_podstawa(
     # składowa zerowa — warunek pkt 5.2 f), metoda składowych pkt 5.3.2; uczciwy stan B0.
     assert "IEC 60909-0:2016 pkt 5.2 f)" in krok["notes"]
     assert "współczynnik zwarcia doziemnego jest większy niż 1,4" in krok["notes"]
-    assert "bez sprawdzania tego warunku" in krok["notes"]
+    assert "Warunek sprawdza złożenie macierzy składowej zerowej" in krok["notes"]
     assert "ustalenie właściciela 2026-10-22" in krok["notes"]
     assert "5.2 e)" not in krok["notes"]
     assert "do potwierdzenia" not in krok["notes"]
@@ -447,14 +504,34 @@ def test_iniekcja_b_polowa_czerwieni_bilans_kcl(b_polowa_w_sieci_zgodnej: None) 
     assert abs(suma - 1.0) > 1e-3
 
 
-def test_iniekcja_bez_b0_w_skladowej_zerowej_odmawia_zamiast_liczyc() -> None:
-    """Zdjęcie B0 z sieci izolowanej: brak drogi prądu zerowego — jawna odmowa biegu,
-    nie cichy wynik (B0 jest w składowej zerowej wymagane)."""
-    migawka, _ = _siec("kabel_500nF", "promieniowa")
+@pytest.mark.parametrize("z_b1", [True, False], ids=["b0_robocze_z_b1", "bez_b1"])
+def test_iniekcja_bez_b0_w_skladowej_zerowej_odmawia_zamiast_liczyc(z_b1: bool) -> None:
+    """Zdjęcie B′0 z sieci izolowanej: prąd doziemny sieci izolowanej NIE jest prądem
+    zwarciowym IEC 60909 — wiersz bez I″k1 z nazwaną przyczyną ``poza_zakresem_iec60909``
+    w każdym węźle (kotwica numeryczna bloku osobliwego nie udaje uziemienia — karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 7; warunek odbioru 2026-10-29: tryb izolowany
+    nie przechodzi przez model Z1+Z2+Z0). Prąd doziemny to I_C = √3·U_n·B_0 w
+    ``doziemienie_sieci``: z B′1 — B′0 z wartości roboczej (dana przyjęta, NIEPELNY); bez B′1
+    — pojemność doziemna nieoznaczalna, nazwany brak bez liczby."""
+    migawka, szyny = _siec("kabel_500nF", "promieniowa")
     for galaz in migawka["branches"]:
         galaz["b0_siemens_per_km"] = None
-    with pytest.raises(Exception, match="Zero-sequence Y-bus is singular"):
-        _bieg(migawka, "SC_1F")
+        if not z_b1:
+            galaz["b_siemens_per_km"] = None
+    run = _bieg(migawka, "SC_1F")
+    for miejsce in MIEJSCA:
+        wiersz = _wiersz(run, szyny[miejsce])
+        assert wiersz["ikss_a"] is None
+        assert wiersz["brak_wyniku_zerowego"]["przyczyna"] == "poza_zakresem_iec60909"
+        doziemienie = wiersz["doziemienie_sieci"]
+        assert doziemienie["tryb"] == "izolowany"
+        assert doziemienie["kompletnosc_dowodu"] == "NIEPELNY"
+        if z_b1:
+            assert doziemienie["prad_a"] is not None and doziemienie["brak_pl"] is None
+            assert any("B′0" in d["nazwa_pl"] for d in doziemienie["dane_przyjete"])
+        else:
+            assert doziemienie["prad_a"] is None and doziemienie["i_c_a"] is None
+            assert "nieoznaczalny" in doziemienie["brak_pl"]
 
 
 def test_rozplyw_zachowuje_admitancje_poprzeczna() -> None:
@@ -577,6 +654,11 @@ _WOLAJACY_BUILD_ZBUS = {
     "network_model/solvers/machine_sc_iec60909.py",
     "application/analyses/fault_loop/service.py",
     "application/analyses/lv_domain/upstream_equivalent.py",
+    # Most modelu analiz V12.6 (`impedancje_zastepcze_szyn`): impedancja zastępcza Thévenina
+    # szyny Z_th = Z_bus[k,k]·Z_b dla przepustowości i rozruchu silnika — z sieci zgodnej zwarć
+    # (przekładnia, K_T, Z_Q), zamiast dawnego ręcznego składania impedancji w kontrakcie
+    # (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5).
+    "solver_input/v126_contracts.py",
 }
 
 

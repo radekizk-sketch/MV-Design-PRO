@@ -272,7 +272,6 @@ export const TEST_APP_STATE = {
     activeCaseKind: TEST_CASE.kind,
     activeCaseResultStatus: TEST_CASE.resultStatus,
     activeMode: 'MODEL_EDIT',
-    activeRunId: TEST_RUN.id,
     activeSnapshotId: TEST_SNAPSHOT.id,
     caseManagerOpen: false,
     issuePanelOpen: false,

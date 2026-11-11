@@ -9,17 +9,21 @@ from network_model.catalog.mv_switch_catalog import (
 
 
 def test_switchgear_catalog_has_industrial_series_width() -> None:
-    """K30-22: 36 baseline + 12 Polish (ZPUE Rotoblok + Elektrometal E2 Alpha) = 48."""
+    """K30-22: 36 baseline + 12 Polish (ZPUE Rotoblok + Elektrometal E2 Alpha) = 48.
+
+    Karta KATALOG-APARATURA-WN (pomiar 2026-10-22, decyzja właściciela: 110 kV to granica
+    zasilania GPZ): + 2 typy minimalne łączników topologii 110 kV — wyłącznik i odłącznik
+    (status REFERENCYJNY, bez producenta, bez danych wytrzymałościowych) = 50."""
     stats = get_switch_catalog_statistics()
     all_types = get_all_switch_equipment_types()
 
-    assert stats["liczba_aparatury_ogolem"] == 48
-    # CB: 12 baseline + 8 Polish (4 ZPUE + 4 Elektrometal) = 20
-    assert stats["liczba_wylacznikow"] == 20
+    assert stats["liczba_aparatury_ogolem"] == 50
+    # CB: 12 baseline + 8 Polish (4 ZPUE + 4 Elektrometal) + 1 typ minimalny 110 kV = 21
+    assert stats["liczba_wylacznikow"] == 21
     # LS: 7 baseline + 2 ZPUE NAL = 9
     assert stats["liczba_rozlacznikow"] == 9
-    # DS: 4 baseline + 2 Elektrometal = 6
-    assert stats["liczba_odlacznikow"] == 6
+    # DS: 4 baseline + 2 Elektrometal + 1 typ minimalny 110 kV = 7
+    assert stats["liczba_odlacznikow"] == 7
     assert stats["liczba_reklozerow"] == 4
     assert stats["liczba_bezpiecznikow"] == 7
     assert stats["liczba_uziemnikow"] == 2
@@ -39,6 +43,7 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert stats["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
         "NIEWERYFIKOWANY",
+        "REFERENCYJNY",
         "ZWERYFIKOWANY",
     ]
     assert stats["statusy_katalogowe"] == [
@@ -50,8 +55,8 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert stats["liczba_zweryfikowanych"] == 33
     assert stats["liczba_czesciowo_zweryfikowanych"] == 3
     assert stats["liczba_nieweryfikowanych"] == 12
-    assert stats["liczba_referencyjnych"] == 0
-    assert len({item["params"]["un_kv"] for item in all_types}) == 4
+    assert stats["liczba_referencyjnych"] == 2
+    assert len({item["params"]["un_kv"] for item in all_types}) == 5  # + 123 kV (U_m sieci 110 kV)
     # 7 baseline + 2 Polish = 9 manufacturers
     assert (
         len(
@@ -63,7 +68,7 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
         )
         == 9
     )
-    assert Counter(item["params"]["equipment_kind"] for item in all_types)["CIRCUIT_BREAKER"] == 20
+    assert Counter(item["params"]["equipment_kind"] for item in all_types)["CIRCUIT_BREAKER"] == 21
 
 
 def test_polish_apparatus_declared_without_certificate_flag() -> None:
@@ -94,7 +99,16 @@ def test_switchgear_catalog_has_explicit_quality_metadata() -> None:
             "ZWERYFIKOWANY",
             "CZESCIOWO_ZWERYFIKOWANY",
             "NIEWERYFIKOWANY",
+            "REFERENCYJNY",
         }
+        # Karta KATALOG-APARATURA-WN: REFERENCYJNY wyłącznie typ minimalny łącznika 110 kV —
+        # bez producenta, z jakością ESTIMATED każdego pola danych.
+        if params["verification_status"] == "REFERENCYJNY":
+            assert params["manufacturer"] is None
+            assert params["card_field_status"]
+            assert all(
+                wpis["quality"] == "ESTIMATED" for wpis in params["card_field_status"].values()
+            )
         assert params["catalog_status"] in {
             "PRODUKCYJNY_V1",
             "REFERENCYJNY_V1",

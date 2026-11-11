@@ -45,6 +45,7 @@ import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import { SldCanvasV3, sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { kotwicaWidoku, prostokatElementuWScenie } from '../viewAnchor';
+import { prostokatyZakresu, zakresCelu } from '../zakresKadru';
 import { wskazanieOperacji } from '../../../../topology/wskazanieOperacji';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
@@ -338,21 +339,50 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
     useSelectionStore.getState().clearSelection();
   });
 
-  it('wskazanie stacji ze sklepu selekcji przenosi kadr na tę stację', () => {
-    const { container } = render(<SldCanvasV3Workspace />);
-    const kadrPrzed = kadrZDom(container);
-
-    // Stacja wybrana deterministycznie: OSTATNIA w porządku refów. Symbole
-    // stacji jako całości żyją na poziomie przeglądu (L1/L2 rozkładają stację
-    // na pola), więc ref bierzemy stamtąd — kotwica i tak działa na wszystkich
-    // trzech poziomach (wymóg `kotwicaWidoku`).
+  /** Stacja wybrana deterministycznie: OSTATNIA w porządku refów. Symbole
+   *  stacji jako całości żyją na poziomie przeglądu (L1/L2 rozkładają stację
+   *  na pola), więc ref bierzemy stamtąd — kotwica i kadr działają na
+   *  wszystkich trzech poziomach. */
+  function refOstatniejStacji(): string {
     const scene = buildSceneV3(enmDuza, 0);
     const refyStacji = [...scene.symbols]
       .filter((s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef)
       .map((s) => s.meta!.ownerRef!)
       .sort();
-    const refStacji = at(refyStacji, -1)!;
-    expect(refStacji, 'fixtura ma symbole stacji na poziomie przeglądu').toBeTruthy();
+    const ref = at(refyStacji, -1)!;
+    expect(ref, 'fixtura ma symbole stacji na poziomie przeglądu').toBeTruthy();
+    return ref;
+  }
+  const poziomZDom = (container: HTMLElement): SceneLod =>
+    Number(container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-scene-lod')) as SceneLod;
+
+  it("tryb 'kotwicz' (skutek uboczny edycji, drzewo): kadr przesuwa się na stację i ją centruje", () => {
+    const { container } = render(<SldCanvasV3Workspace />);
+    const kadrPrzed = kadrZDom(container);
+    const refStacji = refOstatniejStacji();
+
+    act(() => {
+      useSelectionStore.getState().centerSldOnElement(refStacji, 'kotwicz');
+    });
+
+    const kadrPo = kadrZDom(container);
+    expect(kadrPo).not.toEqual(kadrPrzed);
+    const box = prostokatWskazanego(enmDuza, refStacji, poziomZDom(container))!;
+    // Wskazany element jest w kadrze i wyśrodkowany w poziomie.
+    expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
+    expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
+    expect((box.minX + box.maxX) / 2).toBeCloseTo(kadrPo.x + kadrPo.width / 2, 3);
+  });
+
+  // K2 (UI-04, §0.5–0.6): intencja testu B-2 zostaje — wskazanie z wyników albo
+  // gotowości PRZENOSI kadr na element — ale domyślny tryb wskazania to teraz
+  // KADR ('kadruj'): stacja z polami i aparatami, na poziomie ≥ L1, w całości
+  // w kadrze (środek może ustąpić sąsiadom — W5-UI-15), zamiast samego
+  // przesunięcia bloku stacji do środka bez zmiany skali.
+  it('wskazanie stacji ze sklepu selekcji (domyślnie kadr) pokazuje CAŁĄ stację na poziomie ≥ L1', () => {
+    const { container } = render(<SldCanvasV3Workspace />);
+    const kadrPrzed = kadrZDom(container);
+    const refStacji = refOstatniejStacji();
 
     act(() => {
       useSelectionStore.getState().centerSldOnElement(refStacji);
@@ -360,14 +390,34 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
 
     const kadrPo = kadrZDom(container);
     expect(kadrPo).not.toEqual(kadrPrzed);
-    const poziom = Number(
-      container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-scene-lod'),
-    ) as SceneLod;
-    const box = prostokatWskazanego(enmDuza, refStacji, poziom)!;
-    // Wskazany element jest w kadrze i wyśrodkowany w poziomie.
-    expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
-    expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
-    expect((box.minX + box.maxX) / 2).toBeCloseTo(kadrPo.x + kadrPo.width / 2, 3);
+    const poziom = poziomZDom(container);
+    expect(poziom).toBeGreaterThanOrEqual(1);
+    const sceny = { 0: buildSceneV3(enmDuza, 0), 1: buildSceneV3(enmDuza, 1), 2: buildSceneV3(enmDuza, 2) } as const;
+    const wynik = zakresCelu('stacja', enmDuza, [refStacji], sceny[2]);
+    expect(wynik.dostepny).toBe(true);
+    if (!wynik.dostepny) return;
+    const box = prostokatyZakresu(sceny, wynik.zakres, sceneBoxToCameraWorld).celByLod[poziom]!;
+    expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x - 1e-6);
+    expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width + 1e-6);
+    expect(box.minY).toBeGreaterThanOrEqual(kadrPo.y - 1e-6);
+    expect(box.maxY).toBeLessThanOrEqual(kadrPo.y + kadrPo.height + 1e-6);
+  });
+
+  it('PONOWNE wskazanie tego samego refu kadruje znowu (numer wskazania, §0.5)', () => {
+    const { container, getByTestId } = render(<SldCanvasV3Workspace />);
+    const refStacji = refOstatniejStacji();
+    act(() => {
+      useSelectionStore.getState().centerSldOnElement(refStacji);
+    });
+    const kadrStacji = kadrZDom(container);
+    // Projektant odchodzi od kadru natywnym klikiem „Cały arkusz".
+    fireEvent.click(getByTestId('sld-v3-fit-sheet'));
+    expect(kadrZDom(container)).not.toEqual(kadrStacji);
+    // Ten sam ref drugi raz: dawny mechanizm (porównanie refu) milczał.
+    act(() => {
+      useSelectionStore.getState().centerSldOnElement(refStacji);
+    });
+    expect(kadrZDom(container)).toEqual(kadrStacji);
   });
 
   it('wskazanie refu, którego rysunek NIE nosi, nie rusza kamery (zero fabrykacji punktu)', () => {

@@ -62,7 +62,8 @@
  *   `sources.no_short_circuit_params` (enm/validator.py:287)      -> zwarcia
  *   `pv_bess.transformer_required`   (enm/domain_operations.py:1228,1239) -> rozplyw
  *   `branch_point.invalid_parent_medium/required_port_missing/
- *    catalog_ref_missing/switch_state_missing`, `zksn.branch_count_invalid`
+ *    catalog_ref_missing`, `zksn.branch_count_invalid` (`switch_state_missing` skasowany w
+ *    karcie W5-C — stan łączników portów żyje na ich gałęziach)
  *                                    (enm/domain_operations.py:1249-1345)  -> wspolne
  *   `switch.catalog_ref_missing`     (enm/domain_operations.py:1346-1377) -> wspolne
  *   `protection.binding_missing`     (domain/station_field_validation.py:203) -> zabezpieczenia
@@ -285,6 +286,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.materialization_incomplete': 'wspolne',
   'catalog.nameplate_mismatch': 'wspolne',
   'catalog.gate_result_mismatch': 'wspolne',
+  'catalog.transformer_voltage_mismatch': 'wspolne',
   'load.catalog_missing': 'wspolne',
   'load.power_zero': 'wspolne',
   // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —
@@ -299,6 +301,12 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'station.voltage_missing': 'stacje',
   'station.nn_outgoing_min_1': 'stacje',
   'station.required_field_missing': 'stacje',
+  'station.bkr_bay_missing': 'stacje',
+  'station.bkr_unbalance_ct_missing': 'stacje',
+  'station.bkr_discharge_vt_missing': 'stacje',
+  'station.bkr_transformer_trip_incomplete': 'stacje',
+  'shunt.pominieta_w_skladowej_zgodnej': 'zwarcia',
+  'shunt.parametry_robocze': 'wspolne',
   'transformer.connection_missing': 'stacje',
   'nn.bus_missing': 'stacje',
   'nn.main_breaker_missing': 'stacje',
@@ -311,6 +319,12 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.transformer_lv_not_nn_band': 'stacje',
   'apparatus.sn_catalog_missing': 'stacje',
   'apparatus.nn_catalog_missing': 'stacje',
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN (STATIONS).
+  'earthing.zespol_bus_invalid': 'stacje',
+  'earthing.zespol_neutral_undefined': 'stacje',
+  'earthing.zespol_auxiliary_load_missing': 'stacje',
+  'earthing.network_grounding_warning': 'stacje',
+  'earthing.zespol_direct_earthing': 'stacje',
   // GENERATORS (:639-668, :795-820) — poza wyjątkiem OSD wyżej
   'oze.transformer_required': 'rozplyw',
   'oze.nn_bus_required': 'rozplyw',
@@ -320,6 +334,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'protection.ct_required': 'zabezpieczenia',
   'protection.vt_required': 'zabezpieczenia',
   'protection.settings_incomplete': 'zabezpieczenia',
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: automatyka zespołu uziemiającego (PROTECTION).
+  'earthing.zespol_spz_without_resistor': 'zabezpieczenia',
+  'earthing.zespol_transformer_trip_missing': 'zabezpieczenia',
   // ANALYSIS (:717-734)
   'study_case.missing_base_snapshot': 'wspolne',
   'analysis.blocked_by_readiness': 'wspolne',
@@ -338,10 +355,14 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'connection.power_flow_missing': 'zwarcia',
   'connection.power_limit_missing': 'zwarcia',
   'earthing.neutral_grounding_inconsistent': 'zwarcia',
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: źródło SN z pominiętymi danymi uziemienia (SOURCES).
+  'source.sn_neutral_data_ignored': 'zwarcia',
   'nn.measurement.required_missing': 'zwarcia',
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
   'nn.source.switch_missing': 'zwarcia',
+  'source.gpz_section_unsupplied': 'zwarcia',
+  'source.gpz_transformer_hv_unsupplied': 'zwarcia',
   'source.multiple_grid_sources_in_island': 'zwarcia',
   'source.sk_min_inconsistent': 'zwarcia',
   'source.sk_min_missing': 'zwarcia',
@@ -350,6 +371,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'branch.zero_sequence_missing': 'wspolne',
   // R′0/X′0 z wartości roboczej katalogu: zwarcia doziemne i rozpływ niesymetryczny.
   'branch.z0_wartosc_robocza': 'wspolne',
+  // Bocznik zespołu uziemiającego z wartości roboczej: zwarcia doziemne (CATALOGS).
+  'zespol_uziemiajacy.wartosc_robocza': 'wspolne',
+  'earthing.zespol_voltage_mismatch': 'wspolne',
   'cable.insulation_data_missing': 'wspolne',
   'cable.operating_temperature_missing': 'wspolne',
   'cable.screen_bonding_reference_mismatch': 'wspolne',
@@ -368,10 +392,10 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'transformer.no_load_params_missing': 'wspolne',
   'transformer.vector_group_invalid': 'wspolne',
   'transformer.vector_group_missing': 'wspolne',
+  'transformer.winding_voltage_off_nominal': 'wspolne',
   'vt.rated_burden_missing': 'wspolne',
   'vt.winding_category_missing': 'wspolne',
   // STATIONS (stacje)
-  'earthing.electrode_data_missing': 'stacje',
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',
@@ -420,7 +444,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',
   'power_flow.unbalanced_load_phases_unsupported': 'wspolne',
-  'power_flow.unbalanced_losses_self_impedance': 'wspolne',
   'power_flow.unbalanced_magnetising_branch_omitted': 'wspolne',
   'power_flow.unbalanced_no_zero_sequence_path': 'wspolne',
   'power_flow.unbalanced_requires_radial': 'wspolne',
@@ -458,7 +481,6 @@ const KOD_DOMENOWY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'branch_point.invalid_parent_medium': 'wspolne',
   'branch_point.required_port_missing': 'wspolne',
   'branch_point.catalog_ref_missing': 'wspolne',
-  'branch_point.switch_state_missing': 'wspolne',
   'zksn.branch_count_invalid': 'wspolne',
   'switch.catalog_ref_missing': 'wspolne',
   // `catalog.ref_missing` przeniesiony do KOD_Z_REJESTRU_DO_CELU (karta W4) —

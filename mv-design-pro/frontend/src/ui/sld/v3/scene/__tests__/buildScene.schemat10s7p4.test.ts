@@ -40,6 +40,8 @@ import { GRID } from '../../core/grid';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import type { EnergyNetworkModel as Enm } from '../../../../../types/enm';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
+import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
+import { punktyPodzialu } from '../../../../shared/stanLacznika';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -187,11 +189,8 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy
 /** Wstrzyknięcie syntetycznego punktu NO na ciąg główny (§3: „znacznik sekcji/NOP
  *  NIGDY nie znika") — wzorzec z S3/S7-P3. */
 function withSyntheticNop(model: Enm): Enm {
-  const clone = structuredClone(model);
-  const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
-  if (!mainRun) throw new Error('fixtura bez main_trunk');
-  (mainRun as { nop_station_ref: string | null }).nop_station_ref = buildSceneV3(model, 2).meta.mainTrunkStationIds[0];
-  return clone;
+  // Karta W5-C: punkt podziału = pozycja normalna łącznika pola stacji (jedna prawda).
+  return zPunktemPodzialuWStacji(model, buildSceneV3(model, 2).meta.mainTrunkStationIds[0]);
 }
 
 describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku całości', () => {
@@ -259,8 +258,31 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
     );
     expect(nopGlyph, 'stacja NOP musi mieć glif mini-RMU na L0').toBeTruthy();
     expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
-    // Na L0 osobny symbol `noPoint` NIE jest rysowany (sylwetka go zastępuje).
-    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+    // Na L0 osobny symbol `noPoint` STACJI NOP NIE jest rysowany (sylwetka go
+    // zastępuje). Przepisane do kanonu K2b §0.4 i W5-C (intencja zachowana): punkt
+    // podziału to łącznik z pozycją normalną „otwarty” (`punktyPodzialu`, jedna
+    // prawda z modelu — dawne `Corridor.no_point_ref` skasowane). Łącznik w polu
+    // stacji NOP niesie sylwetka stacji (jedna reprezentacja), każdy INNY punkt
+    // podziału (łącznik toru poza polami stacji NOP) jest rysowany symbolem
+    // `noPoint` na KAŻDYM poziomie, także na L0.
+    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === nopRef)).toBe(false);
+    const lacznikiPolStacjiNop = new Set(
+      (withNop.bays ?? [])
+        .filter((pole) => pole.substation_ref === nopRef)
+        .flatMap((pole) => pole.equipment_refs ?? []),
+    );
+    const refyNopPozaStacja = punktyPodzialu(withNop)
+      .map((g) => g.ref_id)
+      .filter((ref) => !lacznikiPolStacjiNop.has(ref));
+    // Pomiar na sieci wzorcowej: punkt podziału substratu leży na łączniku toru poza
+    // polami stacji — bez niego pętla niżej byłaby pusta, a test bezzębny.
+    expect(refyNopPozaStacja.length, 'sieć wzorcowa niesie punkt podziału poza stacją NOP').toBeGreaterThan(0);
+    for (const ref of refyNopPozaStacja) {
+      expect(
+        nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === ref),
+        `punkt podziału ${ref} narysowany na L0`,
+      ).toBe(true);
+    }
   });
 
   it('L1/L2: punkt NO = symbol noPoint + etykieta „NO" na osi szyny; kotwica identyczna L1↔L2 (GS-1)', () => {

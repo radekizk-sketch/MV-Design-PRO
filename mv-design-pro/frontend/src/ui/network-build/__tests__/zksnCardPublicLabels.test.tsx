@@ -48,6 +48,7 @@ vi.mock('../../app-state', () => ({
 
 beforeEach(() => {
   lastProps = null;
+  openOperationForm.mockReset();
   currentSnapshot = {
     branch_points: [
       {
@@ -57,7 +58,6 @@ beforeEach(() => {
         parent_segment_id: 'seg/9aa9bb88cc77dd66ee55/main_run',
         ports: { MAIN_IN: 'bus/abcd1234567890ffeeddccbb', MAIN_OUT: 'bus/0011aabbccddeeff', BRANCH: ['bus/01230123aabbccdd'] },
         branch_occupied: { BRANCH: 'seg/branch_target_aaaa1111' },
-        switch_state: 'closed',
         completeness_status: 'KOMPLETNY',
       },
     ],
@@ -134,5 +134,50 @@ describe('ZksnCard — publiczne etykiety bez surowych identyfikatorów', () => 
     expect(addBranch).toBeDefined();
     expect(addBranch?.label).toContain('ODG 1');
     expect(addBranch?.disabled).toBe(true);
+  });
+
+  /**
+   * Karta W5-C: stan łącznika portu żyje na JEGO gałęzi. Dawna akcja „Ustaw stan łącznika"
+   * otwierała edycję parametrów punktu (bez pola stanu — fantom). Iloczyn: położenie
+   * {zamknięty, otwarty} × łącznik portu {wyłącznik, bezpiecznik} → jedna akcja na łącznik,
+   * wykonująca `open_switch`/`close_switch` na gałęzi (realna operacja, nie formularz).
+   */
+  it.each([
+    ['switch', 'closed', 'Otwórz', 'open_switch'],
+    ['switch', 'open', 'Zamknij', 'close_switch'],
+    ['fuse', 'closed', 'Otwórz', 'open_switch'],
+    ['fuse', 'open', 'Zamknij', 'close_switch'],
+  ])('łącznik portu %s w położeniu %s → akcja „%s" wykonuje %s', (typ, status, czasownik, operacja) => {
+    executeDomainOperation.mockReset();
+    executeDomainOperation.mockResolvedValue({ error: null });
+    currentSnapshot = {
+      ...currentSnapshot,
+      branches: [
+        {
+          ref_id: 'sw/port-odg-1',
+          name: 'Łącznik ODG 1',
+          type: typ,
+          status,
+          meta: { branch_point_ref: 'seg/abc123def456ZZZZ9999/bp_zksn_root', port_id: 'BRANCH' },
+        },
+      ],
+    };
+    render(<ZksnCard elementId="seg/abc123def456ZZZZ9999/bp_zksn_root" onClose={closeObjectCard} />);
+    const actions = (lastProps as { actions?: Array<{ id: string; label: string; onClick: () => void }> } | null)?.actions ?? [];
+    expect(actions.some((a) => a.id === 'set_switch_state')).toBe(false);
+    const akcja = actions.find((a) => a.id === 'switch_sw/port-odg-1');
+    expect(akcja?.label).toBe(`${czasownik} łącznik Łącznik ODG 1`);
+    akcja!.onClick();
+    expect(executeDomainOperation).toHaveBeenCalledWith('case-1', operacja, { switch_ref: 'sw/port-odg-1' });
+    expect(openOperationForm).not.toHaveBeenCalled();
+  });
+
+  it('punkt bez łączników portów: brak akcji stanu i jawne zdanie w sekcji', () => {
+    render(<ZksnCard elementId="seg/abc123def456ZZZZ9999/bp_zksn_root" onClose={closeObjectCard} />);
+    const actions = (lastProps as { actions?: Array<{ id: string }> } | null)?.actions ?? [];
+    expect(actions.some((a) => a.id.startsWith('switch_'))).toBe(false);
+    const sections = (lastProps as { sections?: Array<{ fields: Array<{ value: unknown }> }> } | null)?.sections ?? [];
+    const wartosci = sections.flatMap((s) => s.fields.map((f) => String(f.value)));
+    expect(wartosci).toContain('Brak łączników portów w modelu');
   });
 });

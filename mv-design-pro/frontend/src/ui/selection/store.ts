@@ -19,6 +19,46 @@ import type {
   ResultStatus,
   SelectedElement,
 } from '../types';
+import { refModeluElementu, useSnapshotStore } from '../topology/snapshotStore';
+
+/**
+ * Karta K8 (synchronizacja wynik ↔ schemat): zaznaczenie i wskazanie elementu
+ * niosą ZAWSZE `ref_id` modelu — tak zaznacza schemat, tak nazywa elementy nakładka
+ * wyników i panel dolny. Wyniki rozpływu i zwarć niosą identyfikator grafu
+ * obliczeniowego (`uuid5` z `ref_id`) albo `id` elementu migawki; bez tej normalizacji
+ * klik wiersza ekranu pełnego zaznaczał element, którego nie zna żadna inna
+ * powierzchnia (schemat nie kadrował, inspektor i panel dolny milczały). Jedno
+ * miejsce dla WSZYSTKICH piszących do magazynu zaznaczenia. Identyfikator nieznany
+ * migawce (albo brak migawki) zostaje bez zmian — uczciwy brak, bez zgadywania.
+ */
+function naRefModelu(identyfikator: string): string {
+  return refModeluElementu(useSnapshotStore.getState().snapshot, identyfikator) ?? identyfikator;
+}
+
+function elementNaRefModelu(element: SelectedElement): SelectedElement {
+  const ref = naRefModelu(element.id);
+  if (ref === element.id) return element;
+  // Nazwa zapasowa równa identyfikatorowi wyniku idzie za identyfikatorem.
+  return { ...element, id: ref, name: element.name === element.id ? ref : element.name };
+}
+
+/**
+ * K2 (UI-04, rozstrzygnięcie §0.5): tryb wskazania elementu na schemacie.
+ *  - `'kadruj'` — polecenie „pokaż mi to" (wyniki, gotowość, drzewo, wyszukiwanie):
+ *    kamera KADRUJE element i może przybliżyć (`camera.ts`, akcja `'kadruj'`);
+ *  - `'kotwicz'` — skutek uboczny operacji domenowej (kreator po zapisie): kamera
+ *    tylko przenosi kadr, skala projektanta nigdy nie rośnie (akcja `'kotwicz'`).
+ */
+export type TrybWskazaniaSld = 'kadruj' | 'kotwicz';
+
+/** Wskazanie elementu na schemacie. `seq` rośnie przy KAŻDYM wywołaniu
+ *  `centerSldOnElement` — także dla tego samego refu — więc ponowne wskazanie
+ *  kadruje ponownie (dawny licznik lokalny kanwy liczył tylko ZMIANY refu). */
+export interface WskazanieSld {
+  readonly ref: string;
+  readonly seq: number;
+  readonly tryb: TrybWskazaniaSld;
+}
 
 interface SelectionState {
   selectedElements: SelectedElement[];
@@ -27,7 +67,18 @@ interface SelectionState {
   resultStatus: ResultStatus;
   propertyGridOpen: boolean;
   treeExpandedNodes: Set<string>;
-  sldCenterOnElement: string | null;
+  /** K2: bieżące wskazanie (ref + numer sekwencji + tryb); `null` = brak.
+   *  Zastępuje dawne pole `sldCenterOnElement` (sam ref, bez numeru — ponowne
+   *  wskazanie tego samego elementu było niewidoczne dla schematu). */
+  sldWskazanie: WskazanieSld | null;
+  /** K2: ostatni numer sekwencji nadany wskazaniu — NIGDY nie maleje (także po
+   *  `clearSelection`), więc numer obsłużony przez schemat jest porównywalny. */
+  sldWskazanieSeq: number;
+  /** K2: numer ostatniego wskazania OBSŁUŻONEGO przez schemat. Przestrzeń
+   *  schematu może być odmontowana w chwili wskazania (klik w wynikach albo
+   *  w gotowości przełącza przestrzeń); po zamontowaniu obsługuje wskazanie
+   *  o numerze większym niż obsłużony — dokładnie raz. */
+  sldWskazanieObsluzone: number;
   selectElement: (element: SelectedElement | null) => void;
   selectElements: (elements: SelectedElement[]) => void;
   toggleElement: (element: SelectedElement) => void;
@@ -39,7 +90,8 @@ interface SelectionState {
   togglePropertyGrid: (open?: boolean) => void;
   expandTreeNode: (nodeId: string) => void;
   collapseTreeNode: (nodeId: string) => void;
-  centerSldOnElement: (elementId: string | null) => void;
+  centerSldOnElement: (elementId: string | null, tryb?: TrybWskazaniaSld) => void;
+  potwierdzWskazanieSld: (seq: number) => void;
   clearSelection: () => void;
 }
 
@@ -52,18 +104,23 @@ export const useSelectionStore = create<SelectionState>()(
       resultStatus: 'NONE',
       propertyGridOpen: false,
       treeExpandedNodes: new Set<string>(),
-      sldCenterOnElement: null,
+      sldWskazanie: null,
+      sldWskazanieSeq: 0,
+      sldWskazanieObsluzone: 0,
 
-      selectElement: (element) =>
-        set((state) => ({
-          selectedElements: element ? [element] : [],
-          selectedElement: element ?? null,
-          propertyGridOpen: element !== null || state.propertyGridOpen,
-        })),
+      selectElement: (wskazany) =>
+        set((state) => {
+          const element = wskazany ? elementNaRefModelu(wskazany) : null;
+          return {
+            selectedElements: element ? [element] : [],
+            selectedElement: element ?? null,
+            propertyGridOpen: element !== null || state.propertyGridOpen,
+          };
+        }),
 
       selectElements: (elements) =>
         set((state) => {
-          const sorted = [...elements].sort((a, b) => a.id.localeCompare(b.id));
+          const sorted = elements.map(elementNaRefModelu).sort((a, b) => a.id.localeCompare(b.id));
           return {
             selectedElements: sorted,
             selectedElement: sorted[0] ?? null,
@@ -72,8 +129,9 @@ export const useSelectionStore = create<SelectionState>()(
         }),
 
       // Iteracja 12: toggle (Ctrl+click) — dodaj/usuń element z multi-selection.
-      toggleElement: (element) =>
+      toggleElement: (wskazany) =>
         set((state) => {
+          const element = elementNaRefModelu(wskazany);
           const exists = state.selectedElements.some((e) => e.id === element.id);
           const next = exists
             ? state.selectedElements.filter((e) => e.id !== element.id)
@@ -86,8 +144,9 @@ export const useSelectionStore = create<SelectionState>()(
         }),
 
       // Iteracja 12: extend (Shift+click) — dodaje element do selekcji bez usuwania.
-      extendSelection: (element) =>
+      extendSelection: (wskazany) =>
         set((state) => {
+          const element = elementNaRefModelu(wskazany);
           if (state.selectedElements.some((e) => e.id === element.id)) {
             return state;
           }
@@ -102,8 +161,9 @@ export const useSelectionStore = create<SelectionState>()(
         }),
 
       // Iteracja 12: usuwa konkretny element z multi-selection.
-      removeFromSelection: (elementId) =>
+      removeFromSelection: (identyfikator) =>
         set((state) => {
+          const elementId = naRefModelu(identyfikator);
           const next = state.selectedElements.filter((e) => e.id !== elementId);
           return {
             selectedElements: next,
@@ -153,13 +213,24 @@ export const useSelectionStore = create<SelectionState>()(
           return { treeExpandedNodes: expanded };
         }),
 
-      centerSldOnElement: (elementId) => set(() => ({ sldCenterOnElement: elementId })),
+      centerSldOnElement: (elementId, tryb = 'kadruj') =>
+        set((state) => {
+          if (!elementId) return { sldWskazanie: null };
+          const seq = state.sldWskazanieSeq + 1;
+          return {
+            sldWskazanie: { ref: naRefModelu(elementId), seq, tryb },
+            sldWskazanieSeq: seq,
+          };
+        }),
+
+      potwierdzWskazanieSld: (seq) =>
+        set((state) => (seq > state.sldWskazanieObsluzone ? { sldWskazanieObsluzone: seq } : {})),
 
       clearSelection: () =>
         set(() => ({
           selectedElements: [],
           selectedElement: null,
-          sldCenterOnElement: null,
+          sldWskazanie: null,
         })),
     }),
     {

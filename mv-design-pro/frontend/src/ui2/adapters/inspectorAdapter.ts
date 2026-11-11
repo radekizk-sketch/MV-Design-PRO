@@ -49,8 +49,8 @@ import type {
   Substation,
   SwitchBranch,
   Transformer,
+  ZespolUziemiajacy,
 } from '../../types/enm';
-import { useAppStateStore } from '../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
@@ -66,6 +66,13 @@ import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
 import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
+import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
+import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../ui/shared/etykietyZabezpieczen';
+import {
+  etykietaPozycjiNormalnej,
+  opisLacznikowPortow,
+  pozycjaNormalna,
+} from '../../ui/shared/stanLacznika';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -80,6 +87,7 @@ const KOLEKCJE: ReadonlyArray<{
   { klucz: 'loads', typ: 'odbior', typEtykieta: 'Odbiór' },
   { klucz: 'generators', typ: 'generator', typEtykieta: 'Generator' },
   { klucz: 'shunt_capacitors', typ: 'bateria_kondensatorow', typEtykieta: 'Bateria kondensatorów' },
+  { klucz: 'zespoly_uziemiajace', typ: 'zespol_uziemiajacy', typEtykieta: 'Zespół uziemiający' },
   { klucz: 'substations', typ: 'stacja', typEtykieta: 'Stacja' },
   { klucz: 'bays', typ: 'pole', typEtykieta: 'Pole' },
   { klucz: 'junctions', typ: 'wezel', typEtykieta: 'Węzeł' },
@@ -275,6 +283,8 @@ function wlasciwosciKabla(el: Cable): WierszWlasciwosci[] {
 function wlasciwosciLacznika(el: SwitchBranch): WierszWlasciwosci[] {
   return [
     ...wlasciwosciGaleziWspolne(el),
+    // W5-C: pozycja normalna z projektu obok bieżącego położenia („Stan") — dwa pojęcia.
+    wr('Pozycja normalna', etykietaPozycjiNormalnej(pozycjaNormalna(el))),
     ...bezNulli([
       w('Rezystancja', el.r_ohm ?? null, 'Ω'),
       w('Reaktancja', el.x_ohm ?? null, 'Ω'),
@@ -370,6 +380,30 @@ function wlasciwosciBaterii(el: ShuntCapacitor): WierszWlasciwosci[] {
   ]);
 }
 
+/**
+ * Zespół uziemiający sieci SN (ENEA Z.13 / Z.14 / Z.15): dane urządzeń punktu neutralnego
+ * z modelu — transformator uziemiający, dławik gaszący, rezystor. Wariant uziemienia i Z_N
+ * wyprowadza backend (`enm.uziemienie_sekcji`); tu wyłącznie odczyt pól elementu.
+ */
+function wlasciwosciZespolu(el: ZespolUziemiajacy): WierszWlasciwosci[] {
+  const dlawik = el.dlawik ?? null;
+  const rezystor = el.rezystor ?? null;
+  return bezNulli([
+    w('Grupa połączeń', el.grupa_polaczen ?? null),
+    w('Napięcie znamionowe', el.u_n_kv ?? null, 'kV'),
+    w('Moc znamionowa', el.s_n_kva ?? null, 'kVA'),
+    w('Rezystancja zerowa R0', el.r0_ohm ?? null, 'Ω'),
+    w('Reaktancja zerowa X0', el.x0_ohm ?? null, 'Ω'),
+    w('Dławik: prąd minimalny', dlawik?.i_min_a ?? null, 'A'),
+    w('Dławik: prąd maksymalny', dlawik?.i_max_a ?? null, 'A'),
+    w('Dławik: nastawa', dlawik?.i_nastawy_a ?? null, 'A'),
+    w('Rezystor: rezystancja', rezystor?.r_ohm ?? null, 'Ω'),
+    w('Rezystor: prąd znamionowy', rezystor?.i_n_a ?? null, 'A'),
+    w('Rezystor: czas przepływu prądu', rezystor?.t_s ?? null, 's'),
+    w('Uziemienie bezpośrednie', el.uziemienie_bezposrednie ? 'tak' : null),
+  ]);
+}
+
 /** Funkcja stacji z deklaracji (GPZ, rozdzielnica nN, rozdzielcza, odbiorcza) — to NIE jest rodzaj
  *  topologiczny; ten pochodzi z jednej reguły produktu (`ui/shared/rodzajStacji.ts`). */
 const ETYKIETA_FUNKCJI_STACJI: Readonly<Record<string, string>> = {
@@ -431,14 +465,18 @@ const ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA: Readonly<Record<string, string>> = {
   zksn: 'ZKSN',
 };
 
-function wlasciwosciPunktuRozgalezienia(el: BranchPointSN): WierszWlasciwosci[] {
+function wlasciwosciPunktuRozgalezienia(
+  el: BranchPointSN,
+  model: EnergyNetworkModel,
+): WierszWlasciwosci[] {
   return bezNulli([
     wr(
       'Rodzaj punktu',
       ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA[el.branch_point_type] ?? el.branch_point_type,
     ),
     wr('Szyna', el.bus_ref),
-    w('Stan łącznika', el.switch_state ? (ETYKIETA_STANU_LACZNIKA[el.switch_state] ?? el.switch_state) : null),
+    // W5-C: stan łączników portów z ICH gałęzi — nigdy z kopii przy punkcie.
+    wr('Stan łączników portów', opisLacznikowPortow(model, el.ref_id)),
     w('Kompletność katalogowa', el.completeness_status ?? null),
   ]);
 }
@@ -475,15 +513,6 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
     w('Montaż VT', el.vt_mounting ?? null),
   ]);
 }
-
-const ETYKIETA_RODZAJU_ZABEZPIECZENIA: Readonly<Record<string, string>> = {
-  overcurrent: 'Nadprądowe',
-  earth_fault: 'Ziemnozwarciowe',
-  directional_overcurrent: 'Nadprądowe kierunkowe',
-  distance: 'Odległościowe',
-  differential: 'Różnicowe',
-  custom: 'Niestandardowe',
-};
 
 function wlasciwosciZabezpieczenia(el: ProtectionAssignment): WierszWlasciwosci[] {
   return bezNulli([
@@ -527,7 +556,7 @@ function wlasciwosciWezlaPrzylaczenia(el: ConnectionNode): WierszWlasciwosci[] {
 
 /**
  * Rozdzielacz WŁAŚCIWOŚCI KATALOGOWYCH wg typu (`typ` z `znajdzElement`) —
- * ZAMKNIĘTA lista (16 kolekcji `EnergyNetworkModel` × 7 podtypów gałęzi dla
+ * ZAMKNIĘTA lista (17 kolekcji `EnergyNetworkModel` × 7 podtypów gałęzi dla
  * „odcinka" = pełny inwentarz klasy „typ elementu ENM"). Test parytetu
  * (`__tests__/inspectorAdapter.test.ts`) iloczynem cech {typ} × {element
  * fixture z KOMPLETEM pól} sprawdza, że KAŻDY typ zwraca >= 1 wiersz —
@@ -559,6 +588,8 @@ function wlasciwosciKatalogoweWgTypu(
       return wlasciwosciGeneratora(element as unknown as Generator);
     case 'bateria_kondensatorow':
       return wlasciwosciBaterii(element as unknown as ShuntCapacitor);
+    case 'zespol_uziemiajacy':
+      return wlasciwosciZespolu(element as unknown as ZespolUziemiajacy);
     case 'stacja':
       return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':
@@ -566,7 +597,7 @@ function wlasciwosciKatalogoweWgTypu(
     case 'wezel':
       return wlasciwosciWezla(element as unknown as Junction);
     case 'punkt_rozgalezienia':
-      return wlasciwosciPunktuRozgalezienia(element as unknown as BranchPointSN);
+      return wlasciwosciPunktuRozgalezienia(element as unknown as BranchPointSN, model);
     case 'magistrala':
       return wlasciwosciMagistrali(element as unknown as Corridor);
     case 'pomiar':
@@ -703,9 +734,9 @@ export function useObiektInspektora(id: string | null): ObiektInspektora | null 
   const wynikRozplywu = usePowerFlowResultsStore((s) => s.results);
   const wynikZwarciowy = useResultsInspectorStore((s) => s.shortCircuitResults);
   // Świeżość dowodu = TA SAMA prawda co nagłówki ekranów wyników (jedno źródło,
-  // karta V12K-264): rewizja modelu, przy której policzono AKTYWNY przebieg.
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const { rewizjaDanych } = useSwiezoscNaglowka(activeRunId);
+  // karta V12K-264): rewizja modelu, przy której policzono bieg oglądany (karta K8).
+  const runIdOgladany = useRunIdOgladany();
+  const { rewizjaDanych } = useSwiezoscNaglowka(runIdOgladany);
   return useMemo(() => {
     const obiekt = mapowanieObiektuInspektora(snapshot, id);
     if (!obiekt || !id) return obiekt;
@@ -752,11 +783,11 @@ export function useRewizjaModelu(): number {
  * (3) `przejdzDoPrzestrzeni('wyniki')` — most tras E1.7c (jak `AppRoot.pokazWynikiBiegu`).
  * Element inspektora nie niesie własnego `run_id` (kontrakt `PozycjaDowodu` ma
  * wyłącznie `ref`/`etykieta`/`rewizja` — `ui2/inspector/inspectorModel.ts`),
- * więc kontekst biegu jest AKTYWNYM przebiegiem powłoki — ten sam wybór co
- * przy braku wskazania w warsztacie wyników (bez zgadywania cudzego przebiegu).
+ * więc kontekst biegu jest biegiem OGLĄDANYM z magazynu kontekstu wyniku (karta K8) —
+ * ten sam bieg, który pokazują schemat, panel dolny i pasek stanu.
  */
 export function otworzDowodInspektora(ref: string): void {
-  const runId = useAppStateStore.getState().activeRunId;
+  const runId = runIdOgladanyTeraz();
   emituj({ typ: 'selekcja', obiektId: ref, zrodlo: 'inspektor' });
   useShellStore.getState().setWynikiTab('dowod', runId);
   przejdzDoPrzestrzeni('wyniki');

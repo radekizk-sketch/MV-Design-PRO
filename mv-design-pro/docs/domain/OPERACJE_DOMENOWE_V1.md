@@ -1,66 +1,38 @@
-# OPERACJE DOMENOWE V1 — KANON WIĄŻĄCY
+# OPERACJE DOMENOWE — BRAMKA KATALOGOWA, PIPELINE ANALIZY, TESTY
 
-> Dokument wiążący: definiuje zamknięty zestaw operacji domenowych V1.
-> Kanon nazw, kontrakty JSON, mapowanie na kod i testy.
-> Patrz też: `ENM_OP_CONTRACTS_CANONICAL_FULL.md` (szczegółowe schematy JSON).
+> Dokument wiążący dla bramki katalogowej operacji budowy sieci SN, pipeline'u analizy
+> i testów sekwencji V1. Rejestr operacji, pola ładunków, kopertę wywołania, odpowiedź
+> i przykłady wykonane przez API opisuje WYŁĄCZNIE
+> `ENM_OP_CONTRACTS_CANONICAL_FULL.md` (generowany z rejestru
+> `backend/src/domain/canonical_operations.py`, pilnowany testem
+> `backend/tests/ci/test_dokument_kontraktow_operacji.py`).
 
-## 1. ZAMKNIĘTY ZESTAW OPERACJI V1
+## 1. ZESTAW OPERACJI
 
-| # | Operacja | Cel | Plik źródłowy |
-|---|----------|-----|----------------|
-| 1 | `add_grid_source_sn` | Dodaj GPZ (źródło SN) | `src/enm/domain_operations.py` |
-| 2 | `continue_trunk_segment_sn` | Kontynuuj magistralę SN | `src/enm/domain_operations.py` |
-| 3 | `insert_station_on_segment_sn` | Wstaw stację SN/nN w odcinek | `src/enm/domain_operations.py` |
-| 4 | `start_branch_segment_sn` | Odgałęzienie od portu | `src/enm/domain_operations.py` |
-| 5 | `insert_section_switch_sn` | Wstaw łącznik/sekcjonowanie | `src/enm/domain_operations.py` |
-| 6 | `connect_secondary_ring_sn` | Połączenie wtórne (ring) | `src/enm/domain_operations.py` |
-| 7 | `set_normal_open_point` | Ustaw NOP | `src/enm/domain_operations.py` |
-| 8 | `add_transformer_sn_nn` | Dodaj trafo SN/nN | `src/enm/domain_operations.py` |
-| 9 | `assign_catalog_to_element` | Przypisz katalog + materializacja | `src/enm/domain_operations.py` |
-| 10 | `update_element_parameters` | Jawne parametry ręczne | `src/enm/domain_operations.py` |
-| 11 | `refresh_snapshot` | Odśwież readiness/views bez mutacji | `src/enm/domain_operations.py` |
+Dawny „zamknięty zestaw V1” (11 operacji) jest podzbiorem rejestru
+`CANONICAL_OPERATIONS` — rejestr ma 50 operacji w sześciu kategoriach (sieć SN, stacja
+SN/nN, źródła i wytwórcy, zabezpieczenia, operacje uniwersalne, sieć nN). Tabela operacji
+z polami ładunku i handlerem: `ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4; operacje usunięte
+z powodami: §5.
 
-## 2. KONTRAKT ODPOWIEDZI (KAŻDA OPERACJA)
+## 2. KONTRAKT ODPOWIEDZI
 
-```json
-{
-  "snapshot": {},
-  "logical_views": {
-    "trunks": [],
-    "branches": [],
-    "secondary_connectors": [],
-    "terminals": [],
-    "line_fields": []
-  },
-  "readiness": {
-    "ready": true,
-    "blockers": [],
-    "warnings": []
-  },
-  "fix_actions": [],
-  "changes": {
-    "created_element_ids": [],
-    "updated_element_ids": [],
-    "deleted_element_ids": []
-  },
-  "selection_hint": null,
-  "audit_trail": [],
-  "domain_events": [],
-  "materialized_params": {},
-  "layout": {
-    "layout_hash": "sha256:...",
-    "layout_version": "1.0"
-  }
-}
-```
+Pola odpowiedzi każdej operacji (`snapshot`, `changes`, `domain_events`, `selection_hint`,
+`audit_trail`, `readiness`, `fix_actions`, `logical_views`, `materialized_params`, `layout`,
+`semantic_issues`, przy odmowie `error` i `error_code`): `ENM_OP_CONTRACTS_CANONICAL_FULL.md` §2.
 
 ## 3. BRAMKA KATALOGOWA (DOUBLE GATE)
 
 Operacje `continue_trunk_segment_sn`, `start_branch_segment_sn`, `connect_secondary_ring_sn`
-wymagają `catalog_ref` w payload segmentu. Brak → `error_code: "catalog.ref_required"`.
+wymagają pozycji katalogowej segmentu (`segment.catalog_ref` albo `catalog_binding`).
+Brak → `error_code: "catalog.ref_required"`.
 
-Operacje `insert_station_on_segment_sn`, `add_transformer_sn_nn`
-wymagają `transformer_catalog_ref` gdy `transformer.create=True`.
+`insert_station_on_segment_sn` przy `transformer.create=True` wymaga
+`transformer.transformer_catalog_ref`; `add_transformer_sn_nn` wymaga
+`transformer_catalog_ref` albo `catalog_binding`. Brak → `catalog.ref_required`.
+
+Druga bramka (API, `api/domain_ops_policy.py`): referencja spoza katalogu modelu →
+HTTP 422 `catalog.item_not_found` bez zmiany modelu.
 
 ## 4. PIPELINE ANALIZY V1
 
@@ -80,8 +52,10 @@ ProofDocument (LaTeX/PDF/JSON)
 
 | Test | Plik | Co weryfikuje |
 |------|------|---------------|
-| Operacje domenowe | `tests/enm/test_domain_operations.py` | 11 operacji, readiness, determinizm |
-| Golden networks | `tests/enm/test_golden_network_v1_e2e.py` | Pełna sekwencja V1 (10 kroków) |
+| Kontrakt dokumentu operacji | `tests/ci/test_dokument_kontraktow_operacji.py` | Rejestr = dokument; każda operacja wykonana przez API z deklarowanym wynikiem |
+| Specyfikacja = handler | `tests/ci/test_spec_operacji_rowna_odczytom_handlera.py` | Pola ładunku rejestru = klucze czytane przez handler |
+| Operacje domenowe | `tests/enm/test_domain_operations.py` | Operacje budowy sieci SN, readiness, determinizm |
+| Golden networks | `tests/enm/test_golden_network_v1_e2e.py` | Pełna sekwencja V1 krok po kroku |
 | Pipeline analizy | `tests/e2e/test_v1_analysis_pipeline.py` | ENM→solver→results E2E |
 | Determinizm PF | `tests/e2e/test_pf_determinism_workflow.py` | 10× hash PF |
 | Determinizm SC | `tests/e2e/test_v1_analysis_pipeline.py` | 10× hash SC |
@@ -90,6 +64,6 @@ ProofDocument (LaTeX/PDF/JSON)
 ## 6. STRAŻNICY CI
 
 - `scripts/guard_ux_flow_v1.py` — sprawdza istnienie testów, mapping, walidacji
-- `scripts/canonical_ops_guard.py` — sprawdza kanon nazw operacji
+- `scripts/canonical_ops_guard.py` — rejestr operacji = handlery (oba kierunki), kanon nazw
 - `scripts/pcc_zero_guard.py` — grep-zero PCC
 - `scripts/catalog_gate_guard.py` — bramka katalogowa

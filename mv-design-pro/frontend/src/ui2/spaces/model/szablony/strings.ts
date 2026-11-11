@@ -52,6 +52,7 @@ export const SZABLONY_STRINGS = {
   szczegolyTytul: 'Szczegóły szablonu',
   szczegolyBrakWyboru: 'Kliknij wariant, aby zobaczyć szczegóły.',
   szczegolyTransformator: 'Transformator',
+  szczegolyRownowaznik: 'Równoważnik sieci (warunki przyłączenia)',
   szczegolyPolaSn: 'Pola rozdzielnicy SN',
   szczegolyOdplywyNn: 'Odpływy nn',
   szczegolyZrodla: 'Źródła / magazyny (DER)',

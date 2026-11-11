@@ -11,7 +11,7 @@ from uuid import UUID
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
-from application.field_read_model import build_field_read_model
+from application.field_read_model import droga_doziemna_pola
 from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from domain.canonical_operations import resolve_operation_name
 from domain.der_protection_functions import (
@@ -42,12 +42,14 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import ref_pola_wytworcy
 from enm.slownik_komunikatow import opis_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
-from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
-from fastapi import APIRouter, HTTPException, Request, status
+from enm.topology import transformatory_zasilajace_gpz
+from enm.tor_pola import szyna_glowna_stacji, szyna_raportowa, szyny_stacji
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.catalog.wartosci_robocze import (
     dana_przyjeta_tolerancji_nn,
@@ -57,7 +59,7 @@ from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
-from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
+from network_model.pochodne.pasma_napieciowe import to_samo_napiecie_znamionowe, w_pasmie_nn
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
 from pydantic import BaseModel, Field, field_validator
 from werdykt import DanaPrzyjeta, opis_podstawy
@@ -128,6 +130,11 @@ class DerGeneratorCreateRequest(BaseModel):
     data_umowy_przylaczeniowej: DataUmowy | None = None
     nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
     deklaracje_modulu: DeklaracjeModulu | None = None
+    # Próba zapisu: ta sama operacja `add_converter_source` i te same odmowy (422) co zapis,
+    # ale model zostaje bez zmian, a odpowiedź nie niesie migawki. Kreator DER pyta tak backend
+    # o werdykt (moc transformatora O-53, zgodność napięć) PRZED zapisem — bez kopii reguły
+    # we froncie.
+    dry_run: bool = False
 
     @field_validator("station_ref", "catalog_ref")
     @classmethod
@@ -291,14 +298,21 @@ def _find_station(enm: dict[str, Any], station_ref: str) -> dict[str, Any] | Non
 def _station_transformers(enm: dict[str, Any], station: dict[str, Any]) -> list[dict[str, Any]]:
     transformer_refs = {ref for ref in station.get("transformer_refs", []) if isinstance(ref, str)}
     # POLA-W-TORZE: szyny stacji z jednego źródła — transformator leży na zaciskach pól.
-    station_buses = set(szyny_stacji(station, enm.get("branches") or []))
+    station_buses = set(szyny_stacji(enm, station))
+    # GPZ-MODEL: transformator zasilający GPZ (110/SN) nie jest transformatorem stacji
+    # SN/nN — jego strona dolna to sekcja SN GPZ, nie szyna nN (jedno źródło predykatu
+    # `enm.topology.transformatory_zasilajace_gpz`, wspólne z walidatorem E066).
+    zasilajace_gpz = transformatory_zasilajace_gpz(enm)
     return [
         transformer
         for transformer in enm.get("transformers", [])
-        if transformer.get("ref_id") in transformer_refs
-        or transformer.get("id") in transformer_refs
-        or transformer.get("hv_bus_ref") in station_buses
-        or transformer.get("lv_bus_ref") in station_buses
+        if (
+            transformer.get("ref_id") in transformer_refs
+            or transformer.get("id") in transformer_refs
+            or transformer.get("hv_bus_ref") in station_buses
+            or transformer.get("lv_bus_ref") in station_buses
+        )
+        and transformer.get("ref_id") not in zasilajace_gpz
     ]
 
 
@@ -355,7 +369,7 @@ def _resolve_sn_connection_bus(
                 "message_pl": "Wskazany punkt przyłączenia SN nie istnieje w modelu sieci.",
             },
         )
-    if abs(bus_voltage - hv_kv) > 0.05:
+    if not to_samo_napiecie_znamionowe(bus_voltage, hv_kv):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
@@ -486,14 +500,13 @@ def _ensure_catalog_block_transformer(
 
 
 def _resolve_nn_bus_ref(enm: dict[str, Any], station: dict[str, Any]) -> str | None:
-    galezie = enm.get("branches") or []
     for transformer in _station_transformers(enm, station):
         lv_bus_ref = transformer.get("lv_bus_ref")
         if isinstance(lv_bus_ref, str) and lv_bus_ref.strip():
             # POLA-W-TORZE: strona dolna transformatora leży na zacisku wyłącznika głównego nN,
             # a źródło przyłącza się do SZYNY ROZDZIELNICY nN za tym wyłącznikiem — nie
             # między transformator a wyłącznik główny.
-            return szyna_glowna_stacji(station, galezie, lv_bus_ref.strip()) or lv_bus_ref.strip()
+            return szyna_glowna_stacji(enm, station, lv_bus_ref.strip()) or lv_bus_ref.strip()
 
     voltages = _bus_voltage_index(enm)
     for bus_ref in station.get("bus_refs", []):
@@ -628,13 +641,16 @@ def _build_domain_payload(
         "power_setpoint_mw": req.power_mw,
         "quantity": req.quantity,
     }
+    if req.dry_run:
+        payload["dry_run"] = True
     # Nazwa źródła wyłącznie od projektanta; bez niej nazwę nadaje operacja domenowa
     # (opis rodzaju, np. „Blok PV") — nigdy rodzaj DER z identyfikatorem stacji (karta #144).
     if jest_nazwa(req.source_name):
         payload["source_name"] = nazwa_nadana(req.source_name)
 
-    if req.nc_rfg_module is not None:
-        payload["nc_rfg_module"] = req.nc_rfg_module
+    # `nc_rfg_module` NIE jedzie do operacji: handler go nie czyta (moduł wynika z
+    # klasyfikacji mocy i napięcia przyłączenia); deklarację klienta sprawdza wyłącznie
+    # `_weryfikuj_modul_ncrfg` (422 przy niezgodności).
     zadanie_json = req.model_dump(mode="json", exclude_none=True)
     payload.update(
         {pole: zadanie_json[pole] for pole in POLA_NC_RFG_GENERATORA if pole in zadanie_json}
@@ -684,8 +700,13 @@ def create_der_generator(
     klucz: KluczTwin,
     req: DerGeneratorCreateRequest,
     request: Request,
+    odpowiedz_http: Response,
 ) -> dict[str, Any]:
     """Zapisz konfigurację DER jako generator w kanonicznym ENM.
+
+    PRÓBA (`dry_run: true`): ta sama droga i te same odmowy 422 co zapis; przyjęta próba
+    zwraca HTTP 200 z `dry_run: true` i `preview.created_refs`, bez migawki — model zostaje
+    bez zmian (warstwa zapisuje wyłącznie migawkę).
 
     WSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY
     cykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona
@@ -702,7 +723,10 @@ def create_der_generator(
     _validate_project_case_context(request, project_id, case_id)
 
     with blokada_twin(klucz):
-        return _utworz_wytworce_pod_blokada(klucz, req)
+        wynik = _utworz_wytworce_pod_blokada(klucz, req)
+    if req.dry_run:
+        odpowiedz_http.status_code = status.HTTP_200_OK
+    return wynik
 
 
 def _utworz_wytworce_pod_blokada(klucz: str, req: DerGeneratorCreateRequest) -> dict[str, Any]:
@@ -833,8 +857,9 @@ def _fakty_pola_wytworcy(
     """Zloz fakty o polu wytworcy z modelu — bez ani jednej wartosci domyslnej.
 
     Sciezka zwarcia doziemnego pochodzi z KANONICZNEGO odczytu pola
-    (`build_field_read_model`), a nie z rownoleglego wyprowadzenia — dwa opisy tego
-    samego pola rozjezdzalyby sie (precedens V12K-243).
+    (`application.field_read_model.droga_doziemna_pola` — ta sama funkcja co read-model
+    pól), a nie z rownoleglego wyprowadzenia — dwa opisy tego samego pola rozjezdzalyby
+    sie (precedens V12K-243).
     """
 
     zmaterializowane = generator.get("materialized_params") or {}
@@ -881,16 +906,15 @@ def _fakty_pola_wytworcy(
 
 
 def _sciezka_zwarcia_dla_pola(
-    case_id: str, enm: EnergyNetworkModel, bay_ref: str | None
+    enm: EnergyNetworkModel, bay_ref: str | None
 ) -> dict[str, Any] | None:
     if not bay_ref:
         return None
-    model_pol = build_field_read_model(case_id, enm)
-    for pozycja in model_pol.get("items", []):
-        if pozycja.get("bay_ref") == bay_ref:
-            wyniki = pozycja.get("project_results") or {}
-            return wyniki.get("earth_fault_path")
-    return None
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: droga doziemna jest daną MODELU — czytana wprost
+    # (`droga_doziemna_pola`), a nie z sekcji wyników read-modelu pól (istniejącej tylko po
+    # biegu, czytanej dawniej pod nieistniejącym kluczem `items` — fakty zawsze puste).
+    droga = droga_doziemna_pola(enm, bay_ref)
+    return droga.model_dump(mode="json") if droga is not None else None
 
 
 def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | None, str]:
@@ -944,13 +968,10 @@ def get_der_protection_functions(
 
     zmaterializowane = generator.get("materialized_params") or {}
     meta = generator.get("meta") or {}
-    bay_ref = None
-    for zrodlo in (zmaterializowane, meta):
-        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("bay_ref"), str):
-            bay_ref = zrodlo["bay_ref"]
-            break
+    # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
+    bay_ref = ref_pola_wytworcy(generator)
 
-    sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref)
+    sciezka = _sciezka_zwarcia_dla_pola(enm, bay_ref)
     fakty = _fakty_pola_wytworcy(generator, sciezka)
     dobor = dobierz_funkcje(fakty)
 
@@ -1089,8 +1110,9 @@ def get_der_instrument_transformers(
         _slownik_pomocniczy(generator.get("materialized_params")),
         _slownik_pomocniczy(generator.get("meta")),
     )
-    bay_ref = _pierwsza_wartosc(zrodla, "bay_ref")
-    sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref) or {}
+    # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
+    bay_ref = ref_pola_wytworcy(generator)
+    sciezka = _sciezka_zwarcia_dla_pola(enm, bay_ref) or {}
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
     prad_roboczy = _prad_roboczy_pola_a(generator, napiecie_v)
@@ -1265,10 +1287,13 @@ def _prady_zwarciowe_szyny(
         and bieg_w_zakresie_iec60909(run)
     ]
     for run in sorted(przebiegi, key=lambda r: r.created_at, reverse=True):
+        # Wytwórca na zacisku pola (szyna pomocnicza bez własnego wiersza) — wiersz węzła
+        # raportuje szyna pola (`enm.tor_pola.szyna_raportowa`, model TEGO biegu).
+        szukana = szyna_raportowa(run.snapshot or {}, bus_ref)
         for wiersz in build_short_circuit_results(run).get("rows", []):
             if wiersz.get("fault_type") not in (None, "3F", "three_phase"):
                 continue
-            if bus_ref in (wiersz.get("target_id"), wiersz.get("element_id")):
+            if szukana in (wiersz.get("target_id"), wiersz.get("element_id")):
                 return (
                     wiersz.get("ikss_ka"),
                     wiersz.get("ip_ka"),
@@ -1330,18 +1355,11 @@ def _obwod_wtorny_pomiaru(
     pierwszy po posortowanym `ref_id` (determinizm, zero zaleznosci od kolejnosci
     zapisu w licie).
 
-    STAN ZMIERZONY 2026-09-09 (poza zakresem karty W3-B, nazwany uczciwie):
-    `Generator.bay_ref` NIE JEST dzis ustawiany zadna droga produkcyjna —
-    `DerGeneratorCreateRequest` nie ma takiego pola, a `DER_BINDING_KEYS`
-    operacji `set_der_catalog_bindings` (jedyna droga edycji wiazan wytworcy
-    PO utworzeniu) go nie zawiera. W praktyce `bay_ref` na tej funkcji jest
-    wiec DZIS zawsze `None` dla KAZDEGO wytworcy w produkcji — ta funkcja
-    (i cala reszta kodu ponizej zaleznego od `bay_ref`, w tym ISTNIEJACE
-    PRZED TA KARTA `_sciezka_zwarcia_dla_pola`) czeka na przyszla karte, ktora
-    doda wytworcy `bay_ref` (przypiecie do pola rozdzielnicy). Droga
-    model → domena → jadro jest POPRAWNA i przetestowana (fixtury reczne
-    ustawiajace `meta.bay_ref`), ale NIEOSIAGALNA z biezacego kreatora DER —
-    to PRE-ISTNIEJACA luka (brak `bay_ref` wytworcy), nie defekt tej karty.
+    Pole wytwórcy (`bay_ref` tej funkcji) to relacja `Generator.meta.field_ref`
+    (`enm.pola.ref_pola_wytworcy`), zapisywana przez operacje budowy źródła i promocję
+    aparatów nN. KOREKTA karty W5-B: dawny opis „`Generator.bay_ref` nie jest ustawiany
+    żadną drogą" był prawdą o NIEISTNIEJĄCYM kluczu — relacja istniała pod `meta.field_ref`,
+    a czytelnicy szukali jej pod `bay_ref` i zawsze dostawali brak (luka zamknięta).
     """
     if not bay_ref:
         return _OBWOD_WTORNY_PUSTY

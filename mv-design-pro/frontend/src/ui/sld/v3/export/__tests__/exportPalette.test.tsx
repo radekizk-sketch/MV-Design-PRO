@@ -18,9 +18,11 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
   BASE_STROKE,
   CANVAS_BACKGROUND,
+  DARK_SCADA_SLD_PALETTE,
   HIGHLIGHT_COLOR,
   STATE_COLOR,
   VOLTAGE_COLOR,
+  type SldPalette,
 } from '../../theme/colorTokens';
 import { SldCanvasV3 } from '../../canvas/SldCanvasV3';
 import {
@@ -59,6 +61,31 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
     const out = substituteExportHexColors(markup);
     for (const dark of darkValues) {
       expect(out).not.toContain(dark);
+    }
+  });
+
+  // GPZ-PARYTET: lista wyżej była spisana ręcznie i nie obejmowała tokenów dodanych
+  // później (wynik, SWZ, role pól GPZ) — eksport zostawiał ich ciemne wartości na
+  // jasnym papierze. Wyrocznia wyliczana z PALETY (każdy liść), więc nowy token bez
+  // pary dokumentowej jest czerwony od razu.
+  it('KAŻDY token palety ekranowej ma parę dokumentową (wyliczane z palety, nie ze spisu)', () => {
+    const liscie = (p: SldPalette): ReadonlyArray<readonly [string, string]> => [
+      ['canvasBackground', p.canvasBackground],
+      ['baseStroke', p.baseStroke],
+      ...Object.entries(p.voltage).map(([k, v]) => [`voltage.${k}`, v] as const),
+      ...Object.entries(p.state).map(([k, v]) => [`state.${k}`, v] as const),
+      ...Object.entries(p.highlight).map(([k, v]) => [`highlight.${k}`, v] as const),
+      ...Object.entries(p.rolaPola).map(([k, v]) => [`rolaPola.${k}`, v] as const),
+    ];
+    const ekran = liscie(DARK_SCADA_SLD_PALETTE);
+    const dokument = new Map(liscie(LIGHT_TECHNICAL_V3));
+    for (const [klucz, ciemna] of ekran) {
+      const out = substituteExportHexColors(`<path fill="${ciemna}"/>`);
+      expect(out, `token ${klucz} (${ciemna}) bez pary dokumentowej`).not.toContain(ciemna);
+      // Para = wartość tego SAMEGO tokenu w palecie dokumentowej (role nie mieszają się),
+      // chyba że dwa tokeny dzielą wartość ciemną (np. nop/open) — wtedy cel wspólny.
+      const wspoldzielone = ekran.filter(([, v]) => v.toLowerCase() === ciemna.toLowerCase()).map(([k]) => dokument.get(k));
+      expect(wspoldzielone, klucz).toContain(out.match(/fill="([^"]+)"/)?.[1]);
     }
   });
 

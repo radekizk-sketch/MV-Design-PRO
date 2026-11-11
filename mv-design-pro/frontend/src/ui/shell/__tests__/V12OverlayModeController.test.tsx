@@ -161,7 +161,7 @@ describe('V12OverlayModeController — F1 zero_sequence multi-mode mapping', () 
   function makeGroundFaultPayload(): OverlayPayloadV1 {
     return {
       run_id: 'R',
-      analysis_type: 'EARTHING_GROUND_FAULT_SN',
+      analysis_type: 'SC_1F',
       elements: [
         {
           element_ref: 'A',
@@ -196,8 +196,16 @@ describe('V12OverlayModeController — F1 zero_sequence multi-mode mapping', () 
     };
   }
 
-  it('payloadHasZeroSequence: EARTHING analysis_type → true', () => {
+  it('payloadHasZeroSequence: i0_a w numeric_badges → true', () => {
     expect(payloadHasZeroSequence(makeGroundFaultPayload())).toBe(true);
+  });
+
+  it('payloadHasZeroSequence: sam rodzaj analizy bez i0/u0 → false', () => {
+    // Skasowany rodzaj pakietu dowodu uziemienia SN nie włącza już warstwy zerowej —
+    // decydują dane elementów, nie etykieta.
+    expect(
+      payloadHasZeroSequence({ ...makePlainPayload(), analysis_type: 'EARTHING_GROUND_FAULT_SN' }),
+    ).toBe(false);
   });
 
   it('payloadHasZeroSequence: brak i0/u0 w numeric_badges → false', () => {

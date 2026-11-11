@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
 import { CANONICAL_OPERATION_NAMES } from '../../../types/domainOps';

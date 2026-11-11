@@ -51,6 +51,7 @@ import { ReadinessBlockersReview } from '../mass-review/ReadinessBlockersReview'
 import { useSelectionStore } from '../../selection/store';
 import { getProject } from '../../projects/api';
 import { getStudyCase } from '../../study-cases/api';
+import { domainOpsEndpoint } from '../../topology/domainApi';
 
 vi.mock('../../projects/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../projects/api')>();
@@ -146,7 +147,7 @@ function stubFetch(stan: StanGotowosci): void {
       if (url === `/api/analysis-runs/${RUN_ID}`) {
         return jsonResponse({ status: 'DONE', result_status: 'DONE', results_valid: true });
       }
-      if (url === `/api/cases/${CASE_ID}/enm/domain-ops`) {
+      if (url === domainOpsEndpoint(CASE_ID)) {
         if (stan === 'nieustalona') {
           // JEDYNA droga do `readiness === null` w produkcji: odczyt gotowości pada,
           // a `refreshReadinessFromBackend` zostawia null (NIGDY wartość zmyśloną).

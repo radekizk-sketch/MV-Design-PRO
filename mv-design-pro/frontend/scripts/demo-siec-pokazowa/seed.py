@@ -223,10 +223,9 @@ def zbuduj(tryb: str) -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            # Transformator WN/SN GPZ z pozycji katalogu (karta FAB-G: jawna para
-            # napięcie WN + moc, bez domyślnych 25 MVA @ 110 kV po stronie operacji).
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
+            # Równoważnik sieci na szynach SN GPZ z pozycji katalogu (GPZ-MODEL, tryb B):
+            # granica modelu = szyny SN, więc transformatora WN/SN w modelu nie ma — para
+            # napięcie WN + moc TR byłaby fikcją, którą operacja odmawia.
             "catalog_binding": wiazanie("ZRODLO_SN", "src-gpz-15kv-250mva-rx010"),
         },
     )

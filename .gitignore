@@ -58,9 +58,11 @@ venv/
 .env
 # Katalog lokalny Claude Code (drzewa robocze, pliki tymczasowe) poza repozytorium;
 # definicje subagentów drzewa właściciela (ORKIESTRACJA_AGENTOW.md §3) i ustawienia projektu
-# (okno autokompakcji) są częścią projektu.
+# (okno autokompakcji) są częścią projektu; reguły `.claude/rules/` niosą treść CLAUDE.md
+# (karta CLAUDE-MD-ANTHROPIC, 2026-11-11) i też są częścią projektu.
 .claude/*
 !.claude/agents/
+!.claude/rules/
 !.claude/settings.json
 .playwright-mcp/
 mv-design-pro/qa-*.png

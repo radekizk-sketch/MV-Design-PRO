@@ -245,12 +245,36 @@ export function naMapeObciazen(
 }
 
 /**
+ * Stan ODCZYTU walidacji obciążalności przebiegu (R3-A): rozłączne stany zapytania.
+ * `wczytywanie` i `blad` NIE są „brakiem pozycji" — komórka pokazuje stan odczytu,
+ * nie kreskę braku danych (KONTRAKT_WERDYKTU_WYJASNIALNEGO: odczyt w toku ≠ brak).
+ */
+export type StanObciazen =
+  /** Brak przebiegu — nie ma czego odczytać. */
+  | { readonly odczyt: 'niezlecony' }
+  | { readonly odczyt: 'wczytywanie' }
+  | { readonly odczyt: 'blad' }
+  | { readonly odczyt: 'gotowe'; readonly mapa: ReadonlyMap<string, PozycjaObciazenia> };
+
+/** Pozycja obciążalności gałęzi — WYŁĄCZNIE ze stanu `gotowe` (jedno źródło dla tabeli). */
+export function pozycjaObciazenia(
+  stan: StanObciazen,
+  branchId: string,
+): PozycjaObciazenia | undefined {
+  return stan.odczyt === 'gotowe' ? stan.mapa.get(branchId) : undefined;
+}
+
+/**
  * Komórka „Obciążenie [%]" z pozycji walidacji (czysta funkcja, testowalna
- * fixture'ami). Uczciwe stany (R3-A): brak pozycji dla gałęzi lub brak wartości
+ * fixture'ami). Uczciwe stany (R3-A): odczyt w toku / nieudany → tekst stanu
+ * odczytu (bez werdyktu); odczyt gotowy bez pozycji dla gałęzi lub bez wartości
  * → kreska bez werdyktu; `ostrzezenie` WYŁĄCZNIE z werdyktu backendu
  * (WARNING/FAIL) — zero progów po stronie UI.
  */
-export function komorkaObciazenia(poz: PozycjaObciazenia | undefined): WartoscKomorki {
+export function komorkaObciazenia(stan: StanObciazen, branchId: string): WartoscKomorki {
+  if (stan.odczyt === 'wczytywanie') return { wartosc: ROZPLYW_STRINGS.obciazenieWczytywanie };
+  if (stan.odczyt === 'blad') return { wartosc: ROZPLYW_STRINGS.obciazenieBladOdczytu };
+  const poz = pozycjaObciazenia(stan, branchId);
   if (!poz) return { wartosc: ROZPLYW_STRINGS.kreska };
   const ostrzezenie = poz.status === 'WARNING' || poz.status === 'FAIL';
   if (poz.observedValue === null) {
@@ -271,13 +295,12 @@ export function komorkaObciazenia(poz: PozycjaObciazenia | undefined): WartoscKo
  * prezentacji, patrz `fmtStrataKw`/`fmtStrataKvar` w `strings.ts`; `sortKey`
  * niesie tę samą (skalowaną) wartość liczbową, więc sortowanie i wyświetlana
  * jednostka są spójne. `dowodRef` = `branch_id` (K3/C1) — jak `naWierszeSzyn`.
- * R3-A (parametr addytywny): `obciazenia` = mapa `branch_id` → pozycja
- * obciążalności z walidacji energetycznej; brak mapy (null/undefined — walidacja
- * niedostępna) → kolumna „Obciążenie" z kreskami, tabela działa jak dotąd. */
+ * R3-A: `obciazenia` = stan odczytu walidacji energetycznej; kolumna
+ * „Obciążenie" rozróżnia odczyt w toku, błąd odczytu i brak pozycji (kreska). */
 export function naWierszeGalezi(
   branchResults: PowerFlowBranchResult[],
   nazwa: (ref: string) => string,
-  obciazenia?: ReadonlyMap<string, PozycjaObciazenia> | null,
+  obciazenia: StanObciazen,
 ): WierszTabeli[] {
   return branchResults.map((r) => ({
     [KLUCZ_ID_GALEZI]: { wartosc: r.branch_id },
@@ -296,7 +319,7 @@ export function naWierszeGalezi(
       sortKey: r.losses_q_mvar * 1000,
       dowodRef: r.branch_id,
     },
-    [KLUCZ_OBCIAZENIE]: komorkaObciazenia(obciazenia?.get(r.branch_id)),
+    [KLUCZ_OBCIAZENIE]: komorkaObciazenia(obciazenia, r.branch_id),
   }));
 }
 

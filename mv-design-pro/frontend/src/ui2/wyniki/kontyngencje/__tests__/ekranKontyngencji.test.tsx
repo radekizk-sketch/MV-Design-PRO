@@ -22,10 +22,10 @@ import userEvent from '@testing-library/user-event';
 import { EkranKontyngencji } from '../EkranKontyngencji';
 import { KONTYNGENCJE_STRINGS as T } from '../strings';
 import { MACIERZ, MACIERZ_Z_NARUSZENIEM_BAZOWYM, ZAKRES } from './fixtures';
-import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 function przebieg(
   id: string,
@@ -73,9 +73,9 @@ async function zakresGotowy() {
 }
 
 beforeEach(() => {
-  useAppStateStore.setState({ activeRunId: null });
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
-  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  wyczyscKontekstWyniku();
+  useExecutionRunsStore.setState({ runs: []});
+  useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
 });
 
 afterEach(() => {
@@ -87,9 +87,9 @@ describe('EkranKontyngencji — stan zerowy', () => {
   it('bez przebiegu rozpływu: uczciwy stan zerowy z akcją, bez wołania końcówek', () => {
     const spy = vi.fn();
     vi.stubGlobal('fetch', spy);
-    useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')], activeRunId: null });
+    useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')]});
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     expect(screen.getByTestId('mvd-n1-brak-przebiegu')).toHaveTextContent(T.brakPrzebiegu);
     expect(
@@ -104,9 +104,9 @@ describe('EkranKontyngencji — stan zerowy', () => {
         Promise.resolve({ ok: false, status: 422, statusText: 'Unprocessable' } as Response),
       ),
     );
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByTestId('mvd-n1-zakres-blad')).toBeInTheDocument());
     expect(screen.getByTestId('mvd-n1-zakres-blad')).toHaveTextContent('422');
@@ -116,13 +116,13 @@ describe('EkranKontyngencji — stan zerowy', () => {
 
 describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
   beforeEach(() => {
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
   });
 
   it('zapowiedź podaje koszt biegu pełnego LICZBAMI z backendu', async () => {
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
 
     expect(screen.getByTestId('mvd-n1-koszt-kontyngencji')).toHaveTextContent('4');
@@ -133,7 +133,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
   it('koszt NIE jest wyrażony czasem (zakaz liczby zmyślonej)', async () => {
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
 
     // Sedno: pomiar 2,64 s pochodzi z innego substratu — okno nie ma prawa go
@@ -146,7 +146,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
   it('bieg NIE startuje sam — dopóki nie ma kliku, końcówka macierzy nie jest wołana', async () => {
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
 
     expect(wywolaniaBiegu(spy)).toHaveLength(0);
@@ -156,7 +156,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-policz'));
 
@@ -168,7 +168,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
     await uzytkownik.click(screen.getByTestId('mvd-n1-element-tr_sn_nn'));
@@ -187,7 +187,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
 
@@ -200,7 +200,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
 
@@ -215,7 +215,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
     await uzytkownik.click(screen.getByTestId('mvd-n1-zaznacz-wszystkie'));
@@ -234,7 +234,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
     await uzytkownik.click(screen.getByTestId('mvd-n1-zaznacz-wszystkie'));
@@ -248,13 +248,13 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
 
 describe('EkranKontyngencji — odczyt macierzy', () => {
   beforeEach(() => {
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
   });
 
-  async function policz(macierz: unknown = MACIERZ, tryb: 'basic' | 'expert' = 'basic') {
+  async function policz(macierz: unknown = MACIERZ, tryb = false) {
     const uzytkownik = userEvent.setup();
     mockFetch(macierz);
-    render(<EkranKontyngencji trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={tryb} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-policz'));
     await waitFor(() => expect(screen.getByTestId('mvd-n1-bazowy')).toBeInTheDocument());
@@ -346,7 +346,7 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
     const pominiete = await screen.findByTestId('mvd-n1-szczegoly-pominiete');
     expect(pominiete).toHaveTextContent(T.sekcjaPominiete);
     expect(pominiete).toHaveTextContent('Obciążenie gałęzi');
-    expect(pominiete).toHaveTextContent('Brak pradu galezi');
+    expect(pominiete).toHaveTextContent('Brak prądu zacisku początkowego');
   });
 
   it('szczegóły kontyngencji z przeciążeniem podają wartość i próg z backendu', async () => {
@@ -387,7 +387,7 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
       }),
     );
 
-    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-policz'));
 
@@ -397,14 +397,14 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
   });
 
   it('tryb ekspercki dokłada identyfikatory, podstawowy ich nie pokazuje', async () => {
-    const uzytkownik = await policz(MACIERZ, 'expert');
+    const uzytkownik = await policz(MACIERZ, true);
     await uzytkownik.click(screen.getByText('TR 15/0,4'));
 
     expect(screen.getByTestId('mvd-n1-szczegoly-slad')).toHaveTextContent(T.sladWezelBilansujacy);
   });
 
   it('tryb podstawowy NIE pokazuje węzła bilansującego (identyfikator modelu)', async () => {
-    const uzytkownik = await policz(MACIERZ, 'basic');
+    const uzytkownik = await policz(MACIERZ, false);
     await uzytkownik.click(screen.getByText('TR 15/0,4'));
 
     await screen.findByTestId('mvd-n1-szczegoly-slad');

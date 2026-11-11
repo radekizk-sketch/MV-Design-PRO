@@ -16,6 +16,9 @@ operacji czyta teraz żywy rejestr powierzchni operacji, a brak tego pliku jest
 naruszeniem, nie cichym pustym zbiorem. Miękkie porównanie `modal_type`
 gotowości z listą nazw modali (pętla bez skutku) usunięto razem z modalami; z opisu
 zdjęto też niezaimplementowaną obietnicę „brak osieroconych schematów JSON".
+Korekta V12K-352 (gałąź UI/UX, wniesiona scaleniem 2026-10-28): brak katalogu
+schematów jest naruszeniem (fail-closed), nie cichym „czysto". Samotest:
+`scripts/test_audit_contract_guard.py`.
 
 SCAN FILES:
   backend/src/domain/canonical_operations.py
@@ -59,8 +62,9 @@ FROZEN_SCHEMAS = {"resultset_v1_schema.json", "catalog_binding_schema.json"}
 def check_json_schemas_strict(schemas_dir: Path) -> list[str]:
     """Verify all JSON schemas have additionalProperties: false (strict mode)."""
     violations = []
-    if not schemas_dir.exists():
-        return violations
+    if not schemas_dir.is_dir():
+        # Fail-closed: brak katalogu schematów to brak kontraktów, nie „czysto".
+        return [f"schemas directory not found: {schemas_dir}"]
     for schema_file in sorted(schemas_dir.glob("*.json")):
         if schema_file.name in FROZEN_SCHEMAS:
             continue  # Frozen schemas exempt from strict mode enforcement

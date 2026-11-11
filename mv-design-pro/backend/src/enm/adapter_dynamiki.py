@@ -66,6 +66,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from enm.bateria_kondensatorow import admitancja_baterii
 from enm.dynamika_modele import NAZWY_ZRODEL_PROWENIENCJI_PL, ParametryDynamiczne
 from enm.dynamika_z_katalogu import BladMaterializacjiDynamiki, wymagania_odbioru
 from enm.mapping import ref_to_graph_id
@@ -1149,18 +1150,14 @@ def zloz_widok_sieci(
     # Bateria WYLACZONA (`status: open`) jest odsprzegiem NIEAKTYWNYM — zdarzenie
     # `zalaczenie_galezi` wskazujace baterie ma ja co zalaczyc (ta sama klasa
     # mechanizmu, co laczenie galezi; karta AB-1b.1 par. 0 pkt 1).
+    f_studium_hz = float(enm.header.defaults.frequency_hz)
+    for bateria in enm.shunt_capacitors:
+        _sprawdz_szyny(bateria.ref_id, (bateria.bus_ref,), znane_szyny)
     odsprzegi = tuple(
-        OdsprzegDynamiki(
-            ident=bateria.ref_id,
-            wezel=bateria.bus_ref,
-            g_pu=0.0,
-            b_pu=moc_pu(_moc_baterii_mvar(bateria), base_mva),
-            aktywna_na_starcie=bateria.status == "closed",
-        )
+        _odsprzeg_baterii(bateria, graph, base_mva=base_mva, f_studium_hz=f_studium_hz)
         for bateria in sorted(enm.shunt_capacitors, key=lambda s: s.ref_id)
     )
 
-    f_studium_hz = float(enm.header.defaults.frequency_hz)
     odbiory = tuple(
         _odbior_dynamiki(odbior, base_mva=base_mva, f_studium_hz=f_studium_hz)
         for odbior in sorted(enm.loads, key=lambda load: load.ref_id)
@@ -1234,10 +1231,27 @@ def _odbior_dynamiki(load: Load, *, base_mva: float, f_studium_hz: float) -> Odb
     )
 
 
-def _moc_baterii_mvar(bateria: ShuntCapacitor) -> float:
-    """Moc bierna baterii kondensatorów [Mvar] — ta sama liczba, którą rozpływ
-    stempluje jako `b_pu` (`enm/assembler.py::_build_shunt_specs_from_snapshot`)."""
-    return float(bateria.rated_mvar)
+def _odsprzeg_baterii(
+    bateria: ShuntCapacitor, graph: NetworkGraph, *, base_mva: float, f_studium_hz: float
+) -> OdsprzegDynamiki:
+    """Bateria kondensatorów jako odsprzęg rdzenia — admitancja TA SAMA, którą rozpływ
+    stempluje w bocznikach (``enm.bateria_kondensatorow.admitancja_baterii``: stopnie
+    załączone, napięcie bazy szyny wobec U_n, straty, dławik; karta UX-04/POLE-BKR-MODEL).
+    Dawniej b = Q_n/S_b i g = 0 niezależnie od napięcia szyny i stopni — inna admitancja niż
+    w rozpływie, z którego bieg czasowy startuje."""
+    admitancja = admitancja_baterii(
+        bateria.model_dump(mode="json"),
+        napiecie_bazy_kv=_napiecie_wezla_kv(graph, ref_to_graph_id(bateria.bus_ref)),
+        moc_bazy_mva=base_mva,
+        czestotliwosc_hz=f_studium_hz,
+    )
+    return OdsprzegDynamiki(
+        ident=bateria.ref_id,
+        wezel=bateria.bus_ref,
+        g_pu=admitancja.y_pu.real,
+        b_pu=admitancja.y_pu.imag,
+        aktywna_na_starcie=bateria.status == "closed",
+    )
 
 
 # ---------------------------------------------------------------------------

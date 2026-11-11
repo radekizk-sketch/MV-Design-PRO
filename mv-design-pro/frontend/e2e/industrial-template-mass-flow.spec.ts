@@ -34,14 +34,14 @@ type DomainOpResponse = {
     substations?: Array<{
       ref_id: string;
       station_type?: string | null;
-      meta?: {
-        field_specs?: Array<{
-          field_ref?: string;
-          bay_role?: string;
-          field_role?: string;
-          bus_ref?: string;
-        }>;
-      };
+    }>;
+    // Karta W5-B: pola stacji to rekordy `bays`.
+    bays?: Array<{
+      ref_id: string;
+      substation_ref?: string | null;
+      bay_role?: string;
+      field_role?: string | null;
+      bus_ref?: string;
     }>;
     transformers?: Array<{ ref_id: string }>;
   };
@@ -190,10 +190,10 @@ function findBranchCapableFieldPort(
 ): string | null {
   const branchRoles = new Set(['OUT', 'FEEDER', 'LINE_OUT']);
   for (const substation of enm.substations ?? []) {
-    for (const spec of substation.meta?.field_specs ?? []) {
-      const bayRole = String(spec.bay_role ?? '').toUpperCase();
-      if (spec.field_ref && branchRoles.has(bayRole)) {
-        return `${spec.field_ref}.BRANCH`;
+    for (const pole of (enm.bays ?? []).filter((b) => b.substation_ref === substation.ref_id)) {
+      const bayRole = String(pole.bay_role ?? '').toUpperCase();
+      if (branchRoles.has(bayRole)) {
+        return `${pole.ref_id}.BRANCH`;
       }
     }
   }
@@ -217,7 +217,6 @@ async function openCaseInUi(
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           issuePanelOpen: false,
         },
@@ -259,8 +258,6 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   const appliedTemplateIds: string[] = [];

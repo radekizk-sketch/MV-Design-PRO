@@ -125,6 +125,8 @@ export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   SURGE_ARRESTER: 'OGRANICZNIK_PRZEPIEC',
   CABLE_HEAD: 'GLOWICA_KABLOWA',
   TRANSFORMER_DEVICE: 'TRANSFORMATOR',
+  UNBALANCE_CT: 'PRZEKLADNIK_PRADOWY',
+  PHASE_TO_PHASE_VT: 'PRZEKLADNIK_NAPIECIOWY',
 };
 
 /**
@@ -147,6 +149,8 @@ export const RODZAJ_Z_KIND_INSTANCJI: Readonly<
   fuse_set: 'BEZPIECZNIK',
   current_transformer: 'PRZEKLADNIK_PRADOWY',
   voltage_transformer: 'PRZEKLADNIK_NAPIECIOWY',
+  unbalance_current_transformer: 'PRZEKLADNIK_PRADOWY',
+  phase_to_phase_voltage_transformer: 'PRZEKLADNIK_NAPIECIOWY',
   surge_arrester: 'OGRANICZNIK_PRZEPIEC',
   cable_head: 'GLOWICA_KABLOWA',
   transformer: 'TRANSFORMATOR',

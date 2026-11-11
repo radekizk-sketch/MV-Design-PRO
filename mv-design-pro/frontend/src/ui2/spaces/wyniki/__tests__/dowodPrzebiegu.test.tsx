@@ -6,12 +6,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 
-import { useAppStateStore } from '../../../../ui/app-state';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExtendedTrace } from '../../../../ui/results-inspector/types';
 import { DowodPrzebiegu } from '../DowodPrzebiegu';
 import { przebiegFixture } from './fixtures';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 const selectRun = vi.fn(async () => {});
 const loadExtendedTrace = vi.fn(async () => {});
@@ -40,13 +40,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   useResultsInspectorStore.getState().clearRun();
   useResultsInspectorStore.setState({ selectRun, loadExtendedTrace });
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
-  useAppStateStore.setState({ activeRunId: null });
+  useExecutionRunsStore.setState({ runs: []});
+  wyczyscKontekstWyniku();
 });
 
 describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
   it('bez aktywnego przebiegu: stan pusty E9.1, zero wołań', () => {
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-dowod-pusty')).toBeInTheDocument();
     expect(selectRun).not.toHaveBeenCalled();
     expect(loadExtendedTrace).not.toHaveBeenCalled();
@@ -56,8 +56,8 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    ustawBiegOgladany('run-sc-1');
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-sc-1'));
     await waitFor(() => expect(loadExtendedTrace).toHaveBeenCalledTimes(1));
   });
@@ -66,9 +66,9 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    ustawBiegOgladany('run-sc-1');
     useResultsInspectorStore.setState({ selectedRunId: 'run-sc-1', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     // Tytuł kroku widoczny w spisie i w nagłówku widoku kroku.
     expect(
       screen.getAllByText('Impedancja zastępcza w punkcie zwarcia').length,
@@ -82,9 +82,9 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    ustawBiegOgladany('run-sc-1');
     useResultsInspectorStore.setState({ selectedRunId: 'run-sc-1', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.getByText('Zwarcie trójfazowe (3F)')).toBeInTheDocument();
   });
 
@@ -92,47 +92,48 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-2', analysis_type: 'SC_3F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-2' });
+    ustawBiegOgladany('run-sc-2');
     useResultsInspectorStore.setState({ selectedRunId: 'run-inny', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-dowod-pusty')).toBeInTheDocument();
   });
 });
 
-describe('DowodPrzebiegu — wskazany przebieg (R3-C, dowód kolumny A/B porównania)', () => {
-  it('wskazanyRunId ma pierwszeństwo przed aktywnym: selectRun z KONKRETNYM przebiegiem', async () => {
+// Karta K8: wskazanie konkretnego przebiegu (kolumna A/B porównania, „Otwórz dowód"
+// w panelu dolnym) jest WYBOREM biegu w magazynie kontekstu wyniku — dawny prop
+// `wskazanyRunId` (lokalna kopia „wybranego biegu") skasowany. Iloczyn: {bieg innej
+// rodziny niż dotąd oglądany, bieg tej samej rodziny} × {ślad już w inspektorze, brak}.
+describe('DowodPrzebiegu — wskazany przebieg jako wybór w kontekście wyniku', () => {
+  it('wybór biegu innej rodziny (ekran porównania): selectRun z KONKRETNYM przebiegiem', async () => {
     useExecutionRunsStore.setState({
       runs: [
         przebiegFixture({ id: 'run-aktywny', analysis_type: 'LOAD_FLOW' }),
         przebiegFixture({ id: 'run-b', analysis_type: 'SC_3F' }),
       ],
     });
-    useAppStateStore.setState({ activeRunId: 'run-aktywny' });
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId="run-b" />);
+    ustawBiegOgladany('run-aktywny');
+    ustawBiegOgladany('run-b', { zrodlo: 'ekran' });
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-b'));
     expect(selectRun).not.toHaveBeenCalledWith('run-aktywny');
+    expect(screen.getByTestId('mvd-dowod-przebiegu')).toHaveAttribute('data-run-id', 'run-b');
   });
 
-  it('kroki śladu wskazanego przebiegu trafiają do okna E9.1 (bramka po run_id)', () => {
+  it('wybór biegu tej samej rodziny ze śladem w inspektorze: kroki w oknie E9.1, nazwa wybranego', () => {
     useExecutionRunsStore.setState({
-      runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
+      runs: [
+        przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' }),
+        przebiegFixture({ id: 'run-sc-2', analysis_type: 'SC_1F' }),
+      ],
     });
-    useAppStateStore.setState({ activeRunId: 'run-inny-aktywny' });
+    ustawBiegOgladany('run-sc-2');
+    ustawBiegOgladany('run-sc-1', { zrodlo: 'dowody' });
     useResultsInspectorStore.setState({ selectedRunId: 'run-sc-1', extendedTrace: sladFixture() });
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId="run-sc-1" />);
+    render(<DowodPrzebiegu szczegolyAudytowe={false} />);
     expect(
       screen.getAllByText('Impedancja zastępcza w punkcie zwarcia').length,
     ).toBeGreaterThan(0);
-    // Nazwa analizy PL wskazanego przebiegu (z rejestru), nie aktywnego.
     expect(screen.getByText('Zwarcie trójfazowe (3F)')).toBeInTheDocument();
-  });
-
-  it('brak wskazania (null) = dotychczasowe zachowanie 1:1 (aktywny przebieg)', async () => {
-    useExecutionRunsStore.setState({
-      runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
-    });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
-    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId={null} />);
-    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-sc-1'));
+    expect(selectRun).not.toHaveBeenCalled();
   });
 });

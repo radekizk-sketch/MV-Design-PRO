@@ -17,7 +17,7 @@
  */
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import { indeksGaleziPolNn, szynyStacji } from '../../../shared/szynyStacji';
+import { szynyStacji } from '../../../shared/szynyStacji';
 
 // =============================================================================
 // Result shape
@@ -154,10 +154,8 @@ export function buildSupplyPathHighlight(
   // szyny stacji z jednego lustra `szynyStacji` (SZYNY-STACJI-LUSTRO): zacisk pola pod
   // napięciem to część stacji pod napięciem, także przy otwartym aparacie pola.
   const energizedSubstations = new Set<string>();
-  const galezie = enm.branches ?? [];
-  const indeksPolNn = indeksGaleziPolNn(galezie);
   for (const sub of enm.substations ?? []) {
-    for (const busRef of szynyStacji(sub, galezie, indeksPolNn)) {
+    for (const busRef of szynyStacji(enm, sub)) {
       if (energizedBuses.has(busRef)) {
         energizedSubstations.add(sub.ref_id);
         break;

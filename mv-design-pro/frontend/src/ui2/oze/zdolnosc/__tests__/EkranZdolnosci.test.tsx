@@ -22,7 +22,6 @@ vi.mock('../../api', () => ({
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-    activeRunId: 'lf-run',
   });
   useSnapshotStore.setState({ snapshot: snapshotFixture() });
 }
@@ -39,7 +38,7 @@ afterEach(() => {
 
 describe('EkranZdolnosci — brak przebiegu rozpływu (kryterium 1)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', () => {
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-zdol-brak-przebiegu')).toHaveTextContent(
       'Brak zakończonego przebiegu rozpływu mocy',
     );
@@ -52,7 +51,7 @@ describe('EkranZdolnosci — jawny bieg (kryterium 1)', () => {
   beforeEach(ustawGotowyRozplyw);
 
   it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła API przed kliknięciem', () => {
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-zdol-parametry')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-zdol-idle')).toBeInTheDocument();
     expect(pobierz).not.toHaveBeenCalled();
@@ -60,7 +59,7 @@ describe('EkranZdolnosci — jawny bieg (kryterium 1)', () => {
 
   it('kliknięcie „Oblicz" woła API z przebiegiem i domyślnymi parametrami', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     expect(await screen.findByTestId('mvd-zdol-wynik')).toBeInTheDocument();
     expect(pobierz).toHaveBeenCalledWith({
@@ -73,7 +72,7 @@ describe('EkranZdolnosci — jawny bieg (kryterium 1)', () => {
 
   it('bez wyboru węzłów wysyła domyślnych kandydatów (candidateBusRefs undefined)', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
     expect(pobierz.mock.calls[0][0].candidateBusRefs).toBeUndefined();
@@ -81,7 +80,7 @@ describe('EkranZdolnosci — jawny bieg (kryterium 1)', () => {
 
   it('wybór węzłów przekazuje candidate_bus_refs do zapytania', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-wybor-bus-a'));
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
@@ -90,7 +89,7 @@ describe('EkranZdolnosci — jawny bieg (kryterium 1)', () => {
 
   it('zmienione parametry (krok/liczba kroków) trafiają do zapytania', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.change(screen.getByTestId('mvd-zdol-krok'), { target: { value: '1' } });
     fireEvent.change(screen.getByTestId('mvd-zdol-max'), { target: { value: '10' } });
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
@@ -100,7 +99,7 @@ describe('EkranZdolnosci — jawny bieg (kryterium 1)', () => {
 
   it('błąd końcówki → jawny stan błędu z komunikatem', async () => {
     pobierz.mockRejectedValue(new Error('422 zły przebieg'));
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     expect(await screen.findByTestId('mvd-zdol-blad')).toHaveTextContent('422 zły przebieg');
   });
@@ -111,7 +110,7 @@ describe('EkranZdolnosci — tabela i wykres (kryteria 2, 3)', () => {
 
   it('tabela pokazuje moc przyłączalną i kryterium wiążące PL per węzeł', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-tabela');
     expect(screen.getByTestId('mvd-zdol-generacja-bus-a')).toHaveTextContent('2,000 MW');
@@ -122,7 +121,7 @@ describe('EkranZdolnosci — tabela i wykres (kryteria 2, 3)', () => {
 
   it('renderuje wykres słupkowy mocy przyłączalnej', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     expect(await screen.findByTestId('mvd-zdol-wykres')).toBeInTheDocument();
   });
@@ -133,7 +132,7 @@ describe('EkranZdolnosci — ślad scenariuszy (kryterium 4)', () => {
 
   it('rozwija ślad scenariuszy per węzeł (moc → dopuszczalny/niedopuszczalny)', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
     expect(screen.queryByTestId('mvd-zdol-slad-bus-a')).not.toBeInTheDocument();
@@ -149,7 +148,7 @@ describe('EkranZdolnosci — tryb ekspercki (identyfikatory)', () => {
 
   it('tryb podstawowy ukrywa identyfikator wejścia (hash)', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
     expect(screen.queryByTestId('mvd-zdol-informacje-audytowe')).not.toBeInTheDocument();
@@ -157,7 +156,7 @@ describe('EkranZdolnosci — tryb ekspercki (identyfikatory)', () => {
 
   it('tryb ekspercki: identyfikator wejścia i przebiegu wyłącznie w „Informacjach audytowych"', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="expert" />);
+    render(<EkranZdolnosci szczegolyAudytowe />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
     // Karta #145: zwinięte — pierwszy plan bez identyfikatorów.
@@ -176,7 +175,7 @@ describe('EkranZdolnosci — pętla wynik → model (K5-B / H-3 pkt 1)', () => {
     const { useNetworkBuildStore } = await import('../../../../ui/network-build/networkBuildStore');
     const { useShellStore } = await import('../../../shell/useShellStore');
     pobierz.mockResolvedValue(widokZdolnosciFixture());
-    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    render(<EkranZdolnosci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
 

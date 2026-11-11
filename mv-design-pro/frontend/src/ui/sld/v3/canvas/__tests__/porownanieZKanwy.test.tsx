@@ -53,6 +53,7 @@ import {
   POWOD_RODZAJ_BEZ_NAKLADKI,
   POWOD_WYNIKI_NIEAKTUALNE,
 } from '../porownanieZKanwy';
+import { zasiejBiegiNieaktualne } from '../../../../../test/biegNieaktualny';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -329,7 +330,8 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
   it('wyniki OUTDATED ⇒ blokada tą samą treścią co tryb porównawczy, bez akcji', () => {
     useRawResultOverlayStore.getState().setPayload(payloadNaKanwie('SC_3F'));
     useExecutionRunsStore.setState({ runs: [przebieg({ id: 'run-a' })] });
-    useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
+    // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
+    zasiejBiegiNieaktualne([{ id: BIEZACY_RUN, analysisType: 'SC_3F' }]);
     render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
     otworzPanelFiltrow();
 

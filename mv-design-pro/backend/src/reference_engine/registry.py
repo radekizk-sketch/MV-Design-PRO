@@ -211,6 +211,15 @@ def profile_id_for_bay(
         return "der_source"
     if bay_role == "FEEDER":
         return "aux" if "FUSE" in set(device_kinds) else "reserve"
+    if bay_role == "BKR":
+        # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL, ENEA Zeszyt 1 Zał. 16) —
+        # technologia wyłącznikowa w każdej stacji (bateria łączona wyłącznikiem).
+        return "capacitor_bank"
+    if bay_role == "ZU":
+        # Pole zespołu uziemiającego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, ENEA Zeszyt 1
+        # Zał. 13–15) — technologia wyłącznikowa; transformator uziemiający, dławik i rezystor
+        # są zespołem uziemiającym modelu na zacisku pola, nie aparatem celki.
+        return "earthing_unit"
     return None
 
 

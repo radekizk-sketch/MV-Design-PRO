@@ -2,7 +2,7 @@
  * Testy reportExportApi - eksport raportu i uzasadnienia inżynierskiego.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
 
 import {
   REPORT_FORMAT_LABELS_PL,
@@ -12,7 +12,7 @@ import {
 } from '../reportExportApi';
 
 const RUN_ID = 'run-123-test';
-let anchorClickSpy: ReturnType<typeof vi.spyOn>;
+let anchorClickSpy: MockInstance<[], void>;
 
 beforeEach(() => {
   Object.defineProperty(window.URL, 'createObjectURL', {

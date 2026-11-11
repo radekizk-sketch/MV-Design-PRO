@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SCHEMAT-10 GS-1 (V12K-137) — GRAMATYKA STACJI na L0: mini-RMU zamiast
  * kwadratu 16×16 (DOMKNIĘCIE GAP `S7_GAP_CROSSING_ZERO_2026-07` §10.4).
@@ -38,7 +39,7 @@ function loadEnm(path: string): EnergyNetworkModel {
 }
 
 const bigEnm = loadEnm(bigFixturePath);
-const DER_SYMBOLS = new Set(['derPv', 'derBess', 'derWind', 'derGenerator']);
+const DER_SYMBOLS = new Set(['derPv', 'derBess', 'derWind', 'derGenerator', 'derUnknown']);
 
 describe('SCHEMAT-10 GS-1 — sylwetka mini-RMU L0 (GAP §10.4)', () => {
   it('rozmiar sylwetki: 48×48 (6×GRID) — wyprowadzony z czytelności kadru całości', () => {

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S9-2 — MOST PRZESTRZENI REFÓW (`resultRefBridge.ts`): element rysunku ↔ punkt
  * wyniku. Testy pokrywają ILOCZYN CECH, w którym defekt mógłby się schować
@@ -22,6 +23,7 @@ import {
 } from '../resultRefBridge';
 import { pickStationBus } from '../../../shared/stationBusResolution';
 import type { Bus, EnergyNetworkModel, Substation } from '../../../../../types/enm';
+import { polaNn, polaNnStacji, polaSnStacji } from '../../../../shared/polaStacji';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const enm = JSON.parse(
@@ -32,19 +34,19 @@ const enm = JSON.parse(
 // z ziaren identyfikatorów — fikstura jest regenerowana z API (karta SLD-SUBSTRAT:
 // ziarna odcinków i stacji zmieniły się z CV-4.3 K1; szablon 1250 kVA ma pole TR na
 // pozycji 002, dawny zrzut 1000 kVA — na 003).
-type PoleSn = { readonly field_ref: string; readonly bay_role?: string; readonly bus_ref?: string };
 const stacjaInline = (enm.substations ?? []).find((s) => s.station_type !== 'gpz')!;
 const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
-const polaStacji = (stacjaInline.meta as { field_specs: PoleSn[] }).field_specs;
+// Karta W5-B: pola stacji = rekordy `bays` (pola SN stacji).
+const polaStacji = polaSnStacji(enm, stacjaInline.ref_id);
 const STACJA = stacjaInline.ref_id;
 const STACJA_SN_BUS = stacjaInline.bus_refs.find((ref) => ref.endsWith('/sn_bus'))!;
 const STACJA_NN_BUS = stacjaInline.bus_refs.find((ref) => ref.endsWith('/nn_bus'))!;
 const STACJA_TR = stacjaInline.transformer_refs![0];
-const STACJA_POLE_TR = polaStacji.find((pole) => pole.bay_role === 'TR')!.field_ref;
+const STACJA_POLE_TR = polaStacji.find((pole) => pole.bay_role === 'TR')!.ref_id;
 const STACJA_POLA_LINIOWE = polaStacji.filter((pole) => pole.bay_role === 'IN' || pole.bay_role === 'OUT');
 const GPZ = gpz.ref_id;
 const GPZ_SEKCJA_BUS = gpz.bus_refs.find((ref) => ref.endsWith('/bus_sn'))!;
-const GPZ_BUS_110 = gpz.bus_refs.find((ref) => ref.endsWith('/bus_110'))!;
+const GPZ_BUS_110 = gpz.bus_refs.find((ref) => ref.endsWith('/hv_section/001/bus_wn'))!;
 const MUFA = (enm.buses ?? []).find((bus) => bus.ref_id.endsWith('/downstream'))!.ref_id;
 const ZACISK_POLA = (enm.buses ?? []).find((bus) => bus.ref_id.includes('/sn_field_terminal/'))!.ref_id;
 const ODCINEK_0 = (enm.branches ?? []).find((g) => g.name === 'Odcinek 0')!.ref_id;
@@ -57,7 +59,7 @@ describe('resultRefBridge — most refów rysunek ↔ punkt wyniku', () => {
   const bridge = buildResultRefBridge(enm);
 
   it('szyna SN stacji: odcinek `#sn-bus` wskazuje kanoniczną szynę SN', () => {
-    expect(bridge.get(`${STACJA}#sn-bus`)).toEqual({ resultRef: STACJA_SN_BUS, kind: 'bus' });
+    expect(bridge.get(`${STACJA_SN_BUS}#sn-bus`)).toEqual({ resultRef: STACJA_SN_BUS, kind: 'bus' });
   });
 
   it('szyna nN stacji: odcinek `#lv-bus` wskazuje szynę nN i NIESIE KLASĘ „bus" (scena klasyfikuje go jako zwykły odcinek toru)', () => {
@@ -75,14 +77,14 @@ describe('resultRefBridge — most refów rysunek ↔ punkt wyniku', () => {
   it('GPZ: blok stacji wskazuje szynę SN rozdzielni (pola GPZ), nie szynę 110 kV', () => {
     // Reguła „najwyższe napięcie" wskazałaby tu szynę WN; rysunek bloku GPZ na
     // poziomie przeglądu reprezentuje rozdzielnię SN, więc most idzie za szyną
-    // POLA (`field_specs[].bus_ref`) — tą samą, z której kompozycja buduje
+    // POLA (`bus_ref` rekordów pól SN) — tą samą, z której kompozycja buduje
     // odcinek szyny.
     expect(bridge.get(GPZ)).toEqual({ resultRef: GPZ_SEKCJA_BUS, kind: 'bus' });
   });
 
   it('pola o roli innej niż TR nie wchodzą do mostu (brak fabrykacji transformatora na polu liniowym)', () => {
     expect(STACJA_POLA_LINIOWE.length).toBeGreaterThanOrEqual(2);
-    for (const pole of STACJA_POLA_LINIOWE) expect(bridge.has(pole.field_ref)).toBe(false);
+    for (const pole of STACJA_POLA_LINIOWE) expect(bridge.has(pole.ref_id)).toBe(false);
   });
 
   it('brak migawki ⇒ most pusty (zero atrap)', () => {
@@ -109,26 +111,39 @@ describe('resultRefBridge — ODMOWY zamiast zgadywania', () => {
     expect(bridge.has(STACJA_POLE_TR)).toBe(false);
     // ...a szyny stacji zostają związane — odmowa dotyczy WYŁĄCZNIE
     // niejednoznacznej rodziny, nie całej stacji.
-    expect(bridge.get(`${STACJA}#sn-bus`)?.resultRef).toBe(STACJA_SN_BUS);
+    expect(bridge.get(`${STACJA_SN_BUS}#sn-bus`)?.resultRef).toBe(STACJA_SN_BUS);
   });
 
-  it('stacja, której pola wskazują RÓŻNE szyny (dwie sekcje): szyna SN i blok stacji bez wiązania', () => {
+  // GEOMETRIA-STACJI (Z-03): stacja dwusekcyjna NIE jest już odmową dla szyn — każda sekcja
+  // (rekord `Bus` w `Substation.bus_refs`) ma własny odcinek `${busRef}#sn-bus` i własny punkt
+  // wyniku; odmową zostaje WYŁĄCZNIE blok L0 (jeden symbol dla dwóch szyn). Dawniej sekcje
+  // wyprowadzano z `bus_ref` pól, a rysunek miał jeden odcinek szyny dla całej stacji.
+  it('stacja DWUSEKCYJNA: każda sekcja wiąże własną szynę, blok stacji L0 bez wiązania', () => {
     const model = klon();
+    const sekcja2 = `${STACJA_SN_BUS}-sekcja-2`;
+    (model.buses as unknown[]).push({ ...(model.buses ?? []).find((b) => b.ref_id === STACJA_SN_BUS)!, ref_id: sekcja2 });
     const stacja = stacjaW(model, STACJA);
-    const specs = (stacja.meta as { field_specs: { bus_ref?: string }[] }).field_specs;
-    specs[0].bus_ref = `${STACJA_SN_BUS}-sekcja-2`;
+    stacja.bus_refs = [STACJA_SN_BUS, sekcja2, ...stacja.bus_refs.filter((ref) => ref !== STACJA_SN_BUS)];
+    polaSnStacji(model, STACJA)[0].bus_ref = sekcja2;
     const bridge = buildResultRefBridge(model);
-    expect(bridge.has(`${STACJA}#sn-bus`)).toBe(false);
+    expect(bridge.get(`${STACJA_SN_BUS}#sn-bus`)).toEqual({ resultRef: STACJA_SN_BUS, kind: 'bus' });
+    expect(bridge.get(`${sekcja2}#sn-bus`)).toEqual({ resultRef: sekcja2, kind: 'bus' });
     expect(bridge.has(STACJA)).toBe(false);
     // Szyna nN pozostaje związana (inna rodzina, inne dane).
     expect(bridge.get(`${STACJA}#lv-bus`)?.resultRef).toBe(STACJA_NN_BUS);
+  });
+
+  it('GPZ: szyna WN rozdzielni nie jest sekcją SN — zero odcinka `#sn-bus` dla szyny 110 kV', () => {
+    const bridge = buildResultRefBridge(enm);
+    expect(bridge.has(`${GPZ_BUS_110}#sn-bus`)).toBe(false);
+    expect(bridge.has(`${GPZ_SEKCJA_BUS}#sn-bus`)).toBe(false);
   });
 
   it('szyna pól wskazana przez pola, ale NIEOBECNA w migawce ⇒ brak wiązania (ref bez rekordu to nie punkt wyniku)', () => {
     const model = klon();
     model.buses = (model.buses ?? []).filter((bus) => bus.ref_id !== STACJA_SN_BUS);
     const bridge = buildResultRefBridge(model);
-    expect(bridge.has(`${STACJA}#sn-bus`)).toBe(false);
+    expect(bridge.has(`${STACJA_SN_BUS}#sn-bus`)).toBe(false);
   });
 
   it('stacja z DWIEMA szynami nN tego samego napięcia ⇒ `#lv-bus` bez wiązania (remis = odmowa)', () => {
@@ -169,14 +184,15 @@ describe('resultPointsHiddenByModel — deklaracja modelu „tego nie rysujemy"'
 /**
  * ILOCZYN CECH predykatu „punkt w rozdzielnicy nN stacji": rodzaj szyny {szyna
  * odpływu nN tej stacji, szyna nN stacji, szyna SN stacji, szyna GPZ, mufa} ×
- * stan deklaracji {pole w `nn_field_specs` stacji, pole usunięte ze specyfikacji,
- * gałąź wychodząca z obcej szyny}. Źródło prawdy wspólne z agregatem odbioru i
- * szufladą: lustro backendu `szynyStacji` złożone ze stroną nN (`stationSideBusRefs`,
+ * stan deklaracji {pole nN stacji wskazuje aparat (`equipment_refs`), rekord pola usunięty,
+ * gałąź wychodząca z obcej szyny}. Źródło prawdy wspólne z agregatem odbioru: lustro backendu `szynyStacji` złożone ze stroną nN (`stationSideBusRefs`,
  * karta SZYNY-STACJI-LUSTRO) — zbiory nie mogą się rozjechać.
  */
 describe('resultPointsInStationNnBoard — szyny odpływów nN stacji (poza schematem SN)', () => {
   const nnBoard = resultPointsInStationNnBoard(enm);
-  const aparatyOdplywow = (enm.branches ?? []).filter((g) => typeof g.meta?.nn_field_migrowany_z === 'string');
+  // Karta W5-B: aparat pola nN = gałąź wskazana przez `equipment_refs` rekordu pola nN.
+  const aparatyPolNn = new Set(polaNn(enm).flatMap((pole) => pole.equipment_refs));
+  const aparatyOdplywow = (enm.branches ?? []).filter((g) => aparatyPolNn.has(g.ref_id));
 
   it('każda szyna za aparatem pola nN stacji należy do zbioru; szyny stacji, GPZ i mufy — nie', () => {
     expect(aparatyOdplywow).toHaveLength(6);
@@ -186,19 +202,18 @@ describe('resultPointsInStationNnBoard — szyny odpływów nN stacji (poza sche
     }
   });
 
-  it('pole usunięte z `nn_field_specs` stacji ⇒ jego szyna wypada ze zbioru (deklaracja, nie wędrówka po grafie)', () => {
+  it('rekord pola nN usunięty ⇒ szyna jego aparatu wypada ze zbioru (rekord pola, nie wędrówka po grafie)', () => {
     const model = klon();
-    const stacja = stacjaW(model, STACJA);
-    const meta = stacja.meta as { nn_field_specs: { field_ref: string }[] };
-    const usuniete = meta.nn_field_specs.shift()!;
-    const szyna = aparatyOdplywow.find((g) => g.meta?.nn_field_migrowany_z === usuniete.field_ref)!.to_bus_ref;
+    const usuniete = polaNnStacji(model, STACJA).find((pole) => pole.equipment_refs.length > 0)!;
+    model.bays = (model.bays ?? []).filter((pole) => pole.ref_id !== usuniete.ref_id);
+    const szyna = aparatyOdplywow.find((g) => usuniete.equipment_refs.includes(g.ref_id))!.to_bus_ref;
     const zbior = resultPointsInStationNnBoard(model);
     expect(zbior.has(String(szyna))).toBe(false);
     expect(zbior.size).toBe(5);
   });
 
-  // SZYNY-STACJI-LUSTRO: przynależność rozstrzyga DEKLARACJA pola (`nn_field_migrowany_z` →
-  // `nn_field_specs` stacji), a nie koniec, z którego gałąź wychodzi — tak liczy backend
+  // SZYNY-STACJI-LUSTRO: przynależność rozstrzyga REKORD pola nN stacji (`equipment_refs`),
+  // a nie koniec, z którego gałąź wychodzi — tak liczy backend
   // `enm.tor_pola.szyny_stacji` (oba końce aparatu). Dawna reguła frontu („koniec from musi
   // być szyną stacji") była połówką rozjechaną z backendem; parytet przypina
   // `ui/shared/__tests__/szynyStacji.parytet.test.ts`. Obca szyna SN leży po stronie SN, więc

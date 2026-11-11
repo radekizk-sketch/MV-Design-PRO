@@ -1,160 +1,332 @@
 #!/usr/bin/env python3
 """
-Dialog Completeness Guard
+Strażnik kompletności toku pracy operacji domenowych (dialog completeness).
 
-Ensures that every canonical domain operation that creates/modifies elements
-has a corresponding LIVE frontend dialog — a ui2 creator (kreator) component.
+Cel: KAŻDA operacja kanoniczna backendu (`CANONICAL_OPERATIONS`) ma realną ścieżkę
+użytkownika w interfejsie. Operacja bez ścieżki to zdolność istniejąca tylko w testach
+(ZASADA NR 1); przed korektą V12K-352 strażnik sprawdzał ręczną listę 25 operacji, a 23
+operacje rejestru nie były sklasyfikowane wcale — dziewięć z nich nie miało żadnego
+wołającego w interfejsie.
 
-SCAN FILES:
-  frontend/src/ui2/kreatory/**/*.tsx   (dialog components — kreatory ui2)
+ŹRÓDŁA (czytane, nie przepisywane):
+  backend/src/domain/canonical_operations.py      — klucze `CANONICAL_OPERATIONS` (AST)
+  frontend/src/ui/workspace/operationFormRegistry.tsx — `OPERATION_FORM_REGISTRY`
+  frontend/src/ui/sld/v2/command/SldCommandService.ts — pozycje `SLD_MENU_REGISTRY`
 
-CHECKS:
-  1. Every model-mutating operation in OPERATION_TO_MODAL names an exact provider
-     component that exists as `ui2/kreatory/**/<Komponent>.tsx` (not a test file).
-  2. The provider's directory (non-test sources) literally contains the canonical
-     operation name — a provider that never sends the operation is not a provider.
+KLASYFIKACJA (dokładnie jedna na operację):
+  1. OKNO — wpis rejestru formularzy wskazuje komponent; jego import rozwiązuje się do
+     istniejącego pliku albo katalogu modułu, a źródła modułu (bez plików testów) zawierają
+     literał nazwy operacji — dostawca, który operacji nie wysyła, nie jest dostawcą.
+  2. BEZ OKNA — wpis `null` + `BezOkna` niżej: pliki interfejsu, które wołają operację
+     (literał nazwy operacji w pliku), i uzasadnienie, dlaczego nie ma okna.
+  3. ŚCIEŻKA MENU — wpis `null` + `SciezkaMenu` niżej: pozycje `SLD_MENU_REGISTRY`
+     (każda istnieje w rejestrze menu) i plik wykonawcy, w którym jest literał operacji
+     oraz literał każdej z tych pozycji.
 
-Historia: do 2026-10-22 dostawcami były także modale `frontend/src/ui/topology/modals/*.tsx`
-(BranchModal, NodeModal, LoadDERModal, MeasurementModal, ProtectionModal, PVInverterModal,
-BESSInverterModal, TransformerStationModal, CatalogPicker), dopasowywane fragmentem nazwy.
-Żaden z nich nie był montowany (jedynym konsumentem był nierenderowany `TopologyPanel`),
-więc strażnik zaliczał operacje `insert_station_on_segment_sn`, `assign_catalog_to_element`,
-`add_nn_outgoing_field`, `add_converter_source`, `add_ct`, `add_vt` i `add_relay` na
-podstawie martwego kodu. Modale skasowano (karta PODSTAWA-Q, commit 3); każda operacja
-wskazuje teraz dokładnie jeden żywy kreator, sprawdzany po pliku i po literale operacji.
+NARUSZENIA (RC 1): operacja rejestru bez wpisu w rejestrze formularzy; wpis rejestru
+formularzy spoza rejestru kanonicznego; operacja `null` bez klasyfikacji; klasyfikacja
+operacji, która ma okno, albo operacji spoza rejestru (nieaktualna); import okna
+nierozwiązywalny; moduł okna bez literału operacji; plik dowodu bez literału operacji;
+pozycja menu nieistniejąca; brak któregokolwiek źródła (fail-closed).
 
-EXIT CODES:
-  0 = clean (all operations covered)
-  1 = violations found
+Historia: do 2026-10-22 dostawcami były także modale `frontend/src/ui/topology/modals/*.tsx`,
+których żaden ekran nie montował (jedynym konsumentem był nierenderowany `TopologyPanel`).
+Program skasował je jako martwy kod (karta PODSTAWA-Q, commit 3) i wymagał, żeby moduł
+dostawcy zawierał literał operacji; scalenie z gałęzią UI/UX (2026-10-28) przeniosło ten
+wymóg do klasy OKNO, a sprawdzenie eksportów okien warstwy topologii zniknęło razem z nią.
+
+Samotest z iniekcją: `scripts/test_dialog_completeness_guard.py`.
+
+EXIT CODES: 0 = czysto, 1 = naruszenia.
 """
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-# Kanoniczne kreatory ui2 — jedyni dostawcy dialogów operacji domenowych.
-CREATORS_DIR = REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory"
+CANONICAL_OPS_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
+FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
+FORM_REGISTRY_FILE = FRONTEND_SRC / "ui" / "workspace" / "operationFormRegistry.tsx"
+SLD_MENU_FILE = FRONTEND_SRC / "ui" / "sld" / "v2" / "command" / "SldCommandService.ts"
 
-# Mapping: canonical operation -> exact provider component(s) (file stem under CREATORS_DIR).
-OPERATION_TO_MODAL: dict[str, list[str]] = {
-    "add_grid_source_sn": ["KreatorZrodloZasilania"],
-    "continue_trunk_segment_sn": ["KreatorMagistralaSn"],
-    "insert_station_on_segment_sn": ["KreatorStacjiSnNn"],
-    "start_branch_segment_sn": ["KreatorOdgalezienia"],
-    "insert_branch_pole_on_segment_sn": ["KreatorSlupaOdgaleznego"],
-    "insert_zksn_on_segment_sn": ["KreatorZksn"],
-    "insert_section_switch_sn": ["KreatorLacznikaSekcyjnego"],
-    "connect_secondary_ring_sn": ["KreatorPierscienia"],
-    "add_transformer_sn_nn": ["KreatorTransformatoraSnNn"],
-    "assign_catalog_to_element": ["KreatorPrzypisaniaKatalogu"],
-    "add_nn_outgoing_field": ["KreatorPolaNn"],
-    "add_nn_load": ["KreatorOdbioruNn"],
-    "add_converter_source": ["KreatorZrodlaOze"],
-    "add_genset_nn": ["KreatorZrodloDyspozycyjne"],
-    "add_ups_nn": ["KreatorZrodloDyspozycyjne"],
-    "add_shunt_compensator_sn": ["KreatorKompensatoraSn"],
-    "add_ct": ["KreatorPomiaru"],
-    "add_vt": ["KreatorPomiaru"],
-    "add_relay": ["KreatorPrzekaznika"],
-    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu.
-    "update_protection_settings": ["EdytorNastawZabezpieczenia"],
-    # P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN.
-    "add_nn_cable_segment": ["KreatorOdcinkaNn"],
-    "add_nn_distribution_board": ["KreatorRozdzielnicyNn"],
-    "add_nn_switch_device": ["KreatorAparatuNn"],
-    "add_nn_rcd": ["KreatorRcdNn"],
-    "add_nn_section_coupler": ["KreatorRozdzielnicyNn"],
-    # POLA-W-TORZE: akcja naprawcza W042 — przepięcie elementu na zacisk pola.
-    "przepnij_element_na_pole": ["KreatorPrzepieciaNaPole"],
+
+@dataclass(frozen=True)
+class BezOkna:
+    """Operacja wołana z interfejsu bez osobnego okna (ścieżki względem `frontend/src`)."""
+
+    sciezki: tuple[str, ...]
+    uzasadnienie: str
+
+
+@dataclass(frozen=True)
+class SciezkaMenu:
+    """Operacja wykonywana z pozycji menu kontekstowego schematu."""
+
+    akcje: tuple[str, ...]
+    wykonawca: str
+
+
+_WYKONAWCA_MENU = "ui/sld/shared/sldActionExecutor.ts"
+_WYKONAWCA_NN = "ui/sld/v3/lv-domain/operacjeNn.ts"
+_SEKCJE_GPZ = BezOkna(
+    ("ui/network-build/cards/GpzSectionsEditor.tsx",),
+    "Edycja sekcji szyn GPZ jest tabelą na karcie stacji GPZ (StationCard) — wiersz sekcji "
+    "z przyciskami dodaj/zapisz/usuń; okno powielałoby tę samą tabelę.",
+)
+
+KLASYFIKACJA_BEZ_FORMULARZA: dict[str, BezOkna | SciezkaMenu] = {
+    "open_switch": SciezkaMenu(("open-switch",), _WYKONAWCA_MENU),
+    "close_switch": SciezkaMenu(("close-switch",), _WYKONAWCA_MENU),
+    "delete_element": SciezkaMenu(
+        (
+            "delete-bay",
+            "delete-segment",
+            "delete-station",
+            "delete-zksn",
+            "delete-branch-pole",
+            "delete-pv",
+            "delete-bess",
+            "delete-fw",
+            "delete-nn-cable",
+            "delete-nn-apparatus",
+            "delete-nn-terminal",
+            "delete-nn-load",
+        ),
+        _WYKONAWCA_MENU,
+    ),
+    "merge_nn_segments": SciezkaMenu(("merge-nn-segments",), _WYKONAWCA_NN),
+    "copy_nn_feeder": SciezkaMenu(("copy-nn-feeder",), _WYKONAWCA_NN),
+    "set_bay_equipment": BezOkna(
+        ("ui/field/EdytorWyposazeniaPola.tsx",),
+        "Wyposażenie pola edytuje się w miejscu na karcie pola (E-11) — lista aparatów pola "
+        "z wyborem typu katalogowego.",
+    ),
+    "update_protection_settings": BezOkna(
+        ("ui2/kreatory/przekaznik/EdytorNastawZabezpieczenia.tsx",),
+        "Nastawy zabezpieczenia edytuje się na karcie pola i na ekranie zabezpieczeń (E-27) — "
+        "edytor osadzony obok wyników koordynacji.",
+    ),
+    "set_measurement_secondary_circuit": BezOkna(
+        ("ui/field/EdytorObwoduWtornegoPola.tsx",),
+        "Obwód wtórny przekładnika edytuje się na karcie pola (E-11), przy przekładnikach "
+        "tego pola.",
+    ),
+    "dodaj_karte_widmowa_projektu": BezOkna(
+        ("ui2/spaces/model/karty-widmowe/PanelKartWidmowych.tsx",),
+        "Kartę widmową projektu wczytuje się z pliku w zakładce „Karty widmowe” przestrzeni "
+        "Model — jedynym wejściem jest plik rekordu karty.",
+    ),
+    "set_der_catalog_bindings": BezOkna(
+        ("ui2/spaces/model/karty-widmowe/PanelKartWidmowych.tsx",),
+        "Wiązania katalogowe źródła edytuje się w miejscu, przy danych, których dotyczą: "
+        "karty widmowe w zakładce „Karty widmowe” przestrzeni Model (literał operacji), "
+        "model dynamiczny na ekranie dynamiki (ui2/wyniki/dynamika/api.ts, nazwa operacji "
+        "przekazywana przez magazyn migawki).",
+    ),
+    "set_connection_conditions": BezOkna(
+        ("ui2/spaces/projekt/KafelPrzylaczenia.tsx",),
+        "Warunki przyłączenia edytuje się na kafelku przyłączenia przestrzeni Projekt.",
+    ),
+    "refresh_snapshot": BezOkna(
+        ("ui/topology/snapshotStore.ts",),
+        "Odświeżenie migawki modelu jest akcją magazynu migawki bez danych wejściowych.",
+    ),
+    "add_gpz_section": _SEKCJE_GPZ,
+    "update_gpz_section": _SEKCJE_GPZ,
+    "delete_gpz_section": _SEKCJE_GPZ,
+    "set_source_operating_mode": BezOkna(
+        ("ui2/oze/osd/EkranOsd.tsx",),
+        "Tryb pracy źródła przełącza się na ekranie wymagań operatora (OSD) przy źródle.",
+    ),
+    "set_load_dynamic_binding": BezOkna(
+        ("ui2/wyniki/dynamika/EkranDynamiki.tsx",),
+        "Wiązanie odbioru z modelem dynamicznym wybiera się na ekranie dynamiki, przy "
+        "danych modelu dynamicznego.",
+    ),
 }
 
-# Operations that don't need a dedicated modal
-NO_MODAL_NEEDED = {
-    "set_normal_open_point",  # inline action
-    "update_element_parameters",  # PropertyGrid handles this
-    "rename_element",  # inline edit
-    "set_label",  # inline edit
-    "set_source_operating_mode",  # inline edit
-    "set_dynamic_profile",  # inline edit
-    # P0.9 (nN STUDIO): edycja warunków ułożenia odcinka nN jest edycją INLINE
-    # w tabeli ODCINKI, tak jak `update_element_parameters` powyżej — bez
-    # osobnego formularza modalnego.
-    "set_nn_cable_laying_conditions",
-}
+
+def operacje_kanoniczne(plik: Path) -> list[str]:
+    """Klucze słownika `CANONICAL_OPERATIONS` odczytane z AST (bez importu modułu)."""
+    drzewo = ast.parse(plik.read_text(encoding="utf-8"))
+    for wezel in drzewo.body:
+        cel = None
+        if isinstance(wezel, ast.AnnAssign) and isinstance(wezel.target, ast.Name):
+            cel, wartosc = wezel.target.id, wezel.value
+        elif isinstance(wezel, ast.Assign) and len(wezel.targets) == 1:
+            t = wezel.targets[0]
+            cel, wartosc = (t.id if isinstance(t, ast.Name) else None), wezel.value
+        if cel == "CANONICAL_OPERATIONS" and isinstance(wartosc, ast.Dict):
+            return [
+                k.value
+                for k in wartosc.keys
+                if isinstance(k, ast.Constant) and isinstance(k.value, str)
+            ]
+    return []
 
 
-def _zrodla_niezalezne_od_testow(katalog: Path) -> list[Path]:
-    return sorted(
-        plik
-        for plik in katalog.glob("*.ts*")
-        if "__tests__" not in plik.parts and not plik.name.endswith((".test.ts", ".test.tsx"))
-    )
+_BLOK_REJESTRU = re.compile(r"OPERATION_FORM_REGISTRY\b[^=]*=\s*\{(?P<cialo>.*?)\n\};", re.DOTALL)
+_WPIS = re.compile(r"^\s*(\w+)\s*:\s*(\w+)\s*,", re.MULTILINE)
+_IMPORT = re.compile(r"import\s*\{(?P<nazwy>[^}]*)\}\s*from\s*'(?P<sciezka>[^']+)'")
 
 
-def find_creator_files(creators_dir: Path | None = None) -> dict[str, Path]:
-    """Żywe komponenty kreatorów ui2: nazwa komponentu → plik `.tsx` (bez testów)."""
-    katalog = creators_dir or CREATORS_DIR
-    if not katalog.exists():
-        return {}
-    pliki: dict[str, Path] = {}
-    for plik in sorted(katalog.glob("**/*.tsx")):
-        if "__tests__" in plik.parts or plik.name.endswith(".test.tsx"):
+def rejestr_formularzy(plik: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """(operacja → komponent albo 'null', komponent → ścieżka importu)."""
+    tekst = plik.read_text(encoding="utf-8")
+    blok = _BLOK_REJESTRU.search(tekst)
+    if blok is None:
+        return {}, {}
+    cialo = re.sub(r"//[^\n]*", "", blok.group("cialo"))
+    wpisy = {m.group(1): m.group(2) for m in _WPIS.finditer(cialo)}
+    importy: dict[str, str] = {}
+    for m in _IMPORT.finditer(tekst):
+        for nazwa in m.group("nazwy").split(","):
+            nazwa = nazwa.strip()
+            if nazwa:
+                importy[nazwa.split(" as ")[-1].strip()] = m.group("sciezka")
+    return wpisy, importy
+
+
+def _rozwiaz_import(baza: Path, sciezka: str) -> Path | None:
+    cel = (baza.parent / sciezka).resolve()
+    for kandydat in (
+        cel.with_name(cel.name + ".tsx"),
+        cel.with_name(cel.name + ".ts"),
+        cel / "index.ts",
+        cel / "index.tsx",
+    ):
+        if kandydat.is_file():
+            return kandydat
+    return None
+
+
+def _zawiera_literal(tekst: str, nazwa: str) -> bool:
+    return f"'{nazwa}'" in tekst or f'"{nazwa}"' in tekst
+
+
+def _plik_testu(plik: Path) -> bool:
+    return "__tests__" in plik.parts or ".test." in plik.name or ".spec." in plik.name
+
+
+def modul_wysyla_operacje(plik_modulu: Path, op: str) -> bool:
+    """Źródła katalogu modułu okna (rekurencyjnie, bez plików testów) zawierają literał `op`."""
+    for plik in sorted(plik_modulu.parent.rglob("*.ts*")):
+        if plik.suffix not in (".ts", ".tsx") or _plik_testu(plik):
             continue
-        pliki.setdefault(plik.stem, plik)
-    return pliki
-
-
-def operation_violations(
-    operation_to_modal: dict[str, list[str]], creators: dict[str, Path]
-) -> list[str]:
-    """Operacja bez żywego dostawcy albo dostawca, który operacji nie wysyła."""
-    violations: list[str] = []
-    for op_name, providers in operation_to_modal.items():
-        literal = re.compile(rf"['\"]{re.escape(op_name)}['\"]")
-        found = False
-        for provider in providers:
-            plik = creators.get(provider)
-            if plik is None:
-                continue
-            if any(
-                literal.search(zrodlo.read_text(encoding="utf-8"))
-                for zrodlo in _zrodla_niezalezne_od_testow(plik.parent)
-            ):
-                found = True
-                break
-        if not found:
-            violations.append(
-                f"Operation '{op_name}' has no live dialog: none of {providers} exists in "
-                "ui2/kreatory with the operation literal in its directory"
-            )
-    return violations
+        if _zawiera_literal(plik.read_text(encoding="utf-8"), op):
+            return True
+    return False
 
 
 def main() -> int:
-    creators = find_creator_files()
-    if not creators:
-        print(f"VIOLATION: no creator components found in {CREATORS_DIR}")
-        return 1
+    naruszenia: list[str] = []
+    for zrodlo in (CANONICAL_OPS_FILE, FORM_REGISTRY_FILE, SLD_MENU_FILE):
+        if not zrodlo.is_file():
+            naruszenia.append(f"brak źródła strażnika: {zrodlo}")
+    if naruszenia:
+        return _raport(naruszenia)
 
-    violations = operation_violations(OPERATION_TO_MODAL, creators)
+    operacje = operacje_kanoniczne(CANONICAL_OPS_FILE)
+    wpisy, importy = rejestr_formularzy(FORM_REGISTRY_FILE)
+    if not operacje:
+        naruszenia.append("nie odczytano CANONICAL_OPERATIONS (pusty albo zmieniony kształt)")
+    if not wpisy:
+        naruszenia.append("nie odczytano OPERATION_FORM_REGISTRY (pusty albo zmieniony kształt)")
+    menu = SLD_MENU_FILE.read_text(encoding="utf-8")
 
-    if violations:
-        print(f"\n{'='*60}")
-        print(f"DIALOG COMPLETENESS GUARD: {len(violations)} violation(s)")
-        print(f"{'='*60}\n")
-        for v in violations:
-            print(f"  VIOLATION: {v}")
-        print()
-        return 1
+    zbior_operacji = set(operacje)
+    for op in sorted(zbior_operacji - set(wpisy)):
+        naruszenia.append(f"operacja '{op}' nie ma wpisu w OPERATION_FORM_REGISTRY")
+    for op in sorted(set(wpisy) - zbior_operacji):
+        naruszenia.append(f"wpis OPERATION_FORM_REGISTRY '{op}' nie jest operacją kanoniczną")
+    for op in sorted(set(KLASYFIKACJA_BEZ_FORMULARZA) - zbior_operacji):
+        naruszenia.append(f"klasyfikacja '{op}' dotyczy operacji spoza rejestru (nieaktualna)")
 
+    liczniki = {"okno": 0, "bez_okna": 0, "menu": 0}
+    for op in sorted(zbior_operacji & set(wpisy)):
+        komponent = wpisy[op]
+        klasa = KLASYFIKACJA_BEZ_FORMULARZA.get(op)
+        if komponent != "null":
+            if klasa is not None:
+                naruszenia.append(
+                    f"operacja '{op}' ma okno {komponent} i jednocześnie klasyfikację bez okna"
+                )
+            sciezka = importy.get(komponent)
+            plik_modulu = (
+                _rozwiaz_import(FORM_REGISTRY_FILE, sciezka) if sciezka is not None else None
+            )
+            if plik_modulu is None:
+                naruszenia.append(
+                    f"okno operacji '{op}' ({komponent}) nie rozwiązuje się do pliku modułu"
+                )
+            elif not modul_wysyla_operacje(plik_modulu, op):
+                naruszenia.append(
+                    f"okno operacji '{op}' ({komponent}): moduł "
+                    f"{plik_modulu.parent.relative_to(FRONTEND_SRC)} nie zawiera literału "
+                    "operacji — dostawca, który jej nie wysyła, nie jest dostawcą"
+                )
+            liczniki["okno"] += 1
+            continue
+        if klasa is None:
+            naruszenia.append(
+                f"operacja '{op}' nie ma okna ani klasyfikacji (bez okna / ścieżka menu) — "
+                "brak ścieżki użytkownika"
+            )
+            continue
+        if isinstance(klasa, BezOkna):
+            if not klasa.uzasadnienie.strip():
+                naruszenia.append(f"klasyfikacja bez okna '{op}' nie ma uzasadnienia")
+            if not klasa.sciezki:
+                naruszenia.append(f"klasyfikacja bez okna '{op}' nie wskazuje plików")
+            for rel in klasa.sciezki:
+                plik = FRONTEND_SRC / rel
+                if not plik.is_file():
+                    naruszenia.append(f"operacja '{op}': plik dowodu {rel} nie istnieje")
+                elif not _zawiera_literal(plik.read_text(encoding="utf-8"), op):
+                    naruszenia.append(f"operacja '{op}': plik {rel} nie woła tej operacji")
+            liczniki["bez_okna"] += 1
+            continue
+        wykonawca = FRONTEND_SRC / klasa.wykonawca
+        tekst_wykonawcy = wykonawca.read_text(encoding="utf-8") if wykonawca.is_file() else ""
+        if not wykonawca.is_file():
+            naruszenia.append(f"operacja '{op}': wykonawca {klasa.wykonawca} nie istnieje")
+        elif not _zawiera_literal(tekst_wykonawcy, op):
+            naruszenia.append(f"operacja '{op}': wykonawca {klasa.wykonawca} jej nie woła")
+        if not klasa.akcje:
+            naruszenia.append(f"ścieżka menu '{op}' nie wskazuje pozycji menu")
+        for akcja in klasa.akcje:
+            if f"id: '{akcja}'" not in menu:
+                naruszenia.append(f"operacja '{op}': pozycji menu '{akcja}' nie ma w rejestrze")
+            elif tekst_wykonawcy and not _zawiera_literal(tekst_wykonawcy, akcja):
+                naruszenia.append(
+                    f"operacja '{op}': wykonawca {klasa.wykonawca} nie obsługuje pozycji "
+                    f"'{akcja}'"
+                )
+        liczniki["menu"] += 1
+
+    if naruszenia:
+        return _raport(naruszenia)
     print(
-        f"Dialog Completeness Guard: OK ({len(creators)} creator components, "
-        f"{len(OPERATION_TO_MODAL)} operations covered)"
+        f"Dialog Completeness Guard: OK ({len(zbior_operacji)} operacji: "
+        f"{liczniki['okno']} z oknem, {liczniki['bez_okna']} bez okna, "
+        f"{liczniki['menu']} z menu)"
     )
     return 0
+
+
+def _raport(naruszenia: list[str]) -> int:
+    print(f"\n{'=' * 60}")
+    print(f"DIALOG COMPLETENESS GUARD: {len(naruszenia)} naruszeń")
+    print(f"{'=' * 60}\n")
+    for n in naruszenia:
+        print(f"  VIOLATION: {n}")
+    print()
+    return 1
 
 
 if __name__ == "__main__":

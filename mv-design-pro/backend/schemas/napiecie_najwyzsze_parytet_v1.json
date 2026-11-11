@@ -1,0 +1,516 @@
+{
+  "$id": "napiecie_najwyzsze_parytet_v1",
+  "tytul": "Parytet tabeli napiecia najwyzszego sieci U_s i rownosci napiec znamionowych — backend (jedno zrodlo) <-> frontend (jedno lustro)",
+  "karta": "U_m wobec U_s (IEC 60071-1, IEC 60038) i progi napieciowe we froncie",
+  "opis_pl": [
+    "WSPOLNA tablica dwoch implementacji tej samej tabeli i tych samych funkcji:",
+    "  * BACKEND  — network_model/pochodne/pasma_napieciowe.py (NAPIECIE_NAJWYZSZE_SIECI_KV, napiecie_najwyzsze_sieci_kv, to_samo_napiecie_znamionowe),",
+    "  * FRONTEND — ui2/model/pasmaNapieciowe.ts (NAPIECIE_NAJWYZSZE_SIECI_KV, napiecieNajwyzszeSieciKv, toSamoNapiecieZnamionowe).",
+    "Tabela: IEC 60038 tab. 3-5 (para 110 -> 123 kV takze ENEA Zeszyt 1 par. 10.1 tab. 5). Napiecie spoza tabeli -> najmniejsze U_s tabeli WIEKSZE od Un;",
+    "nN, brak, wartosc niefizyczna albo powyzej tabeli -> null. Rownosc napiec znamionowych: tolerancja wzgledna 1e-9 (reprezentacja binarna, nie margines).",
+    "izolacja: U_m urzadzenia wobec napiecia sieci — U_m >= U_s (IEC 60071-1 p. 3.9-3.10), w pasmie nN U_m >= U_n; null = brak rozstrzygniecia (brak danej, poza tablicami)."
+  ],
+  "tabela": [
+    {
+      "napiecie_znamionowe_kv": 3.0,
+      "u_s_kv": 3.6
+    },
+    {
+      "napiecie_znamionowe_kv": 3.3,
+      "u_s_kv": 3.6
+    },
+    {
+      "napiecie_znamionowe_kv": 6.0,
+      "u_s_kv": 7.2
+    },
+    {
+      "napiecie_znamionowe_kv": 6.6,
+      "u_s_kv": 7.2
+    },
+    {
+      "napiecie_znamionowe_kv": 10.0,
+      "u_s_kv": 12.0
+    },
+    {
+      "napiecie_znamionowe_kv": 11.0,
+      "u_s_kv": 12.0
+    },
+    {
+      "napiecie_znamionowe_kv": 15.0,
+      "u_s_kv": 17.5
+    },
+    {
+      "napiecie_znamionowe_kv": 20.0,
+      "u_s_kv": 24.0
+    },
+    {
+      "napiecie_znamionowe_kv": 22.0,
+      "u_s_kv": 24.0
+    },
+    {
+      "napiecie_znamionowe_kv": 30.0,
+      "u_s_kv": 36.0
+    },
+    {
+      "napiecie_znamionowe_kv": 33.0,
+      "u_s_kv": 36.0
+    },
+    {
+      "napiecie_znamionowe_kv": 35.0,
+      "u_s_kv": 40.5
+    },
+    {
+      "napiecie_znamionowe_kv": 45.0,
+      "u_s_kv": 52.0
+    },
+    {
+      "napiecie_znamionowe_kv": 66.0,
+      "u_s_kv": 72.5
+    },
+    {
+      "napiecie_znamionowe_kv": 69.0,
+      "u_s_kv": 72.5
+    },
+    {
+      "napiecie_znamionowe_kv": 110.0,
+      "u_s_kv": 123.0
+    },
+    {
+      "napiecie_znamionowe_kv": 115.0,
+      "u_s_kv": 123.0
+    },
+    {
+      "napiecie_znamionowe_kv": 132.0,
+      "u_s_kv": 145.0
+    },
+    {
+      "napiecie_znamionowe_kv": 138.0,
+      "u_s_kv": 145.0
+    },
+    {
+      "napiecie_znamionowe_kv": 150.0,
+      "u_s_kv": 170.0
+    },
+    {
+      "napiecie_znamionowe_kv": 220.0,
+      "u_s_kv": 245.0
+    },
+    {
+      "napiecie_znamionowe_kv": 400.0,
+      "u_s_kv": 420.0
+    }
+  ],
+  "wiersze": [
+    {
+      "napiecie_kv": null,
+      "u_s_kv": null
+    },
+    {
+      "napiecie_kv": 0.0,
+      "u_s_kv": null
+    },
+    {
+      "napiecie_kv": -15.0,
+      "u_s_kv": null
+    },
+    {
+      "napiecie_kv": 0.4,
+      "u_s_kv": null
+    },
+    {
+      "napiecie_kv": 1.0,
+      "u_s_kv": null
+    },
+    {
+      "napiecie_kv": 1.001,
+      "u_s_kv": 3.6
+    },
+    {
+      "napiecie_kv": 3.0,
+      "u_s_kv": 3.6
+    },
+    {
+      "napiecie_kv": 3.3,
+      "u_s_kv": 3.6
+    },
+    {
+      "napiecie_kv": 6.0,
+      "u_s_kv": 7.2
+    },
+    {
+      "napiecie_kv": 6.3,
+      "u_s_kv": 7.2
+    },
+    {
+      "napiecie_kv": 6.6,
+      "u_s_kv": 7.2
+    },
+    {
+      "napiecie_kv": 10.0,
+      "u_s_kv": 12.0
+    },
+    {
+      "napiecie_kv": 10.5,
+      "u_s_kv": 12.0
+    },
+    {
+      "napiecie_kv": 11.0,
+      "u_s_kv": 12.0
+    },
+    {
+      "napiecie_kv": 12.0,
+      "u_s_kv": 17.5
+    },
+    {
+      "napiecie_kv": 13.8,
+      "u_s_kv": 17.5
+    },
+    {
+      "napiecie_kv": 15.0,
+      "u_s_kv": 17.5
+    },
+    {
+      "napiecie_kv": 15.75,
+      "u_s_kv": 17.5
+    },
+    {
+      "napiecie_kv": 16.5,
+      "u_s_kv": 17.5
+    },
+    {
+      "napiecie_kv": 17.5,
+      "u_s_kv": 24.0
+    },
+    {
+      "napiecie_kv": 20.0,
+      "u_s_kv": 24.0
+    },
+    {
+      "napiecie_kv": 21.0,
+      "u_s_kv": 24.0
+    },
+    {
+      "napiecie_kv": 22.0,
+      "u_s_kv": 24.0
+    },
+    {
+      "napiecie_kv": 24.0,
+      "u_s_kv": 36.0
+    },
+    {
+      "napiecie_kv": 30.0,
+      "u_s_kv": 36.0
+    },
+    {
+      "napiecie_kv": 31.5,
+      "u_s_kv": 36.0
+    },
+    {
+      "napiecie_kv": 33.0,
+      "u_s_kv": 36.0
+    },
+    {
+      "napiecie_kv": 35.0,
+      "u_s_kv": 40.5
+    },
+    {
+      "napiecie_kv": 36.0,
+      "u_s_kv": 40.5
+    },
+    {
+      "napiecie_kv": 45.0,
+      "u_s_kv": 52.0
+    },
+    {
+      "napiecie_kv": 66.0,
+      "u_s_kv": 72.5
+    },
+    {
+      "napiecie_kv": 69.0,
+      "u_s_kv": 72.5
+    },
+    {
+      "napiecie_kv": 110.0,
+      "u_s_kv": 123.0
+    },
+    {
+      "napiecie_kv": 115.0,
+      "u_s_kv": 123.0
+    },
+    {
+      "napiecie_kv": 121.0,
+      "u_s_kv": 123.0
+    },
+    {
+      "napiecie_kv": 130.0,
+      "u_s_kv": 145.0
+    },
+    {
+      "napiecie_kv": 132.0,
+      "u_s_kv": 145.0
+    },
+    {
+      "napiecie_kv": 138.0,
+      "u_s_kv": 145.0
+    },
+    {
+      "napiecie_kv": 150.0,
+      "u_s_kv": 170.0
+    },
+    {
+      "napiecie_kv": 220.0,
+      "u_s_kv": 245.0
+    },
+    {
+      "napiecie_kv": 400.0,
+      "u_s_kv": 420.0
+    },
+    {
+      "napiecie_kv": 420.0,
+      "u_s_kv": null
+    },
+    {
+      "napiecie_kv": 500.0,
+      "u_s_kv": null
+    }
+  ],
+  "pary_rownosci": [
+    {
+      "pierwsze_kv": 15.0,
+      "drugie_kv": 15.0,
+      "to_samo": true
+    },
+    {
+      "pierwsze_kv": 15.0,
+      "drugie_kv": 15.000000000001,
+      "to_samo": true
+    },
+    {
+      "pierwsze_kv": 15.0,
+      "drugie_kv": 15.000001,
+      "to_samo": false
+    },
+    {
+      "pierwsze_kv": 15.0,
+      "drugie_kv": 15.05,
+      "to_samo": false
+    },
+    {
+      "pierwsze_kv": 0.4,
+      "drugie_kv": 0.4,
+      "to_samo": true
+    },
+    {
+      "pierwsze_kv": 0.4,
+      "drugie_kv": 0.41,
+      "to_samo": false
+    },
+    {
+      "pierwsze_kv": 110.0,
+      "drugie_kv": 115.0,
+      "to_samo": false
+    },
+    {
+      "pierwsze_kv": null,
+      "drugie_kv": 15.0,
+      "to_samo": false
+    },
+    {
+      "pierwsze_kv": 15.0,
+      "drugie_kv": null,
+      "to_samo": false
+    },
+    {
+      "pierwsze_kv": 0.0,
+      "drugie_kv": 0.0,
+      "to_samo": false
+    },
+    {
+      "pierwsze_kv": -0.4,
+      "drugie_kv": -0.4,
+      "to_samo": false
+    }
+  ],
+  "izolacja": [
+    {
+      "u_m_kv": 3.5,
+      "napiecie_sieci_kv": 3.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 3.6,
+      "napiecie_sieci_kv": 3.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 3.7,
+      "napiecie_sieci_kv": 3.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 3.0,
+      "napiecie_sieci_kv": 3.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 7.1,
+      "napiecie_sieci_kv": 6.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 7.2,
+      "napiecie_sieci_kv": 6.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 7.3,
+      "napiecie_sieci_kv": 6.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 6.0,
+      "napiecie_sieci_kv": 6.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 11.9,
+      "napiecie_sieci_kv": 10.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 12.0,
+      "napiecie_sieci_kv": 10.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 12.1,
+      "napiecie_sieci_kv": 10.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 10.0,
+      "napiecie_sieci_kv": 10.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 17.4,
+      "napiecie_sieci_kv": 15.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 17.5,
+      "napiecie_sieci_kv": 15.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 17.6,
+      "napiecie_sieci_kv": 15.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 15.0,
+      "napiecie_sieci_kv": 15.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 23.9,
+      "napiecie_sieci_kv": 20.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 24.0,
+      "napiecie_sieci_kv": 20.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 24.1,
+      "napiecie_sieci_kv": 20.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 20.0,
+      "napiecie_sieci_kv": 20.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 35.9,
+      "napiecie_sieci_kv": 30.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 36.0,
+      "napiecie_sieci_kv": 30.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 36.1,
+      "napiecie_sieci_kv": 30.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 30.0,
+      "napiecie_sieci_kv": 30.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 24.0,
+      "napiecie_sieci_kv": 17.5,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 24.0,
+      "napiecie_sieci_kv": 24.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 36.0,
+      "napiecie_sieci_kv": 24.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 123.0,
+      "napiecie_sieci_kv": 110.0,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 110.0,
+      "napiecie_sieci_kv": 110.0,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": 0.4,
+      "napiecie_sieci_kv": 0.4,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 0.69,
+      "napiecie_sieci_kv": 0.4,
+      "pokrywa": true
+    },
+    {
+      "u_m_kv": 0.23,
+      "napiecie_sieci_kv": 0.4,
+      "pokrywa": false
+    },
+    {
+      "u_m_kv": null,
+      "napiecie_sieci_kv": 15.0,
+      "pokrywa": null
+    },
+    {
+      "u_m_kv": 17.5,
+      "napiecie_sieci_kv": null,
+      "pokrywa": null
+    },
+    {
+      "u_m_kv": 17.5,
+      "napiecie_sieci_kv": 0.0,
+      "pokrywa": null
+    },
+    {
+      "u_m_kv": 17.5,
+      "napiecie_sieci_kv": 500.0,
+      "pokrywa": null
+    }
+  ]
+}

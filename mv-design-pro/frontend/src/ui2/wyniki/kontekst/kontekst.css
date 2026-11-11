@@ -1,0 +1,50 @@
+/* Kontekst wyniku (karta K8): wybór aktywnego biegu rodziny — pasek stanu i ekran pełny.
+   Wyłącznie tokeny `ui2/theme/tokens.css`; pismo danych bez wersalików i rozstrzelenia. */
+.mvd-kontekst-rodziny {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: var(--mvd-font-size-data);
+}
+.mvd-kontekst-rodzina {
+  border: 0;
+  background: none;
+  color: var(--mvd-muted);
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+.mvd-kontekst-rodzina:hover,
+.mvd-kontekst-rodzina.mvd-on {
+  color: var(--mvd-ink);
+}
+.mvd-kontekst-rodzina.mvd-on {
+  font-weight: 600;
+}
+.mvd-kontekst-bieg {
+  font: inherit;
+  color: var(--mvd-ink);
+  background: var(--mvd-surface);
+  border: 1px solid var(--mvd-line);
+  border-radius: 3px;
+  padding: 0 4px;
+  max-width: 260px;
+}
+.mvd-kontekst-swiezosc-aktualny {
+  color: var(--mvd-ok-ink);
+}
+.mvd-kontekst-swiezosc-nieaktualny {
+  color: var(--mvd-warn-ink);
+}
+.mvd-kontekst-swiezosc-nieznany {
+  color: var(--mvd-muted);
+}
+.mvd-kontekst-ekran {
+  padding: 4px 0;
+}
+.mvd-kontekst-uwaga {
+  margin: 4px 0;
+  color: var(--mvd-warn-ink);
+  font-size: var(--mvd-font-size-data);
+}

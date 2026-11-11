@@ -15,8 +15,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './zdolnosc.css';
-import type { AdvancementMode } from '../../shell/modeModel';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
   pobierzZdolnoscPrzylaczeniowa,
@@ -35,11 +33,11 @@ import {
   slupkiZdolnosci,
   statusScenariuszaPL,
   wartoscKryterium,
-  wybierzPrzebiegRozplywu,
 } from './zdolnoscModel';
 import { ZDOLNOSC_STRINGS, fmtMW } from './strings';
 import { InformacjeAudytowe, PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -172,10 +170,10 @@ function WierszWezla({
 
 function WynikZdolnosci({
   dane,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   dane: WidokZdolnosci;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const slupki = useMemo(() => slupkiZdolnosci(dane.nodes), [dane.nodes]);
   const liczbaKolumn = 8;
@@ -222,7 +220,7 @@ function WynikZdolnosci({
 
       {/* Karta #145: przebieg i odcisk wejścia wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-zdol-informacje-audytowe"
         wiersze={[
           { etykieta: ZDOLNOSC_STRINGS.ekspPrzebieg, wartosc: dane.context.run_id },
@@ -238,15 +236,13 @@ function WynikZdolnosci({
 // ---------------------------------------------------------------------------
 
 export interface EkranZdolnosciProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
-export function EkranZdolnosci({ trybZaawansowania }: EkranZdolnosciProps) {
-  const trybEkspercki = trybZaawansowania === 'expert';
+export function EkranZdolnosci({ szczegolyAudytowe }: EkranZdolnosciProps) {
 
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);
@@ -402,7 +398,7 @@ export function EkranZdolnosci({ trybZaawansowania }: EkranZdolnosciProps) {
               testid="mvd-zdol-blad"
             />
           ) : (
-            <WynikZdolnosci dane={stan.dane} trybEkspercki={trybEkspercki} />
+            <WynikZdolnosci dane={stan.dane} szczegolyAudytowe={szczegolyAudytowe} />
           )}
         </>
       )}

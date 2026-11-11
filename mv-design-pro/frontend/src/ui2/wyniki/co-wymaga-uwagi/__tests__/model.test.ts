@@ -6,7 +6,8 @@
 import { describe, it, expect } from 'vitest';
 
 import { brakKryteriowRozplywu,
-  przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
+  przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci, wniosekPustejListy,
+  type OdczytOceny, type Przekroczenie, type WniosekPustejListy } from '../model';
 import type { OdpowiedzOceny, PozycjaOceny } from '../../ocena/api';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from '../strings';
 import type { NazwaObiektu } from '../../wzorzec';
@@ -228,4 +229,47 @@ describe('przekroczeniaWerdyktu — kryteria projektowe backendu (lit. a-c)', ()
     ]);
     expect(przekroczeniaWerdyktu(werdykt, false, NAZWA)).toHaveLength(2);
   });
+});
+
+describe('wniosekPustejListy — iloczyn {przebieg} × {lista} × {odczyt oceny} × {kryteria}', () => {
+  const POZYCJA: Przekroczenie = {
+    klucz: 'rozplyw::napiecie::A',
+    analizaPL: T.analizaRozplyw,
+    elementRef: 'A',
+    elementTyp: 'Bus',
+    elementNazwa: 'A',
+    opis: T.opisNapiecieNiskie,
+    wartosc: '0,94 p.u.',
+    rodzaj: 'napiecie',
+  } as Przekroczenie;
+  const PRZYPADKI = [false, true].flatMap((maPrzebieg) =>
+    [0, 1].flatMap((liczba) =>
+      ([null, 'wczytywanie', 'blad'] as const).flatMap((odczytOceny) =>
+        [false, true].map((brakKryteriowNapiec) => ({ maPrzebieg, liczba, odczytOceny, brakKryteriowNapiec })),
+      ),
+    ),
+  );
+
+  /** Wyrocznia niezależna od implementacji: tabela rozstrzygnięć karty. */
+  function oczekiwany(p: (typeof PRZYPADKI)[number]): WniosekPustejListy | null {
+    if (!p.maPrzebieg) return 'brak_przebiegu';
+    if (p.liczba > 0) return null;
+    if (p.odczytOceny !== null) return p.odczytOceny === 'wczytywanie' ? 'ocena_wczytywanie' : 'ocena_blad';
+    return p.brakKryteriowNapiec ? 'brak_kryteriow' : 'w_normie';
+  }
+
+  it.each(PRZYPADKI)(
+    'przebieg=$maPrzebieg × pozycji=$liczba × odczyt=$odczytOceny × brakKryteriów=$brakKryteriowNapiec',
+    (p) => {
+      const wynik = wniosekPustejListy({
+        maPrzebieg: p.maPrzebieg,
+        przekroczenia: p.liczba > 0 ? [POZYCJA] : [],
+        odczytOceny: p.odczytOceny as OdczytOceny | null,
+        brakKryteriowNapiec: p.brakKryteriowNapiec,
+      });
+      expect(wynik).toBe(oczekiwany(p));
+      // Inwariant karty: „sieć w normie" NIGDY, gdy odczyt oceny trwa albo się nie powiódł.
+      if (p.odczytOceny !== null) expect(wynik).not.toBe('w_normie');
+    },
+  );
 });

@@ -131,7 +131,6 @@ def _der_sn_payload(
                     "snapshot_mapping_version": "1.0",
                 },
             },
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": "bus_sn",
             "mv_field_configuration": {
                 "switching_device": "CB",

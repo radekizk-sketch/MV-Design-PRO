@@ -23,7 +23,15 @@ Zwracane wartości:
 - Per-phase complex voltage U_a/U_b/U_c (pu)
 - Voltage Unbalance Factor (VUF) wg IEC 61000-4-30 = |V2| / |V1| × 100%
 - Per-phase branch flows
-- Total losses
+- Total losses (S_loss = Σ_p ΔU_p·I_p* — pełna macierz Krona: Z_s na fazie, Z_m od faz
+  pozostałych; dla Z_m = Z_N to straty faz i przewodu powrotnego N/PEN, Kersting rozdz. 4)
+- Prąd przewodu powrotnego gałęzi I_N = I_a + I_b + I_c i potencjał przewodu N szyny
+  względem punktu uziemienia (szyna bilansująca i ``neutral_earthed_bus_ids``):
+  V_N,do = V_N,od + Z_m·(I_a + I_b + I_c). Wyprowadzenie: model czteroprzewodowy faza–N
+  z redukcją Krona (Z_s = Z_f + Z_N, Z_m = Z_N) daje napięcia FAZA–N szyn (tak liczy BFS),
+  a przewód N niesie prąd powrotny −ΣI_p, więc jego spadek względem punktu uziemienia to
+  Z_N·ΣI_p (Kersting rozdz. 4, model linii czteroprzewodowej z przewodem neutralnym
+  uziemionym w punkcie zasilania).
 """
 
 from __future__ import annotations
@@ -67,10 +75,14 @@ class UnbalancedPowerFlowBusResult:
     angle_deg_b: float
     angle_deg_c: float
     voltage_unbalance_factor_pct: float
+    #: Potencjał przewodu N (powrotnego) szyny względem punktu uziemienia [p.u. napięcia
+    #: fazowego bazy wyspy]; 0 w szynie bilansującej i w ``neutral_earthed_bus_ids``.
+    neutral_voltage_pu: complex = 0j
 
     def to_dict(self) -> dict[str, object]:
         return {
             "bus_id": self.bus_id,
+            "neutral_voltage_pu_magnitude": round(abs(self.neutral_voltage_pu), 6),
             "voltage_pu_magnitude_a": round(self.voltage_pu_magnitude_a, 6),
             "voltage_pu_magnitude_b": round(self.voltage_pu_magnitude_b, 6),
             "voltage_pu_magnitude_c": round(self.voltage_pu_magnitude_c, 6),
@@ -94,10 +106,14 @@ class UnbalancedPowerFlowBranchResult:
     q_mvar_c: float
     losses_p_mw: float
     losses_q_mvar: float
+    #: Prąd przewodu powrotnego gałęzi I_N = I_a + I_b + I_c [p.u. prądu bazy wyspy]
+    #: (3·I_0; 0 przy obciążeniu symetrycznym).
+    neutral_current_pu: complex = 0j
 
     def to_dict(self) -> dict[str, object]:
         return {
             "branch_id": self.branch_id,
+            "neutral_current_pu_magnitude": round(abs(self.neutral_current_pu), 6),
             "from_bus_id": self.from_bus_id,
             "to_bus_id": self.to_bus_id,
             "p_mw_a": round(self.p_mw_a, 6),
@@ -157,6 +173,9 @@ class UnbalancedNetworkInput:
     branches: tuple[UnbalancedBranchSpec, ...]
     loads: tuple[UnbalancedLoadSpec, ...]
     slack_voltage_pu: float = 1.0  # |V_slack| (balanced angles)
+    #: Szyny z uziemionym punktem neutralnym (gwiazda transformatora uziemiona po stronie tej
+    #: szyny) — potencjał przewodu N := 0 (punkt odniesienia N–PE). Szyna bilansująca zawsze.
+    neutral_earthed_bus_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -438,6 +457,27 @@ def solve_unbalanced_backward_forward_sweep(
             converged = True
             break
 
+    # Potencjał przewodu N względem punktu uziemienia: od szyny bilansującej w kolejności
+    # przeglądu, V_N,do = V_N,od + Z_m·(I_a + I_b + I_c); szyna z uziemionym punktem
+    # neutralnym zeruje potencjał (punkt odniesienia N–PE poniżej transformatora).
+    uziemione = frozenset(input_data.neutral_earthed_bus_ids)
+    neutral_voltages: dict[str, complex] = dict.fromkeys(input_data.bus_ids, 0j)
+    for bus in traversal_order:
+        parent_bus = parent[bus]
+        if bus == input_data.slack_bus_id or parent_bus is None or bus in uziemione:
+            continue
+        branch = branch_lookup[(parent_bus, bus)]
+        z_mutual = _ohm_to_pu(
+            complex(branch.r_mutual_ohm, branch.x_mutual_ohm),
+            input_data.base_mva,
+            input_data.base_kv,
+        )
+        neutral_voltages[bus] = neutral_voltages[parent_bus] + z_mutual * (
+            branch_currents_a[branch.branch_id]
+            + branch_currents_b[branch.branch_id]
+            + branch_currents_c[branch.branch_id]
+        )
+
     # Build results
     bus_results: list[UnbalancedPowerFlowBusResult] = []
     for bus in input_data.bus_ids:
@@ -457,6 +497,7 @@ def solve_unbalanced_backward_forward_sweep(
                 angle_deg_b=math.degrees(cmath.phase(v_b)),
                 angle_deg_c=math.degrees(cmath.phase(v_c)),
                 voltage_unbalance_factor_pct=_compute_voltage_unbalance_factor_pct(v_a, v_b, v_c),
+                neutral_voltage_pu=neutral_voltages[bus],
             )
         )
 
@@ -475,16 +516,24 @@ def solve_unbalanced_backward_forward_sweep(
         s_from_a = v_from_a * i_a.conjugate() * input_data.base_mva
         s_from_b = v_from_b * i_b.conjugate() * input_data.base_mva
         s_from_c = v_from_c * i_c.conjugate() * input_data.base_mva
-        # Losses = |I|² × R per phase
+        # Straty = Σ_p ΔU_p·I_p* z pełną macierzą Krona (ΔU_p = Z_s·I_p + Z_m·ΣI_q≠p) — ten
+        # sam spadek co przemiatanie w przód. Dawne |I_p|²·Z_s pomijało wyraz wzajemny:
+        # przy obciążeniu symetrycznym zawyżało straty o 3·|I|²·Z_m (R_s/R_1 = 5/3 dla
+        # Z0 = 3·Z1), a straty przewodu N są właśnie w wyrazie wzajemnym (Z_m = Z_N).
         z_self_pu = _ohm_to_pu(
             complex(branch.r_self_ohm, branch.x_self_ohm),
             input_data.base_mva,
             input_data.base_kv,
         )
-        loss_s_a = (i_a * i_a.conjugate()).real * z_self_pu * input_data.base_mva
-        loss_s_b = (i_b * i_b.conjugate()).real * z_self_pu * input_data.base_mva
-        loss_s_c = (i_c * i_c.conjugate()).real * z_self_pu * input_data.base_mva
-        loss_total = loss_s_a + loss_s_b + loss_s_c
+        z_mutual_pu = _ohm_to_pu(
+            complex(branch.r_mutual_ohm, branch.x_mutual_ohm),
+            input_data.base_mva,
+            input_data.base_kv,
+        )
+        loss_s_a = (z_self_pu * i_a + z_mutual_pu * (i_b + i_c)) * i_a.conjugate()
+        loss_s_b = (z_self_pu * i_b + z_mutual_pu * (i_a + i_c)) * i_b.conjugate()
+        loss_s_c = (z_self_pu * i_c + z_mutual_pu * (i_a + i_b)) * i_c.conjugate()
+        loss_total = (loss_s_a + loss_s_b + loss_s_c) * input_data.base_mva
 
         branch_results.append(
             UnbalancedPowerFlowBranchResult(
@@ -497,12 +546,11 @@ def solve_unbalanced_backward_forward_sweep(
                 q_mvar_a=s_from_a.imag,
                 q_mvar_b=s_from_b.imag,
                 q_mvar_c=s_from_c.imag,
-                # loss_total = Σ|I|²·Z (zespolone): Re = straty czynne w R,
-                # Im = moc bierna pochłaniana w X. Dawna gałąź obronna
-                # `float(loss_total)` była martwa (complex i float mają .real)
-                # i rzuciłaby TypeError, gdyby kiedykolwiek się wykonała.
+                # loss_total = I^H·Z·I (zespolone): Re = straty czynne w R faz i przewodu
+                # powrotnego, Im = moc bierna pochłaniana w X.
                 losses_p_mw=loss_total.real,
                 losses_q_mvar=loss_total.imag,
+                neutral_current_pu=i_a + i_b + i_c,
             )
         )
         total_losses_p += branch_results[-1].losses_p_mw

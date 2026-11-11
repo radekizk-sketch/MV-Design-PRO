@@ -25,8 +25,8 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   wartoscZeSlownika: '— wybierz wartość ze słownika —',
   dodajWiersz: 'Dodaj parametr',
   usunWiersz: 'Usuń',
-  powod: 'Uzasadnienie zmiany (opcjonalnie)',
-  powodPlaceholder: 'np. korekta wg pomiaru terenowego',
+  powod: 'Uzasadnienie wartości projektanta (opcjonalnie)',
+  powodPlaceholder: 'np. karta producenta, tabliczka aparatu istniejącego',
 
   kontrolaTytul: 'Kontrola edycji',
   wierszElement: 'Element',
@@ -78,10 +78,10 @@ export const EDYCJA_PARAMETROW_STRINGS = {
     + 'projektanta pozostaje daną przyjętą (ocena obliczeniowa, nie potwierdzony dowód) — '
     + 'uzasadnienie zapisz w polu „Uzasadnienie zmiany”.',
   aparatEtykiety: {
-    break_time_s: 'Czas własny wyłączania t_b [s]',
-    i_th_ka: 'Prąd krótkotrwały wytrzymywany I_k [kA]',
-    i_th_duration_s: 'Znamionowy czas trwania zwarcia t_k [s]',
-    i_dyn_ka: 'Prąd szczytowy wytrzymywany I_p [kA]',
+    break_time_s: 'Czas własny wyłączania $t_b$ [s]',
+    i_th_ka: 'Prąd krótkotrwały wytrzymywany $I_k$ [kA]',
+    i_th_duration_s: 'Znamionowy czas trwania zwarcia $t_k$ [s]',
+    i_dyn_ka: 'Prąd szczytowy wytrzymywany $I_p$ [kA]',
   },
   aparatJednostki: {
     break_time_s: 's',

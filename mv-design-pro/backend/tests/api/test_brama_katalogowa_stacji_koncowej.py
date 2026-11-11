@@ -35,10 +35,6 @@ GPZ = {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": REF_ZRODLO,
-            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
-            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     }
 }
@@ -198,6 +194,9 @@ def test_zly_ref_bez_tabliczki_tez_odrzucony_zamiast_blokady_o_braku_uk(
     )
 
 
+# Tabliczka transformatora w ładunku CELOWO spoza kontraktu operacji (fizyka z katalogu) —
+# czujnik ładunku zapisuje wpis, nie zamienia go w błąd.
+@pytest.mark.ladunek_spoza_kontraktu
 def test_poprawny_ref_przechodzi_i_daje_fizyke_z_katalogu(klient: TestClient) -> None:
     """Kontrola: dobry ref → 200, materializacja obecna, uk% z katalogu (nie z payloadu)."""
     case_id = _nowy_przypadek(klient)

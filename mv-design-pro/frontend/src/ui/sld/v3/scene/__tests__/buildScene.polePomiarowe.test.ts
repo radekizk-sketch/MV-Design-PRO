@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Pole POMIAROWE na realnej scenie — oznacznik przekładnika napięciowego „TV"
  * (dyrektywa właściciela 2026-08-06; rejestr V12K-329).
@@ -26,15 +27,37 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../../types/enm';
+import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/enm';
+import { rekordyAparatowPola, zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 import { apparatusIdentifierGaps, buildSceneV3, type SceneLod } from '../buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const enm = (
+const surowa = (
   JSON.parse(readFileSync(resolve(here, 'fixtures', 'stacjaPolePomiarowe.enm.json'), 'utf8')) as {
     readonly enm: EnergyNetworkModel;
   }
 ).enm;
+
+/**
+ * GEOMETRIA-STACJI (§0 pkt 4, kryterium właściciela): aparat pola rysuje się WYŁĄCZNIE
+ * z rekordu modelu. Operacja budowy stacji zapisuje w polu pomiarowym tylko gałąź
+ * wyłącznika (`equipment_refs`); przekładnik napięciowy dawała dotąd konwencja roli
+ * MEASUREMENT — aparat, którego model nie zawiera. Intencja testu (oznacznik „TV" na
+ * przekładniku i miejsce pola pomiarowego) dotyczy przekładnika ISTNIEJĄCEGO w modelu,
+ * więc fikstura deklaruje go rekordem (wyłącznik powiązany z gałęzią pola + przekładnik),
+ * a pozostałe pola stacji — rekordami RMU (`zRekordamiAparatowPol`). Przypadek bez rekordu
+ * przekładnika: test niżej (rysunek NIE dorysowuje przekładnika).
+ */
+const enm = ((): EnergyNetworkModel => {
+  const model = zRekordamiAparatowPol(surowa);
+  for (const bay of model.bays) {
+    if (bay.bay_role !== 'MEASUREMENT') continue;
+    const rekordy = rekordyAparatowPola(bay.ref_id, ['CB', 'VT']);
+    rekordy[0].linked_ref = bay.equipment_refs[0];
+    (bay as { primary_devices?: BayPrimaryDevice[] }).primary_devices = rekordy;
+  }
+  return model;
+})();
 
 describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-329)', () => {
   for (const lod of [1, 2] as SceneLod[]) {
@@ -60,6 +83,14 @@ describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-32
     expect(apparatusIdentifierGaps(scene)).toEqual([]);
   });
 
+  it('pole pomiarowe BEZ rekordu przekładnika (migawka z operacji): wyłącznik z gałęzi pola, zero przekładnika z konwencji', () => {
+    const scene = buildSceneV3(surowa, 2);
+    const polePomiarowe = surowa.bays.find((b) => b.bay_role === 'MEASUREMENT')!;
+    const symbolePola = scene.symbols.filter((s) => s.meta?.ownerRef === polePomiarowe.ref_id);
+    expect(symbolePola.map((s) => s.symbolId)).toEqual(['breaker']);
+    expect(scene.symbols.some((s) => s.symbolId === 'voltageTransformer')).toBe(false);
+  });
+
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {
     const a = JSON.stringify(buildSceneV3(enm, 2));
     const b = JSON.stringify(buildSceneV3(enm, 2));
@@ -68,7 +99,7 @@ describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-32
 
   // V12K-330 (dyrektywa właściciela 2026-08-06 — „pole pomiarowe musi być
   // pierwsze patrząc od kierunku zasilania"): kolejność pól NA RYSUNKU podąża
-  // za kolejnością `field_specs` Z DANYCH. Fixtura deklaruje
+  // za kolejnością rekordów pól `bays` Z DANYCH. Fixtura deklaruje
   // [LINIA_IN, LINIA_OUT, MEASUREMENT, TRANSFORMATOROWE] — przekładnik pola
   // pomiarowego MUSI leżeć na lewo (bliżej zasilania) od pola TR. Dawny
   // ranking ról (liniowe→TR→…→POMIAROWE) spychał pomiar na koniec szyny —

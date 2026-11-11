@@ -6,11 +6,13 @@
  * (odpowiedź nie zawiera snapshotu, więc nic nie jest utrwalane). UI wyłącznie
  * czyta — ZERO fizyki i ZERO przeliczeń po stronie kreatora.
  *
- * Świadomie omijamy `snapshotStore.executeDomainOperation`: ten store zapisuje
- * snapshot z odpowiedzi, a podgląd snapshotu nie zwraca.
+ * Wywołanie idzie kanonicznym klientem (`executeDomainOpPreview` z `ui/topology/domainApi.ts`
+ * — ten sam adres i ta sama koperta co zapis). Świadomie omijamy
+ * `snapshotStore.executeDomainOperation`: ten store zapisuje snapshot z odpowiedzi, a próba
+ * snapshotu nie zwraca.
  */
 
-const API_BASE = '/api/cases';
+import { executeDomainOpPreview } from '../../../ui/topology/domainApi';
 
 /** Skutki elektryczne podziału (readout backendu — nazwy pól 1:1 z kontraktem). */
 export interface SkutkiElektryczne {
@@ -43,25 +45,6 @@ export interface PodgladStacji {
   raw: Record<string, unknown>;
 }
 
-interface DomainOpPreviewResponse {
-  dry_run?: boolean;
-  preview?: Record<string, unknown>;
-  error?: string;
-  error_code?: string;
-}
-
-function tekstBledu(dane: unknown, status: number, statusText: string): string {
-  if (dane && typeof dane === 'object') {
-    const detail = (dane as { detail?: unknown }).detail;
-    if (typeof detail === 'string') return detail;
-    if (detail && typeof detail === 'object') {
-      const message = (detail as { message_pl?: unknown }).message_pl;
-      if (typeof message === 'string') return message;
-    }
-  }
-  return `Błąd HTTP ${status}: ${statusText}`;
-}
-
 /**
  * Pobiera podgląd skutków operacji stacyjnej (`dry_run`). Rzuca `Error`
  * z komunikatem PL, gdy backend odrzuci payload — komunikat jest pokazywany
@@ -73,27 +56,7 @@ export async function pobierzPodgladStacji(
   payload: Record<string, unknown>,
   opcje: { signal?: AbortSignal } = {},
 ): Promise<PodgladStacji> {
-  const response = await fetch(`${API_BASE}/${encodeURIComponent(caseId)}/enm/domain-ops`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal: opcje.signal,
-    body: JSON.stringify({
-      project_id: caseId,
-      snapshot_base_hash: '',
-      operation: {
-        name: operacja,
-        idempotency_key: `podglad-${operacja}`,
-        payload: { ...payload, dry_run: true },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const dane = await response.json().catch(() => null);
-    throw new Error(tekstBledu(dane, response.status, response.statusText));
-  }
-
-  const dane = (await response.json()) as DomainOpPreviewResponse;
+  const dane = await executeDomainOpPreview(caseId, operacja, payload, opcje);
   if (dane.error) throw new Error(dane.error);
 
   const preview = dane.preview ?? {};

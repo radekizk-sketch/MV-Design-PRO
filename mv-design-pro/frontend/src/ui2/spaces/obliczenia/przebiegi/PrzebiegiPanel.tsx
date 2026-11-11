@@ -17,7 +17,8 @@
  *     status świeżości WYNIKÓW niesie przestrzeń „Wyniki", nie historia
  *     przebiegów).
  *   Emituje: nic bezpośrednio — akcja „Pokaż wyniki" przez prop
- *     `onPokazWyniki(runId)` (integrator woła `setActiveRun` + zmianę
+ *     `onPokazWyniki(runId)` (integrator woła `wybierzBieg` magazynu kontekstu
+ *     wyniku, karta K8, + zmianę
  *     przestrzeni, jak most `MostHistoriiPrzebiegow` przed wygaszeniem).
  *   Rewizja: rekord przebiegu niesie rewizję modelu z chwili liczenia
  *     (`ExecutionRun.model_revision`, koperta CV-2 — KARTA-UI2 §1 p. 10) —
@@ -31,7 +32,6 @@
  */
 
 import { useState } from 'react';
-import type { AdvancementMode } from '../../../shell/modeModel';
 import {
   useOdswiezaniePrzebiegow,
   useStanPrzebiegow,
@@ -45,12 +45,12 @@ import './przebiegi.css';
 
 export interface PrzebiegiPanelProps {
   /** Tryb zaawansowania powłoki — koduje widoczność identyfikatorów (§2.7). */
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Akcja „Pokaż wyniki" — integrator aktywuje przebieg i otwiera Wyniki. */
   onPokazWyniki: (runId: string) => void;
 }
 
-export function PrzebiegiPanel({ trybZaawansowania, onPokazWyniki }: PrzebiegiPanelProps) {
+export function PrzebiegiPanel({ szczegolyAudytowe, onPokazWyniki }: PrzebiegiPanelProps) {
   const stan = useStanPrzebiegow();
   const wiersze = useWierszePrzebiegow();
   const ogloszenie = useOdswiezaniePrzebiegow();
@@ -134,7 +134,7 @@ export function PrzebiegiPanel({ trybZaawansowania, onPokazWyniki }: PrzebiegiPa
         <section className="mvd-przebiegi-szczegoly" aria-label={T.sekcjaParametry}>
           <SzczegolyPrzebiegu
             przebieg={zaznaczony}
-            trybEkspercki={trybZaawansowania === 'expert'}
+            szczegolyAudytowe={szczegolyAudytowe}
             onPokazWyniki={onPokazWyniki}
           />
         </section>

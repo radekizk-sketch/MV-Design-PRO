@@ -299,153 +299,6 @@
     "title": "ArchiveSummary",
     "type": "object"
    },
-   "AutoPopulateRequest": {
-    "description": "K30-23 user demand: 'dane mają się maksymalnie podczytywać'.",
-    "properties": {
-     "cross_section_mm2": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Cross Section Mm2"
-     },
-     "expected_current_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Expected Current A"
-     },
-     "expected_power_mva": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Expected Power Mva"
-     },
-     "prefer_manufacturer": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Prefer Manufacturer"
-     },
-     "voltage_kv": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Voltage Kv"
-     }
-    },
-    "title": "AutoPopulateRequest",
-    "type": "object"
-   },
-   "AutoPopulateResponse": {
-    "properties": {
-     "element_type": {
-      "title": "Element Type",
-      "type": "string"
-     },
-     "suggestions": {
-      "items": {
-       "$ref": "#/components/schemas/AutoPopulateSuggestion"
-      },
-      "title": "Suggestions",
-      "type": "array"
-     },
-     "total_candidates": {
-      "title": "Total Candidates",
-      "type": "integer"
-     }
-    },
-    "required": [
-     "element_type",
-     "suggestions",
-     "total_candidates"
-    ],
-    "title": "AutoPopulateResponse",
-    "type": "object"
-   },
-   "AutoPopulateSuggestion": {
-    "properties": {
-     "badge_pl": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Badge Pl"
-     },
-     "catalog_ref": {
-      "title": "Catalog Ref",
-      "type": "string"
-     },
-     "certyfikat_ptpiree": {
-      "default": false,
-      "title": "Certyfikat Ptpiree",
-      "type": "boolean"
-     },
-     "dopasowanie": {
-      "enum": [
-       "PELNE",
-       "CZESCIOWE"
-      ],
-      "title": "Dopasowanie",
-      "type": "string"
-     },
-     "label_pl": {
-      "title": "Label Pl",
-      "type": "string"
-     },
-     "manufacturer": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Manufacturer"
-     },
-     "rationale_pl": {
-      "title": "Rationale Pl",
-      "type": "string"
-     }
-    },
-    "required": [
-     "catalog_ref",
-     "label_pl",
-     "dopasowanie",
-     "rationale_pl"
-    ],
-    "title": "AutoPopulateSuggestion",
-    "type": "object"
-   },
    "BatchItemResponse": {
     "description": "Jedna pozycja serii — ZERO własnego wyniku (wynik = bieg kanoniczny po\n`canonical_run_id`, `GET /api/execution/runs/{canonical_run_id}`).",
     "properties": {
@@ -2231,51 +2084,6 @@
     "title": "CableVoltageDropResponse",
     "type": "object"
    },
-   "CatalogBindingRequest": {
-    "properties": {
-     "catalog_id": {
-      "title": "Catalog Id",
-      "type": "string"
-     },
-     "catalog_name": {
-      "title": "Catalog Name",
-      "type": "string"
-     },
-     "catalog_version": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Catalog Version"
-     },
-     "device_id": {
-      "title": "Device Id",
-      "type": "string"
-     },
-     "manufacturer": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Manufacturer"
-     }
-    },
-    "required": [
-     "device_id",
-     "catalog_id",
-     "catalog_name"
-    ],
-    "title": "CatalogBindingRequest",
-    "type": "object"
-   },
    "CertyfikatZgodnosciRequest": {
     "additionalProperties": false,
     "description": "Wejście końcówki certyfikatu: identyfikacja projektu i operator (profil wymagań).\n\nDane modułów i certyfikaty urządzeń pochodzą WYŁĄCZNIE z zatwierdzonego modelu przypadku\n(``case_id`` w zapytaniu) — ciało żądania nie ma na nie pól.",
@@ -2718,65 +2526,6 @@
      "x_ohm"
     ],
     "title": "ComplexOhmResponse",
-    "type": "object"
-   },
-   "ConfigResponse": {
-    "properties": {
-     "canonical_hash": {
-      "title": "Canonical Hash",
-      "type": "string"
-     },
-     "catalog_bindings": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Catalog Bindings",
-      "type": "array"
-     },
-     "config_version": {
-      "title": "Config Version",
-      "type": "string"
-     },
-     "devices": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Devices",
-      "type": "array"
-     },
-     "fields": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Fields",
-      "type": "array"
-     },
-     "protection_bindings": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Protection Bindings",
-      "type": "array"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "config_version",
-     "station_id",
-     "fields",
-     "devices",
-     "catalog_bindings",
-     "protection_bindings",
-     "canonical_hash"
-    ],
-    "title": "ConfigResponse",
     "type": "object"
    },
    "CoordinationConfigRequest": {
@@ -4060,6 +3809,11 @@
       "title": "Der Kind",
       "type": "string"
      },
+     "dry_run": {
+      "default": false,
+      "title": "Dry Run",
+      "type": "boolean"
+     },
      "modul_istniejacy": {
       "anyOf": [
        {
@@ -4291,34 +4045,6 @@
      "field_apparatus"
     ],
     "title": "DerSelectionPreviewResponse",
-    "type": "object"
-   },
-   "DeviceConfigRequest": {
-    "properties": {
-     "aparat_type": {
-      "title": "Aparat Type",
-      "type": "string"
-     },
-     "device_id": {
-      "title": "Device Id",
-      "type": "string"
-     },
-     "device_type": {
-      "title": "Device Type",
-      "type": "string"
-     },
-     "field_id": {
-      "title": "Field Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "device_id",
-     "field_id",
-     "device_type",
-     "aparat_type"
-    ],
-    "title": "DeviceConfigRequest",
     "type": "object"
    },
    "DeviceRatingPayload": {
@@ -4829,6 +4555,41 @@
     "title": "DowodModelu",
     "type": "object"
    },
+   "DrogaZasilania": {
+    "additionalProperties": false,
+    "properties": {
+     "elementy": {
+      "items": {
+       "$ref": "#/components/schemas/ElementDrogi"
+      },
+      "title": "Elementy",
+      "type": "array"
+     },
+     "laczniki_nieustalone": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Laczniki Nieustalone",
+      "type": "array"
+     },
+     "pewna": {
+      "title": "Pewna",
+      "type": "boolean"
+     },
+     "zrodlo_ref": {
+      "title": "Zrodlo Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "zrodlo_ref",
+     "pewna",
+     "elementy"
+    ],
+    "title": "DrogaZasilania",
+    "type": "object"
+   },
    "ElementDiffResponse": {
     "description": "Roznica na poziomie elementu.",
     "properties": {
@@ -4882,6 +4643,91 @@
      "field_changes"
     ],
     "title": "ElementDiffResponse",
+    "type": "object"
+   },
+   "ElementDrogi": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "pole_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pole Ref"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "szyna",
+       "odcinek",
+       "lacznik",
+       "transformator",
+       "zrodlo",
+       "generator",
+       "odbior",
+       "kondensator",
+       "pole",
+       "stacja"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "stacja_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stacja Ref"
+     },
+     "stan_lacznika": {
+      "anyOf": [
+       {
+        "enum": [
+         "zamkniety",
+         "otwarty",
+         "nieustalony"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stan Lacznika"
+     },
+     "typ": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ"
+     }
+    },
+    "required": [
+     "ref_id",
+     "rodzaj",
+     "nazwa"
+    ],
+    "title": "ElementDrogi",
     "type": "object"
    },
    "ElementResultResponse": {
@@ -5526,40 +5372,6 @@
     "title": "FieldChangeResponse",
     "type": "object"
    },
-   "FieldConfigRequest": {
-    "properties": {
-     "bus_section_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Bus Section Id"
-     },
-     "field_id": {
-      "title": "Field Id",
-      "type": "string"
-     },
-     "field_role": {
-      "title": "Field Role",
-      "type": "string"
-     },
-     "pole_type": {
-      "title": "Pole Type",
-      "type": "string"
-     }
-    },
-    "required": [
-     "field_id",
-     "pole_type",
-     "field_role"
-    ],
-    "title": "FieldConfigRequest",
-    "type": "object"
-   },
    "FieldQuality": {
     "description": "Data-quality provenance axis for a single card field.\n\nOrthogonal to ``solver_input.provenance.SourceKind`` (which records *where* a value came\nfrom in the pipeline). ``FieldQuality`` records *how trustworthy* the value is:\n\n- ``DATASHEET`` (karta techniczna): value taken from a manufacturer datasheet\n  / type-test report — fully trustworthy for the OSD package.\n- ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real\n  source (e.g. a controller bandwidth assumed from technology defaults). It\n  MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is\n  attached.\n- ``SYSTEM_DEFAULT`` (domyślne techniczne): value is a system/technical\n  default carried by the schema (the field is present but no real value has\n  been provided).\n\nParamount rule: \"no gaps\" means the schema is COMPLETE (every field present),\nNOT that every field is filled with a fabricated value. A value with no real\nsource is ``ESTIMATED`` (or ``SYSTEM_DEFAULT``), never ``DATASHEET``.",
     "enum": [
@@ -5569,56 +5381,6 @@
     ],
     "title": "FieldQuality",
     "type": "string"
-   },
-   "FixActionResponse": {
-    "properties": {
-     "action": {
-      "title": "Action",
-      "type": "string"
-     },
-     "code": {
-      "title": "Code",
-      "type": "string"
-     },
-     "device_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Device Id"
-     },
-     "field_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Field Id"
-     },
-     "message_pl": {
-      "title": "Message Pl",
-      "type": "string"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "code",
-     "action",
-     "message_pl",
-     "station_id"
-    ],
-    "title": "FixActionResponse",
-    "type": "object"
    },
    "FixtureListResponse": {
     "description": "Response for fixture list.",
@@ -7053,6 +6815,53 @@
      "vdrop_delta_u_total_kv"
     ],
     "title": "LVCircuitVerificationPackRequest",
+    "type": "object"
+   },
+   "LacznikNieustalony": {
+    "additionalProperties": false,
+    "properties": {
+     "aparat_ref": {
+      "title": "Aparat Ref",
+      "type": "string"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "pole_ref": {
+      "title": "Pole Ref",
+      "type": "string"
+     },
+     "przyczyna": {
+      "$ref": "#/components/schemas/PrzyczynaTopologii"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "stan_w_modelu": {
+      "enum": [
+       "zamkniety",
+       "otwarty"
+      ],
+      "title": "Stan W Modelu",
+      "type": "string"
+     },
+     "stan_zgloszony": {
+      "title": "Stan Zgloszony",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref_id",
+     "nazwa",
+     "stan_w_modelu",
+     "stan_zgloszony",
+     "aparat_ref",
+     "pole_ref",
+     "przyczyna"
+    ],
+    "title": "LacznikNieustalony",
     "type": "object"
    },
    "LimitKryterium": {
@@ -9282,6 +9091,53 @@
     "title": "OdniesienieKarty",
     "type": "object"
    },
+   "OdnosnikElementu": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "szyna",
+       "odcinek",
+       "lacznik",
+       "transformator",
+       "zrodlo",
+       "generator",
+       "odbior",
+       "kondensator",
+       "pole",
+       "stacja"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "typ": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ"
+     }
+    },
+    "required": [
+     "ref_id",
+     "rodzaj",
+     "nazwa"
+    ],
+    "title": "OdnosnikElementu",
+    "type": "object"
+   },
    "OdnosnikSladu": {
     "additionalProperties": false,
     "description": "Odnośnik do kroku śladu WHITE BOX (§8).",
@@ -11057,24 +10913,6 @@
     "title": "ProjectUpdate",
     "type": "object"
    },
-   "ProtectionBindingRequest": {
-    "properties": {
-     "cb_device_id": {
-      "title": "Cb Device Id",
-      "type": "string"
-     },
-     "relay_device_id": {
-      "title": "Relay Device Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "relay_device_id",
-     "cb_device_id"
-    ],
-    "title": "ProtectionBindingRequest",
-    "type": "object"
-   },
    "ProtectionComparisonMetadataResponse": {
     "description": "Comparison metadata (without full results).",
     "properties": {
@@ -11849,6 +11687,73 @@
     "title": "PrzegladWiarygodnosciOdpowiedz",
     "type": "object"
    },
+   "PrzekladnikPola": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "pole_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pole Ref"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "CT",
+       "VT"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref_id",
+     "nazwa",
+     "rodzaj"
+    ],
+    "title": "PrzekladnikPola",
+    "type": "object"
+   },
+   "PrzyczynaTopologii": {
+    "additionalProperties": false,
+    "description": "Przyczyna stanu (niezasilenia, nierozstrzygnięcia) z elementami, które ją niosą.",
+    "properties": {
+     "elementy": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Elementy",
+      "type": "array"
+     },
+     "kod": {
+      "title": "Kod",
+      "type": "string"
+     },
+     "opis": {
+      "title": "Opis",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kod",
+     "opis"
+    ],
+    "title": "PrzyczynaTopologii",
+    "type": "object"
+   },
    "PunktAdmitancji": {
     "additionalProperties": false,
     "description": "Punkt admitancji wewnętrznej Y(f) = G + jB [S] (równoważnik Nortona / tabela).",
@@ -12602,44 +12507,6 @@
     "title": "PunktZwarciowyDiffResponse",
     "type": "object"
    },
-   "PutConfigRequest": {
-    "properties": {
-     "catalog_bindings": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/CatalogBindingRequest"
-      },
-      "title": "Catalog Bindings",
-      "type": "array"
-     },
-     "devices": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/DeviceConfigRequest"
-      },
-      "title": "Devices",
-      "type": "array"
-     },
-     "fields": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/FieldConfigRequest"
-      },
-      "title": "Fields",
-      "type": "array"
-     },
-     "protection_bindings": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/ProtectionBindingRequest"
-      },
-      "title": "Protection Bindings",
-      "type": "array"
-     }
-    },
-    "title": "PutConfigRequest",
-    "type": "object"
-   },
    "PutOverridesRequest": {
     "description": "Request to save geometry overrides.",
     "properties": {
@@ -13285,6 +13152,38 @@
        }
       ]
      },
+     "project_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Id"
+     },
+     "result_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result Status"
+     },
+     "scenario_ref": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ScenarioRefResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "snapshot_hash": {
       "anyOf": [
        {
@@ -13668,6 +13567,88 @@
     "title": "SCContributionsRequest",
     "type": "object"
    },
+   "SasiedztwoElementu": {
+    "additionalProperties": false,
+    "properties": {
+     "kierunek_ustalony": {
+      "title": "Kierunek Ustalony",
+      "type": "boolean"
+     },
+     "nastepne": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Nastepne",
+      "type": "array"
+     },
+     "pola_wejsciowe": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Pola Wejsciowe",
+      "type": "array"
+     },
+     "pola_wyjsciowe": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Pola Wyjsciowe",
+      "type": "array"
+     },
+     "pole": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OdnosnikElementu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "poprzednie": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikElementu"
+      },
+      "title": "Poprzednie",
+      "type": "array"
+     },
+     "przekladniki": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PrzekladnikPola"
+      },
+      "title": "Przekladniki",
+      "type": "array"
+     },
+     "stacja": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OdnosnikElementu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "zabezpieczenia": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ZabezpieczeniePola"
+      },
+      "title": "Zabezpieczenia",
+      "type": "array"
+     }
+    },
+    "required": [
+     "kierunek_ustalony",
+     "poprzednie",
+     "nastepne",
+     "pola_wejsciowe",
+     "pola_wyjsciowe"
+    ],
+    "title": "SasiedztwoElementu",
+    "type": "object"
+   },
    "SaveUserTemplateRequest": {
     "description": "B-8: zapis biezacej konfiguracji kreatora jako szablonu uzytkownika.",
     "properties": {
@@ -13742,6 +13723,25 @@
      "content_hash"
     ],
     "title": "ScenarioEligibilityResponse",
+    "type": "object"
+   },
+   "ScenarioRefResponse": {
+    "description": "Scenariusz roboczy, na którym policzono bieg: identyfikator i jego rewizja.",
+    "properties": {
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
+     "scenario_id": {
+      "title": "Scenario Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "scenario_id",
+     "revision"
+    ],
+    "title": "ScenarioRefResponse",
     "type": "object"
    },
    "SectionDiffResponse": {
@@ -14018,6 +14018,16 @@
        "MIN"
       ],
       "title": "Scenariusz",
+      "type": "string"
+     },
+     "stan_awsc": {
+      "default": "spoczynek",
+      "description": "Stan automatyki wymuszania składowej czynnej (AWSC) sieci skompensowanej w tym przypadku: spoczynek — dławik gaszący sam (Z_N = jX_L), zalaczony — rezystor wymuszający równolegle z dławikiem (Z_N = R‖jX_L); ENEA Zeszyt 1 §16, rys. Z.13",
+      "enum": [
+       "spoczynek",
+       "zalaczony"
+      ],
+      "title": "Stan Awsc",
       "type": "string"
      },
      "thermal_time_seconds": {
@@ -14501,6 +14511,207 @@
     "title": "StanWLSZadanie",
     "type": "object"
    },
+   "StanZasileniaElementu": {
+    "additionalProperties": false,
+    "properties": {
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "otwarty": {
+      "default": false,
+      "title": "Otwarty",
+      "type": "boolean"
+     },
+     "przyczyny": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PrzyczynaTopologii"
+      },
+      "title": "Przyczyny",
+      "type": "array"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "enum": [
+       "szyna",
+       "odcinek",
+       "lacznik",
+       "transformator",
+       "zrodlo",
+       "generator",
+       "odbior",
+       "kondensator",
+       "pole",
+       "stacja"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "stan": {
+      "enum": [
+       "zasilany",
+       "niezasilany",
+       "nierozstrzygniety"
+      ],
+      "title": "Stan",
+      "type": "string"
+     },
+     "stan_lacznika": {
+      "anyOf": [
+       {
+        "enum": [
+         "zamkniety",
+         "otwarty",
+         "nieustalony"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stan Lacznika"
+     },
+     "strony": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/StronaElementu"
+      },
+      "title": "Strony",
+      "type": "array"
+     },
+     "typ": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ"
+     },
+     "wyspy": {
+      "default": [],
+      "items": {
+       "type": "integer"
+      },
+      "title": "Wyspy",
+      "type": "array"
+     },
+     "zrodla": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla",
+      "type": "array"
+     },
+     "zrodla_warunkowe": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla Warunkowe",
+      "type": "array"
+     }
+    },
+    "required": [
+     "ref_id",
+     "rodzaj",
+     "nazwa",
+     "stan"
+    ],
+    "title": "StanZasileniaElementu",
+    "type": "object"
+   },
+   "StanZasileniaOdpowiedz": {
+    "additionalProperties": false,
+    "properties": {
+     "case_id": {
+      "title": "Case Id",
+      "type": "string"
+     },
+     "elementy": {
+      "items": {
+       "$ref": "#/components/schemas/StanZasileniaElementu"
+      },
+      "title": "Elementy",
+      "type": "array"
+     },
+     "enm_hash": {
+      "title": "Enm Hash",
+      "type": "string"
+     },
+     "enm_revision": {
+      "title": "Enm Revision",
+      "type": "integer"
+     },
+     "galezie_otwarte": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Galezie Otwarte",
+      "type": "array"
+     },
+     "krawedzie_pominiete": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Krawedzie Pominiete",
+      "type": "array"
+     },
+     "laczniki_nieustalone": {
+      "items": {
+       "$ref": "#/components/schemas/LacznikNieustalony"
+      },
+      "title": "Laczniki Nieustalone",
+      "type": "array"
+     },
+     "laczniki_otwarte": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Laczniki Otwarte",
+      "type": "array"
+     },
+     "opis_podstawy": {
+      "title": "Opis Podstawy",
+      "type": "string"
+     },
+     "podstawa": {
+      "const": "topologia_laczeniowa",
+      "title": "Podstawa",
+      "type": "string"
+     },
+     "wyspy": {
+      "items": {
+       "$ref": "#/components/schemas/WyspaTopologiczna"
+      },
+      "title": "Wyspy",
+      "type": "array"
+     }
+    },
+    "required": [
+     "case_id",
+     "enm_revision",
+     "enm_hash",
+     "podstawa",
+     "opis_podstawy",
+     "elementy",
+     "wyspy",
+     "laczniki_otwarte",
+     "galezie_otwarte",
+     "laczniki_nieustalone",
+     "krawedzie_pominiete"
+    ],
+    "title": "StanZasileniaOdpowiedz",
+    "type": "object"
+   },
    "StationAudit2BuildRequest": {
     "properties": {
      "der_specs": {
@@ -14510,17 +14721,6 @@
       },
       "title": "Der Specs",
       "type": "array"
-     },
-     "mv_neutral_grounding_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Mv Neutral Grounding Ref"
      },
      "station_id": {
       "title": "Station Id",
@@ -14576,17 +14776,6 @@
       },
       "title": "Der Specs",
       "type": "array"
-     },
-     "mv_neutral_grounding_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Mv Neutral Grounding Ref"
      },
      "tap_changer_refs": {
       "items": {
@@ -14781,6 +14970,39 @@
      "powod_pl"
     ],
     "title": "Stosowalnosc",
+    "type": "object"
+   },
+   "StronaElementu": {
+    "additionalProperties": false,
+    "description": "Stan zasilenia jednej szyny, do której element jest dołączony.",
+    "properties": {
+     "stan": {
+      "enum": [
+       "zasilany",
+       "niezasilany",
+       "nierozstrzygniety"
+      ],
+      "title": "Stan",
+      "type": "string"
+     },
+     "szyna_ref": {
+      "title": "Szyna Ref",
+      "type": "string"
+     },
+     "zrodla": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla",
+      "type": "array"
+     }
+    },
+    "required": [
+     "szyna_ref",
+     "stan"
+    ],
+    "title": "StronaElementu",
     "type": "object"
    },
    "StudyCaseComparisonResponse": {
@@ -15045,6 +15267,90 @@
      }
     },
     "title": "TolerancjeWejscie",
+    "type": "object"
+   },
+   "TorElementuOdpowiedz": {
+    "additionalProperties": false,
+    "properties": {
+     "case_id": {
+      "title": "Case Id",
+      "type": "string"
+     },
+     "drogi": {
+      "items": {
+       "$ref": "#/components/schemas/DrogaZasilania"
+      },
+      "title": "Drogi",
+      "type": "array"
+     },
+     "drogi_obciete": {
+      "title": "Drogi Obciete",
+      "type": "boolean"
+     },
+     "element": {
+      "$ref": "#/components/schemas/OdnosnikElementu"
+     },
+     "enm_hash": {
+      "title": "Enm Hash",
+      "type": "string"
+     },
+     "enm_revision": {
+      "title": "Enm Revision",
+      "type": "integer"
+     },
+     "opis_podstawy": {
+      "title": "Opis Podstawy",
+      "type": "string"
+     },
+     "podstawa": {
+      "const": "topologia_laczeniowa",
+      "title": "Podstawa",
+      "type": "string"
+     },
+     "przyczyny": {
+      "items": {
+       "$ref": "#/components/schemas/PrzyczynaTopologii"
+      },
+      "title": "Przyczyny",
+      "type": "array"
+     },
+     "sasiedztwo": {
+      "$ref": "#/components/schemas/SasiedztwoElementu"
+     },
+     "stan": {
+      "enum": [
+       "zasilany",
+       "niezasilany",
+       "nierozstrzygniety"
+      ],
+      "title": "Stan",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "rozstrzygniety",
+       "nierozstrzygniety",
+       "brak_drogi"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "case_id",
+     "enm_revision",
+     "enm_hash",
+     "podstawa",
+     "opis_podstawy",
+     "element",
+     "stan",
+     "status",
+     "przyczyny",
+     "drogi",
+     "drogi_obciete",
+     "sasiedztwo"
+    ],
+    "title": "TorElementuOdpowiedz",
     "type": "object"
    },
    "TraceStepResponse": {
@@ -15429,6 +15735,20 @@
     "title": "UpdateStudyCaseRequest",
     "type": "object"
    },
+   "UziemieniePolRequest": {
+    "description": "Oznaczenia pól stacji (reguła konfiguratora: numer → skrót odpływu → nazwa).",
+    "properties": {
+     "pola": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Pola",
+      "type": "array"
+     }
+    },
+    "title": "UziemieniePolRequest",
+    "type": "object"
+   },
    "V126AnalizaWycofanaResponse": {
     "description": "Ciało odmowy 410 dla rodzaju V12.6 zdjętego z powierzchni (karta W3-E).\n\nTen sam kształt jedzie DODATKOWO jako pole addytywne `wycofany` na\nczterech końcówkach GET historycznego biegu tego rodzaju (results, trace,\nproof, report) — odtwarzalność zostaje, powierzchnia do NOWYCH biegów nie.",
     "properties": {
@@ -15631,6 +15951,33 @@
     "title": "ValidateOverridesRequest",
     "type": "object"
    },
+   "ValidateResponse": {
+    "description": "Validation response.",
+    "properties": {
+     "errors": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationErrorResponse"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "overrides_hash": {
+      "title": "Overrides Hash",
+      "type": "string"
+     },
+     "valid": {
+      "title": "Valid",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "valid",
+     "errors",
+     "overrides_hash"
+    ],
+    "title": "ValidateResponse",
+    "type": "object"
+   },
    "ValidationError": {
     "properties": {
      "loc": {
@@ -15686,62 +16033,6 @@
      "message"
     ],
     "title": "ValidationErrorResponse",
-    "type": "object"
-   },
-   "ValidationIssueResponse": {
-    "properties": {
-     "code": {
-      "title": "Code",
-      "type": "string"
-     },
-     "device_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Device Id"
-     },
-     "element_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Element Id"
-     },
-     "field_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Field Id"
-     },
-     "message_pl": {
-      "title": "Message Pl",
-      "type": "string"
-     },
-     "severity": {
-      "title": "Severity",
-      "type": "string"
-     }
-    },
-    "required": [
-     "code",
-     "severity",
-     "message_pl"
-    ],
-    "title": "ValidationIssueResponse",
     "type": "object"
    },
    "VtBurdenRequest": {
@@ -16390,6 +16681,49 @@
     "title": "WynikWymagania",
     "type": "object"
    },
+   "WyspaTopologiczna": {
+    "additionalProperties": false,
+    "properties": {
+     "generatory": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Generatory",
+      "type": "array"
+     },
+     "indeks": {
+      "title": "Indeks",
+      "type": "integer"
+     },
+     "szyny": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Szyny",
+      "type": "array"
+     },
+     "zasilona": {
+      "title": "Zasilona",
+      "type": "boolean"
+     },
+     "zrodla_sieciowe": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Zrodla Sieciowe",
+      "type": "array"
+     }
+    },
+    "required": [
+     "indeks",
+     "szyny",
+     "zrodla_sieciowe",
+     "generatory",
+     "zasilona"
+    ],
+    "title": "WyspaTopologiczna",
+    "type": "object"
+   },
    "WytrzymaloscAparaturyRequestModel": {
     "description": "Stacja + ZAPISANY bieg zwarciowy, z którego biorą się prądy KAŻDEGO pola.\n\nKarta WYTRZYMALOSC-PRAD-POLA: dawniej żądanie niosło jedną liczbę ``ik_ka`` /\n``i_peak_ka`` / ``i_thermal_ka`` dla całej stacji, więc pole innej sekcji albo strony\nnN dostawało cudzy prąd i cudzy czas wyłączenia. Liczby z żądania zniknęły — prąd\npola to wiersz biegu dla punktu zabudowy tego pola.",
     "properties": {
@@ -16407,6 +16741,40 @@
      "short_circuit_run_id"
     ],
     "title": "WytrzymaloscAparaturyRequestModel",
+    "type": "object"
+   },
+   "ZabezpieczeniePola": {
+    "additionalProperties": false,
+    "properties": {
+     "aktywne": {
+      "title": "Aktywne",
+      "type": "boolean"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "ref_id": {
+      "title": "Ref Id",
+      "type": "string"
+     },
+     "rodzaj": {
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "wylacznik_ref": {
+      "title": "Wylacznik Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref_id",
+     "nazwa",
+     "rodzaj",
+     "wylacznik_ref",
+     "aktywne"
+    ],
+    "title": "ZabezpieczeniePola",
     "type": "object"
    },
    "ZadaniePodgladuLiniiWN": {
@@ -16591,6 +16959,48 @@
      "dynamika"
     ],
     "title": "ZapisScenariuszaDynamiki",
+    "type": "object"
+   },
+   "ZapisScenariuszaLaczeniowego": {
+    "description": "Scenariusz nazwany ze stanami łączników — nowy (``scenario_id`` pominięte) albo nowa\nrewizja istniejącego (``scenario_id`` podane).",
+    "properties": {
+     "name": {
+      "description": "Nazwa scenariusza",
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "scenario_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Identyfikator istniejącego scenariusza",
+      "title": "Scenario Id"
+     },
+     "switch_states": {
+      "additionalProperties": {
+       "enum": [
+        "closed",
+        "open"
+       ],
+       "type": "string"
+      },
+      "description": "Łącznik (ref_id) → położenie w scenariuszu",
+      "minProperties": 1,
+      "title": "Switch States",
+      "type": "object"
+     }
+    },
+    "required": [
+     "name",
+     "switch_states"
+    ],
+    "title": "ZapisScenariuszaLaczeniowego",
     "type": "object"
    },
    "ZgodnoscZadanie": {
@@ -16966,67 +17376,6 @@
     ],
     "title": "RankingIssueResponse",
     "type": "object"
-   },
-   "api__sld_overrides__ValidateResponse": {
-    "description": "Validation response.",
-    "properties": {
-     "errors": {
-      "items": {
-       "$ref": "#/components/schemas/ValidationErrorResponse"
-      },
-      "title": "Errors",
-      "type": "array"
-     },
-     "overrides_hash": {
-      "title": "Overrides Hash",
-      "type": "string"
-     },
-     "valid": {
-      "title": "Valid",
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "valid",
-     "errors",
-     "overrides_hash"
-    ],
-    "title": "ValidateResponse",
-    "type": "object"
-   },
-   "api__switchgear_config__ValidateResponse": {
-    "properties": {
-     "canonical_hash": {
-      "title": "Canonical Hash",
-      "type": "string"
-     },
-     "fix_actions": {
-      "items": {
-       "$ref": "#/components/schemas/FixActionResponse"
-      },
-      "title": "Fix Actions",
-      "type": "array"
-     },
-     "issues": {
-      "items": {
-       "$ref": "#/components/schemas/ValidationIssueResponse"
-      },
-      "title": "Issues",
-      "type": "array"
-     },
-     "valid": {
-      "title": "Valid",
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "valid",
-     "issues",
-     "fix_actions",
-     "canonical_hash"
-    ],
-    "title": "ValidateResponse",
-    "type": "object"
    }
   }
  },
@@ -17099,6 +17448,49 @@
      }
     },
     "summary": "Get Analysis Run"
+   }
+  },
+  "/api/analysis-runs/{run_id}/export/proof/dostepnosc": {
+   "get": {
+    "description": "Które formaty eksportu wywodu (JSON, LaTeX, PDF) TEN przebieg da się pobrać.\n\nKażdy format niesie ``dostepny`` i powód braku po polsku — ekran pokazuje\npolecenie nieaktywne z przyczyną zamiast przycisku kończącego się odmową.\nWarunek liczy ta sama funkcja, której używają eksporty (predykaty parami).",
+    "operationId": "get_export_proof_dostepnosc_api_analysis_runs__run_id__export_proof_dostepnosc_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Export Proof Dostepnosc Api Analysis Runs  Run Id  Export Proof Dostepnosc Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Export Proof Dostepnosc"
    }
   },
   "/api/analysis-runs/{run_id}/export/proof/json": {
@@ -19589,7 +19981,7 @@
   },
   "/api/cases/{case_id}/enm/domain-ops": {
    "post": {
-    "description": "Kanoniczny endpoint operacji domenowych V1.\n\nWspólny kontrakt dla wszystkich operacji budowy sieci SN:\nadd_grid_source_sn, continue_trunk_segment_sn,\ninsert_station_on_segment_sn, start_branch_segment_sn,\ninsert_section_switch_sn, connect_secondary_ring_sn,\nset_normal_open_point, add_transformer_sn_nn,\nassign_catalog_to_element, update_element_parameters.\n\nOdpowiedź zawiera: snapshot, readiness, fix_actions, changes,\nselection_hint, audit_trail, domain_events.\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej ta końcówka (`async def`, pętla zdarzeń) gubiła pracę zatwierdzenia\nszablonu stacji (`def`, pula wątków Starlette) biegnącego równolegle na tym\nsamym przypadku — obie końcówki meldowały `HTTP 200`, a w modelu zostawał\ndorobek tylko jednej, przy czym druga zwracała `created_element_ids`\nwskazujące na byty, których w zapisanej migawce NIE MA.\n\n`snapshot_base_hash` nie jest tu obroną: porównuje hash z modelem odczytanym\nw tej samej funkcji (chwila ODCZYTU, nie zapisu), więc nie jest to\ncompare-and-swap, a produkcyjni wołający wysyłają pusty łańcuch.\n\nZamiana na `def` NIE jest naprawą wyścigu — przenosi go tylko z pętli zdarzeń\ndo puli wątków. Blokada jest per przypadek obliczeniowy, więc operacje na\nRÓŻNYCH przypadkach nadal biegną równolegle.",
+    "description": "Kanoniczny endpoint operacji domenowych V1.\n\nWspólny kontrakt dla wszystkich operacji budowy sieci SN:\nadd_grid_source_sn, continue_trunk_segment_sn,\ninsert_station_on_segment_sn, start_branch_segment_sn,\ninsert_section_switch_sn, connect_secondary_ring_sn,\nset_normal_open_point, open_switch, close_switch, add_transformer_sn_nn,\nassign_catalog_to_element, update_element_parameters, set_bay_equipment.\n\nOdpowiedź zawiera: snapshot, readiness, fix_actions, changes,\nselection_hint, audit_trail, domain_events.\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej ta końcówka (`async def`, pętla zdarzeń) gubiła pracę zatwierdzenia\nszablonu stacji (`def`, pula wątków Starlette) biegnącego równolegle na tym\nsamym przypadku — obie końcówki meldowały `HTTP 200`, a w modelu zostawał\ndorobek tylko jednej, przy czym druga zwracała `created_element_ids`\nwskazujące na byty, których w zapisanej migawce NIE MA.\n\n`snapshot_base_hash` nie jest tu obroną: porównuje hash z modelem odczytanym\nw tej samej funkcji (chwila ODCZYTU, nie zapisu), więc nie jest to\ncompare-and-swap, a produkcyjni wołający wysyłają pusty łańcuch.\n\nZamiana na `def` NIE jest naprawą wyścigu — przenosi go tylko z pętli zdarzeń\ndo puli wątków. Blokada jest per przypadek obliczeniowy, więc operacje na\nRÓŻNYCH przypadkach nadal biegną równolegle.",
     "operationId": "domain_ops_api_cases__case_id__enm_domain_ops_post",
     "parameters": [
      {
@@ -19943,60 +20335,6 @@
     ]
    }
   },
-  "/api/cases/{case_id}/enm/lv-domain/{station_ref}": {
-   "get": {
-    "description": "Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU\n(karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).\n\nGranica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator\njest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z\nWŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`\n(ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez\nwłasnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama\ndomena elektryczna. Read-only; zero fizyki (topologia, nie solver).",
-    "operationId": "get_lv_domain_view_api_cases__case_id__enm_lv_domain__station_ref__get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_ref",
-      "required": true,
-      "schema": {
-       "title": "Station Ref",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Lv Domain View Api Cases  Case Id  Enm Lv Domain  Station Ref  Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Lv Domain View",
-    "tags": [
-     "enm"
-    ]
-   }
-  },
   "/api/cases/{case_id}/enm/lv-domain/{station_ref}/projection/v1": {
    "get": {
     "description": "Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.\n\nJeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą\nsamą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak\ndaje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego\nprzypadku i być zakończony — nie ma cichego wyboru innego wyniku.",
@@ -20077,90 +20415,6 @@
      }
     },
     "summary": "Get Lv Domain Projection V1",
-    "tags": [
-     "enm"
-    ]
-   }
-  },
-  "/api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent": {
-   "get": {
-    "description": "`UpstreamEquivalentSnapshot` — kotwica SN domeny nN (L2), karta T5b\n§0 rozstrzygnięcie 1 (docs/nn/KONCEPCJA_LOD_NN_2026-08.md, werdykt\nwłaściciela).\n\nImmutable, deterministyczny (ten sam ENM + scenariusz + stan łączeniowy\n→ identyczny snapshot, w tym `calculation_run_id`). ZERO nowej fizyki —\nZ1/Sk″/Ik″ w węźle HV transformatora liczone TĄ SAMĄ maszynerią co\npętla zwarcia nN (`application.analyses.fault_loop.service.\ncompute_upstream_hv_thevenin` + solver IEC 60909 `compute_ikss`).\n`scenario` wybiera współczynnik napięciowy c wg IEC 60909-0 Tab.1\n(MAX/MIN, ten sam wybór co bieg zwarciowy); `transformer_ref` opcjonalny\ndla stacji wielotransformatorowych (domyślnie pierwszy transformator\nstacji posortowany po ref_id — determinizm). Read-only; solver liczy\nfizykę, ten endpoint tylko wyławia i zwraca.",
-    "operationId": "get_lv_domain_upstream_equivalent_api_cases__case_id__enm_lv_domain__station_ref__upstream_equivalent_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_ref",
-      "required": true,
-      "schema": {
-       "title": "Station Ref",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "scenario",
-      "required": false,
-      "schema": {
-       "default": "MAX",
-       "enum": [
-        "MAX",
-        "MIN"
-       ],
-       "title": "Scenario",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "transformer_ref",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Transformer Ref"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Lv Domain Upstream Equivalent Api Cases  Case Id  Enm Lv Domain  Station Ref  Upstream Equivalent Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Lv Domain Upstream Equivalent",
     "tags": [
      "enm"
     ]
@@ -20684,6 +20938,101 @@
      }
     },
     "summary": "Get Swz",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/topologia/tor": {
+   "get": {
+    "description": "Tor elementu: wszystkie drogi od źródeł sieciowych przez elementy w ruchu (sieć\nwieloźródłowa → droga per źródło; pętla bez punktu podziału, łącznik nieustalony\ni obcięcie listy — jawny status ``nierozstrzygniety`` z przyczyną) oraz sąsiedztwo do\nnawigacji (poprzedni/następny, pola wejściowe/wyjściowe, pole, stacja, przekładniki,\nzabezpieczenia). 404 — element nie istnieje w modelu. Read-only, deterministyczne.",
+    "operationId": "get_enm_topologia_tor_api_cases__case_id__enm_topologia_tor_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "element_ref",
+      "required": true,
+      "schema": {
+       "title": "Element Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TorElementuOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Enm Topologia Tor",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/topologia/zasilenie": {
+   "get": {
+    "description": "Stan zasilenia KAŻDEGO elementu modelu z topologii łączeniowej (karta K6a).\n\nJedna prawda topologii: ``enm.topology.derive`` (wyspy, źródła sieciowe, otwarte\nłączniki) — front nie liczy zasilenia sam. Podstawa ``topologia_laczeniowa``: to nie\njest wynik obliczeń napięciowych. Łącznik, którego stanu model nie rozstrzyga, daje\nstan ``nierozstrzygniety`` z przyczyną, nigdy domysł. Read-only, deterministyczne.",
+    "operationId": "get_enm_topologia_zasilenie_api_cases__case_id__enm_topologia_zasilenie_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StanZasileniaOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Enm Topologia Zasilenie",
     "tags": [
      "enm"
     ]
@@ -21246,54 +21595,28 @@
     ]
    }
   },
-  "/api/catalog/auto-populate/{element_type}": {
-   "post": {
-    "description": "K30-23: Return ranked catalog suggestions for element context.\n\nElement types supported: transformer, cable, switch, branch_point, der.\nLogic: filter by voltage compatibility + power/current range + manufacturer\ncascade. Dopasowanie kategoryczne (PELNE/CZĘŚCIOWE) + osobna flaga\ncertyfikatu PTPiREE — sortowanie deterministyczne\n(dopasowanie, certyfikat, catalog_ref); karta FAB-D2 (D9).",
-    "operationId": "auto_populate_catalog_suggestions_api_catalog_auto_populate__element_type__post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "element_type",
-      "required": true,
-      "schema": {
-       "title": "Element Type",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/AutoPopulateRequest"
-       }
-      }
-     },
-     "required": true
-    },
+  "/api/catalog/arc-suppression-coil-types": {
+   "get": {
+    "description": "Dławiki gaszące (DLAWIK_GASZACY) — katalog operacji `add_zespol_uziemiajacy_sn`.",
+    "operationId": "list_arc_suppression_coil_types_api_catalog_arc_suppression_coil_types_get",
     "responses": {
      "200": {
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/AutoPopulateResponse"
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Arc Suppression Coil Types Api Catalog Arc Suppression Coil Types Get",
+         "type": "array"
         }
        }
       },
       "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
      }
     },
-    "summary": "Auto Populate Catalog Suggestions",
+    "summary": "List Arc Suppression Coil Types",
     "tags": [
      "Type Catalog"
     ]
@@ -21668,6 +21991,33 @@
      }
     },
     "summary": "List Der Dynamic Profiles",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/earthing-transformer-types": {
+   "get": {
+    "description": "Transformatory uziemiające ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — katalog operacji\n`add_zespol_uziemiajacy_sn` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).",
+    "operationId": "list_earthing_transformer_types_api_catalog_earthing_transformer_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Earthing Transformer Types Api Catalog Earthing Transformer Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Earthing Transformer Types",
     "tags": [
      "Type Catalog"
     ]
@@ -22147,6 +22497,33 @@
      }
     },
     "summary": "Get Mv Protection Device Curves",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/neutral-earthing-resistor-types": {
+   "get": {
+    "description": "Rezystory uziemiające (REZYSTOR_UZIEMIAJACY) — katalog operacji\n`add_zespol_uziemiajacy_sn`.",
+    "operationId": "list_neutral_earthing_resistor_types_api_catalog_neutral_earthing_resistor_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Neutral Earthing Resistor Types Api Catalog Neutral Earthing Resistor Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Neutral Earthing Resistor Types",
     "tags": [
      "Type Catalog"
     ]
@@ -23066,6 +23443,33 @@
      }
     },
     "summary": "List Factory Configurations Endpoint",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/synchronous-generator-types": {
+   "get": {
+    "description": "List synchronous generator types (GENERATOR_SN) — catalog of `add_generator_sn`.",
+    "operationId": "list_synchronous_generator_types_api_catalog_synchronous_generator_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Synchronous Generator Types Api Catalog Synchronous Generator Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Synchronous Generator Types",
     "tags": [
      "Type Catalog"
     ]
@@ -27962,7 +28366,7 @@
   },
   "/api/projects/{project_id}/cases/{case_id}/generators": {
    "post": {
-    "description": "Zapisz konfigurację DER jako generator w kanonicznym ENM.\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej równoległe zatwierdzenie szablonu stacji (`def`, pula wątków\nStarlette) i ta końcówka (`async def`, pętla zdarzeń) gubiły nawzajem swoją\npracę przy `HTTP 200`/`HTTP 201` i zwracały identyfikatory elementów, których\nw zapisanej migawce nie ma. Blokada jest per przypadek obliczeniowy.\n\nKontekst projektu/przypadku sprawdzamy PRZED wejściem pod blokadę — odrzucone\nżądanie nie ma powodu czekać na cudzy cykl.",
+    "description": "Zapisz konfigurację DER jako generator w kanonicznym ENM.\n\nPRÓBA (`dry_run: true`): ta sama droga i te same odmowy 422 co zapis; przyjęta próba\nzwraca HTTP 200 z `dry_run: true` i `preview.created_refs`, bez migawki — model zostaje\nbez zmian (warstwa zapisuje wyłącznie migawkę).\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej równoległe zatwierdzenie szablonu stacji (`def`, pula wątków\nStarlette) i ta końcówka (`async def`, pętla zdarzeń) gubiły nawzajem swoją\npracę przy `HTTP 200`/`HTTP 201` i zwracały identyfikatory elementów, których\nw zapisanej migawce nie ma. Blokada jest per przypadek obliczeniowy.\n\nKontekst projektu/przypadku sprawdzamy PRZED wejściem pod blokadę — odrzucone\nżądanie nie ma powodu czekać na cudzy cykl.",
     "operationId": "create_der_generator_api_projects__project_id__cases__case_id__generators_post",
     "parameters": [
      {
@@ -30444,6 +30848,104 @@
     ]
    }
   },
+  "/api/scenariusze-laczeniowe/study-cases/{case_id}": {
+   "get": {
+    "description": "Scenariusze nazwane projektu ze stanami łączników (kolejność magazynu).",
+    "operationId": "get_scenariusze_laczeniowe_api_scenariusze_laczeniowe_study_cases__case_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Scenariusze Laczeniowe Api Scenariusze Laczeniowe Study Cases  Case Id  Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Scenariusze Laczeniowe",
+    "tags": [
+     "scenariusze-laczeniowe"
+    ]
+   },
+   "post": {
+    "description": "Zapisz scenariusz nazwany ze stanami łączników.\n\n422 — stan wskazuje element, którego model nie ma, albo element niebędący łącznikiem;\n404 — ``scenario_id`` nieistniejące. Nowa rewizja istniejącego scenariusza zachowuje\njego pozostałe nadpisania (harmonogram dynamiki, nastawy) — zmienia nazwę i stany.",
+    "operationId": "post_scenariusz_laczeniowy_api_scenariusze_laczeniowe_study_cases__case_id__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ZapisScenariuszaLaczeniowego"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Post Scenariusz Laczeniowy Api Scenariusze Laczeniowe Study Cases  Case Id  Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Post Scenariusz Laczeniowy",
+    "tags": [
+     "scenariusze-laczeniowe"
+    ]
+   }
+  },
   "/api/short-circuit-comparisons": {
    "post": {
     "description": "Delty Ik''/ip/Ith/Sk'', pelnego bilansu, I_b, i_DC i t_b per punkt zwarciowy.",
@@ -32173,7 +32675,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/api__sld_overrides__ValidateResponse"
+         "$ref": "#/components/schemas/ValidateResponse"
         }
        }
       },
@@ -32193,153 +32695,6 @@
     "summary": "Validate Sld Overrides",
     "tags": [
      "sld-overrides"
-    ]
-   }
-  },
-  "/api/switchgear/{station_id}/config": {
-   "get": {
-    "description": "Pobierz konfiguracje rozdzielnicy (kanonizowana, z hashem).",
-    "operationId": "get_config_api_switchgear__station_id__config_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ConfigResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Pobierz konfiguracje rozdzielnicy",
-    "tags": [
-     "switchgear-config"
-    ]
-   },
-   "put": {
-    "description": "Zapisz konfiguracje rozdzielnicy (kanonizowana, deterministyczna).",
-    "operationId": "put_config_api_switchgear__station_id__config_put",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PutConfigRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ConfigResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Zapisz konfiguracje rozdzielnicy",
-    "tags": [
-     "switchgear-config"
-    ]
-   }
-  },
-  "/api/switchgear/{station_id}/validate": {
-   "post": {
-    "description": "Waliduj konfiguracje bez zapisu. Zwraca issues + fixActions.",
-    "operationId": "validate_config_api_switchgear__station_id__validate_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PutConfigRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/api__switchgear_config__ValidateResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Waliduj konfiguracje rozdzielnicy",
-    "tags": [
-     "switchgear-config"
     ]
    }
   },
@@ -32399,7 +32754,7 @@
   },
   "/api/v1/catalog/audit2/build-station-payload": {
    "post": {
-    "description": "Naprawy Phase 3: buduje deterministyczny payload audytu 2 dla stacji + DERs.\nZwraca rozwiniete katalogi (BESS modes, block-trafo, P(f), tap-changer, grounding)\n+ ekstraktor dla solverow (SC/PF/Protection).",
+    "description": "Naprawy Phase 3: buduje deterministyczny payload audytu 2 dla stacji + DERs.\nZwraca rozwiniete katalogi (BESS modes, block-trafo, P(f), tap-changer)\n+ ekstraktor dla solverow (SC/PF/Protection).",
     "operationId": "build_station_audit2_payload_endpoint_api_v1_catalog_audit2_build_station_payload_post",
     "requestBody": {
      "content": {
@@ -32534,33 +32889,6 @@
      }
     },
     "summary": "List Hv Fuses",
-    "tags": [
-     "Audit2 Catalogs"
-    ]
-   }
-  },
-  "/api/v1/catalog/audit2/mv-neutral-groundings": {
-   "get": {
-    "description": "Typy uziemienia neutralnego SN (B.1): isolated / petersen / R-grounded / directly.",
-    "operationId": "list_mv_neutral_groundings_api_v1_catalog_audit2_mv_neutral_groundings_get",
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response List Mv Neutral Groundings Api V1 Catalog Audit2 Mv Neutral Groundings Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     }
-    },
-    "summary": "List Mv Neutral Groundings",
     "tags": [
      "Audit2 Catalogs"
     ]
@@ -33083,6 +33411,71 @@
      }
     },
     "summary": "Apply Audit2 To Network Model Endpoint",
+    "tags": [
+     "Audit2 Station Config"
+    ]
+   }
+  },
+  "/api/v1/projects/{project_id}/audit2-station-config/{station_id}/_uziemienie-sn": {
+   "post": {
+    "description": "Sposób uziemienia punktu neutralnego sieci SN pól stacji — z MODELU sieci projektu.\n\nKarta UX-04/POLE-ZU-SKLADOWA-ZEROWA: jedyną prawdą o uziemieniu sieci SN jest zespół\nuziemiający sekcji (albo uziemiony punkt neutralny uzwojenia transformatora) —\n``enm.uziemienie_sekcji``. Konfigurator stacji nie trzyma już własnego wyboru\nuziemienia; zgodność przekładników napięciowych sprawdza z typem stąd. Pole bez\nustalonego typu niesie nazwaną przyczynę (stacja spoza modelu, brak szyn SN, odmowa\nsekcji, pole w sekcjach różnie uziemionych); ``sekcje`` — opis każdej sieci SN stacji\n(wariant, punkty uziemienia, prąd pojemnościowy, rozstrojenie, odmowy, kompletność).\nOdczyt — nie zmienia modelu.",
+    "operationId": "uziemienie_sn_pol_stacji_api_v1_projects__project_id__audit2_station_config__station_id___uziemienie_sn_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "station_id",
+      "required": true,
+      "schema": {
+       "title": "Station Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UziemieniePolRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Uziemienie Sn Pol Stacji Api V1 Projects  Project Id  Audit2 Station Config  Station Id   Uziemienie Sn Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Uziemienie Sn Pol Stacji",
     "tags": [
      "Audit2 Station Config"
     ]

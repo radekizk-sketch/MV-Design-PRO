@@ -8,7 +8,7 @@ function props(over: Partial<Parameters<typeof PrzegladDowodu>[0]> = {}) {
   return {
     analizaPL: 'Dowód obliczeń zwarciowych',
     kroki: traceStepsFixture(),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     ...over,
   };
 }
@@ -37,11 +37,11 @@ describe('PrzegladDowodu — nagłówek i kompozycja', () => {
 
   it('input_hash wyłącznie w „Informacjach audytowych" trybu eksperckiego (karta #145)', () => {
     const { rerender } = render(
-      <PrzegladDowodu {...props({ inputHash: 'abc123def', trybZaawansowania: 'basic' })} />,
+      <PrzegladDowodu {...props({ inputHash: 'abc123def', szczegolyAudytowe: false })} />,
     );
     expect(screen.queryByTestId('mvd-dowod-informacje-audytowe')).not.toBeInTheDocument();
     rerender(
-      <PrzegladDowodu {...props({ inputHash: 'abc123def', trybZaawansowania: 'expert' })} />,
+      <PrzegladDowodu {...props({ inputHash: 'abc123def', szczegolyAudytowe: true })} />,
     );
     expect(screen.getByTestId('mvd-dowod-naglowek')).not.toHaveTextContent('abc123def');
     fireEvent.click(screen.getByTestId('mvd-dowod-informacje-audytowe-przelacz'));

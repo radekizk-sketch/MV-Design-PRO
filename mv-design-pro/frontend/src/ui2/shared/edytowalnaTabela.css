@@ -9,5 +9,5 @@
 .mvd-edyt-tabela-input, .mvd-edyt-tabela-select { width: 100%; min-width: 72px; padding: 3px 6px; border: 1px solid var(--mvd-line); border-radius: 4px; background: var(--mvd-panel); color: var(--mvd-ink); font: inherit; }
 .mvd-edyt-tabela-akcja-btn { background: none; border: 1px dashed var(--mvd-line); border-radius: 4px; padding: 2px 8px; cursor: pointer; color: var(--mvd-accent); font: inherit; }
 .mvd-edyt-tabela-stan { margin-left: 6px; font-size: 11px; color: var(--mvd-muted); }
-.mvd-edyt-tabela-stan-blad { color: var(--mvd-danger, #c0392b); }
+.mvd-edyt-tabela-stan-blad { color: var(--mvd-err); }
 .mvd-edyt-tabela-pusta { padding: 16px; color: var(--mvd-muted); }

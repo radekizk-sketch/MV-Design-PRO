@@ -42,22 +42,17 @@ import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
 import { useProblemyGotowosci } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { issueTargetsElement } from './liveReadiness';
-import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import {
   isRawTechnicalIdentifier,
   publicTechnicalLabel,
   stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
-import {
-  stationReadModelSnFields,
-  stationSnFieldCount,
-} from './stationSnFields';
+import { stationReadModelSnFields } from './stationSnFields';
 import type { ReadinessIssue, SelectedElement } from '../types';
 import type {
   EnergyNetworkModel,
   Branch,
   Generator,
-  Load,
   LogicalViewsV1,
   Port,
   ProtectionAssignment,
@@ -95,6 +90,15 @@ import {
   stationRefOfTransformer,
   transformatoryNalezaceDoStacji,
 } from '../shared/transformatoryStacji';
+import { operacjaAkcjiMenu } from '../sld/shared/sldActionExecutor';
+import {
+  DzialaniaZwiniete,
+  PanelElementuKanwy,
+  type OperacjaModeluInspektora,
+} from './inspektor-elementu/PanelElementuKanwy';
+import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
+import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
+import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 
 // =============================================================================
 // Types
@@ -618,24 +622,6 @@ function formatElementTypeLabel(elementType: string): string {
   return ELEMENT_TYPE_LABELS[elementType] ?? elementType;
 }
 
-function formatLoadPower(loads: readonly Load[]): string {
-  const totalKw = loads.reduce((sum, load) => sum + ((load.p_mw ?? 0) * 1000), 0);
-  if (totalKw >= 1000) {
-    return `${(totalKw / 1000).toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
-  }
-  return `${totalKw.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} kW`;
-}
-
-function stationNnFieldSpecs(station: { meta?: unknown }): Array<Record<string, unknown>> {
-  const meta = station.meta && typeof station.meta === 'object'
-    ? station.meta as Record<string, unknown>
-    : null;
-  const rawSpecs = meta?.nn_field_specs;
-  return Array.isArray(rawSpecs)
-    ? rawSpecs.filter((spec): spec is Record<string, unknown> => !!spec && typeof spec === 'object')
-    : [];
-}
-
 function connectionVariantLabelPl(variant: string | null | undefined): string {
   if (!variant) return 'nie wyznaczono';
   switch (variant) {
@@ -746,42 +732,6 @@ function sourceSideLabel(generator: Generator | null | undefined): string {
     return 'SN';
   }
   return 'nie wyznaczono';
-}
-
-function stationGeneratorKindLabel(generator: Generator): string {
-  if (generator.gen_type === 'bess') return 'BESS';
-  if (
-    generator.gen_type === 'wind_inverter'
-    || generator.gen_type === 'fw_pmsg'
-    || generator.gen_type === 'fw_dfig'
-    || generator.gen_type === 'fw_scig'
-  ) {
-    return 'FW';
-  }
-  if (generator.gen_type === 'pv_inverter' || generator.gen_type === null) return 'PV';
-  return 'źródło';
-}
-
-function formatStationGeneratorPower(powerMw: number): string {
-  return `${powerMw.toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
-}
-
-function formatStationGeneratorSummary(generators: readonly Generator[]): string {
-  if (generators.length === 0) return 'bez źródeł przyłączonych';
-
-  const groups = new Map<string, { count: number; powerMw: number }>();
-  generators.forEach((generator) => {
-    const label = stationGeneratorKindLabel(generator);
-    const current = groups.get(label) ?? { count: 0, powerMw: 0 };
-    groups.set(label, {
-      count: current.count + 1,
-      powerMw: current.powerMw + (generator.p_mw ?? 0),
-    });
-  });
-
-  return Array.from(groups.entries())
-    .map(([label, group]) => `${label} ${group.count} szt. / ${formatStationGeneratorPower(group.powerMw)}`)
-    .join('; ');
 }
 
 function protectionScopeLabel(scope: unknown): string | null {
@@ -2089,7 +2039,7 @@ function findParentStation(
   }
   // SZYNY-STACJI-LUSTRO: odbiór/generator/gałąź → stacja szyny z jednego lustra
   // `szynyStacji` (szyny główne, zaciski pól SN, końce aparatów pól nN).
-  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
+  const stacjaSzyny = stacjaSzyn(snapshot);
   const nazwaStacji = (busRef: string | null | undefined): string | null => {
     const ref = busRef ? stacjaSzyny.get(busRef) : undefined;
     return ref ? snapshot.substations?.find((s) => s.ref_id === ref)?.name ?? null : null;
@@ -2446,64 +2396,12 @@ function buildSectionsForElement(
     elementType = 'substation';
     const stationIdentity = stationPublicIdentity(snapshot, station);
     elementName = stationIdentity.displayName;
-    const stationFieldItems = findFieldsForStation(fieldItems, station.id, station.ref_id);
-    const snFieldCount = stationSnFieldCount(station, snapshot.bays, stationFieldItems);
-    const snSwitchgearLabel = snFieldCount > 0
-      ? `${snFieldCount} pól SN`
-      : stationFieldItems.length > 0
-        ? `${stationFieldItems.length} pól SN`
-        : ukladRozdzielnicyStacjiPl(snapshot, station);
+    // K6 (Z-12): dane stacji (identyfikacja, rozdzielnica SN z tabelą pól, transformator,
+    // strona nN, przyłączenia) pokazuje WYŁĄCZNIE karta techniczna panelu z kanwy
+    // (`kartaTechnicznaElementu.ts`) — dawne sekcje „Identyfikacja"/„Struktura" tego widoku
+    // były drugą, uboższą ścieżką tych samych danych i zostały usunięte.
     // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
     const stationTransformers = selectStationDistributionTransformers(snapshot, station);
-    // SZYNY-STACJI-LUSTRO: odbiory stacji na jej szynach z jednego lustra `szynyStacji`
-    // (także na szynach odpływów nN za aparatami pól) — jak backend `moce_odbiorow_stacji_kw`.
-    const stationBusRefs = szynyStacji(station, snapshot.branches ?? []);
-    const stationLoads = (snapshot.loads ?? []).filter((load) => stationBusRefs.has(load.bus_ref));
-    const stationGenerators = (snapshot.generators ?? []).filter((generator) => {
-      const generatorStation = generatorStationRef(generator);
-      return generatorStation === station.ref_id || generatorStation === station.id;
-    });
-    const nnFieldSpecs = stationNnFieldSpecs(station);
-    const nnFeederCount = nnFieldSpecs.filter((spec) => spec.bay_role === 'FEEDER').length;
-    sections.push({
-      id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'id', label: 'Oznaczenie stacji', value: stationIdentity.code },
-        { key: 'name', label: 'Nazwa', value: stationIdentity.displayName },
-        { key: 'station_type', label: 'Typ stacji', value: stationIdentity.typeLabel },
-      ],
-    });
-    sections.push({
-      id: 'structure', label: 'Struktura', fields: [
-        {
-          key: 'bay_count',
-          label: 'Rozdzielnica SN',
-          value: snSwitchgearLabel,
-          source: 'calculated',
-        },
-        { key: 'transformer_count', label: 'Transformatory', value: stationTransformers.length, source: 'calculated' },
-        { key: 'bus_count', label: 'Szyny', value: station.bus_refs.length, source: 'calculated' },
-        {
-          key: 'nn_feeders',
-          label: 'Rozdzielnica nN',
-          value: nnFeederCount > 0 ? `${nnFeederCount} odpływów nN` : 'bez odpływów nN',
-          source: 'calculated',
-        },
-        {
-          key: 'nn_loads',
-          label: 'Odbiory nN',
-          value: stationLoads.length > 0
-            ? `${stationLoads.length} odbiorów / ${formatLoadPower(stationLoads)}`
-            : 'bez odbiorów nN',
-          source: 'calculated',
-        },
-        {
-          key: 'der_sources',
-          label: 'Układy PV/BESS/FW',
-          value: formatStationGeneratorSummary(stationGenerators),
-          source: 'calculated',
-        },
-      ],
-    });
     actions.push({ id: 'continue_trunk_from_station', label: 'Kontynuuj ciąg SN', op: 'continue_trunk_segment_sn', variant: 'primary' });
     if (stationTransformers.length === 0) {
       actions.push({ id: 'create_transformer_sn_nn', label: 'Dobierz transformator z katalogu', op: 'add_transformer_sn_nn', context: { station_ref: station.id }, variant: 'primary' });
@@ -2631,7 +2529,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const activeMode = useAppStateStore((s) => s.activeMode);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const {
     itemsByBayId,
     itemsByBayRef,
@@ -2648,6 +2546,19 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   // (patrz `dynamicModelLabel`/`buildAdvancedConverterSections` niżej) — zero
   // katalogu statycznego w tym module.
   const dynamicProfiles = useDerDynamicProfiles().data ?? [];
+  // UI-02b JEDEN-INSPEKTOR: sekcje przejęte z dawnej szuflady kanwy (działania z rejestru
+  // menu, wyniki elementu, węzeł SN, stan aparatu, szkic DER) — dla TEJ SAMEJ selekcji.
+  const stanPanelu = useStanPaneluElementu();
+  // Operacje już osiągalne z paska działań (ten sam rejestr co menu kanwy) — skróty karty
+  // technicznej i szybkich operacji do tej samej operacji nie są powtarzane.
+  const operacjeZPaska = useMemo(() => {
+    const zbior = new Set<string>();
+    for (const akcja of stanPanelu?.akcje ?? []) {
+      const op = operacjaAkcjiMenu(akcja.id);
+      if (op) zbior.add(op);
+    }
+    return zbior;
+  }, [stanPanelu?.akcje]);
 
   const elementId = selectedElements.length > 0 ? selectedElements[0].id : null;
   const selectedBaySnapshot = useMemo(
@@ -2797,7 +2708,6 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       void executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
         element_ref: elementId,
         catalog_binding: buildCatalogBinding(selectedSegmentCatalogNamespace, typeId),
-        source_mode: 'KATALOG',
       }).finally(() => {
         setSegmentCatalogPickerOpen(false);
       });
@@ -2811,13 +2721,16 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   );
   const techCardSubjectWithActions = useMemo(() => {
     if (!techCardSubject) return null;
-    const wiredActions = (techCardSubject.actions ?? []).map((action) => {
+    const wiredActions = (techCardSubject.actions ?? []).filter((action) => {
+      const commandMatch = /^open_operation:(.+)$/.exec(action.id);
+      return !(commandMatch && operacjeZPaska.has(commandMatch[1]));
+    }).map((action) => {
       const commandMatch = /^open_operation:(.+)$/.exec(action.id);
       if (!commandMatch) return action;
       const opName = commandMatch[1] as NetworkBuildOperationName;
       // KARTA S95-START (predykaty PARAMI, czwarta droga wejścia): „Kontynuuj ciąg SN"
       // karty technicznej czyta TO SAMO rozstrzygnięcie punktu startu co menu kanwy,
-      // szuflada i konfigurator stacji (`buildSldOperationContext`). Dotąd przycisk był
+      // pasek działań inspektora i konfigurator stacji (`buildSldOperationContext`). Dotąd przycisk był
       // zawsze aktywny, a dla stacji bez wolnego pola i GPZ z zajętym polem otwierał
       // kreator magistrali z trwale zablokowanym zapisem.
       const kontynuacja = opName === 'continue_trunk_segment_sn' && selectedElement
@@ -2891,15 +2804,43 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       };
     });
     return { ...techCardSubject, actions: wiredActions };
-  }, [logicalViews, openOperationForm, selectedElement, snapshot, techCardSubject]);
+  }, [logicalViews, openOperationForm, operacjeZPaska, selectedElement, snapshot, techCardSubject]);
 
-  if (!elementId || sections.length === 0) {
+  const szybkieOperacje = actions.filter((action) => !operacjeZPaska.has(action.op));
+  const panelKanwyMaTresc = panelMaTresc(stanPanelu);
+  // K6 (Z-12, Z-13): gdy obiekt ma kartę techniczną (`kartaTechnicznaElementu.ts`), JEDYNYM
+  // nagłówkiem i JEDYNYM opisem danych obiektu jest panel z kanwy — nagłówek, sekcje danych
+  // i karta `TechCard` tego widoku byłyby drugą (i trzecią) ścieżką tych samych danych z inną
+  // nazwą i innym rodzajem. Zostają: dowód obliczeń, akcje źródła przekształtnikowego,
+  // schemat pola i operacje, których pasek działań panelu nie ma.
+  const kartaObiektu = stanPanelu?.karta ?? null;
+  const pokazTechCard = Boolean(techCardSubjectWithActions) && !kartaObiektu;
+  const akcjeKartyBezPaska = kartaObiektu ? techCardSubjectWithActions?.actions ?? [] : [];
+  const operacjeModelu: OperacjaModeluInspektora[] =
+    activeMode === 'MODEL_EDIT' && !pokazTechCard
+      ? [
+          ...szybkieOperacje.map((action) => ({
+            id: action.id,
+            etykietaPl: action.label,
+            onClick: () => handleAction(action),
+            wariant: action.variant === 'danger' ? ('danger' as const) : undefined,
+          })),
+          ...akcjeKartyBezPaska.map((action) => ({
+            id: `karta-${action.id}`,
+            etykietaPl: action.label,
+            onClick: action.onClick,
+            niedostepnaPl: action.disabled ? action.disabledReasonPl ?? 'Operacja niedostępna dla tego obiektu.' : null,
+          })),
+        ]
+      : [];
+
+  if (!elementId || (sections.length === 0 && !panelKanwyMaTresc)) {
     return (
       <div className={clsx('flex flex-col h-full', className)} data-testid="inspector-engineering">
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center">
-            <p className="text-xs text-gray-500">Zaznacz element na SLD</p>
-            <p className="text-[10px] text-gray-400 mt-1">
+            <p className="text-[length:var(--mvd-font-size-data)] text-gray-500">Zaznacz element na SLD</p>
+            <p className="text-[length:var(--mvd-font-size-data)] text-gray-400 mt-1">
               aby zobaczyć szczegóły inżynierskie
             </p>
           </div>
@@ -2927,25 +2868,34 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
 
   return (
     <div className={clsx('flex flex-col h-full', className)} data-testid="inspector-engineering">
-      <div data-testid="sld-engineering-inspector-wrapper" className="flex min-h-0 flex-1 flex-col">
+      {/* JEDNO przewijanie całego ciała inspektora: nagłówek, sekcje obiektu z kanwy, dowód
+          obliczeń, karta techniczna i sekcje modelu mają NATURALNĄ wysokość. Dawny układ
+          (kolumna flex, w której przewijały się tylko sekcje) ściskał elementy rodzeństwa
+          poniżej ich treści, więc nakładały się i przechwytywały kliki (e2e
+          sld-editor-real-backend-flex, karta UI-02b). */}
+      <div data-testid="sld-engineering-inspector-wrapper" className="min-h-0 flex-1 overflow-y-auto">
       {/* Header */}
+      {!kartaObiektu && (
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
           <h3 className="text-sm font-semibold text-gray-800 truncate">{elementName}</h3>
         </div>
-        <p className="text-[10px] text-gray-500 mt-0.5">
+        <p className="text-[length:var(--mvd-font-size-data)] text-gray-500 mt-0.5">
           {headerSubtitle}
         </p>
       </div>
+      )}
+
+      {stanPanelu && <PanelElementuKanwy stan={stanPanelu} dzialaniaPoza />}
 
       <ElementCalculationProofPanel
-        runId={activeRunId ?? null}
+        runId={runIdOgladany ?? null}
         selectedElement={selectedElement}
         candidateRefs={calculationProofRefs}
       />
 
-      {techCardSubjectWithActions && (
+      {pokazTechCard && techCardSubjectWithActions && (
         <div
           data-testid="tech-card-host"
           data-tech-card-subject-kind={techCardSubjectWithActions.kind}
@@ -2961,7 +2911,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       {isSelectedSegment && (
         <div
           data-testid="sld-segment-inspector"
-          className="border-b border-gray-200 bg-white px-4 py-2 text-[10px] text-gray-700"
+          className="border-b border-gray-200 bg-white px-4 py-2 text-[length:var(--mvd-font-size-data)] text-gray-700"
         >
           <div className="font-semibold text-gray-800">Odcinek SN</div>
           <div>Oznaczenie: {publicTechnicalLabel(elementId, elementName)}</div>
@@ -2990,7 +2940,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       {selectedConverterRole && (
         <div
           data-testid="pv-inverter-engineering-actions"
-          className="border-b border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-700"
+          className="border-b border-slate-200 bg-white px-4 py-3 text-[length:var(--mvd-font-size-data)] text-slate-700"
         >
           <div className="mb-2 font-semibold text-slate-900">
             {converterSurfaceTitle(selectedConverterRole)}
@@ -3017,7 +2967,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
               Uzupełnij dane wejściowe
             </button>
           </div>
-          <div className="mt-2 text-[10px] leading-4 text-cyan-700">
+          <div className="mt-2 text-[length:var(--mvd-font-size-data)] leading-4 text-cyan-700">
             Karta obejmuje falownik z katalogu, PCC, tor SN/nN, NC RfG, Q(U), P(f),
             FRT/HVRT, rozpływ mocy, wkład zwarciowy i zabezpieczenia nN.
           </div>
@@ -3025,8 +2975,8 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       )}
 
       {/* Sections */}
-      <div className="flex-1 overflow-y-auto">
-        {sections.map((section, index) => (
+      <div>
+        {!kartaObiektu && sections.map((section, index) => (
           <SectionBlock
             key={`${section.id}:${index}`}
             section={section}
@@ -3038,33 +2988,14 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
 
         {selectedBayField && <BayWindowSchematic item={selectedBayField} />}
 
-        {/* Quick actions */}
-        {actions.length > 0 && activeMode === 'MODEL_EDIT' && !techCardSubjectWithActions && (
-          <div className="px-4 py-3 border-t border-gray-200">
-            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Operacje
-            </h4>
-            <div className="flex flex-wrap gap-1.5">
-              {actions.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={() => handleAction(action)}
-                  className={clsx(
-                    'px-2.5 py-1 text-[10px] font-medium rounded transition-colors',
-                    action.variant === 'primary'
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : action.variant === 'danger'
-                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-                  )}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* K6: działania na samym końcu inspektora, zwinięte — pozycje rejestru menu kanwy
+            i operacje modelu tego widoku w JEDNYM bloku (operacje modelu tylko w trybie edycji
+            i bez karty `TechCard`, która ma własny pasek akcji). */}
+        <DzialaniaZwiniete
+          akcje={stanPanelu?.akcje ?? []}
+          onAkcja={stanPanelu?.wykonajAkcje ?? (() => undefined)}
+          operacje={operacjeModelu}
+        />
       </div>
       </div>
 
@@ -3188,7 +3119,7 @@ function buildCalculationProofCandidateRefs(
   const station = snapshot.substations?.find((item) => elementMatchesSelection(item, elementId));
   pushElementRefs(refs, station, ['id', 'ref_id', 'name']);
   // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra (zaciski pól, szyny za aparatami nN).
-  for (const busRef of station ? [...szynyStacji(station, snapshot.branches ?? [])].sort() : []) {
+  for (const busRef of station ? [...szynyStacji(snapshot, station)].sort() : []) {
     pushUniqueRef(refs, busRef);
   }
   for (const transformer of transformatoryNalezaceDoStacji(snapshot, station)) pushUniqueRef(refs, transformer.ref_id);
@@ -3229,7 +3160,7 @@ export function SectionBlock({
       data-testid={`engineering-section-${sectionTestId(section)}`}
     >
       <div className="px-4 py-2">
-        <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+        <h4 className="text-[length:var(--mvd-font-size-data)] font-semibold text-gray-500 mb-1.5">
           {section.label}
         </h4>
         <div className="space-y-1">
@@ -3293,7 +3224,7 @@ function EngineeringField({
   }, [activeCaseId, editable, elementId, executeDomainOperation, field.key, field.value, value]);
 
   const valueClassName = clsx(
-    'text-[11px] font-medium text-right truncate max-w-[55%]',
+    'text-[length:var(--mvd-font-size-data)] font-medium text-right truncate max-w-[55%]',
     editable ? 'cursor-pointer rounded px-1 hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-400' : '',
     field.source === 'catalog' ? 'text-blue-700' : 'text-gray-800',
     field.source === 'calculated' ? 'text-green-700 italic' : '',
@@ -3306,7 +3237,7 @@ function EngineeringField({
       data-testid={`engineering-field-${field.key}`}
       className="flex items-baseline justify-between gap-2"
     >
-      <span className="text-[11px] text-gray-500 flex-shrink-0">{field.label}</span>
+      <span className="text-[length:var(--mvd-font-size-data)] text-gray-500 flex-shrink-0">{field.label}</span>
       {editing ? (
         <input
           value={value}
@@ -3320,7 +3251,7 @@ function EngineeringField({
               reset();
             }
           }}
-          className="max-w-[60%] rounded border border-blue-300 bg-white px-1.5 py-0.5 text-right text-[11px] font-medium text-gray-900 shadow-sm"
+          className="max-w-[60%] rounded border border-blue-300 bg-white px-1.5 py-0.5 text-right text-[length:var(--mvd-font-size-data)] font-medium text-gray-900 shadow-sm"
           autoFocus
         />
       ) : (

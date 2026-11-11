@@ -8,13 +8,13 @@
  *
  *  (a) MENU KONTEKSTOWE — prawy klik w napis napięcia szyny otwierał menu STACJI
  *      z pozycją „Usuń stację";
- *  (b) SZUFLADA SZCZEGÓŁÓW — klik w napis „TR1" transformatora otwierał panel
- *      STACJI (albo nie otwierał nic);
+ *  (b) PANEL ELEMENTU (dawniej szuflada szczegółów, od UI-02b prawy inspektor) —
+ *      klik w napis „TR1" transformatora otwierał panel STACJI (albo nie otwierał nic);
  *  (c) SELEKCJA — napis transformatora deklarował `'station'`, więc (c1) NIE
  *      odpalało się rozwiązanie REALNEGO refu transformatora (deklaracja §16-v3
  *      była nieprawdziwa dla uchwytu), a (c2) przy uzbrojonej palecie OZE
  *      odpalał się `derDrag.dropOnStation()` Z REFEM TRANSFORMATORA — hook v2
- *      nie weryfikuje argumentu, więc szuflada OZE powstawała, pokazując jako
+ *      nie weryfikuje argumentu, więc formularz OZE powstawał, pokazując jako
  *      nazwę SUFIKS RYSUNKOWY.
  *
  * ŚCIEŻKA NATYWNA (Zero-Debt pkt 5, precedens martwego lewego kliku): kliki idą
@@ -34,6 +34,8 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
+import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +52,7 @@ const fixturePath = resolve(here, '..', '..', 'scene', '__tests__', 'fixtures', 
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
 afterEach(() => {
+  useKontekstElementuKanwy.getState().wyczysc();
   cleanup();
   useRawResultOverlayStore.getState().clear();
 });
@@ -113,16 +116,17 @@ describe('(b)+(c) napis transformatora GPZ', () => {
     expect(zaznaczony!.id).not.toContain('#');
   });
 
-  it('klik w napis „TR1" otwiera szufladę TRANSFORMATORA, nie stacji', async () => {
+  it('klik w napis „TR1" pokazuje w inspektorze TRANSFORMATOR, nie stację', async () => {
     const user = userEvent.setup();
-    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
+    const { container } = render(<><SldCanvasV3Workspace width={1600} height={1000} /><InspektorKanwyTestowy /></>);
     const napis = uchwytNapisu(container, `${REF_TRANSFORMATORA_GPZ}#label`);
     expect(napis).toBeTruthy();
 
     await user.click(napis!);
 
-    const etykieta = screen.queryByTestId('sld-v2-detail-drawer-label');
-    expect(etykieta, 'szuflada szczegółów musi się otworzyć').toBeTruthy();
+    expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-rodzaj', 'transformer');
+    const etykieta = screen.queryByTestId('inspektor-element-etykieta');
+    expect(etykieta, 'inspektor musi pokazać element').toBeTruthy();
     // Nazwa panelu nie może być SUFIKSEM RYSUNKOWYM ani kodem stacji — panel ma
     // dotyczyć transformatora, którego napis kliknięto.
     expect(etykieta!.textContent ?? '').not.toContain('name-row');
@@ -131,7 +135,7 @@ describe('(b)+(c) napis transformatora GPZ', () => {
 
   it('uzbrojona paleta OZE: klik w napis transformatora NIE zrzuca układu (uczciwa odmowa)', async () => {
     const user = userEvent.setup();
-    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
+    const { container } = render(<><SldCanvasV3Workspace width={1600} height={1000} /><InspektorKanwyTestowy /></>);
 
     // Uzbrojenie przez REALNY przycisk palety — nie przez wymuszony stan hooka.
     const przycisk = screen.queryByTestId('der-palette-btn-PV');
@@ -144,11 +148,11 @@ describe('(b)+(c) napis transformatora GPZ', () => {
     await user.click(napis!);
 
     // `useDerDragDrop.dropOnStation` NIE weryfikuje swojego argumentu (przyjmuje
-    // dowolny łańcuch), a `buildDerDropDetailDrawerData` nie znajdując stacji
+    // dowolny łańcuch), a `buildDaneSzkicuDer` nie znajdując stacji
     // pokazuje jako nazwę ostatni człon refu — czyli sufiks rysunkowy.
     // Odmowa musi paść po stronie kanwy, w jedynym miejscu, które zna model.
-    const etykieta = screen.queryByTestId('sld-v2-detail-drawer-label');
-    expect(etykieta?.textContent ?? '').not.toContain('name-row');
+    expect(screen.queryByTestId('inspektor-der-formularz')).toBeNull();
+    expect(useKontekstElementuKanwy.getState().szkicDer).toBeNull();
     // Uzbrojenie zostaje ANULOWANE (reguła v3 „klik gdzie indziej = anuluj"),
     // więc projektant nie utknie w stanie uzbrojonym.
     expect(przycisk!.getAttribute('data-der-active')).toBe('false');
@@ -173,7 +177,7 @@ describe('napis nazwy STACJI — ścieżka, która ma DZIAŁAĆ (kontrola, że n
 
   it('uzbrojona paleta OZE: klik w napis nazwy stacji ZRZUCA układ z refem STACJI (nie kompozytem)', async () => {
     const user = userEvent.setup();
-    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
+    const { container } = render(<><SldCanvasV3Workspace width={1600} height={1000} /><InspektorKanwyTestowy /></>);
     const refStacji = (enm.substations ?? []).find((s) => (s.ref_id ?? '').startsWith('stn/'))?.ref_id;
     const przycisk = screen.queryByTestId('der-palette-btn-PV');
     expect(przycisk).toBeTruthy();
@@ -183,8 +187,9 @@ describe('napis nazwy STACJI — ścieżka, która ma DZIAŁAĆ (kontrola, że n
     expect(napis).toBeTruthy();
     await user.click(napis!);
 
-    const etykieta = screen.queryByTestId('sld-v2-detail-drawer-label');
-    expect(etykieta, 'zrzut na stację otwiera szufladę OZE').toBeTruthy();
+    expect(useKontekstElementuKanwy.getState().szkicDer?.stationRef).toBe(refStacji);
+    const etykieta = screen.queryByTestId('inspektor-der-formularz');
+    expect(etykieta, 'zrzut na stację otwiera w inspektorze formularz OZE').toBeTruthy();
     // Do tej karty `dropOnStation` dostawał kompozyt `…/station#name-row-0`,
     // więc `sldData.stations.find` chybiał i nazwą panelu stawał się sufiks
     // rysunkowy „station#name-row-0". Teraz ref jest refem STACJI.

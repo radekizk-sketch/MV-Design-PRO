@@ -16,7 +16,7 @@ import { GOTOWOSC_STRINGS } from './strings';
 
 interface WierszProblemuProps {
   problem: ProblemGotowosci;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   onKlikWiersza: (elementRef: string) => void;
   onNaprawa: (problem: ProblemGotowosci) => void;
   /** Nazwa elementu z migawki modelu (to samo źródło co schemat). Karta
@@ -34,7 +34,7 @@ function TagWagi({ waga }: { waga: ProblemGotowosci['waga'] }) {
 
 export function WierszProblemu({
   problem,
-  trybEkspercki,
+  szczegolyAudytowe,
   onKlikWiersza,
   onNaprawa,
   nazwaElementu,
@@ -64,7 +64,7 @@ export function WierszProblemu({
         )}
       </button>
 
-      {trybEkspercki && (
+      {szczegolyAudytowe && (
         <span
           className="mvd-problem-kod mvd-num"
           data-testid={`mvd-problem-kod-${code}`}

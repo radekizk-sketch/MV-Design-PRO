@@ -103,6 +103,7 @@ from network_model.catalog.wartosci_robocze import (
     dane_przyjete_maszyn,
     scal_wpisy_maszyn,
 )
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import DanaPrzyjeta
@@ -341,6 +342,13 @@ def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> di
         **(
             {"breaking_time_seconds": kotwica.options["breaking_time_seconds"]}
             if kotwica.options.get("breaking_time_seconds") is not None
+            else {}
+        ),
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC kotwicy (stan punktu neutralnego
+        # sieci w tym przypadku — wspólny dla obu gałęzi); klucz tylko, gdy kotwica go niesie.
+        **(
+            {KLUCZ_OPCJI_STANU_AWSC: kotwica.options[KLUCZ_OPCJI_STANU_AWSC]}
+            if KLUCZ_OPCJI_STANU_AWSC in kotwica.options
             else {}
         ),
         **_opcje_audit2_kotwicy(kotwica),

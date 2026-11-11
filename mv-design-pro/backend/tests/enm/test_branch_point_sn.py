@@ -15,6 +15,9 @@ import pytest
 from domain.readiness_fix_actions import KNOWN_BLOCKER_CODES, resolve_fix_action
 from enm.catalog_completion import complete_catalog_defaults
 from enm.domain_operations import execute_domain_operation
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_SWITCHGEAR_FIELD_SPECS as KLUCZ_ZKSN,
+)
 from enm.models import (
     BranchPointSN,
     BranchPointSNPorts,
@@ -22,6 +25,7 @@ from enm.models import (
     ENMDefaults,
     ENMHeader,
 )
+from enm.pola import pola_zksn
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 
@@ -47,8 +51,6 @@ def _seed_with_overhead_segment() -> tuple[dict, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     s2 = execute_domain_operation(
@@ -75,8 +77,6 @@ def _seed_with_cable_segment() -> tuple[dict, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     s2 = execute_domain_operation(
@@ -119,14 +119,15 @@ class TestBranchPointSNModel:
             bus_ref="bus-bp-002",
             catalog_ref="ZKSN-2P-630A",
             source_mode="KATALOG",
-            switch_state="closed",
             ports=BranchPointSNPorts(
                 MAIN_IN="bus-C", MAIN_OUT="bus-D", BRANCH=["bus-br-1", "bus-br-2"]
             ),
             completeness_status="KOMPLETNY",
         )
         assert bp.branch_point_type == "zksn"
-        assert bp.switch_state == "closed"
+        # W5-C: stan łączników odgałęzienia żyje na gałęziach łączników portów
+        # (`status`/`normal_state`), nie w drugiej kopii na punkcie rozgałęzienia.
+        assert "switch_state" not in BranchPointSN.model_fields
         assert len(bp.ports.BRANCH) == 2
 
     def test_no_catalog_ref_gives_brak_katalogu(self) -> None:
@@ -171,7 +172,6 @@ class TestBranchPointSNModel:
             catalog_namespace="mv_branch_points",
             catalog_version="1.0",
             source_mode="KATALOG",
-            switch_state="open",
             ports=BranchPointSNPorts(
                 MAIN_IN="bus-rt-in", MAIN_OUT="bus-rt-out", BRANCH=["bus-rt-br"]
             ),
@@ -299,7 +299,8 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert len(enm.branch_points) == 1
         bp = enm.branch_points[0]
         assert bp.branch_point_type == "zksn"
-        assert bp.switch_state == "closed"
+        porty = [g for g in enm.branches if (g.meta or {}).get("branch_point_ref") == bp.ref_id]
+        assert porty and {(g.status, g.normal_state) for g in porty} == {("closed", "closed")}
         assert bp.completeness_status == "KOMPLETNY"
         assert bp.ports is not None
         assert len(bp.ports.BRANCH) == 2
@@ -307,9 +308,24 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.materialized_params["object_role"] == "MV_SWITCHGEAR_BRANCH_NODE"
         assert bp.materialized_params["has_transformer"] is False
         assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
-        field_specs = bp.materialized_params["switchgear_field_specs"]
-        assert [field["bay_role"] for field in field_specs] == ["IN", "OUT", "BRANCH", "BRANCH"]
-        assert "TR" not in {field.get("bay_role") for field in field_specs}
+        # Pola rozdzielnicy ZKSN są rekordami `bays` punktu rozgałęzienia (karta W5-B; dawniej
+        # dawny słownik pól ZKSN punktu rozgałęzienia z rolą „BRANCH" spoza kontraktu Bay).
+        assert KLUCZ_ZKSN not in bp.materialized_params
+        pola_punktu = pola_zksn(enm, bp.ref_id)
+        assert [(p.bay_role, p.field_role) for p in pola_punktu] == [
+            ("IN", "LINIA_IN"),
+            ("OUT", "LINIA_OUT"),
+            ("OUT", "LINIA_ODG"),
+            ("OUT", "LINIA_ODG"),
+        ]
+        assert [p.branch_point_port_id for p in pola_punktu] == [
+            "MAIN_IN",
+            "MAIN_OUT",
+            "BRANCH_1",
+            "BRANCH_2",
+        ]
+        assert all(p.substation_ref is None and p.bus_ref == bp.bus_ref for p in pola_punktu)
+        assert "TR" not in {p.bay_role for p in pola_punktu}
 
     def test_insert_zksn_on_endpoint_terminates_cable_without_zero_length_split(self) -> None:
         snapshot, seg_id = _seed_with_cable_segment()
@@ -431,7 +447,6 @@ class TestDomainOperationsBranchPointSchemaValid:
                         MAIN_OUT="bus-out",
                         BRANCH=["bus-branch-1", "bus-branch-2"],
                     ),
-                    switch_state="closed",
                     materialized_params=None,
                     completeness_status="KOMPLETNY",
                 )
@@ -446,9 +461,20 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.materialized_params["object_role"] == "MV_SWITCHGEAR_BRANCH_NODE"
         assert bp.materialized_params["has_transformer"] is False
         assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
-        field_specs = bp.materialized_params["switchgear_field_specs"]
-        assert [field["bay_role"] for field in field_specs] == ["IN", "OUT", "BRANCH", "BRANCH"]
-        assert "TR" not in {field.get("bay_role") for field in field_specs}
+        # Uzupełnienie katalogowe dokłada brakujące pola ZKSN jako rekordy `bays`.
+        assert KLUCZ_ZKSN not in bp.materialized_params
+        pola_punktu = pola_zksn(completed, bp.ref_id)
+        assert [p.field_role for p in pola_punktu] == [
+            "LINIA_IN",
+            "LINIA_OUT",
+            "LINIA_ODG",
+            "LINIA_ODG",
+        ]
+        assert "TR" not in {p.bay_role for p in pola_punktu}
+        # Idempotencja: drugi przebieg nie dubluje pól.
+        ponownie, zmieniono = complete_catalog_defaults(completed)
+        assert zmieniono is False
+        assert len(pola_zksn(ponownie, bp.ref_id)) == 4
 
     def test_repeated_branch_pole_split_keeps_segment_names_readable(self) -> None:
         snapshot, seg_id = _seed_with_overhead_segment()
@@ -644,7 +670,6 @@ class TestBranchPointFixActions:
         [
             "branch_point.invalid_parent_medium",
             "branch_point.catalog_ref_missing",
-            "branch_point.switch_state_missing",
             "branch_point.branch_port_occupied",
             "branch_point.required_port_missing",
             "zksn.branch_count_invalid",
@@ -666,16 +691,17 @@ class TestBranchPointFixActions:
         assert fa.action_type == "SELECT_CATALOG"
         assert fa.modal_type == "BranchPointCatalogPicker"
 
-    def test_branch_point_switch_state_fix_opens_modal(self) -> None:
-        fa = resolve_fix_action("branch_point.switch_state_missing", element_id="zksn-001")
-        assert fa is not None
-        assert fa.action_type == "OPEN_MODAL"
+    def test_kod_stanu_lacznika_punktu_rozgalezienia_skasowany(self) -> None:
+        """W5-C: `branch_point.switch_state_missing` nie istnieje — blokada nigdy się nie
+        zapalała (uzupełnianie wpisywało „closed" domyślnie), a stan łączników portów
+        jest stanem ich gałęzi, nie daną punktu rozgałęzienia."""
+        assert resolve_fix_action("branch_point.switch_state_missing", element_id="z") is None
+        assert "branch_point.switch_state_missing" not in KNOWN_BLOCKER_CODES
 
     def test_all_branch_point_blocker_codes_in_known_set(self) -> None:
         branch_codes = {
             "branch_point.invalid_parent_medium",
             "branch_point.catalog_ref_missing",
-            "branch_point.switch_state_missing",
             "branch_point.branch_port_occupied",
             "branch_point.required_port_missing",
             "zksn.branch_count_invalid",

@@ -46,12 +46,12 @@ from api.readiness_registry import router as readiness_registry_router
 from api.reference_engine import router as reference_engine_router
 from api.reference_patterns import router as reference_patterns_router
 from api.result_contract_v1 import router as result_contract_v1_router
+from api.scenariusze_laczeniowe import router as scenariusze_laczeniowe_router
 from api.sld_overrides import router as sld_overrides_router
 from api.solver_capabilities import router as solver_capabilities_router
 from api.solver_input import router as solver_input_router
 from api.station_templates import router as station_templates_router
 from api.study_cases import router as study_cases_router
-from api.switchgear_config import router as switchgear_config_router
 from api.v126_academic import router as v126_academic_router
 from api.xlsx_import import router as xlsx_import_router
 from api.zwarcia_porownania import router as zwarcia_porownania_router
@@ -150,6 +150,7 @@ app.include_router(comparison_router)
 app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)
 app.include_router(dynamika_router)
+app.include_router(scenariusze_laczeniowe_router)
 app.include_router(document_store_router)
 app.include_router(equipment_checks_router)
 app.include_router(zwarcia_porownania_router)
@@ -197,7 +198,6 @@ app.include_router(fault_scenarios_router)
 app.include_router(generators_router)
 app.include_router(grid_source_preview_router)
 app.include_router(sld_overrides_router)
-app.include_router(switchgear_config_router)
 app.include_router(solver_capabilities_router, prefix="/api")
 app.include_router(solver_input_router)
 app.include_router(karty_widmowe_router)

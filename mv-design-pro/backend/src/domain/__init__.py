@@ -64,23 +64,6 @@ from .study_case_delta import (
     compute_delta,
 )
 from .substation import SubstationMetadata
-from .switchgear_config import (
-    SWITCHGEAR_CONFIG_VERSION,
-    CatalogBindingV1,
-    ConfigFixActionV1,
-    ConfigIssueSeverity,
-    ConfigValidationIssueV1,
-    DeviceConfigV1,
-    FieldConfigV1,
-    FixActionType,
-    ProtectionBindingV1,
-    SwitchgearConfigV1,
-    SwitchgearConfigValidationCode,
-    SwitchgearConfigValidationResultV1,
-    canonicalize_config,
-    compute_config_hash,
-    validate_switchgear_config,
-)
 from .units import BaseQuantities, UnitSystem
 from .validation import ValidationIssue, ValidationReport
 
@@ -137,22 +120,6 @@ __all__ = [
     "FieldRoleV1",
     "PoleTypeV1",
     "validate_generator_field_connection",
-    # SwitchgearConfig (RUN #3I)
-    "SWITCHGEAR_CONFIG_VERSION",
-    "CatalogBindingV1",
-    "ConfigFixActionV1",
-    "ConfigIssueSeverity",
-    "ConfigValidationIssueV1",
-    "DeviceConfigV1",
-    "FieldConfigV1",
-    "FixActionType",
-    "ProtectionBindingV1",
-    "SwitchgearConfigV1",
-    "SwitchgearConfigValidationCode",
-    "SwitchgearConfigValidationResultV1",
-    "canonicalize_config",
-    "compute_config_hash",
-    "validate_switchgear_config",
     # Study Case Delta
     "DeltaOverlay",
     "DeltaOverlayToken",

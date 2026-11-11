@@ -120,6 +120,7 @@
         "materialized_params": null,
         "meta": {},
         "name": "Sprzęgło Q1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": null,
         "r_ohm": null,
@@ -477,7 +478,8 @@
         "ulv_kv": 0.4,
         "vector_group": "Dyn11"
       }
-    ]
+    ],
+    "zespoly_uziemiajace": []
   },
   "snapshot_id": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
 }

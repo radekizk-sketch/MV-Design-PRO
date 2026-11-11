@@ -118,8 +118,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [300, 250].entries()) {
@@ -189,7 +187,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
     {
       data: {
-        mv_neutral_grounding_ref: null,
         tap_changer_refs: [],
         der_specs: [],
         bay_device_withstand: {
@@ -251,7 +248,6 @@ async function otworz(page: Page, scena: Scena, motyw: string, hash: string): Pr
             activeCaseResultStatus: 'FRESH',
             activeSnapshotId: null,
             activeMode: 'MODEL_EDIT',
-            activeRunId: dane.runId,
             activeAnalysisType: 'SHORT_CIRCUIT',
             caseManagerOpen: false,
             issuePanelOpen: false,

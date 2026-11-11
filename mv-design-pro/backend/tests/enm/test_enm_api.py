@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_payload, gpz_source_record
 from tests.utils.biegi import wykonaj_bieg
+from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
 
 
 def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
@@ -121,41 +122,22 @@ def _valid_enm_payload(name: str) -> dict:
 
 
 def _valid_enm_payload_with_z0(name: str) -> dict:
+    """Sieć z drogą składowej zerowej. Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie sieci
+    SN niesie zespół uziemiający na szynie (równoważnik SN nie opisuje Z0) — ten sam bocznik
+    0,16 + j1,6 Ω, który dawniej niósł równoważnik."""
     payload = _valid_enm_payload(name)
-    payload["sources"][0].update({"r0_ohm": 0.16, "x0_ohm": 1.6})
-    return payload
-
-
-def _valid_enm_with_field_specs(name: str) -> dict:
-    payload = _valid_enm_payload(name)
-    payload["substations"] = [
+    payload["zespoly_uziemiajace"] = [
         {
-            "id": "00000000-0000-0000-0000-000000000003",
-            "ref_id": "sub_1",
-            "name": "Stacja 1",
-            "tags": [],
-            "meta": {
-                "field_specs": [
-                    {
-                        "field_ref": "field_in_1",
-                        "name": "Pole IN",
-                        "bay_role": "IN",
-                        "bus_ref": "b1",
-                        "equipment_refs": [],
-                        "protection_ref": None,
-                        "tags": [],
-                        "meta": {},
-                    }
-                ]
-            },
-            "station_type": "mv_lv",
-            "bus_refs": ["b1"],
+            "id": "00000000-0000-0000-0000-000000000009",
+            **zespol_o_impedancji_zerowej("zu-1", "b1", r0_ohm=0.16, x0_ohm=1.6),
         }
     ]
     return payload
 
 
-def _valid_enm_with_legacy_bay(name: str) -> dict:
+def _valid_enm_with_field(name: str) -> dict:
+    """Model ze stacją i JEDNYM polem SN `field_in_1` — rekord `bays` (karta W5-B; dawniej
+    wpis dawny słownik pól SN w `meta` stacji stacji)."""
     payload = _valid_enm_payload(name)
     payload["substations"] = [
         {
@@ -171,8 +153,8 @@ def _valid_enm_with_legacy_bay(name: str) -> dict:
     payload["bays"] = [
         {
             "id": "00000000-0000-0000-0000-000000000004",
-            "ref_id": "bay_legacy_1",
-            "name": "Pole legacy",
+            "ref_id": "field_in_1",
+            "name": "Pole IN",
             "tags": [],
             "meta": {},
             "bay_role": "IN",
@@ -551,7 +533,7 @@ class TestDomainOpsCatalogPolicy:
 
     def test_domain_ops_add_ct_persists_measurement_for_field_spec(self, client):
         case_id = _nowy_przypadek(client)
-        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Adapter"))
+        _seed_enm(client, case_id, _valid_enm_with_field("Field Adapter"))
 
         response = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -594,7 +576,7 @@ class TestDomainOpsCatalogPolicy:
         idzie kanonicznym dyspozytorem (`execute_domain_operation`), jak
         wszystkie pozostale pola tej operacji."""
         case_id = _nowy_przypadek(client)
-        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Obwod Wtorny"))
+        _seed_enm(client, case_id, _valid_enm_with_field("Field Obwod Wtorny"))
 
         response = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -642,7 +624,7 @@ class TestDomainOpsCatalogPolicy:
         """Pole ADDYTYWNE — operacja bez `obwod_wtorny` w payloadzie zachowuje
         sie DOKLADNIE jak przed karta W3-B (zero zlamanej zgodnosci wstecznej)."""
         case_id = _nowy_przypadek(client)
-        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Bez Obwodu"))
+        _seed_enm(client, case_id, _valid_enm_with_field("Field Bez Obwodu"))
 
         response = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -671,7 +653,7 @@ class TestDomainOpsCatalogPolicy:
         """Ksztalt walidowany PRZY ZAPISIE (`Measurement.obwod_wtorny`, `gt=0`)
         — ujemna dlugosc NIE zapisuje sie po cichu jako `None`."""
         case_id = _nowy_przypadek(client)
-        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Obwod Zly"))
+        _seed_enm(client, case_id, _valid_enm_with_field("Field Obwod Zly"))
         before = client.get(f"/api/cases/{case_id}/enm").json()
 
         response = client.post(
@@ -709,7 +691,7 @@ class TestDomainOpsCatalogPolicy:
         """Karta W3-B: `add_vt` przyjmuje `obwod_wtorny` + `vt_uzwojenie`
         (ktore uzwojenie VT ten obwod opisuje — POMIAROWE/ZABEZPIECZENIOWE)."""
         case_id = _nowy_przypadek(client)
-        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field VT Obwod"))
+        _seed_enm(client, case_id, _valid_enm_with_field("Field VT Obwod"))
 
         response = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -745,7 +727,7 @@ class TestDomainOpsCatalogPolicy:
 
     def test_domain_ops_add_relay_persists_protection_for_field_spec(self, client):
         case_id = _nowy_przypadek(client)
-        payload = _valid_enm_with_field_specs("Relay Adapter")
+        payload = _valid_enm_with_field("Relay Adapter")
         payload["buses"].append(
             {
                 "id": "00000000-0000-0000-0000-000000000004",
@@ -770,7 +752,7 @@ class TestDomainOpsCatalogPolicy:
                 "type": "breaker",
             }
         )
-        payload["substations"][0]["meta"]["field_specs"][0]["equipment_refs"] = ["brk_1"]
+        payload["bays"][0]["equipment_refs"] = ["brk_1"]
         _seed_enm(client, case_id, payload)
 
         add_ct = client.post(
@@ -819,12 +801,43 @@ class TestDomainOpsCatalogPolicy:
         assert assignment["ct_ref"] == after["measurements"][0]["ref_id"]
         assert assignment["catalog_ref"] == "REF-OC-EF-500"
         assert assignment["catalog_namespace"] == "ZABEZPIECZENIE"
-        field_spec = after["substations"][0]["meta"]["field_specs"][0]
+        field_spec = next(b for b in after["bays"] if b["ref_id"] == "field_in_1")
         assert field_spec["protection_ref"] == assignment["ref_id"]
 
-    def test_domain_ops_rejects_legacy_bay_parameter_update_without_persisting(self, client):
+    def test_domain_ops_update_parameters_of_field_persists(self, client):
+        """Intencja przepisana w W5-B: `bays` jest KANONICZNE — ogólna operacja zmienia opis pola
+        i zmiana trafia do magazynu (dawniej ten test pinował odmowę
+        `field.legacy_write_disabled`, bo pole żyło w `meta` stacji)."""
         case_id = _nowy_przypadek(client)
-        _seed_enm(client, case_id, _valid_enm_with_legacy_bay("Legacy Bay"))
+        _seed_enm(client, case_id, _valid_enm_with_field("Pole edytowalne"))
+
+        response = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "update_element_parameters",
+                    "payload": {
+                        "element_ref": "field_in_1",
+                        "parameters": {"name": "Pole po zmianie", "bay_number": "7"},
+                    },
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body.get("error") is None, body
+        after = client.get(f"/api/cases/{case_id}/enm").json()
+        pole = next(b for b in after["bays"] if b["ref_id"] == "field_in_1")
+        assert pole["name"] == "Pole po zmianie"
+        assert pole["bay_number"] == "7"
+
+    def test_domain_ops_rejects_topological_field_parameter_without_persisting(self, client):
+        """Rola, szyna i aparaty pola NIE zmieniają się operacją ogólną (omijałaby bramy toru
+        i pomiaru) — odmowa nazwana, model w magazynie bez zmian (intencja dawnego testu
+        „bez zapisu" zachowana dla tego, co nadal jest zabronione)."""
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_field("Pole chronione"))
 
         before = client.get(f"/api/cases/{case_id}/enm").json()
 
@@ -834,8 +847,8 @@ class TestDomainOpsCatalogPolicy:
                 "operation": {
                     "name": "update_element_parameters",
                     "payload": {
-                        "element_ref": "bay_legacy_1",
-                        "parameters": {"name": "Pole po zmianie"},
+                        "element_ref": "field_in_1",
+                        "parameters": {"name": "Pole po zmianie", "bay_role": "OUT"},
                     },
                 }
             },
@@ -843,7 +856,7 @@ class TestDomainOpsCatalogPolicy:
 
         assert response.status_code == 200
         body = response.json()
-        assert body["error_code"] == "field.legacy_write_disabled"
+        assert body["error_code"] == "params.key_not_allowed"
 
         after = client.get(f"/api/cases/{case_id}/enm").json()
         assert after == before

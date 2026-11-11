@@ -6,10 +6,10 @@
  * Ctrl+K; wpięcie tego komponentu do powłoki jest kartą zarządcy.
  *
  * Gramatyka interakcji (karta §3): Esc = zamknij bez akcji · ↑↓ = nawigacja
- * · Enter = wykonaj. Pozycja o `trybMin` wyższym niż `trybAktualny` pokazuje
- * wiersz potwierdzenia „Dostępne w trybie {tryb} — przełączyć?" zamiast
- * wykonania — [Przełącz i otwórz] woła `onPrzelaczTryb` + `onWykonaj`,
- * [Anuluj] wraca do wyników. Fokus jest uwięziony w dialogu (focus trap);
+ * · Enter = wykonaj. Każda pozycja jest wykonywalna od razu — karta K1
+ * POWLOKA skasowała trzy tryby zaawansowania (ukrywały wyłącznie kontrolki),
+ * więc paleta nie ma już wiersza „przełącz tryb i otwórz". Fokus jest
+ * uwięziony w dialogu (focus trap);
  * po zamknięciu wraca do elementu sprzed otwarcia (SPEC_UKLAD_PANELI §2.2).
  *
  * Historia ostatnich wykonanych pozycji to stan SESJI w pamięci modułu
@@ -22,14 +22,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import '../theme/tokens.css';
 import './search.css';
 import { filtrujISortuj } from './fuzzy';
-import {
-  KOLEJNOSC_GRUP,
-  trybWystarczajacy,
-  type GrupaWyszukiwania,
-  type PozycjaWyszukiwania,
-  type TrybZaawansowania,
-} from './searchModel';
-import { SEARCH_STRINGS, brakWynikowLabel, etykietaGrupy, potwierdzTrybLabel } from './strings';
+import { KOLEJNOSC_GRUP, type GrupaWyszukiwania, type PozycjaWyszukiwania } from './searchModel';
+import { SEARCH_STRINGS, brakWynikowLabel, etykietaGrupy } from './strings';
 
 const MAKS_HISTORII = 5;
 
@@ -49,9 +43,7 @@ export interface CommandPaletteProps {
   otwarta: boolean;
   onZamknij: () => void;
   pozycje: PozycjaWyszukiwania[];
-  trybAktualny: TrybZaawansowania;
   onWykonaj: (pozycja: PozycjaWyszukiwania) => void;
-  onPrzelaczTryb: (trybMin: TrybZaawansowania) => void;
 }
 
 interface GrupaWynikow {
@@ -70,18 +62,14 @@ export function CommandPalette({
   otwarta,
   onZamknij,
   pozycje,
-  trybAktualny,
   onWykonaj,
-  onPrzelaczTryb,
 }: CommandPaletteProps) {
   const [fraza, setFraza] = useState('');
   const [aktywnyId, setAktywnyId] = useState<string | null>(null);
-  const [potwierdzenieId, setPotwierdzenieId] = useState<string | null>(null);
   const [historia, setHistoria] = useState<PozycjaWyszukiwania[]>([]);
 
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const potwierdzBtnRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Otwarcie: zapis fokusu sprzed otwarcia, reset stanu, fokus na pole.
@@ -90,7 +78,6 @@ export function CommandPalette({
     if (!otwarta) return;
     previousFocusRef.current = document.activeElement as HTMLElement | null;
     setFraza('');
-    setPotwierdzenieId(null);
     setHistoria(historiaSesji.slice(0, MAKS_HISTORII));
     inputRef.current?.focus();
     return () => {
@@ -125,38 +112,10 @@ export function CommandPalette({
     // przeliczamy wyłącznie gdy zmienia się fraza, stan otwarcia lub historia.
   }, [fraza, otwarta, historia]);
 
-  // Fokus na akcję domyślną wiersza potwierdzenia trybu (klawiatura-first).
-  useEffect(() => {
-    if (!potwierdzenieId) return;
-    potwierdzBtnRef.current?.focus();
-  }, [potwierdzenieId]);
-
-  const pozycjaPotwierdzenia = potwierdzenieId
-    ? (pozycje.find((p) => p.id === potwierdzenieId) ?? null)
-    : null;
-
   function wykonajPozycje(pozycja: PozycjaWyszukiwania): void {
-    if (pozycja.trybMin && !trybWystarczajacy(trybAktualny, pozycja.trybMin)) {
-      setPotwierdzenieId(pozycja.id);
-      return;
-    }
     dodajDoHistorii(pozycja);
     onWykonaj(pozycja);
     onZamknij();
-  }
-
-  function potwierdzPrzelaczenie(): void {
-    if (!pozycjaPotwierdzenia || !pozycjaPotwierdzenia.trybMin) return;
-    onPrzelaczTryb(pozycjaPotwierdzenia.trybMin);
-    dodajDoHistorii(pozycjaPotwierdzenia);
-    onWykonaj(pozycjaPotwierdzenia);
-    setPotwierdzenieId(null);
-    onZamknij();
-  }
-
-  function anulujPotwierdzenie(): void {
-    setPotwierdzenieId(null);
-    inputRef.current?.focus();
   }
 
   function idAt(indeks: number): string | null {
@@ -169,8 +128,6 @@ export function CommandPalette({
   }
 
   function obslugaKlawiszyPola(event: React.KeyboardEvent<HTMLInputElement>): void {
-    if (potwierdzenieId) return; // fokus jest na wierszu potwierdzenia — obsługa w `obslugaKlawiszyDialogu`
-
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       const nastepny = idAt(biezacyIndeks() + 1);
@@ -308,26 +265,6 @@ export function CommandPalette({
               ))}
         </div>
 
-        {pozycjaPotwierdzenia && pozycjaPotwierdzenia.trybMin && (
-          <div className="mvd-cmdk-potwierdzenie" data-testid="mvd-cmdk-potwierdzenie">
-            <p className="mvd-cmdk-potwierdzenie-tekst">
-              {potwierdzTrybLabel(pozycjaPotwierdzenia.trybMin)}
-            </p>
-            <div className="mvd-cmdk-potwierdzenie-akcje">
-              <button
-                ref={potwierdzBtnRef}
-                type="button"
-                onClick={potwierdzPrzelaczenie}
-                data-testid="mvd-cmdk-przelacz"
-              >
-                {SEARCH_STRINGS.przelaczIOtworz}
-              </button>
-              <button type="button" onClick={anulujPotwierdzenie} data-testid="mvd-cmdk-anuluj">
-                {SEARCH_STRINGS.anuluj}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

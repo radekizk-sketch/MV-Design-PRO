@@ -106,7 +106,7 @@ function atrapaKoncowek(wklady: Para, rozplyw: Para) {
 }
 
 async function renderujPoPobraniu() {
-  await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+  await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
   // Obie odpowiedzi doszły: tabela wkładów ma źródło, rozpływ pokazuje stan pusty listy gałęzi.
   const wklady = await screen.findByTestId('mvd-zwarcia-wklady');
   expect(await within(wklady).findByText('Agregat', { selector: 'td *, td' })).toBeInTheDocument();

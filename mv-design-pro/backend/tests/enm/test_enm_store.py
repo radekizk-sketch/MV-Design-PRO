@@ -4,7 +4,7 @@ import math
 
 import pytest
 from enm.hash import compute_enm_hash
-from enm.migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
+from enm.migrations.promocja_aparatow_nn import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from enm.models import (
     BranchPointSN,
     BranchPointSNPorts,
@@ -49,16 +49,16 @@ def _station_with_nn_feeder_without_load() -> EnergyNetworkModel:
                     "station_type": "inline",
                     "bus_refs": ["bus-sn", "bus-nn"],
                     "transformer_refs": [],
-                    "meta": {
-                        "nn_field_specs": [
-                            {
-                                "field_ref": "stn/test/nn_feeder/001",
-                                "name": "Odpływ nN 1",
-                                "bay_role": "FEEDER",
-                                "bus_ref": "bus-nn",
-                            }
-                        ]
-                    },
+                }
+            ],
+            # Karta W5-B: pole odpływowe nN jest rekordem `bays` (szyna nN = poziom nN).
+            "bays": [
+                {
+                    "ref_id": "stn/test/nn_feeder/001",
+                    "name": "Odpływ nN 1",
+                    "bay_role": "FEEDER",
+                    "substation_ref": "stn/test/station",
+                    "bus_ref": "bus-nn",
                 }
             ],
         }
@@ -161,8 +161,8 @@ def test_store_materializes_catalog_loads_for_legacy_station_feeders() -> None:
     assert load.materialized_params["q_source"] == "KATALOG_COS_PHI"
 
     # P0.1 nN (karta P0.1, LV-INV-12): `get_enm` uruchamia TERAZ TAKŻE promocję
-    # `nn_field_specs` → realny aparat odpływowy (`enm/migrations/
-    # nn_field_specs_promocja.py`, wpięta PO tej migracji katalogowej). Odbiór
+    # pól nN (rekordy `bays` na szynie nN) → realny aparat odpływowy (`enm/migrations/
+    # promocja_aparatow_nn.py`, wpięta PO tej migracji katalogowej). Odbiór
     # dołożony tutaj (meta.feeder_ref == field_ref) zostaje PRZENIESIONY z szyny
     # stacji na nową szynę odpływu ZA aparatem — druga rewizja jest oczekiwanym
     # skutkiem KOLEJNEJ migracji uruchamianej przy tym samym odczycie, nie regresją
@@ -178,21 +178,29 @@ def test_store_materializes_catalog_loads_for_legacy_station_feeders() -> None:
         if branch.meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF) == "stn/test/nn_feeder/001"
     )
     assert promowany_odbior.bus_ref == aparat_odplywowy.to_bus_ref
+    # Karta W5-B: rekord pola niesie swój aparat i zacisk (jedna reguła zacisku SN i nN).
+    pole_odplywu = next(b for b in reread.bays if b.ref_id == "stn/test/nn_feeder/001")
+    assert pole_odplywu.equipment_refs == [aparat_odplywowy.ref_id]
+    assert pole_odplywu.terminal_bus_ref == aparat_odplywowy.to_bus_ref
     # Tabliczka katalogowa (P, Q z cosφ) PRZETRWAŁA przeniesienie bus_ref —
     # migracja promocji zmienia WYŁĄCZNIE topologię, nigdy dane tabliczkowe.
     assert promowany_odbior.p_mw == pytest.approx(0.03, abs=1e-12)
     assert promowany_odbior.q_mvar == pytest.approx(0.03 * math.tan(math.acos(0.92)), abs=1e-9)
 
 
-def test_store_materializes_catalog_switch_state_for_legacy_zksn() -> None:
+def test_store_materializes_catalog_for_legacy_zksn_without_fabricating_switch_state() -> None:
+    """Magazyn materializuje katalog ZKSN zapisanego jako sam punkt topologiczny, ale NIE
+    dopisuje stanu łącznika (W5-C): dawne uzupełnianie wpisywało `switch_state="closed"`
+    domyślnie — drugą kopię stanu, domysł podniesiony do danej. Stan łącznika żyje
+    wyłącznie na gałęzi łącznika (`status`/`normal_state`)."""
     saved = set_enm("case-store-zksn-migration", _legacy_zksn_without_switch_state())
 
-    assert saved.branch_points[0].switch_state == "closed"
-    assert saved.branch_points[0].runtime_inputs["switch_state"] == "closed"
+    assert "switch_state" not in type(saved.branch_points[0]).model_fields
+    assert "switch_state" not in saved.branch_points[0].runtime_inputs
     assert saved.branch_points[0].runtime_inputs["completion_source"] == (
         "branch_point_catalog_materialization"
     )
 
     reread = get_enm("case-store-zksn-migration")
-    assert reread.branch_points[0].switch_state == "closed"
+    assert reread.branch_points[0].runtime_inputs == saved.branch_points[0].runtime_inputs
     assert reread.header.revision == saved.header.revision

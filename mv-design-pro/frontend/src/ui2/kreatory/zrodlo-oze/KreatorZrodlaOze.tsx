@@ -47,7 +47,7 @@ import {
 import {
   BESS_OPCJE,
   DANE_DER_SN_DOMYSLNE,
-  DANE_DOMYSLNE,
+  daneZKontekstu,
   REGULACJA_OPCJE,
   SUGEROWANE,
   TECHNOLOGIA_OPCJE,
@@ -106,6 +106,7 @@ import { CharakterystykaNcRfg } from './WykresyNcRfg';
 import { useShellStore } from '../../shell/useShellStore';
 import type { RunStatus } from '../../../ui/study-cases/types';
 import { transformatoryNalezaceDoStacji } from '../../../ui/shared/transformatoryStacji';
+import { fetchBessBatteryTypes, type BessBatteryItem } from '../../../ui/network-build/station-der/derRemoteCatalogs';
 
 type FazaPodsumowania = 'formularz' | 'bieg' | 'dokumenty' | 'gotowe';
 
@@ -190,7 +191,9 @@ export function KreatorZrodlaOze() {
     return transformatoryBlokowe(list);
   }, [snapshot, kontekst.station_ref]);
 
-  const [dane, setDane] = useState<OzeFormData>(() => ({ ...DANE_DOMYSLNE }));
+  // K6: preselekcja technologii, wariantu i mocy z kontekstu wywołania (np. formularz nN
+  // inspektora „Przyłącz po stronie SN…") — `daneZKontekstu`, bez kontekstu = DANE_DOMYSLNE.
+  const [dane, setDane] = useState<OzeFormData>(() => daneZKontekstu(context));
   const [bledy, setBledy] = useState<BladPolaOze[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('tech');
@@ -208,6 +211,9 @@ export function KreatorZrodlaOze() {
   // niżej) — bez tej flagi `stanGotowosci` nie mógłby odróżnić „katalog jeszcze
   // w locie" od „katalog odpowiedział pustą listą".
   const [katalogLadowanie, setKatalogLadowanie] = useState(true);
+  // K6: pakiety baterii BESS (`GET /api/catalog/bess-battery-types`) — wymagane dla BESS.
+  const [baterie, setBaterie] = useState<readonly BessBatteryItem[]>([]);
+  const [bladBaterii, setBladBaterii] = useState<string | null>(null);
 
   // D4: auto-bieg obliczeń po zapisie + raport zgodności + BOM (opt-in, domyślnie tak).
   const [autoBieg, setAutoBieg] = useState(true);
@@ -250,6 +256,32 @@ export function KreatorZrodlaOze() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (dane.source_technology !== 'BESS') return undefined;
+    let cancelled = false;
+    setBladBaterii(null);
+    fetchBessBatteryTypes()
+      .then((lista) => {
+        if (!cancelled) setBaterie(lista);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setBaterie([]);
+        setBladBaterii(getCatalogErrorMessage(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dane.source_technology]);
+  const opcjeBaterii = useMemo(
+    () =>
+      baterie.map((b) => ({
+        id: b.id,
+        etykieta: `${b.name} · ${b.chemistry} · ${b.capacity_kwh.toLocaleString('pl-PL')} kWh · ${b.nominal_voltage_dc_v.toLocaleString('pl-PL')} V DC`,
+      })),
+    [baterie],
+  );
 
   const tech = TECHNOLOGIE[dane.source_technology];
   const konwerteryTech = useMemo(
@@ -421,7 +453,7 @@ export function KreatorZrodlaOze() {
 
   const zmienTechnologie = useCallback((v: TechnologiaOze) => {
     // Zmiana technologii → inny katalog; wyczyść wybór falownika.
-    setDane((p) => ({ ...p, source_technology: v, converter_catalog_ref: null }));
+    setDane((p) => ({ ...p, source_technology: v, converter_catalog_ref: null, battery_catalog_ref: null }));
   }, []);
 
   // Krok „dobor" istnieje tylko dla wariantu blokowego — po zmianie na nN wróć do „katalog".
@@ -916,6 +948,21 @@ export function KreatorZrodlaOze() {
             blad={bladDlaPola('converter_catalog_ref')}
             testid="mvd-kreator-oze-konwerter"
           />
+          {dane.source_technology === 'BESS' ? (
+            <PoleKatalogu
+              etykieta={T.bateria}
+              wartosc={dane.battery_catalog_ref}
+              onZmiana={(v) => zmien('battery_catalog_ref', v)}
+              opcje={opcjeBaterii}
+              status={bladBaterii ? 'error' : 'ready'}
+              placeholder={T.bateriaPlaceholder}
+              komunikatBledu={bladBaterii ?? T.bateriaBlad}
+              blad={bladDlaPola('battery_catalog_ref')}
+              pomoc={T.bateriaPomoc}
+              wymagane
+              testid="mvd-kreator-oze-bateria"
+            />
+          ) : null}
           <KreatorSiatka kolumny={2}>
             <PoleLiczbowe
               etykieta={T.liczba}

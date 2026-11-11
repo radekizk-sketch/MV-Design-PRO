@@ -83,11 +83,13 @@ export function zbudujPayload(
   kontekst: KontekstZksn,
 ): Record<string, unknown> {
   const nazwa = data.nazwa.trim() || 'ZKSN SN';
+  // W5-C: pozycja normalna łączników portów tylko jawna — brak = niezadeklarowana.
+  const pozycjaNormalna = normalizeSwitchState(kontekst.switch_state);
   return {
     segment_id: kontekst.segment_id?.trim(),
     name: nazwa,
     branch_ports_count: data.branch_ports_count,
-    switch_state: normalizeSwitchState(kontekst.switch_state),
+    ...(pozycjaNormalna ? { switch_state: pozycjaNormalna } : {}),
     insert_at: { mode: 'RATIO', value: data.polozenie },
     catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'mv_branch_points'),
   };

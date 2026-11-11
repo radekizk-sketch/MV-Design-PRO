@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from typing import Any, Literal
-from uuid import NAMESPACE_URL, uuid5
 
 from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from enm.canonical_analysis import list_runs_for_case
 from enm.interlock_rules import blokady_zamkniecia, runtime_state_record
 from enm.models import (
+    TRYBY_PRACY_ZRODLA,
     Bay,
     BayBaseModel,
     BayCanonicalModel,
@@ -43,11 +43,11 @@ from enm.nastawy_zabezpieczen import (
     ETYKIETY_JEDNOSTEK_PROGU_PL,
     JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
-from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
+from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
-from enm.zajetosc_pol import zacisk_pola
+from enm.uziemienie_sekcji import UziemienieSekcji, uziemienie_sieci
+from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
 from network_model.core.uziemienie import TypPunktuNeutralnego
-from network_model.nazwy import nazwa_nadana
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
 #: z kanonu `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` — tej samej tablicy, z której backend nazywa
@@ -122,7 +122,13 @@ FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
 
 def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, Any]:
     branches = {branch.ref_id: branch for branch in enm.branches}
-    bays = collect_bays(enm)
+    # Karta W5-B: pola stacji czytane WPROST z rekordów `bays` (jedyny nośnik pól) — bez
+    # scalania dawnych słowników wpisów i bez syntezy pól GPZ z `gpz_sections` (pole GPZ bez
+    # rekordu = brak pola, nazwany w gotowości). Pola rozdzielnic odgałęźnych ZKSN nie
+    # należą do stacji (`BayBaseModel.substation_ref` jest wymagany) — `enm.pola.pola_zksn`.
+    bays = sorted(
+        pola_wszystkich_stacji(enm), key=lambda item: (item.substation_ref or "", item.ref_id)
+    )
     measurements = {measurement.ref_id: measurement for measurement in enm.measurements}
     measurements_by_bay = _group_measurements_by_bay(enm.measurements)
     protection_by_ref = {assignment.ref_id: assignment for assignment in enm.protection_assignments}
@@ -130,6 +136,9 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     transformers_by_bus = _group_transformers_by_bus(enm.transformers)
     sources_by_bus = _group_sources_by_bus(enm.sources)
     generators_by_bus = _group_generators_by_bus(enm.generators)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: droga doziemna pola czyta uziemienie sieci
+    # SN z JEDYNEJ funkcji (`enm.uziemienie_sekcji`) — raz na model, po szynie pola.
+    sekcja_szyny = {szyna: sekcja for sekcja in uziemienie_sieci(enm) for szyna in sekcja.szyny}
 
     finished_runs = [run for run in list_runs_for_case(case_id) if run.status == "FINISHED"]
     # Karta OD-14: wynik pola wiąże najnowszy bieg zwarcia METALICZNEGO (IEC 60909); bieg przez
@@ -190,8 +199,6 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
         )
 
-        bay_meta = bay.meta if isinstance(bay.meta, dict) else {}
-        switchgear_family_ref = bay_meta.get("switchgear_family_ref")
         base_model = BayBaseModel(
             bay_ref=bay.ref_id,
             bay_role=canonical_role,
@@ -207,8 +214,10 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             interlocks=interlocks,
             source_endpoint=source_endpoint,
             bay_template_ref=bay.bay_template_ref,
-            switchgear_family_ref=(
-                switchgear_family_ref if isinstance(switchgear_family_ref, str) else None
+            switchgear_family_ref=bay.switchgear_family_ref,
+            equipment_data_state=stan_danych_wyposazenia(list(bay.primary_devices)),
+            equipment_assumed_data=dane_przyjete_wyposazenia(
+                [device.model_dump(mode="json") for device in bay.primary_devices]
             ),
         )
 
@@ -220,6 +229,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             measurements_by_bay=measurements_by_bay,
             transformers_by_bus=transformers_by_bus,
             sources_by_bus=sources_by_bus,
+            sekcja_szyny=sekcja_szyny,
             generators_by_bus=generators_by_bus,
             latest_sc_run_id=str(latest_sc_run.id) if latest_sc_run is not None else None,
             latest_pf_run_id=str(latest_pf_run.id) if latest_pf_run is not None else None,
@@ -279,109 +289,28 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     }
 
 
-def collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
-    """Pola stacji z modelu — JEDNO źródło dla wszystkich czytelników.
+def droga_doziemna_pola(enm: EnergyNetworkModel, bay_ref: str) -> BayEarthFaultPath | None:
+    """Droga doziemna pola ``bay_ref`` WPROST z modelu — bez warunku istnienia biegu.
 
-    Nazwa publiczna od karty KD-6: widok wytrzymałości aparatury pól
-    (``application/analyses/wytrzymalosc_aparatury_pol``) musi widzieć DOKŁADNIE
-    te same pola, co read-model pola. Druga implementacja zbierania pól
-    (Bay + ``field_specs`` stacji) rozjechałaby się przy pierwszej zmianie
-    kreatora stacji.
-    """
-    bays_by_ref = {bay.ref_id: bay for bay in enm.bays}
-    nazwy_elementow_pol: dict[object, object] = {bay.ref_id: bay.name for bay in enm.bays}
-
-    for substation in enm.substations:
-        for spec in _iter_field_specs(substation):
-            field_ref = spec.get("field_ref")
-            bus_ref = spec.get("bus_ref")
-            bay_role = spec.get("bay_role")
-            if (
-                not isinstance(field_ref, str)
-                or not field_ref
-                or field_ref in bays_by_ref
-                or not isinstance(bus_ref, str)
-                or not bus_ref
-                or not isinstance(bay_role, str)
-                or not bay_role
-            ):
-                continue
-
-            spec_meta = dict(spec.get("meta") or {})
-            # Powiązania producenckie z field_spec (konwencja kreatora stacji) —
-            # dostępne w read-modelu pola (E-27/E-11) i przez Bay.bay_template_ref
-            # dla dalszych konsumentów (SLD internal_layout, Reference Engine).
-            switchgear_family_ref = spec.get("switchgear_family_ref")
-            manufacturer_ref = spec.get("manufacturer_ref")
-            if switchgear_family_ref and "switchgear_family_ref" not in spec_meta:
-                spec_meta["switchgear_family_ref"] = switchgear_family_ref
-            if manufacturer_ref and "manufacturer_ref" not in spec_meta:
-                spec_meta["manufacturer_ref"] = manufacturer_ref
-            # G-STK-8: ograniczniki przepięć pola (add_surge_arrester_sn) — kanał
-            # field_spec. Przenieś na Bay.meta, aby _build_primary_devices
-            # zaprojektował je na aparaty SURGE_ARRESTER (glif SLD).
-            spec_arresters = spec.get("surge_arresters")
-            if isinstance(spec_arresters, list) and "surge_arresters" not in spec_meta:
-                spec_meta["surge_arresters"] = spec_arresters
-            bays_by_ref[field_ref] = Bay(
-                id=uuid5(NAMESPACE_URL, field_ref),
-                ref_id=field_ref,
-                # Nazwa specyfikacji, elementu pola `bay_ref` albo roli — jedna reguła
-                # operacji i odczytów, nigdy identyfikator pola (karta #144).
-                name=nazwa_pola_ze_specyfikacji(spec, nazwy_elementow_pol),
-                tags=list(spec.get("tags") or []),
-                meta=spec_meta,
-                bay_role=bay_role,
-                substation_ref=substation.ref_id,
-                bus_ref=bus_ref,
-                gpz_section_id=spec.get("gpz_section_id"),
-                equipment_refs=list(spec.get("equipment_refs") or []),
-                protection_ref=spec.get("protection_ref"),
-                protection_codes=list(spec.get("protection_codes") or []),
-                bay_template_ref=spec.get("bay_template_ref"),
-                # W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty pierwotne pola
-                # zmaterializowane z szablonu kreatora na field_spec — przenieś na
-                # snapshot Bay, aby konsumenci Bay.primary_devices (read-model pola,
-                # reference_engine/compliance, interlock W034) i adapter SLD widzieli
-                # TĘ SAMĄ konfigurację. Puste = brak danych (ścieżka konwencji).
-                primary_devices=list(spec.get("primary_devices") or []),
-            )
-
-    return sorted(bays_by_ref.values(), key=lambda item: (item.substation_ref, item.ref_id))
-
-
-def _iter_field_specs(substation: Any) -> list[dict[str, Any]]:
-    meta = getattr(substation, "meta", None)
-    if isinstance(meta, dict):
-        collected: list[dict[str, Any]] = []
-        for key in ("field_specs", "nn_field_specs"):
-            raw_specs = meta.get(key)
-            if isinstance(raw_specs, list):
-                collected.extend(spec for spec in raw_specs if isinstance(spec, dict))
-        if collected:
-            return collected
-
-    gpz_sections = getattr(substation, "gpz_sections", None) or []
-    synthesized: list[dict[str, Any]] = []
-    for section in gpz_sections:
-        field_ref = f"{substation.ref_id}:section:{section.section_id}:field"
-        synthesized.append(
-            {
-                "field_ref": field_ref,
-                "name": nazwa_nadana(section.line_field_name) or f"Pole GPZ {section.order + 1}",
-                "bay_role": "FEEDER",
-                "bus_ref": section.bus_ref,
-                "gpz_section_id": section.section_id,
-                "equipment_refs": [],
-                "protection_ref": None,
-                "tags": ["gpz_line_field"],
-                "meta": {
-                    "gpz_section_id": section.section_id,
-                    "gpz_section_order": section.order,
-                },
-            }
-        )
-    return synthesized
+    Ta sama funkcja (`_build_earth_fault_path`) co sekcja wyników projektu read-modelu pól;
+    tam droga jest pokazywana obok wyników biegu, ale sama jest DANĄ MODELU (sposób uziemienia
+    sieci SN z `enm.uziemienie_sekcji`, łańcuch pomiarowy pola, źródła i transformatory przy
+    szynie). Dobór funkcji zabezpieczeń pola wytwórcy (`api/generators.py`) czyta ją tutaj —
+    przed tą kartą czytał ją z read-modelu pod nieistniejącym kluczem, więc fakty pola zawsze
+    dostawały „sposób uziemienia nieznany” (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)."""
+    bay = next((b for b in pola_wszystkich_stacji(enm) if b.ref_id == bay_ref), None)
+    if bay is None:
+        return None
+    sekcja_szyny = {szyna: sekcja for sekcja in uziemienie_sieci(enm) for szyna in sekcja.szyny}
+    return _build_earth_fault_path(
+        bay=bay,
+        measurement_chain=_build_measurement_chain(
+            bay, _group_measurements_by_bay(enm.measurements)
+        ),
+        sources_by_bus=_group_sources_by_bus(enm.sources),
+        transformers_by_bus=_group_transformers_by_bus(enm.transformers),
+        sekcja=sekcja_szyny.get(bay.bus_ref),
+    )
 
 
 def _group_measurements_by_bay(measurements: list[Measurement]) -> dict[str, list[Measurement]]:
@@ -393,19 +322,6 @@ def _group_measurements_by_bay(measurements: list[Measurement]) -> dict[str, lis
     for items in grouped.values():
         items.sort(key=lambda item: item.ref_id)
     return grouped
-
-
-def punkt_przylaczenia_pola(bay: Bay) -> str:
-    """Punkt, w którym pole przyłącza element, któremu służy (POLA-W-TORZE): WŁASNY zacisk
-    pola (aparat pola w torze), a dla pola bez własnego zacisku — szyna pola. Zacisk z tej
-    samej funkcji, co zajętość pól (`enm.zajetosc_pol.zacisk_pola`)."""
-    meta = bay.meta or {}
-    szablon = meta.get("sn_field_template")
-    # Rekord pola (`bays`, stacja końca ciągu) niesie specyfikację pola w `sn_field_template`.
-    zacisk = zacisk_pola({"meta": meta}) or (
-        zacisk_pola(szablon) if isinstance(szablon, dict) else None
-    )
-    return zacisk or bay.bus_ref
 
 
 def _group_transformers_by_bus(transformers: list[Transformer]) -> dict[str, list[Transformer]]:
@@ -448,7 +364,10 @@ def _resolve_canonical_bay_role(
         if {"WIND_INVERTER", "FW_PMSG", "FW_DFIG", "FW_SCIG"} & generator_types:
             return "FW_SN"
         return "PV_SN"
-    return CANONICAL_BAY_ROLE_MAP.get(bay.bay_role, "LINIA_OUT")
+    # Każda rola modelu poza `OZE` ma rolę kanoniczną (`ROLE_POLA_MODELU` ⊆ aliasy kanonu —
+    # przypina `tests/enm/test_rola_pola_bkr.py`); dawny cichy domysł `LINIA_OUT` dla roli spoza
+    # mapy pokazywał np. pole baterii kondensatorów jako pole liniowe wyjściowe.
+    return CANONICAL_BAY_ROLE_MAP[bay.bay_role]
 
 
 def _build_primary_devices(
@@ -462,7 +381,7 @@ def _build_primary_devices(
 ) -> list[BayPrimaryDevice]:
     # W1 (RECENZJA_L2 §12.1, V12K-145): PRYMAT DANYCH nad przeliczeniem — jeśli
     # pole niesie już zmaterializowane aparaty pierwotne (szablon kreatora,
-    # `collect_bays`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
+    # rekord `Bay.primary_devices`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
     # zamiast wnioskować z equipment. Puste = przelicz z equipment jak dotąd.
     if bay.primary_devices:
         return list(bay.primary_devices)
@@ -481,7 +400,8 @@ def _build_primary_devices(
     if canonical_role == "TRANSFORMATOROWE":
         # POLA-W-TORZE: transformator leży na ZACISKU pola transformatorowego (aparat pola
         # w torze) — pole bez własnego zacisku (dane zastane) wskazuje szynę pola.
-        transformers = transformers_by_bus.get(punkt_przylaczenia_pola(bay), [])
+        punkt_pola = punkt_przylaczenia_pola(bay)
+        transformers = transformers_by_bus.get(punkt_pola, []) if punkt_pola else []
         if transformers:
             transformer = transformers[0]
             devices.append(
@@ -539,24 +459,16 @@ def _build_primary_devices(
             )
         )
 
-    # G-STK-8: ograniczniki przepięć z field_spec (Bay.meta["surge_arresters"]).
-    # Aparat gałęzi uziemiającej (GROUND_BRANCH, earthing_role=surge_ground) —
-    # rysowany na SLD (glif surge_arrester_10ka) i czytany przez most koordynacji
-    # izolacji IEC 60071. Zero domysłu: tylko gdy dane obecne.
-    bay_meta = bay.meta if isinstance(bay.meta, dict) else {}
-    raw_arresters = bay_meta.get("surge_arresters")
-    if isinstance(raw_arresters, list):
-        for item in raw_arresters:
-            if not isinstance(item, dict):
-                continue
-            device_ref = item.get("device_ref")
-            if not isinstance(device_ref, str) or not device_ref:
-                continue
-            catalog_ref = item.get("catalog_ref")
+    # G-STK-8: ograniczniki przepięć pola (typowane `Bay.surge_arresters`, operacja
+    # `add_surge_arrester_sn`). Aparat gałęzi uziemiającej (GROUND_BRANCH,
+    # earthing_role=surge_ground) — rysowany na SLD (glif surge_arrester_10ka) i czytany
+    # przez most koordynacji izolacji IEC 60071. Zero domysłu: tylko gdy dane obecne.
+    for ogranicznik in bay.surge_arresters:
+        if ogranicznik.device_ref:
             devices.append(
                 BayPrimaryDevice(
-                    device_ref=device_ref,
-                    catalog_ref=catalog_ref if isinstance(catalog_ref, str) else None,
+                    device_ref=ogranicznik.device_ref,
+                    catalog_ref=ogranicznik.catalog_ref,
                     symbol_ref="symbol:surge_arrester_10ka",
                     kind="SURGE_ARRESTER",
                     placement="GROUND_BRANCH",
@@ -612,12 +524,25 @@ _POLECENIE_W_TOKU = frozenset({"oczekuje", "przyjete"})
 
 def _stan_lacznika_w_modelu(
     device: BayPrimaryDevice, branches: dict[str, Branch]
-) -> Literal["zamkniety", "otwarty"] | None:
-    """Stan łącznika zapisany w MODELU (gałąź łączeniowa aparatu) — dana projektowa."""
+) -> tuple[Literal["zamkniety", "otwarty"], Literal["zamkniety", "otwarty"] | None] | None:
+    """Stan łącznika zapisany w MODELU (gałąź łączeniowa aparatu) — dana projektowa.
+
+    Zwraca (bieżące położenie z ``status``, pozycja normalna z ``normal_state`` albo
+    ``None``, gdy niezadeklarowana) — W5-C: dwa pojęcia z dwóch pól gałęzi, nigdy jedno
+    udające drugie (dawniej położenie normalne było kopią bieżącego, więc alarm
+    niezgodności z modelu nie mógł się zapalić)."""
     branch = branches.get(device.linked_ref or device.device_ref)
     if not isinstance(branch, SwitchBranch):
         return None
-    return "zamkniety" if branch.status == "closed" else "otwarty"
+    biezace: Literal["zamkniety", "otwarty"] = (
+        "zamkniety" if branch.status == "closed" else "otwarty"
+    )
+    normalne: Literal["zamkniety", "otwarty"] | None = (
+        None
+        if branch.normal_state is None
+        else ("zamkniety" if branch.normal_state == "closed" else "otwarty")
+    )
+    return biezace, normalne
 
 
 def _polecenie_w_toku(bay: Bay, device_ref: str) -> Literal["zamknij", "otworz"] | None:
@@ -657,9 +582,12 @@ def _zloz_stan_ruchowy(
     polozenie_normalne: dict[str, Literal["zamkniety", "otwarty"]] = {}
     for device in devices:
         rekord = runtime_state_record(bay, device.device_ref)
-        stan_modelu = _stan_lacznika_w_modelu(device, branches) if device.is_controllable else None
-        if stan_modelu is not None:
-            polozenie_normalne[device.device_ref] = stan_modelu
+        stan_w_modelu = (
+            _stan_lacznika_w_modelu(device, branches) if device.is_controllable else None
+        )
+        stan_modelu = stan_w_modelu[0] if stan_w_modelu is not None else None
+        if stan_w_modelu is not None and stan_w_modelu[1] is not None:
+            polozenie_normalne[device.device_ref] = stan_w_modelu[1]
         if rekord is None and stan_modelu is None:
             continue
         polecenie = _polecenie_w_toku(bay, device.device_ref)
@@ -710,7 +638,8 @@ def _build_operating_state(
     normal_position: Literal["zamkniety", "otwarty"],
     switch_state: BaySwitchState,
 ) -> BayOperatingState:
-    """Położenie normalne = stan łącznika w modelu; bieżące = stan aparatu (źródło albo model);
+    """Położenie normalne = pozycja normalna łącznika w modelu (``normal_state``); bieżące =
+    stan aparatu (źródło albo ``status`` w modelu);
     alarm niezgodności = znane bieżące różne od normalnego (porównanie, nie telemetria)."""
     current_position: Literal["zamkniety", "otwarty", "nieznany"] = (
         "zamkniety"
@@ -1062,9 +991,6 @@ def _resolve_integrity_status(
     return "po_migracji"
 
 
-_OPERATING_MODES = {"praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"}
-
-
 def _generator_operating_mode(generator: Generator) -> str:
     """F11.3 (dyrektywa D2, finał F9.6b): tryb pracy źródła z REALNEGO kanału
     danych — `Generator.meta['operating_mode']`, zapisywanego operacją
@@ -1075,7 +1001,7 @@ def _generator_operating_mode(generator: Generator) -> str:
     operating_mode`, semantyka modelu — nie zgadywanie read-modelu)."""
     meta = getattr(generator, "meta", None) or {}
     mode = meta.get("operating_mode")
-    if isinstance(mode, str) and mode in _OPERATING_MODES:
+    if isinstance(mode, str) and mode in TRYBY_PRACY_ZRODLA:
         return mode
     return "gotowosc"
 
@@ -1127,6 +1053,7 @@ def _build_project_results(
     measurements_by_bay: dict[str, list[Measurement]],
     transformers_by_bus: dict[str, list[Transformer]],
     sources_by_bus: dict[str, list[Source]],
+    sekcja_szyny: dict[str, UziemienieSekcji],
     generators_by_bus: dict[str, list[Generator]],
     latest_sc_run_id: str | None,
     latest_pf_run_id: str | None,
@@ -1159,6 +1086,7 @@ def _build_project_results(
         measurement_chain=measurement_chain,
         sources_by_bus=sources_by_bus,
         transformers_by_bus=transformers_by_bus,
+        sekcja=sekcja_szyny.get(bay.bus_ref),
     )
     proof_binding = BayProofBinding(
         proof_ref=f"proof:{bay.ref_id}:{run_ref}",
@@ -1332,15 +1260,36 @@ def _build_earth_fault_path(
     measurement_chain: BayMeasurementChain | None,
     sources_by_bus: dict[str, list[Source]],
     transformers_by_bus: dict[str, list[Transformer]],
+    sekcja: UziemienieSekcji | None,
 ) -> BayEarthFaultPath | None:
-    if measurement_chain is None and not sources_by_bus.get(bay.bus_ref):
+    """Droga doziemna pola. Pole sieci SN: sposób uziemienia i urządzenie uziemiające
+    (zespół uziemiający w ruchu) z JEDNEJ prawdy o uziemieniu sekcji (karta UX-04/POLE-ZU);
+    sekcja z odmową nazwaną (zespół bez elementu, sprzeczna deklaracja) → sposób nieznany
+    (`None`), nie domysł. Pole poza siecią SN (WN): opis punktu neutralnego źródła albo
+    transformatora przy szynie (sieć 110 kV za granicą modelu — `Source.neutral_grounding`)."""
+    punkty = sekcja.punkty_w_ruchu if sekcja is not None else ()
+    # Sieć SN ma ZAWSZE rozstrzygnięty sposób uziemienia (także „izolowany” — dana modelu,
+    # nie brak); `None` tylko dla pola poza siecią SN bez źródła i bez łańcucha pomiarowego.
+    if sekcja is None and measurement_chain is None and not sources_by_bus.get(bay.bus_ref):
         return None
-    transformers = transformers_by_bus.get(punkt_przylaczenia_pola(bay), [])
-    return BayEarthFaultPath(
-        neutral_grounding_mode=_resolve_neutral_grounding_mode(
+    punkt_pola = punkt_przylaczenia_pola(bay)
+    transformers = transformers_by_bus.get(punkt_pola, []) if punkt_pola else []
+    zespoly = [p.element_ref for p in punkty if p.rodzaj == "zespol_uziemiajacy"]
+    if sekcja is not None:
+        tryb: TypPunktuNeutralnego | None = (
+            None if sekcja.odmowy else sekcja.typ_punktu_neutralnego("spoczynek")
+        )
+        elementy_drogi = [bay.bus_ref, *(p.element_ref for p in punkty)]
+    else:
+        tryb = _resolve_neutral_grounding_mode(
             sources=sources_by_bus.get(bay.bus_ref, []),
             transformers=transformers,
-        ),
+        )
+        elementy_drogi = [bay.bus_ref] + [
+            source.ref_id for source in sources_by_bus.get(bay.bus_ref, [])
+        ]
+    return BayEarthFaultPath(
+        neutral_grounding_mode=tryb,
         zero_sequence_current_source=(
             measurement_chain.zero_sequence_current_source
             if measurement_chain is not None
@@ -1352,12 +1301,10 @@ def _build_earth_fault_path(
             else "brak"
         ),
         closure_path_elements=sorted(
-            [bay.bus_ref]
-            + [source.ref_id for source in sources_by_bus.get(bay.bus_ref, [])]
-            + [transformer.ref_id for transformer in transformers]
+            set(elementy_drogi + [transformer.ref_id for transformer in transformers])
         ),
         transformer_contribution_ref=transformers[0].ref_id if transformers else None,
-        grounding_device_ref=None,
+        grounding_device_ref=zespoly[0] if zespoly else None,
     )
 
 
@@ -1366,10 +1313,11 @@ def _resolve_neutral_grounding_mode(
     sources: list[Source],
     transformers: list[Transformer],
 ) -> TypPunktuNeutralnego | None:
-    """Sposob pracy punktu neutralnego przy szynie pola — ten sam slownik co
-    `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
+    """Sposob pracy punktu neutralnego przy szynie pola POZA siecia SN — ten sam slownik
+    co `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
     Nosniki: punkt neutralny transformatora przy szynie, potem opis punktu
-    neutralnego zrodla (GPZ) na tej szynie."""
+    neutralnego zrodla (siec 110 kV za granica modelu) na tej szynie. Siec SN czyta
+    `enm.uziemienie_sekcji` (`_build_earth_fault_path`)."""
     for transformer in transformers:
         if transformer.hv_neutral is not None:
             return transformer.hv_neutral.type

@@ -69,11 +69,24 @@ const shortCircuitPayload: ShortCircuitResults = {
   ],
 };
 
-function mockAnalysisFetch(trace = tracePayload, shortCircuit = shortCircuitPayload) {
+function mockAnalysisFetch(
+  trace = tracePayload,
+  shortCircuit = shortCircuitPayload,
+  powodBrakuLatex: string | null = null,
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.endsWith('/api/analysis-runs/run-1/export/proof/dostepnosc')) {
+        return new Response(
+          JSON.stringify({
+            run_id: 'run-1',
+            formaty: [{ format: 'latex', dostepny: powodBrakuLatex === null, powod_pl: powodBrakuLatex }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
       if (url.endsWith('/api/analysis-runs/run-1/results/trace')) {
         return new Response(JSON.stringify(trace), {
           status: 200,
@@ -94,6 +107,27 @@ function mockAnalysisFetch(trace = tracePayload, shortCircuit = shortCircuitPayl
 describe('ElementCalculationProofPanel', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('odnośnik „Pełny LaTeX” wyłącznie przy eksporcie potwierdzonym przez serwer (brama UI-02)', async () => {
+    mockAnalysisFetch();
+    const { unmount } = render(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} />,
+    );
+    const link = await screen.findByTestId('element-proof-latex-link');
+    expect(link.getAttribute('href')).toBe('/api/analysis-runs/run-1/export/proof/latex');
+    expect(screen.queryByTestId('element-proof-latex-niedostepny')).toBeNull();
+    unmount();
+
+    const powod = 'Przebieg nie ma śladu obliczeń — wywodu nie da się zbudować.';
+    mockAnalysisFetch(tracePayload, shortCircuitPayload, powod);
+    render(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('element-proof-latex-niedostepny').getAttribute('title')).toBe(powod),
+    );
+    expect(screen.queryByTestId('element-proof-latex-link')).toBeNull();
   });
 
   it('wiąże zaznaczony węzeł SLD z wynikiem zwarciowym i krokami wywodu', async () => {
@@ -133,6 +167,38 @@ describe('ElementCalculationProofPanel', () => {
     expect(renderedText).not.toContain('"im"');
     expect(renderedText).not.toContain('"re"');
     expect(renderedText).not.toContain('white-box');
+  });
+
+  it.each([
+    ['3F', 'zwarcie trójfazowe'],
+    ['2F', 'zwarcie dwufazowe'],
+    ['1F', 'zwarcie jednofazowe (doziemne)'],
+    // Token wiersza i kroku śladu backendu (`ShortCircuitType.TWO_PHASE_GROUND.value`); dawna
+    // kopia słownika znała „2FG" i pokazywała ten kod surowo.
+    ['2F+G', 'zwarcie dwufazowe z ziemią'],
+  ])('rodzaj zwarcia kroku %s po polsku z jednego słownika', async (kod, opis) => {
+    const [krok, ...reszta] = tracePayload.white_box_trace;
+    mockAnalysisFetch({
+      ...tracePayload,
+      white_box_trace: [
+        { ...krok, inputs: { ...krok.inputs, short_circuit_type: { value: kod } } },
+        ...reszta,
+      ],
+    });
+    render(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} />,
+    );
+    await screen.findByTestId('element-proof-short-circuit-table');
+    // Asercja na ŹRÓDLE podanym do KaTeX (`data-latex` wyrenderowanego wzoru), nie na
+    // `textContent`: KaTeX w trybie tekstowym składa litery z akcentem ostrym (ó, ś, ć, ń, ź)
+    // z litery bazowej i osobnego znaku akcentu, a spacje oddaje jako U+00A0 — tekst węzła
+    // nie jest więc równy etykiecie, choć ekran pokazuje ją poprawnie.
+    await waitFor(() => {
+      const zrodla = screen
+        .getAllByTestId('math-rendered')
+        .map((wezel) => wezel.getAttribute('data-latex') ?? '');
+      expect(zrodla.some((zrodlo) => zrodlo.includes(`\\text{${opis}}`))).toBe(true);
+    });
   });
 
   it('kontrakt pól kroku: LaTeX tylko z substitution_latex, proza substitution tekstem', async () => {

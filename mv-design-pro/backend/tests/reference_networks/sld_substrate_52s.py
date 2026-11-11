@@ -2,7 +2,7 @@
 SLD Substrate Builder — ≥52-station MV network for SLD render testing (M-05).
 
 Builds a deterministic MV network:
-  - GPZ 15 kV / 250 MVA
+  - GPZ: 110 kV network equivalent (3000 MVA) + one 110/15 kV 25 MVA transformer
   - Trunk magistrala: 22 segments (mix cable + overhead)
   - 12 trunk stations (type C with LINIA_ODG bay for laterals)
   - Laterals from every trunk station: 2-3 lateral stations each
@@ -69,6 +69,7 @@ from typing import Any
 
 import networkx as nx
 from enm.hash import hash_migawki_enm
+from enm.pola import pola_sn_stacji
 
 # ---------------------------------------------------------------------------
 # Catalog constants (verified against mv_converter_catalog.py + mv_transformer_catalog.py)
@@ -76,7 +77,8 @@ from enm.hash import hash_migawki_enm
 
 _CABLE_REF = "cable-tfk-yakxs-3x120"
 _LINE_REF = "line-base-al-120"  # overhead line 120 mm² Al
-_GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"
+_GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"  # SN equivalent of sibling builders
+_GPZ_WN_SN_TRANSFORMER_REF = "tr-wn-sn-110-15-25mva-yd11"
 _TRAFO_STANDARD = "tr-sn-nn-15-04-630kva-dyn11"  # 630 kVA — standard load station
 _TRAFO_DER_LARGE = "tr-sn-nn-15-04-2500kva-dyn11"  # 2500 kVA — FW/large-DER station
 #: Stacje z konfiguracją mieszaną PV 0,5 MW + BESS 0,5 MW (Σ S_n 1,1 MVA): kontrola O-53
@@ -195,15 +197,10 @@ def _try_op(
 
 def _feeder_port_ref(enm: dict[str, Any], station_ref: str) -> str | None:
     """Return the BRANCH port ref for the FEEDER (LINIA_ODG) bay."""
-    for stn in enm.get("substations", []):
-        if stn.get("ref_id") != station_ref:
-            continue
-        for spec in stn.get("meta", {}).get("field_specs", []):
-            role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
-            if role in ("LINIA_ODG", "FEEDER"):
-                field_ref = spec.get("field_ref")
-                if field_ref:
-                    return f"{field_ref}.BRANCH"
+    for spec in pola_sn_stacji(enm, station_ref):
+        role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
+        if role in ("LINIA_ODG", "FEEDER"):
+            return f"{spec['ref_id']}.BRANCH"
     return None
 
 
@@ -392,7 +389,6 @@ def _add_station_load(
         enm_feeder,
         "add_nn_load",
         {
-            "station_ref": station_ref,
             "bus_nn_ref": nn_ref,
             "feeder_ref": feeder_ref,
             "active_power_kw": power_kw,
@@ -424,13 +420,23 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         enm,
         "add_grid_source_sn",
         {
+            # Karta GPZ-MODEL: równoważnik sieci po stronie 110 kV (Sk″ = 3000 MVA,
+            # R/X = 0,1) i jeden transformator 110/15 kV 25 MVA na wspólnej szynie WN.
+            # Do tej karty substrat podawał równoważnik 250 MVA na szynach SN i ŻĄDAŁ
+            # transformatora (`hv_voltage_kv` + `transformer_sn_mva`) — rysunek niósł
+            # szynę 110 kV i transformator bez zasilania. Kontrakty SLD substratu badają
+            # kolumnę WN bloku GPZ (tabliczka TR, szyna WN), więc przepisanie wybiera
+            # tryb, w którym transformator JEST elementem modelu obliczeniowego.
             "voltage_kv": 15.0,
-            "source_name": "GPZ Referencyjny 15 kV",
-            "sk3_mva": 250.0,
-            "rx_ratio": 0.1,
-            "catalog_ref": _GPZ_SOURCE_REF,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
+            "source_name": "GPZ Referencyjny 110 kV",
+            "manual_equivalent": {
+                "short_circuit_input_side": "HV_110",
+                "hv_voltage_kv": 110.0,
+                "sk3_hv_mva": 3000.0,
+                "rx_ratio": 0.1,
+            },
+            "transformer_count": 1,
+            "transformer_catalog_ref": _GPZ_WN_SN_TRANSFORMER_REF,
         },
     )
 

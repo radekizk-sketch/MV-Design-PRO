@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ENM TypeScript types — structural & type guard tests.
  *

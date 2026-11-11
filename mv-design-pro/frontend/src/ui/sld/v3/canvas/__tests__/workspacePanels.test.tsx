@@ -352,17 +352,25 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     // Każdy wpis symbolu w panelu odpowiada symbolowi REALNIE obecnemu na scenie.
     for (const item of panel.querySelectorAll('[data-testid^="sld-v3-legend-panel-item-"]')) {
       const id = item.getAttribute('data-testid')!.replace('sld-v3-legend-panel-item-', '');
-      // Wpisy LINII (nie symboli): kabel, koniec otwarty, znak powiązania (karta
-      // SLD-SUBSTRAT — rezerwa pierścieniowa substratu) i nota o punkcie neutralnym.
-      if (id === 'cable' || id === 'openTerminal' || id === 'tieMarker' || id === 'sn-neutral-earthing') continue;
+      // Wpisy LINII (nie symboli): kabel, linia napowietrzna (K2b §0.4), koniec
+      // otwarty, znak powiązania (karta SLD-SUBSTRAT — rezerwa pierścieniowa
+      // substratu) i nota o punkcie neutralnym.
+      if (['cable', 'overhead', 'openTerminal', 'tieMarker', 'sn-neutral-earthing'].includes(id)) continue;
       expect(presentIds.has(id as never)).toBe(true);
     }
   });
 
-  it('"overhead" (linia napowietrzna) NIGDY nie pojawia się w panelu — v3 nie renderuje tego stylu linii (fałszywy wpis byłby fabrykacją)', () => {
+  // K2b §0.4 (przepisane): dawniej „overhead NIGDY" — v3 nie rysował linii
+  // napowietrznej innym stylem niż kabel, więc wpis byłby fabrykacją. Od K2b
+  // odcinek linii napowietrznej (`Branch.type = 'line_overhead'`, przez adapter)
+  // jest przerywany, więc intencja „zero fabrykacji" brzmi teraz: wpis jest
+  // DOKŁADNIE wtedy, gdy scena ma odcinek napowietrzny (fikstura ma 8 linii).
+  it('"overhead" (linia napowietrzna) jest w panelu dokładnie wtedy, gdy scena rysuje odcinek napowietrzny', () => {
+    const scene = buildSceneV3(enm, 2);
+    expect(scene.segments.some((seg) => seg.meta?.lineType === 'overhead')).toBe(true);
     render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
     fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
-    expect(screen.queryByTestId('sld-v3-legend-panel-item-overhead')).toBeNull();
+    expect(screen.getByTestId('sld-v3-legend-panel-item-overhead')).toBeInTheDocument();
   });
 
   it('zamknięcie panelu (drugi klik) przywraca kanwę do stanu bez legendy — dok zostaje, panel znika', () => {

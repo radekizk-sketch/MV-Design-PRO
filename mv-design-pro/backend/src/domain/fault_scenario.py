@@ -34,6 +34,7 @@ from network_model.core.impedancja_przejscia import (
     OPISY_ODMOW_IMPEDANCJI,
     kod_odmowy_impedancji,
 )
+from network_model.core.uziemienie import StanAwsc, stan_awsc_z_danych
 from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.nazwy import jest_nazwa
 from network_model.odmowa_danych import OdmowaNazwana
@@ -173,6 +174,12 @@ class ShortCircuitConfig:
     biegu ``fault.czas_tb_wartosc_robocza``);
     wartość niefizyczna = odmowa ``fault.czas_tb_niepoprawny``
     (``network_model.core.czas_wylaczenia.czas_tb_z_danych`` — jedna reguła danych).
+
+    ``stan_awsc`` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, ENEA Zeszyt 1 §16 / Z.13): stan
+    automatyki wymuszania składowej czynnej sieci skompensowanej w tym przypadku —
+    ``spoczynek`` (stan normalny: dławik sam, Z_N = jX_L) albo ``zalaczony`` (rezystor
+    wymuszający równolegle z dławikiem, Z_N = R‖jX_L). Parametr przypadku, nie modelu
+    (Case Immutability Rule); wartość spoza słownika = odmowa ``fault.stan_awsc_niepoprawny``.
     """
 
     scenariusz: Scenario
@@ -180,6 +187,7 @@ class ShortCircuitConfig:
     thermal_time_seconds: float = 1.0
     include_branch_contributions: bool = False
     breaking_time_seconds: float | None = None
+    stan_awsc: StanAwsc = "spoczynek"
 
     def __post_init__(self) -> None:
         if self.scenariusz not in ("MAX", "MIN"):
@@ -187,6 +195,7 @@ class ShortCircuitConfig:
                 f"Scenariusz współczynnika c musi być MAX albo MIN, otrzymano: {self.scenariusz!r}"
             )
         czas_tb_z_danych(self.breaking_time_seconds)
+        stan_awsc_z_danych(self.stan_awsc)
 
     def to_dict(self) -> dict[str, Any]:
         dane: dict[str, Any] = {
@@ -199,6 +208,10 @@ class ShortCircuitConfig:
         # (i haszują) bajt w bajt jak przed kartą.
         if self.breaking_time_seconds is not None:
             dane["breaking_time_seconds"] = float(self.breaking_time_seconds)
+        # Addytywnie: klucz tylko przy AWSC załączonej — scenariusze w stanie normalnym
+        # serializują się (i haszują) bajt w bajt jak przed kartą UX-04/POLE-ZU-SKLADOWA-ZEROWA.
+        if self.stan_awsc != "spoczynek":
+            dane["stan_awsc"] = self.stan_awsc
         return dane
 
     @classmethod
@@ -224,6 +237,7 @@ class ShortCircuitConfig:
             thermal_time_seconds=data.get("thermal_time_seconds", 1.0),
             include_branch_contributions=data.get("include_branch_contributions", False),
             breaking_time_seconds=czas_tb_z_danych(data.get("breaking_time_seconds")),
+            stan_awsc=stan_awsc_z_danych(data.get("stan_awsc")),
         )
 
 

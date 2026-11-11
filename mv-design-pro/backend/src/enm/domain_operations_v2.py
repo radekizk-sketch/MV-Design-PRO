@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import copy
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -52,7 +52,7 @@ from network_model.catalog.wartosci_robocze import (
     blad_wartosci_maszyny,
 )
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
-from network_model.nazwy import jest_nazwa, nazwa_nadana
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import (
     km_na_m,
     kvar_na_mvar,
@@ -63,11 +63,22 @@ from network_model.pochodne import (
     mvar_na_kvar,
     mw_na_kw,
 )
-from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, pasmo_napieciowe, w_pasmie_nn
+from network_model.pochodne.pasma_napieciowe import (
+    OPIS_PASMA_NN,
+    izolacja_pokrywa_siec,
+    napiecie_baterii_pasuje_do_sieci,
+    napiecie_najwyzsze_sieci_kv,
+    napiecie_sieci_w_strefie_a_maszyny,
+    napiecie_wymagane_izolacji_kv,
+    pasmo_napieciowe,
+    to_samo_napiecie_znamionowe,
+    w_pasmie_nn,
+)
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
 from .assembler import czestotliwosc_studium_hz
+from .bateria_kondensatorow import zapisz_tabliczke_baterii
 from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .deklaracje_modulu import pola_nc_rfg_generatora
 from .domain_operations import (
@@ -75,19 +86,19 @@ from .domain_operations import (
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
     POLE_RODZAJU_POLA,
+    _aparaty_i_konfiguracja_pola,
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
     _apply_screen_bonding,
-    _build_field_spec,
     _compute_seed,
     _copy_split_segment_fields,
-    _error_legacy_field_write_disabled,
     _error_response,
-    _find_element,
-    _find_legacy_field_element_collection,
+    _identyfikatory_modelu,
+    _konfiguracja_pola,
     _make_id,
     _materialize_catalog_payload,
+    _nazwa_pola_w_modelu,
     _odmowa_typu_ladunku,
     _opt_float_any,
     _powod_odmowy_tolerancji_nn,
@@ -122,15 +133,25 @@ from .katalog_projektu_karty import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
-from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
-from .models import liczba_torow
+from .models import TRYBY_PRACY_ZRODLA, liczba_torow
 from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import (
     nazwa_elementu,
     nazwa_nadana_pozycji_katalogu,
-    nazwa_pola_ze_specyfikacji,
     opis_bez_nazwy,
 )
+from .operacje_lacznikow import close_switch, open_switch, set_normal_open_point
+from .pola import (
+    dodaj_pole,
+    pola_nn_stacji,
+    pola_sn_stacji,
+    pola_stacji,
+    pole_istnieje,
+    punkt_przylaczenia_pola,
+    zbuduj_pole,
+    zmien_pole,
+)
+from .pola import pole as pole_modelu
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     PlanPolaKatalogowego,
@@ -140,12 +161,15 @@ from .pole_katalogowe import (
     rozwiaz_plan_pola,
 )
 from .rola_pola_sn import (
+    ROLE_POLA_MODELU,
     kanoniczna_rola_pola_sn,
     nazwa_pola_zrodlowego_sn,
     nazwa_roli_pola_sn,
 )
 from .slownik_komunikatow import (
     NAZWY_KLAS_APARATU_NN_PL,
+    NAZWY_OSADZENIA_ZRODLA_PL,
+    NAZWY_TRYBOW_PRACY_ZRODLA_PL,
     NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
     etykieta_parametru,
     lista_pl,
@@ -153,11 +177,13 @@ from .slownik_komunikatow import (
     nazwa_technologii_zrodla,
     opis_elementu,
     opis_nazwy,
+    opis_obiektu,
     opis_pozycji_katalogu,
     pole,
     w_cudzyslowie,
     wartosc_w_zdaniu,
 )
+from .topology import transformatory_zasilajace_gpz
 from .topology_ops import (
     attach_protection,
     create_branch,
@@ -169,52 +195,13 @@ from .topology_ops import (
 from .tor_pola import szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
-
-
-def _field_ref_exists(enm: dict[str, Any], field_ref: str) -> bool:
-    if any(bay.get("ref_id") == field_ref for bay in enm.get("bays", [])):
-        return True
-    for sub in enm.get("substations", []):
-        for key in ("field_specs", "nn_field_specs"):
-            raw_specs = _substation_meta_specs(sub, key)
-            if any(spec.get("field_ref") == field_ref for spec in raw_specs):
-                return True
-    return False
-
-
-def _field_record(enm: dict[str, Any], field_ref: str) -> dict[str, Any] | None:
-    for bay in enm.get("bays", []):
-        if isinstance(bay, dict) and bay.get("ref_id") == field_ref:
-            return bay
-    for sub in enm.get("substations", []):
-        for key in ("field_specs", "nn_field_specs"):
-            for spec in _substation_meta_specs(sub, key):
-                if spec.get("field_ref") == field_ref:
-                    return spec
-    return None
-
-
-def _update_field_spec(
-    enm: dict[str, Any],
-    field_ref: str,
-    values: dict[str, Any],
-) -> None:
-    for bay in enm.get("bays", []):
-        if isinstance(bay, dict) and bay.get("ref_id") == field_ref:
-            bay.update(values)
-            return
-    for sub in enm.get("substations", []):
-        for key in ("field_specs", "nn_field_specs"):
-            for spec in _substation_meta_specs(sub, key):
-                if spec.get("field_ref") == field_ref:
-                    spec.update(values)
-                    return
+from .wyposazenie_pola import set_bay_equipment
 
 
 def _opis_pola(enm: dict[str, Any], field_ref: object, rodzaj: str = "Pole") -> str:
-    """Pole do treści komunikatu: nazwa z modelu (element `bays` albo specyfikacja pola
-    stacji) — nigdy identyfikator pola (karta #142)."""
-    record = _field_record(enm, field_ref) if isinstance(field_ref, str) else None
+    """Pole do treści komunikatu: nazwa rekordu pola z modelu — nigdy identyfikator pola
+    (karta #142)."""
+    record = pole_modelu(enm, field_ref) if isinstance(field_ref, str) else None
     return opis_nazwy(record.get("name") if isinstance(record, dict) else None, rodzaj)
 
 
@@ -227,78 +214,23 @@ def _nazwa_pola(enm: dict[str, Any], field_ref: str) -> str:
     czasu wyłączenia na ekranie wyników zwarciowych. Nazwa pola jest w modelu;
     referencja nigdy nie jest nazwą (karta #144 §0.1).
 
-    Kolejność źródeł (ta sama dla CT, VT i zabezpieczenia pola): nazwa rekordu pola
-    (element `bays` albo specyfikacja pola stacji); dla specyfikacji bez nazwy — nazwa
-    elementu pola, które opisuje (`bay_ref`; operacje stacji nadają nazwę elementowi,
-    a specyfikacja jej nie powiela); pole SN bez nazwy — nazwa roli z jednej mapy ról
-    (`nazwa_roli_pola_sn`, karta #140); pole nN bez nazwy — polski opis braku.
+    Źródło (to samo dla CT, VT i zabezpieczenia pola): nazwa rekordu pola — builder
+    `enm.pola.zbuduj_pole` nadaje ją KAŻDEMU polu (nazwa projektanta albo nazwa roli
+    z kanonu ról SN/nN), więc nie ma już drugiej reguły nazwy po stronie czytelnika.
     """
-    nazwy_elementow_pol: dict[object, object] = {
-        bay.get("ref_id"): bay.get("name") for bay in enm.get("bays", []) if isinstance(bay, dict)
-    }
-    record = _field_record(enm, field_ref)
-    if not isinstance(record, dict):
-        return "Pole bez nazwy"
-    pole_nn = any(
-        spec is record
-        for sub in enm.get("substations", [])
-        if isinstance(sub, dict)
-        for spec in _substation_meta_specs(sub, "nn_field_specs")
-    )
-    if pole_nn:
-        return nazwa_nadana(record.get("name")) or "Pole nN bez nazwy"
-    return nazwa_pola_ze_specyfikacji(record, nazwy_elementow_pol)
-
-
-def _field_station_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
-    """Szyna z wpisu `nn_field_specs` (sprzed promocji).
-
-    WYŁĄCZNIE do kontroli zgodności formularza (add_nn_load akceptuje starą
-    szynę stacji jako alias tej samej instalacji) — NIE do przyłączania
-    elementów. Przyłączenia idą przez `_field_bus_ref` (jedno źródło prawdy).
-    """
-    record = _field_record(enm, field_ref)
-    bus_ref = record.get("bus_ref") if isinstance(record, dict) else None
-    return bus_ref if isinstance(bus_ref, str) and bus_ref.strip() else None
+    return _nazwa_pola_w_modelu(enm, field_ref)
 
 
 def _field_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
-    """Szyna PRZYŁĄCZENIA dla pola — jedno źródło prawdy dla WSZYSTKICH
-    konsumentów (add_ct/add_vt/kabel nN z pola/odbiór nN/SPD): po promocji
-    `nn_field_specs` zwraca szynę odpływu ZA aparatem (LV-INV-12), dla pól
-    niepromowanych (w tym SN) — szynę z wpisu. Reguła KLASA/predykaty parami:
-    rozdzielenie „szyna wpisu" vs „szyna przyłączenia" żyje tylko TUTAJ."""
-    promoted = _promoted_feeder_downstream_bus_ref(enm, field_ref)
-    if promoted is not None:
-        return promoted
-    return _field_station_bus_ref(enm, field_ref)
-
-
-def _promoted_feeder_downstream_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
-    """Szyna odpływu (za aparatem) dla wpisu `nn_field_specs`, gdy JUŻ promowany.
-
-    P0.1 nN (karta P0.1 §0 pkt 4/5, LV-INV-12): `enm/migrations/
-    nn_field_specs_promocja.py` znaczy aparat odpływowy `meta.
-    nn_field_migrowany_z == field_ref` — to JEDYNE źródło prawdy o tym, czy
-    ten wpis ma już realny odpowiednik w grafie (ta sama nazwa klucza po obu
-    stronach — migracja i ten odczyt — inaczej rozjadą się przy pierwszej
-    zmianie jednej z dwóch kopii nazwy).
-    """
-    for branch in enm.get("branches", []):
-        if not isinstance(branch, dict):
-            continue
-        meta = branch.get("meta")
-        if not isinstance(meta, dict):
-            continue
-        if meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF) != field_ref:
-            continue
-        to_ref = branch.get("to_bus_ref")
-        return to_ref if isinstance(to_ref, str) and to_ref.strip() else None
-    return None
+    """Szyna PRZYŁĄCZENIA dla pola — jedno źródło prawdy dla WSZYSTKICH konsumentów
+    (add_ct/add_vt/kabel nN z pola/odbiór nN/SPD): własny zacisk pola (aparat pola w torze;
+    pole nN dostaje go promocją aparatów nN — LV-INV-12), a bez zacisku szyna pola. Ta sama
+    reguła dla pól SN i nN (`enm.pola.punkt_przylaczenia_pola`)."""
+    return punkt_przylaczenia_pola(pole_modelu(enm, field_ref))
 
 
 def _field_equipment_refs(enm: dict[str, Any], field_ref: str) -> list[str]:
-    record = _field_record(enm, field_ref)
+    record = pole_modelu(enm, field_ref)
     raw_refs = record.get("equipment_refs") if isinstance(record, dict) else []
     return [ref for ref in raw_refs if isinstance(ref, str)] if isinstance(raw_refs, list) else []
 
@@ -409,7 +341,6 @@ def _catalog_binding_from_payload(
         item_id = (
             normalized.get("catalog_item_id")
             or normalized.get("catalog_ref")
-            or normalized.get("item_id")
             or payload.get("catalog_item_id")
             or payload.get("catalog_ref")
         )
@@ -441,7 +372,7 @@ def _catalog_binding_from_payload(
 def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
     if not isinstance(binding, dict):
         return None
-    for key in ("catalog_item_id", "catalog_ref", "id"):
+    for key in ("catalog_item_id", "catalog_ref"):
         value = binding.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
@@ -529,10 +460,6 @@ def _nazwa_z_klasa_szyny(enm: dict[str, Any], bus_ref: object, *czlony: str) -> 
     napiecie = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
     klasa = pasmo_napieciowe(napiecie) or ""
     return " ".join(c for c in (klasa if c == "{klasa}" else c for c in czlony) if c)
-
-
-def _same_nominal_voltage(left_kv: float, right_kv: float, tolerance_kv: float = 1e-6) -> bool:
-    return abs(left_kv - right_kv) <= tolerance_kv
 
 
 def _ta_sama_niepusta_pozycja_katalogowa(
@@ -686,16 +613,6 @@ def _default_relay_settings(relay_type: str) -> list[dict[str, Any]]:
     ]
 
 
-def _substation_meta_specs(substation: dict[str, Any], key: str) -> list[dict[str, Any]]:
-    meta = substation.get("meta")
-    if not isinstance(meta, dict):
-        return []
-    raw_specs = meta.get(key)
-    if not isinstance(raw_specs, list):
-        return []
-    return [spec for spec in raw_specs if isinstance(spec, dict)]
-
-
 def _resolve_station_for_field_write(
     enm: dict[str, Any],
     *,
@@ -710,29 +627,6 @@ def _resolve_station_for_field_write(
     if not bus_ref:
         return None
     return _find_station_for_bus(enm, bus_ref)
-
-
-def _append_substation_field_spec(
-    new_enm: dict[str, Any],
-    *,
-    station_ref: str,
-    meta_key: str,
-    field_spec: dict[str, Any],
-) -> bool:
-    for sub in new_enm.get("substations", []):
-        if sub.get("ref_id") != station_ref and sub.get("id") != station_ref:
-            continue
-        meta = sub.setdefault("meta", {})
-        if not isinstance(meta, dict):
-            meta = {}
-            sub["meta"] = meta
-        raw_specs = meta.get(meta_key)
-        if not isinstance(raw_specs, list):
-            raw_specs = []
-            meta[meta_key] = raw_specs
-        raw_specs.append(field_spec)
-        return True
-    return False
 
 
 def _field_adapter_error(
@@ -784,7 +678,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "ct.bay_missing",
         )
     if field_ref:
-        if not _field_ref_exists(enm, field_ref):
+        if not pole_istnieje(enm, field_ref):
             return _error_response(
                 "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.", "ct.field_not_found"
             )
@@ -981,7 +875,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             f"Uzupełnij pole {pole('bay_ref')} — wskaż pole, w którym ma stanąć przekładnik.",
             "vt.bay_missing",
         )
-    if not _field_ref_exists(enm, field_ref):
+    if not pole_istnieje(enm, field_ref):
         return _error_response(
             "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.", "vt.field_not_found"
         )
@@ -1239,7 +1133,7 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "chronić zabezpieczenie.",
             "relay.bay_missing",
         )
-    if field_ref and not _field_ref_exists(enm, field_ref):
+    if field_ref and not pole_istnieje(enm, field_ref):
         return _error_response(
             "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.", "relay.field_not_found"
         )
@@ -1398,7 +1292,7 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             )
             break
     if field_ref:
-        _update_field_spec(new_enm, field_ref, {"protection_ref": protection_ref})
+        zmien_pole(new_enm, field_ref, protection_ref=protection_ref)
 
     return _response(
         new_enm,
@@ -1807,7 +1701,7 @@ def _resolve_catalog_ref(
     if not isinstance(binding, dict):
         return None, "catalog.binding_invalid"
 
-    item_id = binding.get("catalog_item_id") or binding.get("item_id")
+    item_id = binding.get("catalog_item_id")
     if not isinstance(item_id, str) or not item_id.strip():
         return None, "catalog.binding_invalid"
 
@@ -2102,13 +1996,22 @@ def _normalize_nn_source_field_kind(payload: dict[str, Any]) -> str:
 _KOD_BLEDU_POLA_KATALOGOWEGO = KOD_BLEDU_POLA_KATALOGOWEGO
 
 
-def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
+def _normalize_sn_bay_role(payload: dict[str, Any]) -> str | None:
+    """Rola pola z ładunku wg JEDNEJ listy ról modelu (`enm.rola_pola_sn.ROLE_POLA_MODELU`).
+
+    Brak roli w ładunku → domyślna rola kontraktu `AddSnBayPayload` (`FEEDER`). Rola podana,
+    ale spoza listy → ``None`` (wołający odmawia operacji kodem `sn.bay_role_unknown`); dawna
+    cicha zamiana nieznanej roli na `FEEDER` budowała pole liniowe z żądania pola innej roli
+    (np. `BKR` przed tą kartą).
+    """
     raw_role = payload.get("bay_role")
+    if raw_role is None:
+        return "FEEDER"
     if isinstance(raw_role, str):
         normalized = raw_role.strip().upper()
-        if normalized in {"IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"}:
+        if normalized in ROLE_POLA_MODELU:
             return normalized
-    return "FEEDER"
+    return None
 
 
 def _default_sn_bay_name(role: str) -> str:
@@ -2155,11 +2058,16 @@ def _resolve_bay_template_protection_codes(
     return protection_codes_for_bay_role(bay_role)
 
 
-def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj pole SN do istniejącej rozdzielnicy bez zapisu do legacy bays."""
-    odmowa_typu = _odmowa_typu_ladunku(payload, "add_sn_bay", {"tags": "lista"})
-    if odmowa_typu is not None:
-        return odmowa_typu
+def _pole_rekonfigurowane_i_szyna(
+    enm: dict[str, Any], payload: dict[str, Any]
+) -> tuple[str | None, Any]:
+    """Pole rekonfigurowane (`existing_field_ref`/`field_ref`) i szyna SN pola.
+
+    Rekonfiguracja pola bez wskazanej szyny bierze szynę ROZDZIELNICY, na której pole
+    stoi (`bus_ref` rekordu) — nie zacisk pola (punkt przyłączenia elementu za
+    aparatem). Jedno źródło dla obu planów pola SN operacji `add_sn_bay` (deklaracja
+    rola + aparat oraz pole z katalogu rozdzielnic, `_pole_sn_z_katalogu`).
+    """
     existing_field_ref = payload.get("existing_field_ref") or payload.get("field_ref")
     existing_field_ref = (
         existing_field_ref.strip()
@@ -2168,7 +2076,41 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     )
     bus_ref = payload.get("bus_ref")
     if existing_field_ref and (not isinstance(bus_ref, str) or not bus_ref.strip()):
-        bus_ref = _field_bus_ref(enm, existing_field_ref)
+        bus_ref = (pole_modelu(enm, existing_field_ref) or {}).get("bus_ref")
+    return existing_field_ref, bus_ref
+
+
+def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj (albo przekonfiguruj) pole SN rozdzielnicy bez zapisu do legacy bays.
+
+    WYBÓR KATALOGOWY (`czy_wybor_katalogowy`: katalogowe pole rodziny, blok
+    fabryczny RMU albo `bay_template_ref` znane katalogowi) idzie przez plan pola
+    z katalogu rozdzielnic (`_pole_sn_z_katalogu`: napięcie szyny wobec karty rodziny,
+    rola pola z katalogu, tryb próby `dry_run` z werdyktem konfiguracji). Szablon
+    kanoniczny (spoza katalogu) i pole bez szablonu idą wprost do zapisu.
+
+    Do 2026-10 ten sam plan katalogowy miał drugie wejście — osobną operację
+    kanoniczną `add_sn_bay_from_catalog`, której nie wołał żaden ekran; skasowana
+    (V12K-352): jedna zdolność, jedna operacja.
+    """
+    if czy_wybor_katalogowy(payload):
+        return _pole_sn_z_katalogu(enm, payload)
+    wynik = _zapisz_pole_sn(enm, payload)
+    if payload.get("dry_run") and not wynik.get("error"):
+        # Tryb próby obowiązuje OBA plany pola: bez tego pole zadeklarowane rolą
+        # i aparatem zapisałoby się mimo `dry_run` (odpowiedź z migawką = zapis).
+        wynik = {**wynik, "dry_run": True}
+        wynik.pop("snapshot", None)
+    return wynik
+
+
+def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Zapis pola SN do ENM (zacisk pola + aparat główny + specyfikacja pola) — jedyny
+    pisarz pola SN dla obu planów pola operacji `add_sn_bay` (deklaracja i katalog)."""
+    odmowa_typu = _odmowa_typu_ladunku(payload, "add_sn_bay", {"tags": "lista"})
+    if odmowa_typu is not None:
+        return odmowa_typu
+    existing_field_ref, bus_ref = _pole_rekonfigurowane_i_szyna(enm, payload)
     station_ref = payload.get("station_ref")
 
     if not isinstance(bus_ref, str) or not bus_ref.strip():
@@ -2184,8 +2126,15 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
 
     bay_role = _normalize_sn_bay_role(payload)
-    raw_specs = _substation_meta_specs(station, "field_specs")
-    existing_field = _field_record(enm, existing_field_ref) if existing_field_ref else None
+    if bay_role is None:
+        return _error_response(
+            "Rola pola podana w żądaniu nie należy do słownika ról pól SN. Dozwolone: "
+            + lista_pl((nazwa_roli_pola_sn(rola) for rola in ROLE_POLA_MODELU), "albo")
+            + ".",
+            "sn.bay_role_unknown",
+        )
+    pola_sn = pola_sn_stacji(enm, station.get("ref_id"))
+    existing_field = pole_modelu(enm, existing_field_ref) if existing_field_ref else None
     if existing_field_ref and not isinstance(existing_field, dict):
         return _error_response("Nie znaleziono pola SN do konfiguracji.", "sn.field_not_found")
     if existing_field and existing_field.get("bus_ref") != bus_ref:
@@ -2219,16 +2168,16 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # SWOJEJ pozycji, pole nowe — na końcu sekwencji. Tranzyt rozdzielnicy
     # z JEDNEGO źródła prawdy (`szyna_prowadzi_tranzyt_sn`): para tranzytowa
     # dopływ+odpływ w rolach pól po operacji.
-    specs_szyny = [spec for spec in raw_specs if spec.get("bus_ref") == bus_ref]
+    pola_szyny = [rekord for rekord in pola_sn if rekord.get("bus_ref") == bus_ref]
     sekwencja_po_operacji: list[tuple[object, object]] = []
     nowy_wpis = (bay_role, funkcja_pomiaru)
     wpis_zastapiony = False
-    for spec in specs_szyny:
-        if existing_field_ref and spec.get("field_ref") == existing_field_ref:
+    for rekord in pola_szyny:
+        if existing_field_ref and rekord.get("ref_id") == existing_field_ref:
             sekwencja_po_operacji.append(nowy_wpis)
             wpis_zastapiony = True
         else:
-            sekwencja_po_operacji.append((spec.get("bay_role"), spec.get("funkcja_pomiaru")))
+            sekwencja_po_operacji.append((rekord.get("bay_role"), rekord.get("funkcja_pomiaru")))
     if not wpis_zastapiony:
         sekwencja_po_operacji.append(nowy_wpis)
     blad_bramy = blad_pomiaru_w_torze_tranzytu(
@@ -2240,30 +2189,24 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         return blad_bramy
 
     def _utrwal_pomiar_pola(model: dict[str, Any]) -> None:
-        """Funkcja i rodzaj pomiaru w specyfikacji pola po rekonfiguracji.
+        """Funkcja i rodzaj pomiaru na rekordzie pola po rekonfiguracji.
 
         Pole pomiarowe niesie rozstrzygniętą funkcję (i rodzaj układu, gdy jest
         układem pomiarowym energii); pole rekonfigurowane na inną rolę TRACI
-        oba atrybuty — klucze nie mogą kłamać o roli pola.
+        oba atrybuty — pola rekordu nie mogą kłamać o roli pola.
         """
-        rekord = _field_record(model, field_ref)
-        if not isinstance(rekord, dict):
-            return
         if bay_role == "MEASUREMENT":
-            rekord["funkcja_pomiaru"] = funkcja_pomiaru
-            if rodzaj_pomiaru is not None:
-                rekord["rodzaj_pomiaru"] = rodzaj_pomiaru
-            else:
-                rekord.pop("rodzaj_pomiaru", None)
+            zmien_pole(
+                model, field_ref, funkcja_pomiaru=funkcja_pomiaru, rodzaj_pomiaru=rodzaj_pomiaru
+            )
         else:
-            rekord.pop("funkcja_pomiaru", None)
-            rekord.pop("rodzaj_pomiaru", None)
+            zmien_pole(model, field_ref, funkcja_pomiaru=None, rodzaj_pomiaru=None)
 
     role_index = len(
         [
-            spec
-            for spec in raw_specs
-            if spec.get("bus_ref") == bus_ref and spec.get("bay_role") == bay_role
+            rekord
+            for rekord in pola_sn
+            if rekord.get("bus_ref") == bus_ref and rekord.get("bay_role") == bay_role
         ]
     )
     seed = _compute_seed(
@@ -2330,8 +2273,8 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     branch_type = _sn_bay_branch_type(rodzaj_z_katalogu or apparatus_kind)
 
     # V12K-058 (G-POLE-R): powiązania producenckie pola (szablon/rodzina/producent/
-    # zabezpieczenie) — trafiają na field_spec przez _build_field_spec (parytet ze stacją/
-    # GPZ). Reużycie infrastruktury Reference Engine zamiast równoległej ścieżki.
+    # zabezpieczenie) — trafiają na rekord pola przez `enm.pola.zbuduj_pole` (parytet ze
+    # stacją/GPZ). Reużycie infrastruktury Reference Engine zamiast równoległej ścieżki.
     def _clean_ref(value: object) -> str | None:
         return value.strip() if isinstance(value, str) and value.strip() else None
 
@@ -2363,8 +2306,17 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         }.items()
         if value
     }
-    producer_refs.update(wybor_bloku)
-    producer_refs.update(pochodzenie_pola)
+    if wybor_bloku:
+        producer_refs["wybor_bloku"] = dict(wybor_bloku)
+    # Identyfikator KONFIGURACJI pola wynika z szablonu (W1c) — rekonfiguracja szablonu
+    # zmienia go razem z nim (dawniej zostawał identyfikator poprzedniego szablonu).
+    konfiguracja_pola = _konfiguracja_pola(bay_template_ref)
+    if konfiguracja_pola:
+        producer_refs["config_id"] = konfiguracja_pola
+    # Karta ETYKIETA-STACJI-PRZELOTOWEJ: metadane pochodzenia (rodzaj pola katalogowego) na
+    # typowanym `Bay.metadane_pochodzenia` — ta sama droga co w operacjach stacyjnych.
+    if pochodzenie_pola:
+        producer_refs["metadane_pochodzenia"] = pochodzenie_pola
     # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
     # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
@@ -2375,7 +2327,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if protection_codes:
         producer_refs["protection_codes"] = protection_codes
     # W1 (RECENZJA_L2 §1/§12.1, V12K-145): materializacja aparatów PIERWOTNYCH
-    # pola z szablonu kreatora (BayTemplate.devices) → field_spec.primary_devices.
+    # pola z szablonu kreatora (BayTemplate.devices) → rekord pola `primary_devices`.
     # Domyka łańcuch „kreator → ENM → adapter SLD → scena": tor pierwotny pola
     # rysowany Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
     # szablonu §12.4. Wybór aparatu głównego (apparatus_kind) różnicuje pola
@@ -2475,26 +2427,22 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             )
             if not isinstance(existing_field_meta, dict):
                 existing_field_meta = {}
-            _update_field_spec(
+            zmien_pole(
                 new_enm,
                 field_ref,
-                {
-                    "name": field_name,
-                    "bay_role": bay_role,
-                    "equipment_refs": existing_equipment_refs,
-                    "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
-                    **producer_refs,
-                    "meta": {
-                        **existing_field_meta,
-                        "apparatus_kind": (
-                            apparatus_kind if isinstance(apparatus_kind, str) else None
-                        ),
-                        "catalog_binding": (
-                            copy.deepcopy(catalog_binding) if catalog_binding else None
-                        ),
-                        "default_device_ref": existing_apparatus_ref,
-                        "field_status": "CONFIGURED_FOR_TRUNK",
-                    },
+                name=field_name,
+                bay_role=bay_role,
+                equipment_refs=existing_equipment_refs,
+                gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
+                **producer_refs,
+                meta={
+                    **existing_field_meta,
+                    "apparatus_kind": (apparatus_kind if isinstance(apparatus_kind, str) else None),
+                    "catalog_binding": (
+                        copy.deepcopy(catalog_binding) if catalog_binding else None
+                    ),
+                    "default_device_ref": existing_apparatus_ref,
+                    "field_status": "CONFIGURED_FOR_TRUNK",
                 },
             )
             _utrwal_pomiar_pola(new_enm)
@@ -2583,62 +2531,66 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if existing_field_ref:
         existing_tags = existing_field.get("tags") if isinstance(existing_field, dict) else []
         existing_meta = existing_field.get("meta") if isinstance(existing_field, dict) else {}
-        _update_field_spec(
+        zmien_pole(
             new_enm,
             field_ref,
-            {
-                "name": field_name,
-                "bay_role": bay_role,
-                "bus_ref": bus_ref,
-                "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
-                "equipment_refs": [apparatus_ref],
-                "tags": list(existing_tags) if isinstance(existing_tags, list) else [],
-                **producer_refs,
-                "meta": {
-                    **(existing_meta if isinstance(existing_meta, dict) else {}),
-                    "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
-                    "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
-                    "terminal_bus_ref": terminal_bus_ref,
-                    "default_device_ref": apparatus_ref,
-                    "field_status": "CONFIGURED_FOR_TRUNK",
-                },
-            },
-        )
-        _utrwal_pomiar_pola(new_enm)
-    else:
-        field_spec = _build_field_spec(
-            field_ref=field_ref,
             name=field_name,
             bay_role=bay_role,
             bus_ref=bus_ref,
+            terminal_bus_ref=terminal_bus_ref,
             gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
             equipment_refs=[apparatus_ref],
-            protection_ref=protection_ref,
-            protection_codes=protection_codes,
-            bay_template_ref=bay_template_ref,
-            switchgear_family_ref=switchgear_family_ref,
-            manufacturer_ref=manufacturer_ref,
-            wybor_bloku=wybor_bloku,
-            metadane_pochodzenia=pochodzenie_pola,
-            primary_devices=primary_devices_spec or None,
-            tags=list(payload.get("tags") or []),
-            funkcja_pomiaru=funkcja_pomiaru if bay_role == "MEASUREMENT" else None,
-            rodzaj_pomiaru=rodzaj_pomiaru if bay_role == "MEASUREMENT" else None,
+            tags=list(existing_tags) if isinstance(existing_tags, list) else [],
+            **producer_refs,
             meta={
+                **(existing_meta if isinstance(existing_meta, dict) else {}),
                 "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
                 "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
-                "terminal_bus_ref": terminal_bus_ref,
                 "default_device_ref": apparatus_ref,
                 "field_status": "CONFIGURED_FOR_TRUNK",
             },
         )
-        if not _append_substation_field_spec(
+        _utrwal_pomiar_pola(new_enm)
+    else:
+        aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
+            field_ref=field_ref,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            wybor_bloku=wybor_bloku,
+            napiecie_szyny_kv=_bus_voltage_kv(new_enm, bus_ref),
+            primary_devices=primary_devices_spec or None,
+        )
+        dodaj_pole(
             new_enm,
-            station_ref=station["ref_id"],
-            meta_key="field_specs",
-            field_spec=field_spec,
-        ):
-            return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+            zbuduj_pole(
+                ref_id=field_ref,
+                name=field_name,
+                bay_role=bay_role,
+                bus_ref=bus_ref,
+                substation_ref=str(station["ref_id"]),
+                terminal_bus_ref=terminal_bus_ref,
+                gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
+                equipment_refs=[apparatus_ref],
+                protection_ref=protection_ref,
+                protection_codes=protection_codes,
+                bay_template_ref=bay_template_ref,
+                switchgear_family_ref=switchgear_family_ref,
+                manufacturer_ref=manufacturer_ref,
+                primary_devices=aparaty_pola,
+                config_id=konfiguracja_pola,
+                wybor_bloku=wybor_bloku,
+                metadane_pochodzenia=pochodzenie_pola,
+                tags=list(payload.get("tags") or []),
+                funkcja_pomiaru=funkcja_pomiaru if bay_role == "MEASUREMENT" else None,
+                rodzaj_pomiaru=rodzaj_pomiaru if bay_role == "MEASUREMENT" else None,
+                meta={
+                    "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+                    "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                    "default_device_ref": apparatus_ref,
+                    "field_status": "CONFIGURED_FOR_TRUNK",
+                },
+            ),
+        )
         created.insert(0, field_ref)
 
     return _response(
@@ -2700,8 +2652,12 @@ def _werdykt_niezgodnosci(komunikat: str, *, dry_run: bool) -> dict[str, Any]:
     return odpowiedz
 
 
-def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def _pole_sn_z_katalogu(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Materializacja pola stacji z KATALOGU rozdzielnic (S5: FieldInstance → BOM → ENM).
+
+    Plan katalogowy operacji `add_sn_bay` — woła go wyłącznie `add_sn_bay`, gdy
+    `czy_wybor_katalogowy(payload)` (ten sam predykat wybiera tę drogę i bramę API trybu
+    próby, `api.domain_ops_policy._proba_konfiguracji_pola_bez_zapisu`).
 
     Kanon: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §2–§5, §7 etap S5.
     Pole SN jest KOMPLETNĄ JEDNOSTKĄ FUNKCJONALNĄ konkretnej rodziny
@@ -2726,17 +2682,9 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     """
     dry_run = bool(payload.get("dry_run", False))
 
-    if not czy_wybor_katalogowy(payload):
-        return _werdykt_niezgodnosci(
-            "Operacja materializuje pole z katalogu rozdzielnic: wskaż "
-            f"{pole('complete_bay_template_ref')} albo {pole('factory_configuration_ref')} "
-            f"RMU razem z polem {pole('factory_unit_index')}.",
-            dry_run=dry_run,
-        )
-
     # Adresowanie pola sprawdzamy PRZED planem katalogowym: werdykt „konfiguracja
     # poprawna" dla szyny, której nie ma, byłby werdyktem o niczym.
-    bus_ref = payload.get("bus_ref")
+    _, bus_ref = _pole_rekonfigurowane_i_szyna(enm, payload)
     if not isinstance(bus_ref, str) or not bus_ref.strip():
         return _error_response(
             "Nie wskazano szyny SN, do której ma należeć pole — wybierz szynę rozdzielnicy "
@@ -2824,11 +2772,16 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         payload_pola[POLE_JEDNOSTKI_BLOKU] = plan.factory_unit_index
     if wariant_aparatu:
         payload_pola["apparatus_kind"] = wariant_aparatu
-    return add_sn_bay(enm, payload_pola)
+    return _zapisz_pole_sn(enm, payload_pola)
 
 
-def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Wewnętrzny zapis odpływu nN do meta.nn_field_specs."""
+def _add_nn_outgoing_field_internal(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    wiazanie_aparatu: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Wewnętrzny zapis odpływu nN — rekord `bays` na szynie nN stacji."""
     bus_nn_ref = payload.get("bus_nn_ref")
     station_ref = payload.get("station_ref")
 
@@ -2844,12 +2797,11 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
     if odmowa_pasma is not None:
         return odmowa_pasma
 
-    raw_specs = _substation_meta_specs(station, "nn_field_specs")
     feeder_index = len(
         [
-            spec
-            for spec in raw_specs
-            if spec.get("bus_ref") == bus_nn_ref and spec.get("bay_role") == "FEEDER"
+            rekord
+            for rekord in pola_nn_stacji(enm, station.get("ref_id"))
+            if rekord.get("bus_ref") == bus_nn_ref and rekord.get("bay_role") == "FEEDER"
         ]
     )
     seed = _compute_seed(
@@ -2861,32 +2813,34 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         }
     )
     feeder_ref = _make_id("nn", seed, "outgoing")
-    field_spec = _build_field_spec(
-        field_ref=feeder_ref,
-        name=nazwa_nadana(payload.get("field_name"))
-        or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Odpływ", "{klasa}"),
-        bay_role="FEEDER",
-        bus_ref=bus_nn_ref,
-        tags=list(payload.get("tags") or []),
-        meta={
-            "feeder_role": payload.get("feeder_role", "ODPLYW_NN"),
-            # Karta NAPRAWA-B, znalezisko #3: znacznik pochodzenia — TO SAMO
-            # pole czyta `enm.catalog_completion._pochodzi_z_operacji_domenowej`,
-            # żeby migracja legacy nigdy nie dokładała fantomowego odbioru
-            # świeżo utworzonemu odpływowi (PREDYKATY PARAMI: jedno źródło
-            # prawdy dla „kto utworzył ten wpis").
-            "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
-        },
-    )
+    meta_odplywu: dict[str, Any] = {
+        "feeder_role": payload.get("feeder_role", "ODPLYW_NN"),
+        # Karta NAPRAWA-B, znalezisko #3: znacznik pochodzenia — TO SAMO
+        # pole czyta `enm.catalog_completion._pochodzi_z_operacji_domenowej`,
+        # żeby migracja legacy nigdy nie dokładała fantomowego odbioru
+        # świeżo utworzonemu odpływowi (PREDYKATY PARAMI: jedno źródło
+        # prawdy dla „kto utworzył to pole").
+        "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+    }
+    if wiazanie_aparatu is not None:
+        meta_odplywu["catalog_binding"] = wiazanie_aparatu
 
     new_enm = kopia_graniczna_enm(enm)
-    if not _append_substation_field_spec(
+    dodaj_pole(
         new_enm,
-        station_ref=station["ref_id"],
-        meta_key="nn_field_specs",
-        field_spec=field_spec,
-    ):
-        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+        zbuduj_pole(
+            ref_id=feeder_ref,
+            name=nazwa_nadana(payload.get("field_name"))
+            or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Odpływ", "{klasa}"),
+            poziom_nn=True,
+            bay_role="FEEDER",
+            bus_ref=bus_nn_ref,
+            substation_ref=str(station["ref_id"]),
+            apparatus_catalog_ref=(wiazanie_aparatu or {}).get("catalog_item_id"),
+            tags=list(payload.get("tags") or []),
+            meta=meta_odplywu,
+        ),
+    )
 
     return _response(
         new_enm,
@@ -2897,8 +2851,13 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
     )
 
 
-def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Wewnętrzny zapis pola źródłowego nN do meta.nn_field_specs."""
+def _append_nn_source_meta_field(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    wiazanie_aparatu: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Wewnętrzny zapis pola źródłowego nN — rekord `bays` na szynie nN stacji."""
     bus_nn_ref = payload.get("bus_nn_ref")
     station_ref = payload.get("station_ref")
     kind = payload.get("source_field_kind", "PV")
@@ -2915,13 +2874,12 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
     if odmowa_pasma is not None:
         return odmowa_pasma
 
-    raw_specs = _substation_meta_specs(station, "nn_field_specs")
     source_index = len(
         [
-            spec
-            for spec in raw_specs
-            if spec.get("bus_ref") == bus_nn_ref
-            and "nn_source_field" in list(spec.get("tags") or [])
+            rekord
+            for rekord in pola_nn_stacji(enm, station.get("ref_id"))
+            if rekord.get("bus_ref") == bus_nn_ref
+            and "nn_source_field" in list(rekord.get("tags") or [])
         ]
     )
     seed = _compute_seed(
@@ -2934,30 +2892,31 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         }
     )
     field_ref = _make_id("nn", seed, "source_field")
-    field_spec = _build_field_spec(
-        field_ref=field_ref,
-        name=nazwa_nadana(payload.get("field_name"))
-        or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Pole źródłowe", "{klasa}", f"({kind})"),
-        bay_role="OZE",
-        bus_ref=bus_nn_ref,
-        tags=["nn_source_field"],
-        meta={
-            "source_field_kind": kind,
-            # Karta NAPRAWA-B, znalezisko #3 — patrz komentarz w
-            # `_add_nn_outgoing_field_internal` (ten sam znacznik, ten sam
-            # powód: pole źródłowe też powstaje operacją, nie legacy szablonem).
-            "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
-        },
-    )
-
+    meta_pola_zrodla: dict[str, Any] = {
+        "source_field_kind": kind,
+        # Karta NAPRAWA-B, znalezisko #3 — patrz komentarz w
+        # `_add_nn_outgoing_field_internal` (ten sam znacznik, ten sam
+        # powód: pole źródłowe też powstaje operacją, nie legacy szablonem).
+        "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+    }
+    if wiazanie_aparatu is not None:
+        meta_pola_zrodla["catalog_binding"] = wiazanie_aparatu
     new_enm = kopia_graniczna_enm(enm)
-    if not _append_substation_field_spec(
+    dodaj_pole(
         new_enm,
-        station_ref=station["ref_id"],
-        meta_key="nn_field_specs",
-        field_spec=field_spec,
-    ):
-        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+        zbuduj_pole(
+            ref_id=field_ref,
+            name=nazwa_nadana(payload.get("field_name"))
+            or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Pole źródłowe", "{klasa}", f"({kind})"),
+            poziom_nn=True,
+            bay_role="OZE",
+            bus_ref=bus_nn_ref,
+            substation_ref=str(station["ref_id"]),
+            apparatus_catalog_ref=(wiazanie_aparatu or {}).get("catalog_item_id"),
+            tags=["nn_source_field"],
+            meta=meta_pola_zrodla,
+        ),
+    )
 
     return _response(
         new_enm,
@@ -2968,14 +2927,56 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
     )
 
 
+def _wiazanie_aparatu_pola_nn(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Aparat pola nN WSKAZANY w payloadzie (`catalog_binding` albo `catalog_ref`,
+    przestrzeń `APARAT_NN` z rodzaju elementu): pozycja przechodzi bramę katalogową TERAZ,
+    przed zmianą modelu, a wiązanie (`catalog_namespace`/`catalog_item_id`/
+    `catalog_item_version`) ląduje na polu w `meta.catalog_binding` — to czyta promocja
+    aparatów nN (`promocja_aparatow_nn._wiazanie_z_pola`), więc aparat pola powstaje
+    z pozycją katalogu. Dawniej operacja odrzucała wskazanie po cichu (szablon stacji podawał
+    `catalog_ref`), a aparat po promocji zostawał bez wiązania (ostrzeżenie W061 dla pozycji,
+    którą projektant wskazał). Brak wskazania = pole bez wiązania (kreator pola nN nie ma
+    pickera aparatu). Zwraca `(wiązanie | None, odpowiedź_błędu | None)`."""
+    wiazanie = _catalog_binding_from_payload(payload, _PRZESTRZEN_APARATU_POLA_NN)
+    ref_aparatu = _catalog_item_id(wiazanie)
+    if ref_aparatu is None:
+        return None, None
+    _zmaterializowane, blad_katalogu = _pozycja_katalogu(
+        namespace=_PRZESTRZEN_APARATU_POLA_NN,
+        catalog_ref=ref_aparatu,
+        catalog_binding=wiazanie,
+        opis_pl="Aparat pola nN",
+    )
+    if blad_katalogu is not None:
+        return None, blad_katalogu
+    wersja = (wiazanie or {}).get("catalog_item_version")
+    return (
+        {
+            "catalog_namespace": _PRZESTRZEN_APARATU_POLA_NN,
+            "catalog_item_id": ref_aparatu,
+            "catalog_item_version": wersja if isinstance(wersja, str) and wersja else "2024.1",
+        },
+        None,
+    )
+
+
 def add_nn_outgoing_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """V11: jedyny publiczny write-path pola nN dla odpływu albo pola źródłowego."""
     field_role = _normalize_nn_field_role(payload)
+    wiazanie_aparatu, blad_aparatu = _wiazanie_aparatu_pola_nn(payload)
+    if blad_aparatu is not None:
+        return blad_aparatu
     normalized_payload = dict(payload)
     if field_role == "SOURCE":
         normalized_payload.setdefault("source_field_kind", _normalize_nn_source_field_kind(payload))
-        return _append_nn_source_meta_field(enm, normalized_payload)
-    return _add_nn_outgoing_field_internal(enm, normalized_payload)
+        return _append_nn_source_meta_field(
+            enm, normalized_payload, wiazanie_aparatu=wiazanie_aparatu
+        )
+    return _add_nn_outgoing_field_internal(
+        enm, normalized_payload, wiazanie_aparatu=wiazanie_aparatu
+    )
 
 
 def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -3008,7 +3009,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             f"Uzupełnij pole {pole('feeder_ref')} — wskaż odpływ nN, do którego należy odbiór.",
             "nn.feeder_missing",
         )
-    if not isinstance(feeder_ref, str) or not _field_ref_exists(enm, feeder_ref):
+    if not isinstance(feeder_ref, str) or not pole_istnieje(enm, feeder_ref):
         return _error_response("Wskazany odpływ nN nie istnieje w modelu.", "nn.feeder_not_found")
 
     # Odbiór bez pozycji katalogowej jest kanoniczny (`EKSPERCKI_RECZNY`), ale
@@ -3024,15 +3025,14 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         if blad_katalogu is not None:
             return blad_katalogu
 
-    original_feeder_bus_ref = _field_station_bus_ref(enm, feeder_ref)
+    original_feeder_bus_ref = (pole_modelu(enm, feeder_ref) or {}).get("bus_ref")
     if not original_feeder_bus_ref:
         return _error_response("Odpływ nN nie ma przypisanej szyny nN.", "nn.feeder_bus_missing")
-    # P0.1 nN (karta P0.1 §0 pkt 5, LV-INV-12): PO promocji odpływu przez
-    # `enm/migrations/nn_field_specs_promocja.py` odbiór wisi ZA aparatem
-    # odpływowym (szyna odpływu), nie wprost na szynie stacji — `nn_field_specs`
-    # zostaje projekcją odczytu, nie źródłem prawdy dla bus_ref. Formularz może
-    # wciąż podawać ORYGINALNĄ szynę stacji (zgodność z UI sprzed promocji) —
-    # obie wartości są akceptowane, byle wskazywały TĘ SAMĄ instalację.
+    # P0.1 nN (karta P0.1 §0 pkt 5, LV-INV-12): PO promocji aparatów nN
+    # (`enm/migrations/promocja_aparatow_nn.py`) odbiór wisi ZA aparatem odpływowym —
+    # na zacisku pola (`Bay.terminal_bus_ref`), nie wprost na szynie stacji. Formularz może
+    # wciąż podawać szynę stacji (szyna rekordu pola) — obie wartości są akceptowane, byle
+    # wskazywały TĘ SAMĄ instalację.
     feeder_bus_ref = _field_bus_ref(enm, feeder_ref) or original_feeder_bus_ref
     if bus_nn_ref and bus_nn_ref not in (original_feeder_bus_ref, feeder_bus_ref):
         return _error_response(
@@ -3076,7 +3076,11 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "load.q_missing",
         )
 
-    seed = _compute_seed({"op": "nn_load", "feeder": feeder_ref, "p": active_power_kw})
+    seed = _wolne_ziarno(
+        enm,
+        _compute_seed({"op": "nn_load", "feeder": feeder_ref, "p": active_power_kw}),
+        lambda ziarno: [_make_id("nn", ziarno, "load")],
+    )
     load_ref = _make_id("nn", seed, "load")
 
     nowy_odbior: dict[str, Any] = {
@@ -3247,7 +3251,7 @@ def _add_nn_cable_segment_internal(
                 "Wskazana szyna docelowa odcinka nie istnieje w modelu sieci.",
                 "nn.cable_to_bus_not_found",
             )
-        if not w_pasmie_nn(to_voltage) or not _same_nominal_voltage(from_voltage, to_voltage):
+        if not w_pasmie_nn(to_voltage) or not to_samo_napiecie_znamionowe(from_voltage, to_voltage):
             return _error_response(
                 f"{opis_elementu(enm, to_bus_ref, 'Szyna docelowa')} ma inne napięcie "
                 f"({to_voltage} kV) niż szyna źródłowa ({from_voltage} kV).",
@@ -3391,7 +3395,14 @@ def add_nn_distribution_board(enm: dict[str, Any], payload: dict[str, Any]) -> d
         )
 
     name = nazwa_nadana(payload.get("name")) or "Rozdzielnica nN"
-    seed = _compute_seed({"op": "nn_distribution_board", "name": name, "voltage_kv": voltage_kv})
+    seed = _wolne_ziarno(
+        enm,
+        _compute_seed({"op": "nn_distribution_board", "name": name, "voltage_kv": voltage_kv}),
+        lambda ziarno: [
+            _make_id("nn", ziarno, "board"),
+            _make_id("nn", ziarno, "board_bus"),
+        ],
+    )
     station_ref = _make_id("nn", seed, "board")
     bus_ref = _make_id("nn", seed, "board_bus")
 
@@ -3513,7 +3524,7 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             f"Aparat nN musi łączyć dwie szyny w paśmie nN ({OPIS_PASMA_NN}).",
             "nn.switch_not_nn_band",
         )
-    if not _same_nominal_voltage(from_voltage, to_voltage):
+    if not to_samo_napiecie_znamionowe(from_voltage, to_voltage):
         return _error_response(
             f"{opis_elementu(enm, from_bus_ref, 'Szyna')} i "
             f"{opis_elementu(enm, to_bus_ref, 'szyna')} mają różne napięcia nN "
@@ -4207,7 +4218,7 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     # Scalenie dwóch odcinków o RÓŻNYCH parametrach na kilometr fabrykowałoby
     # fizykę jednego wspólnego kabla tam, gdzie fizycznie są dwa różne tory.
     # `_ta_sama_niepusta_pozycja_katalogowa` wyżej łapie różny catalog_ref;
-    # ta tolerancja (analogiczna do `_same_nominal_voltage`) łapie przypadek
+    # ta tolerancja reprezentacji binarnej łapie przypadek
     # tego samego catalog_ref z manualnie nadpisanymi parametrami elektrycznymi.
     rozne_parametry = [
         pole for pole in ("r_ohm_per_km", "x_ohm_per_km") if abs(pola_a[pole] - pola_b[pole]) > 1e-9
@@ -4305,7 +4316,7 @@ def set_nn_cable_laying_conditions(enm: dict[str, Any], payload: dict[str, Any])
     if segment.get("type") != "cable":
         return _error_response("Warunki ułożenia dotyczą wyłącznie kabli.", "nn.laying_wrong_type")
     # Warunki ułożenia nN (tablice PN-HD 60364-5-52 dla nN) tylko dla kabla nN: oba
-    # końce w paśmie nN — ta sama bramka co split/merge/remove odcinka nN.
+    # końce w paśmie nN — ta sama bramka co podział i scalenie odcinka nN.
     for koniec in ("from_bus_ref", "to_bus_ref"):
         szyna_konca = segment.get(koniec)
         odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(
@@ -4348,106 +4359,6 @@ def set_nn_cable_laying_conditions(enm: dict[str, Any], payload: dict[str, Any])
                 "element_id": segment_ref,
             }
         ],
-    )
-
-
-def _resolve_nn_element_kind(
-    enm: dict[str, Any], element_ref: str
-) -> tuple[str, dict[str, Any]] | None:
-    """Rodzaj + rekord elementu nN po ref_id: ("branch"|"bus"|"load", element)."""
-    for branch in enm.get("branches", []):
-        if isinstance(branch, dict) and branch.get("ref_id") == element_ref:
-            return "branch", branch
-    for bus in enm.get("buses", []):
-        if isinstance(bus, dict) and bus.get("ref_id") == element_ref:
-            return "bus", bus
-    for load in enm.get("loads", []):
-        if isinstance(load, dict) and load.get("ref_id") == element_ref:
-            return "load", load
-    return None
-
-
-def remove_nn_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """P0.1 nN (C §4.1): usunięcie elementu nN (kabel/aparat/szyna-liść/odbiór).
-
-    Szyna z pozostałymi przyłączami NIE MOŻE zostać usunięta (reużycie
-    istniejącej bramy zależności `topology_ops.delete_node` — jedna implementacja
-    kontroli zależności, nie druga równoległa).
-    """
-    element_ref = payload.get("element_ref")
-    if not isinstance(element_ref, str) or not element_ref.strip():
-        return _error_response(
-            "Nie wskazano elementu nN do usunięcia.", "nn.remove_element_missing"
-        )
-    element_ref = element_ref.strip()
-
-    resolved = _resolve_nn_element_kind(enm, element_ref)
-    if resolved is None:
-        return _error_response(
-            "Wskazany element nie istnieje w modelu sieci.", "nn.remove_element_not_found"
-        )
-    kind, element = resolved
-
-    new_enm = kopia_graniczna_enm(enm)
-
-    if kind == "branch":
-        from_ref = element.get("from_bus_ref")
-        to_ref = element.get("to_bus_ref")
-        from_voltage = _bus_voltage_kv(enm, from_ref) if isinstance(from_ref, str) else None
-        to_voltage = _bus_voltage_kv(enm, to_ref) if isinstance(to_ref, str) else None
-        if not (w_pasmie_nn(from_voltage) and w_pasmie_nn(to_voltage)):
-            return _error_response(
-                "Tą operacją usuwa się wyłącznie gałęzie w paśmie nN.",
-                "nn.remove_element_not_nn_band",
-            )
-        result = delete_branch(new_enm, element_ref)
-        if not result.success:
-            return _error_response(
-                f"Nie udało się usunąć gałęzi: {result.issues[0].message_pl if result.issues else '?'}",
-                "nn.remove_branch_failed",
-            )
-        new_enm = result.enm
-    elif kind == "bus":
-        voltage = _bus_voltage_kv(enm, element_ref)
-        if not w_pasmie_nn(voltage):
-            return _error_response(
-                "Tą operacją usuwa się wyłącznie szyny w paśmie nN.",
-                "nn.remove_element_not_nn_band",
-            )
-        result = delete_node(new_enm, element_ref)
-        if not result.success:
-            return _error_response(
-                f"Nie udało się usunąć szyny: {result.issues[0].message_pl if result.issues else '?'}",
-                "nn.remove_bus_has_connections",
-            )
-        new_enm = result.enm
-        for sub in new_enm.get("substations", []):
-            sekcje = sub.get("nn_sections")
-            if isinstance(sekcje, list):
-                sub["nn_sections"] = [
-                    s
-                    for s in sekcje
-                    if not (isinstance(s, dict) and s.get("bus_ref") == element_ref)
-                ]
-            bus_refs = sub.get("bus_refs")
-            if isinstance(bus_refs, list) and element_ref in bus_refs:
-                sub["bus_refs"] = [r for r in bus_refs if r != element_ref]
-    else:  # load
-        bus_ref = element.get("bus_ref")
-        voltage = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
-        if not w_pasmie_nn(voltage):
-            return _error_response(
-                "Tą operacją usuwa się wyłącznie odbiory w paśmie nN.",
-                "nn.remove_element_not_nn_band",
-            )
-        new_enm["loads"] = [
-            ld for ld in new_enm.get("loads", []) if ld.get("ref_id") != element_ref
-        ]
-
-    return _response(
-        new_enm,
-        deleted=[element_ref],
-        events=[{"event_seq": 1, "event_type": "NN_ELEMENT_REMOVED", "element_id": element_ref}],
     )
 
 
@@ -4533,6 +4444,17 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             "Kopiowany odpływ musi zaczynać się od aparatu łączeniowego.",
             "nn.copy_feeder_wrong_root",
         )
+    if root.get("type") == "bus_coupler":
+        # Sprzęgło sekcji nie jest aparatem odpływowym: „poddrzewo" za sprzęgłem to cała
+        # sąsiednia sekcja rozdzielnicy z jej odpływami — kopia zdublowałaby sekcję, nie
+        # odpływ. Ta sama reguła blokuje pozycję „Kopiuj odpływ" w menu schematu nN
+        # (`ui/sld/v3/lv-domain/operacjeNn.ts`).
+        return _error_response(
+            f"{opis_elementu(enm, feeder_apparatus_ref, 'Aparat')} jest sprzęgłem sekcji "
+            "rozdzielnicy, nie aparatem odpływowym — kopiuje się odpływ od jego aparatu "
+            "(wyłącznik, rozłącznik, bezpiecznik).",
+            "nn.copy_feeder_wrong_root",
+        )
 
     upstream_bus_ref = root.get("from_bus_ref")
     upstream_voltage = (
@@ -4554,27 +4476,28 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     bus_refs, branch_refs = poddrzewo
 
     nazwa_prefix = nazwa_nadana(payload.get("name")) or "Kopia"
-    seed = _compute_seed(
-        {"op": "copy_nn_feeder", "root": feeder_apparatus_ref, "name": nazwa_prefix}
+    szyny_kopii = sorted(bus_refs)
+    galezie_kopii = sorted(branch_refs)
+
+    def _refy_kopii(ziarno: str) -> list[str]:
+        return [_make_id("nn", ziarno, f"copy_bus_{i}") for i in range(len(szyny_kopii))] + [
+            _make_id("nn", ziarno, f"copy_branch_{i}") for i in range(len(galezie_kopii))
+        ]
+
+    # Kolejna kopia tego samego odpływu pod tą samą nazwą jest normalną pracą (dwa
+    # identyczne obwody) — kolejne wolne ziarno zamiast odmowy „zmień nazwę kopii".
+    seed = _wolne_ziarno(
+        enm,
+        _compute_seed({"op": "copy_nn_feeder", "root": feeder_apparatus_ref, "name": nazwa_prefix}),
+        _refy_kopii,
     )
 
     mapa_szyn: dict[str, str] = {
-        stary: _make_id("nn", seed, f"copy_bus_{i}") for i, stary in enumerate(sorted(bus_refs))
+        stary: _make_id("nn", seed, f"copy_bus_{i}") for i, stary in enumerate(szyny_kopii)
     }
     mapa_galezi: dict[str, str] = {
-        stara: _make_id("nn", seed, f"copy_branch_{i}")
-        for i, stara in enumerate(sorted(branch_refs))
+        stara: _make_id("nn", seed, f"copy_branch_{i}") for i, stara in enumerate(galezie_kopii)
     }
-
-    istniejace_szyny = {b.get("ref_id") for b in enm.get("buses", [])}
-    istniejace_galezie = {b.get("ref_id") for b in enm.get("branches", [])}
-    if any(nowy in istniejace_szyny for nowy in mapa_szyn.values()) or any(
-        nowy in istniejace_galezie for nowy in mapa_galezi.values()
-    ):
-        return _error_response(
-            "Kolizja identyfikatorów przy kopiowaniu odpływu — zmień nazwę kopii.",
-            "nn.copy_feeder_id_collision",
-        )
 
     new_enm = kopia_graniczna_enm(enm)
     created: list[str] = []
@@ -5118,7 +5041,7 @@ def kontrola_tabliczki_przypisanej(
                 "wybierz transformator blokowy albo falownik z katalogu, który je określa.",
                 "der.inverter_voltage_missing",
             )
-        if not _same_nominal_voltage(converter_voltage_kv, napiecie_wyjscia_kv):
+        if not to_samo_napiecie_znamionowe(converter_voltage_kv, napiecie_wyjscia_kv):
             return _error_response(
                 "Napięcie katalogowe falownika nie jest zgodne z napięciem wyjściowym toru "
                 f"DER. Falownik: {converter_voltage_kv:g} kV, wyjście: "
@@ -5132,7 +5055,7 @@ def kontrola_tabliczki_przypisanej(
                 "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
                 "converter.bus_voltage_missing",
             )
-        if not _same_nominal_voltage(converter_voltage_kv, bus_voltage_kv):
+        if not to_samo_napiecie_znamionowe(converter_voltage_kv, bus_voltage_kv):
             return _error_response(
                 (
                     "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
@@ -5318,6 +5241,175 @@ def _resolve_converter_defaults(
     )
 
 
+def _utworz_tor_pola_zrodlowego_sn(
+    new_enm: dict[str, Any],
+    *,
+    field_ref: str,
+    terminal_bus_ref: str,
+    apparatus_ref: str,
+    szyna_sn_ref: str,
+    napiecie_kv: float,
+    station_ref: str,
+    nazwa: str,
+    apparatus_kind: str,
+    apparatus_binding: object,
+    port_kind: str,
+    tagi_aparatu: list[str],
+    kod_bledu: str,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Tor POLA ŹRÓDŁOWEGO SN — zacisk pola i aparat pola w torze (POLA-W-TORZE): JEDNA droga
+    dla pola źródłowego DER-SN (`_add_converter_source_der_sn`) i pola źródła przekształtnika
+    na szynie SN (`_append_converter_field_if_needed`). Pozycja aparatu (`APARAT_SN`) musi być
+    sprawdzona przez wołającego PRZED mutacją modelu (`_blad_aparatu_pola`); bez wskazania
+    aparat jest kanoniczny (`requires_catalog_binding`). Zwraca `(migawka, odpowiedź_błędu)`."""
+    apparatus_catalog_ref = (
+        _catalog_item_id(apparatus_binding) if isinstance(apparatus_binding, dict) else None
+    )
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": terminal_bus_ref,
+            "name": f"Zacisk pola źródłowego SN {nazwa}",
+            "voltage_kv": napiecie_kv,
+            "tags": ["helper_bus", "field_terminal"],
+            "meta": {
+                "visual_role": "FIELD_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "field_ref": field_ref,
+                "station_ref": station_ref,
+                "port_kind": port_kind,
+            },
+        },
+    )
+    if not result.success:
+        return new_enm, _error_response(
+            "Nie udało się utworzyć zacisku pola źródłowego SN.",
+            f"{kod_bledu}.field_terminal_failed",
+        )
+    result = create_branch(
+        result.enm,
+        {
+            "ref_id": apparatus_ref,
+            "name": f"Aparat pola źródłowego SN {nazwa}",
+            "type": _sn_bay_branch_type(apparatus_kind),
+            "from_bus_ref": szyna_sn_ref,
+            "to_bus_ref": terminal_bus_ref,
+            "status": "closed",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+            "source_mode": "KATALOG" if apparatus_catalog_ref else None,
+            "catalog_namespace": (_PRZESTRZEN_APARATU_POLA_SN if apparatus_catalog_ref else None),
+            "catalog_ref": apparatus_catalog_ref,
+            "tags": list(tagi_aparatu),
+            "meta": {
+                "field_ref": field_ref,
+                "station_ref": station_ref,
+                "bay_role": "OZE",
+                "apparatus_kind": apparatus_kind,
+                "terminal_bus_ref": terminal_bus_ref,
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "requires_catalog_binding": apparatus_catalog_ref is None,
+                # Wiązanie zapisane do migawki niesie przestrzeń, w której
+                # sprawdzono ISTNIENIE aparatu, a nie tę z żądania.
+                "catalog_binding": _wiazanie_w_przestrzeni(
+                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
+                ),
+            },
+        },
+    )
+    if not result.success:
+        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
+        return new_enm, _error_response(
+            f"Nie udało się utworzyć aparatu pola źródłowego SN: {message}",
+            f"{kod_bledu}.field_apparatus_failed",
+        )
+    return result.enm, None
+
+
+def _dodaj_pole_zrodla_sn(
+    new_enm: dict[str, Any],
+    *,
+    field_ref: str,
+    field_seed: str,
+    station: dict[str, Any],
+    szyna_sn_ref: str,
+    technology: str,
+    source_field_payload: dict[str, Any],
+    field_meta: dict[str, Any],
+) -> tuple[str | None, list[str], list[dict[str, Any]]] | tuple[None, None, None]:
+    """Pole źródła przekształtnika na szynie SN — zacisk i aparat pola w torze (jedna reguła
+    pola źródłowego SN z `_add_converter_source_der_sn`), rekord pola z zaciskiem, aparatem
+    i wiązaniem `APARAT_SN` (sprawdzonym przez wołającego przed mutacją modelu)."""
+    station_ref = str(station.get("ref_id"))
+    terminal_bus_ref = _make_id("sn", field_seed, "source_field_terminal")
+    apparatus_ref = _make_id("sn", field_seed, "source_field_device")
+    switching_device = str(source_field_payload.get("switching_device") or "CB").upper()
+    apparatus_kind = "LOAD_SWITCH" if switching_device in {"LBS", "LOAD_SWITCH"} else "BREAKER"
+    apparatus_binding = source_field_payload.get("catalog_binding")
+    apparatus_catalog_ref = (
+        _catalog_item_id(apparatus_binding) if isinstance(apparatus_binding, dict) else None
+    )
+    napiecie = _bus_voltage_kv(new_enm, szyna_sn_ref)
+    nazwa = nazwa_nadana(source_field_payload.get("field_name")) or _nazwa_z_klasa_szyny(
+        new_enm, szyna_sn_ref, "Pole", technology, "{klasa}"
+    )
+    model_z_torem, blad_toru = _utworz_tor_pola_zrodlowego_sn(
+        new_enm,
+        field_ref=field_ref,
+        terminal_bus_ref=terminal_bus_ref,
+        apparatus_ref=apparatus_ref,
+        szyna_sn_ref=szyna_sn_ref,
+        napiecie_kv=float(napiecie or 0.0),
+        station_ref=station_ref,
+        nazwa=nazwa,
+        apparatus_kind=apparatus_kind,
+        apparatus_binding=apparatus_binding,
+        port_kind="source_in",
+        tagi_aparatu=["gpz_field_device", "source_field_device"],
+        kod_bledu="converter",
+    )
+    if blad_toru is not None:
+        # Zacisk/aparat o identyfikatorze z ziarna pola już istnieje — błąd programu (ziarno
+        # liczy kolejne pole źródłowe szyny), nie odmowa danych (karta #151).
+        raise DomainInvariantError(
+            str(blad_toru.get("error_code")), str(blad_toru.get("error")), [field_ref]
+        )
+    dodaj_pole(
+        model_z_torem,
+        zbuduj_pole(
+            ref_id=field_ref,
+            name=nazwa,
+            bay_role="OZE",
+            bus_ref=szyna_sn_ref,
+            substation_ref=station_ref,
+            terminal_bus_ref=terminal_bus_ref,
+            equipment_refs=[apparatus_ref],
+            apparatus_catalog_ref=apparatus_catalog_ref,
+            tags=["nn_source_field"],
+            meta={
+                **field_meta,
+                "apparatus_kind": apparatus_kind,
+                "catalog_binding": _wiazanie_w_przestrzeni(
+                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
+                ),
+                "default_device_ref": apparatus_ref,
+                "field_status": "CONFIGURED_FOR_TRUNK",
+            },
+        ),
+    )
+    return (
+        field_ref,
+        [field_ref, terminal_bus_ref, apparatus_ref],
+        [
+            {"event_type": "FIELD_TERMINAL_CREATED_SN", "element_id": terminal_bus_ref},
+            {"event_type": "FIELD_DEVICE_CREATED_SN", "element_id": apparatus_ref},
+            {"event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
+        ],
+    )
+
+
 def _append_converter_field_if_needed(
     new_enm: dict[str, Any],
     *,
@@ -5335,7 +5427,7 @@ def _append_converter_field_if_needed(
         existing_field_ref = payload.get("existing_field_ref")
         if not isinstance(existing_field_ref, str) or not existing_field_ref.strip():
             return None, None, None
-        if not _field_ref_exists(new_enm, existing_field_ref.strip()):
+        if not pole_istnieje(new_enm, existing_field_ref.strip()):
             return None, None, None
         return existing_field_ref.strip(), [], []
 
@@ -5343,13 +5435,14 @@ def _append_converter_field_if_needed(
     if station is None:
         return None, None, None
 
-    raw_specs = _substation_meta_specs(station, "nn_field_specs")
     source_index = len(
         [
-            spec
-            for spec in raw_specs
-            if spec.get("bus_ref") == bus_nn_ref
-            and "nn_source_field" in list(spec.get("tags") or [])
+            rekord
+            # Pola źródłowe NA TEJ SZYNIE — obu poziomów (pole źródła na szynie SN też jest
+            # polem tej szyny); kolejny numer = kolejne ziarno, bez kolizji identyfikatorów.
+            for rekord in pola_stacji(new_enm, station.get("ref_id"))
+            if rekord.get("bus_ref") == bus_nn_ref
+            and "nn_source_field" in list(rekord.get("tags") or [])
         ]
     )
     field_seed = _compute_seed(
@@ -5365,6 +5458,22 @@ def _append_converter_field_if_needed(
     source_field = payload.get("source_field")
     source_field_payload = source_field if isinstance(source_field, dict) else {}
     field_meta = {"source_field_kind": source_field_payload.get("source_field_kind") or technology}
+    if not w_pasmie_nn(_bus_voltage_kv(new_enm, bus_nn_ref)):
+        # Pole źródła na szynie SN (falownik SN za transformatorem blokowym): pole SN
+        # z aparatem pola W TORZE — TA SAMA droga, co pole źródłowe DER-SN
+        # (`_utworz_tor_pola_zrodlowego_sn`). Promocja aparatów nN obejmuje wyłącznie pola
+        # w paśmie nN, więc pole SN bez aparatu zostałoby bez aparatu na zawsze.
+        return _dodaj_pole_zrodla_sn(
+            new_enm,
+            field_ref=field_ref,
+            field_seed=field_seed,
+            station=station,
+            szyna_sn_ref=bus_nn_ref,
+            technology=technology,
+            source_field_payload=source_field_payload,
+            field_meta=field_meta,
+        )
+    aparat_pola_ref: str | None = None
     apparatus_binding = source_field_payload.get("catalog_binding")
     if isinstance(apparatus_binding, dict):
         # Wiązanie zapisane do pola niesie przestrzeń, w której sprawdzono ISTNIENIE
@@ -5374,24 +5483,23 @@ def _append_converter_field_if_needed(
         )
         catalog_item_id = apparatus_binding.get("catalog_item_id")
         if isinstance(catalog_item_id, str) and catalog_item_id.strip():
-            field_meta["apparatus_catalog_ref"] = catalog_item_id.strip()
+            aparat_pola_ref = catalog_item_id.strip()
 
-    field_spec = _build_field_spec(
-        field_ref=field_ref,
-        name=nazwa_nadana(source_field_payload.get("field_name"))
-        or _nazwa_z_klasa_szyny(new_enm, bus_nn_ref, "Pole", technology, "{klasa}"),
-        bay_role="OZE",
-        bus_ref=bus_nn_ref,
-        tags=["nn_source_field"],
-        meta=field_meta,
-    )
-    if not _append_substation_field_spec(
+    dodaj_pole(
         new_enm,
-        station_ref=station_ref,
-        meta_key="nn_field_specs",
-        field_spec=field_spec,
-    ):
-        return None, None, None
+        zbuduj_pole(
+            ref_id=field_ref,
+            name=nazwa_nadana(source_field_payload.get("field_name"))
+            or _nazwa_z_klasa_szyny(new_enm, bus_nn_ref, "Pole", technology, "{klasa}"),
+            poziom_nn=True,
+            bay_role="OZE",
+            bus_ref=bus_nn_ref,
+            substation_ref=str(station.get("ref_id")),
+            apparatus_catalog_ref=aparat_pola_ref,
+            tags=["nn_source_field"],
+            meta=field_meta,
+        ),
+    )
 
     return (
         field_ref,
@@ -5917,7 +6025,7 @@ def _add_converter_source_der_sn(
         )
 
     # Spójność napięć toru (kanon: napięcia TR blokowego spójne z falownikiem i szyną SN).
-    if not _same_nominal_voltage(converter_un_kv, inverter_output_kv):
+    if not to_samo_napiecie_znamionowe(converter_un_kv, inverter_output_kv):
         return _error_response(
             "Napięcie katalogowe falownika nie jest zgodne z napięciem wyjściowym toru DER. "
             f"Falownik: {converter_un_kv:g} kV, wyjście: {inverter_output_kv:g} kV.",
@@ -6055,82 +6163,37 @@ def _add_converter_source_der_sn(
     created.append(block_hv_bus_ref)
     _emit("BUS_CREATED", block_hv_bus_ref)
 
-    # 3. Dedykowane POLE ŹRÓDŁOWE SN stacji (łańcuch W1: terminal + aparat + field_spec).
+    # 3. Dedykowane POLE ŹRÓDŁOWE SN stacji (łańcuch W1: terminal + aparat + rekord pola).
     mv_field_cfg = der_topology.get("mv_field_configuration")
     if not isinstance(mv_field_cfg, dict):
         mv_field_cfg = {}
     switching_device = str(mv_field_cfg.get("switching_device") or "CB").upper()
     apparatus_kind = "LOAD_SWITCH" if switching_device in {"LBS", "LOAD_SWITCH"} else "BREAKER"
-    branch_type = _sn_bay_branch_type(apparatus_kind)
     apparatus_binding = mv_field_cfg.get("apparatus_catalog_binding")
     apparatus_catalog_ref = (
         _catalog_item_id(apparatus_binding) if isinstance(apparatus_binding, dict) else None
     )
 
-    result = create_node(
+    tor_pola = _utworz_tor_pola_zrodlowego_sn(
         new_enm,
-        {
-            "ref_id": terminal_bus_ref,
-            "name": f"Zacisk pola źródłowego SN {name}",
-            "voltage_kv": mv_bus_voltage_kv,
-            "tags": ["helper_bus", "field_terminal"],
-            "meta": {
-                "visual_role": "FIELD_TERMINAL",
-                "render_on_sld": False,
-                "show_in_project_tree": False,
-                "field_ref": field_ref,
-                "station_ref": station_ref,
-                "port_kind": "der_source_in",
-            },
-        },
+        field_ref=field_ref,
+        terminal_bus_ref=terminal_bus_ref,
+        apparatus_ref=apparatus_ref,
+        szyna_sn_ref=mv_bus_ref,
+        napiecie_kv=mv_bus_voltage_kv,
+        station_ref=station_ref,
+        nazwa=name,
+        apparatus_kind=apparatus_kind,
+        apparatus_binding=apparatus_binding,
+        port_kind="der_source_in",
+        tagi_aparatu=["gpz_field_device", "der_source_field_device"],
+        kod_bledu="der",
     )
-    if not result.success:
-        return _error_response(
-            "Nie udało się utworzyć zacisku pola źródłowego SN.", "der.field_terminal_failed"
-        )
-    new_enm = result.enm
+    new_enm, blad_toru = tor_pola
+    if blad_toru is not None:
+        return blad_toru
     created.append(terminal_bus_ref)
     _emit("FIELD_TERMINAL_CREATED_SN", terminal_bus_ref)
-
-    result = create_branch(
-        new_enm,
-        {
-            "ref_id": apparatus_ref,
-            "name": f"Aparat pola źródłowego SN {name}",
-            "type": branch_type,
-            "from_bus_ref": mv_bus_ref,
-            "to_bus_ref": terminal_bus_ref,
-            "status": "closed",
-            "r_ohm": 0.0,
-            "x_ohm": 0.0,
-            "source_mode": "KATALOG" if apparatus_catalog_ref else None,
-            "catalog_namespace": (_PRZESTRZEN_APARATU_POLA_SN if apparatus_catalog_ref else None),
-            "catalog_ref": apparatus_catalog_ref,
-            "tags": ["gpz_field_device", "der_source_field_device"],
-            "meta": {
-                "field_ref": field_ref,
-                "station_ref": station_ref,
-                "bay_role": "OZE",
-                "apparatus_kind": apparatus_kind,
-                "terminal_bus_ref": terminal_bus_ref,
-                "render_on_sld": False,
-                "show_in_project_tree": False,
-                "requires_catalog_binding": apparatus_catalog_ref is None,
-                # Wiązanie zapisane do migawki niesie przestrzeń, w której
-                # sprawdzono ISTNIENIE aparatu, a nie tę z żądania.
-                "catalog_binding": _wiazanie_w_przestrzeni(
-                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
-                ),
-            },
-        },
-    )
-    if not result.success:
-        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
-        return _error_response(
-            f"Nie udało się utworzyć aparatu pola źródłowego SN: {message}",
-            "der.field_apparatus_failed",
-        )
-    new_enm = result.enm
     created.append(apparatus_ref)
     _emit("FIELD_DEVICE_CREATED_SN", apparatus_ref)
 
@@ -6151,36 +6214,49 @@ def _add_converter_source_der_sn(
     field_name = nazwa_nadana(mv_field_cfg.get("field_name")) or nazwa_pola_zrodlowego_sn(
         technology
     )
-    field_spec = _build_field_spec(
-        field_ref=field_ref,
-        name=field_name,
-        bay_role="OZE",
-        bus_ref=mv_bus_ref,
-        equipment_refs=[apparatus_ref],
-        protection_codes=protection_codes or None,
-        bay_template_ref=mv_field_cfg.get("bay_template_ref"),
-        primary_devices=primary_devices or None,
-        tags=["der_source_field", "nn_source_field"],
-        meta={
-            "apparatus_kind": apparatus_kind,
-            "catalog_binding": _wiazanie_w_przestrzeni(
-                apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
-            ),
-            "terminal_bus_ref": terminal_bus_ref,
-            "default_device_ref": apparatus_ref,
-            "field_status": "CONFIGURED_FOR_TRUNK",
-            "source_field_kind": technology,
-            "der_role": "mv_source_field",
-            "der_feeder_bus_ref": block_hv_bus_ref,
-        },
+    szablon_pola_der = mv_field_cfg.get("bay_template_ref")
+    szablon_pola_der = (
+        szablon_pola_der.strip()
+        if isinstance(szablon_pola_der, str) and szablon_pola_der.strip()
+        else None
     )
-    if not _append_substation_field_spec(
+    aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
+        field_ref=field_ref,
+        bay_template_ref=szablon_pola_der,
+        switchgear_family_ref=None,
+        wybor_bloku=None,
+        napiecie_szyny_kv=mv_bus_voltage_kv,
+        primary_devices=primary_devices or None,
+    )
+    dodaj_pole(
         new_enm,
-        station_ref=station_ref,
-        meta_key="field_specs",
-        field_spec=field_spec,
-    ):
-        return _error_response("Nie znaleziono stacji dla szyny SN.", "der.station_not_found")
+        zbuduj_pole(
+            ref_id=field_ref,
+            name=field_name,
+            bay_role="OZE",
+            bus_ref=mv_bus_ref,
+            substation_ref=str(station.get("ref_id")),
+            terminal_bus_ref=terminal_bus_ref,
+            equipment_refs=[apparatus_ref],
+            apparatus_catalog_ref=apparatus_catalog_ref,
+            protection_codes=protection_codes,
+            bay_template_ref=szablon_pola_der,
+            primary_devices=aparaty_pola,
+            config_id=konfiguracja_pola,
+            tags=["der_source_field", "nn_source_field"],
+            meta={
+                "apparatus_kind": apparatus_kind,
+                "catalog_binding": _wiazanie_w_przestrzeni(
+                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
+                ),
+                "default_device_ref": apparatus_ref,
+                "field_status": "CONFIGURED_FOR_TRUNK",
+                "source_field_kind": technology,
+                "der_role": "mv_source_field",
+                "der_feeder_bus_ref": block_hv_bus_ref,
+            },
+        ),
+    )
     created.insert(0, field_ref)
     _emit("FIELDS_CREATED_SN", field_ref)
 
@@ -6359,6 +6435,9 @@ def _add_converter_source_der_sn(
 
 def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj kanoniczne źródło przekształtnikowe PV, BESS albo FW."""
+    # Próba (`dry_run`): ta sama walidacja co zapis, odpowiedź bez migawki (`_jako_proba`) —
+    # kreator DER pyta backend o odmowę (np. moc transformatora O-53) PRZED zapisem.
+    dry_run = bool(payload.get("dry_run", False))
     technology = _normalize_source_technology(payload)
     if technology is None:
         return _error_response(
@@ -6439,13 +6518,16 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         if method_error is not None:
             return _error_response(method_error.message_pl, method_error.code)
     if isinstance(der_topology, dict) and der_topology.get("connection_level") == "sn":
-        return _add_converter_source_der_sn(
-            enm,
-            payload,
-            technology=technology,
-            catalog_ref=catalog_ref,
-            der_topology=der_topology,
-            pola_nc_rfg=pola_nc_rfg,
+        return _jako_proba(
+            _add_converter_source_der_sn(
+                enm,
+                payload,
+                technology=technology,
+                catalog_ref=catalog_ref,
+                der_topology=der_topology,
+                pola_nc_rfg=pola_nc_rfg,
+            ),
+            dry_run,
         )
 
     bus_nn_ref = payload.get("bus_nn_ref")
@@ -6470,12 +6552,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                     # POLA-W-TORZE: transformator stacji leży na ZACISKACH pól (strona górna
                     # na zacisku pola TR, dolna za wyłącznikiem głównym nN) — przynależność
                     # szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
-                    station_buses = set(szyny_stacji(station_for_auto, enm.get("branches") or []))
+                    station_buses = set(szyny_stacji(enm, station_for_auto))
+                    # GPZ-MODEL: transformator zasilający GPZ (110/SN, strona dolna na
+                    # sekcji SN GPZ) jest granicą zasilania sieci, nigdy transformatorem
+                    # blokowym źródła — jedno źródło predykatu z walidatorem (E066).
+                    zasilajace_gpz = transformatory_zasilajace_gpz(enm)
                     station_transformers = [
                         tr
                         for tr in enm.get("transformers", [])
-                        if tr.get("hv_bus_ref") in station_buses
-                        or tr.get("lv_bus_ref") in station_buses
+                        if (
+                            tr.get("hv_bus_ref") in station_buses
+                            or tr.get("lv_bus_ref") in station_buses
+                        )
+                        and tr.get("ref_id") not in zasilajace_gpz
                     ]
                     if len(station_transformers) == 1:
                         blocking_transformer_ref = station_transformers[0].get("ref_id")
@@ -6507,6 +6596,13 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         if transformer is None:
             return _error_response(
                 "Nie znaleziono transformatora blokowego dla źródła przekształtnikowego.",
+                "generator.block_transformer_invalid",
+            )
+        if transformer.get("ref_id") in transformatory_zasilajace_gpz(enm):
+            return _error_response(
+                f"{opis_obiektu(transformer, 'Transformator')} zasila sekcję SN GPZ od strony "
+                "110 kV — jest granicą zasilania sieci, a nie transformatorem blokowym źródła. "
+                "Wskaż transformator blokowy źródła albo przyłącz źródło polem SN.",
                 "generator.block_transformer_invalid",
             )
         if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():
@@ -6594,7 +6690,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
             "converter.bus_voltage_missing",
         )
-    if not _same_nominal_voltage(converter_voltage_kv, bus_voltage_kv):
+    if not to_samo_napiecie_znamionowe(converter_voltage_kv, bus_voltage_kv):
         return _error_response(
             (
                 "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
@@ -6662,16 +6758,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     prefix = technology.lower()
     generator_ref = _make_id(prefix, source_seed, "converter")
 
-    # Aparat pola źródłowego nN — sprawdzany PRZED mutacją modelu, żeby zła
-    # referencja nie zostawiła w migawce pola z martwym `apparatus_catalog_ref`.
+    # Aparat pola źródłowego — sprawdzany PRZED mutacją modelu, żeby zła referencja nie
+    # zostawiła w migawce pola z martwym `apparatus_catalog_ref`. Przestrzeń z POZIOMU pola
+    # (szyna w paśmie nN → aparat nN; szyna SN → aparat SN pola źródłowego SN, ta sama
+    # przestrzeń, którą zapisuje `_utworz_tor_pola_zrodlowego_sn`).
+    pole_zrodla_sn = not w_pasmie_nn(bus_voltage_kv)
     blad_aparatu = _blad_aparatu_pola(
         (
             (payload.get("source_field") or {}).get("catalog_binding")
             if isinstance(payload.get("source_field"), dict)
             else None
         ),
-        namespace=_PRZESTRZEN_APARATU_POLA_NN,
-        opis_pl="Aparat pola źródłowego nN",
+        namespace=_PRZESTRZEN_APARATU_POLA_SN if pole_zrodla_sn else _PRZESTRZEN_APARATU_POLA_NN,
+        opis_pl="Aparat pola źródłowego SN" if pole_zrodla_sn else "Aparat pola źródłowego nN",
     )
     if blad_aparatu is not None:
         return blad_aparatu
@@ -6691,6 +6790,11 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "converter.field_not_found",
         )
 
+    # POLA-W-TORZE: źródło przyłącza się do ZACISKU swojego nowego pola SN (aparat pola
+    # w torze); pole nN dostaje zacisk dopiero promocją aparatów nN, która przepina źródło.
+    szyna_generatora = bus_nn_ref
+    if pole_zrodla_sn and created_field_ids:
+        szyna_generatora = punkt_przylaczenia_pola(pole_modelu(new_enm, field_ref)) or bus_nn_ref
     generator_meta = {
         **meta,
         "field_ref": field_ref,
@@ -6701,7 +6805,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         {
             "ref_id": generator_ref,
             "name": name,
-            "bus_ref": bus_nn_ref,
+            "bus_ref": szyna_generatora,
             "gen_type": gen_type,
             "p_mw": p_mw,
             "q_mvar": q_mvar,
@@ -6743,12 +6847,15 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         }
     )
 
-    return _response(
-        new_enm,
-        created=created_ids,
-        selection_id=field_ref or generator_ref,
-        selection_type="bay" if field_ref else "generator",
-        events=events,
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=created_ids,
+            selection_id=field_ref or generator_ref,
+            selection_type="bay" if field_ref else "generator",
+            events=events,
+        ),
+        dry_run,
     )
 
 
@@ -6761,20 +6868,97 @@ def _next_converter_source_sequence(
     catalog_ref: str,
     name: str,
 ) -> int:
-    """Return deterministic ordinal for repeated identical DER sources."""
+    """Kolejny numer powtarzalnego, identycznego źródła przekształtnikowego (ziarno ref).
+
+    Szyna źródła liczy się po SZYNIE ROZDZIELNICY jego pola (`bus_ref` rekordu pola z
+    `meta.field_ref`), a bez pola — po szynie źródła: źródło stoi na ZACISKU swojego pola
+    (pole SN od razu, pole nN po promocji aparatów nN), więc porównanie samego `bus_ref`
+    źródła z szyną z ładunku nie widziałoby źródeł już przyłączonych przez pole i dawało
+    dubel identyfikatora (karta W5-B)."""
     sequence = 0
     for existing in enm.get("generators", []):
         if not isinstance(existing, dict):
             continue
+        pole_zrodla = pole_modelu(enm, (existing.get("meta") or {}).get("field_ref"))
+        szyna_zrodla = (pole_zrodla or {}).get("bus_ref") or existing.get("bus_ref")
         if (
             existing.get("station_ref") == station_ref
-            and existing.get("bus_ref") == bus_ref
+            and szyna_zrodla == bus_ref
             and existing.get("gen_type") == gen_type
             and existing.get("catalog_ref") == catalog_ref
             and existing.get("name") == name
         ):
             sequence += 1
     return sequence
+
+
+def _pole_zrodla_dyspozycyjnego(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    bus_nn_ref: str,
+    rodzaj: str,
+    prefiks_kodu: str,
+) -> tuple[dict[str, Any], str | None, list[str], list[dict[str, Any]]] | dict[str, Any]:
+    """Pole przyłączeniowe agregatu/UPS nN — TA SAMA droga, co pole źródła przekształtnikowego.
+
+    ``placement`` z ładunku: ``NEW_FIELD`` tworzy pole źródłowe nN na szynie stacji (aparat
+    pola z ``source_field.catalog_binding``, przestrzeń APARAT_NN), ``EXISTING_FIELD`` wiąże
+    źródło z istniejącym polem ``existing_field_ref``; brak klucza — źródło wprost na szynie
+    (bez pola), jak przed wpięciem osadzenia. Kreator wysyłał te klucze od zawsze, a handler
+    ich nie czytał: wybór pola przepadał bez śladu w modelu.
+
+    Zwraca (kopia modelu, ref pola albo None, utworzone refy, zdarzenia) albo odpowiedź błędu.
+    """
+    placement = payload.get("placement")
+    if placement is None:
+        return kopia_graniczna_enm(enm), None, [], []
+    if placement not in NAZWY_OSADZENIA_ZRODLA_PL:
+        return _error_response(
+            "Osadzenie źródła musi wskazywać "
+            + lista_pl(NAZWY_OSADZENIA_ZRODLA_PL.values(), "albo")
+            + ".",
+            "params.invalid_value",
+        )
+    if placement == "NEW_FIELD":
+        source_field = payload.get("source_field")
+        blad_aparatu = _blad_aparatu_pola(
+            source_field.get("catalog_binding") if isinstance(source_field, dict) else None,
+            namespace=_PRZESTRZEN_APARATU_POLA_NN,
+            opis_pl="Aparat pola źródłowego nN",
+        )
+        if blad_aparatu is not None:
+            return blad_aparatu
+    new_enm = kopia_graniczna_enm(enm)
+    station_ref = payload.get("station_ref")
+    field_ref, created, events = _append_converter_field_if_needed(
+        new_enm,
+        station_ref=station_ref if isinstance(station_ref, str) else "",
+        bus_nn_ref=bus_nn_ref,
+        technology=rodzaj,
+        connection_variant="nn_side",
+        payload=payload,
+    )
+    if field_ref is None:
+        if placement == "EXISTING_FIELD":
+            return _error_response(
+                "Wskazane pole przyłączeniowe nie istnieje w modelu sieci.",
+                f"{prefiks_kodu}.field_not_found",
+            )
+        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+    return new_enm, field_ref, list(created or []), list(events or [])
+
+
+def _zdarzenia_ze_zrodlem(
+    zdarzenia_pola: list[dict[str, Any]], typ: str, element_ref: str
+) -> list[dict[str, Any]]:
+    """Zdarzenia pola (bez numeru) + zdarzenie źródła, numerowane kolejno od 1."""
+    wynik = [
+        {"event_seq": i, "event_type": z["event_type"], "element_id": z["element_id"]}
+        for i, z in enumerate(zdarzenia_pola, start=1)
+    ]
+    wynik.append({"event_seq": len(wynik) + 1, "event_type": typ, "element_id": element_ref})
+    return wynik
 
 
 def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -6850,7 +7034,20 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     if un_kv:
         genset_meta["un_kv"] = float(un_kv)
 
-    new_enm = kopia_graniczna_enm(enm)
+    osadzenie = _pole_zrodla_dyspozycyjnego(
+        enm, payload, bus_nn_ref=bus_nn_ref, rodzaj="AGREGAT", prefiks_kodu="genset"
+    )
+    if isinstance(osadzenie, dict):
+        return osadzenie
+    new_enm, field_ref, created_ids, zdarzenia_pola = osadzenie
+    meta_agregatu: dict[str, Any] = {
+        "operation_mode": genset_spec.get("operation_mode"),
+        "source_kind": "GENSET",
+    }
+    if genset_spec.get("fuel_type") is not None:
+        meta_agregatu["fuel_type"] = genset_spec.get("fuel_type")
+    if field_ref is not None:
+        meta_agregatu["field_ref"] = field_ref
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": gen_ref,
@@ -6861,16 +7058,16 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
             "q_mvar": 0.0,
             "tags": [],
             "materialized_params": genset_meta,
-            "meta": {"operation_mode": genset_spec.get("operation_mode"), "source_kind": "GENSET"},
+            "meta": meta_agregatu,
         }
     )
 
     return _response(
         new_enm,
-        created=[gen_ref],
+        created=[*created_ids, gen_ref],
         selection_id=gen_ref,
         selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "GENSET_CREATED", "element_id": gen_ref}],
+        events=_zdarzenia_ze_zrodlem(zdarzenia_pola, "GENSET_CREATED", gen_ref),
     )
 
 
@@ -6914,7 +7111,21 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if un_kv:
         ups_meta["un_kv"] = float(un_kv)
 
-    new_enm = kopia_graniczna_enm(enm)
+    osadzenie = _pole_zrodla_dyspozycyjnego(
+        enm, payload, bus_nn_ref=bus_nn_ref, rodzaj="UPS", prefiks_kodu="ups"
+    )
+    if isinstance(osadzenie, dict):
+        return osadzenie
+    new_enm, field_ref, created_ids, zdarzenia_pola = osadzenie
+    meta_ups: dict[str, Any] = {
+        "backup_time_min": ups_spec.get("backup_time_min"),
+        "operation_mode": ups_spec.get("operation_mode"),
+        "source_kind": "UPS",
+    }
+    if ups_spec.get("battery_type") is not None:
+        meta_ups["battery_type"] = ups_spec.get("battery_type")
+    if field_ref is not None:
+        meta_ups["field_ref"] = field_ref
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": ups_ref,
@@ -6925,20 +7136,89 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "q_mvar": 0.0,
             "tags": [],
             "materialized_params": ups_meta,
-            "meta": {
-                "backup_time_min": ups_spec.get("backup_time_min"),
-                "operation_mode": ups_spec.get("operation_mode"),
-                "source_kind": "UPS",
-            },
+            "meta": meta_ups,
         }
     )
 
     return _response(
         new_enm,
-        created=[ups_ref],
+        created=[*created_ids, ups_ref],
         selection_id=ups_ref,
         selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "UPS_CREATED", "element_id": ups_ref}],
+        events=_zdarzenia_ze_zrodlem(zdarzenia_pola, "UPS_CREATED", ups_ref),
+    )
+
+
+def _jako_proba(odpowiedz: dict[str, Any], dry_run: bool) -> dict[str, Any]:
+    """Odpowiedź PRÓBY operacji (`dry_run: true` w ładunku) — ta sama operacja co zapis.
+
+    Handler przechodzi CAŁĄ walidację (te same reguły i te same odmowy co zapis — m.in.
+    zgodność napięcia tabliczki z szyną), a próba różni się wyłącznie tym, że odpowiedź
+    nie niesie migawki: warstwa API utrwala model tylko z migawki, więc model zostaje bez
+    zmian. Odmowa (``error``) wraca bez zmian — kreator pokazuje ją projektantowi PRZED
+    zapisem, bez własnej kopii reguły we froncie (zero fizyki i progów w UI).
+    """
+    if not dry_run or odpowiedz.get("error"):
+        return odpowiedz
+    zmiany = odpowiedz.get("changes") or {}
+    odpowiedz.pop("snapshot", None)
+    odpowiedz["dry_run"] = True
+    odpowiedz["preview"] = {"created_refs": list(zmiany.get("created_element_ids") or ())}
+    return odpowiedz
+
+
+def odmowa_tabliczki_baterii(
+    rated_mvar: float, rated_kv: float, bus_voltage_kv: float
+) -> dict[str, Any] | None:
+    """JEDNA reguła tabliczki baterii kondensatorów — przy tworzeniu
+    (`add_shunt_compensator_sn`) i przy zmianie pozycji katalogu
+    (`assign_catalog_to_element`): dodatnia moc i napięcie, napięcie zgodne z szyną.
+
+    Porównywana wielkość: napięcie znamionowe baterii wobec napięcia znamionowego szyny U_n
+    (nie poziom izolacji). Predykat `napiecie_baterii_pasuje_do_sieci` (U_n ≤ U_N ≤ U_s,
+    IEC 60871-1 i IEC 60038, podstawa w jego docstringu) czyta także walidator modelu (W040),
+    więc operacja i walidator nie mogą się rozjechać. Bateria z dławikiem ochronnym (napięcie
+    znamionowe nieco powyżej U_n, np. 17 kV na sieci 15 kV) mieści się w przedziale — dawna
+    tolerancja ±0,5 kV jej odmawiała.
+    """
+    if rated_mvar <= 0.0 or rated_kv <= 0.0:
+        return _error_response(
+            "Pozycja katalogowa baterii kondensatorów nie ma dodatniej mocy/napięcia znamionowego.",
+            "shunt.catalog_invalid",
+        )
+    if napiecie_baterii_pasuje_do_sieci(rated_kv, bus_voltage_kv) is not False:
+        return None
+    u_s = napiecie_najwyzsze_sieci_kv(bus_voltage_kv)
+    gorna = u_s if u_s is not None else bus_voltage_kv
+    return _error_response(
+        f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
+        f"({bus_voltage_kv:g} kV): napięcie znamionowe baterii musi leżeć od napięcia "
+        f"szyny {bus_voltage_kv:g} kV (praca ciągła najwyżej przy napięciu znamionowym "
+        f"baterii, IEC 60871-1) do napięcia najwyższego sieci {gorna:g} kV (IEC 60038). "
+        "Dobierz typ dla właściwego napięcia.",
+        "shunt.voltage_mismatch",
+    )
+
+
+def odmowa_napiecia_generatora(rated_kv: float, bus_voltage_kv: float) -> dict[str, Any] | None:
+    """JEDNA reguła napięcia znamionowego generatora synchronicznego wobec szyny.
+
+    Porównywana wielkość: napięcie znamionowe maszyny U_rG wobec napięcia znamionowego szyny
+    U_n (nie poziom izolacji). Generator przyłączony bezpośrednio do szyny pracuje ciągle przy
+    napięciu szyny, więc U_n musi leżeć w strefie A maszyny (predykat
+    `napiecie_sieci_w_strefie_a_maszyny`, IEC 60034-1 p. 7.3). Typowe maszyny 6,3 / 10,5 /
+    15,75 / 21 / 31,5 kV na sieciach 6 / 10 / 15 / 20 / 30 kV leżą w strefie
+    (U_n/U_rG = 0,952); dawna tolerancja bezwzględna 1,0 kV przyjmowała maszynę 7 kV na sieci
+    6 kV (0,857) i odmawiała maszyny 31,5 kV na sieci 30 kV.
+    """
+    if napiecie_sieci_w_strefie_a_maszyny(rated_kv, bus_voltage_kv) is not False:
+        return None
+    return _error_response(
+        f"Napięcie znamionowe generatora ({rated_kv:g} kV) nie pasuje do szyny "
+        f"({bus_voltage_kv:g} kV): napięcie szyny wynosi {bus_voltage_kv / rated_kv:.3f}·U_rG, "
+        "a praca ciągła wymaga strefy A maszyny 0,95–1,05·U_rG (IEC 60034-1). Dobierz typ dla "
+        "właściwego napięcia.",
+        "generator.voltage_mismatch",
     )
 
 
@@ -6949,9 +7229,10 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     solver PF (b_pu = Q_rated/S_base, +jB) + analiza reactive_adequacy istnieją;
     ta operacja jest brakującym punktem wejścia. Element trafia do kolekcji
     ENM `shunt_capacitors`, którą solver PF czyta bezpośrednio
-    (`_build_shunt_specs_from_snapshot`). Katalog-first: rated_mvar/rated_kv
+    (`enm/assembler.py::zloz_wejscie_rozplywu`). Katalog-first: rated_mvar/rated_kv
     pochodzą z pozycji katalogowej (nie z payloadu UI) — zero fizyki w UI.
     """
+    dry_run = bool(payload.get("dry_run", False))
     bus_ref = payload.get("bus_ref") or payload.get("bus_nn_ref")
     if not isinstance(bus_ref, str) or not bus_ref.strip():
         return _error_response(
@@ -6988,57 +7269,433 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             f"{nazwa_kategorii_katalogu('KOMPENSATOR_SN')}.",
             "shunt.catalog_not_found",
         )
+    # Tabliczka z kontraktu materializacji KOMPENSATOR_SN — TA SAMA droga co przypisanie typu
+    # (`assign_catalog_to_element` → `_zastosuj_tabliczke_baterii`), jeden zapisywacz
+    # `zapisz_tabliczke_baterii`.
+    tabliczka, blad_katalogu = _pozycja_katalogu(
+        namespace=przestrzen_katalogu,
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Typ baterii kondensatorów",
+    )
+    if blad_katalogu is not None:
+        return blad_katalogu
 
     rated_mvar = float(catalog_type.rated_mvar)
     rated_kv = float(catalog_type.rated_kv)
-    if rated_mvar <= 0.0 or rated_kv <= 0.0:
-        return _error_response(
-            "Pozycja katalogowa baterii kondensatorów nie ma dodatniej mocy/napięcia znamionowego.",
-            "shunt.catalog_invalid",
-        )
-    if not _same_nominal_voltage(rated_kv, bus_voltage_kv, tolerance_kv=0.5):
-        return _error_response(
-            f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
-            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
-            "shunt.voltage_mismatch",
-        )
+    odmowa_tabliczki = odmowa_tabliczki_baterii(rated_mvar, rated_kv, bus_voltage_kv)
+    if odmowa_tabliczki is not None:
+        return odmowa_tabliczki
 
     status = "open" if str(payload.get("status") or "closed").lower() == "open" else "closed"
 
-    seed = _compute_seed({"op": "shunt_compensator_sn", "bus": bus_ref, "cat": catalog_ref})
+    seed = _wolne_ziarno(
+        enm,
+        _compute_seed({"op": "shunt_compensator_sn", "bus": bus_ref, "cat": catalog_ref}),
+        lambda ziarno: [_make_id("shunt", ziarno, "cap")],
+    )
     shunt_ref = _make_id("shunt", seed, "cap")
 
     new_enm = kopia_graniczna_enm(enm)
-    new_enm.setdefault("shunt_capacitors", []).append(
-        {
-            "ref_id": shunt_ref,
-            "name": nazwa_nadana(payload.get("name"))
-            or nazwa_nadana_pozycji_katalogu(catalog_type)
-            or opis_bez_nazwy("shunt_capacitors"),
-            "bus_ref": bus_ref,
-            "rated_mvar": rated_mvar,
-            "rated_kv": rated_kv,
-            "status": status,
-            "catalog_ref": catalog_ref,
-            "catalog_namespace": przestrzen_katalogu,
-            "source_mode": "KATALOG",
-            "parameter_source": "CATALOG",
-            "tags": [],
-            "meta": {
-                "catalog_binding": copy.deepcopy(binding) if binding else None,
-                "loss_kw": catalog_type.loss_kw,
-            },
-        }
+    bateria: dict[str, Any] = {
+        "ref_id": shunt_ref,
+        "name": nazwa_nadana(payload.get("name"))
+        or nazwa_nadana_pozycji_katalogu(catalog_type)
+        or opis_bez_nazwy("shunt_capacitors"),
+        "bus_ref": bus_ref,
+        "status": status,
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": przestrzen_katalogu,
+        "source_mode": "KATALOG",
+        "parameter_source": "CATALOG",
+        "tags": [],
+        "meta": {"catalog_binding": copy.deepcopy(binding) if binding else None},
+    }
+    zapisz_tabliczke_baterii(bateria, tabliczka)
+    new_enm.setdefault("shunt_capacitors", []).append(bateria)
+
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[shunt_ref],
+            selection_id=shunt_ref,
+            selection_type="shunt_capacitor",
+            events=[
+                {"event_seq": 1, "event_type": "SHUNT_COMPENSATOR_CREATED", "element_id": shunt_ref}
+            ],
+        ),
+        dry_run,
     )
 
-    return _response(
-        new_enm,
-        created=[shunt_ref],
-        selection_id=shunt_ref,
-        selection_type="shunt_capacitor",
-        events=[
-            {"event_seq": 1, "event_type": "SHUNT_COMPENSATOR_CREATED", "element_id": shunt_ref}
-        ],
+
+#: Przestrzenie katalogu elementów zespołu uziemiającego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)
+#: — przesądzone rodzajem elementu, nie ładunkiem (ta sama zasada co bateria kondensatorów).
+PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO = "TRANSFORMATOR_UZIEMIAJACY"
+PRZESTRZEN_DLAWIKA_GASZACEGO = "DLAWIK_GASZACY"
+PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO = "REZYSTOR_UZIEMIAJACY"
+
+_STANY_ODLACZNIKA_PUNKTU_NEUTRALNEGO = ("zamkniety", "otwarty")
+_STRONY_REZYSTORA_AWSC = ("pierwotna", "wtorna")
+
+
+def _liczba_dodatnia(wartosc: object) -> float | None | str:
+    """Liczba > 0, ``None`` (brak) albo ``"niepoprawna"``."""
+    if wartosc is None:
+        return None
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return "niepoprawna"
+    if not math.isfinite(float(wartosc)) or float(wartosc) <= 0:
+        return "niepoprawna"
+    return float(wartosc)
+
+
+def _urzadzenie_punktu_neutralnego(
+    surowe: object,
+    *,
+    sciezka_odlacznika: str,
+    przestrzen: str,
+    opis_pl: str,
+    napiecie_kv: float,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Dławik albo rezystor zespołu z ładunku: pozycja katalogu (Catalog Binding Rule)
+    + stan odłącznika gałęzi. Zwraca ``(rekord, None)`` albo ``(None, odpowiedź_błędu)``."""
+    if surowe is None:
+        return None, None
+    if not isinstance(surowe, dict):
+        return None, _error_response(
+            f"{opis_pl}: oczekiwano opisu urządzenia (pozycja katalogu i stan odłącznika).",
+            "zu.payload_invalid",
+        )
+    binding = _catalog_binding_from_payload(surowe, przestrzen)
+    catalog_ref = _catalog_item_id(binding)
+    if not catalog_ref:
+        return None, _error_response(
+            f"{opis_pl} wymaga pozycji katalogu — wybierz typ urządzenia z katalogu.",
+            "zu.catalog_required",
+        )
+    parametry, blad = _pozycja_katalogu(
+        namespace=przestrzen, catalog_ref=catalog_ref, catalog_binding=binding, opis_pl=opis_pl
+    )
+    if blad is not None:
+        return None, blad
+    u_typu = parametry.get("u_n_kv")
+    if isinstance(u_typu, int | float) and not to_samo_napiecie_znamionowe(
+        float(u_typu), napiecie_kv
+    ):
+        return None, _error_response(
+            f"{opis_pl}: typ na napięcie {float(u_typu):g} kV nie pasuje do sieci "
+            f"{napiecie_kv:g} kV — dobierz typ na napięcie sieci.",
+            "zu.voltage_mismatch",
+        )
+    stan = surowe.get("stan_odlacznika", "zamkniety")
+    if stan not in _STANY_ODLACZNIKA_PUNKTU_NEUTRALNEGO:
+        return None, _error_response(
+            f"{pole(sciezka_odlacznika, 'add_zespol_uziemiajacy_sn')}: dozwolone "
+            "„zamknięty” albo „otwarty”.",
+            "zu.payload_invalid",
+        )
+    return {
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": przestrzen,
+        "materialized_params": copy.deepcopy(parametry),
+        "stan_odlacznika": stan,
+    }, None
+
+
+def add_zespol_uziemiajacy_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj (albo przekonfiguruj) zespół uziemiający sieci SN — ENEA Z.13 / Z.14 / Z.15.
+
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający jest JEDYNYM nośnikiem uziemienia
+    punktu neutralnego sieci SN obok punktu neutralnego uzwojenia transformatora
+    (``enm.uziemienie_sekcji``). Element fizyczny stoi na końcu toru pola ZU: ``bay_ref``
+    wskazuje pole o roli ``ZU`` (``add_sn_bay``), a zespół przyłącza się do zacisku tego pola
+    — stan łącznika ZU wynika wtedy z aparatu pola (gałąź ``SwitchBranch``), nie z kopii.
+    Bez pola (``bus_ref``) zespół stoi wprost na szynie.
+
+    Katalog-first (Catalog Binding Rule): transformator uziemiający, dławik i rezystor wiążą
+    się z pozycjami trzech przestrzeni katalogu; ładunek nie niesie liczb urządzenia poza
+    nastawą dławika (stan dostrojenia) i prądem wymuszanym AWSC — te są daną projektu,
+    nie tabliczki. Brak nastawy = wartość robocza w funkcji pochodnej (zasada nr 4).
+
+    ``zespol_ref`` — przekonfigurowanie istniejącego zespołu tym samym pisarzem (identyfikator
+    bez zmian). Odmowy nazwane: brak elementu w punkcie neutralnym, uziemienie bezpośrednie
+    razem z dławikiem/rezystorem, napięcie typu inne niż sieci, szyna spoza pasma SN.
+    """
+    dry_run = bool(payload.get("dry_run", False))
+    zespoly = [z for z in enm.get("zespoly_uziemiajace", []) if isinstance(z, dict)]
+    zespol_ref = payload.get("zespol_ref")
+    istniejacy: dict[str, Any] | None = None
+    if zespol_ref is not None:
+        istniejacy = next((z for z in zespoly if z.get("ref_id") == zespol_ref), None)
+        if istniejacy is None:
+            return _error_response(
+                "Wskazany zespół uziemiający nie istnieje w modelu.", "zu.not_found"
+            )
+
+    bay_ref = payload.get("bay_ref")
+    bus_ref = payload.get("bus_ref")
+    if bay_ref is not None:
+        pole_zu = pole_modelu(enm, bay_ref) if isinstance(bay_ref, str) else None
+        if not isinstance(pole_zu, dict):
+            return _error_response("Wskazane pole ZU nie istnieje w modelu.", "zu.bay_not_found")
+        if pole_zu.get("bay_role") != "ZU":
+            return _error_response(
+                "Zespół uziemiający przyłącza się w polu zespołu uziemiającego (rola pola "
+                "„Pole zespołu uziemiającego”) — wskazane pole ma inną rolę.",
+                "zu.bay_role_mismatch",
+            )
+        zacisk = pole_zu.get("terminal_bus_ref")
+        if not isinstance(zacisk, str) or not zacisk:
+            return _error_response(
+                "Pole ZU nie ma zacisku toru pierwotnego — utwórz pole z aparatem głównym.",
+                "zu.bay_terminal_missing",
+            )
+        if bus_ref is not None and bus_ref != zacisk:
+            return _error_response(
+                "Wskazana szyna nie jest zaciskiem pola ZU — podaj pole albo szynę, nie oba "
+                "sprzeczne.",
+                "zu.bay_bus_mismatch",
+            )
+        bus_ref = zacisk
+    if not isinstance(bus_ref, str) or not bus_ref.strip():
+        return _error_response(
+            "Zespół uziemiający wymaga pola ZU albo szyny SN — wybierz je na schemacie.",
+            "zu.bus_missing",
+        )
+    bus_ref = bus_ref.strip()
+    napiecie_kv = _bus_voltage_kv(enm, bus_ref)
+    if napiecie_kv is None:
+        return _error_response(
+            "Wskazana szyna nie istnieje w modelu albo nie ma napięcia znamionowego.",
+            "zu.bus_not_found",
+        )
+    if pasmo_napieciowe(napiecie_kv) != "SN":
+        return _error_response(
+            f"Zespół uziemiający uziemia punkt neutralny sieci SN — szyna {napiecie_kv:g} kV "
+            "leży poza pasmem SN.",
+            "zu.bus_not_sn",
+        )
+
+    binding = _catalog_binding_from_payload(payload, PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO)
+    catalog_ref = _catalog_item_id(binding)
+    if not catalog_ref:
+        return _error_response(
+            "Wybierz typ transformatora uziemiającego w polu "
+            f"{pole('catalog_ref', 'add_zespol_uziemiajacy_sn')}.",
+            "zu.catalog_required",
+        )
+    parametry_tu, blad_tu = _pozycja_katalogu(
+        namespace=PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Transformator uziemiający",
+    )
+    if blad_tu is not None:
+        return blad_tu
+    u_tu = parametry_tu.get("u_n_kv")
+    if isinstance(u_tu, int | float) and not to_samo_napiecie_znamionowe(float(u_tu), napiecie_kv):
+        return _error_response(
+            f"Transformator uziemiający na napięcie {float(u_tu):g} kV nie pasuje do sieci "
+            f"{napiecie_kv:g} kV — dobierz typ na napięcie sieci.",
+            "zu.voltage_mismatch",
+        )
+
+    dlawik, blad = _urzadzenie_punktu_neutralnego(
+        payload.get("dlawik"),
+        sciezka_odlacznika="dlawik.stan_odlacznika",
+        przestrzen=PRZESTRZEN_DLAWIKA_GASZACEGO,
+        opis_pl="Dławik gaszący",
+        napiecie_kv=napiecie_kv,
+    )
+    if blad is not None:
+        return blad
+    rezystor, blad = _urzadzenie_punktu_neutralnego(
+        payload.get("rezystor"),
+        sciezka_odlacznika="rezystor.stan_odlacznika",
+        przestrzen=PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO,
+        opis_pl="Rezystor uziemiający",
+        napiecie_kv=napiecie_kv,
+    )
+    if blad is not None:
+        return blad
+
+    if dlawik is not None:
+        surowy = cast(dict[str, Any], payload["dlawik"])
+        nastawa = _liczba_dodatnia(surowy.get("i_nastawy_a"))
+        if nastawa == "niepoprawna":
+            return _error_response(
+                f"{pole('dlawik.i_nastawy_a', 'add_zespol_uziemiajacy_sn')}: oczekiwano prądu nastawy > 0 A.",
+                "zu.payload_invalid",
+            )
+        if nastawa is not None:
+            i_min = dlawik["materialized_params"].get("i_min_a")
+            i_max = dlawik["materialized_params"].get("i_max_a")
+            if (isinstance(i_min, int | float) and float(nastawa) < float(i_min)) or (
+                isinstance(i_max, int | float) and float(nastawa) > float(i_max)
+            ):
+                return _error_response(
+                    f"Nastawa dławika {float(nastawa):g} A leży poza zakresem regulacji typu "
+                    f"({float(i_min):g}–{float(i_max):g} A) — dobierz nastawę w zakresie albo "
+                    "inny typ dławika.",
+                    "zu.coil_setting_out_of_range",
+                )
+            dlawik["i_nastawy_a"] = float(nastawa)
+        awsc = surowy.get("awsc")
+        if awsc is not None:
+            if not isinstance(awsc, dict):
+                return _error_response(
+                    f"{pole('dlawik.awsc', 'add_zespol_uziemiajacy_sn')}: oczekiwano opisu rezystora AWSC.",
+                    "zu.payload_invalid",
+                )
+            rekord_awsc: dict[str, Any] = {}
+            for klucz_awsc, sciezka_awsc in (
+                ("i_wymuszany_a", "dlawik.awsc.i_wymuszany_a"),
+                ("czas_zalaczenia_s", "dlawik.awsc.czas_zalaczenia_s"),
+            ):
+                liczba = _liczba_dodatnia(awsc.get(klucz_awsc))
+                if liczba == "niepoprawna":
+                    return _error_response(
+                        f"{pole(sciezka_awsc, 'add_zespol_uziemiajacy_sn')}: oczekiwano liczby > 0.",
+                        "zu.payload_invalid",
+                    )
+                if liczba is not None:
+                    rekord_awsc[klucz_awsc] = liczba
+            zwloka = awsc.get("czas_zwloki_s")
+            if zwloka is not None:
+                if (
+                    isinstance(zwloka, bool)
+                    or not isinstance(zwloka, int | float)
+                    or not math.isfinite(float(zwloka))
+                    or float(zwloka) < 0
+                ):
+                    return _error_response(
+                        f"{pole('dlawik.awsc.czas_zwloki_s', 'add_zespol_uziemiajacy_sn')}: oczekiwano liczby ≥ 0.",
+                        "zu.payload_invalid",
+                    )
+                rekord_awsc["czas_zwloki_s"] = float(zwloka)
+            strona = awsc.get("strona")
+            if strona is not None:
+                if strona not in _STRONY_REZYSTORA_AWSC:
+                    return _error_response(
+                        f"{pole('dlawik.awsc.strona', 'add_zespol_uziemiajacy_sn')}: dozwolone „pierwotna” "
+                        "albo „wtórna”.",
+                        "zu.payload_invalid",
+                    )
+                rekord_awsc["strona"] = strona
+            dlawik["awsc"] = rekord_awsc
+
+    bezposrednie = payload.get("uziemienie_bezposrednie", False)
+    if not isinstance(bezposrednie, bool):
+        return _error_response(
+            f"{pole('uziemienie_bezposrednie', 'add_zespol_uziemiajacy_sn')}: oczekiwano wartości tak/nie.",
+            "zu.payload_invalid",
+        )
+    if bezposrednie and (dlawik is not None or rezystor is not None):
+        return _error_response(
+            "Uziemienie bezpośrednie punktu neutralnego wyklucza dławik i rezystor — punkt "
+            "połączony wprost z ziemią zwiera element w punkcie neutralnym.",
+            "zu.direct_with_element",
+        )
+    if not bezposrednie and dlawik is None and rezystor is None:
+        return _error_response(
+            "Zespół uziemiający wymaga elementu w punkcie neutralnym: dławika gaszącego "
+            "(Z.13), dławika i rezystora równolegle (Z.14), rezystora (Z.15) albo jawnej "
+            "deklaracji uziemienia bezpośredniego.",
+            "zu.neutral_element_missing",
+        )
+
+    spz = payload.get("spz", False)
+    if not isinstance(spz, bool):
+        return _error_response(
+            f"{pole('spz', 'add_zespol_uziemiajacy_sn')}: oczekiwano wartości tak/nie.",
+            "zu.payload_invalid",
+        )
+    trafo_refs_surowe = payload.get("wylaczenie_od_transformatorow_refs") or []
+    if not isinstance(trafo_refs_surowe, list) or not all(
+        isinstance(r, str) and r for r in trafo_refs_surowe
+    ):
+        return _error_response(
+            f"{pole('wylaczenie_od_transformatorow_refs', 'add_zespol_uziemiajacy_sn')}: oczekiwano listy "
+            "transformatorów.",
+            "zu.payload_invalid",
+        )
+    trafo_refs = sorted(set(trafo_refs_surowe))
+    znane_trafo = {t.get("ref_id") for t in enm.get("transformers", []) if isinstance(t, dict)}
+    nieznane = [r for r in trafo_refs if r not in znane_trafo]
+    if nieznane:
+        return _error_response(
+            "Wyłączenie zespołu wskazuje transformatory spoza modelu — wybierz transformatory "
+            "WN/SN stacji.",
+            "zu.transformer_not_found",
+        )
+    odbior_pw_ref = payload.get("odbior_pw_ref")
+    if odbior_pw_ref is not None:
+        odbior = next(
+            (
+                o
+                for o in enm.get("loads", [])
+                if isinstance(o, dict) and o.get("ref_id") == odbior_pw_ref
+            ),
+            None,
+        )
+        if odbior is None:
+            return _error_response(
+                "Wskazany odbiór potrzeb własnych nie istnieje w modelu.", "zu.load_not_found"
+            )
+
+    if istniejacy is not None:
+        ref = str(istniejacy["ref_id"])
+    else:
+        seed = _wolne_ziarno(
+            enm,
+            _compute_seed({"op": "zespol_uziemiajacy_sn", "bus": bus_ref, "cat": catalog_ref}),
+            lambda ziarno: [_make_id("zu", ziarno, "zespol")],
+        )
+        ref = _make_id("zu", seed, "zespol")
+    rekord: dict[str, Any] = {
+        "ref_id": ref,
+        "name": nazwa_nadana(payload.get("name"))
+        or (nazwa_nadana(istniejacy.get("name")) if istniejacy else None)
+        or opis_bez_nazwy("zespoly_uziemiajace"),
+        "bus_ref": bus_ref,
+        "bay_ref": bay_ref if isinstance(bay_ref, str) else None,
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
+        "parameter_source": "CATALOG",
+        "materialized_params": copy.deepcopy(parametry_tu),
+        "odbior_pw_ref": odbior_pw_ref,
+        "dlawik": dlawik,
+        "rezystor": rezystor,
+        "uziemienie_bezposrednie": bezposrednie,
+        "spz": spz,
+        "wylaczenie_od_transformatorow_refs": trafo_refs,
+        "tags": [],
+        "meta": {"catalog_binding": copy.deepcopy(binding) if binding else None},
+    }
+    new_enm = kopia_graniczna_enm(enm)
+    lista = new_enm.setdefault("zespoly_uziemiajace", [])
+    if istniejacy is not None:
+        indeks = next(i for i, z in enumerate(lista) if z.get("ref_id") == ref)
+        lista[indeks] = rekord
+    else:
+        lista.append(rekord)
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[] if istniejacy is not None else [ref],
+            selection_id=ref,
+            selection_type="zespol_uziemiajacy",
+            events=[
+                {
+                    "event_seq": 1,
+                    "event_type": (
+                        "ZESPOL_UZIEMIAJACY_UPDATED" if istniejacy else "ZESPOL_UZIEMIAJACY_CREATED"
+                    ),
+                    "element_id": ref,
+                }
+            ],
+        ),
+        dry_run,
     )
 
 
@@ -7124,7 +7781,11 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "load.q_missing",
         )
 
-    seed = _compute_seed({"op": "load_sn", "bus": bus_ref, "p": active_power_kw})
+    seed = _wolne_ziarno(
+        enm,
+        _compute_seed({"op": "load_sn", "bus": bus_ref, "p": active_power_kw}),
+        lambda ziarno: [_make_id("load", ziarno, "sn")],
+    )
     load_ref = _make_id("load", seed, "sn")
 
     nowy_odbior: dict[str, Any] = {
@@ -7165,6 +7826,82 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _wolne_ziarno(
+    enm: dict[str, Any], seed: str, identyfikatory: Callable[[str], Iterable[str]]
+) -> str:
+    """Pierwsze ziarno, którego identyfikatory nie są zajęte w modelu.
+
+    Identyfikatory operacji są deterministyczne (ziarno z ładunku), więc powtórzenie
+    operacji, dla której powtórzenie jest normalną pracą projektanta (drugi odbiór o tej
+    samej mocy na tej samej szynie, druga bateria tego samego typu, druga rozdzielnica nN
+    o tej samej nazwie), dawało identyczny `ref_id`. Pierwsze wystąpienie zachowuje ziarno
+    bez zmian (migawki i odciski istniejących modeli się nie zmieniają); kolejne dostaje
+    ziarno pochodne z numerem wystąpienia — to samo wejście na tym samym modelu daje ten
+    sam identyfikator. Kolizję każdej innej operacji odrzuca dyspozytor
+    (`domain_operations.KOD_ZDUBLOWANEGO_IDENTYFIKATORA`).
+    """
+    zajete = _identyfikatory_modelu(enm)
+    kandydat = seed
+    numer = 1
+    while any(zajete[ref] for ref in identyfikatory(kandydat)):
+        numer += 1
+        kandydat = _compute_seed({"ziarno": seed, "wystapienie": numer})
+    return kandydat
+
+
+#: Pola tabliczki znamionowej generatora synchronicznego w trybie EKSPERCKI_RECZNY —
+#: dokładnie pola typu katalogowego `SynchronousGeneratorType` (jedno źródło kształtu).
+POLA_TABLICZKI_GENERATORA_SN: tuple[str, ...] = (
+    "rated_mva",
+    "rated_kv",
+    "q_min_mvar",
+    "q_max_mvar",
+)
+
+
+def _tabliczka_generatora_reczna(
+    payload: dict[str, Any], bus_voltage_kv: float
+) -> tuple[dict[str, Any], list[str], dict[str, Any] | None]:
+    """Tabliczka znamionowa generatora SN podana przez projektanta (bez katalogu).
+
+    Moc pozorna S_n jest obowiązkowa (bez niej nie ma czego materializować — to brak
+    danej urządzenia, której nie da się zaproponować z normy). Napięcie znamionowe,
+    gdy nie podane, przyjmowane jest równe napięciu szyny — wartość robocza zapisana
+    w `meta.dane_przyjete` (ZASADA NR 4), do zmiany w modelu. Granice mocy biernej
+    są opcjonalne: brak = brak (bez fabrykowania), tryb regulacji napięcia i tak
+    wymaga ich jawnie.
+    """
+    reczne = payload.get("manual_params")
+    zrodlo = reczne if isinstance(reczne, dict) else {}
+    rated_mva = _as_float(zrodlo.get("rated_mva"))
+    if rated_mva is None or rated_mva <= 0:
+        return (
+            {},
+            [],
+            _error_response(
+                "Generator synchroniczny wymaga typu z katalogu "
+                f"{nazwa_kategorii_katalogu('GENERATOR_SN')} albo tabliczki znamionowej "
+                "podanej ręcznie (dodatnia moc pozorna S_n [MVA]).",
+                "generator.catalog_required",
+            ),
+        )
+    zalozenia: list[str] = []
+    rated_kv = _as_float(zrodlo.get("rated_kv"))
+    if rated_kv is None or rated_kv <= 0:
+        rated_kv = float(bus_voltage_kv)
+        zalozenia.append(
+            f"Napięcie znamionowe generatora przyjęte równe napięciu szyny "
+            f"({rated_kv:g} kV) — założenie robocze, do zmiany w modelu."
+        )
+    tabliczka = {
+        "rated_mva": rated_mva,
+        "rated_kv": rated_kv,
+        "q_min_mvar": _as_float(zrodlo.get("q_min_mvar")),
+        "q_max_mvar": _as_float(zrodlo.get("q_max_mvar")),
+    }
+    return tabliczka, zalozenia, None
+
+
 def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj generator SYNCHRONICZNY wprost na szynę SN/WN (bez przekształtnika).
 
@@ -7177,13 +7914,15 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     do szyny — węzeł PV rozpływu mocy, gdy `control_mode=REGULACJA_NAPIECIA`
     (ten sam mechanizm co `add_converter_source`: `enm/mapping.py` czyta
     `meta.control_mode`/`u_set_pu`/`q_min_mvar`/`q_max_mvar`, zero zmian w
-    assemblerze/solverze). Katalog WYMAGANY (GENERATOR_SN) — tabliczka
-    znamionowa (moc pozorna, napięcie, granice mocy biernej); moc czynna
+    assemblerze/solverze). Tabliczka znamionowa (moc pozorna, napięcie, granice
+    mocy biernej) z katalogu GENERATOR_SN albo — bez referencji katalogowej — z
+    `manual_params` w trybie EKSPERCKI_RECZNY (ZASADA NR 4); moc czynna
     WYJŚCIOWA jest nastawą STUDIUM (payload `p_mw`), nie polem katalogu.
     """
     odmowa_typu = _odmowa_typu_ladunku(payload, "add_generator_sn", {"p_mw": "liczba_lub_tekst"})
     if odmowa_typu is not None:
         return odmowa_typu
+    dry_run = bool(payload.get("dry_run", False))
     bus_ref_raw = payload.get("bus_ref")
     bus_ref = bus_ref_raw.strip() if isinstance(bus_ref_raw, str) else None
     if not bus_ref:
@@ -7206,35 +7945,35 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         )
     p_mw = float(p_mw)
 
-    # Katalog WYMAGANY (K1.2 — element fizyczny, bez wyjątku dla generatorów).
-    # `GENERATOR_SN` (b) rated_mva/rated_kv/q_min_mvar/q_max_mvar z tabliczki.
+    # Tabliczka znamionowa (rated_mva/rated_kv/q_min_mvar/q_max_mvar): z katalogu
+    # `GENERATOR_SN` albo — gdy katalog nie ma typu maszyny projektanta — z jawnych
+    # danych tabliczki w trybie EKSPERCKI_RECZNY (ZASADA NR 4: brak pozycji katalogu
+    # nie blokuje pracy). Tryb rozstrzyga OBECNOŚĆ referencji katalogowej — ten sam
+    # predykat co `add_load_sn`/`add_nn_load` i brama API (`domain_ops_policy`):
+    # referencja podana = pełna walidacja katalogowa, deklaracja trybu jej nie omija.
     namespace = "GENERATOR_SN"
     catalog_binding = _catalog_binding_from_payload(payload, namespace)
     catalog_ref = _catalog_item_id(catalog_binding)
-    if not catalog_ref:
-        return _error_response(
-            "Generator synchroniczny wymaga typu z katalogu "
-            f"{nazwa_kategorii_katalogu('GENERATOR_SN')}.",
-            "generator.catalog_required",
+    zalozenia: list[str] = []
+    if catalog_ref:
+        tabliczka, blad_katalogu = _pozycja_katalogu(
+            namespace=namespace,
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            opis_pl="Generator synchroniczny",
         )
-    tabliczka, blad_katalogu = _pozycja_katalogu(
-        namespace=namespace,
-        catalog_ref=catalog_ref,
-        catalog_binding=catalog_binding,
-        opis_pl="Generator synchroniczny",
-    )
-    if blad_katalogu is not None:
-        return blad_katalogu
+        if blad_katalogu is not None:
+            return blad_katalogu
+    else:
+        tabliczka, zalozenia, blad_tabliczki = _tabliczka_generatora_reczna(payload, bus_voltage_kv)
+        if blad_tabliczki is not None:
+            return blad_tabliczki
 
     rated_kv = _as_float(tabliczka.get("rated_kv"))
-    if rated_kv is not None and not _same_nominal_voltage(
-        rated_kv, bus_voltage_kv, tolerance_kv=1.0
-    ):
-        return _error_response(
-            f"Napięcie znamionowe generatora ({rated_kv:g} kV) nie pasuje do szyny "
-            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
-            "generator.voltage_mismatch",
-        )
+    if rated_kv is not None:
+        odmowa_napiecia = odmowa_napiecia_generatora(rated_kv, bus_voltage_kv)
+        if odmowa_napiecia is not None:
+            return odmowa_napiecia
 
     control_mode_raw = payload.get("control_mode")
     control_mode = (
@@ -7279,7 +8018,11 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         # fabrykowane; jak `add_genset_nn`/`Generator.q_mvar` opcjonalne).
         q_mvar_field = _as_float(payload.get("q_mvar"))
 
-    seed = _compute_seed({"op": "generator_sn", "bus": bus_ref, "cat": catalog_ref, "p": p_mw})
+    seed = _wolne_ziarno(
+        enm,
+        _compute_seed({"op": "generator_sn", "bus": bus_ref, "cat": catalog_ref, "p": p_mw}),
+        lambda ziarno: [_make_id("gen", ziarno, "sn")],
+    )
     gen_ref = _make_id("gen", seed, "sn")
 
     nowy_generator: dict[str, Any] = {
@@ -7292,9 +8035,9 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "q_mvar": q_mvar_field,
         "gen_type": "synchronous",
         "catalog_ref": catalog_ref,
-        "catalog_namespace": namespace,
-        "source_mode": "KATALOG",
-        "parameter_source": "CATALOG",
+        "catalog_namespace": namespace if catalog_ref else None,
+        "source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY",
+        "parameter_source": "CATALOG" if catalog_ref else "OVERRIDE",
         "tags": [],
         "materialized_params": {
             "rated_mva": tabliczka.get("rated_mva"),
@@ -7305,15 +8048,64 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "meta": gen_meta,
     }
 
+    if zalozenia:
+        nowy_generator["meta"]["dane_przyjete"] = zalozenia
+
     new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("generators", []).append(nowy_generator)
 
-    return _response(
-        new_enm,
-        created=[gen_ref],
-        selection_id=gen_ref,
-        selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "GENERATOR_SN_CREATED", "element_id": gen_ref}],
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[gen_ref],
+            selection_id=gen_ref,
+            selection_type="generator",
+            events=[{"event_seq": 1, "event_type": "GENERATOR_SN_CREATED", "element_id": gen_ref}],
+        ),
+        dry_run,
+    )
+
+
+def odmowa_poziomu_izolacji(
+    *,
+    u_m_kv: float | None,
+    bus_voltage_kv: float | None,
+    opis_pl: str,
+    error_code: str,
+) -> dict[str, Any] | None:
+    """JEDNA reguła poziomu izolacji urządzenia wobec sieci — U_m ≥ U_s.
+
+    Napięcie najwyższe urządzenia U_m (dla aparatury rozdzielczej: napięcie znamionowe U_r,
+    PN-EN 62271-1 p. 5.2) musi pokrywać napięcie najwyższe SIECI U_s, a nie jej napięcie
+    znamionowe U_n (IEC 60071-1:2006 p. 3.9–3.10; para U_n → U_s z IEC 60038 tab. 3–5:
+    sieć 15 kV ma U_s = 17,5 kV, więc urządzenie o U_m = 15 kV jej nie pokrywa). Predykat
+    i tabela: `pasma_napieciowe.izolacja_pokrywa_siec` — ten sam dla ogranicznika przepięć,
+    aparatów pola, rodziny rozdzielnicy, podglądu doboru aparatu DER i dowodu doboru
+    aparatury. Brak U_m albo brak U_s (napięcie szyny nieznane, w paśmie nN) — reguła nie ma
+    podstawy i nie odmawia (brak napięcia szyny wykrywa walidator modelu).
+    """
+    if izolacja_pokrywa_siec(u_m_kv, bus_voltage_kv) is not False:
+        return None
+    u_s = napiecie_wymagane_izolacji_kv(bus_voltage_kv)
+    return _error_response(
+        f"{opis_pl}: napięcie najwyższe urządzenia U_m = {float(u_m_kv or 0.0):g} kV jest niższe "
+        f"od napięcia najwyższego sieci U_s = {float(u_s or 0.0):g} kV (szyna "
+        f"{float(bus_voltage_kv or 0.0):g} kV, IEC 60038) — wymagane U_m ≥ U_s "
+        "(IEC 60071-1). Dobierz typ dla właściwego poziomu napięcia.",
+        error_code,
+    )
+
+
+def odmowa_napiecia_ogranicznika(
+    u_m_kv: float, bus_voltage_kv: float | None
+) -> dict[str, Any] | None:
+    """Reguła napięcia ogranicznika przepięć wobec szyny SN — `odmowa_poziomu_izolacji`
+    z kodem ``spd.voltage_mismatch`` (U_m typu ≥ U_s sieci)."""
+    return odmowa_poziomu_izolacji(
+        u_m_kv=u_m_kv,
+        bus_voltage_kv=bus_voltage_kv,
+        opis_pl="Ogranicznik przepięć",
+        error_code="spd.voltage_mismatch",
     )
 
 
@@ -7321,20 +8113,24 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     """G-STK-8: postaw ogranicznik przepięć (SPD) w polu SN.
 
     Domyka stronę KONFIGURACYJNĄ GAP-2: materializuje aparat
-    ``kind=SURGE_ARRESTER`` na field_spec wskazanego pola. Ten sam kanał czytają
+    ``kind=SURGE_ARRESTER`` na rekordzie wskazanego pola (`Bay.surge_arresters`). Ten sam
+    kanał czytają
     OBAJ konsumenci — read-model pola projektuje go na ``Bay.primary_devices``
     (glif SLD, `surge_arrester_10ka`), a most ``build_v126_insulation_from_enm``
     wciąga go do koordynacji izolacji IEC 60071 (margines BIL). Katalog-first:
     parametry ogranicznika z ``mv_surge_arrester_catalog`` po ``catalog_ref``
     (walidacja istnienia typu; zero fizyki/fabrykacji w tej operacji).
     """
+    dry_run = bool(payload.get("dry_run", False))
     field_ref_raw = payload.get("field_ref") or payload.get("bay_ref")
     field_ref = (
         field_ref_raw.strip() if isinstance(field_ref_raw, str) and field_ref_raw.strip() else None
     )
     bus_ref = payload.get("bus_ref")
     if field_ref and (not isinstance(bus_ref, str) or not bus_ref.strip()):
-        bus_ref = _field_bus_ref(enm, field_ref)
+        # Szyna ROZDZIELNICY, na której stoi wskazane pole (`bus_ref` rekordu) — po niej
+        # operacja znajduje stację; ogranicznik zapisuje się na rekordzie pola.
+        bus_ref = (pole_modelu(enm, field_ref) or {}).get("bus_ref")
     if not isinstance(bus_ref, str) or not bus_ref.strip():
         return _error_response(
             "Ogranicznik przepięć wymaga wskazania pola SN albo szyny SN — wybierz je na "
@@ -7366,12 +8162,17 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             f"{nazwa_kategorii_katalogu('OGRANICZNIK_SN')}.",
             "spd.catalog_not_found",
         )
+    odmowa_napiecia = odmowa_napiecia_ogranicznika(
+        float(catalog_type.u_m_kv), _bus_voltage_kv(enm, bus_ref)
+    )
+    if odmowa_napiecia is not None:
+        return odmowa_napiecia
 
-    raw_specs = _substation_meta_specs(station, "field_specs")
+    pola_sn = pola_sn_stacji(enm, station.get("ref_id"))
     if field_ref is not None:
-        target_spec = next((s for s in raw_specs if s.get("field_ref") == field_ref), None)
+        target_spec = next((r for r in pola_sn if r.get("ref_id") == field_ref), None)
     else:
-        target_spec = next((s for s in raw_specs if s.get("bus_ref") == bus_ref), None)
+        target_spec = next((r for r in pola_sn if r.get("bus_ref") == bus_ref), None)
     if not isinstance(target_spec, dict):
         return _error_response(
             "Brak pola SN na wskazanej szynie do umieszczenia ogranicznika. "
@@ -7379,7 +8180,7 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             "spd.field_not_found",
         )
 
-    target_field_ref = str(target_spec.get("field_ref"))
+    target_field_ref = str(target_spec.get("ref_id"))
     existing = target_spec.get("surge_arresters")
     existing_refs = (
         {
@@ -7407,28 +8208,30 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     device_ref = _make_id("spd", seed, "arrester")
 
     new_enm = kopia_graniczna_enm(enm)
-    new_station = _resolve_station_for_field_write(
-        new_enm, station_ref=station.get("ref_id"), bus_ref=bus_ref
-    )
-    assert new_station is not None  # deepcopy zachowuje strukturę
-    new_specs = _substation_meta_specs(new_station, "field_specs")
-    new_target = next((s for s in new_specs if s.get("field_ref") == target_field_ref), None)
-    assert isinstance(new_target, dict)
-    arresters = new_target.setdefault("surge_arresters", [])
-    arresters.append(
-        {
-            "device_ref": device_ref,
-            "catalog_ref": catalog_ref,
-            "catalog_namespace": przestrzen_katalogu,
-        }
+    zmien_pole(
+        new_enm,
+        target_field_ref,
+        surge_arresters=[
+            *(existing if isinstance(existing, list) else []),
+            {
+                "device_ref": device_ref,
+                "catalog_ref": catalog_ref,
+                "catalog_namespace": przestrzen_katalogu,
+            },
+        ],
     )
 
-    return _response(
-        new_enm,
-        created=[device_ref],
-        selection_id=target_field_ref,
-        selection_type="bay",
-        events=[{"event_seq": 1, "event_type": "SURGE_ARRESTER_CREATED", "element_id": device_ref}],
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[device_ref],
+            selection_id=target_field_ref,
+            selection_type="bay",
+            events=[
+                {"event_seq": 1, "event_type": "SURGE_ARRESTER_CREATED", "element_id": device_ref}
+            ],
+        ),
+        dry_run,
     )
 
 
@@ -7440,6 +8243,16 @@ def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if not source_ref:
         return _error_response(
             "Nie wskazano źródła, którego tryb pracy ma zostać ustawiony.", "source.ref_missing"
+        )
+    # Słownik zapisu = słownik odczytu (`TRYBY_PRACY_ZRODLA`): wartość spoza niego read-model
+    # i SLD i tak odrzucają, więc zapis bez kontroli zostawiał w modelu daną, której żaden
+    # konsument nie widzi, a operacja meldowała sukces.
+    if mode not in TRYBY_PRACY_ZRODLA:
+        return _error_response(
+            "Tryb pracy źródła musi być jednym z: "
+            + lista_pl(NAZWY_TRYBOW_PRACY_ZRODLA_PL.values(), "albo")
+            + ".",
+            "params.invalid_value",
         )
 
     new_enm = kopia_graniczna_enm(enm)
@@ -7455,38 +8268,6 @@ def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> d
             )
 
     return _error_response("Wskazane źródło nie istnieje w modelu sieci.", "source.not_found")
-
-
-def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Ustaw profil dynamiczny (czasowy) dla elementu."""
-    odmowa_typu = _odmowa_typu_ladunku(payload, "set_dynamic_profile", {"profile": "slownik"})
-    if odmowa_typu is not None:
-        return odmowa_typu
-    element_ref = payload.get("element_ref") or payload.get("applies_to_element_id")
-    profile = payload.get("profile") or {}
-
-    if not element_ref:
-        return _error_response(
-            "Nie wskazano elementu, któremu ma zostać przypisany profil dynamiczny.",
-            "profile.element_missing",
-        )
-
-    new_enm = kopia_graniczna_enm(enm)
-    new_enm.setdefault("dynamic_profiles", []).append(
-        {
-            "profile_id": _compute_seed({"op": "profile", "elem": element_ref}),
-            "applies_to_element_id": element_ref,
-            "time_unit": profile.get("time_unit", "h"),
-            "points": profile.get("points", []),
-            "interpolation": profile.get("interpolation", "HOLD"),
-        }
-    )
-
-    return _response(
-        new_enm,
-        updated=[element_ref],
-        events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": element_ref}],
-    )
 
 
 #: Wiązania wytwórcy wybierane PO jego utworzeniu — nazwy kluczy są te same, których
@@ -7963,64 +8744,6 @@ def set_connection_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> d
     )
 
 
-def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Zmień nazwę elementu."""
-    element_ref = payload.get("element_ref")
-    new_name = payload.get("new_name")
-    legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
-
-    if not element_ref:
-        return _error_response(
-            "Nie wskazano elementu, którego nazwa ma zostać zmieniona.", "rename.ref_missing"
-        )
-    if not jest_nazwa(new_name):
-        return _error_response("Brak nowej nazwy.", "rename.name_missing")
-    if legacy_field_collection is not None:
-        return _error_legacy_field_write_disabled(enm, element_ref, legacy_field_collection)
-
-    loc = _find_element(enm, element_ref)
-    if not loc:
-        return _error_response("Wskazany element nie istnieje w modelu sieci.", "rename.not_found")
-
-    new_enm = kopia_graniczna_enm(enm)
-    coll, idx = loc
-    new_enm[coll][idx]["name"] = nazwa_nadana(new_name)
-
-    return _response(
-        new_enm,
-        updated=[element_ref],
-        events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": element_ref}],
-    )
-
-
-def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Ustaw etykietę (label) elementu."""
-    element_ref = payload.get("element_ref")
-    label = payload.get("label")
-    legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
-
-    if not element_ref:
-        return _error_response(
-            "Nie wskazano elementu, którego etykieta ma zostać ustawiona.", "label.ref_missing"
-        )
-    if legacy_field_collection is not None:
-        return _error_legacy_field_write_disabled(enm, element_ref, legacy_field_collection)
-
-    loc = _find_element(enm, element_ref)
-    if not loc:
-        return _error_response("Wskazany element nie istnieje w modelu sieci.", "label.not_found")
-
-    new_enm = kopia_graniczna_enm(enm)
-    coll, idx = loc
-    new_enm[coll][idx]["label"] = label
-
-    return _response(
-        new_enm,
-        updated=[element_ref],
-        events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": element_ref}],
-    )
-
-
 # ---------------------------------------------------------------------------
 # INWENTARZ BRAMY KATALOGOWEJ OPERACJI V2 (defekt G)
 # ---------------------------------------------------------------------------
@@ -8050,6 +8773,18 @@ class PozycjaBramyKatalogowejV2:
 #: Ta lista jest KONTRAKTEM — test klasy skanuje moduł i czerwienieje, gdy
 #: operacja V2 zacznie czytać referencję spoza inwentarza.
 V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
+    # Aparat pola nN wskazany przy dodaniu pola (odpływ albo pole źródłowe) — wiązanie
+    # zapisane na polu dla promocji aparatów nN (`_wiazanie_aparatu_pola_nn`).
+    PozycjaBramyKatalogowejV2(
+        "add_nn_outgoing_field", "catalog_ref", _PRZESTRZEN_APARATU_POLA_NN, True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_outgoing_field",
+        "catalog_binding",
+        _PRZESTRZEN_APARATU_POLA_NN,
+        True,
+        "druga droga wskazania pozycji",
+    ),
     PozycjaBramyKatalogowejV2("add_ct", "catalog_ref", "CT", True),
     PozycjaBramyKatalogowejV2(
         "add_ct", "catalog_binding", "CT", True, "druga droga wskazania pozycji"
@@ -8067,13 +8802,6 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "kontrakt kreatora pola — rozwiązywany do tego samego wiązania",
     ),
     PozycjaBramyKatalogowejV2("add_sn_bay", "catalog_binding", "APARAT_SN", True),
-    PozycjaBramyKatalogowejV2(
-        "add_sn_bay_from_catalog",
-        "catalog_binding",
-        "APARAT_SN",
-        True,
-        "materializacja pola z katalogu rodzin — aparat główny wskazywany tak samo",
-    ),
     PozycjaBramyKatalogowejV2("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
     # CV-4.3 K1: `add_load_sn` reużywa DOKŁADNIE ten sam wzorzec co `add_nn_load`
     # (katalog opcjonalny — odbiór nie jest wyrobem katalogowym — ale WSKAZANA
@@ -8128,6 +8856,33 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True
     ),
     PozycjaBramyKatalogowejV2("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy elementy zespołu uziemiającego.
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "catalog_binding", "TRANSFORMATOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "catalog_ref", "TRANSFORMATOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "dlawik.catalog_ref", "DLAWIK_GASZACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "rezystor.catalog_ref", "REZYSTOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn",
+        "dlawik.catalog_binding",
+        "DLAWIK_GASZACY",
+        True,
+        "materializacja przez `_urzadzenie_punktu_neutralnego`",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn",
+        "rezystor.catalog_binding",
+        "REZYSTOR_UZIEMIAJACY",
+        True,
+        "materializacja przez `_urzadzenie_punktu_neutralnego`",
+    ),
     PozycjaBramyKatalogowejV2(
         "set_der_catalog_bindings", "protection_catalog_ref", "ZABEZPIECZENIE", True
     ),
@@ -8203,6 +8958,28 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         True,
         "druga droga wskazania pozycji",
     ),
+    # Zasilenie rozdzielnicy nN (`payload.supply`) — ten sam materializator kabla nN co
+    # `add_nn_cable_segment` (`_add_nn_cable_segment_internal`), więc te same dwie drogi
+    # wskazania. Pozycja była czytana bez wiersza inwentarza (skan handlerów widział tylko
+    # ciało handlera, nie funkcje, które on woła — karta W5-C rozszerzyła skan).
+    PozycjaBramyKatalogowejV2("add_nn_distribution_board", "supply.catalog_ref", "KABEL_NN", True),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_distribution_board",
+        "supply.catalog_binding",
+        "KABEL_NN",
+        True,
+        "druga droga wskazania pozycji",
+    ),
+    # W5-C: wyposażenie pola SN — aparat rodzaju z katalogiem SN wskazuje pozycję
+    # przestrzeni tego rodzaju (`enm.wyposazenie_pola.PRZESTRZEN_KATALOGU_APARATU`),
+    # sprawdzaną bramą istnienia `_pozycja_katalogu`.
+    PozycjaBramyKatalogowejV2(
+        "set_bay_equipment",
+        "devices[].catalog_ref",
+        "APARAT_SN|CT|VT|OGRANICZNIK_SN",
+        True,
+        "przestrzeń wynika z rodzaju aparatu (`kind`) wpisu listy",
+    ),
 )
 
 #: Klucze payloadu z referencją katalogową, które operacjom V2 wolno czytać.
@@ -8251,7 +9028,6 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "update_protection_settings",
         # nN
         "add_sn_bay",
-        "add_sn_bay_from_catalog",
         "add_nn_outgoing_field",
         "add_converter_source",
         "add_nn_load",
@@ -8260,9 +9036,9 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "add_genset_nn",
         "add_ups_nn",
         "add_shunt_compensator_sn",
+        "add_zespol_uziemiajacy_sn",
         "add_surge_arrester_sn",
         "set_source_operating_mode",
-        "set_dynamic_profile",
         "set_der_catalog_bindings",
         "set_load_dynamic_binding",
         "dodaj_karte_widmowa_projektu",
@@ -8275,11 +9051,14 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "split_nn_segment",
         "merge_nn_segments",
         "set_nn_cable_laying_conditions",
-        "remove_nn_element",
         "copy_nn_feeder",
+        # W5-C: stan łączeniowy (jedna prawda — `enm/operacje_lacznikow.py`)
+        "open_switch",
+        "close_switch",
+        "set_normal_open_point",
+        # W5-C: wyposażenie pola SN (`enm/wyposazenie_pola.py`)
+        "set_bay_equipment",
         # Universal
-        "rename_element",
-        "set_label",
         "set_connection_conditions",
     }
 )
@@ -8291,7 +9070,6 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_relay": add_relay,
     "update_protection_settings": update_protection_settings,
     "add_sn_bay": add_sn_bay,
-    "add_sn_bay_from_catalog": add_sn_bay_from_catalog,
     "add_nn_outgoing_field": add_nn_outgoing_field,
     "add_converter_source": add_converter_source,
     "add_nn_load": add_nn_load,
@@ -8300,9 +9078,9 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_genset_nn": add_genset_nn,
     "add_ups_nn": add_ups_nn,
     "add_shunt_compensator_sn": add_shunt_compensator_sn,
+    "add_zespol_uziemiajacy_sn": add_zespol_uziemiajacy_sn,
     "add_surge_arrester_sn": add_surge_arrester_sn,
     "set_source_operating_mode": set_source_operating_mode,
-    "set_dynamic_profile": set_dynamic_profile,
     "set_der_catalog_bindings": set_der_catalog_bindings,
     "set_load_dynamic_binding": set_load_dynamic_binding,
     "dodaj_karte_widmowa_projektu": dodaj_karte_widmowa_projektu,
@@ -8314,9 +9092,10 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "split_nn_segment": split_nn_segment,
     "merge_nn_segments": merge_nn_segments,
     "set_nn_cable_laying_conditions": set_nn_cable_laying_conditions,
-    "remove_nn_element": remove_nn_element,
     "copy_nn_feeder": copy_nn_feeder,
-    "rename_element": rename_element,
-    "set_label": set_label,
+    "open_switch": open_switch,
+    "close_switch": close_switch,
+    "set_normal_open_point": set_normal_open_point,
+    "set_bay_equipment": set_bay_equipment,
     "set_connection_conditions": set_connection_conditions,
 }

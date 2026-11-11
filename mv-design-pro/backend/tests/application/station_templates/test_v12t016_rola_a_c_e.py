@@ -62,12 +62,7 @@ def _magistrala(
     (świadomie zduplikowany — konwencja tego pakietu testów: każdy plik jest
     samowystarczalny, brak wspólnego conftest dla fikstur ENM).
     """
-    if voltage_kv == 20.0:
-        source_ref = "src-gpz-20kv-250mva-rx010"
-        tr_ref = "tr-wn-sn-110-20-25mva-yd11"
-    else:
-        source_ref = "src-gpz-15kv-250mva-rx010"
-        tr_ref = "tr-wn-sn-110-15-25mva-yd11"
+    source_ref = "src-gpz-20kv-250mva-rx010" if voltage_kv == 20.0 else "src-gpz-15kv-250mva-rx010"
     enm = _wykonaj(
         _pusty_enm(voltage_kv),
         "add_grid_source_sn",
@@ -75,14 +70,11 @@ def _magistrala(
             "voltage_kv": voltage_kv,
             "catalog_ref": source_ref,
             "sections_count": 1,
-            "transformer_count": 1,
-            "transformer_catalog_ref": tr_ref,
-            "line_fields_count": 1,
+            "line_fields_per_section": 1,
             "gpz_line_field_apparatus": {
                 "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "apparatus_kind": "BREAKER",
             },
-            "grounding": {"type": "isolated"},
         },
     )["snapshot"]
     odcinki: list[str] = []
@@ -107,9 +99,9 @@ def _magistrala(
 #: zastosowanie (kompensacja/abonencka mają warianty 20 kV — muszą trafić na
 #: magistralę TEGO SAMEGO napięcia, inaczej domena słusznie odmawia).
 _ROLA_A_C_E_TEMPLATES: tuple[tuple[str, float], ...] = (
-    ("tpl_gpz_110_15_2x16mva_h5", 0.0),  # 0.0 = GPZ, brak magistrali (korzeń)
-    ("tpl_gpz_110_15_2x25mva_h5", 0.0),
-    ("tpl_gpz_110_20_2x16mva_h5", 0.0),
+    ("tpl_gpz_sn_15_2s_4p", 0.0),  # 0.0 = GPZ, brak magistrali (korzeń)
+    ("tpl_gpz_sn_15_2s_6p", 0.0),
+    ("tpl_gpz_sn_20_2s_4p", 0.0),
     ("tpl_rs_2pola_sprzeglo", 15.0),
     ("tpl_rsm_4pola_2wyjscia", 15.0),
     ("tpl_rs_6pola_wezel_petlowy", 15.0),
@@ -306,30 +298,32 @@ def test_stacja_bez_transformatora_nie_zostawia_wyspy_grafu_nn(tpl_id: str) -> N
     assert "E003" not in codes, f"{tpl_id}: E003 (graf niespójny) obecny mimo naprawy"
 
 
-def test_gpz_tworzy_dwie_sekcje_i_sprzeglo_uklad_h5() -> None:
-    """Karta §1 rola A: „dwa transformatory, sekcja szyn, sprzęgło" — układ H5
-    materializuje się z `add_grid_source_sn(sections_count=2)`."""
-    result, klucz = _zastosuj("tpl_gpz_110_15_2x16mva_h5", 0.0)
+def test_gpz_tworzy_dwie_sekcje_i_sprzeglo_bez_transformatorow_110_sn() -> None:
+    """Karta §1 rola A: dwie sekcje szyn SN i sprzęgło z `add_grid_source_sn(sections_count=2)`.
+
+    Karta GPZ-MODEL (granica zasilania SN): równoważnik szablonu (katalog `ZRODLO_SN`,
+    Sk widziane z szyn SN) już zawiera impedancję transformatorów 110/SN, więc szablon ich
+    NIE tworzy — granicą modelu są szyny SN, równoważnik stoi na sekcji 1, sekcja 2 jest
+    zasilana przez sprzęgło."""
+    result, klucz = _zastosuj("tpl_gpz_sn_15_2s_4p", 0.0)
     saved = get_enm(klucz)
     d = saved.model_dump(mode="json")
     substation = next(s for s in d["substations"] if s["ref_id"] == result["station_ref"])
     buses_by_ref = {b["ref_id"]: b for b in d["buses"]}
-    sn_bus_refs = [ref for ref in substation["bus_refs"] if buses_by_ref[ref]["voltage_kv"] == 15.0]
-    assert len(sn_bus_refs) == 2, (
-        f"GPZ 2-sekcyjny musi mieć 2 szyny SN 15 kV, jest {len(sn_bus_refs)} "
-        f"(bus_refs stacji zawiera też szyny 110 kV transformatorów — display-only)"
-    )
-    assert len(substation["transformer_refs"]) == 2, "Szablon 2x16 MVA musi dać 2 transformatory"
+    assert [buses_by_ref[ref]["voltage_kv"] for ref in substation["bus_refs"]] == [15.0, 15.0]
+    assert substation["transformer_refs"] == []
+    assert d["transformers"] == []
     couplers = [b for b in d["branches"] if b.get("type") == "bus_coupler"]
-    assert len(couplers) == 1, "Układ H5 wymaga dokładnie jednego sprzęgła międzysekcyjnego"
-    for tr_ref in substation["transformer_refs"]:
-        tr = next(t for t in d["transformers"] if t["ref_id"] == tr_ref)
-        assert tr["catalog_ref"] == "tr-wn-sn-110-15-16mva-yd11"
+    assert len(couplers) == 1, "Dwie sekcje wymagają dokładnie jednego sprzęgła międzysekcyjnego"
+    sekcje = substation["gpz_sections"]
+    (zrodlo,) = d["sources"]
+    assert zrodlo["bus_ref"] == sekcje[0]["bus_ref"]
+    assert [s["incoming_source_ref"] for s in sekcje] == [zrodlo["ref_id"], None]
 
 
 def test_gpz_target_segment_id_none_jest_akceptowany() -> None:
     """GPZ jest korzeniem modelu — `target_segment_id=None` NIE jest błędem."""
-    template = get_template("tpl_gpz_110_15_2x16mva_h5")
+    template = get_template("tpl_gpz_sn_15_2s_4p")
     assert template is not None
     klucz = "v12t016:gpz-none-target"
     set_enm(klucz, EnergyNetworkModel.model_validate(_pusty_enm()))
@@ -440,7 +434,7 @@ def test_kazdy_szablon_20kv_poza_gpz_odmawia_na_magistrali_15kv() -> None:
 # Iloczyn: {korzeń modelu (GPZ), wcięcie w odcinek} × {OSError, ValidationError, obcy}.
 # ---------------------------------------------------------------------------
 
-_SZABLONY_ZAPISU = (("tpl_gpz_110_15_2x16mva_h5", 0.0), ("tpl_abonencka_250kva_pomiar", 15.0))
+_SZABLONY_ZAPISU = (("tpl_gpz_sn_15_2s_4p", 0.0), ("tpl_abonencka_250kva_pomiar", 15.0))
 
 
 def _awaria_zapisu(typ: str) -> Any:
@@ -477,3 +471,28 @@ def test_blad_programu_przy_zapisie_szablonu_wybucha(
     monkeypatch.setattr(api_enm, "_set_enm", _awaria_zapisu("AttributeError"))
     with pytest.raises(AttributeError, match="błąd programu"):
         _zastosuj(tpl_id, voltage_kv, klucz_suffix="-zapis-obcy")
+
+
+@pytest.mark.parametrize(
+    "tpl_id",
+    sorted(t.id for t in list_templates_by_category(TemplateCategory.GPZ_110_SN)),
+)
+def test_gpz_ma_tyle_pol_liniowych_ile_deklaruje_szablon(tpl_id: str) -> None:
+    """Liczba pól liniowych na sekcję szablonu GPZ (``sn_bays_count``) trafia do operacji
+    kluczem kontraktu ``line_fields_per_section``. Dawniej szablon wysyłał ją kluczem poziomu
+    sekcji (``line_fields_count``), którego handler na poziomie ładunku nie czyta — GPZ
+    „4 pola na sekcję” dostawał po cichu jedno pole na sekcję."""
+    from application.station_templates.apply import _GPZ_SECTIONS_COUNT
+    from enm.pola import pola_stacji
+
+    template = get_template(tpl_id)
+    assert template is not None
+    pola_na_sekcje = template.schema.sn_bays_count.default
+    assert pola_na_sekcje > 1  # inaczej test nie odróżnia wartości od domyślnej 1
+    _wynik, klucz = _zastosuj(tpl_id, 0.0)
+    model = get_enm(klucz).model_dump(mode="json")
+    (gpz,) = (s for s in model["substations"] if str(s["ref_id"]).startswith("gpz/"))
+    pola_liniowe = [
+        p for p in pola_stacji(model, gpz["ref_id"]) if "gpz_line_field" in (p.get("tags") or [])
+    ]
+    assert len(pola_liniowe) == _GPZ_SECTIONS_COUNT * pola_na_sekcje

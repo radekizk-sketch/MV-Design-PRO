@@ -8,11 +8,13 @@
  * Kliki natywne (userEvent), Zero-Debt pkt 5.
  */
 
+import { tekstZrodlowy } from '../../../../../test/tekstZWzorami';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../../ui/app-state';
+import { runIdOgladanyTeraz, useKontekstWynikuStore } from '../../../../wyniki/kontekst/kontekstWyniku';
 import { useFaultScenariosStore } from '../../../../../ui/fault-scenarios/store';
 import { PanelScenariuszy } from '../PanelScenariuszy';
 import { SCENARIUSZE_STRINGS as T } from '../strings';
@@ -134,7 +136,7 @@ function zamontujBackend(
         if ('c_factor' in config || !('scenariusz' in config)) {
           return new Response(
             JSON.stringify({
-              detail: [{ loc: ['body', 'config', 'scenariusz'], msg: 'Field required', type: 'missing' }],
+              detail: [{ loc: ['body', 'config', 'scenariusz'], msg: 'wartość jest wymagana', type: 'missing' }],
             }),
             { status: 422, headers: { 'Content-Type': 'application/json' } },
           );
@@ -455,10 +457,11 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
         }),
       ]);
       render(<PanelScenariuszy />);
-      expect((await screen.findByTestId('mvd-scenariusze-tb-s1')).textContent).toBe(
+      // Symbol `$t_b$` przycisku składa KaTeX — porównanie dokładne napisu źródłowego.
+      expect(tekstZrodlowy(await screen.findByTestId('mvd-scenariusze-tb-s1'))).toBe(
         `${OPIS_CZASU_TB_W_PUNKCIE} ${T.zmianaTb}`,
       );
-      expect(screen.getByTestId('mvd-scenariusze-tb-s2').textContent).toBe(`0,1 s ${T.zmianaTb}`);
+      expect(tekstZrodlowy(screen.getByTestId('mvd-scenariusze-tb-s2'))).toBe(`0,1 s ${T.zmianaTb}`);
     });
   });
 
@@ -509,8 +512,10 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
         expect(reszta).toEqual(bazowa);
         expect(Object.keys((put!.body as Record<string, unknown>))).toEqual(['config']);
       });
-      expect(await screen.findByTestId('mvd-scenariusze-komunikat')).toHaveTextContent(T.zmianaTbZapisano);
-      expect(screen.getByTestId('mvd-scenariusze-tb-s1').textContent).toBe(
+      expect(tekstZrodlowy(await screen.findByTestId('mvd-scenariusze-komunikat'))).toContain(
+        T.zmianaTbZapisano,
+      );
+      expect(tekstZrodlowy(screen.getByTestId('mvd-scenariusze-tb-s1'))).toBe(
         `${tb === undefined ? OPIS_CZASU_TB_W_PUNKCIE : '0,08 s'} ${T.zmianaTb}`,
       );
     });
@@ -557,7 +562,9 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       expect(screen.queryByTestId('mvd-scenariusze-tb-pole-s1')).not.toBeInTheDocument();
       expect(useZadanieCzasuTb.getState().zadanie).toBeNull();
       if (komunikat) {
-        expect(screen.getByTestId('mvd-scenariusze-komunikat')).toHaveTextContent(T.zmianaTbScenariuszaBrak);
+        expect(tekstZrodlowy(screen.getByTestId('mvd-scenariusze-komunikat'))).toBe(
+          T.zmianaTbScenariuszaBrak,
+        );
       } else {
         expect(screen.queryByTestId('mvd-scenariusze-komunikat')).not.toBeInTheDocument();
       }
@@ -611,7 +618,7 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
   // z powłoką, komunikat sukcesu}.
   it('URUCHOMIENIE (DONE): tworzy bieg, ZLECA wykonanie i wiąże wynik z powłoką', async () => {
     const user = userEvent.setup();
-    useAppStateStore.setState({ activeRunId: null });
+    useKontekstWynikuStore.getState().wyczysc();
     const zadania = zamontujBackend([scenariusz('s1', 'Zwarcie w GPZ')], 'DONE');
     render(<PanelScenariuszy />);
 
@@ -628,7 +635,9 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
     );
     expect(utworzenie).toBeGreaterThanOrEqual(0);
     expect(wykonanie).toBeGreaterThan(utworzenie);
-    expect(useAppStateStore.getState().activeRunId).toBe('run-z-scenariusza');
+    // Karta K8: bieg związany z powłoką = oglądany bieg magazynu kontekstu wyniku
+    // (jedna akcja `wybierzBieg`, zero drugiego nośnika „aktywnego biegu”).
+    expect(runIdOgladanyTeraz()).toBe('run-z-scenariusza');
     expect(useAppStateStore.getState().activeCaseResultStatus).toBe('FRESH');
   });
 

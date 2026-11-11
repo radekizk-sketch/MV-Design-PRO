@@ -40,7 +40,8 @@ import type {
   ProfilOperatoraNcRfg,
   PunktObwiedniFrtProfilu,
 } from '../../../ui2/oze/ncrfg/typy';
-import { fetchDerConverterTypes } from '../../catalog/api';
+import { fetchDerConverterTypes, fetchTransformerTypes } from '../../catalog/api';
+import type { TransformerType } from '../../catalog/types';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 async function getJson<T>(url: string): Promise<T> {
@@ -154,6 +155,26 @@ export function useBessBatteryTypes(): UseQueryResult<readonly BessBatteryItem[]
   return useQuery({
     queryKey: ['catalog', 'bess-battery-types'],
     queryFn: fetchBessBatteryTypes,
+    staleTime: Infinity,
+    gcTime: 60 * 60_000,
+  });
+}
+
+// =============================================================================
+// Typy transformatorów SN/nN — katalog backendu (`GET /api/catalog/transformer-types`),
+// źródło wariantów „większego transformatora stacji" w kreatorze DER. Zastępuje statyczną
+// listę 15/0,4 kV kreatora, która dla stacji 20 kV nie miała żadnej pozycji.
+// =============================================================================
+
+export async function fetchStationTransformerTypes(): Promise<readonly TransformerType[]> {
+  const payload = await fetchTransformerTypes();
+  return Array.isArray(payload) ? payload : [];
+}
+
+export function useStationTransformerTypes(): UseQueryResult<readonly TransformerType[], Error> {
+  return useQuery({
+    queryKey: ['catalog', 'transformer-types'],
+    queryFn: fetchStationTransformerTypes,
     staleTime: Infinity,
     gcTime: 60 * 60_000,
   });

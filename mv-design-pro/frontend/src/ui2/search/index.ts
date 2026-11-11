@@ -12,10 +12,8 @@ export {
 
 export {
   KOLEJNOSC_GRUP,
-  trybWystarczajacy,
   type GrupaWyszukiwania,
   type PozycjaWyszukiwania,
-  type TrybZaawansowania,
 } from './searchModel';
 
 export {
@@ -35,4 +33,4 @@ export {
   type WynikDopasowania,
 } from './fuzzy';
 
-export { SEARCH_STRINGS, brakWynikowLabel, etykietaGrupy, etykietaTrybu, potwierdzTrybLabel } from './strings';
+export { SEARCH_STRINGS, brakWynikowLabel, etykietaGrupy } from './strings';

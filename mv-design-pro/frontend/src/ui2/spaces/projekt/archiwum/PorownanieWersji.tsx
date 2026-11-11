@@ -21,7 +21,6 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 
 import { listProjects, type Project } from '../../../../ui/projects/api';
-import { isModeAtLeast } from '../../../shell/modeModel';
 import { useShellStore } from '../../../shell/useShellStore';
 import { InformacjeAudytowe, type WierszInformacjiAudytowych } from '../../../wyniki/wzorzec';
 import '../../../wyniki/wzorzec/wzorzec.css';
@@ -142,14 +141,11 @@ function SekcjaRoznic({ sekcja }: { sekcja: RoznicaSekcji }) {
 
 /** Wynik porównania — werdykt, liczniki, części zmienione i lista części bez zmian. */
 export function WynikPorownaniaWidok({ wynik }: { wynik: WynikPorownania }) {
-  const trybEkspercki = isModeAtLeast(
-    useShellStore((s) => s.advancementMode),
-    'expert',
-  );
+  const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const audyt = (
     <InformacjeAudytowe
       wiersze={wierszeAudytowePorownania(wynik)}
-      trybEkspercki={trybEkspercki}
+      szczegolyAudytowe={szczegolyAudytowe}
       testid="mvd-arch-por-audyt"
     />
   );

@@ -4,6 +4,7 @@ import atexit
 import contextlib
 import importlib.util
 import inspect
+import logging
 import os
 import pwd
 import re
@@ -216,6 +217,41 @@ def pytest_configure(config):
         )
 
 
+def pytest_unconfigure(config):
+    """Jawny `--basetemp` jest kasowany po biegu (dyrektywa 2026-10-28: dysk kontenera).
+
+    Pytest rotuje wyłącznie katalogi domyślne (`pytest-of-<użytkownik>`, trzy ostatnie);
+    katalog podany `--basetemp` zostaje na zawsze — bramki scalenia zostawiały ~1,5 GB na
+    bieg i wyczerpały przydział dysku (dwa restarty kontenera 2026-10-28). Kasuje proces
+    główny (proces roboczy xdist pracuje w podkatalogu `popen-gwN` katalogu głównego), po
+    zakończeniu wszystkich procesów roboczych. Przypięte `tests/ci/test_sprzatanie_basetemp.py`
+    (bieg jednoprocesowy × xdist)."""
+    if hasattr(config, "workerinput"):
+        return
+    basetemp = config.option.basetemp
+    if basetemp:
+        shutil.rmtree(Path(basetemp), ignore_errors=True)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Pliki testów malejąco po zmierzonym czasie (LPT) — `tests/kolejnosc_plikow.py`.
+
+    Testy jednego pliku zostają w kolejności kolekcji i obok siebie; zmienia się wyłącznie
+    kolejność PLIKÓW, którą xdist zachowuje dzięki `--no-loadscope-reorder` (`addopts`).
+    """
+    from tests.kolejnosc_plikow import kolejnosc, wczytaj_czasy
+
+    katalog = Path(__file__).resolve().parents[1]
+
+    def sciezka(item: pytest.Item) -> str:
+        plik = item.path.resolve()
+        return plik.relative_to(katalog).as_posix() if plik.is_relative_to(katalog) else str(plik)
+
+    sciezki = {id(item): sciezka(item) for item in items}
+    ranga = {plik: i for i, plik in enumerate(kolejnosc(sciezki.values(), wczytaj_czasy()))}
+    items.sort(key=lambda item: ranga[sciezki[id(item)]])
+
+
 @pytest.fixture(autouse=True)
 def _izolowana_baza_przebiegow(tmp_path, monkeypatch):
     """Każdy test dostaje WŁASNĄ bazę przebiegów kanonicznych (V12K-267).
@@ -270,6 +306,65 @@ def _izolowana_baza_przebiegow(tmp_path, monkeypatch):
     wyczysc_cache()
     yield
     wyczysc_cache()
+
+
+class _ZapisyKluczySpozaKontraktu(logging.Handler):
+    """Zbiera wpisy dyspozytora operacji o kluczach ładunku spoza kontraktu operacji."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.zapisy: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if getattr(record, "klucze_spoza_kontraktu", None):
+            self.zapisy.append(record.getMessage())
+
+
+#: Czujnik przypięty do dziennika dyspozytora na CAŁĄ sesję (nie na czas jednej funkcji
+#: testowej): operację wykonaną w fiksturze modułu albo sesji — przed fiksturą funkcji —
+#: dawny czujnik przepuszczał bez śladu (przykład stacji końcowej łańcucha dokumentu
+#: kontraktu niósł ``station.station_name``, którego handler nie czyta).
+_ZAPISY_KLUCZY_SPOZA_KONTRAKTU = _ZapisyKluczySpozaKontraktu()
+logging.getLogger("enm.domain_operations").addHandler(_ZAPISY_KLUCZY_SPOZA_KONTRAKTU)
+
+
+def _zabierz_zapisy_kluczy_spoza_kontraktu() -> list[str]:
+    zapisy = list(_ZAPISY_KLUCZY_SPOZA_KONTRAKTU.zapisy)
+    _ZAPISY_KLUCZY_SPOZA_KONTRAKTU.zapisy.clear()
+    return zapisy
+
+
+@pytest.fixture(autouse=True)
+def _ladunek_operacji_w_kontrakcie(request):
+    """Klucz ładunku operacji domenowej spoza jej kontraktu = błąd testu.
+
+    DEFEKT, KTÓRY TO USUWA (pomiar 2026-10-22). Dyspozytor przyjmował każdy klucz
+    ładunku, a handler czytał tylko swoje — klucz spoza kontraktu przepadał bez śladu.
+    Kompilator grafu sieci i szablon GPZ wysyłały liczbę pól liniowych pod nazwą poziomu
+    sekcji (``line_fields_count``) zamiast ``line_fields_per_section``, więc GPZ dostawał
+    po cichu jedno pole; sonda wszystkich nadawców w testach znalazła 15 par
+    (operacja, klucz) wysyłanych, a nieczytanych. Dyspozytor melduje taki klucz (na KAŻDYM
+    poziomie ładunku — ``station.x``, ``sn_fields[0].x``) w dzienniku serwera
+    (``execute_domain_operation``); ta fikstura zamienia wpis w błąd testu, więc KAŻDY
+    nadawca ćwiczony testami — kod produktu, budowniczowie sieci referencyjnych, testy —
+    wysyła wyłącznie klucze kontraktu. Wpis z fikstury modułu albo sesji (wykonanej przed tą
+    fiksturą) obciąża pierwszy test, który jej używa. Test, który celowo wysyła klucz spoza
+    kontraktu, nosi znacznik ``ladunek_spoza_kontraktu``. Wartość fikstury: bieżąca lista
+    wpisów (testy samego czujnika).
+    """
+    yield _ZAPISY_KLUCZY_SPOZA_KONTRAKTU.zapisy
+    zapisy = _zabierz_zapisy_kluczy_spoza_kontraktu()
+    if zapisy and request.node.get_closest_marker("ladunek_spoza_kontraktu") is None:
+        pytest.fail("\n".join(zapisy), pytrace=False)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _ladunek_operacji_w_kontrakcie_koniec_sesji():
+    """Wpis z rozbiórki fikstury modułu albo sesji (po ostatnim teście) — błąd sesji."""
+    yield
+    zapisy = _zabierz_zapisy_kluczy_spoza_kontraktu()
+    if zapisy:
+        pytest.fail("\n".join(zapisy), pytrace=False)
 
 
 # ---------------------------------------------------------------------------

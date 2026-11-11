@@ -44,7 +44,6 @@ function przebiegLisc(run: ExecutionRun): WezelDrzewa {
     ikona: 'przebieg',
     liczniki: run.status === 'FAILED' ? { blokady: 1, ostrzezenia: 0 } : LICZNIKI_ZERO,
     dzieci: [],
-    trybMin: 'basic',
   };
 }
 
@@ -73,7 +72,6 @@ export function mapowaniePrzebiegowDoDrzewa(
       ikona: 'folder',
       liczniki: LICZNIKI_ZERO,
       dzieci: posortowane.map(przebiegLisc),
-      trybMin: 'basic',
     });
   }
   grupy.sort((a, b) => a.etykietaPL.localeCompare(b.etykietaPL, 'pl'));

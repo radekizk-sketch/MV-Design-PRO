@@ -63,6 +63,7 @@ export function kontraktFixture(over: Partial<AnalysisRunContract> = {}): Analys
       },
       lineage: { project_ref: 'projekt-1' },
       reproducibility: null,
+      rewizjaModelu: null,
     },
     ...over,
   };

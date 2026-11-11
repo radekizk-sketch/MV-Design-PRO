@@ -31,14 +31,13 @@ const SNAPSHOT = {
       ref_id: 'st-1',
       name: 'Stacja Lipowa',
       bus_refs: ['sn'],
-      meta: {
-        field_specs: [
-          { field_ref: 'f-in', name: 'Pole liniowe wejściowe 1', bus_ref: 'sn', meta: { terminal_bus_ref: 'z-in' } },
-          { field_ref: 'f-tr', name: 'Pole transformatorowe 3', bus_ref: 'sn', meta: { terminal_bus_ref: 'z-tr' } },
-          { field_ref: 'f-stare', name: 'Pole bez zacisku', bus_ref: 'sn', meta: { terminal_bus_ref: 'sn' } },
-        ],
-      },
     },
+  ],
+  // Karta W5-B: pola stacji = rekordy `bays`; zacisk = `terminal_bus_ref`.
+  bays: [
+    { ref_id: 'f-in', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', substation_ref: 'st-1', bus_ref: 'sn', terminal_bus_ref: 'z-in' },
+    { ref_id: 'f-tr', name: 'Pole transformatorowe 3', bay_role: 'TR', substation_ref: 'st-1', bus_ref: 'sn', terminal_bus_ref: 'z-tr' },
+    { ref_id: 'f-stare', name: 'Pole bez zacisku', bay_role: 'OUT', substation_ref: 'st-1', bus_ref: 'sn', terminal_bus_ref: 'sn' },
   ],
 } as unknown as EnergyNetworkModel;
 

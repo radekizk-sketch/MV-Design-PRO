@@ -47,7 +47,6 @@ export function widokKompensacjiFixture(): WidokDoboruKompensacji {
     context: {
       run_id: 'run-lf-1',
       snapshot_hash: 'snap-abc',
-      case_name: null,
       case_id: 'case-1',
     },
     parameters: {

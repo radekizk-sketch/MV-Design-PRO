@@ -173,9 +173,18 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // uzasadnienie i dowód etapowy w `buildScene.test.ts` (vertical_length_probe).
     // SLD-SUBSTRAT (kontynuacja): L1/L2 +264 = 33 strzałki odbioru stacji (dane: magazyn
     // modelu dokłada odbiory odpływom nN) — dowód w `buildScene.test.ts`.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22752);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(45992);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(45992);
+    // GEOMETRIA-STACJI (2026-10-22): 22752/45992/45992 → 21240/44016/44016 (zmierzone, spadek
+    // −1512/−1976/−1976) — stos pola z rekordów modelu zamiast konwencji roli (fikstura niesie
+    // po jednej gałęzi łączeniowej pola), niższe stosy = krótsze piony; atrybucja per przyczyna
+    // przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs` (ta sama fikstura).
+    // GPZ-MODEL (2026-10-22): 21240/44016/44016 → 21576/44352/44352 (+336 jednolicie) —
+    // regeneracja fikstury (GPZ z równoważnikiem 110 kV, nowe ziarno GPZ ⇒ nowe ref-y ⇒ inna
+    // kolejność remisu ciągów); kod karty na fiksturze bazy daje dokładnie 21240/44016/44016,
+    // treść fikstury bazy z samymi nowymi identyfikatorami — 21576/44352/44352; atrybucja per
+    // przyczyna przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21576);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(44352);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(44352);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

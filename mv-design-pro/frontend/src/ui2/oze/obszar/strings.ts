@@ -33,6 +33,10 @@ export const OBSZAR_STRINGS = {
   paramNakladka: 'Nakładka krzywej producenta',
   paramNakladkaOpis: 'Opcjonalnie: typ falownika z katalogu — jego krzywa zdolności P–Q.',
   paramNakladkaBrak: '— bez nakładki —',
+  paramNakladkaWczytywanie: 'Trwa odczyt katalogu konwerterów — lista typów z krzywą P–Q w drodze.',
+  paramNakladkaBlad:
+    'Odczyt katalogu konwerterów nie powiódł się — dostępność krzywych producenta jest nieznana ' +
+    '(to nie jest brak typów); obszar P–Q policzysz bez nakładki.',
   przyciskOblicz: 'Wyznacz obszar P–Q',
   przyciskPrzelicz: 'Przelicz',
 
@@ -93,11 +97,14 @@ export const OBSZAR_STRINGS = {
   sladPokaz: 'Pokaż ślad siatki',
   sladUkryj: 'Ukryj ślad siatki',
   sladSymbolSiatka: 'siatka',
+  // Pola `formula_latex` kroków śladu renderuje KaTeX (`SladAnalizy` → `MathInline`) — czysty
+  // LaTeX, proza wyłącznie w `\text{}` (dawny zapis ASCII `max_total_runs = (… + 1) * …`
+  // KaTeX składał w tryb matematyczny bez spacji, z podkreślnikami jako indeksami).
   sladWzorSiatka:
-    'total_runs = suma biegow po wierszach P; '
-    + 'max_total_runs = (max_steps_p + 1) * (1 + 2 * max_steps_q)',
+    'N = \\sum_{P} N_{P}, \\quad N_{\\max} = (n_{P} + 1) \\cdot (1 + 2\\,n_{Q})',
   sladWzorWiersz:
-    'skan Q od 0 w obu kierunkach krokiem step_q do pierwszego scenariusza niedopuszczalnego',
+    'Q = \\pm k\\,\\Delta q, \\; k = 0, 1, 2, \\ldots \\; '
+    + '\\text{do pierwszego scenariusza niedopuszczalnego}',
   sladBiegi: 'biegi',
   sladPasmo: 'pasmo Q',
   sladBrakPasma: 'brak pasma pracy (Q = 0 niedopuszczalne)',
@@ -107,7 +114,7 @@ export const OBSZAR_STRINGS = {
   limityTytul: 'Zapisz ograniczenia Q modułu wytwórczego',
   limityOpis:
     'Wyznaczone pasmo Q trafia do ograniczeń generatora w modelu sieci '
-    + '(GenLimits.q_min/q_max) — czytają je rozpływ mocy i oceny zgodności.',
+    + '(granice $Q_{\\min}$ i $Q_{\\max}$ generatora) — czytają je rozpływ mocy i oceny zgodności.',
   limityGenerator: 'Moduł wytwórczy w tym węźle',
   limityBrakGeneratorow:
     'W analizowanym węźle nie ma modułu wytwórczego — ograniczenia Q nie mają '

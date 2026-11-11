@@ -17,7 +17,8 @@ import math
 import pytest
 from enm.assembler import (
     KOD_BATERIA_DANE_ZNAMIONOWE,
-    _build_shunt_specs_from_snapshot,
+    _admitancje_baterii_z_migawki,
+    _boczniki_solvera_z_baterii,
 )
 from enm.canonical_analysis import (
     create_run,
@@ -187,7 +188,7 @@ def test_build_shunt_specs_b_pu_from_first_principles():
     """b_pu = Q_rated / S_base; capacitor => positive susceptance."""
     payload = _enm_payload_with_inductive_load("map")
     payload["shunt_capacitors"] = [_capacitor_record(rated_mvar=2.4, rated_kv=15.0)]
-    specs = _build_shunt_specs_from_snapshot(payload, BASE_MVA)
+    specs = _boczniki_solvera_z_baterii(_admitancje_baterii_z_migawki(payload, BASE_MVA))
     assert len(specs) == 1
     spec = specs[0]
     assert spec.g_pu == 0.0
@@ -202,7 +203,7 @@ def test_build_shunt_specs_b_pu_from_first_principles():
 def test_build_shunt_specs_skips_open_bank():
     payload = _enm_payload_with_inductive_load("map-open")
     payload["shunt_capacitors"] = [_capacitor_record(status="open")]
-    specs = _build_shunt_specs_from_snapshot(payload, BASE_MVA)
+    specs = _boczniki_solvera_z_baterii(_admitancje_baterii_z_migawki(payload, BASE_MVA))
     assert specs == []
 
 
@@ -215,8 +216,8 @@ def test_build_shunt_specs_is_deterministic():
             "id": "00000000-0000-0000-0000-000000000031",
         },
     ]
-    first = _build_shunt_specs_from_snapshot(payload, BASE_MVA)
-    second = _build_shunt_specs_from_snapshot(payload, BASE_MVA)
+    first = _boczniki_solvera_z_baterii(_admitancje_baterii_z_migawki(payload, BASE_MVA))
+    second = _boczniki_solvera_z_baterii(_admitancje_baterii_z_migawki(payload, BASE_MVA))
     assert [(s.node_id, s.b_pu) for s in first] == [(s.node_id, s.b_pu) for s in second]
 
 
@@ -236,7 +237,7 @@ def test_build_shunt_specs_niefizyczne_dane_znamionowe_odmowa_nazwana(pole, frag
     bad[pole] = wartosc
     payload["shunt_capacitors"] = [bad]
     with pytest.raises(OdmowaNazwana) as exc:
-        _build_shunt_specs_from_snapshot(payload, BASE_MVA)
+        _boczniki_solvera_z_baterii(_admitancje_baterii_z_migawki(payload, BASE_MVA))
     assert str(exc.value) == f"Bateria kondensatorów „Bateria kondensatorow b2” {fragment}."
     assert exc.value.kod == KOD_BATERIA_DANE_ZNAMIONOWE
     assert exc.value.dane == {"element_ref": "cap-1"}
@@ -421,6 +422,23 @@ def test_validator_warns_voltage_mismatch():
     enm = EnergyNetworkModel.model_validate(payload)
     result = ENMValidator().validate(enm)
     assert any(i.code == "W040" for i in result.issues)
+
+
+@pytest.mark.parametrize("rated_kv", [14.5, 14.999, 15.0, 16.0, 17.0, 17.5, 17.6, 20.0])
+def test_walidator_w040_i_operacja_baterii_z_jednego_predykatu(rated_kv: float) -> None:
+    """Predykaty parami: ostrzeżenie W040 walidatora i odmowa operacji zapisu baterii
+    (`odmowa_tabliczki_baterii`) rozstrzygają TEN SAM przedział U_n ≤ U_N ≤ U_s (szyna 15 kV,
+    U_s = 17,5 kV wg IEC 60038). Dawny próg ±5 % walidatora ostrzegał przed baterią 17 kV,
+    którą operacja przyjmowała, i milczał przy 14,5 kV, której operacja odmawia."""
+    from enm.domain_operations_v2 import odmowa_tabliczki_baterii
+
+    payload = _enm_payload_with_inductive_load(f"walidacja-para-{rated_kv}")
+    payload["shunt_capacitors"] = [_capacitor_record(rated_kv=rated_kv)]
+    enm = EnergyNetworkModel.model_validate(payload)
+    w040 = any(i.code == "W040" for i in ENMValidator().validate(enm).issues)
+    odmowa = odmowa_tabliczki_baterii(2.0, rated_kv, 15.0) is not None
+    assert w040 == odmowa
+    assert odmowa == (not 15.0 <= rated_kv <= 17.5)
 
 
 # ---------------------------------------------------------------------------

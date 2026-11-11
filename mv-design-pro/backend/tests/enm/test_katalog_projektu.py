@@ -73,7 +73,7 @@ def _gpz_z_odcinkiem(enm: dict) -> tuple[dict, str, dict]:
     )
     enm, bus_ref = kontynuuj_z_pola(
         enm,
-        field_ref=_gpz_line_fields(enm)[0]["field_ref"],
+        field_ref=_gpz_line_fields(enm)[0]["ref_id"],
         catalog_ref=_LINIA["id"],
         dlugosc_m=5000.0,
         name="L1",

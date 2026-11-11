@@ -5,7 +5,7 @@
  * Validates:
  * - Initial state values
  * - setActiveStudyCaseId: clears context, triggers load
- * - setActiveRun: sets run and syncs status
+ * - sledzonyRunId: bieg zlecony z tego magazynu (nie kontekst wyniku — karta K8)
  * - clearRunError: clears error state
  * - reset: restores initial state
  * - loadRuns: success and error handling
@@ -83,8 +83,11 @@ describe('useExecutionRunsStore', () => {
       expect(useExecutionRunsStore.getState().activeStudyCaseId).toBeNull();
     });
 
-    it('should have null active run ID', () => {
-      expect(useExecutionRunsStore.getState().activeRunId).toBeNull();
+    it('should have null tracked run ID and no result-context selection of its own', () => {
+      expect(useExecutionRunsStore.getState().sledzonyRunId).toBeNull();
+      // Karta K8: „który bieg pokazać" mówi wyłącznie magazyn kontekstu wyniku.
+      expect('activeRunId' in useExecutionRunsStore.getState()).toBe(false);
+      expect('setActiveRun' in useExecutionRunsStore.getState()).toBe(false);
     });
 
     it('should have null run status', () => {
@@ -127,7 +130,7 @@ describe('useExecutionRunsStore', () => {
 
     it('should clear previous run context', () => {
       useExecutionRunsStore.setState({
-        activeRunId: 'run-old',
+        sledzonyRunId: 'run-old',
         runStatus: 'DONE',
         runs: [MOCK_RUN],
       });
@@ -137,7 +140,7 @@ describe('useExecutionRunsStore', () => {
       useExecutionRunsStore.getState().setActiveStudyCaseId('case-002');
 
       const state = useExecutionRunsStore.getState();
-      expect(state.activeRunId).toBeNull();
+      expect(state.sledzonyRunId).toBeNull();
       expect(state.runStatus).toBeNull();
       expect(state.runs).toEqual([]);
     });
@@ -154,34 +157,6 @@ describe('useExecutionRunsStore', () => {
       useExecutionRunsStore.getState().setActiveStudyCaseId(null);
 
       expect(api.listRuns).not.toHaveBeenCalled();
-    });
-  });
-
-  // ===========================================================================
-  // setActiveRun
-  // ===========================================================================
-
-  describe('setActiveRun', () => {
-    it('should set active run ID', () => {
-      useExecutionRunsStore.getState().setActiveRun('run-001');
-      expect(useExecutionRunsStore.getState().activeRunId).toBe('run-001');
-    });
-
-    it('should sync run status from runs list', () => {
-      useExecutionRunsStore.setState({ runs: [MOCK_RUN, MOCK_RUN_DONE] });
-
-      useExecutionRunsStore.getState().setActiveRun('run-002');
-
-      expect(useExecutionRunsStore.getState().runStatus).toBe('DONE');
-    });
-
-    it('should clear run status when set to null', () => {
-      useExecutionRunsStore.setState({ runStatus: 'DONE' });
-
-      useExecutionRunsStore.getState().setActiveRun(null);
-
-      expect(useExecutionRunsStore.getState().activeRunId).toBeNull();
-      expect(useExecutionRunsStore.getState().runStatus).toBeNull();
     });
   });
 
@@ -361,7 +336,7 @@ describe('useExecutionRunsStore', () => {
       // Set non-default values
       useExecutionRunsStore.setState({
         activeStudyCaseId: 'case-001',
-        activeRunId: 'run-001',
+        sledzonyRunId: 'run-001',
         runStatus: 'DONE',
         runs: [MOCK_RUN],
         runResultsCache: { 'run-001': MOCK_RESULT_SET },
@@ -376,7 +351,7 @@ describe('useExecutionRunsStore', () => {
 
       const state = useExecutionRunsStore.getState();
       expect(state.activeStudyCaseId).toBeNull();
-      expect(state.activeRunId).toBeNull();
+      expect(state.sledzonyRunId).toBeNull();
       expect(state.runStatus).toBeNull();
       expect(state.runs).toEqual([]);
       expect(state.runResultsCache).toEqual({});
@@ -414,7 +389,7 @@ describe('useExecutionRunsStore', () => {
       );
     });
 
-    it('should set active run ID after creation', async () => {
+    it('should track the created run (sledzonyRunId) after creation', async () => {
       const createdRun: ExecutionRun = { ...MOCK_RUN, status: 'PENDING' };
       const executedRun: ExecutionRun = { ...MOCK_RUN, status: 'DONE' };
 
@@ -427,7 +402,7 @@ describe('useExecutionRunsStore', () => {
         { analysis_type: 'SC_3F' },
       );
 
-      expect(useExecutionRunsStore.getState().activeRunId).toBe('run-001');
+      expect(useExecutionRunsStore.getState().sledzonyRunId).toBe('run-001');
     });
 
     it('should handle creation errors', async () => {

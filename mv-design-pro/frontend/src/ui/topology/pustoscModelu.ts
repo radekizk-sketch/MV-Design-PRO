@@ -44,6 +44,7 @@ export const RODZINY_ELEMENTOW = [
   'loads',
   'generators',
   'shunt_capacitors',
+  'zespoly_uziemiajace',
   'substations',
   'bays',
   'junctions',

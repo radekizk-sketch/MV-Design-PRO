@@ -341,11 +341,6 @@
   cursor: not-allowed;
 }
 
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
 /* ---- dokument studium (akcja + podgląd + pobrania) ---- */
 .mvd-studium-dok-akcja {
   display: flex;

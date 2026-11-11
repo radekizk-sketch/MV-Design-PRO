@@ -239,7 +239,6 @@ def _projekt_z_linia(client: TestClient, geometria: dict | None, *, z_kablem: bo
                         "catalog_item_id": AFL6_240,
                         "catalog_item_version": "2024.1",
                     },
-                    "source_mode": "KATALOG",
                 },
             }
         },

@@ -33,9 +33,9 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { PanelCoSieZmienilo, useSwiezoscNaglowka, type SwiezoscNaglowka } from '../../freshness';
-import { FreshnessBadge } from '../../inspector';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import { FreshnessBadge, czyNieaktualne } from '../../inspector';
 import { useShellStore } from '../../shell/useShellStore';
+import { biegiRodziny, useAktywnyRunId, useWybierzBieg } from '../kontekst/kontekstWyniku';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import { InformacjeAudytowe } from '../wzorzec/InformacjeAudytowe';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
@@ -50,7 +50,13 @@ import {
   uruchomBiegDynamiki,
   zapiszScenariuszDynamiki,
 } from './api';
-import { EdytorScenariusza, FormularzNastaw, TEKSTY_WALIDACJI, type ElementyModelu } from './EdytorScenariusza';
+import {
+  EdytorScenariusza,
+  FormularzNastaw,
+  TEKSTY_WALIDACJI,
+  type ElementyModelu,
+  type StanScenariuszy,
+} from './EdytorScenariusza';
 import {
   fmtLiczba,
   pustyFormularz,
@@ -59,7 +65,6 @@ import {
   type BladFormularza,
   type GotowoscDynamiki,
   type OpisScenariusza,
-  type ScenariuszDynamiki,
   type WartoscFormularza,
   type WynikDynamiki,
 } from './model';
@@ -80,12 +85,12 @@ function komunikat(blad: unknown): string {
 }
 
 export interface EkranDynamikiProps {
-  readonly trybZaawansowania?: AdvancementMode;
+  readonly szczegolyAudytowe?: boolean;
   /** Wytwórca wskazany deep-linkiem akcji naprawczej (`setWynikiTab('dynamika', ref)`). */
   readonly wskazanyElement?: string | null;
 }
 
-export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = null }: EkranDynamikiProps) {
+export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = null }: EkranDynamikiProps) {
   const caseId = useAppStateStore((s) => s.activeCaseId);
   const projektId = useAppStateStore((s) => s.activeProjectId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -100,7 +105,13 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
 
   const [opis, setOpis] = useState<Wczytanie<OpisScenariusza>>({ stan: 'laduje' });
   const [gotowosc, setGotowosc] = useState<Wczytanie<GotowoscDynamiki>>({ stan: 'laduje' });
-  const [scenariusze, setScenariusze] = useState<ScenariuszDynamiki[]>([]);
+  // Zapisane scenariusze przypadku — stan ODCZYTU związany z przypadkiem, z którego
+  // pochodzi (odczyt w toku / błąd ≠ „brak zapisanych scenariuszy").
+  const [scenariuszeWpis, setScenariuszeWpis] = useState<{
+    readonly caseId: string;
+    readonly stan: StanScenariuszy;
+  } | null>(null);
+  const [odswiezenieScenariuszy, setOdswiezenieScenariuszy] = useState(0);
   const [scenariuszId, setScenariuszId] = useState<string | null>(null);
   const [pfRunId, setPfRunId] = useState('');
   const [nastawy, setNastawy] = useState<{ [pole: string]: WartoscFormularza }>({});
@@ -110,7 +121,6 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
   const [bieg, setBieg] = useState<ExecutionRun | null>(null);
   const [bladBiegu, setBladBiegu] = useState<string | null>(null);
   const [anulowanieZlecone, setAnulowanieZlecone] = useState(false);
-  const [wybranyBiegId, setWybranyBiegId] = useState<string | null>(null);
   const [wynik, setWynik] = useState<Wczytanie<WynikDynamiki> | null>(null);
 
   // Opis kontraktu scenariusza — niezależny od przypadku.
@@ -151,12 +161,20 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
     if (!caseId) return;
     let aktywne = true;
     fetchScenariuszeDynamiki(caseId)
-      .then((dane) => aktywne && setScenariusze(dane.scenariusze))
-      .catch(() => aktywne && setScenariusze([]));
+      .then((dane) => {
+        if (aktywne) setScenariuszeWpis({ caseId, stan: { odczyt: 'gotowe', lista: dane.scenariusze } });
+      })
+      .catch((blad: unknown) => {
+        if (aktywne) setScenariuszeWpis({ caseId, stan: { odczyt: 'blad', komunikat: komunikat(blad) } });
+      });
     return () => {
       aktywne = false;
     };
-  }, [caseId]);
+  }, [caseId, odswiezenieScenariuszy]);
+
+  const stanScenariuszy: StanScenariuszy =
+    caseId && scenariuszeWpis?.caseId === caseId ? scenariuszeWpis.stan : { odczyt: 'wczytywanie' };
+
 
   // Punkt pracy: wybór ważny wyłącznie, gdy rozpływ dalej należy do tej migawki.
   const biegiRozplywu = gotowosc.stan === 'gotowe' ? gotowosc.dane.biegi_rozplywu : [];
@@ -164,15 +182,12 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
     if (pfRunId && !biegiRozplywu.some((b) => b.run_id === pfRunId)) setPfRunId('');
   }, [biegiRozplywu, pfRunId]);
 
-  // Wynik: bieg wybrany na ekranie; bez wyboru — ostatni zakończony bieg dynamiki przypadku.
-  const biegiDynamiki = useMemo(
-    () =>
-      biegiPrzypadku
-        .filter((r) => r.analysis_type === 'DYNAMIKA_RMS' && r.status === 'DONE')
-        .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')),
-    [biegiPrzypadku],
-  );
-  const pokazywanyBiegId = wybranyBiegId ?? biegiDynamiki[0]?.id ?? null;
+  // Wynik: AKTYWNY bieg rodziny „Dynamika" z magazynu kontekstu wyniku (karta K8) — ten
+  // sam bieg co pasek stanu, pas kontekstu ekranu i „Dowody"; bez wyboru — najnowszy
+  // zakończony bieg dynamiki przypadku, w jednym porządku biegów (`uporzadkujBiegi`).
+  const biegiDynamiki = useMemo(() => biegiRodziny(biegiPrzypadku, 'dynamika'), [biegiPrzypadku]);
+  const pokazywanyBiegId = useAktywnyRunId('dynamika');
+  const wybierzBieg = useWybierzBieg();
   useEffect(() => {
     if (!pokazywanyBiegId) {
       setWynik(null);
@@ -278,13 +293,25 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
     async (zadanie: Parameters<typeof zapiszScenariuszDynamiki>[1]) => {
       if (!caseId) return;
       const zapisany = await zapiszScenariuszDynamiki(caseId, zadanie);
-      setScenariusze((lista) => [
-        ...lista.filter((s) => s.scenario_id !== zapisany.scenario_id),
-        zapisany,
-      ]);
+      const listaOdczytana =
+        scenariuszeWpis?.caseId === caseId && scenariuszeWpis.stan.odczyt === 'gotowe';
+      setScenariuszeWpis((wpis) =>
+        wpis?.caseId === caseId && wpis.stan.odczyt === 'gotowe'
+          ? {
+              caseId,
+              stan: {
+                odczyt: 'gotowe',
+                lista: [...wpis.stan.lista.filter((s) => s.scenario_id !== zapisany.scenario_id), zapisany],
+              },
+            }
+          : wpis,
+      );
+      // Lista nieodczytana (w toku / błąd) — zapis nie może udawać pełnej listy z
+      // jednym scenariuszem: ponowny odczyt listy przypadku z serwera.
+      if (!listaOdczytana) setOdswiezenieScenariuszy((n) => n + 1);
       setScenariuszId(zapisany.scenario_id);
     },
-    [caseId],
+    [caseId, scenariuszeWpis],
   );
 
   const uruchomBieg = useCallback(async () => {
@@ -301,7 +328,7 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
       );
       await useExecutionRunsStore.getState().loadRuns(caseId);
       if (koniec.status === 'DONE') {
-        setWybranyBiegId(koniec.id);
+        wybierzBieg(koniec.id, 'bieg');
       } else if (koniec.status === 'FAILED') {
         setBladBiegu(koniec.error_message ?? T.stanBiegu.FAILED);
       }
@@ -311,7 +338,7 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
     } finally {
       setAnulowanieZlecone(false);
     }
-  }, [caseId, nastawy, opis, pfRunId, scenariuszId]);
+  }, [caseId, nastawy, opis, pfRunId, scenariuszId, wybierzBieg]);
 
   const anulujBieg = useCallback(async () => {
     if (!bieg) return;
@@ -355,7 +382,6 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
   // uruchomienie; punkt pracy jest osobnym, jawnym warunkiem (wybór rozpływu).
   const modelOdmawia = brakiModelu.length > 0 || (dane?.kopie_nieaktualne.length ?? 0) > 0;
   if (modelOdmawia) warunki.push(T.warunekGotowosc);
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const zaznaczonyRef = zaznaczone[0]?.id ?? null;
   const zaznaczonyWWyniku =
     wynik?.stan === 'gotowe' && zaznaczonyRef && wynik.dane.opis_wyniku.elementy[zaznaczonyRef]
@@ -461,7 +487,7 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
         <>
           <EdytorScenariusza
             opis={opis.dane}
-            scenariusze={scenariusze}
+            odczytScenariuszy={stanScenariuszy}
             wybranyId={scenariuszId}
             elementy={elementyModelu}
             onWybierz={setScenariuszId}
@@ -554,7 +580,9 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
             <select
               data-testid="mvd-dynamika-wybor-biegu"
               value={pokazywanyBiegId ?? ''}
-              onChange={(e) => setWybranyBiegId(e.target.value || null)}
+              onChange={(e) => {
+                if (e.target.value) wybierzBieg(e.target.value, 'ekran');
+              }}
             >
               {biegiDynamiki.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -576,7 +604,7 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
         <Wynik
           wynik={wynik.dane}
           swiezosc={swiezosc}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           zaznaczonyRef={zaznaczonyWWyniku}
           onPokazNaSchemacie={(ref) => pokazNaSchemacie(ref)}
         />
@@ -598,13 +626,13 @@ function Naglowek() {
 function Wynik({
   wynik,
   swiezosc,
-  trybEkspercki,
+  szczegolyAudytowe,
   zaznaczonyRef,
   onPokazNaSchemacie,
 }: {
   wynik: WynikDynamiki;
   swiezosc: SwiezoscNaglowka;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   zaznaczonyRef: string | null;
   onPokazNaSchemacie: (ref: string) => void;
 }) {
@@ -618,7 +646,7 @@ function Wynik({
           <FreshnessBadge rewizjaDanej={rewizjaDanych} rewizjaModelu={rewizjaModelu} />
         </div>
       )}
-      {maSwiezosc && caseId !== undefined && rewizjaDanych < rewizjaModelu && (
+      {maSwiezosc && caseId !== undefined && czyNieaktualne(rewizjaDanych, rewizjaModelu) && (
         <PanelCoSieZmienilo caseId={caseId} rewizjaDanych={rewizjaDanych} onPokazElement={onPokazNaSchemacie} />
       )}
       <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-oceny">
@@ -657,7 +685,7 @@ function Wynik({
         onPokazNaSchemacie={onPokazNaSchemacie}
       />
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-dynamika-audyt"
         wiersze={[
           { etykieta: T.audytRun, wartosc: wynik.run_id },

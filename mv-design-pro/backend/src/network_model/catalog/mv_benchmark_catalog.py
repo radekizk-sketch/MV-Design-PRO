@@ -753,6 +753,11 @@ def get_all_benchmark_shunt_capacitor_records() -> list[dict]:
                 "rated_kv": bus_kv,
                 "loss_kw": 0.0,
                 "manufacturer": None,
+                # Karta UX-04/POLE-BKR-MODEL: bocznik MATPOWER to jedna stała susceptancja
+                # (jeden stopień, bez dławika szeregowego) — dane benchmarku, nie wartości
+                # robocze. Układu połączeń MATPOWER nie podaje (model jednofazowy zgodny).
+                "liczba_stopni": 1,
+                "dlawik_ograniczajacy": False,
                 "verification_status": CatalogVerificationStatus.REFERENCYJNY.value,
                 "source_reference": _SOURCE_IEEE14,
                 "catalog_status": CatalogStatus.REFERENCYJNY_V1.value,

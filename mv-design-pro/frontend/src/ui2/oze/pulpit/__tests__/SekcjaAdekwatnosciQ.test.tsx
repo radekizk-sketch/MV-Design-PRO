@@ -4,6 +4,7 @@
  * per źródło + nasycenie + naruszenia + werdykt + proweniencja. API i store mockowane.
  */
 
+import { oczekujTekstuZWzorami } from '../../../../test/tekstZWzorami';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
@@ -28,7 +29,7 @@ afterEach(() => {
 
 describe('SekcjaAdekwatnosciQ — brak przebiegu (kryterium 4)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję', () => {
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-oze-adekw-brak-przebiegu')).toHaveTextContent(
       'Przeprowadź rozpływ mocy',
     );
@@ -39,7 +40,7 @@ describe('SekcjaAdekwatnosciQ — brak przebiegu (kryterium 4)', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'sc', analysis_type: 'SC_3F', status: 'DONE' })],
     });
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-oze-adekw-brak-przebiegu')).toBeInTheDocument();
   });
 });
@@ -48,13 +49,12 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
   beforeEach(() => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-      activeRunId: 'lf-run',
     });
   });
 
   it('renderuje werdykt, rezerwy źródeł, nasycenie i naruszenia z backendu', async () => {
     pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-adekw-wynik')).toBeInTheDocument();
     expect(pobierzAdekwatnoscQ).toHaveBeenCalledWith('lf-run');
     // Karta #145: werdykt maszynowy backendu nie trafia na ekran — polska etykieta.
@@ -80,11 +80,12 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
         zrodlo.ref === 'src-2' ? { ...zrodlo, missing_data: ['q_min_mvar', 'q_max_mvar'] } : zrodlo,
       ),
     });
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     const zrodlo = await screen.findByTestId('mvd-oze-adekw-zrodlo-src-2');
     expect(zrodlo).toHaveTextContent('Falownik farmy 2');
-    expect(zrodlo).toHaveTextContent(BRAKI_DANYCH_Q.q_min_mvar);
-    expect(zrodlo).toHaveTextContent(BRAKI_DANYCH_Q.q_max_mvar);
+    // Braki po polsku z symbolami granic przez KaTeX (`$Q_{\\min}$`, nie ASCII `Q_min`).
+    oczekujTekstuZWzorami(zrodlo, BRAKI_DANYCH_Q.q_min_mvar);
+    oczekujTekstuZWzorami(zrodlo, BRAKI_DANYCH_Q.q_max_mvar);
     expect(zrodlo).not.toHaveTextContent('src-2');
     expect(zrodlo).not.toHaveTextContent('q_min_mvar');
     expect(screen.getByTestId('mvd-oze-adekw-naruszenie-bus-pcc-2')).toHaveTextContent('Szyna PCC farmy 2');
@@ -93,7 +94,7 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
 
   it('pokazuje proweniencję werdyktu (jakość pól Q-granic)', async () => {
     pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-adekw-proweniencja')).toHaveTextContent(
       'z karty katalogowej',
     );
@@ -101,7 +102,7 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
 
   it('błąd końcówki → jawny stan błędu', async () => {
     pobierzAdekwatnoscQ.mockRejectedValue(new Error('422 brak rozpływu'));
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-adekw-blad')).toHaveTextContent('422 brak rozpływu');
   });
 });
@@ -110,13 +111,12 @@ describe('SekcjaAdekwatnosciQ — wyróżnienie moduł→węzeł (P47b)', () => 
   beforeEach(() => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-      activeRunId: 'lf-run',
     });
   });
 
   it('wyróżniony moduł podświetla źródło i naruszenie swojego węzła', async () => {
     pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} wyroznionyModul="src-2" />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} wyroznionyModul="src-2" />);
     await screen.findByTestId('mvd-oze-adekw-wynik');
     expect(screen.getByTestId('mvd-oze-adekw-zrodlo-src-2')).toHaveAttribute(
       'data-wyrozniony',
@@ -133,7 +133,7 @@ describe('SekcjaAdekwatnosciQ — wyróżnienie moduł→węzeł (P47b)', () => 
 
   it('moduł bez węzła w wynikach → uczciwa adnotacja, brak podświetlenia', async () => {
     pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
-    render(<SekcjaAdekwatnosciQ trybEkspercki={false} wyroznionyModul="modul-obcy" />);
+    render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} wyroznionyModul="modul-obcy" />);
     await screen.findByTestId('mvd-oze-adekw-wynik');
     expect(screen.getByTestId('mvd-oze-adekw-wyroznienie-brak')).toHaveTextContent(
       'nieodnaleziony',

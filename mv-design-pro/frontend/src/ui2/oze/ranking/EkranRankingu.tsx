@@ -16,10 +16,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './ranking.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, InformacjeAudytowe } from '../../wyniki/wzorzec';
 import type { WierszZalozenia } from '../../wyniki/wzorzec';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
   pobierzZdolnoscPrzylaczeniowa,
@@ -33,7 +31,6 @@ import {
   istotnoscScenariusza,
   rodzajKryteriumPL,
   statusScenariuszaPL,
-  wybierzPrzebiegRozplywu,
 } from '../zdolnosc/zdolnoscModel';
 import { fmtMW } from '../zdolnosc/strings';
 import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
@@ -52,6 +49,7 @@ import { RANKING_STRINGS, fmtMocMW, fmtNapieciaPara, fmtStratyKw } from './strin
 import { useSwiezoscNaglowka } from '../../freshness';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -97,12 +95,12 @@ function SzczegolWezla({
   wezel,
   napiecieKv,
   klasyfikacja,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   wezel: WezelZdolnosci;
   napiecieKv: number | null;
   klasyfikacja: OdczytKlasyfikacji;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const przyrost = przyrostStratKw(wezel);
   const napiecia = napieciaPrzyGranicy(wezel);
@@ -116,7 +114,7 @@ function SzczegolWezla({
       </header>
       {/* Karta #145: identyfikator węzła wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-rank-szczegol-audyt"
         wiersze={[{ etykieta: RANKING_STRINGS.kolIdentyfikator, wartosc: wezel.bus_ref }]}
       />
@@ -201,7 +199,7 @@ function WynikRankingu({
   krokMw,
   liczbaKrokow,
   napiecieWezla,
-  trybZaawansowania,
+  szczegolyAudytowe,
 }: {
   dane: WidokZdolnosci;
   /**
@@ -218,7 +216,7 @@ function WynikRankingu({
   krokMw: number;
   liczbaKrokow: number;
   napiecieWezla: (busRef: string) => number | null;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }) {
   const [wybranyBusRef, setWybranyBusRef] = useState<string | null>(null);
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
@@ -261,7 +259,6 @@ function WynikRankingu({
 
   const wybranyWezel =
     wybranyBusRef !== null ? dane.nodes.find((w) => w.bus_ref === wybranyBusRef) ?? null : null;
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   return (
     <div data-testid="mvd-rank-wynik">
@@ -279,7 +276,7 @@ function WynikRankingu({
         // Ranking przyłączeń nie niesie dowodów WHITE BOX per element (wiersz to
         // węzeł rankingu, nie wynik pojedynczego elementu), więc ekran NIE podaje
         // dostawcy dowodu — wzorzec nie pokazuje wtedy afordancji „pokaż dowód".
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_WIERSZA_RANKINGU}
         onWybierzWiersz={setWybranyBusRef}
         wybranyWiersz={wybranyBusRef}
@@ -290,7 +287,7 @@ function WynikRankingu({
           wezel={wybranyWezel}
           napiecieKv={napiecieWezla(wybranyWezel.bus_ref)}
           klasyfikacja={klasyfikacja}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
         />
       ) : (
         <StanPanel
@@ -308,13 +305,12 @@ function WynikRankingu({
 // ---------------------------------------------------------------------------
 
 export interface EkranRankinguProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
-export function EkranRankingu({ trybZaawansowania }: EkranRankinguProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+export function EkranRankingu({ szczegolyAudytowe }: EkranRankinguProps) {
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);
@@ -480,7 +476,7 @@ export function EkranRankingu({ trybZaawansowania }: EkranRankinguProps) {
               krokMw={krokMw}
               liczbaKrokow={liczbaKrokow}
               napiecieWezla={napiecieWezla}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
             />
           )}
         </>

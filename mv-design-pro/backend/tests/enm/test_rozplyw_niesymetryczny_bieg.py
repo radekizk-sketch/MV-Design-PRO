@@ -32,7 +32,6 @@ from enm.assembler import (
     KOD_ZALOZENIE_DROGA_ZEROWA_ZAMKNIETA,
     KOD_ZALOZENIE_DROGA_ZEROWA_ZRODLO,
     KOD_ZALOZENIE_GALAZ_MAGNESUJACA,
-    KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ,
     KOD_ZALOZENIE_TR_SZEREGOWY,
     OdmowaWejsciaRozplywu,
     diagnoza_niesymetrii,
@@ -66,6 +65,7 @@ def siec(
     fazy: str | None = "A",
     oczko: bool = False,
     z0: bool = True,
+    r1: float = 0.253,
     vector_group: str | None = "Dyn11",
     zaczep: int | None = None,
     tap_changer: TapChanger | None = None,
@@ -111,7 +111,7 @@ def siec(
             from_bus_ref="b_gpz",
             to_bus_ref="b_sn",
             length_km=2.0,
-            r_ohm_per_km=0.253,
+            r_ohm_per_km=r1,
             x_ohm_per_km=0.1,
             b_siemens_per_km=b_siemens,
             r0_ohm_per_km=0.759 if z0 else None,
@@ -278,13 +278,14 @@ def test_slad_white_box_niesie_wzor_dane_podstawienie_wynik_dla_kazdej_galezi() 
         k for k in run.white_box_trace if k["key"] == "pf_unbalanced_zero_sequence_path[ld1]"
     )
     assert droga["result"] == {"zamkniecie": "src", "rodzaj": "zrodlo"}
+    # Straty gałęzi ze sprzężeniem liczone z pełnej macierzy impedancji fazowych (I^H·Z·I,
+    # z prądem przewodu powrotnego) — dawne założenie „straty z impedancji własnej" zniknęło
+    # razem z uproszczeniem (karta UX-04, odcinek faza N).
     assert [z["kod"] for z in run.raw_result["zalozenia"]] == [
         KOD_ZALOZENIE_TR_SZEREGOWY,
         KOD_ZALOZENIE_DROGA_ZEROWA_ZRODLO,
-        KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ,
     ]
     assert run.raw_result["zalozenia"][1]["elementy"] == ["src"]
-    assert run.raw_result["zalozenia"][2]["elementy"] == ["cab1"]
     kabel = next(k for k in run.white_box_trace if k["key"] == "pf_unbalanced_branch[cab1]")
     assert "Z_s = \\frac{Z_0 + 2 Z_1}{3}" in kabel["formula_latex"]
     assert kabel["inputs"]["r0_ohm_per_km"] == 0.759 and kabel["inputs"]["length_km"] == 2.0
@@ -415,8 +416,15 @@ def _gen_cosphi() -> Generator:
 
 PRZYPADKI_ODMOW: list[tuple[str, dict[str, Any], str, tuple[str, ...]]] = [
     ("oczko", {"oczko": True}, KOD_NIESYMETRIA_NIERADIALNA, ("cab1", "sw_rown", "tr1")),
-    # Brak Z0 kabla blokuje TYLKO gdy kabel niesie realny I0 (odbiór faza–N na SN).
-    ("brak_z0", {"z0": False, "szyna_odbioru": "b_sn"}, KOD_NIESYMETRIA_BRAK_Z0_GALEZI, ("cab1",)),
+    # Brak Z0 kabla blokuje TYLKO gdy kabel niesie realny I0 (odbiór faza–N na SN) i nie ma
+    # podstawy wartości roboczej (R′1 = 0) — przy dodatnich R′1, X′1 bieg przyjmuje
+    # R′0 = 3·R′1, X′0 = 3·X′1 (zasada nr 4, ``tests/enm/test_z0_wartosc_robocza_odcinka.py``).
+    (
+        "brak_z0",
+        {"z0": False, "r1": 0.0, "szyna_odbioru": "b_sn"},
+        KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
+        ("cab1",),
+    ),
     ("brak_grupy", {"vector_group": None}, KOD_NIESYMETRIA_BRAK_GRUPY_TR, ("tr1",)),
     ("odbior_ab", {"fazy": "AB"}, KOD_NIESYMETRIA_FAZY_ODBIORU, ("ld1",)),
     ("yy_1f", {"vector_group": "Yy0"}, KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ, ("tr1",)),

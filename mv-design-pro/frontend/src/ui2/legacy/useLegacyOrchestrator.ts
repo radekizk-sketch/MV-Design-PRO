@@ -14,7 +14,8 @@
  *   #power-flow-results i #protection-results są WYGASZONE — lądują w oknach
  *   ui2 wg `mostObszarow.TRASY_KANONICZNE` (pole `wygaszona`) (bez powierzchni mostu),
  * - restoreAnalysisRunSnapshot + handleCalculate / handleViewResults,
- * - ładowanie nakładki wyników (raw overlay) dla ?run,
+ * - ładowanie nakładki wyników (raw overlay) dla biegu OGLĄDANEGO z magazynu kontekstu
+ *   wyniku (karta K8: `?run=` jest jednym ze źródeł wyboru, nie osobną prawdą),
  * - synchronizacja trybu (MODEL_EDIT / RESULT_VIEW) i przestrzeni z trasą,
  * - routing powierzchni PV/BESS/FW z selekcji na SLD,
  * - synchronizacja selekcji z URL (useUrlSelectionSync).
@@ -27,7 +28,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppStateStore } from '../../ui/app-state';
 import { modelNiepusty } from '../../ui/topology/pustoscModelu';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
-import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
+import {
+  runIdOgladanyTeraz,
+  useKontekstWynikuStore,
+  useNakladkaBieguOgladanego,
+  useRunIdOgladany,
+} from '../wyniki/kontekst/kontekstWyniku';
 import { getStudyCase } from '../../ui/study-cases/api';
 import { getProject } from '../../ui/projects/api';
 import { adaptRawOverlayToTyped, useOverlayStore } from '../../ui/sld-overlay';
@@ -79,24 +85,6 @@ function mapAnalysisTypeToExecutionType(
     default:
       return 'SC_3F';
   }
-}
-
-function hasRenderableRunResults(health: AnalysisRunHealth | null): boolean {
-  if (!health || health.not_found) {
-    return false;
-  }
-
-  const canonicalStatus = health.status?.toUpperCase();
-  const resultStatus = health.result_status?.toUpperCase();
-  const terminalRun =
-    canonicalStatus === 'FINISHED' || canonicalStatus === 'DONE' || canonicalStatus === 'COMPLETED';
-  const validResult = resultStatus === 'VALID' || resultStatus === 'FRESH';
-
-  if (canonicalStatus) {
-    return terminalRun && (validResult || health.results_valid === true);
-  }
-
-  return health.results_valid === true;
 }
 
 function isAnalysisRunMissing(health: AnalysisRunHealth | null): boolean {
@@ -310,15 +298,15 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
   const activeSnapshotId = useAppStateStore((state) => state.activeSnapshotId);
   const setActiveProject = useAppStateStore((state) => state.setActiveProject);
   const setActiveCase = useAppStateStore((state) => state.setActiveCase);
-  const setActiveRun = useAppStateStore((state) => state.setActiveRun);
   const setActiveSnapshot = useAppStateStore((state) => state.setActiveSnapshot);
   const setActiveCaseResultStatus = useAppStateStore((state) => state.setActiveCaseResultStatus);
-  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
-  const setExecutionActiveRun = useExecutionRunsStore((state) => state.setActiveRun);
+  // Karta K8: bieg oglądany pochodzi WYŁĄCZNIE z magazynu kontekstu wyniku.
+  const runIdOgladany = useRunIdOgladany();
+  const wybierzBieg = useKontekstWynikuStore((state) => state.wybierzBieg);
+  const porzucOczekujacy = useKontekstWynikuStore((state) => state.porzucOczekujacy);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const snapshotError = useSnapshotStore((state) => state.error);
   const refreshSnapshotFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
@@ -331,7 +319,6 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
-  const effectiveRunId = activeRunId ?? executionActiveRunId;
 
   const restoreAnalysisRunSnapshot = useCallback(
     (routeRunId: string, expectedCaseId: string | null) => {
@@ -344,10 +331,9 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
           const currentParams = getCurrentSearchParams();
           const currentRunParam = currentParams.get('run')?.trim() || null;
           const currentState = useAppStateStore.getState();
-          const currentExecutionRunId = useExecutionRunsStore.getState().activeRunId;
           const runStillActive = currentRunParam
             ? currentRunParam === routeRunId
-            : currentState.activeRunId === routeRunId || currentExecutionRunId === routeRunId;
+            : runIdOgladanyTeraz() === routeRunId;
           const currentCaseParam = currentParams.get('case')?.trim() || null;
           const caseStillActive = !expectedCaseId
             || currentCaseParam === expectedCaseId
@@ -358,8 +344,7 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
 
           const fallbackCaseId = expectedCaseId ?? currentState.activeCaseId;
           if (isAnalysisRunMissing(runHealth)) {
-            setActiveRun(null);
-            setExecutionActiveRun(null);
+            porzucOczekujacy(routeRunId);
             setActiveSnapshot(null);
             setActiveCaseResultStatus('NONE');
             if (clearRunParamFromCurrentHash(routeRunId)) {
@@ -406,13 +391,12 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
         });
     },
     [
+      porzucOczekujacy,
       refreshReadinessFromBackend,
       refreshSnapshotFromBackend,
       setActiveCaseResultStatus,
-      setActiveRun,
       setActiveSnapshot,
       setAnalysisRunSnapshot,
-      setExecutionActiveRun,
       setHashVersion,
     ],
   );
@@ -625,11 +609,9 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     if (!activeCaseId || snapshot || snapshotError) {
       return;
     }
-    const routeRunId = resolveRouteRunId(
-      getCurrentSearchParams(),
-      activeRunId ?? executionActiveRunId,
-      activeCaseId,
-    );
+    // Migawkę modelu zastępuje podgląd biegu WYŁĄCZNIE przy jawnym wskazaniu biegu
+    // adresem (`?run=`); bieg wybrany w aplikacji nie podmienia modelu roboczego.
+    const routeRunId = resolveRouteRunId(getCurrentSearchParams(), null, activeCaseId);
     if (routeRunId) {
       return;
     }
@@ -637,8 +619,6 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     void refreshSnapshotFromBackend(activeCaseId);
   }, [
     activeCaseId,
-    activeRunId,
-    executionActiveRunId,
     hashVersion,
     refreshSnapshotFromBackend,
     route,
@@ -655,104 +635,65 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     setActiveSnapshot(snapshotHash);
   }, [activeSnapshotId, setActiveSnapshot, snapshot?.header?.hash_sha256]);
 
-  // K30-3 / NO-GO #9 fix: gdy URL ma ?run=<runId>, fetch overlay payload
-  // z /api/execution/runs/{run_id}/results/v1 i load do useRawResultOverlayStore.
-  // Adresuje user feedback "nie widać wyników obliczeń" — bez tego v2 canvas
-  // nie pokazuje LOAD_FLOW/SC_3F overlay.
-  // V12K-088 (Opcja 2): backend `overlay_payload` ma `elements` jako dict; typowana
-  // rodzina OverlayPayloadV1 (useOverlayStore + V12OverlayModeController + runtime)
-  // oczekuje tablicy. Adapter `adaptRawOverlayToTyped` rekoncyliuje oba kontrakty —
-  // dotąd `loadOverlay` nie był wołany w produkcji (stub „future PR-16"), więc
-  // typowana warstwa nie miała producenta. Teraz karmimy OBIE ścieżki tym samym
-  // wynikiem backendu (raw store dla v2/v3 canvas; typed store dla trybu overlay).
+  // Nakładka wyników schematu (K30-3 / NO-GO #9, V12K-088) — karta K8: bieg nakładki
+  // to bieg OGLĄDANY z magazynu kontekstu wyniku, na KAŻDEJ trasie (dotąd na schemacie
+  // nakładka wczytywała się tylko z jawnego `?run=`, choć tor biegu obiecywał, że
+  // „odświeży się sama"). Wynik pochodzi z JEDNEJ pamięci `results/v1` magazynu
+  // (`useWynikBiegu`) — ten sam odczyt, który karmi panel dolny i inspektor. Bieg
+  // nieaktualny NIE jest ukrywany: kanwa oznacza go predykatem świeżości (K8 §0 pkt 3).
+  // Typowana rodzina OverlayPayloadV1 jest karmiona tym samym wynikiem (rekoncyliacja
+  // `adaptRawOverlayToTyped`).
   const loadTypedOverlay = useOverlayStore((state) => state.loadOverlay);
   const clearTypedOverlay = useOverlayStore((state) => state.clearOverlay);
   const setRawOverlay = useRawResultOverlayStore((state) => state.setPayload);
   const clearRawOverlay = useRawResultOverlayStore((state) => state.clear);
   const activeRawRunId = useRawResultOverlayStore((state) => state.payload?.run_id ?? null);
+  const nakladka = useNakladkaBieguOgladanego();
   useEffect(() => {
-    const params = getCurrentSearchParams();
-    const explicitRouteRunId = params.get('run')?.trim() || null;
-    const routeRunId = explicitRouteRunId && (isResultsRoute(route) || isSldRoute(route))
-      ? explicitRouteRunId
-      : isResultsRoute(route)
-      ? resolveRouteRunId(params, activeRunId ?? executionActiveRunId, activeCaseId)
-      : null;
-    if (!routeRunId) {
-      if (activeRawRunId) {
+    const { payload, runId, stan } = nakladka;
+    if (!runId || !payload) {
+      // Brak biegu, wczytywanie albo błąd odczytu: nakładka INNEGO biegu nie zostaje
+      // na schemacie pod etykietą pochodzenia — schemat pokazuje tylko bieg oglądany.
+      if (activeRawRunId && (activeRawRunId !== runId || stan?.rodzaj === 'blad')) {
         clearRawOverlay();
         clearTypedOverlay();
       }
       return;
     }
-    if (routeRunId === activeRawRunId) return;
-    void (async () => {
-      try {
-        const runHealth = await fetchAnalysisRunHealth(routeRunId);
-        if (!hasRenderableRunResults(runHealth)) {
-          if (activeRawRunId) {
-        clearRawOverlay();
-        clearTypedOverlay();
-      }
-          return;
-        }
-        const res = await fetch(`/api/execution/runs/${routeRunId}/results/v1`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const payload = data?.overlay_payload;
-        if (payload && payload.elements && typeof payload.elements === 'object') {
-          const rawPayload = {
-            run_id: payload.run_id ?? routeRunId,
-            analysis_type: payload.analysis_type ?? data?.analysis_type ?? 'LOAD_FLOW',
-            elements: payload.elements,
-            quality_status: data?.global_results?.quality_status ?? null,
-            proof_status: data?.global_results?.proof_status ?? null,
-            // OVERLAY-TIMESTAMP: czas ukończenia biegu z topu ResultSetV1 (nie z
-            // overlay_payload) — pochodzenie wyniku pokazuje moduł + przebieg + CZAS.
-            run_finished_at: data?.run_finished_at ?? null,
-          };
-          setRawOverlay(rawPayload);
-          // V12K-088: karmimy typowaną warstwę tym samym wynikiem (rekoncyliacja).
-          const typed = adaptRawOverlayToTyped(rawPayload);
-          if (typed) loadTypedOverlay(typed);
-          else clearTypedOverlay();
-        }
-      } catch {
-        // network errors silently — overlay just won't be shown
-      }
-    })();
-  }, [
-    activeCaseId,
-    activeRawRunId,
-    activeRunId,
-    clearRawOverlay,
-    clearTypedOverlay,
-    executionActiveRunId,
-    hashVersion,
-    loadTypedOverlay,
-    route,
-    setRawOverlay,
-  ]);
+    if (payload.run_id === activeRawRunId) return;
+    setRawOverlay(payload);
+    const typed = adaptRawOverlayToTyped(payload);
+    if (typed) loadTypedOverlay(typed);
+    else clearTypedOverlay();
+  }, [activeRawRunId, clearRawOverlay, clearTypedOverlay, loadTypedOverlay, nakladka, setRawOverlay]);
+
+  // Adres → magazyn kontekstu: `?run=` jest JEDNYM ze źródeł wyboru biegu („url").
+  // Stosowany raz na wartość parametru w danym przypadku — późniejszy wybór
+  // użytkownika (panel, ekran, pasek) nie jest nadpisywany przy każdej zmianie
+  // trasy. Zmiana przypadku (hydracja `?case=`) czyści kontekst, więc klucz
+  // obejmuje przypadek i wskazanie z adresu wraca po przełączeniu.
+  const ostatniBiegZAdresuRef = useRef<string | null>(null);
+  useEffect(() => {
+    const routeRunId = getCurrentSearchParams().get('run')?.trim() || null;
+    const klucz = routeRunId ? `${activeCaseId ?? ''}|${routeRunId}` : null;
+    if (klucz === ostatniBiegZAdresuRef.current) return;
+    ostatniBiegZAdresuRef.current = klucz;
+    if (routeRunId) wybierzBieg(routeRunId, 'url');
+  }, [activeCaseId, hashVersion, route, wybierzBieg]);
 
   useEffect(() => {
     const params = getCurrentSearchParams();
-    const routeRunId = resolveRouteRunId(
-      params,
-      activeRunId ?? executionActiveRunId,
-      activeCaseId,
-    );
-    if (isSldRoute(route)) {
-      if (routeRunId) {
-        if (activeRunId !== routeRunId) {
-          setActiveRun(routeRunId);
-        }
-        if (executionActiveRunId !== routeRunId) {
-          setExecutionActiveRun(routeRunId);
-        }
-        if (isUuid(routeRunId)) {
-          restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
-        }
+    // Bieg JAWNIE wskazany adresem — tylko on podmienia model na podgląd migawki biegu.
+    const biegZAdresu = resolveRouteRunId(params, null, activeCaseId);
+    // Bieg powierzchni trasowych: wskazany adresem albo oglądany (magazyn kontekstu).
+    const routeRunId = resolveRouteRunId(params, runIdOgladany, activeCaseId);
+    const odtworzMigawkeBiegu = () => {
+      if (isUuid(biegZAdresu)) {
+        restoreAnalysisRunSnapshot(biegZAdresu, params.get('case')?.trim() || activeCaseId);
       }
+    };
+    if (isSldRoute(route)) {
+      odtworzMigawkeBiegu();
       const derSurface = resolveDerSurfaceFromSelectedElement(selectedElement)
         ?? resolveDerSurfaceFromSldSelection(params);
       if (derSurface) {
@@ -782,15 +723,7 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     const ladowisko: WpisTrasy | null = wpisTrasyWygaszonej(route);
     if (ladowisko) {
       if (ladowisko.przestrzen === 'wyniki') {
-        if (activeRunId !== routeRunId) {
-          setActiveRun(routeRunId);
-        }
-        if (executionActiveRunId !== routeRunId) {
-          setExecutionActiveRun(routeRunId);
-        }
-        if (isUuid(routeRunId)) {
-          restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
-        }
+        odtworzMigawkeBiegu();
       }
       clearRouteManagedSurface();
       return;
@@ -799,15 +732,7 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       route === ROUTES.ANALYSIS.hash
       || isAnalysisRouteAlias(route)
     ) {
-      if (activeRunId !== routeRunId) {
-        setActiveRun(routeRunId);
-      }
-      if (executionActiveRunId !== routeRunId) {
-        setExecutionActiveRun(routeRunId);
-      }
-      if (isUuid(routeRunId)) {
-        restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
-      }
+      odtworzMigawkeBiegu();
       openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
         titlePl: 'Analizy techniczne',
         tabId: resolveAnalysisSurfaceTab(route, params),
@@ -833,15 +758,7 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
         params.get('name') ?? selectedElement?.name ?? initialReportParams?.get('name') ?? null;
       const routeSelectionType =
         params.get('type') ?? selectedElement?.type ?? initialReportParams?.get('type') ?? null;
-      if (activeRunId !== routeRunId) {
-        setActiveRun(routeRunId);
-      }
-      if (executionActiveRunId !== routeRunId) {
-        setExecutionActiveRun(routeRunId);
-      }
-      if (isUuid(routeRunId)) {
-        restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
-      }
+      odtworzMigawkeBiegu();
       openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
         entityRef: routeSelectionRef,
         subjectKind: 'report',
@@ -867,18 +784,13 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     clearRouteManagedSurface();
   }, [
     activeCaseId,
-    activeRunId,
     clearRouteManagedSurface,
-    executionActiveRunId,
     hashVersion,
     openRouteSurface,
     route,
     restoreAnalysisRunSnapshot,
+    runIdOgladany,
     selectedElement,
-    setActiveCaseResultStatus,
-    setActiveRun,
-    setActiveSnapshot,
-    setExecutionActiveRun,
   ]);
 
   useEffect(() => {
@@ -931,8 +843,8 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
    * efekt trasowy orkiestratora (bez dublowania openRouteSurface tutaj).
    */
   const handleViewResults = useCallback(() => {
-    navigateToResults({ runId: effectiveRunId });
-  }, [effectiveRunId, navigateToResults]);
+    navigateToResults({ runId: runIdOgladany });
+  }, [runIdOgladany]);
 
   return { route, handleCalculate, handleViewResults };
 }

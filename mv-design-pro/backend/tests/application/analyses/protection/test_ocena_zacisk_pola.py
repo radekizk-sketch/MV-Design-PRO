@@ -28,6 +28,7 @@ from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from enm.pola import pola_sn_stacji
 from enm.store import get_enm, reset_enm_store, set_enm
 from enm.tor_pola import szyna_raportowa
 
@@ -51,12 +52,12 @@ def _z_zabezpieczeniem_pola_odplywowego() -> tuple[EnergyNetworkModel, str, str]
     (``add_ct``, ``add_relay`` z ``field_ref``). Zwraca ``(model, zacisk pola, szyna pola)``."""
     enm = build_zabezpieczenia_magistrali_enm().model_dump(mode="json")
     stacja = next(s for s in enm["substations"] if s["name"] == "Stacja S01")
-    pole = next(s for s in stacja["meta"]["field_specs"] if s["bay_role"] == "OUT")
+    pole = next(b for b in pola_sn_stacji(enm, stacja["ref_id"]) if b["bay_role"] == "OUT")
     wynik = execute_domain_operation(
         enm,
         "add_ct",
         {
-            "field_ref": pole["field_ref"],
+            "field_ref": pole["ref_id"],
             "catalog_ref": KATALOG_PRZEKLADNIKA,
             "ratio_primary_a": 600.0,
             "ratio_secondary_a": 5.0,
@@ -70,7 +71,7 @@ def _z_zabezpieczeniem_pola_odplywowego() -> tuple[EnergyNetworkModel, str, str]
         wynik["snapshot"],
         "add_relay",
         {
-            "field_ref": pole["field_ref"],
+            "field_ref": pole["ref_id"],
             "relay_type": "NADPRADOWY",
             "catalog_ref": KATALOG_PRZEKAZNIKA,
             "name": NAZWA_ZABEZPIECZENIA_POLA,

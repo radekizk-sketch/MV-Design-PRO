@@ -25,6 +25,8 @@ import { useRawResultOverlayStore } from '../../../ui/sld-overlay/rawResultOverl
 import { ANALYSIS_SURFACE_SCREEN_CODE } from '../../../ui/workspace/types';
 import { getProject } from '../../../ui/projects/api';
 import { getStudyCase } from '../../../ui/study-cases/api';
+import { wyczyscKontekstWyniku } from '../../../test/kontekstBiegu';
+import { runIdOgladanyTeraz, useKontekstWynikuStore } from '../../wyniki/kontekst/kontekstWyniku';
 
 vi.mock('../../../ui/projects/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../ui/projects/api')>();
@@ -90,6 +92,7 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     useShellStore.setState({ activeSpace: 'projekt' });
     useAppStateStore.setState(initialAppState, true);
     useExecutionRunsStore.setState(initialExecutionState, true);
+    wyczyscKontekstWyniku();
     useSnapshotStore.setState(initialSnapshotState, true);
     useNetworkBuildStore.setState(initialNetworkBuildState, true);
     useSelectionStore.setState(initialSelectionState, true);
@@ -110,7 +113,7 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
       expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
     });
     expect(useAppStateStore.getState().activeProjectId).toBeNull();
-    expect(useAppStateStore.getState().activeRunId).toBeNull();
+    expect(runIdOgladanyTeraz()).toBeNull();
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 
@@ -146,17 +149,18 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     expect(useAppStateStore.getState().activeCaseName).toBe('Wariant zwarciowy');
   });
 
-  it('?run=<uuid> na trasie SLD: aktywne obliczenie w obu store\'ach + przestrzeń schematu', async () => {
+  // Karta K8: `?run=` jest JEDNYM ze źródeł wyboru biegu w jedynym magazynie kontekstu
+  // wyniku (źródło „url"); dawne dwie kopie (`activeRunId` w dwóch magazynach) skasowane.
+  it('?run=<uuid> na trasie SLD: bieg wybrany w kontekście wyniku (źródło „url") + przestrzeń schematu', async () => {
     window.location.hash = `#sld?run=${RUN_ID}`;
 
     render(<Probe />);
 
     await waitFor(() => {
-      expect(useAppStateStore.getState().activeRunId).toBe(RUN_ID);
+      expect(runIdOgladanyTeraz()).toBe(RUN_ID);
     });
-    await waitFor(() => {
-      expect(useExecutionRunsStore.getState().activeRunId).toBe(RUN_ID);
-    });
+    // Rejestr biegów jeszcze nie zna biegu: wybór czeka (oczekujący) z jawnym źródłem.
+    expect(useKontekstWynikuStore.getState().oczekujacy).toEqual({ runId: RUN_ID, zrodlo: 'url' });
     // D1: obszar panelu kontekstu nie jest już osobnym stanem — trasa `#sld`
     // ląduje w przestrzeni „Schemat", a panel wynika z tej samej tabeli.
     expect(useShellStore.getState().activeSpace).toBe('schemat');

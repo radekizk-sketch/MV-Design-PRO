@@ -30,6 +30,7 @@ import { POWODY_NIEPREZENTOWANIA } from '../nieprezentowane';
 import { PREZENTACJA } from '../prezentacja';
 import { AKADEMICKIE_STRINGS as S } from '../strings';
 import { CASE_ID, KATALOG, ODPOWIEDZI, migawkaSieciZlotej, ustawFetchV126 } from './atrapyV126';
+import { czekajNaKatalogKart } from './katalogKart';
 
 const RODZAJE = Object.keys(PREZENTACJA);
 
@@ -111,6 +112,22 @@ function naruszenia(korzen: HTMLElement): string[] {
     .map((pozycja) => `${pozycja.regula?.nazwa}: „${pozycja.tekst}”`);
 }
 
+/**
+ * Podpowiedzi (`title`) widoczne dla projektanta poza zapisem technicznym — tu żyje powód
+ * danej przyjętej i zdanie dowodu. Kody warunków gotowości w `title` są materiałem audytowym
+ * (nagłówek pliku), więc podpowiedzi sprawdza wyłącznie reguła surowej referencji obiektu:
+ * identyfikator elementu nie jest jego oznaczeniem w żadnej treści dla projektanta (odcinek 3
+ * karty ZU — dawniej `corridor/6d2b…/segment/001` w powodzie wartości roboczej niezawodności).
+ */
+function surowaReferencjaWPodpowiedziach(korzen: HTMLElement): string[] {
+  const regula = REGULY.find((r) => r.nazwa === 'surowa referencja obiektu')!;
+  return Array.from(korzen.querySelectorAll('[title]'))
+    .filter((element) => element.closest('[data-mvd-zapis-techniczny]') === null)
+    .map((element) => element.getAttribute('title') ?? '')
+    .filter((tytul) => regula.wzorzec.test(tytul))
+    .map((tytul) => `podpowiedź: „${tytul.slice(0, 120)}”`);
+}
+
 beforeEach(() => {
   useAppStateStore.setState({ activeCaseId: CASE_ID });
   useSnapshotStore.setState({ snapshot: migawkaSieciZlotej() as never });
@@ -124,7 +141,7 @@ afterEach(() => {
 /** Otwiera analizę (wejście trasowe) i uruchamia ją — gotowość potwierdzona jawną deklaracją atrapy. */
 async function uruchomRodzaj(rodzaj: string): Promise<HTMLElement> {
   ustawFetchV126({ potwierdzone: [rodzaj], wynikZFixtury: true });
-  render(<EkranAnalizAkademickich trybZaawansowania="expert" rodzajPoczatkowy={rodzaj as never} />);
+  render(<EkranAnalizAkademickich szczegolyAudytowe rodzajPoczatkowy={rodzaj as never} />);
   await waitFor(() => expect(screen.getByTestId('mvd-akad-uruchom')).toBeEnabled());
   fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
   await screen.findByTestId('mvd-akad-wyniki');
@@ -196,8 +213,8 @@ describe('strażnik prezentacji — kontrola dodatnia reguł', () => {
 describe('strażnik prezentacji — katalog kart na realnym katalogu i gotowości backendu', () => {
   it('katalog kart: żadna widoczna etykieta karty ani stan danych nie jest kodem produkcyjnym', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await czekajNaKatalogKart();
     await waitFor(() => expect(screen.getByTestId('mvd-akad-karta-uncertainty_sensitivity')).toHaveTextContent(S.stanDanychPotwierdzona));
     expect(naruszenia(screen.getByTestId('mvd-akad-ekran'))).toEqual([]);
   });
@@ -218,7 +235,7 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   RODZAJE.forEach((rodzaj) => {
     it(`«${rodzaj}» — widok analizy A–G (przedmiot, dane, gotowość, kryteria) bez kodu produkcyjnego`, async () => {
       ustawFetchV126();
-      render(<EkranAnalizAkademickich trybZaawansowania="expert" rodzajPoczatkowy={rodzaj as never} />);
+      render(<EkranAnalizAkademickich szczegolyAudytowe rodzajPoczatkowy={rodzaj as never} />);
       await screen.findByTestId('mvd-akad-uruchomienie');
       await waitFor(() => expect(screen.getByTestId('mvd-akad-gotowosc')).toHaveAttribute('data-gotowosc', expect.stringMatching(/POTWIERDZONA|NIEPOTWIERDZONA/)));
       await waitFor(() => expect(screen.getByTestId('mvd-akad-przedmiot')).toHaveTextContent('CGMES Golden Net'));
@@ -230,7 +247,16 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     it(`«${rodzaj}» — po biegu żadna widoczna etykieta ani wartość nie jest kodem produkcyjnym`, async () => {
       const ekran = await uruchomRodzaj(rodzaj);
       expect(naruszenia(ekran), `rodzaj ${rodzaj}`).toEqual([]);
+      expect(surowaReferencjaWPodpowiedziach(ekran), `rodzaj ${rodzaj}`).toEqual([]);
     });
+  });
+
+  it('kontrola dodatnia: surowa referencja w podpowiedzi danej przyjętej jest wykrywana', () => {
+    const div = document.createElement('div');
+    div.innerHTML =
+      '<li title="Model nie niesie danych elementów (1: corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001)">x</li>'
+      + '<div data-mvd-zapis-techniczny="1"><span title="gpz/860003b4514aa388b39561d5005ce584">y</span></div>';
+    expect(surowaReferencjaWPodpowiedziach(div)).toHaveLength(1);
   });
 
   // Intencja zachowana: ekran odpowiada na pytanie inżynierskie z karty — wynik oceny,
@@ -253,6 +279,35 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
         expect(screen.getByTestId('mvd-akad-ocena')).toHaveAttribute('data-status', 'NIE_OCENIONO');
         expect(werdykt).toHaveTextContent(rekord.wyjasnienie.zdanie_pl);
         expect(screen.queryByTestId('mvd-akad-werdykt-chip')).not.toBeInTheDocument();
+        expect(screen.getByTestId('mvd-akad-nastepny-krok')).toHaveTextContent(projekt.nastepnyKrok.slice(0, 40));
+        return;
+      }
+      if (projekt.werdykt.rodzaj === 'rekordy') {
+        // Zmiana kanonu (odcinek 3 karty ZU, §3.18): rodzaje z kryteriami wynikiem oceny są
+        // rekordy werdyktu wyjaśnialnego z odpowiedzi backendu — KAŻDY rekord kartą werdyktu
+        // (etykieta oceny, zdanie wyjaśnienia, podstawa rekordu), bez chipu i bez mapy
+        // „status → tekst". Podstawa oceny pochodzi z rekordu (rejestr założeń albo norma ze
+        // stanem źródła), nie z wierszy karty katalogu.
+        const rekordy = (ODPOWIEDZI[rodzaj as keyof typeof ODPOWIEDZI] as {
+          oceny: {
+            wymaganie_id?: string;
+            kryterium_id?: string;
+            etykieta: { etykieta_pl: string };
+            wyjasnienie: { zdanie_pl: string };
+            podstawa: { dokument: string; jednostka_redakcyjna: string | null };
+          }[];
+        }).oceny;
+        expect(rekordy.length, `rodzaj ${rodzaj}: fixtura bez rekordów oceny`).toBeGreaterThan(0);
+        expect(screen.getByTestId('mvd-akad-ocena')).toBeInTheDocument();
+        expect(screen.queryByTestId('mvd-akad-werdykt-chip')).not.toBeInTheDocument();
+        for (const rekord of rekordy) {
+          const id = `mvd-werdykt-${rekord.wymaganie_id ?? rekord.kryterium_id}`;
+          expect(screen.getByTestId(`${id}-etykieta`)).toHaveTextContent(rekord.etykieta.etykieta_pl);
+          expect(screen.getByTestId(`${id}-zdanie`)).toHaveTextContent(
+            rekord.wyjasnienie.zdanie_pl.slice(0, 40),
+          );
+          expect(werdykt).toHaveTextContent(rekord.podstawa.jednostka_redakcyjna ?? rekord.podstawa.dokument);
+        }
         expect(screen.getByTestId('mvd-akad-nastepny-krok')).toHaveTextContent(projekt.nastepnyKrok.slice(0, 40));
         return;
       }
@@ -329,8 +384,8 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
 
   it('świeżość mówi „brak wyników” DOPÓKI przebiegu nie ma (kontrola dodatnia pary)', async () => {
     ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await czekajNaKatalogKart();
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });
 

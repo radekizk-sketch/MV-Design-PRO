@@ -20,7 +20,8 @@ Aktywne endpointy odczytu:
 
 Kody i akcje:
 - walidator utrzymuje kody co najmniej `E001-E010`, `W001-W004`, `I001-I002`,
-- warstwa domenowa dodaje co najmniej: `pv_bess.transformer_required`, `branch_point.invalid_parent_medium`, `branch_point.required_port_missing`, `branch_point.catalog_ref_missing`, `branch_point.switch_state_missing`, `zksn.branch_count_invalid`, `switch.catalog_ref_missing`,
+- warstwa domenowa dodaje co najmniej: `pv_bess.transformer_required`, `branch_point.invalid_parent_medium`, `branch_point.required_port_missing`, `branch_point.catalog_ref_missing`, `zksn.branch_count_invalid`, `switch.catalog_ref_missing`,
+- kod `branch_point.switch_state_missing` skasowany (W5-C, 2026-10-21): stan łączeniowy punktu rozgałęzienia żyje wyłącznie na łącznikach portów (`status`/`normal_state`), więc kopia na punkcie nie może być „brakująca”,
 - typy `FixAction.action_type`: `OPEN_MODAL`, `NAVIGATE_TO_ELEMENT`, `SELECT_CATALOG`, `ADD_MISSING_DEVICE`.
 
 Zakres odpowiedzi:

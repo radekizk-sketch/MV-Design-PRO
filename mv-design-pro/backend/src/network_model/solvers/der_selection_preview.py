@@ -24,6 +24,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from network_model.odmowa_danych import OdmowaDanychError
+from network_model.pochodne.pasma_napieciowe import (
+    izolacja_pokrywa_siec,
+    napiecie_wymagane_izolacji_kv,
+    to_samo_napiecie_znamionowe,
+)
 from network_model.solvers.cable_ampacity_derating import (
     WARUNKI_KATALOGOWE,
     WspolczynnikiObciazalnosci,
@@ -44,14 +49,9 @@ from network_model.solvers.conductor_thermal_withstand import (
 )
 
 # ---------------------------------------------------------------------------
-# Wspólny epsilon porównań doborowych (spójny z D1 der_sn_validation).
+# Wspólny epsilon porównań doborowych mocy, prądu i spadku napięcia (reprezentacja binarna).
 # ---------------------------------------------------------------------------
 _EPS = 1e-9
-
-
-def _voltages_match(left_kv: float, right_kv: float, tolerance_kv: float) -> bool:
-    """Zgodność napięć znamionowych w granicach tolerancji doborowej (jak D1)."""
-    return abs(left_kv - right_kv) <= tolerance_kv
 
 
 # ===========================================================================
@@ -97,8 +97,6 @@ class BlockTransformerSelectionInput:
     simultaneity_factor: float = 1.0
     reserve_pu: float = 0.0
     loadability_pu: float = 1.0
-    sn_tolerance_kv: float = 0.01
-    nn_tolerance_kv: float = 0.001
 
 
 @dataclass(frozen=True)
@@ -173,14 +171,12 @@ def propose_block_transformer(
 
     for candidate in data.candidates:
         if (
-            _voltages_match(candidate.primary_kv, data.primary_voltage_kv, data.sn_tolerance_kv)
-            and _voltages_match(
-                candidate.secondary_kv, data.secondary_voltage_kv, data.nn_tolerance_kv
-            )
+            to_samo_napiecie_znamionowe(candidate.primary_kv, data.primary_voltage_kv)
+            and to_samo_napiecie_znamionowe(candidate.secondary_kv, data.secondary_voltage_kv)
             and candidate.vector_group
         ):
             voltage_class_vector_groups.add(candidate.vector_group)
-        if not _voltages_match(candidate.primary_kv, data.primary_voltage_kv, data.sn_tolerance_kv):
+        if not to_samo_napiecie_znamionowe(candidate.primary_kv, data.primary_voltage_kv):
             rejected.append(
                 RejectedCandidate(
                     candidate.catalog_ref,
@@ -191,9 +187,7 @@ def propose_block_transformer(
                 )
             )
             continue
-        if not _voltages_match(
-            candidate.secondary_kv, data.secondary_voltage_kv, data.nn_tolerance_kv
-        ):
+        if not to_samo_napiecie_znamionowe(candidate.secondary_kv, data.secondary_voltage_kv):
             rejected.append(
                 RejectedCandidate(
                     candidate.catalog_ref,
@@ -579,7 +573,9 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
 # 3) DOBÓR APARATU GŁÓWNEGO POLA SN (wymaganie 11)
 # ===========================================================================
 
-_FIELD_FORMULA_REF = "In ≥ I_TR · (1 + rezerwa);  Un_aparatu ≥ napięcie sieci"
+_FIELD_FORMULA_REF = (
+    "In ≥ I_TR · (1 + rezerwa);  U_r aparatu ≥ U_s sieci (napięcie najwyższe sieci, IEC 60038)"
+)
 
 
 @dataclass(frozen=True)
@@ -632,7 +628,7 @@ class FieldApparatusSelectionResult:
 def propose_mv_field_apparatus(
     data: FieldApparatusSelectionInput,
 ) -> FieldApparatusSelectionResult:
-    """Dobierz aparat główny pola SN: In ≥ I_TR·(1+rezerwa), Un aparatu ≥ napięcie sieci,
+    """Dobierz aparat główny pola SN: In ≥ I_TR·(1+rezerwa), U_r aparatu ≥ U_s sieci (IEC 60038),
     rodzaj z dozwolonych (domyślnie wyłącznik/rozłącznik).
 
     WHITE BOX: próg prądu + kandydaci odrzuceni (prąd niewystarczający / napięcie za niskie /
@@ -665,14 +661,28 @@ def propose_mv_field_apparatus(
                 )
             )
             continue
-        if candidate.un_kv + _EPS < data.system_voltage_kv:
+        # Poziom izolacji: U_r aparatu (= U_m, PN-EN 62271-1 p. 5.2) ≥ napięcie najwyższe
+        # SIECI U_s (IEC 60038), nie napięcie znamionowe — jeden predykat z odmową poziomu
+        # izolacji aparatów pola (`pasma_napieciowe.izolacja_pokrywa_siec`).
+        if izolacja_pokrywa_siec(candidate.un_kv, data.system_voltage_kv) is not True:
+            u_s = napiecie_wymagane_izolacji_kv(data.system_voltage_kv)
             rejected.append(
                 RejectedCandidate(
                     candidate.catalog_ref,
                     candidate.name,
                     "napiecie_aparatu_za_niskie",
-                    f"Napięcie znamionowe aparatu {candidate.un_kv:g} kV poniżej napięcia sieci "
-                    f"{data.system_voltage_kv:g} kV.",
+                    (
+                        (
+                            f"Napięcie znamionowe aparatu {candidate.un_kv:g} kV poniżej napięcia "
+                            f"najwyższego sieci U_s = {u_s:g} kV (sieć {data.system_voltage_kv:g} kV, "
+                            "IEC 60038)."
+                        )
+                        if u_s is not None
+                        else (
+                            f"Sieć {data.system_voltage_kv:g} kV nie ma napięcia najwyższego U_s "
+                            "w tablicach IEC 60038 — poziomu izolacji aparatu nie da się potwierdzić."
+                        )
+                    ),
                 )
             )
             continue

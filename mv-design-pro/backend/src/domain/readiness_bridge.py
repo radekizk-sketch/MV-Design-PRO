@@ -60,6 +60,18 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W043": "station.kind_mismatch",
     # „Pole SN o roli spoza słownika" == ten sam warunek (to samo źródło).
     "W044": "station.field_role_unknown",
+    # Karta UX-04/POLE-BKR-MODEL: reguły pola BKR == te same warunki (jedno źródło predykatów
+    # `enm/bateria_kondensatorow.py`, emiter `enm/validator.py::_check_baterie_pola_bkr`).
+    "W045": "station.bkr_bay_missing",
+    "W046": "station.bkr_unbalance_ct_missing",
+    "W047": "station.bkr_discharge_vt_missing",
+    "W048": "station.bkr_transformer_trip_incomplete",
+    # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
+    # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
+    "E065": "source.gpz_section_unsupplied",
+    # „Transformator GPZ bez zasilania od strony 110 kV" (karta GPZ-MODEL) == ten sam
+    # warunek (jeden predykat `enm/validator.py::transformatory_gpz_bez_zasilania_wn`).
+    "E066": "source.gpz_transformer_hv_unsupplied",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia
@@ -94,6 +106,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # warunek, ktory assembler rozplywu niesymetrycznego zglasza jako odmowe nazwana
     # (`enm/assembler.py::diagnoza_niesymetrii`) i ktory blokuje zwarcia 1F/2F-Z.
     "W001": "branch.zero_sequence_missing",
+    # „Napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym paśmie" == ten sam
+    # warunek (jeden podział E023/W023 w `enm/validator.py`, równość danych
+    # `to_samo_napiecie_znamionowe`).
+    "W023": "transformer.winding_voltage_off_nominal",
     # W5-A (jedna reprezentacja uziemienia): transformator SN/nN bez ukladu sieci nN
     # (`lv_earthing_system`) == ten sam fakt, ktory gotowosc petli zwarcia zglasza jako
     # ELIG_FLNN_MISSING_EARTHING_SYSTEM (jeden predykat `enm/uklad_sieci_nn.py`).
@@ -110,6 +126,17 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
     # Uklad uziemienia ekranu kabla inny niz uklad odniesienia katalogowych r0/x0.
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zrodlo SN z danymi uziemienia (pominiete) i reguly
+    # zespolu uziemiajacego — jeden walidator, jeden kanon.
+    "W-W5-02": "source.sn_neutral_data_ignored",
+    "E-ZU-01": "earthing.zespol_bus_invalid",
+    "E-ZU-02": "earthing.zespol_neutral_undefined",
+    "W-ZU-01": "earthing.zespol_spz_without_resistor",
+    "W-ZU-02": "earthing.zespol_transformer_trip_missing",
+    "W-ZU-03": "earthing.zespol_auxiliary_load_missing",
+    "W-ZU-04": "earthing.network_grounding_warning",
+    "W-ZU-05": "earthing.zespol_direct_earthing",
+    "W-ZU-06": "earthing.zespol_voltage_mismatch",
 }
 
 # ---------------------------------------------------------------------------
@@ -140,6 +167,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "E040": "Kanon nie ma kodów baterii kondensatorów (referencja katalogowa).",
     "E041": "Kanon nie ma kodów baterii kondensatorów (moc bierna).",
     "E042": "Kanon nie ma kodów baterii kondensatorów (napięcie znamionowe).",
+    "E043": (
+        "Kanon nie ma kodów baterii kondensatorów (stan stopni niezgodny z liczbą stopni) — "
+        "spójność danych elementu, jak E040–E042."
+    ),
     "I001": "Stan łącznika (otwarty) to informacja o topologii, nie brak danych.",
     "I002": (
         "Powtarza warunek E009 na poziomie INFO — jeden warunek ma mieć jeden kod "
@@ -165,6 +196,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "Kanon ma `source.sk3_invalid` (wartość NIEPRAWIDŁOWA), a warunek mówi o BRAKU "
         "parametrów — brak i błędna wartość prowadzą do różnych napraw."
     ),
+    "apparatus.hv_switch_catalog_missing": (
+        "Kanon nie ma kodu wiązania katalogowego łącznika — kod dotyczy łącznika topologii "
+        "zasilania 110 kV bez typu (reguła wiązania katalogowego), nie braku danych projektu."
+    ),
     "sources.sk_ik_voltage_inconsistent": (
         "Kanon nie ma kodu dla niespójności Ik''/Sk''/napięcia źródła."
     ),
@@ -188,7 +223,7 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     ),
     "W061": (
         "Wyjątek E061 dla gałęzi z automigracji promocji pól nN (degradacja BLOCKER -> "
-        "WARNING, `nn_field_specs_promocja.py`) — jak E061, `nn.cable_catalog_missing` "
+        "WARNING, `promocja_aparatow_nn.py`) — jak E061, `nn.cable_catalog_missing` "
         "nie pasuje (obejmuje wyłącznie kable, nie aparaty pól)."
     ),
     "E062": (

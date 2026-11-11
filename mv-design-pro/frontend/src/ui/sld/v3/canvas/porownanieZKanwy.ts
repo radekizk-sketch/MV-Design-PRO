@@ -47,8 +47,8 @@ export type StanPorownaniaZKanwy =
 // ---------------------------------------------------------------------------
 
 /** TEN SAM łańcuch, którym tryb porównawczy kolejnych biegów komunikuje
- *  nieaktualność — oba tryby blokuje jeden fakt (`activeCaseResultStatus ===
- *  'OUTDATED'`), więc i komunikat jest jeden. */
+ *  nieaktualność — oba tryby blokuje jeden fakt (bieg na schemacie nieaktualny
+ *  wg predykatu `kontekstWyniku.swiezoscBiegu`, karta K8), więc i komunikat jest jeden. */
 export const POWOD_WYNIKI_NIEAKTUALNE = 'Wyniki nieaktualne — porównanie zablokowane';
 
 export const POWOD_BRAK_BIEGU =
@@ -77,8 +77,8 @@ export interface WejsciePorownaniaZKanwy {
   readonly payload: { readonly run_id: string; readonly analysis_type: string } | null;
   /** `true` = nakładka różnic już trwa (sekcję wyboru zastępuje podsumowanie). */
   readonly nakladkaAktywna: boolean;
-  /** `true` = wyniki przypadku nieaktualne (jedno źródło świeżości S9-11:
-   *  `activeCaseResultStatus === 'OUTDATED'`, ten sam predykat co stale-badge). */
+  /** `true` = bieg na schemacie nieaktualny (jeden predykat świeżości biegu,
+   *  karta K8 `kontekstWyniku.swiezoscBiegu`, ten sam co stale-badge). */
   readonly wynikiNieaktualne: boolean;
   /** Przebiegi aktywnego przypadku (`useExecutionRunsStore.runs`). */
   readonly runs: readonly ExecutionRun[];

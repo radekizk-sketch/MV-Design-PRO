@@ -170,6 +170,22 @@ def _fix_graph_island(
     )
 
 
+def _fix_gpz_section_unsupplied(
+    element_id: str | None,
+    _et: str | None,
+) -> FixAction:
+    """E065: nawigacja do otwartego sprzęgła sekcji GPZ (albo szyny sekcji)."""
+    return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=element_id)
+
+
+def _fix_gpz_transformer_hv_unsupplied(
+    element_id: str | None,
+    _et: str | None,
+) -> FixAction:
+    """E066: nawigacja do transformatora WN/SN GPZ bez równoważnika po stronie 110 kV."""
+    return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=element_id)
+
+
 # ---------------------------------------------------------------------------
 # Load flow validation codes
 # ---------------------------------------------------------------------------
@@ -224,18 +240,6 @@ def _fix_branch_point_catalog_ref(
         element_ref=element_id,
         modal_type="BranchPointCatalogPicker",
         payload_hint={"required": "catalog_ref"},
-    )
-
-
-def _fix_branch_point_switch_state(
-    element_id: str | None,
-    _et: str | None,
-) -> FixAction:
-    return FixAction(
-        action_type="OPEN_MODAL",
-        element_ref=element_id,
-        modal_type="BranchPointSwitchStateModal",
-        payload_hint={"required": "switch_state"},
     )
 
 
@@ -347,7 +351,6 @@ _FIX_ACTION_MAP: dict[
     # BranchPointSN validation
     "branch_point.invalid_parent_medium": _fix_branch_point_invalid_medium,
     "branch_point.catalog_ref_missing": _fix_branch_point_catalog_ref,
-    "branch_point.switch_state_missing": _fix_branch_point_switch_state,
     "branch_point.branch_port_occupied": _fix_branch_point_port_occupied,
     "branch_point.required_port_missing": _fix_branch_point_required_port,
     "zksn.branch_count_invalid": _fix_zksn_branch_count,
@@ -359,6 +362,8 @@ _FIX_ACTION_MAP: dict[
     "bess.transformer_required": _fix_bess_transformer_required,
     # Topology warnings
     "E003": _fix_graph_island,
+    "E065": _fix_gpz_section_unsupplied,
+    "E066": _fix_gpz_transformer_hv_unsupplied,
     "W005": _fix_topology_ref_invalid,
     "W006": _fix_topology_ref_invalid,
     "W007": _fix_topology_ref_invalid,
@@ -388,6 +393,8 @@ KNOWN_BLOCKER_CODES: frozenset[str] = frozenset(
         "E001",
         "E002",
         "E003",
+        "E065",
+        "E066",
         "E004",
         "E005",
         "E006",
@@ -428,7 +435,6 @@ KNOWN_BLOCKER_CODES: frozenset[str] = frozenset(
         # BranchPointSN (branch_pole / ZKSN)
         "branch_point.invalid_parent_medium",
         "branch_point.catalog_ref_missing",
-        "branch_point.switch_state_missing",
         "branch_point.branch_port_occupied",
         "branch_point.required_port_missing",
         "zksn.branch_count_invalid",

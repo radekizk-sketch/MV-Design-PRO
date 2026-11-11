@@ -136,7 +136,7 @@ const lineH = 14;
 const AY = HEADER;
 parts.push(
   `<text x="16" y="${AY - 8}" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700" fill="${TXT}">` +
-    `A · Interakcja (wym.6) + Pochodzenie (wym.7): klik etykiety/członka → istniejący panel wyników elementu (SldDetailDrawer); popover z modułem+przebiegiem</text>`,
+    `A · Interakcja (wym.6) + Pochodzenie (wym.7): klik etykiety/członka → sekcja „Wyniki” prawego inspektora; popover z modułem+przebiegiem</text>`,
 );
 // Popover agregatu (rozwinięty) z wierszem POCHODZENIA na górze.
 const popX = 40;

@@ -29,6 +29,8 @@ ApparatusKind = Literal[
     "TRANSFORMER_DEVICE",
     "FUSE",
     "SURGE_ARRESTER",
+    "UNBALANCE_CT",
+    "PHASE_TO_PHASE_VT",
     "GENERATOR_PV",
     "GENERATOR_BESS",
     "GENERATOR_FW",

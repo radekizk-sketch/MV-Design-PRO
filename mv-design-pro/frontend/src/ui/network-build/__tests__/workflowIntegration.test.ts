@@ -72,7 +72,9 @@ describe('blocker categorization E2E', () => {
     const readiness = readinessWithBlockers([
       'topology_island_1',
       'missing_catalog_ref',
-      'switch_state_invalid',
+      // W5-C: realny kod pierścienia bez punktu podziału (fikcyjny `switch_state_invalid`
+      // nie miał emitera; kopia stanu łącznika skasowana).
+      'ring.nop_required',
       'protection_missing',
     ]);
     const result = selectBlockersByCategory(readiness);

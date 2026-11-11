@@ -26,6 +26,10 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         ("/api/catalog/ct-types", "ct_400_5_5p20_15va_abb"),
         ("/api/catalog/vt-types", "vt_15kv_100v_05_abb"),
         ("/api/catalog/wind-inverter-types", "conv-wind-2mw-15kv"),
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy przestrzenie zespołu uziemiającego SN.
+        ("/api/catalog/earthing-transformer-types", "TU_ZNYN11_15KV_PW160"),
+        ("/api/catalog/arc-suppression-coil-types", "DL_40_400A_15KV_CIAGLY"),
+        ("/api/catalog/neutral-earthing-resistor-types", "REZ_200A_15KV"),
         ("/api/catalog/protection/device-types", "REF-OC-EF-500"),
         ("/api/catalog/protection/curves", "curve_iec_normal_inverse"),
         ("/api/catalog/protection/templates", "template_ref_oc_ef_500"),

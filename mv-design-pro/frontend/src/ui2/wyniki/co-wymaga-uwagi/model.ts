@@ -192,47 +192,98 @@ export interface RejestrPrzekroczen {
    * normowa B-02: brak wiarygodnej podstawy = BRAK PODSTAW DO OCENY).
    */
   brakKryteriowNapiec: boolean;
+  /**
+   * Stan odczytu werdyktu projektowego przypadku (`wczytywanie`/`blad`) albo `null`
+   * — nic nie oczekuje (werdykt wczytany albo brak aktywnego przypadku). Dopóki
+   * odczyt trwa albo się nie powiódł, pusta lista przekroczeń NIE jest wnioskiem
+   * „sieć w normie" (KONTRAKT_WERDYKTU_WYJASNIALNEGO: brak danych ≠ spełnia).
+   */
+  odczytOceny: OdczytOceny | null;
+}
+
+/** Stan odczytu werdyktu projektowego, który wstrzymuje wniosek z pustej listy. */
+export type OdczytOceny = 'wczytywanie' | 'blad';
+
+/** Stan dostawcy werdyktu projektowego przypadku — rozłączne stany zapytania. */
+export type StanWerdyktuPrzypadku =
+  /** Brak aktywnego przypadku — nie ma werdyktu do odczytu (nic nie trwa). */
+  | { readonly stan: 'niezlecony' }
+  | { readonly stan: 'wczytywanie' }
+  | { readonly stan: 'blad' }
+  | { readonly stan: 'gotowe'; readonly werdykt: OdpowiedzOceny };
+
+/** Rozłączny wniosek ekranu, gdy lista przekroczeń jest pusta (albo `null` — lista niepusta). */
+export type WniosekPustejListy =
+  | 'brak_przebiegu'
+  | 'ocena_wczytywanie'
+  | 'ocena_blad'
+  | 'brak_kryteriow'
+  | 'w_normie';
+
+/**
+ * JEDNO źródło prawdy dla stanu zerowego ekranu: kolejność rozstrzygnięć
+ * (brak przebiegu → odczyt oceny w toku/nieudany → brak kryteriów → w normie).
+ * „Sieć w normie" wyłącznie, gdy jest przebieg, nic nie oczekuje na odczyt
+ * i wynik niesie kryteria napięciowe.
+ */
+export function wniosekPustejListy(rejestr: RejestrPrzekroczen): WniosekPustejListy | null {
+  if (!rejestr.maPrzebieg) return 'brak_przebiegu';
+  if (rejestr.przekroczenia.length > 0) return null;
+  if (rejestr.odczytOceny === 'wczytywanie') return 'ocena_wczytywanie';
+  if (rejestr.odczytOceny === 'blad') return 'ocena_blad';
+  if (rejestr.brakKryteriowNapiec) return 'brak_kryteriow';
+  return 'w_normie';
 }
 
 /**
  * Werdykt projektowy aktywnego przypadku — pobierany po zmianie przypadku i po
  * KAŻDYM zakończonym biegu (magistrala `wyniki-gotowe`), aby rejestr nie
- * pokazywał stanu sprzed przeliczenia. Błąd/brak przypadku = brak pozycji
- * werdyktu (rejestr degraduje się do źródeł synchronicznych, bez zgadywania).
+ * pokazywał stanu sprzed przeliczenia. Stany rozłączne (`StanWerdyktuPrzypadku`):
+ * odczyt w toku i błąd odczytu są ROZPOZNANE — nie zlewają się z „brak pozycji
+ * werdyktu" (wtedy ekran wnioskowałby „sieć w normie" z danych, których nie ma).
+ * Ponowny odczyt (nowy bieg) wraca do `wczytywanie`: werdykt sprzed biegu jest
+ * nieaktualny i nie może stać za wnioskiem ekranu.
  */
-function useWerdyktPrzypadku(): OdpowiedzOceny | null {
+export function useWerdyktPrzypadku(): StanWerdyktuPrzypadku {
   const caseId = useAppStateStore((s) => s.activeCaseId);
-  const [werdykt, setWerdykt] = useState<OdpowiedzOceny | null>(null);
+  const [stan, setStan] = useState<StanWerdyktuPrzypadku>(
+    caseId ? { stan: 'wczytywanie' } : { stan: 'niezlecony' },
+  );
   const [odswiezenie, setOdswiezenie] = useState(0);
 
   useEffect(() => subskrybuj('wyniki-gotowe', () => setOdswiezenie((n) => n + 1)), []);
 
   useEffect(() => {
     if (!caseId) {
-      setWerdykt(null);
+      setStan({ stan: 'niezlecony' });
       return;
     }
     let anulowane = false;
+    setStan({ stan: 'wczytywanie' });
     fetchOcenaTechniczna(caseId)
       .then((odpowiedz) => {
-        if (!anulowane) setWerdykt(odpowiedz);
+        if (!anulowane) setStan({ stan: 'gotowe', werdykt: odpowiedz });
       })
       .catch(() => {
-        if (!anulowane) setWerdykt(null);
+        if (!anulowane) setStan({ stan: 'blad' });
       });
     return () => {
       anulowane = true;
     };
   }, [caseId, odswiezenie]);
 
-  return werdykt;
+  // Przypadek zmieniony, efekt jeszcze nie ruszył — stan poprzedniego przypadku
+  // nie może przeciec do bieżącego renderu.
+  if (!caseId) return { stan: 'niezlecony' };
+  return stan;
 }
 
 /** Czyta i konsoliduje przekroczenia ze store'ów analiz (read-only, zero fizyki). */
 export function useRejestrPrzekroczen(): RejestrPrzekroczen {
   const wynikRozplywu = usePowerFlowResultsStore((s) => s.results);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-  const werdykt = useWerdyktPrzypadku();
+  const stanWerdyktu = useWerdyktPrzypadku();
+  const werdykt = stanWerdyktu.stan === 'gotowe' ? stanWerdyktu.werdykt : null;
   const nazwaObiektu = useNazwaObiektu();
 
   const przekroczenia = useMemo(() => {
@@ -251,7 +302,10 @@ export function useRejestrPrzekroczen(): RejestrPrzekroczen {
 
   const brakKryteriowNapiec = brakKryteriowRozplywu(wynikRozplywu);
 
-  return { przekroczenia, maPrzebieg, brakKryteriowNapiec };
+  const odczytOceny: OdczytOceny | null =
+    stanWerdyktu.stan === 'wczytywanie' || stanWerdyktu.stan === 'blad' ? stanWerdyktu.stan : null;
+
+  return { przekroczenia, maPrzebieg, brakKryteriowNapiec, odczytOceny };
 }
 
 /**

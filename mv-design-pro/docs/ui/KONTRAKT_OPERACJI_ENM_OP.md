@@ -4,6 +4,11 @@
 **Wersja:** 1.0
 **Data:** 2026-02-16
 **Referencje:**
+- `docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md` --- ZRODLO PRAWDY rejestru operacji: pelna
+  lista operacji, pola ladunkow (rowne kluczom czytanym przez handler), przyklady wykonane
+  przez API, zdarzenia; ponizsze tabele opisuja semantyke wybranych operacji i sa pilnowane
+  testem `backend/tests/ci/test_dokument_kontraktow_operacji.py` (pole najwyzszego poziomu
+  w tabeli operacji = pole rejestru tej operacji)
 - `UX_FLOW_SN_V1_GPZ_LIVE_SLD.md` --- przeplywy budowy sieci SN
 - `CATALOG_BROWSER_CONTRACT.md` --- kontrakt przegladarki katalogu
 - `SLD_UI_CONTRACT.md` --- kontrakt widoku SLD
@@ -35,8 +40,8 @@ Kazda operacja domenowa jest wysylana jako **POST /enm/domain-ops** z jednolitym
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
 | `project_id` | `string` | TAK | Identyfikator projektu |
-| `snapshot_base_hash` | `string` | TAK | Hash SHA-256 bazowego Snapshot --- zapewnia optymistyczna kontrole wspolbieznosci. Jesli hash nie zgadza sie z aktualnym, serwer zwraca **HTTP 409 Conflict** |
-| `operation.name` | `string` | TAK | Kanoniczna nazwa operacji (jedna z 10 dozwolonych) |
+| `snapshot_base_hash` | `string` | NIE | Hash SHA-256 bazowego Snapshot (`header.hash_sha256`) --- zapewnia optymistyczna kontrole wspolbieznosci. Jesli hash nie zgadza sie z aktualnym, serwer zwraca **HTTP 409 Conflict**; pusty = bez kontroli |
+| `operation.name` | `string` | TAK | Kanoniczna nazwa operacji z rejestru (`ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4); nazwa spoza rejestru --- odmowa `dispatcher.unknown_operation` |
 | `operation.idempotency_key` | `string` | TAK | Klucz idempotentnosci --- zapewnia jednokrotne wykonanie operacji przy powtorzeniu zadania |
 | `operation.payload` | `object` | TAK | Dane specyficzne dla danej operacji (rozne dla kazdej nazwy) |
 
@@ -70,7 +75,7 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
         "corridor_ref": "<id-magistrali>",
         "corridor_type": "radial | ring | mixed",
         "segments": ["<segment_ref_1>", "<segment_ref_2>"],
-        "no_point_ref": "<switch_ref | null>",
+        "no_point_refs": ["<switch_ref>"],
         "terminals": [
           {
             "element_id": "<bus_ref>",
@@ -111,7 +116,7 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
       /* agregat wszystkich terminali z magistral i odgalezien */
     ],
     "line_fields": [
-      /* karta POLE-ZAJĘTE: zajętość KAŻDEGO pola rozdzielnicy SN (meta.field_specs) z jednej
+      /* karta POLE-ZAJĘTE: zajętość KAŻDEGO pola rozdzielnicy SN (rekordy `bays`) z jednej
          funkcji backendu `enm/zajetosc_pol.py`; front czyta ją i nie liczy zajętości sam */
       {
         "field_ref": "<ref pola>",
@@ -212,9 +217,15 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
   "layout": {
     "layout_hash": "sha256:<64-znakowy-hex>",
     "layout_version": "1.0"
-  }
+  },
+
+  "semantic_issues": [ /* uwagi semantyczne modelu po operacji */ ]
 }
 ```
+
+Odmowa operacji: odpowiedz niesie `error` (komunikat po polsku) i `error_code`, `snapshot`
+jest `null`, model bez zmian. `set_bay_equipment` dodaje `wyposazenie_pola`. Pelna tabela pol:
+`docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md` §2.
 
 ### 2.1 Gwarancje odpowiedzi
 
@@ -229,21 +240,20 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
 
 ### 2.2 Dozwolone typy zdarzen domenowych
 
-```
-SEGMENT_SPLIT           CUT_NODE_CREATED        STATION_CREATED
-PORTS_CREATED           FIELDS_CREATED_SN       DEVICES_CREATED_SN
-TR_CREATED              BUS_NN_CREATED           FIELDS_CREATED_NN
-DEVICES_CREATED_NN      RECONNECTED_GRAPH        LOGICAL_VIEWS_UPDATED
-SOURCE_CREATED          BUS_CREATED              BRANCH_CREATED
-SWITCH_INSERTED         RING_CONNECTED           NOP_SET
-TRANSFORMER_CREATED     CATALOG_ASSIGNED         PARAMETERS_UPDATED
-```
+Jedynym zrodlem listy jest `DOMAIN_EVENT_TYPES` w `backend/src/enm/domain_ops_models.py`
+(W5-C, 2026-10-21): rejestr rowny DOKLADNIE typom emitowanym przez operacje, w obu
+kierunkach pilnowany skanem AST w `backend/tests/enm/test_rejestr_zdarzen_domenowych.py`.
+Dawna lista w tym miejscu (21 typow) i martwa kopia `enm/domain_event_types.py` rozjechaly sie
+z kodem — nie sa przepisywane tutaj ponownie. Typy stanu laczeniowego: `SWITCH_OPENED`,
+`SWITCH_CLOSED`, `NOP_SET`, `NOP_CLEARED`; wyposazenie pola: `BAY_EQUIPMENT_SET`.
 
 ---
 
 ## 3. Kanon nazw operacji
 
-System definiuje dokladnie **10 kanonicznych operacji domenowych**. Frontend wysyla WYLACZNIE
+Kanoniczne operacje domenowe definiuje JEDEN rejestr `backend/src/enm/rejestr_operacji.py`
+(`OPERACJE_KANONICZNE`, specyfikacje pol: `backend/src/domain/canonical_operations.py`); ponizej
+opisane sa operacje toku budowy sieci SN i operacje stanu laczeniowego. Frontend wysyla WYLACZNIE
 nazwy kanoniczne. W aktywnej powierzchni V11 nie wystepuja aliasy operacji ani
 alternatywne identyfikatory formularzy.
 
@@ -259,7 +269,6 @@ alternatywne identyfikatory formularzy.
 |------|-----|----------|------|
 | `voltage_kv` | `float` | TAK | Napiecie znamionowe szyny GPZ [kV], musi byc > 0 |
 | `source_name` | `string` | NIE | Nazwa zrodla zasilania |
-| `bus_name` | `string` | NIE | Nazwa szyny GPZ |
 | `sk3_mva` | `float` | NIE | Moc zwarciowa trojfazowa scenariusza MAX [MVA] |
 | `ik3_ka` | `float` | NIE | Prad zwarciowy trojfazowy scenariusza MAX [kA] |
 | `rx_ratio` | `float` | NIE | Stosunek R/X impedancji zwarciowej (scenariusz MAX) |
@@ -267,7 +276,6 @@ alternatywne identyfikatory formularzy.
 | `ik3_min_ka` | `float` | NIE | Minimalny prad zwarciowy trojfazowy --- scenariusz MIN [kA], alternatywa dla `sk3_min_mva` (tryb pradowy) |
 | `rx_ratio_min` | `float` | NIE | Stosunek R/X dla scenariusza MIN. Bez `sk3_min_mva`/`ik3_min_ka` nie ma zastosowania (operacja odrzuca kodem `source.manual_equivalent_invalid`) |
 | `u_set_pu` | `float` | NIE | Napiecie zadane szyny bilansujacej [p.u. Un szyny], pasmo 0,8--1,2; brak = 1,0 (znamionowe). Poza pasmem: `source.manual_equivalent_invalid` |
-| `pozycja_widokowa` | `object` | NIE | Pozycja na schemacie SLD |
 
 **Tworzy:**
 - Szyne GPZ (`bus`) z zadanym napieciem
@@ -290,13 +298,12 @@ dokladnie jeden GPZ).
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `trunk_id` | `string` | TAK* | Identyfikator magistrali (* auto-detekcja pierwszej magistrali, jesli pominiety) |
-| `from_terminal_id` | `string` | TAK* | Identyfikator terminala, od ktorego kontynuowac (* auto-detekcja konca magistrali) |
+| `trunk_id` | `string` | NIE | Identyfikator magistrali = id ciagu liniowego `line_runs` (brak albo nieznana magistrala --- pierwsza magistrala modelu); odcinek dopisany na koniec ciagu (`ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4, „Ciagi liniowe”) |
+| `from_terminal_id` | `string` | NIE | Identyfikator terminala, od ktorego kontynuowac (brak --- koniec magistrali) |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
 | `segment.catalog_ref` | `string` | NIE | Referencja katalogowa segmentu |
 | `segment.name` | `string` | NIE | Nazwa segmentu |
-| `parametry_jawne` | `object` | NIE | Jawnie podane parametry elektryczne (tryb EKSPERT) |
 
 **Tworzy:**
 - Nowa szyne downstream (`bus`) z napieciem dziedziczonym topologicznie z szyny zrodlowej
@@ -319,8 +326,8 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
 | `segment_id` | `string` | TAK | Identyfikator segmentu do podzialu |
-| `insert_at.mode` | `"RATIO" \| "ODLEGLOSC_OD_POCZATKU_M" \| "ANCHOR"` | TAK | Tryb pozycji wstawienia |
-| `insert_at.value` | `float \| object` | TAK | Wartosc pozycji (0.0--1.0 dla RATIO, metry dla ODLEGLOSC, `{anchor_id, offset_m}` dla ANCHOR) |
+| `insert_at.mode` | `"RATIO" \| "ODLEGLOSC_OD_POCZATKU_M"` | NIE | Tryb pozycji wstawienia (domyslnie `RATIO`; brak `insert_at` = srodek odcinka) |
+| `insert_at.value` | `float` | NIE | Wartosc pozycji: ulamek wewnatrz odcinka dla RATIO, metry od poczatku dla ODLEGLOSC; koniec odcinka i pozycja poza nim --- odmowa `station.insert.insert_at_invalid` (regula `wspolczynnik_podzialu`, `docs/domain/KONTRAKTY_OPERACJI_I_SCHEMATY_JSON.md` §2) |
 | `station.station_type` | `"A" \| "B" \| "C" \| "D"` | TAK | Typ stacji wg klasyfikacji |
 | `station.station_name` | `string` | NIE | Nazwa stacji |
 | `station.sn_voltage_kv` | `float` | TAK* | Napiecie SN [kV] (* dziedziczone topologicznie z szyny segmentu, jesli pominiente) |
@@ -328,11 +335,8 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | `sn_fields` | `list[SNFieldSpec]` | TAK | Lista pol SN rozdzielnicy (role: `LINIA_IN`, `LINIA_OUT`, `LINIA_ODG`, `TRANSFORMATOROWE`, `SPRZEGLO`) |
 | `transformer.create` | `bool` | NIE | Flaga utworzenia transformatora (domyslnie `true`) |
 | `transformer.transformer_catalog_ref` | `string` | NIE | Referencja katalogowa transformatora |
-| `nn_block.create_nn_bus` | `bool` | NIE | Flaga utworzenia szyny nN (domyslnie `true`) |
 | `nn_block.outgoing_feeders_nn_count` | `int` | NIE | Liczba odplywow nN (domyslnie 1) |
 | `nn_block.outgoing_feeders_nn` | `list` | NIE | Specyfikacje poszczegolnych odplywow nN |
-| `options` | `StationOptions` | NIE | Opcje tworzenia stacji |
-| `trunk_ref` | `TrunkRef` | NIE | Referencja do magistrali (kontekst wstawienia) |
 
 **Tworzy:**
 - Szyne SN stacji (`bus`) w punkcie podzialu
@@ -362,7 +366,6 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
 | `from_bus_ref` | `string` | TAK | Referencja szyny zrodlowej --- MUSI byc jawna, brak auto-detekcji |
-| `from_port` | `string` | NIE | Port na szynie zrodlowej |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
 | `segment.catalog_ref` | `string` | NIE | Referencja katalogowa |
@@ -385,10 +388,11 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 |------|-----|----------|------|
 | `segment_id` | `string` | TAK | Identyfikator segmentu |
 | `insert_at.mode` | `"RATIO" \| "ODLEGLOSC_OD_POCZATKU_M"` | NIE | Tryb pozycji (domyslnie `RATIO`) |
-| `insert_at.value` | `float` | NIE | Wartosc pozycji (domyslnie `0.5`) |
+| `insert_at.value` | `float` | NIE | Wartosc pozycji (domyslnie `0.5`); koniec odcinka i pozycja poza nim --- odmowa `params.invalid_value` (regula `wspolczynnik_podzialu`) |
 | `switch_type` | `"ROZLACZNIK" \| "WYLACZNIK"` | NIE | Typ lacznika (domyslnie `ROZLACZNIK`) |
 | `switch_name` | `string` | NIE | Nazwa lacznika |
-| `normal_state` | `"closed" \| "open"` | NIE | Stan normalny (domyslnie `closed`) |
+| `normal_state` | `"closed" \| "open"` | NIE | Pozycja normalna (W5-C): brak = lacznik zamkniety BEZ zadeklarowanej pozycji normalnej; `closed` = pozycja zamknieta; `open` = lacznik staje sie punktem normalnie otwartym ta sama regula co `set_normal_open_point` (poprzedni punkt podzialu pierscienia zamykany w tej samej operacji) |
+| `close_ref` | `string` | NIE | Przy `normal_state="open"` w topologii z kilkoma poprzednimi punktami podzialu: ktory z nich zamknac (jak w `set_normal_open_point`) |
 
 **Tworzy:**
 - Dwa wezly lacznika (`bus`)
@@ -432,19 +436,63 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 ### 3.7 `set_normal_open_point`
 
-**Cel:** Ustawienie punktu normalnie otwartego (NOP) na laczniku w pierscieniu.
-Lacznik przechodzi w stan `open`, magistrala zapisuje `no_point_ref`.
+**Cel:** Przeniesienie punktu normalnie otwartego (NOP) pierscienia na wskazany lacznik ---
+ATOMOWO (W5-C, 2026-10-21). Jedynym zrodlem punktu podzialu jest `SwitchBranch.normal_state`;
+punkty podzialu wyprowadza akcesor `enm.topology.punkty_podzialu`. Magistrala nie niesie kopii
+(`Corridor.no_point_ref` i `LineRun.nop_station_ref` skasowane; zapis zastany migruje
+`backend/src/enm/stan_normalny.py` z raportem w dzienniku zmian).
 
 **Wymagane pola payload:**
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `switch_ref` | `string` | TAK | Referencja lacznika, ktory ma byc punktem NOP |
-| `corridor_ref` | `string` | NIE | Referencja magistrali (domyslnie pierwsza magistrala w modelu) |
+| `switch_ref` | `string` | TAK | Lacznik nowego punktu podzialu (wylacznik, rozlacznik, odlacznik, sprzeglo; bezpiecznik i odcinek linii --- odmowa `nop.not_a_switch`) |
+| `close_ref` | `string` | NIE | Ktory poprzedni punkt podzialu zamknac, gdy od lacznika zalezy kilka (topologia „theta"); bez wskazania przy kilku kandydatach --- odmowa `nop.previous_ambiguous`, wskazanie spoza kandydatow --- `nop.close_ref_invalid` |
 
-**Modyfikuje:**
-- Lacznik (`branch`) --- zmienia `status` na `open`
-- Magistrale (`corridor`) --- ustawia `no_point_ref`
+**Modyfikuje (jedna migawka):**
+- Wskazany lacznik --- `normal_state="open"`, `status="open"` (zdarzenie `NOP_SET`)
+- Poprzedni punkt podzialu TEGO SAMEGO pierscienia --- `normal_state="closed"`, `status="closed"` (zdarzenie `NOP_CLEARED`)
+
+Lacznik promieniowy (bez pierscienia) staje sie punktem podzialu bez zamykania czegokolwiek.
+
+---
+
+### 3.7a `open_switch` / `close_switch`
+
+**Cel:** Zmiana BIEZACEGO polozenia lacznika w modelu bazowym (`status`, jedyny stan czytany
+przez fizyke). Pozycja normalna (`normal_state`) bez zmian --- chwilowe otwarcie nie jest
+deklaracja punktu podzialu. Dotyczy kazdego lacznika i bezpiecznika.
+
+| Pole | Typ | Wymagane | Opis |
+|------|-----|----------|------|
+| `switch_ref` | `string` | TAK | Lacznik albo bezpiecznik |
+
+Odmowy: `switch.ref_missing`, `switch.not_found`, `switch.not_a_switch`,
+`switch.state_unchanged`. Zdarzenia: `SWITCH_OPENED` / `SWITCH_CLOSED`.
+
+Stan lacznika w WARIANCIE (bez zmiany modelu bazowego) niesie scenariusz nazwany
+`OperatingScenario.switch_states` --- `GET/POST /api/scenariusze-laczeniowe/study-cases/{case_id}`,
+bieg ze scenariuszem: `POST /api/execution/study-cases/{case_id}/runs` z `scenario_id`.
+
+---
+
+### 3.7b `set_bay_equipment`
+
+**Cel:** Ustawienie wyposazenia (aparatow pierwotnych) pola SN, catalog-first. Stan danych
+kazdego aparatu wyprowadzany z `catalog_ref` (bez nowego pola): `MODEL` (pozycja katalogowa),
+`PROPOZYCJA` (wartosc robocza z szablonu --- w odpowiedzi jako `DanaPrzyjeta` z jakoscia
+`ESTIMATED`), `BRAK_DANYCH` (pole bez aparatow).
+
+| Pole | Typ | Wymagane | Opis |
+|------|-----|----------|------|
+| `bay_ref` | `string` | TAK | Pole SN (pole nN --- odmowa `bay_equipment.bay_not_mv`) |
+| `mode` | `"katalog" \| "szablon" \| "wyczysc"` | TAK | Zrodlo wyposazenia |
+| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola) |
+| `bay_template_ref` | `string` | przy `szablon` (albo z rekordu pola) | Szablon kanoniczny albo katalogowe pole rodziny tej samej funkcji pola |
+
+Odpowiedz niesie dodatkowo `wyposazenie_pola` (`stan_danych`, stan kazdego aparatu,
+`dane_przyjete`). Zdarzenie: `BAY_EQUIPMENT_SET`. Operacja nie ocenia doboru aparatu (warstwa
+analizy) i nie ustawia stanu lacznika (stan zyje na galezi).
 
 ---
 
@@ -499,7 +547,9 @@ Po przypisaniu element otrzymuje `parameter_source = "CATALOG"`.
 ### 3.10 `update_element_parameters`
 
 **Cel:** Aktualizacja parametrow istniejacego elementu modelu.
-Pozwala na zmiane dowolnych parametrow (z wyjatkiem `ref_id`, `id`, `type`).
+Zmienia wylacznie parametry dopuszczone dla rodzaju elementu: lista dopuszczonych parametrow
+kolekcji (`KOLEKCJE_Z_LISTA_PARAMETROW`) albo pola kontraktu elementu (`enm/models.py`);
+parametr spoza nich --- odmowa `params.key_not_allowed`.
 
 **Wymagane pola payload:**
 
@@ -507,12 +557,16 @@ Pozwala na zmiane dowolnych parametrow (z wyjatkiem `ref_id`, `id`, `type`).
 |------|-----|----------|------|
 | `element_ref` | `string` | TAK | Referencja elementu do aktualizacji |
 | `parameters` | `object` | TAK | Slownik parametrow do ustawienia |
-| `reason` | `string` | NIE | Powod zmiany (audyt) |
 
 **Modyfikuje:**
 - Element docelowy --- ustawia podane parametry
 
 **ZABRONIONE klucze w `parameters`:** `ref_id`, `id`, `type` --- te pola sa niezmienne.
+Stan lacznika (W5-C): `status` lacznika zmieniaja wylacznie `open_switch`/`close_switch`
+(odmowa `switch.state_via_operation`), `normal_state="open"` --- wylacznie
+`set_normal_open_point`; korekta parametrow moze jedynie zadeklarowac pozycje zamknieta albo
+zdjac deklaracje (`null`); `normal_state` na elemencie bez pozycji normalnej ---
+`switch.normal_state_not_applicable`.
 
 ---
 
@@ -599,7 +653,7 @@ LogicalViews
   |     |-- corridor_ref
   |     |-- corridor_type  (radial | ring | mixed)
   |     |-- segments[]     // uporzadkowane ref_id segmentow
-  |     |-- no_point_ref   // NOP switch ref (jesli istnieje)
+  |     |-- no_point_refs  // laczniki normalnie otwarte magistrali (z `normal_state`)
   |     |-- terminals[]    // TerminalRef
   |
   |-- branches[]           // odgalezienia

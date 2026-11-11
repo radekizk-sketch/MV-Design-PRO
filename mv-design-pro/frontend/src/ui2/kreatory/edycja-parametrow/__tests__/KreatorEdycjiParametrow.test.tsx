@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
 import { ETYKIETA_PL_TOLERANCJI_NN } from '../../../../types/uziemienie';
 import { REJESTR_MASZYN } from './rejestrMaszynFixture';
+import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -71,17 +72,19 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
   it('wysyła parametry pod kluczem `parameters` z konwersją liczby (naprawa phantoma updates)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: 'tr-1' } });
     render(<KreatorEdycjiParametrow />);
+    // Uzasadnienie istnieje tylko jako `overrides[].reason` aparatu SN — poza sekcją aparatu
+    // byłoby kontrolką-widmem (operacja nie czyta `reason` na poziomie ładunku).
+    expect(screen.queryByTestId('mvd-kreator-edycja-powod')).toBeNull();
 
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'tap_position');
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), '2');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-powod'), 'korekta terenowa');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
         'case-1',
         'update_element_parameters',
-        { element_ref: 'tr-1', parameters: { tap_position: 2 }, reason: 'korekta terenowa' },
+        { element_ref: 'tr-1', parameters: { tap_position: 2 } },
       );
     });
     const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
@@ -123,6 +126,31 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
         'case-1',
         'update_element_parameters',
         expect.objectContaining({ parameters: { in_service: true, note: null } }),
+      );
+    });
+  });
+
+  // K6: klucz TEKSTOWY kontraktu (pole `str` modelu) × wartość o kształcie liczby — wartość
+  // zostaje tekstem. Dawniej „01" szło jako liczba 1 i backend odrzucał `Bay.bay_number`
+  // (string_type), a nazwa „2" zapisywała się jako liczba. Klucz liczbowy dalej dostaje liczbę.
+  it.each([
+    ['bay_number', '01', '01'],
+    ['name', '2', '2'],
+    ['feeder_short_name', '15', '15'],
+    ['vector_group', '11', '11'],
+    ['length_km', '0.5', 0.5],
+    ['tap_position', '-2', -2],
+  ])('klucz %s z wartością „%s" → %j', async (klucz, wpis, oczekiwana) => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorEdycjiParametrow />);
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), klucz);
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), wpis);
+    await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'update_element_parameters',
+        expect.objectContaining({ parameters: { [klucz]: oczekiwana } }),
       );
     });
   });
@@ -442,13 +470,14 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       expect(sekcja).toHaveTextContent('Puste pole: dana tabliczki elementu 6.');
       expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 0,85 (założenie inżynierskie).');
       expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 1 (założenie inżynierskie).');
-      expect(sekcja).toHaveTextContent('Liczba par biegunów p');
+      // Symbol z `symbol_latex` rejestru składa KaTeX (`ui_math_guard`) — napis źródłowy etykiety.
+      expect(tekstZrodlowy(sekcja)).toContain('Liczba par biegunów $p$');
       // Moc znamionowa bez tabliczki: reguła propozycji z punktu pracy, bez liczby liczonej w UI.
       expect(sekcja).toHaveTextContent(
         'Puste pole: wartość robocza (założenie inżynierskie): Tabliczka maszyny nie podaje ani mocy '
           + 'znamionowej P_rM',
       );
-      expect(sekcja).toHaveTextContent('Moc znamionowa (mechaniczna) jednej maszyny P_rM [MW]');
+      expect(tekstZrodlowy(sekcja)).toContain('Moc znamionowa (mechaniczna) jednej maszyny $P_{rM}$ [MW]');
       // Bez zmiany wartości maszyny nic do zapisu.
       expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
     });
@@ -461,6 +490,23 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
         'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej S_rM tabliczki '
           + 'elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7.',
       );
+    });
+
+    it.each([
+      // Iloczyn: {symbol z indeksem, symbol grecki z indeksem} × {jednostka tekstowa, jednostka
+      // LaTeX z symbolami bazy p.u.} — etykieta z pól `*_latex` rejestru, kontrolka powiązana.
+      ['synchronous', 'xd_subtransient_pu',
+        "Reaktancja podprzejściowa nasycona $x''_{d}$ [$\\mathrm{p.u.}\\ (S_{rG},\\ U_{rG})$]"],
+      ['synchronous', 'sn_mva', 'Moc pozorna znamionowa jednej maszyny $S_{rG}$ [MVA]'],
+      ['fw_dfig', 'efficiency', 'Sprawność znamionowa $\\eta_r$'],
+    ] as const)('%s / %s → etykieta KaTeX z rejestru, bez gołego indeksu ASCII', async (rodzaj, parametr, oczekiwana) => {
+      snapshotState.snapshot = { generators: [generator(rodzaj)] };
+      render(<KreatorEdycjiParametrow />);
+      const pole = (await screen.findByTestId(`${M}-${parametr}`)) as HTMLInputElement;
+      const etykieta = pole.labels?.[0];
+      expect(etykieta).toBeDefined();
+      expect(tekstZrodlowy(etykieta!)).toBe(oczekiwana);
+      expect(etykieta!.textContent).not.toMatch(/[A-Za-zη]_[A-Za-z]/);
     });
 
     it('nowa wartość → lista overrides w kolejności rejestru; niezmieniona zachowuje uzasadnienie', async () => {
@@ -484,7 +530,9 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
             { key: 'cos_phi', value: 0.9, reason: 'karta silnika' },
           ],
         },
-        reason: 'tabliczka znamionowa',
+        // Uzasadnienie żyje wyłącznie w `overrides[].reason` (czyta je backend,
+        // `enm/wartosci_projektanta.py`); `reason` na poziomie ładunku było kontrolką-widmo —
+        // operacja go nie czyta (kontrakt `kontrakt_ladunkow_operacji.json`), więc nie jest wysyłane.
       });
     });
 

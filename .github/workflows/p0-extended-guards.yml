@@ -9,7 +9,8 @@ name: P0 Extended Guards (V12K invariants)
 #
 # Reference:
 # - Test architect audyt 2026-05-14 (background agent)
-# - CLAUDE.md § Core Rules: NO HEURISTICS, WHITE BOX, Determinism, etc.
+# - CLAUDE.md § Reguły rdzenia (pełne brzmienie: .claude/rules/rdzen-modelu.md § Core Rules):
+#   NO HEURISTICS (9), WHITE BOX (2), Determinism (7) i pozostałe reguły 1–10
 # - mv-design-pro/scripts/ (67 guard scripts total)
 
 on:
@@ -70,7 +71,7 @@ jobs:
         run: echo "GUARD_PY=$(poetry env info --path)/bin/python" >> "$GITHUB_ENV"
 
       # === Physics / Solver boundary guards (V12K rule §9) ===
-      # CLAUDE.md § Core Rules: solvers MUST NOT contain heuristics
+      # .claude/rules/rdzen-modelu.md § Core Rules 9: solvers MUST NOT contain heuristics
       - name: Load Flow — no heuristics
         run: $GUARD_PY scripts/load_flow_no_heuristics_guard.py
 
@@ -84,7 +85,7 @@ jobs:
         run: $GUARD_PY scripts/overlay_no_physics_guard.py
 
       # === Determinism / trace guards ===
-      # CLAUDE.md § Core Rules: Same input MUST produce identical output
+      # .claude/rules/rdzen-modelu.md § Core Rules 7: Same input MUST produce identical output
       # 2026-07-17: warn-only ZDJĘTE — wszystkie guardy tego workflowu zielone
       # na czystym HEAD (weryfikacja lokalna przy przenosinach z martwego
       # katalogu mv-design-pro/.github/workflows); karta TRACE-V2 (2026-09-10)
@@ -215,6 +216,13 @@ jobs:
       - name: UI — progi napieciowe (jedno zrodlo kryteriow)
         run: $GUARD_PY scripts/ui_progi_napiecia_guard.py
 
+      # Karta K1 POWLOKA: arkusze CSS sa globalne — klasa zdefiniowana w dwoch
+      # arkuszach (dawne `.mvd-menu` powloki i menedzera przypadkow) daje wyglad
+      # zalezny od kolejnosci ladowania; odwolanie do niezdefiniowanego tokenu
+      # `--mvd-*` po cichu bierze wartosc zapasowa. Zapadka w obie strony.
+      - name: UI — kolizje klas CSS i tokeny bez definicji
+        run: $GUARD_PY scripts/css_kolizje_klas_guard.py
+
       # Karta CERTYFIKAT-Z-KATALOGU (2026-09-16): status certyfikatu PTPiREE
       # wylacznie z pola backendu (der.catalogs.ptpiree_status /
       # ptpiree_certificate_ref) — zakaz zgadywania z nazwy referencji
@@ -286,15 +294,6 @@ jobs:
       # === SLD: struktura i zakres identyfikatorow warstw ===
       - name: SLD — zakres SldLayerId (tylko renderer)
         run: $GUARD_PY scripts/sld_layer_id_scope_guard.py
-
-      - name: SLD — brak zewnetrznego mostu WE/WY
-        run: $GUARD_PY scripts/sld_no_external_we_wy_bridge_guard.py
-
-      - name: SLD — stacja nie jest prostokatem
-        run: $GUARD_PY scripts/station_not_rectangle_guard.py
-
-      - name: SLD — GPZ deklaruje strukture przemyslowa
-        run: $GUARD_PY scripts/gpz_switchgear_guard.py
 
       - name: SLD — kontrakt przylaczenia DER
         run: $GUARD_PY scripts/der_pcc_guard.py
@@ -369,3 +368,9 @@ jobs:
 
       - name: Zapadka — suita weryfikacyjna wskazujaca pliki, ktorych nie ma
         run: $GUARD_PY scripts/verification_phantom_paths_guard.py
+
+      # Karta W5-B: dawne slowniki pol (meta.field_specs / nn_field_specs /
+      # switchgear_field_specs) nie wracaja do kodu ani do fikstur — jedynym
+      # nosnikiem pol jest typowana kolekcja `bays`.
+      - name: Wskrzeszenie dawnych slownikow pol (meta.field_specs)
+        run: $GUARD_PY scripts/meta_field_specs_resurrection_guard.py

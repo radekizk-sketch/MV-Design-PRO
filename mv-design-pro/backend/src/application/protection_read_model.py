@@ -25,7 +25,6 @@ from application.analyses.protection.sanity_checks import (
 from application.analyses.protection.sanity_checks import (
     ProtectionFunctionSummary as SanityProtectionFunctionSummary,
 )
-from application.field_read_model import punkt_przylaczenia_pola
 from enm.models import (
     Bay,
     Branch,
@@ -41,6 +40,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.pola import punkt_przylaczenia_pola
 from enm.wylaczniki_liniowe import wylaczniki_liniowe
 from network_model.nazwy import nazwa_nadana
 from protection.curves.iec_curves import (

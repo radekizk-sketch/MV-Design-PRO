@@ -17,11 +17,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './osd.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import type { SourceOperatingMode } from '../../../types/domainOps';
 import { useAppStateStore } from '../../../ui/app-state';
-import { notify } from '../../../ui/notifications/store';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   InformacjeAudytowe,
@@ -38,7 +35,6 @@ import {
   type WidokOdpowiedziOsd,
   type ZapytanieOdpowiedziOsd,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import {
   kartyPorownaniaOsd,
   kolumnyTabeliOsd,
@@ -51,6 +47,7 @@ import {
 import { OSD_STRINGS, etykietaPoleceniaOsd } from './strings';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_LIMIT_P_PCT = 60;
 const DOMYSLNA_Q_MVAR = 0;
@@ -111,14 +108,13 @@ function StanPanel({
 
 function WynikOsd({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokOdpowiedziOsd;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
 
   const karty = useMemo(() => kartyPorownaniaOsd(dane), [dane]);
@@ -146,7 +142,7 @@ function WynikOsd({
       {/* Karta #145: identyfikator źródła, przebieg i odcisk wejścia wyłącznie w
           „Informacjach audytowych" (tryb ekspercki, zwinięte). */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-osd-informacje-audytowe"
         wiersze={[
           { etykieta: OSD_STRINGS.zalIdentyfikatorZrodla, wartosc: dane.source.ref_id },
@@ -190,7 +186,7 @@ function WynikOsd({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       <div className="mvd-osd-slad-blok">
@@ -265,10 +261,13 @@ function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
     setZapisywanie(true);
     setBlad(null);
     try {
-      const odpowiedz = await executeDomainOperation(caseId, 'set_source_operating_mode', {
-        source_ref: sourceRef,
-        mode: tryb,
-      });
+      // Jeden toast sukcesu — z magazynu (zdanie ekranu zamiast ogólnego).
+      const odpowiedz = await executeDomainOperation(
+        caseId,
+        'set_source_operating_mode',
+        { source_ref: sourceRef, mode: tryb },
+        { komunikatSukcesuPl: OSD_STRINGS.trybZapisano },
+      );
       if (!odpowiedz) {
         setBlad(useSnapshotStore.getState().error ?? OSD_STRINGS.trybBladZapisu);
         return;
@@ -277,7 +276,6 @@ function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
         setBlad(odpowiedz.error);
         return;
       }
-      notify(OSD_STRINGS.trybZapisano, 'success');
     } catch (err) {
       setBlad(err instanceof Error ? err.message : OSD_STRINGS.trybBladZapisu);
     } finally {
@@ -330,16 +328,15 @@ function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
 // ---------------------------------------------------------------------------
 
 export interface EkranOsdProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z rodzica, `WynikiWarsztat`), nie zaślepka. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranOsd({ trybZaawansowania, onOtworzDowod }: EkranOsdProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+export function EkranOsd({ szczegolyAudytowe, onOtworzDowod }: EkranOsdProps) {
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const zrodla = useMemo<OpcjaZrodlaOsd[]>(() => opcjeZrodel(snapshot), [snapshot]);
@@ -654,7 +651,7 @@ export function EkranOsd({ trybZaawansowania, onOtworzDowod }: EkranOsdProps) {
             <>
               <WynikOsd
                 dane={stan.dane}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onOtworzDowod={onOtworzDowod}
               />
               {/* Akcja wyjściowa PO biegu — tryb pracy źródła, którego dotyczyła

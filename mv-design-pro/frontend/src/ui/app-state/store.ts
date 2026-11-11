@@ -30,7 +30,7 @@ import {
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../types/enm';
-import { useExecutionRunsStore } from '../study-cases/runStore';
+import { useKontekstWynikuStore } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 
 // =============================================================================
 // V12 — Work-mode types
@@ -91,9 +91,6 @@ interface AppState {
   // Runtime shell mode (controls UI gating)
   activeMode: RuntimeOperatingMode;
 
-  // Results context (only in RESULT_VIEW)
-  activeRunId: string | null;
-
   // UI_INTEGRATION_E2E: Analysis type context
   activeAnalysisType: AnalysisType;
 
@@ -119,7 +116,6 @@ interface AppState {
   ) => void;
   setActiveCaseResultStatus: (status: ResultStatus) => void;
   setActiveMode: (mode: OperatingMode | RuntimeOperatingMode) => void;
-  setActiveRun: (runId: string | null) => void;
   setActiveSnapshot: (snapshotId: string | null) => void; // UI_INTEGRATION_E2E
   setActiveAnalysisType: (analysisType: AnalysisType) => void; // UI_INTEGRATION_E2E
   toggleIssuePanel: (open?: boolean) => void; // P30d
@@ -152,7 +148,6 @@ const initialState = {
   activeCaseResultStatus: 'NONE' as ResultStatus,
   activeSnapshotId: null, // UI_INTEGRATION_E2E
   activeMode: 'MODEL_EDIT' as RuntimeOperatingMode,
-  activeRunId: null,
   activeAnalysisType: null as AnalysisType, // UI_INTEGRATION_E2E
   issuePanelOpen: false, // P30d
   // V12
@@ -216,6 +211,9 @@ export const useAppStateStore = create<AppState>()(
         // If project changed, clear case context
         if (current.activeProjectId !== projectId) {
           useSnapshotStore.getState().reset();
+          // Karta K8: kontekst wyniku (bieg aktywny per rodzina) należy do przypadku —
+          // wybory poprzedniego projektu nie przechodzą na nowy.
+          useKontekstWynikuStore.getState().wyczysc();
           set({
             activeProjectId: projectId,
             activeProjectName: projectName,
@@ -224,7 +222,6 @@ export const useAppStateStore = create<AppState>()(
             activeCaseKind: null,
             activeCaseResultStatus: 'NONE',
             activeSnapshotId: null, // UI_INTEGRATION_E2E
-            activeRunId: null,
             activeAnalysisType: null, // UI_INTEGRATION_E2E
             activeVariantId: null,
             activeVariantName: null,
@@ -243,15 +240,16 @@ export const useAppStateStore = create<AppState>()(
       setActiveCase: (caseId, caseName = null, caseKind = null, resultStatus = 'NONE') => {
         if (get().activeCaseId !== caseId) {
           useSnapshotStore.getState().reset();
-          useExecutionRunsStore.getState().setActiveRun(null);
+          // Karta K8: zmiana przypadku czyści kontekst wyniku (jedyny magazyn „który
+          // bieg") — dawne dwa pola `activeRunId` (tu i w rejestrze biegów) skasowane.
+          useKontekstWynikuStore.getState().wyczysc();
         }
         set({
           activeCaseId: caseId,
           activeCaseName: caseName,
           activeCaseKind: caseKind,
           activeCaseResultStatus: resultStatus,
-          // Clear run and snapshot when case changes
-          activeRunId: null,
+          // Clear snapshot when case changes
           activeSnapshotId: null, // UI_INTEGRATION_E2E
         });
       },
@@ -268,18 +266,10 @@ export const useAppStateStore = create<AppState>()(
        */
       setActiveMode: (mode) => {
         const normalizedMode = normalizeOperatingMode(mode);
+        // Karta K8: tryb NIE czyści kontekstu wyniku. Dawne `activeRunId` gasło przy
+        // każdym wyjściu z RESULT_VIEW (czyli przy każdym wejściu na schemat), więc
+        // nakładka schematu i ekran wyników nie mogły pokazywać tego samego biegu.
         set({ activeMode: normalizedMode });
-        // Clear run if exiting RESULT_VIEW
-        if (normalizedMode !== 'RESULT_VIEW') {
-          set({ activeRunId: null });
-        }
-      },
-
-      /**
-       * Set active run (for RESULT_VIEW mode).
-       */
-      setActiveRun: (runId) => {
-        set({ activeRunId: runId });
       },
 
       /**
@@ -585,27 +575,3 @@ export function useActiveAnalysisTypeLabel(): string | null {
   }
 }
 
-/**
- * Hook: Get active run ID.
- */
-export function useActiveRunId(): string | null {
-  return useAppStateStore((state) => state.activeRunId);
-}
-
-/**
- * Hook: Get complete UI context for Context Bar.
- * UI_INTEGRATION_E2E: Single source of truth per UI_CORE_ARCHITECTURE.md § 5.2
- */
-export function useUIContext() {
-  return useAppStateStore((state) => ({
-    projectId: state.activeProjectId,
-    projectName: state.activeProjectName,
-    caseId: state.activeCaseId,
-    caseName: state.activeCaseName,
-    snapshotId: state.activeSnapshotId,
-    runId: state.activeRunId,
-    analysisType: state.activeAnalysisType,
-    mode: state.activeMode,
-    resultStatus: state.activeCaseResultStatus,
-  }));
-}

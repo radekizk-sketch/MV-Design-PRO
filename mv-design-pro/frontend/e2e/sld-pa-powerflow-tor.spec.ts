@@ -43,12 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 
 import { katalogZrzutow } from './katalogZrzutow';
-import {
-  indeksGaleziPolNn,
-  szynyStacji,
-  type GalazDlaSzyn,
-  type StacjaDlaSzyn,
-} from '../src/ui/shared/szynyStacji';
+import { szynyStacji, type ModelSzyn, type StacjaDlaSzyn } from '../src/ui/shared/szynyStacji';
 import { orientedSegmentRefs, zwrotGrotuWzdluzRysunku } from '../src/ui/sld/v3/canvas/overlay';
 import type { EnergyNetworkModel } from '../src/types/enm';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,16 +87,14 @@ interface EnmSubstation extends StacjaDlaSzyn {
   readonly ref_id: string;
 }
 
-interface EnmMembership {
+/** Wycinek migawki czytany przez regułę szyn stacji (karta W5-B: rekordy pól `bays`,
+ *  napięcia szyn i gałęzie aparatów pól nN) — cała migawka, bez drugiego indeksu. */
+interface EnmMembership extends ModelSzyn {
   readonly substations: readonly EnmSubstation[];
-  readonly branches: readonly GalazDlaSzyn[];
 }
 
 function loadEnmMembership(): EnmMembership {
-  const raw = JSON.parse(fs.readFileSync(ENM_PATH, 'utf-8')) as {
-    enm: { substations: readonly EnmSubstation[]; branches?: readonly GalazDlaSzyn[] };
-  };
-  return { substations: raw.enm.substations, branches: raw.enm.branches ?? [] };
+  return (JSON.parse(fs.readFileSync(ENM_PATH, 'utf-8')) as { enm: EnmMembership }).enm;
 }
 
 /** The whole committed substrate ENM — for the product's own drawing-orientation rule
@@ -120,17 +113,18 @@ function loadEnmFull(): EnergyNetworkModel {
  *  and the product overlay (`SupplyPathHighlighter`: „zacisk pola pod napięciem to część
  *  stacji pod napięciem, także przy otwartym aparacie pola") both use it. This helper
  *  used `bus_refs` alone — a SECOND membership rule that agreed with the render only
- *  while no station had a live field terminal behind an open field breaker. Since the
- *  maintenance scenario isolates its station by opening the station's OWN field breakers
- *  (POLA-W-TORZE), the incoming-field terminal stays live from the ring cable, so that
- *  station is correctly NOT dimmed; the station(s) behind it lose every bus and ARE
- *  dimmed. The helper now imports the render's own rule instead of re-implementing it. */
+ *  while no station had a live field terminal behind an open field breaker. The helper
+ *  now imports the render's own rule instead of re-implementing it. The backend picker
+ *  and its solver check use the SAME rule (`szyny_stacji`): the maintenance scenario
+ *  takes out of service the branches on the station's BOUNDARY (the feeders landing on
+ *  its field terminals), so EVERY bus of the target station loses supply and the
+ *  station IS dimmed (merge GPZ-MODEL: opening only the station's own field breakers
+ *  left the incoming-field terminal live from the ring cable — nothing dimmed). */
 function expectedDimmedStations(companion: Companion, enm: EnmMembership): Set<string> {
   const deEnergized = new Set(companion.de_energized_bus_refs);
-  const indeks = indeksGaleziPolNn(enm.branches);
   const dimmed = new Set<string>();
   for (const station of enm.substations) {
-    const busRefs = [...szynyStacji(station, enm.branches, indeks)];
+    const busRefs = [...szynyStacji(enm, station)];
     if (busRefs.length > 0 && busRefs.every((ref) => deEnergized.has(ref))) {
       dimmed.add(station.ref_id);
     }

@@ -1827,6 +1827,39 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `generator_stator_frequency_max_hz`, `generator_stator_voltage_kv`). Gałąź bramki
     # scalenia (SZYBKIE-TESTY, pin 4143 z PR-478) nie wnosi pól — jej historia pinu jest
     # już ujęta wyżej. PASS niezmieniony.
+    # Karta W5-B (2026-10-15): 4116 -> 4122 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym (`f3c435b66`, `git archive`), roznica zbiorow: +7
+    # (`branch_point_port_id`, `branch_point_ref`, `config_id`, `metadane_pochodzenia`,
+    # `surge_arresters`, `terminal_bus_ref`, `wybor_bloku` — typowany rekord pola `Bay` w
+    # `enm/models.py` jako jedyny nosnik pol SN/nN/ZKSN), -1 (`field_spec` — slownik wpisu pola
+    # w `application/analyses/der_sn_track.py` zastapiony rekordem `bays`). PASS niezmieniony
+    # (zero podstawien).
+    # Scalenie W5-B z integracja PR477-481 (2026-10-16): POMIAR `contract_fields()` na drzewie
+    # scalonym = 4145; drzewo integracji (`git archive` rodzica 2) = 4139 (jego przypiete 4125
+    # bylo nieaktualne), roznica zbiorow scalone − integracja = dokladnie delta karty W5-B
+    # (+7 pol rekordu `Bay` wyzej, −1 `field_spec`). PASS niezmieniony.
+    # W5-B 20/n (2026-10-16, poprawka wydajnosci akcesorow pol): 4145 -> 4149 — POMIAR
+    # `contract_fields()`: +4 nowe nazwy adnotacji w `enm/` (`PoziomPol.stacje_gpz` w
+    # `enm/pola.py`; `_KontekstTerminali.odcinki_na_szynie`, `.korytarze_pierscieni`,
+    # `.zajete_zaciski_pol` w `enm/domain_operations.py`); `PoziomPol.napiecia` juz byla w
+    # zbiorze. To kontenery jednego przebiegu, nie dane wejsciowe solvera. PASS niezmieniony.
+    # Scalenie W5-B z partia integracji 8 (2026-10-16, karta UIUX-PRZEMYSLOWY): POMIAR guardem na
+    # drzewie scalonym = 4174 = 4164 (partia 8) + delta karty W5-B (+7 −1 +4 = +10).
+    # Karta K6a TOPOLOGIA-API (2026-10-16): 4174 -> 4216 — POMIAR `contract_fields()` na drzewie
+    # karty i na drzewie bazowym (`a16835bc9`, `git archive`), roznica zbiorow +42, −0: kontrakt
+    # odpowiedzi stanu zasilenia i toru (`application/topologia_zasilenia.py` — modele pydantic
+    # `StanZasileniaElementu`, `TorElementuOdpowiedz`, `SasiedztwoElementu`… i kontenery jednego
+    # przebiegu `_Element`, `_Kontekst`) oraz `enm/topology.py::KrawedzTopologii.szyna_a/szyna_b`,
+    # `PodzialKrawedzi.w_ruchu`. To kontrakt odczytu topologii, nie dane wejsciowe solvera.
+    # PASS niezmieniony (zero podstawien).
+    # Karta W5-C (jedna prawda stanu laczeniowego + wyposazenie pola): 4216 -> 4218 — POMIAR
+    # `contract_fields()` na drzewie karty i na drzewie bazowym (`d98bdad3e`, `git archive`),
+    # roznica zbiorow +4, −2. Doszly: `close_ref` (`SetNormalOpenPointPayload` — jawne
+    # rozstrzygniecie, ktory punkt podzialu zamknac), `no_point_refs` (`TrunkViewV1` — widok magistrali,
+    # punkty podzialu wyprowadzone z `normal_state`), `equipment_data_state` i
+    # `equipment_assumed_data` (`BayBaseModel` — stan danych wyposazenia pola). Odpadly kopie
+    # punktu podzialu `Corridor.no_point_ref` i `LineRun.nop_station_ref` (jedynym zrodlem jest
+    # `SwitchBranch.normal_state`). PASS niezmieniony (zero podstawien).
     # Karta W5-E-TTIT (2026-10-15): 4116 -> 4151 — POMIAR `contract_fields()` na drzewie karty
     # i na drzewie bazowym `f3c435b6`, roznica zbiorow: +35 (petla doziemna TT/IT i jej wejscie:
     # `DaneTtIt`/`WynikTtIt`/`PojemnoscDoziemnaOdcinka` w `solvers/petla_zwarcia_tt_it.py` —
@@ -1896,6 +1929,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # dane przyjete Ik1_min doboru aparatu nN, `powod_propozycji` i `rozstrzygniecie` —
     # rozstrzygniecie tolerancji sieci nN per wyspa, `tolerancja_nn_robocza` — znacznik wiersza
     # wyniku SC), -0. PASS niezmieniony (zero podstawien).
+    # Scalenie galezi programu (partie 9-13) z galezia UI/UX (2026-10-22): POMIAR
+    # `contract_fields()` na drzewie scalonym = 4337, na rodzicach UI/UX 4218 i program 4284
+    # (`git archive`, oba piny zgodne). Roznica zbiorow scalone − (UI/UX ∪ program) = 0 (zero
+    # nowych nazw); scalone = program + 56 nazw UI/UX (W5-B: rekord `Bay`, akcesory pol;
+    # K6a: kontrakt topologii zasilenia; W5-C: `close_ref`, `no_point_refs`, stan danych
+    # wyposazenia pola) − 3 nazwy skasowane przez UI/UX (`field_spec`, `no_point_ref`,
+    # `nop_station_ref`). PASS niezmieniony (zero podstawien).
+    # Karta MENU-KANON cz. 4 (2026-10-22): 4218 -> 4193 — POMIAR `contract_fields()` na drzewie karty i na HEAD
+    # (`git archive`), roznica zbiorow +0, −25: skasowany cien konfiguracji rozdzielnicy
+    # (`api/switchgear_config.py`, `domain/switchgear_config.py`) i modele ladunku `insert_at`
+    # trybu ANCHOR / kontraktu magistrali w `domain_ops_models`, ktorych zaden handler nie czytal.
+    # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 4337 (UI/UX) − 23 = 4314 — POMIAR
+    # guardem na drzewie scalonym (MENU-KANON zdjal cien `switchgear_config` i modele
+    # `insert_at`/magistrali; galaz UI/UX dolozyla w miedzyczasie pola GPZ-MODEL i programu).
     # Karta PROG-ZERA-WKLADOW (2026-10-21): 4284 -> 4286 — POMIAR `contract_fields()` na bazie
     # karty `8f20bdd3c` (`git archive`: 4284, pin zgodny) i na drzewie karty (4286). Roznica
     # zbiorow +2 (`wklady_pominiete` — addytywne pole wyniku SC z zestawieniem wkladow
@@ -1972,7 +2019,96 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # galezi punktu z tych samych zalozen wejscia co wiersz biegu, odpowiedz wkladow
     # `sc3f/contributions` sklada z nich jedna liste danych przyjetych), -0; drugie nowe pole
     # `tolerancja_nn_robocza` bylo juz w zbiorze (wezel grafu). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4357." in wyjscie, wyjscie
+    # Scalenie galezi UI/UX z programem (2026-10-28, baza scalenia `8f20bdd3c`): POMIAR guardem
+    # na drzewie scalonym = 4387 = 4314 (UI/UX) + 4357 (program) − 4284 (baza) — zmiany obu
+    # stron rozlaczne, zero nazw wspolnych ani skasowanych przez obie. PASS niezmieniony.
+    # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 4387 -> 4381 — POMIAR
+    # `contract_fields()` na `f44e042f6` (4387) i na drzewie karty (4381). Roznica zbiorow -6, +0:
+    # `sn_tolerance_kv`, `nn_tolerance_kv` (pola tolerancji `BlockTransformerSelectionInput` —
+    # rownosc napiec z jednego predykatu `to_samo_napiecie_znamionowe`) oraz `problem_id`,
+    # `problems`, `show_on_sld`, `target_ref` (skasowany pakiet `application/validation_problem`
+    # bez konsumenta produkcyjnego). PASS niezmieniony.
+    # Kasacja koncowki podpowiedzi katalogu bez konsumenta (2026-10-28): 4381 -> 4374 — POMIAR
+    # `contract_fields()` na `65bf34150` (4381) i na drzewie karty (4374). Roznica zbiorow -7,
+    # +0: `expected_power_mva`, `expected_current_a`, `prefer_manufacturer` (pola
+    # zadania podpowiedzi katalogu), `dopasowanie`, `certyfikat_ptpiree` (sugestia), `suggestions`,
+    # `total_candidates` (odpowiedz). Plik `api/catalog.py` zostaje — liczba plikow bez zmian.
+    # PASS niezmieniony.
+    # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 4374 -> 4394 — POMIAR `contract_fields()` na
+    # bazie karty `1465336df` (`git archive`: 4374, pin zgodny) i na drzewie karty (4394).
+    # Roznica zbiorow +20, -0: pola baterii kondensatorow elementu i typu (`uklad_polaczen`,
+    # `liczba_stopni`, `stopnie_zalaczone`, `tolerancja_pojemnosci_min_proc`,
+    # `tolerancja_pojemnosci_max_proc`, `dlawik_ograniczajacy`, `dlawik_indukcyjnosc_mh`,
+    # `rezystory_rozladowcze_wewnetrzne`, `wylaczenie_od_transformatorow`), wielkosci admitancji
+    # baterii (`q_n`, `u_n`, `straty_kw`, `x_dlawika`, `y_sekcji_s`, `liczba_sekcji`,
+    # `sekcje_zalaczone`, `parametry_robocze`, `parametry_robocze_pl`) i wejscie v126
+    # (`baterie`, `b0_siemens`). PASS niezmieniony (zero podstawien).
+    # Slad sieci zerowej w wyniku zwarcia 1F/2FG (2026-10-29): 4394 -> 4395 — POMIAR
+    # `contract_fields()` na HEAD karty (`git archive`: 4394, pin zgodny) i na drzewie karty
+    # (4395). Roznica zbiorow +1, -0: `WejscieZwarcia.siec_zerowa_trace` (slad WHITE BOX budowy
+    # Y0/Z0 przekazywany do `raw_result["siec_zerowa"]`). PASS niezmieniony (zero podstawien).
+    # Zespol uziemiajacy SN jedyna prawda punktu neutralnego (2026-10-29): 4374 -> 4419 — POMIAR
+    # `contract_fields()` na `1465336df` (4374) i na drzewie karty (4419). Roznica zbiorow -3
+    # (trzy nazwy skasowanego katalogu wariantow uziemienia audytu 2 i jego pola referencji
+    # w konfiguracji stacji — druga prawda punktu neutralnego, pilnowana przez grep-zero), +48 (pola encji
+    # `ZespolUziemiajacy` i jej aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
+    # payloady operacji zespolu; trzy przestrzenie katalogu aparatow zespolu; wejscie solvera
+    # skladowej zerowej `y0_bus`/`node_index`/`galezie_sieci`/`brak_wyniku_zerowego`; kontekst
+    # V12.6 `uziemienie_sn`/`prad_dlawikow_a`). PASS niezmieniony.
+    # Scalenie obu kart i prad pojemnosciowy kazdej sieci galwanicznej (2026-10-29): 4419 ->
+    # 4442 — POMIAR `contract_fields()` na `280bafcb4` (4419) i na drzewie scalenia (4442).
+    # Roznica zbiorow +23, -0: 20 pol karty UX-04/POLE-BKR-MODEL (jak w jej wpisie wyzej) oraz
+    # `sieci` (wejscie V12.6: jedna pozycja na galwanicznie polaczona siec SN), `baterie_sieci`
+    # (baterie tej sieci) i `baterie_b0` (wklad baterii do B_0 jedynej prawdy uziemienia).
+    # Na `687a2ef65` (4394) roznica -3 (pola skasowanej drugiej prawdy punktu neutralnego),
+    # +51 (pola tej karty). PASS niezmieniony.
+    # Scalenie karty sladu sieci zerowej (01f80af8d) do drzewa kart ZU i BKR (2026-10-29):
+    # 4442 -> 4442 — POMIAR `contract_fields()` na `7d5bc9411` (4442) i na drzewie scalenia
+    # (4442). Roznica zbiorow +1 `WejscieZwarcia.siec_zerowa_trace` (pelny slad budowy Y0),
+    # -1 `WejscieZwarcia.slad_punktu_neutralnego` (kroki punktow neutralnych sa czescia tego
+    # samego sladu — jedno zrodlo, bez drugiej kopii). PASS niezmieniony.
+    # Wartosc robocza R'0/X'0 odcinka wg pasma napiecia (2026-10-29): 4442 -> 4444 — POMIAR
+    # `contract_fields()` na `b6349aeb0` (4442) i na drzewie karty (4444). Roznica zbiorow +2,
+    # -0: `SkladowaZerowaOdcinka.robocze` (wartosc wyprowadzona regula pasma, jakosc ESTIMATED)
+    # i `SkladowaZerowaOdcinka.brak_podstawy_pl` (nazwana odmowa, gdy wartosci nie da sie
+    # przyjac) — jedno zrodlo skladowej zerowej odcinka `enm/skladowa_zerowa_galezi.py`.
+    # PASS niezmieniony (zapadka 220, zero podstawien).
+    # Odcinek 2 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (B'0, TRV, przewod N, D31, sposob pracy
+    # punktu neutralnego, 2026-10-29): 4444 -> 4484 — POMIAR `contract_fields()` na `0344668a0`
+    # (`git archive`: 4444, pin zgodny) i na drzewie karty (4484). Roznica zbiorow +43, -3.
+    # +43: wejscie i wynik solvera doziemienia SN (`DaneDoziemienia`/`WynikDoziemienia`/
+    # `PunktNeutralnyDoziemienia`: `charakter`, `dlawik_w_ruchu`, `droga_szeregowa`, `i_c_a`,
+    # `i_l_a`, `i_w_a`, `rozstrojenie`, `u_f_v`, `u_faza_b_v`, `u_faza_c_v`, `wspolczynnik_k`,
+    # `z_n_ohm`, `zastrzezenia_pl`, `brak_pl`, `brak_b0_pl`, `ikss_iec_a`, `z0_uzwojenia_ohm`,
+    # `z_n_uzwojenia_ohm`, `zn_hv_ohm`, `zn_lv_ohm`, `z_t0_pu`, `sekcje_wezlow`,
+    # `sekcje_sn_wezlow`), punkty neutralne V12.6 (`punkty_neutralne`, `punkty_neutralne_awsc`,
+    # `z_n_r_ohm`, `z_n_x_ohm`, `z0_r_ohm`, `z0_x_ohm`, `z0_tu_r_ohm`, `z0_tu_x_ohm`,
+    # `c_max_zrodlo_pl`), koordynacja izolacji z trybu (`earth_fault_factor`,
+    # `earth_fault_factor_zrodlo_pl`, `arrester_rated_kv`, `arrester_tov_10s_kv`), B'0 roboczy
+    # (`robocze_b0`, `galezie_b0_robocze`), przewod N rozplywu niesymetrycznego (`prad_n_a`,
+    # `u_n_pe_v`, `neutral_earthed_bus_ids`, `neutral_current_pu`, `neutral_voltage_pu`).
+    # -3: `prad_dlawikow_a` (parametr V12.6 zastapiony punktami neutralnymi modelu),
+    # `predicted_tov_kv` i `predicted_energy_kj_per_kv` (wejscie wiersza izolacji — U_TOV liczy
+    # solver z k trybu; dwa wpisy zapadki `A:or:item.*` zdjete). PASS niezmieniony (zero
+    # podstawien; `awsc.i_w_a or 0.0` w sladzie dlawika zastapione jawnym `None`).
+    # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (werdykty V12.6 jako rekordy, warunek k > 1,4
+    # pojemnosci w Y0, kasacja mostu doziemienia, 2026-10-30): 4484 -> 4502 — POMIAR
+    # `contract_fields()` na `f2da569d3` (`git archive`: 4484, pin zgodny) i na drzewie karty
+    # (4502). Roznica zbiorow +22, -4. +22: rejestr zalozen kryteriow (`zalozenie`, `paragraf`,
+    # `praktyka_pl`, `limit_pl`, `powod_stosowalnosci_pl`, `metoda_wyniku`, `odcisk`), dane
+    # niezawodnosci z rejestru wartosci roboczych (`intensywnosc_uszkodzen`, `czas_odnowy_h`,
+    # `jednostka_intensywnosci`, `na_km`, `dane_przyjete_niezawodnosci`), tabliczka silnika
+    # (`rated_power_factor`, `rated_efficiency`), Z_Q szyny z modelu (`source_r_ohm`,
+    # `source_x_ohm`), kandydaci pojemnosci sieci zerowej (`b0_robocze`, `from_idx`, `to_idx`,
+    # `nazwa_od`, `nazwa_do`, `z_base_ohm`). -4: pola skasowanego mostu doziemienia
+    # (`earth_electrode_resistance_ohm`, `earth_return_split_factor`, `pack_input`,
+    # `readiness_issues`). PASS niezmieniony (zero podstawien).
+    # Ta sama karta, symbole jako wzory KaTeX (`ui_math_guard`, 2026-10-30): 4502 -> 4503 —
+    # POMIAR `contract_fields()` na `e73b336a1` (`git archive`: 4502) i na drzewie karty (4503).
+    # Roznica zbiorow +1, -0: `jednostka_latex` (`OpisParametru` rejestru wartosci roboczych
+    # maszyn wirujacych — jednostka parametru jako wzor dla formularza; `symbol_latex` byl juz
+    # w zbiorze z innych kontraktow). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4503." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2198,6 +2334,23 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # api -1 skasowany `api/celery_app.py`). POMIAR guardem na drzewie partii.
         # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 571 - 2 = 569 (skasowane
         # `network_model/catalog/wind_turbines/__init__.py` i `catalog.py`). POMIAR guardem.
+        # Karta W5-B (2026-10-15): 561 -> 564 (+3 `enm/pola.py` — jeden akcesor/builder/pisarz
+        # pola, `enm/migrations/field_specs_promocja.py` — migracja dawnych slownikow pol przy
+        # wczytaniu, `enm/migrations/klucze_meta_pola.py` — dawne klucze `meta` pola, jedno
+        # zrodlo pisarza i migracji; zmiana nazwy promocji aparatow nN bez zmiany liczby).
+        # POMIAR guardem na drzewie karty.
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): drzewo integracji 562 (POMIAR
+        # `git archive` rodzica 2; przypiete tam 563 bylo nieaktualne) + 3 pliki karty W5-B = 565.
+        # POMIAR guardem na drzewie scalonym.
+        # Scalenie W5-B z partia integracji 8 (2026-10-16): 569 + 3 pliki karty W5-B = 572. POMIAR.
+        # Karta K6a TOPOLOGIA-API (2026-10-16): 572 -> 573 (+1 `application/topologia_zasilenia.py`
+        # — stan zasilenia i tor z topologii laczeniowej). POMIAR guardem na drzewie karty.
+        # Karta GPZ-PARYTET (2026-10-21): 573 -> 574 (+1 `enm/wyniki_pol_gpz.py` — wiersze
+        # wynikow pol i bilansu stacji GPZ). POMIAR guardem na drzewie karty cz. 2.
+        # Karta W5-C (2026-10-21): 574 -> 577 — POMIAR guardem na drzewie karty i na bazie
+        # `d98bdad3e` (`git archive`): +3 `enm/{operacje_lacznikow,stan_normalny,
+        # wyposazenie_pola}.py`, −1 `enm/domain_event_types.py` (martwy, zero importow),
+        # +1 `api/scenariusze_laczeniowe.py`.
         # Karta W5-E-TTIT (2026-10-15): 561 -> 565 (+4: `network_model/solvers/
         # petla_zwarcia_tt_it.py`, `enm/uziom_instalacji.py`, `application/analyses/fault_loop/
         # tt_it.py`, `application/analyses/swz/werdykt_tt_it.py`). POMIAR guardem na drzewie karty.
@@ -2218,6 +2371,18 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 13 (2026-10-21): 577 bazy + `core/czas_wylaczenia.py` +
         # `catalog/wartosci_robocze.py` + 1 plik application wniesiony partia 12 bez przypiecia
         # = 580. POMIAR guardem na drzewie scalenia.
+        # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): 580 programu + 6 plikow enm
+        # (W5-B 3, GPZ-PARYTET 1, W5-C 3 − 1 skasowany) + 1 application (K6a) + 1 api (W5-C)
+        # = 588. POMIAR guardem na drzewie scalonym i na obu rodzicach (577 / 580).
+        # Karta MENU-KANON cz. 4 (2026-10-22): 577 -> 576 (−1 skasowany `api/switchgear_config.py`). POMIAR guardem.
+        # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 588 − 1 (`api/switchgear_config.py`)
+        # = 587. POMIAR guardem na drzewie scalonym.
+        # Karta KATALOG-APARATURA-WN (2026-10-23): 588 -> 589 (+1
+        # `network_model/catalog/rodzaje_aparatury.py` — jedno zrodlo rozstrzygniecia
+        # „nie dotyczy” wielkosci zwarciowych wg rodzaju aparatu; zero nowych nazw pol (4337 bez
+        # zmian), zero wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie karty.
+        # Scalenie karty KATALOG-APARATURA-WN z galezia UI/UX (2026-10-23): 587 + 1
+        # (`catalog/rodzaje_aparatury.py`) = 588. POMIAR guardem na drzewie scalonym.
         # Karta LINIA-110 (2026-10-22): 580 -> 585 (+2 network_model:
         # `solvers/parametry_linii_napowietrznej.py`, `catalog/hv_overhead_conductor_catalog.py`;
         # +1 enm: `enm/parametry_linii_wn.py`; +2 application netto: `parametry_linii_wn.py`,
@@ -2243,7 +2408,30 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta DETERMINIZM-HISTORII-PROCESU (2026-10-23): +1 `network_model/watki_blas.py`
         # (jedna polityka watkow BLAS procesu). Partia 2 po scaleniu programu `d543faf3c`:
         # 589 + 1 = 590. POMIAR guardem na drzewie scalonym; dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 590 plikow w zakresie: network_model, solver_input, enm, "
+        # Scalenie galezi UI/UX z programem (2026-10-28): 588 (UI/UX) + 590 (program) − 580
+        # (baza `8f20bdd3c`) = 598. POMIAR guardem na drzewie scalonym.
+        # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 598 -> 596 (-2
+        # `application/validation_problem/{__init__,service}.py` — pakiet bez konsumenta
+        # produkcyjnego skasowany); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 596 -> 599 (+3 `enm/bateria_kondensatorow.py`,
+        # `network_model/core/bateria_kondensatorow.py`, `network_model/pochodne/
+        # bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Zespol uziemiajacy SN (2026-10-29): 596 -> 599 (+1 `enm/uziemienie_sekcji.py`, +1
+        # `network_model/catalog/mv_zespol_uziemiajacy_catalog.py`, +1
+        # `network_model/pochodne/punkt_neutralny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Scalenie obu kart (2026-10-29): 596 + 3 + 3 = 602. POMIAR guardem na drzewie scalonym.
+        # Wartosc robocza R'0/X'0 odcinka (2026-10-29): 602 -> 603 (+1 `enm/skladowa_zerowa_
+        # galezi.py`, jedno zrodlo skladowej zerowej odcinka); dlug i wykluczenia BEZ ZMIAN.
+        # POMIAR guardem na drzewie karty.
+        # Odcinek 2 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): 603 -> 605 (+1
+        # `network_model/solvers/doziemienie_sn.py` — solver doziemienia wg sposobu pracy punktu
+        # neutralnego, +1 `enm/doziemienie_sieci.py` — wiersz doziemienia sieci). POMIAR guardem
+        # na `0344668a0` (603) i na drzewie karty (605).
+        # Odcinek 3 tej karty (2026-10-30): 605 -> 604 (-2 skasowany pakiet mostu doziemienia
+        # `application/analyses/earthing/{__init__,ground_fault_bridge}.py`, +1
+        # `application/analyses/v126_oceny.py` — rekordy werdyktu V12.6). POMIAR guardem na
+        # `f2da569d3` (605) i na drzewie karty (604); dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 604 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2320,7 +2508,21 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # definicja I_th) oraz `B:ifexp:m.ir_a` (2) w `solvers/machine_sc_iec60909.py` (plik
     # wypada; krotnosc 0 za niefizyczny prad znamionowy -> odmowa). POMIAR guardem na drzewie
     # karty.
-    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 225." in wyjscie, wyjscie
+    # Karta MENU-KANON cz. 4 (2026-10-22): 51/236 -> 51/234 — enm −2: wpis `insert_at.value` (4) zdjety razem
+    # z jedna regula `wspolczynnik_podzialu` (odmowa zamiast wartosci zastepczej), +2 nowe
+    # odczyty liczby pol. POMIAR guardem.
+    # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 47/225 (UI/UX) -> 47/222 — enm −3:
+    # wpis `insert_at.value` (4) zdjety przez MENU-KANON, +1 `line_fields_per_section`;
+    # wpis `transformer_count` NIE wraca (GPZ-MODEL odmawia braku liczby). POMIAR guardem.
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): 47/222 -> 47/220 — solver_input −2:
+    # wpisy `A:or:enm.frequency_hz` i `B:ifexp:enm.frequency_hz` w `v126_contracts.py` zdjete
+    # (czestotliwosc sieci z naglowka modelu zamiast `enm.buses[0].frequency_hz or 50.0`).
+    # POMIAR guardem na drzewie scalenia.
+    # Odcinek 2 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): 47/220 -> 47/218 —
+    # network_model −2: wpisy `A:or:item.arrester_residual_10ka_kv` i `A:or:item.predicted_tov_kv`
+    # w `v126_academic.py` zdjete (koordynacja izolacji z k trybu punktu neutralnego, dobor
+    # wstepny jako dana przyjeta ESTIMATED). POMIAR guardem na `0344668a0` i na drzewie karty.
+    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 218." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2415,6 +2617,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (stan gałęzi integracji — wykluczenia 3/6 karty pochodziły z jej starszej bazy). POMIAR.
         # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 184 - 2 = 182 (katalog turbin
         # skasowany). POMIAR guardem na drzewie partii.
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): network_model 178 — POMIAR guardem
+        # na drzewie scalonym i na drzewie integracji (rodzic 2, ta sama wartosc; przypiete
+        # tam 180 bylo nieaktualne — test byl czerwony na samej integracji, naprawiony tu).
+        # Scalenie W5-B z partia integracji 8 (2026-10-16): network_model 182 (POMIAR).
         # Karta W5-E-TTIT: network_model 183 -> 184 (+1 `solvers/petla_zwarcia_tt_it.py`); dlug
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Partia integracji 9 (+ W5-E-TTIT): network_model 182 + 1 = 183; wykluczenia 1/2
@@ -2428,6 +2634,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
+        # Karta KATALOG-APARATURA-WN (2026-10-23): 186 -> 187 (+1
+        # `catalog/rodzaje_aparatury.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Karta LINIA-110: 186 -> 188 (+2, patrz pin plikow wyzej). POMIAR.
         # Partia zwarc, naprawa CI (2026-10-23): network_model 186 -> 187 (+1
         # `core/modul_zespolony.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
@@ -2435,7 +2643,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (`core/modul_zespolony.py`) = 189. POMIAR guardem.
         # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
         # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
-        "  network_model: pliki_skanowane=190, dlug=10 plikow/suma 67, "
+        # Scalenie galezi UI/UX z programem (2026-10-28): 187 + 190 − 186 = 191. POMIAR.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 191 -> 193 (+2 `core/bateria_kondensatorow.py`,
+        # `pochodne/bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Zespol uziemiajacy SN (2026-10-29): 191 -> 193 (+2 jak wyzej). POMIAR guardem.
+        # Scalenie obu kart (2026-10-29): 191 + 2 + 2 = 195. POMIAR guardem.
+        # Odcinek 2 karty ZU (2026-10-29): 195 -> 196 (+1 `solvers/doziemienie_sn.py`), dlug
+        # 10/67 -> 10/65 (dwa wpisy koordynacji izolacji `v126_academic.py` zdjete). POMIAR.
+        "  network_model: pliki_skanowane=196, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2445,7 +2660,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1a Pakiet C (2026-09-23): solver_input 12 -> 11 (-1 skasowany
         # `solver_input/dowod_ncrfg.py` — dowod zgodnosci NC RfG to rekordy `WynikWymagania`);
         # dlug 2/8 i wykluczenia 0/0 BEZ ZMIANY.
-        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): dlug 2/8 -> 2/6 (dwa wpisy
+        # czestotliwosci zastepczej w `v126_contracts.py` zdjete — wpis zapadki wyzej).
+        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 6, " "wykluczenia=0 plikow/suma 0",
         # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
         # Karta W5-A (2026-09-16): enm +3 `enm/{grupa_polaczen,uziemienie,uklad_sieci_nn}.py`,
         # dlug 8/76 -> 7/73 (wpis `enm/zero_sequence_transformer.py` usuniety z zapadki, patrz wyzej);
@@ -2488,6 +2705,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
         # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): enm 61 + 1 = 62. POMIAR.
+        # Karta W5-B (2026-10-15): enm 58 -> 61 (+3: `pola.py`, `migrations/field_specs_promocja.py`,
+        # `migrations/klucze_meta_pola.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem.
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): enm 61 (integracja) + 3 (karta) = 64;
+        # dlug 7/67 (integracja: `time_dial` skasowany). POMIAR guardem na drzewie scalonym.
+        # Scalenie W5-B z partia integracji 8 (2026-10-16): enm 62 + 3 = 65. POMIAR guardem.
+        # Karta GPZ-PARYTET (2026-10-21): 65 -> 66 (+1 `enm/wyniki_pol_gpz.py`); dlug/wykluczenia
+        # BEZ ZMIANY. POMIAR guardem na drzewie karty cz. 2.
+        # Karta W5-C (2026-10-21): 66 -> 68 (+3 `enm/{operacje_lacznikow,stan_normalny,
+        # wyposazenie_pola}.py`, −1 `enm/domain_event_types.py`); dlug/wykluczenia BEZ ZMIANY.
+        # POMIAR guardem na drzewie karty i na bazie `d98bdad3e`.
         # Karta W5-E-TTIT: enm 58 -> 59 (+1 `enm/uziom_instalacji.py`); dlug/wykluczenia BEZ
         # ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 9 (+ W5-E-TTIT): enm 62 + 1 = 63; dlug 7/67 (gałąź integracji). POMIAR.
@@ -2496,12 +2723,28 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 9 (+ B01-RUNDA-3): enm 63 + 1 = 64. POMIAR guardem na drzewie partii.
         # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): enm 64 + 1 (`enm/tolerancja_nn.py`)
         # = 65; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii.
+        # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): enm 62 bazy wspolnej + 6 UI/UX
+        # + 3 programu (`zdania_odmow_rdzenia.py`, `uziom_instalacji.py`, `tolerancja_nn.py`)
+        # = 71; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie scalonym.
+        # Karta MENU-KANON cz. 4 (2026-10-22): enm dlug 7/67 -> 7/65 (jw.). POMIAR guardem.
+        # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): enm 71 plikow, dlug 7/67 -> 7/64
+        # (jw.). POMIAR guardem na drzewie scalonym.
         # Karta LINIA-110: enm 65 -> 66 (+1 `enm/parametry_linii_wn.py`). POMIAR.
         # Karta PODSTAWA-Q (2026-10-22): enm 65 -> 67 (+2 `enm/maszyny_robocze.py`,
         # `enm/wartosci_projektanta.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR jak wyzej.
         # Partia 2 integracji: enm 65 -> 69 (+1 `enm/parametry_linii_wn.py`, +1
         # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
-        "  enm: pliki_skanowane=69, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Scalenie galezi UI/UX z programem (2026-10-28): enm 71 + 69 − 65 = 75, dlug 7/64
+        # (UI/UX; program bez zmian dlugu enm). POMIAR guardem na drzewie scalonym.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): enm 75 -> 76 (+1 `enm/bateria_kondensatorow.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Zespol uziemiajacy SN (2026-10-29): enm 75 -> 76 (+1 `enm/uziemienie_sekcji.py`). POMIAR.
+        # Scalenie obu kart (2026-10-29): enm 75 + 1 + 1 = 77. POMIAR guardem.
+        # Wartosc robocza R'0/X'0 odcinka (2026-10-29): enm 77 -> 78 (+1 `enm/skladowa_zerowa_
+        # galezi.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Odcinek 2 karty ZU (2026-10-29): enm 78 -> 79 (+1 `enm/doziemienie_sieci.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `0344668a0` i na drzewie karty.
+        "  enm: pliki_skanowane=79, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2592,6 +2835,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 8 (+ DYNAMIKA-W-TLE): application 249 + 2 = 251, dlug 30/90; api 64 - 1
         # = 63 (skasowany `api/celery_app.py`), dlug 1/2 i wykluczenia 5/13 gałęzi integracji (dlug 2/3
         # i wykluczenia 6/15 karty pochodziły z jej starszej bazy). POMIAR guardem na drzewie partii.
+        # Karta K6a TOPOLOGIA-API (2026-10-16): application 251 -> 252 (+1
+        # `application/topologia_zasilenia.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Karta W5-E-TTIT: application 245 -> 247 (+2 `analyses/fault_loop/tt_it.py`,
         # `analyses/swz/werdykt_tt_it.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 9 (+ W5-E-TTIT): application 251 + 2 = 253; dlug 30/90 (gałąź
@@ -2603,11 +2848,32 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # domyslne m/n w trzech plikach dowodu zwarciowego); api: pomiar bazy karty
         # `4ccfa9320` = 64 pliki (pin 63 byl czerwony na bazie), karta pliku nie dodaje.
         # Scalenie partii 13: application 253 -> 254 (plik partii 12 bez przypiecia). POMIAR.
+        # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): application 254 programu + 1 UI/UX
+        # (`topologia_zasilenia.py`) = 255; dlug 27/81 programu (UI/UX bez zmian dlugu). POMIAR.
         # Karta LINIA-110: application 254 -> 256 (+3 dodane, -1 skasowany). POMIAR.
-        "  application: pliki_skanowane=256, dlug=27 plikow/suma 81, "
+        # Scalenie galezi UI/UX z programem (2026-10-28): application 255 + 256 − 254 = 257.
+        # Napiecie urzadzenia wobec sieci (2026-10-28): application 257 -> 255 (-2 skasowany
+        # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-30): application 255 -> 254
+        # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
+        # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
+        # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Karta MENU-KANON cz. 4 (2026-10-22): api 64 -> 63 (−1 `api/switchgear_config.py`). POMIAR guardem.
+        # Scalenie W5-B z integracja PR477-481 (2026-10-16): application 248, dlug 30/90; api
+        # dlug 1/2 — POMIAR guardem na drzewie scalonym, identyczny z drzewem integracji
+        # (rodzic 2; przypiete tam 247 / 29/89 / api 2/3 bylo nieaktualne wobec rejestru
+        # `ZASTANE_ZASTEPNIKI` tej galezi: wpis `application/analyses/dobor_toru_der_sn.py` (1),
+        # bez `api/grid_source_preview.py`). Rejestr zapadki scalenia = rejestr integracji.
+        # Scalenie W5-B z partia integracji 8 (2026-10-16): application 251 i api 63 — POMIAR na
+        # drzewie scalonym, rowne partii 8 (karta W5-B nie dodaje plikow w tych korzeniach).
         # Karta WARTOSC-ROBOCZA-1 (2026-10-21): api 63 -> 64 (+1 zastany na bazie `6c83bce89`:
         # `api/odmowa_http.py` partii 10 bez przypiecia); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): api 63 bazy wspolnej + 1 UI/UX
+        # (`scenariusze_laczeniowe.py`) + 1 programu (`odmowa_http.py`) = 65. POMIAR guardem.
+        # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 65 − 1 (`switchgear_config.py`)
+        # = 64. POMIAR guardem na drzewie scalonym.
         "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:

@@ -8,6 +8,13 @@
  * projektowe i wywód pola, katalog producenta (`useKatalogPola`) i jawne zaciski `Bay.ports`.
  * Schemat pola to `BayWindowSchematic` z tego samego modelu.
  *
+ * Karta W5-C: wyposażenie pola SN (aparaty pierwotne) ustawia tu `EdytorWyposazeniaPola` —
+ * jedyny dostawca operacji `set_bay_equipment` (katalog / szablon pola / usunięcie), ze
+ * stanem danych i danymi przyjętymi z modelu odczytu pola. Pole nN ma własne operacje
+ * rozdzielnicy nN — edytora SN dla niego nie ma (backend odmówiłby `bay_equipment.bay_not_mv`).
+ * Obwody wtórne przekładników pola (CT/VT z `bay_ref` pola) poprawia `EdytorObwoduWtornegoPola`
+ * — jedyny dostawca operacji `set_measurement_secondary_circuit`.
+ *
  * Korekta 2026-10-15: dawna powierzchnia renderowała pusty szkielet ośmiu zakładek z tekstem
  * zastępczym i oceniała pole regułami frontu na kontekście DOPISANYM w przeglądarce (rola
  * domyślna „OUT", sekcje sprzęgła `SEC-1/SEC-2`, „pole rezerwowe" przy braku pola) — werdykt
@@ -16,10 +23,13 @@
 import { useMemo } from 'react';
 
 import { BayWindowSchematic } from '../../field/BayWindowSchematic';
+import { EdytorObwoduWtornegoPola } from '../../field/EdytorObwoduWtornegoPola';
+import { EdytorWyposazeniaPola } from '../../field/EdytorWyposazeniaPola';
 import { useFieldReadModel } from '../../field/useFieldReadModel';
 import { useKatalogPola } from '../../field/useKatalogPola';
 import { buildBaySections, SectionBlock } from '../../network-build/InspectorEngineeringView';
 import { useAppStateStore } from '../../app-state';
+import { czyPoleNn } from '../../shared/polaStacji';
 import { fieldRoleLabelOrNullPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useProblemyGotowosci } from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
@@ -77,16 +87,16 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
   return (
     <div data-testid="bay-configurator-surface" className="flex h-full w-full flex-col p-4">
       <div className="mb-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+        <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
           Karta pola SN
         </div>
         <h2 className="mt-1 text-base font-semibold text-scada-text">{bayName}</h2>
-        {roleLabel && <p className="mt-0.5 text-xs text-scada-muted">{roleLabel}</p>}
+        {roleLabel && <p className="mt-0.5 text-[length:var(--mvd-font-size-data)] text-scada-muted">{roleLabel}</p>}
       </div>
       {!bayRef ? (
         <p
           data-testid="bay-card-no-ref"
-          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz"
+          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz"
         >
           Brak referencji do pola SN w kontekście. Wybierz pole z lewego nawigatora
           modelu lub kliknij pole w SLD i wybierz &quot;Otwórz kartę pola&quot;.
@@ -94,7 +104,7 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
       ) : snapshot && !bayInModel && !item && !isLoading ? (
         <p
           data-testid="bay-card-missing"
-          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz"
+          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz"
         >
           Wskazane pole nie występuje w modelu sieci. Wybierz istniejące pole z nawigatora modelu.
         </p>
@@ -113,6 +123,27 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
                 executeDomainOperation={executeDomainOperation}
               />
             ))}
+            {bayInModel && !czyPoleNn(snapshot, bayInModel) ? (
+              <EdytorWyposazeniaPola
+                key={bayInModel.ref_id}
+                bay={bayInModel}
+                snapshot={snapshot}
+                stanDanych={item?.canonical_model.base_model.equipment_data_state ?? null}
+                danePrzyjete={item?.canonical_model.base_model.equipment_assumed_data ?? []}
+                activeCaseId={activeCaseId}
+                executeDomainOperation={executeDomainOperation}
+                bladStore={() => useSnapshotStore.getState().error}
+              />
+            ) : null}
+            {bayInModel ? (
+              <EdytorObwoduWtornegoPola
+                bayRef={bayInModel.ref_id}
+                snapshot={snapshot}
+                activeCaseId={activeCaseId}
+                executeDomainOperation={executeDomainOperation}
+                bladStore={() => useSnapshotStore.getState().error}
+              />
+            ) : null}
           </div>
           {item && (
             <div className="min-w-0">

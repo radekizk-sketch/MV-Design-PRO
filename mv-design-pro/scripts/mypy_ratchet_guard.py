@@ -207,6 +207,11 @@ BACKEND = ROOT / "backend"
 # pass` ukrywal w runtime (biblioteka zabezpieczen z bazy nigdy nie byla czytana); plik
 # przepisany na `uow.protection_catalog`. Zero nowych bledow (roznica zbiorow `mypy src` baza
 # vs drzewo karty = dokladnie te 3 wiersze).
+# Karta W5-B (2026-10-15, baza `f3c435b6`): 223/34 -> 221/33. Znikneły 2 bledy `assignment`
+# w `enm/catalog_completion.py` (stan lacznika punktu rozgalezienia przypisywany ze `str` do
+# pola `Literal["open", "closed"] | None` — kod materializacji pol ZKSN przepisany na rekordy
+# `bays`). Zero nowych bledow (roznica zbiorow `mypy src` baza vs drzewo karty = dokladnie te
+# 2 wiersze).
 # Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B par. 12.2 (d)): 223/34 -> 203/32.
 # Zniknelo dokladnie 20 bledow w dwoch rdzeniach B-01: `power_flow_newton_internal.py` 19
 # (14 attr-defined + 5 assignment — jedna zmienna petli `spec` dla PVSpec/PQSpec/limitow;
@@ -241,8 +246,18 @@ BACKEND = ROOT / "backend"
 # 1x assignment: jedna zmienna petli dla maszyn sync/async — wklad maszyny liczy teraz jedna
 # funkcja z jawnym `p_per_pole_mw` per rodzaj) i `equipment_proof/generator.py` 1 (arg-type
 # `_value_or_missing` — wielkosc kryterium wylaczania czytana jako liczba z jednego zrodla).
-BASELINE_ERRORS = 169
-BASELINE_FILES = 22
+# Scalenie galezi programu (partie 9-13) z galezia UI/UX (karta W5-B), 2026-10-22: 169/22 ->
+# 167/21. POMIAR `mypy src` (mypy 1.19.1) na obu rodzicach scalenia (UI/UX 221/33, program
+# 169/22) i na drzewie scalonym (167/21); roznica zbiorow (plik, komunikat): scalone minus
+# program = 0, scalone minus UI/UX = 0, program minus scalone = dokladnie 2 bledy `assignment`
+# w `enm/catalog_completion.py`, zdjete przez karte W5-B (wyzej). Zero nowych.
+# Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5 (2026-10-30): 167/21 -> 163/21. POMIAR `mypy src`
+# na HEAD karty i na drzewie commitu (multizbior (plik, komunikat)): zniknely dokladnie 4 bledy
+# `arg-type` w kodzie skasowanego pakietu dowodowego P19 (2 w `analysis/normative/evaluator.py`
+# — reguly NR_P19, 2 w `application/proof_engine/proof_generator.py` — kroki uziemienia);
+# pliki zostaja (inne bledy). Zero nowych.
+BASELINE_ERRORS = 163
+BASELINE_FILES = 21
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

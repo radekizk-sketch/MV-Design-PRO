@@ -9,7 +9,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fetchTypesByCategory } from '../catalog/api';
-import { buildContextMenuActions } from '../context-menu/actions';
 import type { LineType } from '../catalog/types';
 
 // Mock fetch
@@ -121,90 +120,6 @@ describe('Type Catalog API', () => {
 
       await expect(fetchTypesByCategory('TRANSFORMER')).rejects.toThrow('404 Not Found');
     });
-  });
-});
-
-describe('Context Menu - Type Actions', () => {
-  it('adds Assign Type action for LineBranch in MODEL_EDIT', () => {
-    const actions = buildContextMenuActions(
-      'LineBranch',
-      'branch-123',
-      'Line 01',
-      'MODEL_EDIT',
-      {
-        hasTypeRef: false,
-        onAssignType: vi.fn(),
-      }
-    );
-
-    const assignAction = actions.find((a: any) => a.id === 'assign_type');
-    expect(assignAction).toBeDefined();
-    expect(assignAction?.label).toBe('Przypisz typ...');
-    expect(assignAction?.enabled).toBe(true);
-    expect(assignAction?.visible).toBe(true);
-  });
-
-  it('shows "Zmień typ..." when type_ref exists', () => {
-    const actions = buildContextMenuActions(
-      'TransformerBranch',
-      'trafo-123',
-      'Trafo 01',
-      'MODEL_EDIT',
-      {
-        hasTypeRef: true,
-        onAssignType: vi.fn(),
-        onClearType: vi.fn(),
-      }
-    );
-
-    const assignAction = actions.find((a: any) => a.id === 'assign_type');
-    const clearAction = actions.find((a: any) => a.id === 'clear_type');
-
-    expect(assignAction?.label).toBe('Zmień typ...');
-    expect(clearAction).toBeDefined();
-    expect(clearAction?.label).toBe('Wyczyść typ');
-  });
-
-  it('hides type actions in CASE_CONFIG mode', () => {
-    const actions = buildContextMenuActions(
-      'LineBranch',
-      'branch-123',
-      'Line 01',
-      'CASE_CONFIG',
-      {
-        hasTypeRef: false,
-        onAssignType: vi.fn(),
-      }
-    );
-
-    const assignAction = actions.find((a: any) => a.id === 'assign_type');
-    expect(assignAction).toBeUndefined(); // Not visible in CASE_CONFIG
-  });
-
-  it('hides type actions in RESULT_VIEW mode', () => {
-    const actions = buildContextMenuActions(
-      'LineBranch',
-      'branch-123',
-      'Line 01',
-      'RESULT_VIEW',
-      {
-        hasTypeRef: true,
-        onAssignType: vi.fn(),
-        onClearType: vi.fn(),
-      }
-    );
-
-    const assignAction = actions.find((a: any) => a.id === 'assign_type');
-    expect(assignAction).toBeUndefined(); // Not visible in RESULT_VIEW
-  });
-
-  it('does not add type actions for Bus element', () => {
-    const actions = buildContextMenuActions('Bus', 'bus-123', 'Bus 01', 'MODEL_EDIT', {
-      onAssignType: vi.fn(),
-    });
-
-    const assignAction = actions.find((a: any) => a.id === 'assign_type');
-    expect(assignAction).toBeUndefined(); // Bus does not support type_ref
   });
 });
 

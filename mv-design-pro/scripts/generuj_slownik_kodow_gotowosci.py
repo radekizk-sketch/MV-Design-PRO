@@ -41,8 +41,15 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from readiness_codes_guard import (  # noqa: E402
+    REGISTRY_FILE,
+    REPO_ROOT,
+    modul_z_tego_drzewa,
+    pakiet_domain_z_tego_drzewa,
+)
+
 DOKUMENT = REPO_ROOT / "docs" / "domain" / "READINESS_FIXACTIONS_CANONICAL_PL.md"
 
 ZNACZNIK_POCZATEK = "<!-- GENEROWANE: slownik kodow gotowosci — poczatek -->"
@@ -62,22 +69,33 @@ def modul_rejestru() -> ModuleType:
     normalnie), użyj DOKŁADNIE tego modułu, żeby `isinstance`/porównania enumów widziały te
     same klasy; w przeciwnym razie (goły `python3` w CI) załaduj plik bezpośrednio.
     """
-    juz = sys.modules.get("domain.canonical_operations") or sys.modules.get(
-        "_rejestr_slownik_gotowosci"
-    )
-    if juz is not None:
+    # TO SAMO DRZEWO (karta GPZ-MODEL): pakiet `domain` z innego drzewa (wpis `*.pth`
+    # srodowiska poetry wskazujacy `backend/src` glownego checkoutu) NIE jest rejestrem tego
+    # dokumentu — przyjmowany jest wylacznie modul z pliku `REGISTRY_FILE`. Para predykatow
+    # z `readiness_codes_guard.py` (jedno zrodlo: tamte funkcje).
+    juz = sys.modules.get("domain.canonical_operations")
+    if juz is not None and modul_z_tego_drzewa(juz):
         return juz
-    try:
-        import domain.canonical_operations as pakietowy  # noqa: PLC0415
-
-        return pakietowy
-    except ModuleNotFoundError:
-        spec = importlib.util.spec_from_file_location("_rejestr_slownik_gotowosci", REGISTRY_FILE)
-        assert spec and spec.loader
-        m = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = m
-        spec.loader.exec_module(m)
-        return m
+    wlasny = sys.modules.get("_rejestr_slownik_gotowosci")
+    if wlasny is not None:
+        return wlasny
+    if pakiet_domain_z_tego_drzewa():
+        # Goły `python3` w CI bez zależności backendu: pakiet jest na ścieżce, ale
+        # `domain/__init__.py` ciągnie pydantic — wtedy ładowanie z pliku niżej.
+        try:
+            import domain.canonical_operations as pakietowy  # noqa: PLC0415
+        except ModuleNotFoundError:
+            pakietowy = None
+        # Pakiet tego drzewa, ale podmoduł mógł już wisieć w `sys.modules` z innego drzewa
+        # (import zwraca wtedy wpis z `sys.modules`, nie plik obok pakietu).
+        if pakietowy is not None and modul_z_tego_drzewa(pakietowy):
+            return pakietowy
+    spec = importlib.util.spec_from_file_location("_rejestr_slownik_gotowosci", REGISTRY_FILE)
+    assert spec and spec.loader
+    m = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = m
+    spec.loader.exec_module(m)
+    return m
 
 
 def _escape_md(tekst: str) -> str:

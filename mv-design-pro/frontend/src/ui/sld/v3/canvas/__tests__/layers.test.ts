@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §18 „Podwarstwy L2", P1) — wyrocznia
  * taksonomii podwarstw L2: kompletność+rozłączność mapowania na warstwy renderu,

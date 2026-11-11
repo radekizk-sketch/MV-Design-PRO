@@ -32,7 +32,14 @@ import { bramkaTresciMatematycznej } from './trescMatematyczna';
 import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/kreatory'));
+// `E2E_KATALOG_ZRZUTOW` kieruje kadry do katalogu materiału oceny innej karty (np. zrzuty „po”
+// karty W5-B w `docs/audit/visual/w5b/po`); zapis do drzewa repo nadal tylko z
+// `ZRZUTY_DO_DOKUMENTACJI=1` (`katalogZrzutow`).
+const OUTPUT_DIR = katalogZrzutow(
+  process.env.E2E_KATALOG_ZRZUTOW
+    ? path.resolve(process.env.E2E_KATALOG_ZRZUTOW)
+    : path.resolve(_dirname, '../../docs/audit/visual/kreatory'),
+);
 const THEMES = ['light', 'dark'] as const;
 
 test.describe('kreator stacji — pole transformatorowe', () => {

@@ -181,39 +181,6 @@ export function canConnectPorts(fromKind: PortKind, toKind: PortKind): boolean {
 }
 
 /**
- * Walidacja spójności napięć między portami.
- *
- * Brief 2 §13. Niespójność napięć → potrzebny transformator dedykowany.
- */
-export interface VoltageMismatchResult {
-  readonly mismatch: boolean;
-  readonly fromKv: number;
-  readonly toKv: number;
-  readonly suggestionPl?: string;
-}
-
-export function validatePortVoltages(
-  fromPort: SldPort,
-  toPort: SldPort,
-  toleranceKv = 0.01,
-): VoltageMismatchResult {
-  const diff = Math.abs(fromPort.nominalVoltageKv - toPort.nominalVoltageKv);
-  if (diff <= toleranceKv) {
-    return {
-      mismatch: false,
-      fromKv: fromPort.nominalVoltageKv,
-      toKv: toPort.nominalVoltageKv,
-    };
-  }
-  return {
-    mismatch: true,
-    fromKv: fromPort.nominalVoltageKv,
-    toKv: toPort.nominalVoltageKv,
-    suggestionPl: `Niespójność napięć: ${fromPort.nominalVoltageKv} kV ↔ ${toPort.nominalVoltageKv} kV. Wymagany transformator dedykowany.`,
-  };
-}
-
-/**
  * Walidacja spójności bay_role ↔ port kind.
  *
  * Reguła PR-3 walidatora ENM: typ portu pola musi być spójny z bay_role.

@@ -7,7 +7,8 @@ import { PORT_KIND_LABELS_PL, type PortKind } from '../../../sld/v2/core/ports';
 export interface StationConfigPortRow {
   readonly portId: string;
   readonly kind: PortKind;
-  readonly nominalVoltageKv: number;
+  /** Napięcie znamionowe portu z modelu; `null` — model go nie podaje (bez domysłu). */
+  readonly nominalVoltageKv: number | null;
   readonly bayDesignation?: string;
   readonly occupiedByLabelPl?: string | null;
 }
@@ -81,7 +82,7 @@ export function StationConfigTopologyCard(
                 >
                   <td className="font-mono text-[10px]">{p.portId}</td>
                   <td>{PORT_KIND_LABELS_PL[p.kind]}</td>
-                  <td className="text-right font-mono">{p.nominalVoltageKv}</td>
+                  <td className="text-right font-mono">{p.nominalVoltageKv ?? 'brak danych'}</td>
                   <td>{p.bayDesignation ?? '—'}</td>
                   <td>
                     {p.occupiedByLabelPl ?? (

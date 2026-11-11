@@ -665,3 +665,8 @@ export function tonWagi(severity: string, paleta: PaletaNn): string {
   if (severity === 'IMPORTANT') return paleta.tonOstrzegawczy;
   return paleta.tonInfo;
 }
+
+/** Szerokość pasa trafienia kabla [px ekranu] — prawy klik bez celowania w kreskę 1–2 px. */
+export const PAS_TRAFIENIA_KABLA_PX = 12;
+/** Promień obszaru trafienia zacisku [px ekranu]; > połowy pasa kabla (zacisk nad kablem). */
+export const PROMIEN_TRAFIENIA_ZACISKU_PX = 9;

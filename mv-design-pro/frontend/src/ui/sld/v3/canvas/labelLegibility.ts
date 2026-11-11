@@ -49,7 +49,12 @@
  *       OBU stronach, NIE jest rysowana — plan zwraca ją jawnie
  *       (`droppedIdentity`), żeby wyrocznia odbioru mogła pilnować, że na
  *       skalach produkcyjnych ten zbiór jest PUSTY (a nie żeby cicho zgubić
- *       tożsamość).
+ *       tożsamość);
+ *   (f) USTĄPIENIE SKRACALNEGO SĄSIADA (karta GPZ-MODEL, `ustapSasiadow`) —
+ *       zanim tożsamość trafi do `droppedIdentity`, plan sprawdza, czy jej
+ *       stronę zajmują wyłącznie etykiety, które po odsunięciu znów znajdą
+ *       miejsce (zwykle skrócone); jeśli tak, oddają je. Liczba narysowanych
+ *       etykiet rośnie, żadna nie wypada.
  *
  * S9-7 (audyt C-4, TWARDA PODŁOGA EKRANOWA). Do wersji sprzed tej karty plan
  * miał czwarty stopień ustępstwa: „powrót do rozmiaru NATURALNEGO w oryginalnym
@@ -102,6 +107,7 @@ import { rectsOverlap, type V3Rect } from '../core/grid';
 import { buildRectIndex, createRectIndex, type RectIndex } from '../core/rectIndex';
 import {
   enlargedFontSizeWithinProportion,
+  fontSizeForScreenFloorWithinProportion,
   isLabelHiddenAtScale,
   isLabelReadableAtScale,
   LABEL_TYPOGRAPHY,
@@ -189,6 +195,27 @@ interface Kandydat {
    *  (pasmo nazw ma własną szerokość slotu = szerokość kolumny stacji, więc
    *  powiększony wiersz nie ma prawa wyjść poza własną kolumnę). */
   readonly tekstBazowy: string;
+  /** K2b §0.2 (b): kandydat powiększony do podłogi OPISÓW CELU KADRU niesie tu
+   *  swoją postać standardową (bez podłogi celu). Gdy postać celu nie znajdzie
+   *  miejsca, plan próbuje standardowej — podłoga celu nigdy nie odbiera
+   *  rysunkowi napisu, który bez niej by się narysował. `null` = postaci
+   *  standardowej nie ma (próg czytelności albo sufit proporcji), więc brak
+   *  miejsca dla postaci celu kończy się tym samym kubełkiem co bez podłogi. */
+  readonly zapasowy?: Kandydat | null;
+}
+
+/**
+ * K2b §0.2 (b) — PODŁOGA OPISÓW CELU KADRU. Etykiety należące do wykadrowanego
+ * celu (`nalezy`) rysują się pismem nie mniejszym niż `screenPx` na ekranie, o ile
+ * mieści się to w suficie proporcji klasy (`fontSizeForScreenFloorWithinProportion`),
+ * także gdy bez podłogi byłyby ukryte progiem czytelności. Poza suficiem —
+ * zachowanie bez podłogi (pierwszeństwo kompletności kadru, kryterium (a)).
+ * Tworzy ją wyłącznie `zakresKadru.ts` (`podlogaOpisowCelu`) — ten sam obiekt
+ * dostaje plan renderu kanwy i tusz etykiet kamery (predykaty parami).
+ */
+export interface PodlogaOpisowCelu {
+  readonly screenPx: number;
+  readonly nalezy: (label: OwnedLabel) => boolean;
 }
 
 /** Wysokość wiersza dla DOWOLNEGO rozmiaru pisma (ta sama formuła co
@@ -235,6 +262,85 @@ function prostokatTuszu(
   const wzdluz = measureTextWidth(text, fontSize);
   const wpoprzek = wysokoscWiersza(fontSize);
   return anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
+}
+
+/**
+ * K2b×K3 — STRONA ZASTĘPCZA PRZY SYMBOLU. Prostokąt tuszu po stronie `placement`
+ * OBRYSU symbolu, przy którym etykieta stoi (`OwnedLabel.obrysKotwicy`), z tym
+ * samym prześwitem, jaki scena dała stronie zadeklarowanej (zmierzonym między
+ * obrysem a slotem sceny — jedno źródło, bez drugiej stałej).
+ *
+ * DLACZEGO NIE OD SLOTU. Strona zastępcza liczona od slotu (`prostokatTuszu`)
+ * dla etykiety „pod symbolem" to prostokąt wyśrodkowany na slocie: „nad"
+ * kończy się na dolnej krawędzi slotu, „z prawej" zaczyna się na jego lewej
+ * krawędzi. Dopóki pismo rosło tylko do progu czytelności, prostokąt był niski
+ * i mijał symbol; podłoga opisów celu kadru (K2b, do 4× rozmiaru klasy t2)
+ * daje wiersz wyższy niż prześwit pod symbolem, więc KAŻDA strona zastępcza
+ * nachodziła na własny symbol etykiety i odpadała z definicji. Pomiar na
+ * fiksturze referencyjnej po K3 (L1, skala 0,3, kadr stacji): 11 podpisów DER
+ * rysowanych poniżej 13 px, choć sufit proporcji klasy dopuszcza podłogę.
+ */
+type WyrownaniePrzySymbolu = 'srodek' | 'poczatek' | 'koniec';
+/** Kolejność wyrównań wzdłuż boku obrysu: wyśrodkowany, potem do krawędzi
+ *  początkowej (góra / lewo), potem do końcowej (dół / prawo). Wiersz pisma
+ *  powiększonego bywa wyższy od symbolu, więc wyśrodkowany wystaje nad i pod
+ *  obrys — wyrównanie do krawędzi zostawia wolną jedną ze stron (pomiar: dwa
+ *  źródła nN obok siebie, podpis lewego nad symbolem, prawego z prawej). */
+const WYROWNANIA_PRZY_SYMBOLU: readonly WyrownaniePrzySymbolu[] = ['srodek', 'poczatek', 'koniec'];
+
+function prostokatPrzySymbolu(
+  label: OwnedLabel,
+  obrys: V3Rect,
+  text: string,
+  fontSize: number,
+  placement: SimpleAnchorPlacement,
+  wyrownanie: WyrownaniePrzySymbolu,
+): V3Rect {
+  const rotated = label.rotated === true;
+  const wzdluz = measureTextWidth(text, fontSize);
+  const wpoprzek = wysokoscWiersza(fontSize);
+  const width = rotated ? wpoprzek : wzdluz;
+  const height = rotated ? wzdluz : wpoprzek;
+  const slot = label.rect;
+  const przeswitSceny = (() => {
+    switch (label.placement) {
+      case 'below':
+        return slot.y - (obrys.y + obrys.height);
+      case 'above':
+        return obrys.y - (slot.y + slot.height);
+      case 'right':
+        return slot.x - (obrys.x + obrys.width);
+      case 'left':
+        return obrys.x - (slot.x + slot.width);
+      default:
+        return 0;
+    }
+  })();
+  const przeswit = Math.max(0, przeswitSceny);
+  // Położenie wzdłuż boku obrysu: oś pozioma dla stron „nad/pod", pionowa dla
+  // „z lewej/z prawej".
+  const x =
+    wyrownanie === 'srodek'
+      ? obrys.x + obrys.width / 2 - width / 2
+      : wyrownanie === 'poczatek'
+        ? obrys.x
+        : obrys.x + obrys.width - width;
+  const y =
+    wyrownanie === 'srodek'
+      ? obrys.y + obrys.height / 2 - height / 2
+      : wyrownanie === 'poczatek'
+        ? obrys.y
+        : obrys.y + obrys.height - height;
+  switch (placement) {
+    case 'above':
+      return { x, y: obrys.y - przeswit - height, width, height };
+    case 'below':
+      return { x, y: obrys.y + obrys.height + przeswit, width, height };
+    case 'left':
+      return { x: obrys.x - przeswit - width, y, width, height };
+    case 'right':
+      return { x: obrys.x + obrys.width + przeswit, y, width, height };
+  }
 }
 
 const NAME_ROW_SUFFIX = /#name-row-\d+$/;
@@ -304,6 +410,12 @@ interface Dopasowanie {
  * potem przeciwna (napis znad szyny idzie pod szynę), na końcu dwie
  * prostopadłe. Prostokąt zawsze rośnie OD kotwicy, więc prześwit od toru/
  * symbolu jest zachowany na każdej z nich; zmienia się wyłącznie ZWROT.
+ *
+ * K2b×K3: dla etykiety stojącej przy SYMBOLU (`OwnedLabel.obrysKotwicy`) strony
+ * inne niż zadeklarowana liczone są od OBRYSU symbolu (`prostokatPrzySymbolu`),
+ * a nie od slotu — inaczej „nad" i „z boku" etykiety „pod symbolem" leżały na
+ * tym symbolu, gdy tylko wiersz pisma był wyższy od prześwitu pod nim (pismo
+ * podłogi opisów celu kadru). Przypięte: `__tests__/stronyPrzySymbolu.test.ts`.
  *
  * DLACZEGO CZTERY, A NIE DWIE. Pomiar na fixturze referencyjnej (L1 @0,51):
  * podpisy DER („PV 500 kW", 4 sztuki) nie mieszczą się ani pod symbolem, ani
@@ -412,51 +524,177 @@ function najlepszeDopasowanie(
     return wynik;
   };
 
-  const probojPelny = (placement: OwnedLabel['placement']): Dopasowanie | null => {
-    const pelny = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, placement);
-    return tekstBazowy.length > 0 && wolne(pelny)
-      ? { text: tekstBazowy, rect: pelny, fontSize, enlarged: true }
-      : null;
+  // K2b×K3: `przyObrysie` — strona zastępcza etykiety stojącej przy symbolu,
+  // liczona od OBRYSU symbolu (`prostokatPrzySymbolu`), w trzech wyrównaniach
+  // wzdłuż boku obrysu (środek, początek, koniec). Inaczej — od slotu sceny.
+  const geometria = (
+    placement: OwnedLabel['placement'],
+    przyObrysie: boolean,
+  ): {
+    readonly wyrownania: readonly (WyrownaniePrzySymbolu | null)[];
+    readonly prostokatDla: (text: string, wyrownanie: WyrownaniePrzySymbolu | null) => V3Rect;
+  } => {
+    const obrys = label.obrysKotwicy;
+    const przySymbolu = przyObrysie && obrys !== undefined && placement !== undefined && placement !== label.placement;
+    return {
+      wyrownania: przySymbolu ? WYROWNANIA_PRZY_SYMBOLU : [null],
+      prostokatDla: (text, wyrownanie) =>
+        przySymbolu && wyrownanie !== null && placement !== undefined
+          ? prostokatPrzySymbolu(label, obrys, text, fontSize, placement, wyrownanie)
+          : prostokatTuszu(slot, text, fontSize, rotated, placement),
+    };
   };
 
-  const probojSkrocony = (placement: OwnedLabel['placement']): Dopasowanie | null => {
-    const prostokatDla = (text: string): V3Rect =>
-      prostokatTuszu(slot, text, fontSize, rotated, placement);
-
-    // (2) wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI [px świata].
-    let lo = 1;
-    let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize)) - 1);
-    let najlepszy: Dopasowanie | null = null;
-    while (lo <= hi) {
-      const mid = Math.floor((lo + hi) / 2);
-      const text = skroc(mid);
-      if (text.length === 0) {
-        lo = mid + 1; // za wąsko na jakąkolwiek formę — szukamy szerzej
-        continue;
-      }
-      const rect = prostokatDla(text);
-      if (wolne(rect)) {
-        najlepszy = { text, rect, fontSize, enlarged: true };
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
+  // (1) pełny tekst — każde wyrównanie po kolei.
+  const probojPelny = (placement: OwnedLabel['placement'], przyObrysie: boolean): Dopasowanie | null => {
+    if (tekstBazowy.length === 0) return null;
+    const { wyrownania, prostokatDla } = geometria(placement, przyObrysie);
+    for (const wyrownanie of wyrownania) {
+      const pelny = prostokatDla(tekstBazowy, wyrownanie);
+      if (wolne(pelny)) return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true };
     }
-    return najlepszy;
+    return null;
+  };
+
+  // (2) wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI [px świata] — dla
+  // każdego wyrównania osobno (prostokąt zakotwiczony: węższy ⊆ szerszy).
+  const probojSkrocony = (placement: OwnedLabel['placement'], przyObrysie: boolean): Dopasowanie | null => {
+    const { wyrownania, prostokatDla } = geometria(placement, przyObrysie);
+    for (const wyrownanie of wyrownania) {
+      let lo = 1;
+      let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize)) - 1);
+      let najlepszy: Dopasowanie | null = null;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const text = skroc(mid);
+        if (text.length === 0) {
+          lo = mid + 1; // za wąsko na jakąkolwiek formę — szukamy szerzej
+          continue;
+        }
+        const rect = prostokatDla(text, wyrownanie);
+        if (wolne(rect)) {
+          najlepszy = { text, rect, fontSize, enlarged: true };
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      if (najlepszy) return najlepszy;
+    }
+    return null;
+  };
+
+  // Pełny tekst po KAŻDEJ stronie, zanim jakakolwiek strona dostanie skrót (W2C-PLAN-ETYKIET:
+  // dawniej plan skracał po stronie zadeklarowanej — „TV1” → „T…”, czytane jak transformator).
+  const przejscie = (kolejnosc: readonly OwnedLabel['placement'][], przyObrysie: boolean): Dopasowanie | null => {
+    for (const strona of kolejnosc) {
+      const dopasowanie = probojPelny(strona, przyObrysie);
+      if (dopasowanie) return dopasowanie;
+    }
+    for (const strona of kolejnosc) {
+      const dopasowanie = probojSkrocony(strona, przyObrysie);
+      if (dopasowanie) return dopasowanie;
+    }
+    return null;
   };
 
   const strony = stronyWKolejnosci(label.placement);
-  const kolejnosc = strony.length === 0 ? [label.placement] : strony;
-  // Pełny tekst po KAŻDEJ stronie, zanim jakakolwiek strona dostanie skrót.
-  for (const strona of kolejnosc) {
-    const dopasowanie = probojPelny(strona);
-    if (dopasowanie) return dopasowanie;
-  }
-  for (const strona of kolejnosc) {
-    const dopasowanie = probojSkrocony(strona);
-    if (dopasowanie) return dopasowanie;
+  const pierwsze = przejscie(strony.length === 0 ? [label.placement] : strony, false);
+  if (pierwsze) return pierwsze;
+  // K2b×K3 — DRUGIE PRZEJŚCIE: strony przy OBRYSIE symbolu, dopiero gdy żadna
+  // strona liczona od slotu (z pełnym tekstem ani skróconym) nie ma miejsca.
+  // Kolejność celowa: wszędzie tam, gdzie plan dotąd coś znajdował, wynik jest
+  // bajtowo ten sam (pomiar: odciski planu bez zmian poza przypadkami, w których
+  // pierwsze przejście kończyło się porzuceniem albo postacią zapasową); strona
+  // przy symbolu zabiera miejsce sąsiadom tylko zamiast utraty etykiety. Reguła
+  // „pełny tekst po każdej stronie przed skrótem" obowiązuje też tutaj.
+  if (label.obrysKotwicy !== undefined) {
+    return przejscie(
+      strony.filter((strona) => strona !== label.placement),
+      true,
+    );
   }
   return null;
+}
+
+/**
+ * (f) USTĄPIENIE SKRACALNEGO SĄSIADA — karta GPZ-MODEL (pomiar na `gpzFeeder`,
+ * L2 przy skali dopasowania 0,4034): oznacznik „Q1" wyłącznika pierwszego pola
+ * stacji S01 nie mieścił się po ŻADNEJ stronie, bo z lewej leżało powiększone
+ * pełnym tekstem oznaczenie ostatniego pola GPZ („Pole liniowe GPZ 1.2", t3,
+ * tusz 248–525 j.św.), a pozostałe trzy strony zajmował symbol wyłącznika.
+ * Oznaczenie GPZ dostało miejsce PIERWSZE (ten sam priorytet, wyższe `y`)
+ * i wzięło pełny tekst, choć mieści się także skrócone z zachowaniem członu
+ * rozróżniającego; dwuznakowego „Q1" skrócić się nie da. Plan zachłanny gubił
+ * więc tożsamość od KOLIZJI — dokładnie to, czego zakazuje kontrakt KD-11
+ * („żadna tożsamość nie ginie od kolizji, jeśli da się ją narysować").
+ *
+ * Reguła: tożsamość, dla której zabrakło miejsca, próbuje swoich stron po
+ * kolei (`stronyWKolejnosci`) z TEKSTEM BAZOWYM. Strona wchodzi w grę tylko
+ * wtedy, gdy mieści się w arkuszu i nie dotyka RYSUNKU (symbol i tor zawsze
+ * wygrywają), a zajmują ją wyłącznie etykiety. Każdy taki sąsiad jest
+ * dopasowywany od nowa (pełna maszyneria `najlepszeDopasowanie`: skracanie
+ * i strony) wobec zbioru zajętego BEZ niego, z nową tożsamością. Jedno źródło
+ * prawdy o tym, KTO może ustąpić, to właśnie to ponowne dopasowanie: sąsiad
+ * w piśmie naturalnym ma jedną postać (tusz we własnym slocie sceny,
+ * rozstrzygniętym declutterem), więc wraca dokładnie na zajęte miejsce i nie
+ * ustępuje nigdy — bez osobnego warunku „tylko powiększone", który mógłby się
+ * z tym rozjechać. Zmiana jest przyjmowana WYŁĄCZNIE wtedy, gdy
+ * KAŻDY sąsiad znów znajdzie miejsce — liczba narysowanych etykiet rośnie
+ * o jeden, żadna nie wypada (inaczej plan zostaje bez zmian). Wszędzie, gdzie
+ * plan dotąd rysował każdą tożsamość, ta gałąź nie jest nawet wywoływana —
+ * wynik bajtowo ten sam. Przypięte: `__tests__/ustapienieSasiada.test.ts`.
+ *
+ * Mutuje `zaplanowane`/`uzyteKandydaty` tylko przy powodzeniu; wołający
+ * przebudowuje wtedy indeks zajętych prostokątów.
+ */
+function ustapSasiadow(
+  kandydat: Kandydat,
+  zaplanowane: Map<number, PlannedLabel>,
+  uzyteKandydaty: Map<number, Kandydat>,
+  obstacles: RectIndex,
+  sheet: SheetOutline,
+): boolean {
+  const { label, slot, tekstBazowy, fontSize } = kandydat;
+  if (!kandydat.enlarged || tekstBazowy.length === 0) return false;
+  const rotated = label.rotated === true;
+  const strony = stronyWKolejnosci(label.placement);
+  for (const strona of strony.length === 0 ? [label.placement] : strony) {
+    const rect = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, strona);
+    if (!rectWithinSheet(rect, sheet) || obstacles.anyOverlap(rect)) continue;
+    const blokujace = [...zaplanowane.values()].filter((p) => rectsOverlap(p.rect, rect));
+    if (blokujace.length === 0) continue;
+    const odsuniete = new Set(blokujace.map((p) => p.index));
+    const zajeteBez = buildRectIndex([
+      ...[...zaplanowane.values()].filter((p) => !odsuniete.has(p.index)).map((p) => p.rect),
+      rect,
+    ]);
+    const nowe: PlannedLabel[] = [];
+    let wszystkieMieszcza = true;
+    for (const p of blokujace) {
+      const sasiad = uzyteKandydaty.get(p.index);
+      const d = sasiad ? najlepszeDopasowanie(sasiad, zajeteBez, obstacles, sheet) : null;
+      if (!sasiad || !d || d.text.length === 0) {
+        wszystkieMieszcza = false;
+        break;
+      }
+      zajeteBez.add(d.rect);
+      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.enlarged });
+    }
+    if (!wszystkieMieszcza) continue;
+    for (const p of nowe) zaplanowane.set(p.index, p);
+    zaplanowane.set(kandydat.index, {
+      label,
+      index: kandydat.index,
+      text: tekstBazowy,
+      fontSize,
+      rect,
+      enlarged: true,
+    });
+    uzyteKandydaty.set(kandydat.index, kandydat);
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -475,6 +713,7 @@ export function planSceneLabels(
   obstacles: readonly V3Rect[],
   scale: number,
   sheet: SheetOutline,
+  podlogaCelu?: PodlogaOpisowCelu,
 ): LabelRenderPlan {
   if (!Number.isFinite(scale) || scale <= 0) {
     return {
@@ -507,7 +746,8 @@ export function planSceneLabels(
   const hiddenDetail: OwnedLabel[] = [];
   const droppedIdentity: OwnedLabel[] = [];
   const kandydaci: Kandydat[] = [];
-  labels.forEach((label, index) => {
+  /** Kandydat bez podłogi celu albo kubełek, do którego etykieta trafia. */
+  const kandydatStandardowy = (label: OwnedLabel, index: number): Kandydat | 'ukryta' | 'utracona' => {
     const czytelna = isLabelReadableAtScale(label.labelClass, scale);
     // T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
     // wyjątek bezwzględny): `unresolved` OMIJA próg czytelności wprost —
@@ -517,8 +757,7 @@ export function planSceneLabels(
     // — od tego miejsca w dół etykieta „unresolved" idzie tą samą ścieżką co
     // etykieta klasy `'tozsamosc'`/`'L0'` zawsze szła.
     if (label.unresolved !== true && isLabelHiddenAtScale(label.labelRole, label.labelClass, scale)) {
-      hiddenDetail.push(label);
-      return;
+      return 'ukryta';
     }
     // PROPORCJE: rozmiar pisma z JEDNEGO źródła obu granic (`core/text.ts`
     // `enlargedFontSizeWithinProportion`) — `null` znaczy „czytelnie już się
@@ -533,8 +772,7 @@ export function planSceneLabels(
       // Tożsamość, której nie da się narysować proporcjonalnie — uczciwy brak,
       // policzony we wskaźniku „Ukryto N opisów" (`SldCanvasV3`), a nie napis
       // wielkości trzech aparatów obok siebie.
-      droppedIdentity.push(label);
-      return;
+      return 'utracona';
     }
     // (c) skracanie w PIERWSZEJ kolejności do REZERWACJI właściciela: wiersz
     // pasma nazw ma slot szerokości kolumny stacji, więc powiększone pismo
@@ -572,7 +810,40 @@ export function planSceneLabels(
       !czytelna && label.ownerKind !== 'station-name'
         ? label.text
         : shortenPreservingIdentity(label.text, fontSize, granicaTekstu);
-    kandydaci.push({ label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy });
+    return { label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy };
+  };
+  labels.forEach((label, index) => {
+    const standardowy = kandydatStandardowy(label, index);
+    const fontCelu =
+      podlogaCelu !== undefined && podlogaCelu.nalezy(label)
+        ? fontSizeForScreenFloorWithinProportion(label.labelClass, scale, podlogaCelu.screenPx)
+        : null;
+    if (fontCelu !== null && fontCelu > LABEL_TYPOGRAPHY[label.labelClass].fontSize) {
+      // Postać celu: pismo powiększone do podłogi celu, tekst jak w gałęzi
+      // powiększenia awaryjnego (pasmo nazw skracane do rezerwacji kolumny).
+      const rotated = label.rotated === true;
+      const tekstBazowy =
+        label.ownerKind === 'station-name'
+          ? shortenPreservingIdentity(
+              label.text,
+              fontCelu,
+              label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated),
+            )
+          : label.text;
+      kandydaci.push({
+        label,
+        index,
+        fontSize: fontCelu,
+        enlarged: true,
+        slot: label.rect,
+        tekstBazowy,
+        zapasowy: typeof standardowy === 'string' ? null : standardowy,
+      });
+      return;
+    }
+    if (standardowy === 'ukryta') hiddenDetail.push(label);
+    else if (standardowy === 'utracona') droppedIdentity.push(label);
+    else kandydaci.push(standardowy);
   });
 
   // ŚCIEŻKA SZYBKA I ZACHOWAWCZA: gdy ŻADNA etykieta nie wymaga powiększenia
@@ -618,10 +889,39 @@ export function planSceneLabels(
   // S9-9: przeszkody sceny indeksowane RAZ na plan (zbiór stały), „zajęte"
   // przyrostowo — jak w `declutterLabels`, jedna maszyneria dla obu.
   const obstacleIndex = buildRectIndex(obstacles);
-  const zajete = createRectIndex();
+  let zajete = createRectIndex();
   const zaplanowane = new Map<number, PlannedLabel>();
-  for (const kandydat of kolejnosc) {
-    const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+  /** Kandydat, z którego powstała każda zaplanowana etykieta (po ewentualnym
+   *  przejściu na postać zapasową) — potrzebny `ustapSasiadow`, żeby sąsiada
+   *  ustępującego miejsca dopasować TĄ SAMĄ postacią, którą plan go rysuje. */
+  const uzyteKandydaty = new Map<number, Kandydat>();
+  for (const kandydatPierwotny of kolejnosc) {
+    let kandydat = kandydatPierwotny;
+    let dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+    if ((!dopasowanie || dopasowanie.text.length === 0) && kandydat.zapasowy !== undefined) {
+      // Podłoga celu bez miejsca: postać standardowa (albo kubełek bez podłogi).
+      const zapasowy = kandydat.zapasowy;
+      if (zapasowy === null) {
+        if (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) {
+          droppedIdentity.push(kandydat.label);
+        } else {
+          hiddenDetail.push(kandydat.label);
+        }
+        continue;
+      }
+      // Pasmo nazw przestawiono pod postać celu; postać standardowa pisma
+      // naturalnego stoi w swoim slocie sceny (tak jak bez podłogi celu).
+      kandydat = zapasowy.enlarged ? { ...zapasowy, slot: przestawione.get(zapasowy.index) ?? zapasowy.slot } : zapasowy;
+      dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+    }
+    if (
+      (!dopasowanie || dopasowanie.text.length === 0) &&
+      (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) &&
+      ustapSasiadow(kandydat, zaplanowane, uzyteKandydaty, obstacleIndex, sheet)
+    ) {
+      zajete = buildRectIndex([...zaplanowane.values()].map((p) => p.rect));
+      continue;
+    }
     if (!dopasowanie || dopasowanie.text.length === 0) {
       // T2-LOD: `unresolved` idzie do `droppedIdentity`, NIGDY do
       // `hiddenDetail` — nawet gdy przyczyną braku miejsca jest KOLIZJA (nie
@@ -636,6 +936,7 @@ export function planSceneLabels(
       continue;
     }
     zajete.add(dopasowanie.rect);
+    uzyteKandydaty.set(kandydat.index, kandydat);
     zaplanowane.set(kandydat.index, {
       label: kandydat.label,
       index: kandydat.index,

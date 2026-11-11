@@ -28,6 +28,7 @@ function podsumowanie(pelny: StationTemplateFull): StationTemplateSummary {
     sn_voltage_kv: pelny.sn_voltage_kv,
     voltage_lv_kv: pelny.voltage_lv_kv,
     bay_role_categories: pelny.bay_role_categories,
+    wchodzi_w_segment: pelny.wchodzi_w_segment,
   };
 }
 

@@ -66,15 +66,32 @@ export function wyczyscRejestrGotowosci(): void {
 }
 
 /**
+ * Zdanie dla kodów, których opisu nie da się podać, bo REJESTR nie jest odczytany
+ * (odczyt w toku albo nieudany). Bez identyfikatora kodu (kod produkcyjny nie jest
+ * tekstem dla inżyniera) i bez wymyślonej treści — wyłącznie fakt: ile ograniczeń
+ * wynik niesie i dlaczego ich opis jest niedostępny.
+ */
+export function zdanieKodowBezRejestru(liczba: number): string {
+  return `Liczba ograniczeń gotowości wyniku: ${liczba} — ich opis nie został odczytany z rejestru kodów gotowości (odczyt w toku albo nieudany).`;
+}
+
+/**
  * Zamień kody na zdania po polsku. Kod, którego nie ma w kanonie, jest POMIJANY —
  * pokazanie surowego identyfikatora byłoby kodem produkcyjnym w tekście dla
- * inżyniera, a wymyślenie zdania byłoby fabrykacją.
+ * inżyniera, a wymyślenie zdania byłoby fabrykacją (rejestr i kody wyniku pochodzą
+ * z tego samego kanonu `READINESS_CODES`, więc kod spoza rejestru to rozjazd wersji
+ * API, nie stan danych modelu).
+ *
+ * Rejestr NIEODCZYTANY (`null` — odczyt w toku albo nieudany) przy niepustych kodach
+ * NIE daje pustej listy: wynik z ograniczeniami wyglądałby wtedy jak wynik bez
+ * ograniczeń (kreska bez wyjaśnienia). Zwracane jest jedno zdanie o liczbie
+ * ograniczeń (`zdanieKodowBezRejestru`) — odczyt w toku / błąd ≠ brak ograniczeń.
  */
 export function komunikatyKodow(
   kody: readonly string[],
   rejestr: ReadonlyMap<string, WpisRejestruGotowosci> | null,
 ): string[] {
-  if (!rejestr) return [];
+  if (!rejestr) return kody.length > 0 ? [zdanieKodowBezRejestru(kody.length)] : [];
   return kody
     .map((kod) => rejestr.get(kod)?.message_pl)
     .filter((m): m is string => typeof m === 'string' && m.length > 0);

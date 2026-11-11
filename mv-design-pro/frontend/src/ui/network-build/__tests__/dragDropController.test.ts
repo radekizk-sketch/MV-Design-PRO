@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy dragDropController (Iteracja 12) — HTML5 drag&drop helpers.
  */

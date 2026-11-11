@@ -2,7 +2,11 @@
  * Kreator „Edycja parametrów elementu" (update_element_parameters) — ui2, kreatory/rama.
  *
  * Ekspercki override pól elementu. Zapis = operacja domenowa `update_element_parameters`,
- * której kontrakt to `element_ref` + `parameters` (mapa) + opcjonalny `reason`.
+ * której kontrakt to `element_ref` + `parameters` (mapa). Dawne pole „Uzasadnienie zmiany"
+ * wysyłało `reason` na poziomie ładunku, którego operacja nie czyta i żaden ekran nie pokazuje —
+ * kontrolka-widmo usunięta (kontrakt kluczy: `harness-fixtures/generated/kontrakt_ladunkow_operacji.json`).
+ * Uzasadnienie istnieje wyłącznie w sekcjach wartości projektanta aparatu SN i maszyny
+ * wirującej, gdzie backend czyta je jako `overrides[].reason` (`enm/wartosci_projektanta.py`).
  *
  * Naprawa długu (Zero-Debt §1): stary formularz w trybie prostym wysyłał klucz `updates`,
  * którego handler `update_element_parameters` NIE czyta (czyta `parameters`) — zapis był
@@ -160,6 +164,29 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/**
+ * Klucze kontraktu o wartości TEKSTOWEJ (pola `str` modeli ENM) — ich wartość nie jest
+ * zgadywana jako liczba. K6: numer pola „01" wysyłany jako liczba 1 był odrzucany przez
+ * walidację backendu (`Bay.bay_number: str`), a nazwa „2" zapisywała się jako liczba.
+ */
+const KLUCZE_TEKSTOWE: ReadonlySet<string> = new Set([
+  'name',
+  'bay_number',
+  'feeder_short_name',
+  'outgoing_destination_ref',
+  'entry_point_ref',
+  'station_type',
+  'vector_group',
+  'lv_earthing_system',
+  'screen_bonding',
+  'insulation',
+  'conductor_material',
+  'catalog_ref',
+  'catalog_namespace',
+  'source_mode',
+  'parameter_source',
+]);
+
 /** Liczba z backendu z przecinkiem dziesiętnym (podpowiedź pola) — bez przeliczeń. */
 function liczbaPl(wartosc: number): string {
   return String(wartosc).replace('.', ',');
@@ -177,10 +204,15 @@ function podpowiedzAparatu(pozycja: MVApparatusType | null, parametr: ParametrAp
   return `${T.aparatBrak}.`;
 }
 
-/** Etykieta pola parametru maszyny z opisu rejestru backendu: nazwa, symbol i jednostka. */
+/**
+ * Etykieta pola parametru maszyny z opisu rejestru backendu: nazwa, symbol i jednostka. Symbol
+ * (i jednostka niosąca symbole bazy p.u.) to wzór `$…$` z pól `*_latex` rejestru — składa go
+ * `TekstZWzorami` pola; identyfikator `symbol` nie trafia na ekran (`ui_math_guard`).
+ */
 function etykietaParametruMaszyny(opis: ParametrMaszynyRejestru): string {
-  const jednostka = opis.jednostka === '1' ? '' : ` [${opis.jednostka}]`;
-  return `${opis.nazwa_pl.charAt(0).toUpperCase()}${opis.nazwa_pl.slice(1)} ${opis.symbol}${jednostka}`;
+  const jednostkaEkranu = opis.jednostka_latex !== '' ? `$${opis.jednostka_latex}$` : opis.jednostka;
+  const jednostka = opis.jednostka === '1' ? '' : ` [${jednostkaEkranu}]`;
+  return `${opis.nazwa_pl.charAt(0).toUpperCase()}${opis.nazwa_pl.slice(1)} $${opis.symbol_latex}$${jednostka}`;
 }
 
 /** Podpowiedź pola maszyny: co obliczenie przyjmie, gdy projektant nie poda wartości. */
@@ -203,9 +235,11 @@ function podpowiedzMaszyny(
   return `${T.maszynaPropozycja} ${liczbaPl(zrodlo.wartosc)}${jednostka} (${rodzaj}).`;
 }
 
-/** Konwersja tekstu na typ: liczba / tak-nie / brak wartości wykrywane automatycznie, reszta jako tekst. */
-function parsujWartosc(raw: string): string | number | boolean | null {
+/** Konwersja tekstu na typ: dla kluczy tekstowych tekst; inaczej liczba / tak-nie / brak
+ *  wartości wykrywane automatycznie, reszta jako tekst. */
+function parsujWartosc(raw: string, klucz = ''): string | number | boolean | null {
   const trimmed = raw.trim();
+  if (KLUCZE_TEKSTOWE.has(klucz.trim())) return trimmed;
   if (trimmed === 'brak') return null;
   if (trimmed === 'tak') return true;
   if (trimmed === 'nie') return false;
@@ -269,6 +303,9 @@ export function KreatorEdycjiParametrow() {
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
     { klucz: initialKey, wartosc: readString(context?.value) },
   ]);
+  // Uzasadnienie wartości projektanta aparatu SN — czytane przez backend jako
+  // `overrides[].reason` (`enm/wartosci_projektanta.py`: `nadpisania_aparatu_sn`,
+  // `nadpisania_generatora`); poza sekcjami aparatu i maszyny nie istnieje.
   const [powod, setPowod] = useState('');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   // Brak słownika z backendu = pole tekstowe (backend i tak waliduje E-W5-02).
@@ -490,7 +527,7 @@ export function KreatorEdycjiParametrow() {
       return;
     }
     const parameters = wypelnione.reduce<Record<string, unknown>>((acc, w) => {
-      acc[w.klucz.trim()] = parsujWartosc(w.wartosc);
+      acc[w.klucz.trim()] = parsujWartosc(w.wartosc, w.klucz);
       return acc;
     }, { ...zmianyNcRfg });
     if (zmianaAparatu && wynikAparatu?.rodzaj === 'lista') parameters.overrides = wynikAparatu.nadpisania;
@@ -499,7 +536,6 @@ export function KreatorEdycjiParametrow() {
     }
     if (zmianaMaszyny && wynikMaszyny?.rodzaj === 'lista') parameters.overrides = wynikMaszyny.nadpisania;
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };
-    if (powod.trim()) payload.reason = powod.trim();
 
     setBladGlobalny(null);
     try {
@@ -518,8 +554,9 @@ export function KreatorEdycjiParametrow() {
       if (zmianaPrzewodu && formularzLinii) {
         response = await executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
           element_ref: elementRef,
+          // Pochodzenie (`source_mode: KATALOG`) ustala operacja po udanej materializacji —
+          // ładunek go nie niesie (klucz spoza kontraktu operacji byłby widmem).
           catalog_binding: buildCatalogBinding(NAMESPACE_PRZEWOD_LINII_WN, formularzLinii.przewodId),
-          source_mode: 'KATALOG',
         });
         if (!response) {
           setBladGlobalny(useSnapshotStore.getState().error ?? T.bladDodania);
@@ -584,7 +621,9 @@ export function KreatorEdycjiParametrow() {
           },
         ]
       : []),
-    { etykieta: T.wierszPowod, stan: powod.trim() ? 'kompletne' : 'ostrzezenie', wartosc: powod.trim() ? 'Podane' : 'Brak' },
+    ...(formularzAparatu || (formularzMaszyny && parametryMaszyny)
+      ? [{ etykieta: T.wierszPowod, stan: powod.trim() ? ('kompletne' as const) : ('ostrzezenie' as const), wartosc: powod.trim() ? 'Podane' : 'Brak' }]
+      : []),
   ];
 
   const aside = (
@@ -656,6 +695,13 @@ export function KreatorEdycjiParametrow() {
               />
             ))}
           </KreatorSiatka>
+          <PoleTekstowe
+            etykieta={T.powod}
+            wartosc={powod}
+            onZmiana={setPowod}
+            placeholder={T.powodPlaceholder}
+            testid="mvd-kreator-edycja-powod"
+          />
         </KreatorSekcja>
       ) : null}
 
@@ -694,6 +740,13 @@ export function KreatorEdycjiParametrow() {
               />
             ))}
           </KreatorSiatka>
+          <PoleTekstowe
+            etykieta={T.powod}
+            wartosc={powod}
+            onZmiana={setPowod}
+            placeholder={T.powodPlaceholder}
+            testid="mvd-kreator-edycja-powod"
+          />
         </KreatorSekcja>
       ) : null}
 
@@ -753,14 +806,6 @@ export function KreatorEdycjiParametrow() {
         >
           {T.dodajWiersz}
         </button>
-
-        <PoleTekstowe
-          etykieta={T.powod}
-          wartosc={powod}
-          onZmiana={setPowod}
-          placeholder={T.powodPlaceholder}
-          testid="mvd-kreator-edycja-powod"
-        />
 
         <PanelTeorii
           tytul={T.teoriaTytul}

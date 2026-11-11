@@ -373,6 +373,12 @@ export interface SwitchBranch extends BranchBase {
   type: 'switch' | 'breaker' | 'bus_coupler' | 'disconnector';
   r_ohm?: number | null;
   x_ohm?: number | null;
+  /**
+   * Pozycja normalna łącznika z projektu (`'open'` = punkt normalnie otwarty) — JEDYNE
+   * źródło punktów podziału sieci. `null`/brak = pozycja niezadeklarowana (nie domysł).
+   * Bieżące położenie czytane przez fizykę to `status`.
+   */
+  normal_state?: 'closed' | 'open' | null;
 }
 
 export interface FuseBranch extends BranchBase {
@@ -1155,13 +1161,74 @@ export interface Substation extends ENMElement {
 }
 
 // ---------------------------------------------------------------------------
-// Bay (pole rozdzielcze SN)
+// Bay (pole rozdzielnicy SN / nN / ZKSN) — karta W5-B
 // ---------------------------------------------------------------------------
 
+/** Metadane POCHODZENIA pola — lustro `enm.models.MetadanePochodzeniaPola` (skąd pole wzięło
+ *  się w modelu: kreator, szablon, import; z jakich źródeł danych). */
+export interface MetadanePochodzeniaPola {
+  bay_kind?: string | null;
+  source_status?: string | null;
+  source_refs?: string[];
+}
+
+/** Wybór BLOKU FABRYCZNEGO pola rodziny RMU — lustro `enm.models.WyborBlokuPola`. */
+export interface WyborBlokuPola {
+  factory_configuration_ref: string;
+  factory_unit_index?: number | null;
+}
+
+/** Ogranicznik przepięć zainstalowany w polu — lustro `enm.models.OgranicznikPrzepiecPola`. */
+export interface OgranicznikPrzepiecPola {
+  device_ref: string;
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+}
+
+/**
+ * Pole rozdzielnicy — JEDYNY nośnik pól SN, nN i ZKSN (lustro `enm.models.Bay`, karta W5-B).
+ * Pole stacji wskazuje `substation_ref`, pole rozdzielnicy odgałęźnej ZKSN — `branch_point_ref`
+ * (dokładnie jedno z dwóch). Poziom pola (SN/nN) NIE jest polem rekordu — wynika z napięcia
+ * szyny `bus_ref` (`ui/shared/polaStacji.ts::czyPoleNn`, lustro `enm.pola.czy_pole_nn`).
+ */
+/**
+ * Rola pola w modelu (`Bay.bay_role`) — lustro JEDNEJ listy ról backendu
+ * `enm.rola_pola_sn.ROLE_POLA_MODELU` (parytet: `backend/tests/enm/test_rola_pola_bkr.py`).
+ * Każda lista ról modelu we froncie czyta ten typ (karta UX-04/POLE-BKR-MODEL). `BKR` — pole
+ * baterii kondensatorów równoległych SN (ENEA Operator, Zeszyt 1 §13, Zał. 16).
+ */
+export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'ZU', 'BKR'] as const;
+export type BayModelRole = (typeof BAY_MODEL_ROLES)[number];
+
 export interface Bay extends ENMElement {
-  bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
-  substation_ref: string;
+  bay_role: BayModelRole;
+  /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
+  substation_ref?: string | null;
+  /** Punkt rozgałęzienia właściciela (pole rozdzielnicy odgałęźnej ZKSN); `null` dla pola stacji. */
+  branch_point_ref?: string | null;
+  /** Port punktu rozgałęzienia obsługiwany przez pole ZKSN (`MAIN_IN`/`MAIN_OUT`/`BRANCH[_n]`). */
+  branch_point_port_id?: string | null;
   bus_ref: string;
+  /** Rola KANONICZNA pola (`enm.rola_pola_sn`: LINIA_IN/LINIA_OUT/LINIA_ODG/TRANSFORMATOROWE/
+   *  SPRZEGLO/POMIAROWE/PV_SN/BESS_SN/FW_SN). Rozróżnia np. pole odgałęźne (OUT + LINIA_ODG)
+   *  od wyjściowego ciągu (OUT + LINIA_OUT). */
+  field_role?: string | null;
+  /** Własny ZACISK pola — szyna za aparatem pola (POLA-W-TORZE); JEDYNY nośnik zacisku. */
+  terminal_bus_ref?: string | null;
+  /** Pomiar pola POMIAROWEGO (POMIAR_ROZLICZENIOWY_SN_V1 §5). */
+  funkcja_pomiaru?: string | null;
+  rodzaj_pomiaru?: string | null;
+  /** Powiązania producenckie pola. */
+  switchgear_family_ref?: string | null;
+  manufacturer_ref?: string | null;
+  apparatus_catalog_ref?: string | null;
+  /** Identyfikator KONFIGURACJI pola — klucz NIEPRZEZROCZYSTY (front nie parsuje prefiksu). */
+  config_id?: string | null;
+  /** Powiązania katalogowe wpisu pola (kształt payloadu kreatora). */
+  catalog_bindings?: Record<string, unknown> | null;
+  wybor_bloku?: WyborBlokuPola | null;
+  metadane_pochodzenia?: MetadanePochodzeniaPola | null;
+  surge_arresters?: OgranicznikPrzepiecPola[];
   gpz_section_id?: string | null;
   equipment_refs: string[];
   protection_ref?: string | null;
@@ -1177,9 +1244,15 @@ export interface Bay extends ENMElement {
   /** Cel feedera (substation ref docelowej stacji) — eliminuje wnioskowanie
    *  z grafu w adapterze SLD. */
   outgoing_destination_ref?: string | null;
-  /** Phase 0B-1: snapshot SCADA telemetry per-pole (CB/DS/ES actual_state,
-   *  control_mode, pending_command). Adapter SLD konsumuje gdy obecne;
-   *  brak → 'unknown' (Invariant 9). Definicja typu BayRuntimeState niżej. */
+  /** Phase 0B-1: rekord telemetrii SCADA per pole (CB/DS/ES actual_state, control_mode,
+   *  pending_command) — lustro `backend/src/enm/models.py::Bay.runtime_state`
+   *  (`enm_contract_parity_guard`). Produkt NIE MA zapisującego tego pola (żadna operacja
+   *  domenowa go nie ustawia); backend czyta je jako drugie źródło po rekordzie aparatu
+   *  (`enm.interlock_rules.runtime_state_record`), tak samo inspektor obiektu kanwy
+   *  (`sld/shared/daneElementuKanwy.ts`, sekcja stanu aparatu). Schemat SLD go NIE
+   *  czyta (GPZ-PARYTET cz. 2, pkt 2): stan łączników na kanwie idzie ze `status` gałęzi
+   *  łączeniowych pola i rekordów aparatów (`ui/sld/v2/model/stanAparatowPola.ts`).
+   *  Definicja typu BayRuntimeState niżej. */
   runtime_state?: BayRuntimeState | null;
   /** W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola na snapshocie
    *  ENM — lustro backendowego `Bay.primary_devices` (models.py:855, domknięcie
@@ -1212,7 +1285,9 @@ export type BayCanonicalRole =
   | 'POMIAROWE'
   | 'PV_SN'
   | 'BESS_SN'
-  | 'FW_SN';
+  | 'FW_SN'
+  | 'ZESPOL_UZIEMIAJACY'
+  | 'BATERIA_KONDENSATOROW';
 
 export type BayDeviceState =
   | 'zamkniety'
@@ -1270,7 +1345,11 @@ export type BayPrimaryDeviceKind =
   | 'BATTERY'
   // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
   // WYŁĄCZNIE gdy pochodzi z danych (mirror `backend/src/enm/models.py`).
-  | 'SURGE_ARRESTER';
+  | 'SURGE_ARRESTER'
+  // UX-04/POLE-BKR-MODEL (ENEA Zeszyt 1 §17, Zał. 16): aparaty pola baterii kondensatorów —
+  // lustro `ui/sld/v3/compose/rodzajeAparatowPolaBkr.ts` (parytet z backendem).
+  | 'UNBALANCE_CT'
+  | 'PHASE_TO_PHASE_VT';
 
 export type BayPrimaryPlacement =
   | 'UPSTREAM'
@@ -1551,6 +1630,10 @@ export interface BayBaseModel {
   bay_template_ref?: string | null;
   /** Rodzina rozdzielnicy producenta (Reference Engine). Optional/additive. */
   switchgear_family_ref?: string | null;
+  /** W5-C: stan danych wyposażenia z rekordu pola (`Bay.primary_devices`). */
+  equipment_data_state: StanDanychWyposazenia;
+  /** W5-C: aparaty przyjęte jako wartość robocza (jakość ESTIMATED). */
+  equipment_assumed_data: DanaPrzyjetaWyposazenia[];
 }
 
 export interface BayShortCircuitSourceContribution {
@@ -1587,10 +1670,6 @@ export interface BayEarthFaultPath {
   closure_path_elements: string[];
   transformer_contribution_ref?: string | null;
   grounding_device_ref?: string | null;
-  /** V12K-230: rezystancja uziomu [Ohm] — wspolautor pradu doziemnego. */
-  earth_electrode_resistance_ohm?: number | null;
-  /** Wspolczynnik podzialu pradu powrotnego przez ziemie. */
-  earth_return_split_factor?: number | null;
 }
 
 export interface BayProofBinding {
@@ -1648,7 +1727,6 @@ export interface BranchPointSN extends ENMElement {
     BRANCH: string[];
   };
   branch_occupied?: Record<string, string> | null;
-  switch_state?: 'open' | 'closed' | null;
   materialized_params?: Record<string, unknown> | null;
   completeness_status?: 'KOMPLETNY' | 'NIEKOMPLETNY' | 'BRAK_KATALOGU' | null;
   runtime_inputs?: Record<string, unknown> | null;
@@ -1662,7 +1740,6 @@ export interface Corridor extends ENMElement {
   corridor_type: 'radial' | 'ring' | 'mixed';
   ordered_segment_refs: string[];
   station_refs?: string[];
-  no_point_ref?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1761,7 +1838,6 @@ export interface LineRunV1 {
   starting_port_ref: string;
   segments: LineRunSegmentRefV1[];
   stations: LineRunStationRefV1[];
-  nop_station_ref?: string | null;
   parent_run_ref?: string | null;
   branch_origin_station_ref?: string | null;
 }
@@ -1806,6 +1882,19 @@ export interface ConnectionNode {
  * `BranchBase` jako "widoczne" dla KAZDEJ sprawdzanej encji, niezaleznie od
  * tego, czy faktycznie po niej dziedziczy — poprawione tą samą kartą.
  */
+/**
+ * Układ połączeń baterii kondensatorów — lustro `backend/src/network_model/core/
+ * bateria_kondensatorow.py::UkladPolaczenBaterii` (równość przypina
+ * `backend/tests/enm/test_bateria_kondensatorow_model.py`; karta UX-04/POLE-BKR-MODEL).
+ */
+export const UKLADY_POLACZEN_BATERII = [
+  'PODWOJNA_GWIAZDA_IZOLOWANA',
+  'GWIAZDA_IZOLOWANA',
+  'GWIAZDA_UZIEMIONA',
+  'TROJKAT',
+] as const;
+export type UkladPolaczenBaterii = (typeof UKLADY_POLACZEN_BATERII)[number];
+
 export interface ShuntCapacitor extends ENMElement {
   bus_ref: string;
   rated_mvar: number;
@@ -1817,6 +1906,83 @@ export interface ShuntCapacitor extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** Wartości projektanta (pierwszeństwo przed typem; `null` = z typu albo wartość robocza). */
+  uklad_polaczen?: UkladPolaczenBaterii | null;
+  liczba_stopni?: number | null;
+  /** Stan każdego stopnia (`true` = załączony); `null` = wszystkie załączone. */
+  stopnie_zalaczone?: boolean[] | null;
+  tolerancja_pojemnosci_min_proc?: number | null;
+  tolerancja_pojemnosci_max_proc?: number | null;
+  dlawik_ograniczajacy?: boolean | null;
+  dlawik_indukcyjnosc_mh?: number | null;
+  rezystory_rozladowcze_wewnetrzne?: boolean | null;
+  /** Transformatory, których wyłączenie wyłącza baterię (IRiESD II.4.5.4.4.2). */
+  wylaczenie_od_transformatorow?: string[];
+}
+
+/** Stan odłącznika gałęzi punktu neutralnego zespołu uziemiającego (Z.14: każda gałąź). */
+export type StanLacznikaPunktuNeutralnego = 'zamkniety' | 'otwarty';
+
+/** Rezystor wymuszający składową czynną AWSC (Z.13) — lustro `RezystorWymuszajacyAwsc`. */
+export interface RezystorWymuszajacyAwsc {
+  /** Prąd czynny po stronie PIERWOTNEJ [A] (ENEA Zeszyt 1 §16: 20–40 A). */
+  i_wymuszany_a?: number | null;
+  strona?: 'wtorna' | 'pierwotna' | null;
+  czas_zwloki_s?: number | null;
+  czas_zalaczenia_s?: number | null;
+}
+
+/** Dławik gaszący w punkcie neutralnym transformatora uziemiającego — lustro `DlawikGaszacy`. */
+export interface DlawikGaszacy {
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  materialized_params?: Record<string, unknown> | null;
+  i_min_a?: number | null;
+  i_max_a?: number | null;
+  regulacja?: 'ciagla' | 'zaczepy' | null;
+  liczba_zaczepow?: number | null;
+  /** Nastawa (stan dostrojenia) [A]; brak = wartość robocza środka zakresu (zasada nr 4). */
+  i_nastawy_a?: number | null;
+  stan_odlacznika?: StanLacznikaPunktuNeutralnego;
+  awsc?: RezystorWymuszajacyAwsc | null;
+}
+
+/** Rezystor uziemiający punkt neutralny (Z.14, Z.15) — lustro `RezystorUziemiajacy`. */
+export interface RezystorUziemiajacy {
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  materialized_params?: Record<string, unknown> | null;
+  r_ohm?: number | null;
+  i_n_a?: number | null;
+  t_s?: number | null;
+  stan_odlacznika?: StanLacznikaPunktuNeutralnego;
+}
+
+/**
+ * Zespół uziemiający sieci SN (ENEA Z.13 / Z.14 / Z.15) — lustro `enm.models.ZespolUziemiajacy`.
+ * JEDYNY nośnik uziemienia punktu neutralnego sieci SN obok punktu neutralnego uzwojenia
+ * transformatora; wariant i Z_N wyprowadza backend (`enm.uziemienie_sekcji`), front ich nie liczy.
+ */
+export interface ZespolUziemiajacy extends ENMElement {
+  bus_ref: string;
+  bay_ref?: string | null;
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  parameter_source?: 'CATALOG' | 'OVERRIDE' | null;
+  materialized_params?: Record<string, unknown> | null;
+  grupa_polaczen?: 'ZNyn11' | 'ZNyn5' | 'ZNy11' | 'ZNy5' | 'ZN' | null;
+  u_n_kv?: number | null;
+  s_n_kva?: number | null;
+  r0_ohm?: number | null;
+  x0_ohm?: number | null;
+  s_pw_kva?: number | null;
+  u_pw_kv?: number | null;
+  odbior_pw_ref?: string | null;
+  dlawik?: DlawikGaszacy | null;
+  rezystor?: RezystorUziemiajacy | null;
+  uziemienie_bezposrednie?: boolean;
+  spz?: boolean;
+  wylaczenie_od_transformatorow_refs?: string[];
 }
 
 /** Kompensacja spadku napiecia w linii (regulacja OLTC wg punktu zdalnego). */
@@ -1847,6 +2013,8 @@ export interface EnergyNetworkModel {
    * rzutowanie, a to droga do zgadnietych nazw pol (V12K-226).
    */
   shunt_capacitors?: ShuntCapacitor[];
+  /** Zespoły uziemiające sieci SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). */
+  zespoly_uziemiajace?: ZespolUziemiajacy[];
   connection_nodes?: ConnectionNode[];
   /** Opcjonalne widoki logiczne Snapshota (kanoniczne wejście segmentacji SLD). */
   logical_views?: LogicalViewsV1;
@@ -1998,7 +2166,10 @@ export interface V2OperatingVariant {
 
 export interface V2SwitchingDeviceState {
   device_ref: string;
-  state: 'closed' | 'open' | 'unknown';
+  /** Bieżące położenie (`status` gałęzi). */
+  state: 'closed' | 'open';
+  /** Pozycja normalna z projektu; `null` = niezadeklarowana albo bezpiecznik. */
+  normal_state: 'closed' | 'open' | null;
   device_type: string;
 }
 
@@ -2012,7 +2183,7 @@ export interface V2SwitchingStateSnapshot {
 
 export interface V2ZeroSequenceConfig {
   element_ref: string;
-  element_kind: 'branch' | 'source' | 'transformer';
+  element_kind: 'branch' | 'source' | 'transformer' | 'zespol_uziemiajacy';
   r0: number | null;
   x0: number | null;
   b0: number | null;
@@ -2151,7 +2322,8 @@ export interface TrunkViewV1 {
   corridor_ref: string;
   corridor_type: string;
   segments: string[];
-  no_point_ref: string | null;
+  /** Łączniki magistrali z pozycją normalną `'open'` (akcesor backendu, posortowane). */
+  no_point_refs: string[];
   terminals: TerminalRef[];
 }
 
@@ -2309,9 +2481,30 @@ export interface DomainOpResponseV1 {
   layout: LayoutInfo;
   /** Wynik post-hooka validate_semantic (semantic_rules). Puste = brak problemów. */
   semantic_issues?: SemanticIssue[];
+  /** W5-C: wynik `set_bay_equipment` — stan danych wyposażenia i dane przyjęte. */
+  wyposazenie_pola?: WyposazeniePolaOdpowiedz;
   /** Present only on error responses. */
   error?: string;
   error_code?: string;
+}
+
+/** Stan danych wyposażenia pola SN (`enm/wyposazenie_pola.py`). */
+export type StanDanychWyposazenia = 'MODEL' | 'PROPOZYCJA' | 'BRAK_DANYCH';
+
+/** Dana przyjęta bez pełnej walidacji (kontrakt werdyktu wyjaśnialnego). */
+export interface DanaPrzyjetaWyposazenia {
+  nazwa_pl: string;
+  wartosc: unknown;
+  powod_pl: string;
+  jakosc: string;
+}
+
+/** Wynik `set_bay_equipment` (klucz `wyposazenie_pola` odpowiedzi operacji). */
+export interface WyposazeniePolaOdpowiedz {
+  bay_ref: string;
+  stan_danych: StanDanychWyposazenia;
+  aparaty: Array<{ device_ref: string; stan_danych: Exclude<StanDanychWyposazenia, 'BRAK_DANYCH'> }>;
+  dane_przyjete: DanaPrzyjetaWyposazenia[];
 }
 
 // ---------------------------------------------------------------------------

@@ -66,8 +66,6 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_250,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snap = _op(
@@ -321,8 +319,8 @@ def test_append_station_sets_tap_changer_in_same_snapshot() -> None:
             "endpoint_bus_ref": terminal_bus_ref,
             "station": {
                 "station_type": "terminal",
-                "station_name": "Stacja B-2 koniec",
-                "sn_voltage_kv": 15.0,
+                # Koniec ciągu czyta `station.name`; napięcie SN wynika z szyny końca.
+                "name": "Stacja B-2 koniec",
                 "nn_voltage_kv": 0.4,
             },
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],

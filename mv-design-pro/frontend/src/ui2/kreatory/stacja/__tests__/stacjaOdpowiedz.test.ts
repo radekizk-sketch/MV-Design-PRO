@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Odczyt odpowiedzi operacji stacyjnej (kreator stacji, krok 8).
  *
@@ -27,16 +28,10 @@ function odpowiedz(refStacji: string): Odpowiedz {
       deleted_element_ids: [],
     },
     snapshot: {
-      substations: [
-        {
-          ref_id: refStacji,
-          meta: {
-            field_specs: [
-              { field_ref: 'field/1/in', meta: { field_role: 'LINIA_IN' } },
-              { field_ref: 'field/1/tr', meta: { field_role: 'TRANSFORMATOROWE' } },
-            ],
-          },
-        },
+      substations: [{ ref_id: refStacji, meta: {} }],
+      bays: [
+        { ref_id: 'field/1/in', bay_role: 'IN', field_role: 'LINIA_IN', substation_ref: refStacji },
+        { ref_id: 'field/1/tr', bay_role: 'TR', field_role: 'TRANSFORMATOROWE', substation_ref: refStacji },
       ],
     },
   } as unknown as Odpowiedz;

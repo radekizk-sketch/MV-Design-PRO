@@ -19,6 +19,7 @@ import pytest
 from application.station_templates import list_templates
 from application.station_templates.schema import (
     KATEGORIE_KORZENIA_MODELU,
+    grid_source_voltage_kv,
     resolve_template_default_shunt_choice,
     resolve_template_default_transformer_choice,
     shunt_capacitor_rated_kv,
@@ -58,16 +59,22 @@ def test_napiecie_jest_dodatnie_gdy_wyprowadzone() -> None:
         assert napiecie > 0.0, f"{szablon.id}: napięcie SN musi być dodatnie"
 
 
-def test_szablon_gpz_bierze_napiecie_ze_strony_dolnej_transformatora() -> None:
-    """GPZ 110/SN TWORZY szynę SN — jego napięciem pracy jest strona dolna."""
+def test_szablon_gpz_bierze_napiecie_z_rownowaznika_sieci_na_szynach_sn() -> None:
+    """GPZ 110/SN TWORZY szynę SN — karta GPZ-MODEL: równoważnik sieci podany na szynach
+    SN, transformatory 110/SN poza modelem, więc napięciem pracy jest napięcie znamionowe
+    DOMYŚLNEGO równoważnika szablonu (rekord katalogu źródła), a szablon nie oferuje
+    typów transformatora, z których napięcie mogłoby pochodzić po raz drugi."""
     gpz = [t for t in list_templates() if t.schema.grid_source_options]
-    assert gpz, "brak szablonów GPZ — test straciłby przedmiot"
+    assert len(gpz) == 3, "szablony GPZ: 15 kV × {4, 6} pól oraz 20 kV × 4 pola"
     for szablon in gpz:
-        transformator = resolve_template_default_transformer_choice(szablon)
-        assert transformator is not None
-        napiecie_gn_kv, napiecie_dn_kv = transformer_voltages_kv(transformator.catalog_ref)
-        assert napiecie_gn_kv == 110.0, f"{szablon.id}: GPZ zasilany z 110 kV"
-        assert sn_voltage_kv(szablon) == napiecie_dn_kv
+        assert resolve_template_default_transformer_choice(szablon) is None, szablon.id
+        assert not szablon.schema.transformer_options, szablon.id
+        domyslne = [o for o in szablon.schema.grid_source_options if o.default]
+        assert len(domyslne) == 1, f"{szablon.id}: dokładnie jeden domyślny równoważnik"
+        napiecie = grid_source_voltage_kv(domyslne[0].catalog_ref)
+        assert napiecie is not None and napiecie > 0.0, szablon.id
+        assert sn_voltage_kv(szablon) == napiecie, szablon.id
+    assert sorted(sn_voltage_kv(t) for t in gpz) == [15.0, 15.0, 20.0]
 
 
 def test_szablon_wpinany_bierze_napiecie_ze_strony_gornej_transformatora() -> None:
@@ -111,11 +118,11 @@ def test_pole_jest_w_kontrakcie_strukturalnym() -> None:
 @pytest.mark.parametrize(
     ("template_id", "oczekiwane_kv"),
     [
-        ("tpl_gpz_110_20_2x16mva_h5", 20.0),
+        ("tpl_gpz_sn_20_2s_4p", 20.0),
         ("tpl_kompensacja_1v8mvar_20kv", 20.0),
         ("tpl_abonencka_630kva_pomiar_20kv", 20.0),
         ("tpl_kompensacja_0v6mvar_15kv", 15.0),
-        ("tpl_gpz_110_15_2x16mva_h5", 15.0),
+        ("tpl_gpz_sn_15_2s_4p", 15.0),
     ],
 )
 def test_pomiar_rozkladu_napiec_jest_przypiety(template_id: str, oczekiwane_kv: float) -> None:
@@ -154,8 +161,8 @@ def test_korzenie_modelu_to_dokladnie_szablony_gpz() -> None:
     do kreatora wcięcia w magistralę."""
     korzenie = sorted(t.id for t in list_templates() if not template_wchodzi_w_segment(t))
     assert korzenie == [
-        "tpl_gpz_110_15_2x16mva_h5",
-        "tpl_gpz_110_15_2x25mva_h5",
-        "tpl_gpz_110_20_2x16mva_h5",
+        "tpl_gpz_sn_15_2s_4p",
+        "tpl_gpz_sn_15_2s_6p",
+        "tpl_gpz_sn_20_2s_4p",
     ]
     assert len(KATEGORIE_KORZENIA_MODELU) == 1

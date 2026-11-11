@@ -27,6 +27,7 @@ from application.station_templates.schema import (
     TorJednostkiDerSn,
     _first_default_choice,
     dobor_torow_der_sn,
+    grid_source_voltage_kv,
     liczba_calkowita_parametru,
     obciazenie_odplywu_kw,
     parametr_calkowity_szablonu,
@@ -40,12 +41,16 @@ from application.station_templates.schema import (
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
+from enm.pola import pola_nn_stacji, pola_sn_stacji
 from enm.rodzaj_stacji import rodzaj_ze_skladu_pol
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.tor_pola import pola_do_domkniecia
-from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
+from network_model.pochodne.pasma_napieciowe import (
+    pasmo_napieciowe,
+    to_samo_napiecie_znamionowe,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -174,11 +179,13 @@ def _zastosuj_gpz_pod_blokada(
     """Zastosuj szablon GPZ (rola A, V12T-016) — `add_grid_source_sn`, KORZEŃ
     modelu, nie wcięcie w segment.
 
-    Impedancja układu WN/SN NIE dubluje się (patrz `templates/gpz_110_sn.py`
-    docstring): równoważnik systemowy (`grid_source_options`, ZRODLO_SN) niesie
-    Sk3/R/X widziane z szyny SN, transformator(y) WN/SN materializują się OBOK
-    (tabliczka + SLD). Uziemienie punktu neutralnego: `isolated` — jedyny
-    wybór bez fabrykowanego R/X (najczęstszy w sieciach SN 15/20 kV).
+    Granica zasilania SN (karta GPZ-MODEL, `templates/gpz_110_sn.py` docstring):
+    równoważnik systemowy (`grid_source_options`, ZRODLO_SN) niesie Sk3/R/X widziane
+    z szyny SN, więc transformatory 110/SN nie są elementami modelu i szablon ich nie
+    tworzy. Napięcie SN = napięcie znamionowe wybranego równoważnika z katalogu
+    (`grid_source_voltage_kv` — ta sama liczba, którą materializuje operacja).
+    Uziemienie punktu neutralnego: `isolated` — jedyny wybór bez fabrykowanego R/X
+    (najczęstszy w sieciach SN 15/20 kV).
     """
     overrides = params_override or {}
 
@@ -187,12 +194,6 @@ def _zastosuj_gpz_pod_blokada(
     enm = _get_enm(klucz)
     enm_dict: dict[str, Any] = enm.model_dump(mode="json")
 
-    transformer_ref = parametry.transformer_ref
-    if not transformer_ref:
-        raise TemplateApplyError(
-            code="template.transformer_catalog_missing",
-            message_pl=f"Szablon „{template.name_pl}” nie wskazuje transformatora WN/SN.",
-        )
     source_ref = overrides.get("grid_source_ref") or _cascade_manufacturer_choice(
         template.schema.grid_source_options, catalog_profile
     )
@@ -212,15 +213,14 @@ def _zastosuj_gpz_pod_blokada(
             code="template.sn_bay_apparatus_missing",
             message_pl=f"Szablon „{template.name_pl}” nie wskazuje aparatu pól liniowych GPZ.",
         )
-    transformer_count = parametry.transformer_count
     line_fields_per_section = parametry.sn_bays_count
-    voltage_kv = transformer_voltages_kv(transformer_ref)[1]
+    voltage_kv = grid_source_voltage_kv(source_ref)
     if voltage_kv is None:
         raise TemplateApplyError(
-            code="template.transformer_catalog_missing",
+            code="template.grid_source_catalog_missing",
             message_pl=(
-                f"Szablon „{template.name_pl}”: katalog nie ma napięcia dolnego strony "
-                f"transformatora ({opis_pozycji_katalogu(transformer_ref, None, 'typ')})."
+                f"Szablon „{template.name_pl}”: katalog nie ma napięcia znamionowego "
+                f"równoważnika sieci ({opis_pozycji_katalogu(source_ref, None, 'typ')})."
             ),
         )
 
@@ -230,16 +230,14 @@ def _zastosuj_gpz_pod_blokada(
         "voltage_kv": voltage_kv,
         "catalog_ref": source_ref,
         "sections_count": _GPZ_SECTIONS_COUNT,
-        "transformer_count": transformer_count,
-        "transformer_catalog_ref": transformer_ref,
-        "line_fields_count": line_fields_per_section,
+        "line_fields_per_section": line_fields_per_section,
         "gpz_line_field_apparatus": {
             "catalog_ref": apparatus_ref,
             "apparatus_kind": "BREAKER",
         },
-        # Sieć izolowana — najczęstszy wybór polskich sieci SN 15/20 kV, bez
-        # fabrykowanego R/X rezystora/dławika (katalog produkcyjny go nie niesie).
-        "grounding": {"type": "isolated"},
+        # Bez opisu uziemienia na równoważniku SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0
+        # pkt 3): sieć bez zespołu uziemiającego jest izolowana z MODELU
+        # (`enm.uziemienie_sekcji`); uziemienie sekcji dodaje się zespołem uziemiającym.
     }
     result = execute_domain_operation(
         enm_dict=enm_dict, op_name="add_grid_source_sn", payload=payload
@@ -311,7 +309,7 @@ def _zastosuj_szablon_pod_blokada(
     # B-12: aparat pola SN pochodzi z JAWNEGO wskazania (override projektanta →
     # opcje roli → wspólne opcje szablonu). Brak wskazania = błąd szablonu,
     # nigdy zaszyty typ.
-    sn_field_specs = _resolve_sn_field_specs(
+    sn_fields = _resolve_sn_fields(
         template,
         bay_roles=sn_bay_roles,
         overrides=overrides,
@@ -330,7 +328,9 @@ def _zastosuj_szablon_pod_blokada(
 
     nn_voltage_kv = transformer_voltages_kv(transformer_ref)[1] or 0.4
     station_spec: dict[str, Any] = {
-        "name_pl": template.name_pl,
+        # `station.name` — klucz czytany przez OBIE drogi zabudowy (wcięcie w odcinek
+        # i koniec ciągu); dawny `name_pl` czytało tylko wcięcie, na końcu ciągu przepadał.
+        "name": template.name_pl,
         # BEZ `sn_voltage_kv` jawnego (KLASA NIE INSTANCJA, V12T-016): sztywne
         # `15` przesłaniało topologiczne dziedziczenie napięcia z segmentu
         # (`insert_station_on_segment_sn`: „Napięcia — topologiczne
@@ -400,7 +400,7 @@ def _zastosuj_szablon_pod_blokada(
             overrides=overrides,
             station_spec=station_spec,
             transformer_spec=transformer_spec,
-            sn_field_specs=sn_field_specs,
+            sn_fields=sn_fields,
             nn_block_spec=nn_block_spec,
             operations_log=operations_log,
             wspolny_aparat_pol=wspolny_aparat_pol,
@@ -412,7 +412,7 @@ def _zastosuj_szablon_pod_blokada(
             "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
             "station": {**station_spec, "station_type": _resolve_station_type(sn_bay_roles)},
             "transformer": transformer_spec,
-            "sn_fields": sn_field_specs,
+            "sn_fields": sn_fields,
             "nn_block": nn_block_spec,
         }
         if wspolny_aparat_pol:
@@ -485,7 +485,6 @@ def _zastosuj_szablon_pod_blokada(
                 enm_dict=enm_dict,
                 op_name="add_nn_load",
                 payload={
-                    "station_ref": station_ref,
                     "bus_nn_ref": nn_bus_ref,
                     "feeder_ref": feeder_ref,
                     "catalog_ref": load_catalog_ref,
@@ -775,7 +774,7 @@ def _szyna_nn_stacji(
             napiecie = float(surowe_napiecie)
         except (TypeError, ValueError):
             continue
-        if abs(napiecie - nn_voltage_kv) < 1e-9:
+        if to_samo_napiecie_znamionowe(napiecie, nn_voltage_kv):
             return str(bus.get("ref_id"))
     return None
 
@@ -796,7 +795,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     overrides: dict[str, Any],
     station_spec: dict[str, Any],
     transformer_spec: dict[str, Any],
-    sn_field_specs: list[dict[str, Any]],
+    sn_fields: list[dict[str, Any]],
     nn_block_spec: dict[str, Any],
     operations_log: list[dict[str, Any]],
     wspolny_aparat_pol: str | None,
@@ -941,7 +940,7 @@ def _zabuduj_stacje_w_odgalezieniu(
             # szablonu: za rozdzielnicą klienta nie ma dokąd prowadzić tranzytu.
             "station": {**station_spec, "name": template.name_pl, "station_type": "terminal"},
             "transformer": transformer_spec,
-            "sn_fields": sn_field_specs,
+            "sn_fields": sn_fields,
             "nn_block": nn_block_spec,
             **({"field_apparatus_catalog_ref": wspolny_aparat_pol} if wspolny_aparat_pol else {}),
         },
@@ -1022,57 +1021,35 @@ def _station_nn_feeder_refs(
     station_ref: str | None,
     nn_bus_ref: str | None,
 ) -> list[str]:
+    """Pola odpływowe nN stacji na szynie nN szablonu — rekordy `bays` (`enm.pola.
+    pola_nn_stacji`, poziom z JEDNEGO predykatu `czy_pole_nn`), w kolejności zapisu."""
     if not station_ref or not nn_bus_ref:
         return []
-    for substation in enm_dict.get("substations", []):
-        if not isinstance(substation, dict) or substation.get("ref_id") != station_ref:
-            continue
-        meta = substation.get("meta")
-        if not isinstance(meta, dict):
-            return []
-        refs: list[str] = []
-        raw_specs = meta.get("nn_field_specs")
-        if not isinstance(raw_specs, list):
-            return refs
-        for spec in raw_specs:
-            if not isinstance(spec, dict):
-                continue
-            if spec.get("bay_role") != "FEEDER" or spec.get("bus_ref") != nn_bus_ref:
-                continue
-            field_ref = spec.get("field_ref")
-            if isinstance(field_ref, str) and field_ref.strip():
-                refs.append(field_ref)
-        return refs
-    return []
+    return [
+        str(rekord["ref_id"])
+        for rekord in pola_nn_stacji(enm_dict, station_ref)
+        if rekord.get("bay_role") == "FEEDER" and rekord.get("bus_ref") == nn_bus_ref
+    ]
 
 
 def _measurement_field_ref(enm_dict: dict[str, Any], station_ref: str | None) -> str | None:
-    """`field_ref` pola SN o roli `MEASUREMENT` stacji (Step 5 — CT/VT).
+    """Identyfikator pola SN o roli `MEASUREMENT` stacji (Step 5 — CT/VT).
 
-    Czyta `meta.field_specs` — TĘ SAMĄ tablicę, którą wypełniają OBIE drogi
-    zabudowy (`insert_station_on_segment_sn` i `append_station_on_endpoint`,
-    „parytet" udokumentowany przy tworzeniu pola SN), więc działa niezależnie
-    od klasy przyłączenia. `None` gdy stacja nie ma pola pomiarowego (szablon
-    bez roli MEASUREMENT) — uczciwy brak, Step 5 wtedy nic nie robi."""
+    Czyta rekordy `bays` stacji (`enm.pola.pola_sn_stacji`) — TEN SAM nośnik, który
+    wypełniają OBIE drogi zabudowy (`insert_station_on_segment_sn` i
+    `append_station_on_endpoint`), więc działa niezależnie od klasy przyłączenia. `None`
+    gdy stacja nie ma pola pomiarowego (szablon bez roli MEASUREMENT) — uczciwy brak,
+    Step 5 wtedy nic nie robi."""
     if not station_ref:
         return None
-    for substation in enm_dict.get("substations", []):
-        if not isinstance(substation, dict) or substation.get("ref_id") != station_ref:
-            continue
-        meta = substation.get("meta")
-        if not isinstance(meta, dict):
-            return None
-        raw_specs = meta.get("field_specs")
-        if not isinstance(raw_specs, list):
-            return None
-        for spec in raw_specs:
-            if not isinstance(spec, dict) or spec.get("bay_role") != "MEASUREMENT":
-                continue
-            field_ref = spec.get("field_ref")
-            if isinstance(field_ref, str) and field_ref.strip():
-                return field_ref
-        return None
-    return None
+    return next(
+        (
+            str(rekord["ref_id"])
+            for rekord in pola_sn_stacji(enm_dict, station_ref)
+            if rekord.get("bay_role") == "MEASUREMENT"
+        ),
+        None,
+    )
 
 
 def _szyna_sn_stacji_dla_szablonu(
@@ -1288,7 +1265,6 @@ def _topologia_toru_der_sn(tor: TorJednostkiDerSn, sn_bus_ref: str) -> dict[str,
             "catalog_ref": tor.transformator_ref,
             "catalog_binding": _catalog_binding("TRAFO_SN_NN", tor.transformator_ref),
         },
-        "has_dedicated_mv_field": True,
         "mv_bus_ref": sn_bus_ref,
         "mv_field_configuration": {
             "switching_device": tor.lacznik_pola,
@@ -1300,7 +1276,7 @@ def _topologia_toru_der_sn(tor: TorJednostkiDerSn, sn_bus_ref: str) -> dict[str,
     }
 
 
-def _resolve_sn_field_specs(
+def _resolve_sn_fields(
     template: StationTemplate,
     *,
     bay_roles: list[str],

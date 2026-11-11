@@ -19,6 +19,7 @@ import {
 import { useSelectionStore } from '../../../ui/selection';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
+  KontrolaPrzedZapisem,
   KreatorGotowosc,
   KreatorInfo,
   KreatorNastepnyKrok,
@@ -29,7 +30,11 @@ import {
   PanelTeorii,
   PoleKatalogu,
   RzadWartosci,
+  TekstZWzorami,
+  komunikatProby,
+  useProbaOperacji,
   useSelekcjaPoOperacji,
+  wierszProby,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -38,7 +43,6 @@ import {
   fmtKlasa,
   fmtKv,
   maMiejsce,
-  napiecieNiezgodne,
   parametryZKatalogu,
   walidujFormularz,
   zbudujPayload,
@@ -71,13 +75,11 @@ function kontekstZOperacji(
     trimmed(context?.bus_ref) || (selected && selected.type === 'Bus' ? selected.id : '');
   const busName =
     trimmed(context?.bus_name) || (selected && selected.type === 'Bus' ? selected.name : '');
-  const rawV = Number(context?.bus_voltage_kv ?? context?.voltage_kv);
   return {
     field_ref: fieldRef || undefined,
     field_name: fieldName || undefined,
     bus_ref: busRef || undefined,
     bus_name: busName || undefined,
-    bus_voltage_kv: Number.isFinite(rawV) && rawV > 0 ? rawV : undefined,
   };
 }
 
@@ -139,7 +141,7 @@ export function KreatorOgranicznikaSn() {
     () =>
       typy.map((t) => ({
         id: t.id,
-        etykieta: `${t.name} · U_m ${t.u_m_kv} kV · BIL ${t.bil_protected_kv} kV`,
+        etykieta: `${t.name} · $U_m$ ${t.u_m_kv} kV · BIL ${t.bil_protected_kv} kV`,
       })),
     [typy],
   );
@@ -153,7 +155,6 @@ export function KreatorOgranicznikaSn() {
 
   const bladDlaPola = (pole: string): string | undefined =>
     bledy.find((b) => b.field === pole)?.message;
-  const napBlad = napiecieNiezgodne(params, kontekst);
   const miejsceLabel = kontekst.field_name || kontekst.field_ref || kontekst.bus_name || kontekst.bus_ref || '—';
 
   const onZapisz = useCallback(async () => {
@@ -199,6 +200,15 @@ export function KreatorOgranicznikaSn() {
     selekcjaPoOperacji,
   ]);
 
+  // Zgodność U_m z napięciem sieci (IEC 60071-1) i każdą inną regułę operacji ocenia
+  // WYŁĄCZNIE operacja — próbą `dry_run` z ładunkiem zapisu; UI nie porównuje napięć.
+  const ladunekProby = useMemo(
+    () => (hasMiejsce && walidujFormularz(dane).length === 0 ? zbudujPayload(dane, kontekst) : null),
+    [dane, hasMiejsce, kontekst],
+  );
+  const proba = useProbaOperacji(activeCaseId, 'add_surge_arrester_sn', ladunekProby);
+  const odmowaProby = proba?.stan === 'odrzucona' || proba?.stan === 'nieustalona';
+
   const wierszeGotowosci: WierszGotowosci[] = [
     {
       etykieta: T.wierszTyp,
@@ -212,21 +222,22 @@ export function KreatorOgranicznikaSn() {
     },
     {
       etykieta: T.wierszUm,
-      stan: napBlad ? 'ostrzezenie' : params ? 'kompletne' : 'ostrzezenie',
-      wartosc: napBlad ? 'Niezgodne' : fmtKv(params?.u_m_kv),
+      stan: params ? 'kompletne' : 'ostrzezenie',
+      wartosc: fmtKv(params?.u_m_kv),
     },
     {
       etykieta: T.wierszBil,
       stan: params ? 'kompletne' : 'ostrzezenie',
       wartosc: fmtKv(params?.bil_protected_kv),
     },
+    wierszProby(proba),
   ];
 
   const aside = (
     <>
       <KreatorPodsumowanie
         tytul={T.podsumowanieTytul}
-        komunikat={napBlad ? T.ostrzezenieNapiecie : null}
+        komunikat={odmowaProby ? komunikatProby(proba) : null}
         komunikatTon="warn"
         testid="mvd-kreator-ogranicznik-podsumowanie"
       >
@@ -238,7 +249,7 @@ export function KreatorOgranicznikaSn() {
             <RzadWartosci etykieta={T.paramBil} wartosc={fmtKv(params.bil_protected_kv)} />
           </>
         ) : (
-          <p className="mvd-podsum-komunikat">{T.typPomoc}</p>
+          <p className="mvd-podsum-komunikat"><TekstZWzorami tekst={T.typPomoc} /></p>
         )}
       </KreatorPodsumowanie>
       <KreatorGotowosc
@@ -349,6 +360,7 @@ export function KreatorOgranicznikaSn() {
             <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p>
           ) : null}
           {paramReadout}
+          <KontrolaPrzedZapisem proba={proba} testid="mvd-kreator-ogranicznik-proba" />
           <PanelTeorii
             tytul={T.teoriaTytul}
             opis={T.teoriaOpis}

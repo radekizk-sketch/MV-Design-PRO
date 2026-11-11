@@ -23,6 +23,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Zrzuty do oceny właściciela (dyrektywa #8) — ŻYWA aplikacja, oba motywy. */
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
@@ -38,7 +39,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string }>;
+    branches?: Array<{ ref_id: string; type?: string; name?: string }>;
   };
 };
 
@@ -88,6 +89,26 @@ async function executeDomainOp(
   const body = (await response.json()) as DomainOpResponse;
   expect(body.error ?? null).toBeNull();
   return body;
+}
+
+/** Rozłącznik sekcyjny z katalogu na odcinku + punkt normalnie otwarty na nim (W5-C). */
+async function wstawLacznikNormalnieOtwarty(
+  request: APIRequestContext,
+  caseId: string,
+  segmentRef: string,
+): Promise<string> {
+  const nazwa = 'Łącznik sekcyjny NO';
+  const op = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
+    segment_id: segmentRef,
+    insert_at: { mode: 'RATIO', value: 0.5 },
+    switch_type: 'ROZLACZNIK',
+    switch_name: nazwa,
+    catalog_binding: buildCatalogBinding('APARAT_SN', 'sw-ls-schneider-rm6-17kv-400a'),
+  });
+  const lacznik = (op.snapshot?.branches ?? []).find((b) => b.name === nazwa)?.ref_id;
+  expect(lacznik, 'rozłącznik sekcyjny w modelu').toBeTruthy();
+  await executeDomainOp(request, caseId, 'set_normal_open_point', { switch_ref: lacznik });
+  return lacznik!;
 }
 
 async function pobierzGotowosc(
@@ -151,7 +172,6 @@ async function otworzPowlokeZKontekstem(
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -187,9 +207,9 @@ async function przeladujPowloke(page: Page): Promise<void> {
 async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   fs.mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-dark.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-light.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 /** Liczba blokad wg SERWERA (źródło 1). */
@@ -240,8 +260,6 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse | null = null;
   for (const [idx, dlugosc] of [300, 250].entries()) {
@@ -260,9 +278,10 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   // --- BLOKADA GOTOWOŚCI: łącznik normalnie otwarty odcina ciąg od źródła ---
   // (realna sytuacja projektowa: NOP na pierwszym odcinku ⇒ wyspa bez zasilania,
   // walidator zwraca blokadę E003 wskazującą SZYNY — czyli węzły drzewa.)
-  await executeDomainOp(request, seed.caseId, 'set_normal_open_point', {
-    switch_ref: segmenty[0],
-  });
+  // Karta W5-C: punktem normalnie otwartym jest WYŁĄCZNIE łącznik (odcinek linii nie ma
+  // pozycji normalnej) — projektant wstawia rozłącznik sekcyjny z katalogu na pierwszym
+  // odcinku i przenosi na niego punkt podziału (dawniej spec wskazywał sam odcinek).
+  const lacznik = await wstawLacznikNormalnieOtwarty(request, seed.caseId, segmenty[0]);
 
   // ŹRÓDŁO 1 (serwer): blokada istnieje i wskazuje szyny obecne w drzewie.
   const gotowoscPrzed = await pobierzGotowosc(request, seed.caseId);
@@ -292,7 +311,7 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   await expect(badge.locator('.mvd-tree-badge-blokady')).toHaveText('1');
 
   // ŹRÓDŁO 3 (chrom powłoki) — ta sama liczba blokad co u serwera.
-  await expect(page.getByTestId('mvd-casebar-readiness')).toContainText(
+  await expect(page.getByTestId('mvd-status-gotowosc')).toContainText(
     String(blokadySerwera(gotowoscPrzed)),
   );
 
@@ -308,10 +327,7 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   );
 
   // --- NAPRAWA blokady: zamkniecie lacznika przywraca zasilanie ciagu -------
-  await executeDomainOp(request, seed.caseId, 'update_element_parameters', {
-    element_ref: segmenty[0],
-    parameters: { status: 'closed' },
-  });
+  await executeDomainOp(request, seed.caseId, 'close_switch', { switch_ref: lacznik });
 
   const gotowoscPo = await pobierzGotowosc(request, seed.caseId);
   expect(blokadySerwera(gotowoscPo)).toBe(0);
@@ -324,5 +340,5 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   await expect(page.getByTestId(`mvd-tree-badge-${pierwszaSzyna}`)).toHaveCount(0, {
     timeout: 20000,
   });
-  await expect(page.getByTestId('mvd-casebar-readiness')).not.toContainText('blokad');
+  await expect(page.getByTestId('mvd-status-gotowosc')).not.toContainText('blokad');
 });

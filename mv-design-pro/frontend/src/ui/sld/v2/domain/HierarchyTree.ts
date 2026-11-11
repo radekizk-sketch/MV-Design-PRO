@@ -8,6 +8,7 @@
  * Zastępuje generyczny `topologyAdapterV2.ts` (V1 graph approach).
  */
 
+import type { BayModelRole } from '../../../../types/enm';
 import type { PortKind } from '../core/ports';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { szynyStacji, type GalazDlaSzyn } from '../../../shared/szynyStacji';
@@ -45,7 +46,7 @@ export interface Section {
 export interface Bay {
   readonly id: string;
   readonly designation: string;
-  readonly bayRole: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+  readonly bayRole: BayModelRole;
   readonly templateRef: string | null;
   readonly devices: readonly Device[];
   readonly externalPortKinds: readonly PortKind[];
@@ -63,7 +64,9 @@ export interface Device {
     | 'FUSE'
     | 'SURGE_ARRESTER'
     | 'CABLE_HEAD'
-    | 'TRANSFORMER_DEVICE';
+    | 'TRANSFORMER_DEVICE'
+    | 'UNBALANCE_CT'
+    | 'PHASE_TO_PHASE_VT';
   readonly designationQ: string;
   readonly state: 'closed' | 'open' | 'unknown' | 'fault';
   readonly positionInBay: number;
@@ -83,7 +86,6 @@ export interface CableRun {
   readonly startingPortId: string;
   readonly segments: readonly RunSegment[];
   readonly stations: readonly StationOnRun[];
-  readonly nopStationId: string | null;
   readonly parentRunId: string | null;
   readonly branchOriginStationId: string | null;
 }
@@ -130,18 +132,22 @@ export interface EnmInputForHierarchy {
     name: string;
     station_type: string;
     bus_refs: readonly string[];
-    /** Metadane stacji (`field_specs`, `nn_field_specs`) — dla lustra `szynyStacji`. */
     meta?: unknown;
     gpz_sections?: readonly EnmGpzSection[];
     nn_voltage_levels?: readonly number[];
     external_ports?: readonly EnmPort[];
   }>;
+  /** Rekordy pól (karta W5-B: jedyny nośnik pól SN, nN i ZKSN) — sekcje GPZ i lustro
+   *  `szynyStacji` (zaciski pól SN, aparaty pól nN z `equipment_refs`). */
   readonly bays: ReadonlyArray<{
     ref_id: string;
     name: string;
-    bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
-    substation_ref: string;
+    bay_role: BayModelRole;
+    substation_ref?: string | null;
+    branch_point_ref?: string | null;
     bus_ref: string;
+    terminal_bus_ref?: string | null;
+    equipment_refs?: readonly string[];
     bay_template_ref?: string | null;
     ports?: readonly EnmPort[];
   }>;
@@ -163,7 +169,6 @@ export interface EnmInputForHierarchy {
     starting_port_ref: string;
     segments: readonly { segment_ref: string; order: number }[];
     stations: readonly { substation_ref: string; order: number }[];
-    nop_station_ref?: string | null;
     parent_run_ref?: string | null;
     branch_origin_station_ref?: string | null;
   }>;
@@ -275,7 +280,7 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
 
     // SC param z source przyłączonego do GPZ (jeżeli istnieje)
     // SZYNY-STACJI-LUSTRO: źródło na szynie GPZ z jednego lustra `szynyStacji`.
-    const szynyGpz = szynyStacji(gpzSub, enm.branches ?? []);
+    const szynyGpz = szynyStacji(enm, gpzSub);
     const gpzSource = enm.sources.find((s) => s.bus_ref && szynyGpz.has(s.bus_ref));
 
     gpz.push({
@@ -323,7 +328,6 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
       startingPortId: lr.starting_port_ref,
       segments: [], // wypełniana z OverheadLine/Cable z lr.segments[].segment_ref
       stations,
-      nopStationId: lr.nop_station_ref ?? null,
       parentRunId: lr.parent_run_ref ?? null,
       branchOriginStationId: lr.branch_origin_station_ref ?? null,
     });

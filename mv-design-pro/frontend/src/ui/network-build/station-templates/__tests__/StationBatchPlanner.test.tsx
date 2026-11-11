@@ -161,7 +161,7 @@ describe('StationBatchPlanner', () => {
     // szablonu, ze statusem „brak szablonu"), więc projektant może zacząć uzupełniać
     // długości w trakcie pobierania. Spóźnione `setTemplates` przestawiało wtedy CAŁY
     // plan od zera i jego wpisy przepadały bez żadnego komunikatu.
-    let wypuscSzablony: (() => void) | null = null;
+    let wypuscSzablony = (): void => undefined;
     const oczekiwanie = new Promise<Response>((resolve) => {
       wypuscSzablony = () => resolve(response({ templates, total: templates.length }));
     });
@@ -184,7 +184,7 @@ describe('StationBatchPlanner', () => {
     expect((screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement).value).toBe('777');
 
     // Teraz szablony dochodzą — plan jest przebudowywany.
-    wypuscSzablony?.();
+    wypuscSzablony();
     await waitFor(() => {
       expect(screen.getByTestId('station-batch-row-1').textContent).toContain('Stacja SN/nN 630 kVA');
     });

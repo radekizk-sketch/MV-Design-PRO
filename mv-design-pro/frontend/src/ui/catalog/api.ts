@@ -3,6 +3,7 @@ import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker'
 import type { Manufacturer } from './manufacturer';
 import type { FactoryConfigurationWire, SwitchgearFamily } from './SwitchgearFamilyPicker';
 import { executeDomainOp } from '../topology/domainApi';
+import type { KartaWidmowa } from '../../types/enm';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
@@ -26,7 +27,11 @@ import type {
   SourceSystemCatalogType,
   SwitchEquipmentType,
   ShuntCapacitorCatalogType,
+  EarthingTransformerCatalogType,
+  ArcSuppressionCoilCatalogType,
+  NeutralEarthingResistorCatalogType,
   SurgeArresterCatalogType,
+  SynchronousGeneratorCatalogType,
   TapChangerCatalogType,
   TransformerType,
   TypeCategory,
@@ -87,6 +92,9 @@ export type CatalogListItem =
   | BranchPointCatalogType
   | SurgeArresterCatalogType
   | ShuntCapacitorCatalogType
+  | EarthingTransformerCatalogType
+  | ArcSuppressionCoilCatalogType
+  | NeutralEarthingResistorCatalogType
   | PtpireeGeneratorCertificateCatalogType;
 
 const DECATALOGING_BLOCKED_MESSAGE =
@@ -306,6 +314,23 @@ export async function fetchLoadTypes(): Promise<LoadCatalogType[]> {
 }
 
 /**
+ * Generatory synchroniczne SN (przestrzeń `GENERATOR_SN`) — typy przyjmowane przez operację
+ * `add_generator_sn`. Lista projektanta: backend pomija pozycje benchmarków.
+ */
+/**
+ * Karty widmowe KATALOGU STATYCZNEGO (`GET /api/catalog/karty-widmowe`, karta AB-H0 §0.7) —
+ * karty z dokumentem producenta. Karty PROJEKTU niesie model (`katalog_projektu.karty_widmowe`),
+ * nie ta lista.
+ */
+export async function fetchKartyWidmowe(): Promise<KartaWidmowa[]> {
+  return fetchCatalogJson<KartaWidmowa[]>('/api/catalog/karty-widmowe');
+}
+
+export async function fetchSynchronousGeneratorTypes(): Promise<SynchronousGeneratorCatalogType[]> {
+  return fetchCatalogJson<SynchronousGeneratorCatalogType[]>('/api/catalog/synchronous-generator-types');
+}
+
+/**
  * Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`) —
  * dokładnie te pozycje, które przyjmuje operacja `add_relay`. Lista
  * `fetchProtectionDeviceTypes` (biblioteka analityczna koordynacji) NIE nadaje
@@ -348,6 +373,23 @@ export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogTyp
 
 export async function fetchShuntCapacitorTypes(): Promise<ShuntCapacitorCatalogType[]> {
   return fetchCatalogJson<ShuntCapacitorCatalogType[]>('/api/catalog/shunt-capacitor-types');
+}
+
+/** Transformatory uziemiające ZNyn11 — katalog operacji `add_zespol_uziemiajacy_sn`. */
+export async function fetchEarthingTransformerTypes(): Promise<EarthingTransformerCatalogType[]> {
+  return fetchCatalogJson<EarthingTransformerCatalogType[]>('/api/catalog/earthing-transformer-types');
+}
+
+/** Dławiki gaszące — katalog operacji `add_zespol_uziemiajacy_sn`. */
+export async function fetchArcSuppressionCoilTypes(): Promise<ArcSuppressionCoilCatalogType[]> {
+  return fetchCatalogJson<ArcSuppressionCoilCatalogType[]>('/api/catalog/arc-suppression-coil-types');
+}
+
+/** Rezystory uziemiające — katalog operacji `add_zespol_uziemiajacy_sn`. */
+export async function fetchNeutralEarthingResistorTypes(): Promise<NeutralEarthingResistorCatalogType[]> {
+  return fetchCatalogJson<NeutralEarthingResistorCatalogType[]>(
+    '/api/catalog/neutral-earthing-resistor-types',
+  );
 }
 
 export async function fetchPtpireeGeneratorCertificates(): Promise<PtpireeGeneratorCertificateCatalogType[]> {
@@ -737,6 +779,15 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
     case 'SHUNT_CAPACITOR':
       types = await fetchShuntCapacitorTypes();
       break;
+    case 'EARTHING_TRANSFORMER':
+      types = await fetchEarthingTransformerTypes();
+      break;
+    case 'ARC_SUPPRESSION_COIL':
+      types = await fetchArcSuppressionCoilTypes();
+      break;
+    case 'NEUTRAL_EARTHING_RESISTOR':
+      types = await fetchNeutralEarthingResistorTypes();
+      break;
     case 'PTPIREE_CERTIFICATE':
       types = await fetchPtpireeGeneratorCertificates();
       break;
@@ -780,7 +831,6 @@ export async function assignTypeToBranch(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: branchId,
     catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-    source_mode: 'KATALOG',
   });
 }
 
@@ -792,7 +842,6 @@ export async function assignTypeToTransformer(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: transformerId,
     catalog_binding: buildCatalogBinding('TRAFO_SN_NN', typeId),
-    source_mode: 'KATALOG',
   });
 }
 
@@ -805,7 +854,6 @@ export async function assignEquipmentTypeToSwitch(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: switchId,
     catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-    source_mode: 'KATALOG',
   });
 }
 

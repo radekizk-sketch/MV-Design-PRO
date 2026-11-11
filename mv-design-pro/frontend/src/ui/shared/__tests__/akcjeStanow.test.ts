@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KD-8 poz. 4 — KONTRAKT SYSTEMU STANÓW AKCJI.
  *

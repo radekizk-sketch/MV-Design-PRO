@@ -99,8 +99,6 @@ def _ciag_sn() -> tuple[dict[str, Any], str, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": REF_ZRODLO,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snapshot = _wykonaj(
@@ -144,9 +142,6 @@ def _blok_stacji() -> dict[str, Any]:
             "source_converter_kind": "PV",
             # Tabliczka w payloadzie CELOWO sprzeczna z katalogiem (0,5 MW / 0,55 MVA):
             # po naprawie wygrywa katalog, payload nie może wstrzyknąć mocy do rozpływu.
-            "source_converter_un_kv": 0.4,
-            "source_converter_sn_mva": 9.9,
-            "source_converter_pmax_mw": 9.9,
             "outgoing_feeders_nn_count": 1,
             "source_protection": {
                 "device_catalog_ref": REF_ZABEZPIECZENIE_ZRODLA,
@@ -333,7 +328,7 @@ def test_operacje_stacyjne_nie_czytaja_referencji_spoza_inwentarza() -> None:
         "_materialize_sn_field_apparatus_catalog",
         "_sn_field_apparatus_catalog_ref",
         "_payload_field_apparatus_catalog_ref",
-        "_build_nn_field_specs",
+        "_zbuduj_pola_nn",
         "_materialize_station_auxiliary_load",
     }
     wezly = [
@@ -426,8 +421,6 @@ def test_literowka_odrzucona_w_torze_payloadu(
                     "voltage_kv": 15.0,
                     "sk3_mva": 250.0,
                     "catalog_ref": REF_ZRODLO,
-                    "hv_voltage_kv": 110.0,
-                    "transformer_sn_mva": 25.0,
                 },
             }
         },

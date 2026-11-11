@@ -343,7 +343,7 @@
 .mvd-insp-petla-uklad {
   margin: 0;
   font-size: 12px;
-  color: var(--mvd-ink-2);
+  color: var(--mvd-muted);
 }
 .mvd-insp-petla-dl {
   margin: 0;
@@ -358,7 +358,7 @@
   font-size: 12px;
 }
 .mvd-insp-petla-para dt {
-  color: var(--mvd-ink-2);
+  color: var(--mvd-muted);
 }
 .mvd-insp-petla-para dd {
   margin: 0;
@@ -368,5 +368,5 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--mvd-ink-2);
+  color: var(--mvd-muted);
 }

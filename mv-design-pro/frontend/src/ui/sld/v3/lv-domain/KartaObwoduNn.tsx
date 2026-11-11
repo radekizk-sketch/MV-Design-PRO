@@ -284,7 +284,7 @@ export function KartaObwoduNn({
   wysokosc,
   onClose,
 }: KartaObwoduNnProps): JSX.Element {
-  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  const szczegolyAudytowe = useShellStore((stan) => stan.szczegolyAudytowe);
   const graf = projection.graph;
   const ref = feeder.feeder_root_branch_ref;
   const urzadzenie = graf.devices.find((d) => d.ref_id === ref);
@@ -392,7 +392,7 @@ export function KartaObwoduNn({
 
       <div style={{ padding: '0 10px 8px' }}>
         <InformacjeAudytowe
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           testid="karta-obwodu-informacje-audytowe"
           wiersze={[
             { etykieta: 'Rewizja modelu', wartosc: String(projection.model_snapshot.revision) },

@@ -131,7 +131,17 @@ describe('EkranImportuArkusza — stan zerowy i format arkusza', () => {
     render(<EkranImportuArkusza onZamknij={vi.fn()} />);
     expect(screen.getByRole('heading', { level: 2, name: T.tytul })).toBeTruthy();
     expect(screen.getByText(T.cel)).toBeTruthy();
-    expect(screen.getByText(T.formatOpis)).toBeTruthy();
+    expect(screen.getByText(T.formatWstep)).toBeTruthy();
+    expect(screen.getByText(T.formatTyp)).toBeTruthy();
+    // Nazwy kolumn jako kod — każda kolumna arkuszy wymaganych i tabliczek osobnym elementem.
+    const kolumny = screen.getByTestId('mvd-ark-kolumny');
+    for (const grupa of [...T.formatArkusze, ...T.formatTabliczki]) {
+      for (const kolumna of grupa.kolumny) {
+        expect(
+          Array.from(kolumny.querySelectorAll('code')).some((el) => el.textContent === kolumna),
+        ).toBe(true);
+      }
+    }
   });
 
   it('bez wybranego pliku pokazuje uczciwy stan zerowy zamiast martwych przycisków', () => {
@@ -273,14 +283,13 @@ describe('EkranImportuArkusza — import do modelu', () => {
   });
 
   it.each([
-    ['basic', false],
-    ['extended', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ] as const)(
     'odcisk modelu w informacjach audytowych — tryb %s → widoczne: %s',
     async (tryb, widoczne) => {
-      const poprzedni = useShellStore.getState().advancementMode;
-      useShellStore.setState({ advancementMode: tryb });
+      const poprzedni = useShellStore.getState().szczegolyAudytowe;
+      useShellStore.setState({ szczegolyAudytowe: tryb });
       try {
         const user = userEvent.setup();
         vi.stubGlobal('fetch', vi.fn(async () => odpowiedz(IMPORT_OK)));
@@ -300,7 +309,7 @@ describe('EkranImportuArkusza — import do modelu', () => {
         // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
         // re-renderuje zamontowany ekran poza act().
         cleanup();
-        useShellStore.setState({ advancementMode: poprzedni });
+        useShellStore.setState({ szczegolyAudytowe: poprzedni });
       }
     },
   );

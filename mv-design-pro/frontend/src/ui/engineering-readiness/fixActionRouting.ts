@@ -14,14 +14,16 @@ const FALLBACK_OPERATIONS: Readonly<Record<string, CanonicalOpName>> = {
   ELIG_SC3_MISSING_IMPEDANCE: 'assign_catalog_to_element',
   ELIG_LF_NO_LOADS_OR_GENERATORS: 'add_converter_source',
   'line.missing_impedance': 'assign_catalog_to_element',
-  'switch.missing_normal_state': 'update_element_parameters',
   'branch_point.invalid_parent_medium': 'insert_branch_pole_on_segment_sn',
   'zksn.branch_count_invalid': 'insert_zksn_on_segment_sn',
   'bess.missing_transformer': 'add_transformer_sn_nn',
   missing_generator: 'add_converter_source',
   'generator.missing_power': 'add_converter_source',
   'pv.control_mode_missing': 'add_converter_source',
-  'ring.not_configured': 'set_normal_open_point',
+  // W5-C: dawne kody `switch.missing_normal_state` i `ring.not_configured` skasowane — backend
+  // ich nie emituje (pozycja normalna niezadeklarowana jest stanem dozwolonym, a pierścień
+  // bez punktu podziału zgłasza walidator kodem `I005` → `ring.nop_required`, którego akcję
+  // naprawczą `set_normal_open_point` niesie `ui2/spaces/gotowosc/akcjeNaprawcze.ts`).
 } as const;
 
 export function resolveFallbackModalType(code: string | null | undefined): string | null {

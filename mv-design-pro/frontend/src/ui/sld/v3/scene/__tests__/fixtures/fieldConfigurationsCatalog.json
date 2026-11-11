@@ -855,7 +855,8 @@
   "gaps": {
     "field_types_without_template": [
       "bateria_kondensatorow",
-      "generator_synchroniczny"
+      "generator_synchroniczny",
+      "zespol_uziemiajacy"
     ],
     "manufacturer_packs_without_cell_configurations": [
       "elektrometal_e2alpha"

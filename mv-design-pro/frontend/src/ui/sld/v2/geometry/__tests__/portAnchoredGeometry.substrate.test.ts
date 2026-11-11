@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * M-03 / V-07 — port-anchoring acceptance na realnym substracie ≥52 stacji.
  *

@@ -63,24 +63,11 @@ export interface KontekstOgranicznika {
   field_name?: string;
   bus_ref?: string;
   bus_name?: string;
-  bus_voltage_kv?: number;
 }
 
 /** Miejsce postawienia znane, gdy wskazano pole lub szynę. */
 export function maMiejsce(kontekst: KontekstOgranicznika): boolean {
   return Boolean(kontekst.field_ref?.trim() || kontekst.bus_ref?.trim());
-}
-
-/** Ostrzeżenie o niezgodności U_m ogranicznika z napięciem szyny (informacyjnie). */
-export function napiecieNiezgodne(
-  params: ParametryOgranicznika | null,
-  kontekst: KontekstOgranicznika,
-): boolean {
-  if (!params || typeof kontekst.bus_voltage_kv !== 'number' || kontekst.bus_voltage_kv <= 0) {
-    return false;
-  }
-  // U_m ogranicznika musi pokrywać napięcie znamionowe szyny (U_m ≥ U_n).
-  return params.u_m_kv + 1e-6 < kontekst.bus_voltage_kv;
 }
 
 export function zbudujPayload(

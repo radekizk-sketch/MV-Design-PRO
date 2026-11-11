@@ -7,8 +7,10 @@
  *   1. `GET /api/cases/{id}/enm/field-view` — łączniki pól mają stan łącznika z modelu, a tryb
  *      sterowania, uzbrojenie napędu i komunikacja są `null`; rekord runtime pola `null`
  *      (dawniej „zdalne / uzbrojony / komunikacja OK / łączność ograniczona"),
- *   2. kanwa SLD: REALNY klik w aparat pola → szuflada → zakładka „Stan + telemetria"
- *      pokazuje „brak telemetrii" (dawniej „zamknięty / LOKALNY / Komunikacja: OK").
+ *   2. kanwa SLD: REALNY klik w łącznik pola → prawy inspektor (UI-02b; dawniej panel
+ *      szczegółów nad kanwą) → sekcja „Stan i telemetria aparatu": położenie łącznika z
+ *      MODELU równe stanowi glifu tego łącznika na kanwie (jedno źródło, GPZ-PARYTET cz. 2),
+ *      a tryb sterowania i komunikacja „brak telemetrii" (dawniej „LOKALNY / Komunikacja: OK").
  *
  * Zrzuty dowodowe dla werdyktu wizualnego właściciela (B-02) — oba motywy, motyw
  * przełączany REALNYM przyciskiem powłoki z asercją na `data-theme` — trafiają do
@@ -24,6 +26,13 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
+/** Etykiety położenia łącznika inspektora (`PanelElementuKanwy.POLOZENIE_LACZNIKA_PL`). */
+const POLOZENIE_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
+  closed: 'zamknięty',
+  open: 'otwarty',
+  unknown: 'nieustalony (model niejednoznaczny)',
+};
 const OUTPUT_DIR = katalogZrzutow(path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../docs/audit/visual/dowody',
@@ -93,8 +102,6 @@ async function siecZPolem(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: OdpowiedzOperacji = {};
   for (const [idx, dlugosc] of [300, 250].entries()) {
@@ -139,7 +146,6 @@ async function otworzAplikacje(
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -159,7 +165,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect
@@ -174,6 +180,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
  * pokazuje już tor aparatów; gdy kamera startuje z dalszego LOD — realny zoom kółkiem
  * nad środkiem kanwy (gest użytkownika, bez wymuszonego stanu kamery).
  */
+/** Łącznik pola stacji SN/nN ze stanem glifu (`data-switch-state`). */
 async function aparatPola(page: Page) {
   const selektor = '[data-element-kind="apparatus"][data-owner-ref]';
   const canvas = page.locator('svg[data-testid="sld-canvas-v3"]');
@@ -190,12 +197,15 @@ async function aparatPola(page: Page) {
   const liczba = await aparaty.count();
   for (let i = 0; i < liczba; i += 1) {
     const ownerRef = (await aparaty.nth(i).getAttribute('data-owner-ref')) ?? '';
-    if (!ownerRef.startsWith('gpz/')) return aparaty.nth(i);
+    const glif = aparaty.nth(i).locator('[data-switch-state]');
+    if (ownerRef.startsWith('gpz/') || (await glif.count()) === 0) continue;
+    const stanGlifu = (await glif.first().getAttribute('data-switch-state')) as 'closed' | 'open' | 'unknown';
+    return { aparat: aparaty.nth(i), stanGlifu };
   }
-  throw new Error('Na kanwie brak aparatu pola stacji SN/nN (same aparaty GPZ).');
+  throw new Error('Na kanwie brak łącznika pola stacji SN/nN ze stanem glifu (same aparaty GPZ).');
 }
 
-test('pole SN bez źródła runtime — model odczytu i szuflada SLD: brak telemetrii (oba motywy)', async ({
+test('pole SN bez źródła runtime — model odczytu i inspektor obiektu kanwy: brak telemetrii (oba motywy)', async ({
   page,
   request,
 }) => {
@@ -227,20 +237,20 @@ test('pole SN bez źródła runtime — model odczytu i szuflada SLD: brak telem
   }
   for (const pole of pola) expect(pole.canonical_model.runtime_state).toBeNull();
 
-  // 2. Kanwa SLD → REALNY klik w aparat pola → szuflada → zakładka stanu.
+  // 2. Kanwa SLD → REALNY klik w łącznik pola → prawy inspektor, sekcja stanu aparatu.
   await otworzAplikacje(page, seed);
-  const aparat = await aparatPola(page);
+  const { aparat, stanGlifu } = await aparatPola(page);
   // Hit-rect nadrzędnej grupy trafień leży nad symbolem (ten sam ref) — `force` pomija
   // wyłącznie sprawdzenie DOM-ancestry Playwrighta, klik jest realny (pełna sekwencja).
   await aparat.click({ force: true });
-  const szuflada = page.getByTestId('sld-v2-detail-drawer');
-  await expect(szuflada).toBeVisible({ timeout: 15000 });
-  await page.getByTestId('sld-v2-detail-drawer-tab-state').click();
-  const stanAparatu = page.getByTestId('drawer-apparatus-state');
-  await expect(stanAparatu).toBeVisible();
-  await expect(page.getByTestId('drawer-apparatus-communication')).toHaveText(BRAK_TELEMETRII);
-  await expect(page.getByTestId('drawer-apparatus-control-mode')).toHaveText(BRAK_TELEMETRII);
-  await expect(page.getByTestId('drawer-apparatus-actual-state')).toHaveText(BRAK_TELEMETRII);
+  const stanAparatu = page.getByTestId('inspektor-stan-aparatu');
+  await expect(stanAparatu).toBeVisible({ timeout: 15000 });
+  // Kanwa nie otwiera własnego panelu — inspektor jest jedynym miejscem danych obiektu.
+  await expect(page.locator('[data-testid^="sld-v2-detail-drawer"]')).toHaveCount(0);
+  await expect(page.getByTestId('inspektor-aparat-komunikacja')).toHaveText(BRAK_TELEMETRII);
+  await expect(page.getByTestId('inspektor-aparat-tryb')).toHaveText(BRAK_TELEMETRII);
+  // Położenie łącznika z modelu = stan glifu tego łącznika na kanwie (jedno źródło).
+  await expect(page.getByTestId('inspektor-aparat-stan')).toHaveText(POLOZENIE_PL[stanGlifu]);
   await expect(stanAparatu).not.toContainText('OK');
   await expect(stanAparatu).not.toContainText('LOKALNY');
 

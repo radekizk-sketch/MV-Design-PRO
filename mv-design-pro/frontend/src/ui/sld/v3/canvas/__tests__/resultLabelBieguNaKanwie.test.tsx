@@ -33,6 +33,7 @@ import {
 } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import { useSldDeltaOverlayStore } from '../../../../sld-overlay/sldDeltaOverlayStore';
+import { wyczyscRejestrBiegow, zasiejBiegiNieaktualne } from '../../../../../test/biegNieaktualny';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const readFixture = <T,>(name: string): T =>
@@ -54,6 +55,7 @@ beforeEach(() => {
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   useSnapshotStore.getState().reset();
+  wyczyscRejestrBiegow();
   useSelectionStore.getState().clearSelection();
   useRawResultOverlayStore.getState().clear();
   useOverlayStore.getState().clearOverlay();
@@ -132,10 +134,12 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
     const uzytkownik = userEvent.setup();
     const container = renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
-    // 3 z 9: trzy szyny schematu SN mają etykietę, sześć punktów to szyny odpływów nN
-    // stacji (promocja pól nN do modelu) — panel NAZYWA ten powód, nie „gubi" punktów.
+    // 4 z 10: trzy szyny schematu SN i szyna WN GPZ (karta GPZ-MODEL: równoważnik 110 kV
+    // z transformatorem WN/SN, więc w modelu jest realna szyna WN, a solver liczy w niej
+    // zwarcie) mają etykietę, sześć punktów to szyny odpływów nN stacji (promocja pól nN
+    // do modelu) — panel NAZYWA ten powód, nie „gubi" punktów.
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 3 z 9 punktów wyniku',
+      'Etykiety: 4 z 10 punktów wyniku',
     );
     const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
     expect(braki).toContain('6 w rozdzielnicach nN stacji (poza schematem SN)');
@@ -143,8 +147,9 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
     expect(container.textContent).toContain(zwarcie.run_id);
   });
 
-  it('NIEAKTUALNOŚĆ: status OUTDATED wyszarza warstwę (jedno źródło statusu — `activeCaseResultStatus`)', () => {
-    useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
+  it('NIEAKTUALNOŚĆ: bieg policzony na starszej rewizji modelu wyszarza warstwę (jeden predykat świeżości biegu — `swiezoscBiegu`)', () => {
+    // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
+    zasiejBiegiNieaktualne([{ id: zwarcie.run_id, analysisType: 'SC_3F' }]);
     const container = renderKanwe(2);
     expect(container.querySelector('[data-testid="sld-v3-result-stale-badge"]')).not.toBeNull();
   });
@@ -168,12 +173,15 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
     expect(container.querySelectorAll('[data-testid^="sld-v3-flow-arrow-"]').length).toBeGreaterThan(0);
   });
 
-  it('POKRYCIE w panelu: 10 z 23 punktów + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
+  it('POKRYCIE w panelu: 10 z 25 punktów + 2 w tabeli pól GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
     const uzytkownik = userEvent.setup();
     renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 10 z 23 punktów wyniku',
+      'Etykiety: 10 z 25 punktów wyniku',
+    );
+    expect(screen.getByTestId('sld-v3-result-coverage-gpz').textContent).toBe(
+      'W tabeli pól GPZ: 2 punktów wyniku (pola i bilans GPZ)',
     );
     const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
     expect(braki).toContain('7 nierysowanych w modelu');

@@ -225,7 +225,6 @@ def test_handler_nie_rzuca_wyjatku_dla_zlego_ksztaltu_ladunku(
         ("add_load_sn", {"active_power_kw": "abc"}, "active_power_kw"),
         ("add_load_sn", {"p_mw": "abc"}, "p_mw"),
         ("add_generator_sn", {"p_mw": "abc"}, "p_mw"),
-        ("set_dynamic_profile", {"element_ref": "x", "profile": "abc"}, "profile"),
     ],
 )
 def test_pole_zlego_typu_to_nazwana_odmowa_z_nazwa_pola(

@@ -122,8 +122,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};
@@ -289,7 +287,6 @@ async function otworz(page: Page, scena: Scena, motyw: string, hash: string): Pr
             activeCaseResultStatus: 'FRESH',
             activeSnapshotId: null,
             activeMode: 'MODEL_EDIT',
-            activeRunId: dane.runId,
             activeAnalysisType: 'SHORT_CIRCUIT',
             caseManagerOpen: false,
             issuePanelOpen: false,

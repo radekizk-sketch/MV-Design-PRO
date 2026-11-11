@@ -12,9 +12,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { EkranWrazliwosci } from '../EkranWrazliwosci';
 import { WRAZLIWOSC_STRINGS } from '../strings';
 import type { WrazliwoscResponse } from '../api';
-import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 function przebieg(
   id: string,
@@ -111,8 +111,8 @@ function mockFetchTrasowany(odpowiedz: WrazliwoscResponse) {
 }
 
 beforeEach(() => {
-  useAppStateStore.setState({ activeRunId: null });
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  wyczyscKontekstWyniku();
+  useExecutionRunsStore.setState({ runs: []});
 });
 
 afterEach(() => {
@@ -124,8 +124,8 @@ describe('EkranWrazliwosci — stany', () => {
   it('bez przebiegu rozpływu: uczciwy stan zerowy z akcją, bez wołania końcówki', () => {
     const spy = vi.fn();
     vi.stubGlobal('fetch', spy);
-    useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')]});
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     expect(screen.getByTestId('mvd-wrazliwosc-brak-przebiegu')).toHaveTextContent(
       WRAZLIWOSC_STRINGS.brakPrzebiegu,
     );
@@ -140,8 +140,8 @@ describe('EkranWrazliwosci — stany', () => {
       'fetch',
       vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal' } as Response),
     );
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     expect(await screen.findByTestId('mvd-wrazliwosc-blad')).toHaveTextContent(
       WRAZLIWOSC_STRINGS.blad,
     );
@@ -151,9 +151,8 @@ describe('EkranWrazliwosci — stany', () => {
     vi.stubGlobal('fetch', vi.fn());
     useExecutionRunsStore.setState({
       runs: [przebieg('pf-1', 'LOAD_FLOW', 'RUNNING')],
-      activeRunId: null,
     });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     expect(screen.getByTestId('mvd-wrazliwosc-brak-przebiegu')).toBeTruthy();
   });
 });
@@ -161,8 +160,8 @@ describe('EkranWrazliwosci — stany', () => {
 describe('EkranWrazliwosci — wynik', () => {
   it('renderuje obie sekcje z danymi backendu (LF + ogólna)', async () => {
     const spy = mockFetchTrasowany(ODPOWIEDZ);
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     await waitFor(() => {
       expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy();
       expect(screen.getByTestId('mvd-wrazliwosc-ogolna')).toBeTruthy();
@@ -188,16 +187,16 @@ describe('EkranWrazliwosci — wynik', () => {
 
   it('tryb podstawowy ukrywa kolumny identyfikatorów (tylkoEkspercki)', async () => {
     mockFetchTrasowany(ODPOWIEDZ);
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="basic" />);
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
+    render(<EkranWrazliwosci szczegolyAudytowe={false} />);
     await waitFor(() => expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy());
     expect(screen.queryByText('wezel-a')).toBeNull();
   });
 
   it('identyfikator węzła nie jest kolumną tabeli w żadnym trybie (karta #145)', async () => {
     mockFetchTrasowany(ODPOWIEDZ);
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
-    render(<EkranWrazliwosci trybZaawansowania="expert" />);
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
+    render(<EkranWrazliwosci szczegolyAudytowe />);
     await waitFor(() => expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy());
     expect(screen.queryAllByText('wezel-a')).toHaveLength(0);
   });

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SCHEMAT-10 S3 (V12K-135) — testy `theme/colorTokens.ts`. Dowodzi:
  *  (a) klasyfikator napięcia czyta `kind`/`ownerRef` zgodnie z konwencjami

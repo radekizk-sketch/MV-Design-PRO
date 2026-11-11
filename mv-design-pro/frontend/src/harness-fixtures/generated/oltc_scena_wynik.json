@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "9cb7d13725d7ceab985f109fd67dbcf02a24aa34601bf02cd705961f89452e3f",
+  "deterministic_signature": "24894dc518fb2a2233e82ccdfd272e1208dc5a33691284ff11289deeb527d3be",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -182,7 +182,7 @@
       "values": {
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
         "cos_phi": 0.994907303403,
-        "delta_u_kv": 94.607892247,
+        "delta_u_kv": null,
         "delta_u_pct": -2.61405168653,
         "element_id": "tr_hv_sn",
         "flags": [],
@@ -218,7 +218,7 @@
       "values": {
         "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
         "cos_phi": 0.315298824937,
-        "delta_u_kv": 14.9860892,
+        "delta_u_kv": null,
         "delta_u_pct": 1.10813359491,
         "element_id": "tr_sn_nn",
         "flags": [],
@@ -285,6 +285,21 @@
         "p_injected_mw": -0.746797186573,
         "q_injected_mvar": -0.0756580800351,
         "s_mva": 0.75061986581
+      }
+    },
+    {
+      "element_ref": "sub_gpz",
+      "element_type": "Substation",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "solver_ref": null,
+      "values": {
+        "alarm_count": 0,
+        "p_feeders_mw": -0.746900260755,
+        "p_supply_mw": -0.746797186573,
+        "q_feeders_mvar": -0.0475227401597,
+        "q_supply_mvar": -0.0756580800351
       }
     }
   ],

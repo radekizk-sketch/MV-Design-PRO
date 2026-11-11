@@ -70,9 +70,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pickCable() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-odgalezienie-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-odgalezienie-katalog').querySelector('option[value="cab-1"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odgalezienie-katalog'), 'cab-1');
 }
 

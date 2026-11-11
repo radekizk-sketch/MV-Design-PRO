@@ -98,15 +98,40 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     `TolerancjaNapieciaNn` (`'PLUS_6' | 'PLUS_10'`, `types/uziemienie.ts`) w `types/enm.ts`:
     `Transformer.lv_voltage_tolerance` i `Source.lv_voltage_tolerance` (tolerancja napiecia
     sieci nN — wiersz nN tabeli 1 IEC 60909-0); usuniete `Source.c_max`/`c_min` byly liczbami,
-    nie polami Literal — licznik 122 -> 124 (pomiar guardem na drzewie z lustrem frontu)."""
+    nie polami Literal — licznik 122 -> 124 (pomiar guardem na drzewie z lustrem frontu).
+
+    Karta W5-C (jedna prawda stanu laczeniowego + wyposazenie pola) dodaje DWA pola Literal
+    z lustrem w `types/enm.ts`: `SwitchBranch.normal_state` (`'open' | 'closed'` — stan
+    normalny lacznika, jedyne zrodlo punktu podzialu pierscienia) i
+    `BayBaseModel.equipment_data_state` (stan danych wyposazenia pola), a kasuje
+    `BranchPointSN.switch_state` (kopia stanu lacznika punktu rozgalezienia) — netto +1.
+    Pin tej karty (122) byl nieaktualny: pomiar guardem na czubku galezi UI/UX `f7235700e`
+    = 123 (test czerwony na samej galezi). Scalenie z partiami 9–13 (2026-10-22): 124 programu
+    + 1 karty W5-C = 125 — pomiar guardem na drzewie scalonym, zbior pol Literal scalony =
+    zbior programu + `normal_state` + `equipment_data_state` − `BranchPointSN.switch_state`.
+    Karta GPZ-MODEL podniosla ten sam pin na swojej bazie 122 -> 123 (ta sama korekta W5-C,
+    bez nowego pola Literal); po jej nalozeniu na drzewo scalone pomiar guardem = 125, bez
+    zmiany.
+
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA dopisuje do `SPRAWDZANE` cztery encje zespolu
+    uziemiajacego SN z lustrem w `types/enm.ts` i zachowanym parytetem zbioru wartosci:
+    `ZespolUziemiajacy.parameter_source` (CATALOG / OVERRIDE) i `.grupa_polaczen` (ZNyn11 /
+    ZNyn5 / ZNy11 / ZNy5 / ZN), `DlawikGaszacy.regulacja` (ciagla / zaczepy) i
+    `.stan_odlacznika`, `RezystorUziemiajacy.stan_odlacznika` (zamkniety / otwarty)
+    i `RezystorWymuszajacyAwsc.strona` (wtorna / pierwotna) — licznik 125 -> 131 (pomiar
+    guardem).
+    Karta UX-04/POLE-BKR-MODEL (2026-10-28): +1 — nowe pole Literal
+    `ShuntCapacitor.uklad_polaczen` (`UkladPolaczenBaterii`, lustro TS `UKLADY_POLACZEN_BATERII`);
+    `Bay.bay_role` czyta teraz alias `RolaKanonicznaPolaSn` — to samo pole, nie nowe. Scalenie obu
+    kart: 131 + 1 = 132 (pomiar guardem na drzewie scalonym)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 124, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 124 — "
+    assert int(dopasowanie.group(1)) == 132, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 132 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

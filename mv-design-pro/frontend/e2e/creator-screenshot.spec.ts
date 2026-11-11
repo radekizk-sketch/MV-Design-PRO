@@ -289,8 +289,7 @@ test.describe('kreatory:screenshot', () => {
   // do KD-8 (poz. 1, 2026-07-31) powierzchnie `ui/**` stały na palecie `scada` jako
   // STAŁYCH wartościach hex niezależnych od motywu (V12K-243, 2026-07-27) — ten test
   // wtedy sprawdzał niezmienniczość tła. KD-8 poz. 1 zamieniło CAŁĄ paletę `scada`
-  // (tailwind.config.js) na zmienne CSS `--scada-*` sterowane `[data-theme]`
-  // (src/index.css) właśnie po to, żeby powierzchnie `ui/**` — łącznie z kanwą SLD,
+  // (tailwind.config.js) na zmienne CSS sterowane `[data-theme]` właśnie po to, żeby powierzchnie `ui/**` — łącznie z kanwą SLD,
   // paskiem metryk i kartą konfiguratora stacji (kd8-motyw-jedna-prawda.spec.ts) —
   // PRZESTAŁY być ciemne niezależnie od motywu (ocena właściciela 2/10 ekranu jasnego).
   // Panel wiązań OZE korzysta z TEJ SAMEJ klasy `bg-scada-panel` co 47 innych plików
@@ -298,7 +297,9 @@ test.describe('kreatory:screenshot', () => {
   // stałość tła byłaby więc dziś JEDYNĄ niespójnością z resztą powłoki, nie dowodem
   // poprawności. Test mierzy więc SPÓJNOŚĆ z tokenem motywu (intencja zachowana:
   // złapać REGRESJĘ tła, tylko względem aktualnego źródła prawdy, nie względem
-  // zamrożonego literału sprzed KD-8).
+  // zamrożonego literału sprzed KD-8). Karta K1 POWLOKA scaliła dawny zestaw
+  // `--scada-*` z jedynym zestawem `--mvd-*` (src/ui2/theme/tokens.css) — klasa
+  // `bg-scada-panel` jest aliasem tokenu `--mvd-panel`, więc test mierzy ten token.
   test('wiazania OZE — wybór z katalogu + spójność z motywem powłoki', async ({ page }) => {
     const errs: string[] = [];
     const isNoise = (t: string): boolean =>
@@ -323,11 +324,12 @@ test.describe('kreatory:screenshot', () => {
         .locator('.bg-scada-panel')
         .first()
         .evaluate((el) => getComputedStyle(el).backgroundColor);
-      // Token ŹRÓDŁOWY (nie literał zamrożony w teście) — `--scada-panel` z `:root`
-      // (src/index.css), DOKŁADNIE to, co Tailwind wstrzykuje do `bg-scada-panel`.
+      // Token ŹRÓDŁOWY (nie literał zamrożony w teście) — `--mvd-panel` z `:root`
+      // (src/ui2/theme/tokens.css), DOKŁADNIE to, co Tailwind wstrzykuje do `bg-scada-panel`.
       const token = await page.evaluate(() => {
-        const raw = getComputedStyle(document.documentElement).getPropertyValue('--scada-panel').trim();
-        const [r, g, b] = raw.split(/\s+/).map(Number);
+        const hex = getComputedStyle(document.documentElement).getPropertyValue('--mvd-panel').trim();
+        const czysty = hex.replace('#', '');
+        const [r, g, b] = [0, 2, 4].map((i) => Number.parseInt(czysty.slice(i, i + 2), 16));
         return `rgb(${r}, ${g}, ${b})`;
       });
       return { panel, token };
@@ -338,11 +340,11 @@ test.describe('kreatory:screenshot', () => {
     const ciemny = await tloPanelu('dark');
     expect(
       jasny.panel,
-      'panel wiazan OZE musi isc za tokenem --scada-panel w motywie jasnym (KD-8 poz. 1)',
+      'panel wiazan OZE musi isc za tokenem --mvd-panel w motywie jasnym (KD-8 poz. 1)',
     ).toBe(jasny.token);
     expect(
       ciemny.panel,
-      'panel wiazan OZE musi isc za tokenem --scada-panel w motywie ciemnym (KD-8 poz. 1)',
+      'panel wiazan OZE musi isc za tokenem --mvd-panel w motywie ciemnym (KD-8 poz. 1)',
     ).toBe(ciemny.token);
     // Straznik sensownosci: gdyby token przestal roznic sie miedzy motywami, powyzsze
     // dwie asercje przeszlyby fikcyjnie (panel zgodny sam ze soba, ale caly system
@@ -350,7 +352,7 @@ test.describe('kreatory:screenshot', () => {
     // indziej. Ta asercja mierzy wprost, ze motyw FAKTYCZNIE zmienia token.
     expect(
       jasny.token,
-      'token --scada-panel musi faktycznie roznic sie miedzy motywami (inaczej test nic nie mierzy)',
+      'token --mvd-panel musi faktycznie roznic sie miedzy motywami (inaczej test nic nie mierzy)',
     ).not.toBe(ciemny.token);
 
     // Nazwy z REALNEGO katalogu dla przypisanych wiązań, polecenie wyboru dla pustego.

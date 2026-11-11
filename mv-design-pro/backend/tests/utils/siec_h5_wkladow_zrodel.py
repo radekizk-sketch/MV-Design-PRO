@@ -36,6 +36,7 @@ from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekord
 
 #: Moc zwarciowa i R/X równoważników torów zasilania (scenariusz MAX).
 SK_L1_MVA = 3000.0
@@ -300,7 +301,6 @@ def enm_h5(
                         voltage_kv=UN_SN_KV,
                         sk3_mva=SK_SN_L1_MVA,
                         rx_ratio=RX_L1,
-                        extra={"z0_z1_ratio": 3.0},
                     ),
                 },
                 {
@@ -314,9 +314,15 @@ def enm_h5(
                         voltage_kv=UN_SN_KV,
                         sk3_mva=SK_SN_L2_MVA,
                         rx_ratio=RX_L2,
-                        extra={"z0_z1_ratio": 3.0},
                     ),
                 },
+            ],
+            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie punktu neutralnego sieci SN niesie
+            # zespół uziemiający sekcji (rezystor, Z.15) — równoważnik SN nie ma Z0 (dawniej
+            # ``z0_z1_ratio`` torów zasilania udawał drogę zerową przez źródło SN).
+            "zespoly_uziemiajace": [
+                zespol_uziemiajacy_rekord("zu-a", "bus-a"),
+                zespol_uziemiajacy_rekord("zu-b", "bus-b"),
             ],
             "loads": [],
             "transformers": [],

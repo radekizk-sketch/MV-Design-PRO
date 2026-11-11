@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Test rejestru mostu legacy (E1.7b §4): każda przestrzeń MA wpis —
  * nowa zawartość albo powierzchnia legacy z jawnym planem wygaszenia.

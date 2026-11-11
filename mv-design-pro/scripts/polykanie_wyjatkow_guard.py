@@ -289,7 +289,10 @@ def ocen(
 #: Partia integracji 13 (2026-10-21): 81 -> 80 — POMIAR guardem: nowe niezmienniki programu
 #: karty SC-IB-ITH-ZRODLA (kroki μ/q/i_b dowodu, m/n wyniku, klucz wiersza) jako asercje,
 #: a bliźniaczy niezmiennik zapisu w `wytrzymalosc_cieplna_przewodow._pole_sc` razem z nimi.
-PIN_RAISE_VALUEERROR_APLIKACJA = 80
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5 (2026-10-30): 80 -> 79 — POMIAR guardem na
+#: drzewie b1e677ced (80) i na drzewie commitu (79): -1 `proof_engine/equation_registry.py`
+#: (kontrola zamrożonych identyfikatorów równań pakietu P19 skasowana razem z pakietem).
+PIN_RAISE_VALUEERROR_APLIKACJA = 79
 
 #: Wywołania dozwolone w bloku `try` parsowania wejścia trasy (poza konstruktorami typów).
 PARSERY_WBUDOWANE = frozenset({"int", "float", "str", "Decimal"})

@@ -451,9 +451,10 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     może zastępować źródła pozycji: każdy rekord danych niesie `source_reference` jawnie
     (przed rundą 3: 3 obciążenia bez źródła, 2 baterie z ogólnikiem „profil przemysłowy").
     Pomiar 2026-10-15: 7851 = 7829 + 18 transformatorów blokowych 0,65 kV + 4 warianty
-    Vestas V112 (karta KATALOG-TURBINY-TOR-V112)."""
+    Vestas V112 (karta KATALOG-TURBINY-TOR-V112). Pomiar 2026-10-22: 7853 = 7851 + 2 typy
+    minimalne łączników 110 kV karty KATALOG-APARATURA-WN (wyłącznik, odłącznik)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7851
+    assert len(rekordy) == 7853
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 

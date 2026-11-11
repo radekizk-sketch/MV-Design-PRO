@@ -81,7 +81,7 @@ export const PRZYPADKI_STRINGS = {
   // zwarciowy (MAX/MIN wg IEC 60909-0 tab. 1 per węzeł albo nadpisanie z uzasadnieniem).
   // Dawne wiersze „c (max)/c (min)" pokazywały pola, których backend nie ma (fantom).
   zalozenieCNosnik:
-    'Współczynnik napięciowy c i czas zwarcia t_k niesie scenariusz zwarciowy: MAX albo MIN dobiera c z tabeli 1 IEC 60909-0 dla napięcia każdego węzła, nadpisanie wymaga uzasadnienia. Podstawę c każdego węzła pokazują wyniki zwarć.',
+    'Współczynnik napięciowy $c$ i czas zwarcia $t_k$ niesie scenariusz zwarciowy: MAX albo MIN dobiera $c$ z tabeli 1 IEC 60909-0 dla napięcia każdego węzła, nadpisanie wymaga uzasadnienia. Podstawę $c$ każdego węzła pokazują wyniki zwarć.',
 
   // Porównanie konfiguracji
   porownanieTytul: 'Porównanie konfiguracji przypadków',

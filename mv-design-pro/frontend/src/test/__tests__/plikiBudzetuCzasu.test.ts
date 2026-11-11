@@ -22,7 +22,6 @@ describe('pliki testów budżetu czasu procesora', () => {
     for (const plik of [
       'src/test/__tests__/pulaTestow.test.ts',
       'src/ui/sld/v2/__tests__/performance.perf.test.ts',
-      'src/ui/sld/v2/canvas/__tests__/LabelDeclutter.test.ts',
       'src/ui/sld/v3/scene/__tests__/buildScene.p1Recenzja.test.ts',
       'src/ui/sld/v3/scene/__tests__/buildScene.schemat10s7p3.test.ts',
       'src/ui/sld/v3/scene/__tests__/buildScene.schemat10s7p4.test.ts',

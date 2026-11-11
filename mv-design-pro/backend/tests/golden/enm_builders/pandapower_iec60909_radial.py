@@ -48,7 +48,7 @@ def build_pandapower_iec60909_radial_enm() -> BenchmarkEnm:
     )
     enm, bus_01 = kontynuuj_z_pola(
         enm,
-        field_ref=_gpz_line_fields(enm)[0]["field_ref"],
+        field_ref=_gpz_line_fields(enm)[0]["ref_id"],
         catalog_ref="bench_pandapowerradial_line20kv01",
         dlugosc_m=1000.0,
         name="LINE-20KV-01",

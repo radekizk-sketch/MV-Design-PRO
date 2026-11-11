@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA KLIK-ETYKIETA-KOTWICA — WYROCZNIA „JEDNO ORZECZENIE O KLIKNIĘTYM OBIEKCIE".
  *
@@ -148,7 +149,7 @@ describe('A — uchwyt nie awansuje do kontenera', () => {
 
   it('zapadka: sceny referencyjne NIE są puste (inaczej wyrocznia nie mierzy niczego)', () => {
     for (const { nazwa, enm } of SIECI) {
-      const razem = LODY.reduce((suma, lod) => suma + buildSceneV3(enm, lod).labels.length, 0);
+      const razem = LODY.reduce<number>((suma, lod) => suma + buildSceneV3(enm, lod).labels.length, 0);
       expect(razem, `${nazwa}: zbyt mało etykiet, próg z pomiaru`).toBeGreaterThanOrEqual(MIN_ETYKIET_NA_SIEC);
     }
   });
@@ -179,6 +180,11 @@ const DOZWOLONE_ROZJAZDY: ReadonlySet<string> = new Set([
   // `wlasnoscEtykiet`). Rozjazd OCZEKIWANY z tego samego powodu co wyżej: rodzaj
   // obiektu bierze się z kotwicy.
   'lacznik-toru→galaz',
+  // K2b §0.4: podpis „NO" punktu normalnie otwartego wskazanego w
+  // `Corridor.no_point_ref` refem ŁĄCZNIKA albo ODCINKA. Na rysunku to znacznik
+  // aparatowy (symbol `noPoint`, `elementKind: 'apparatus'` — jak NO stacji), w
+  // modelu GAŁĄŹ, więc kotwica to `galaz` — ten sam powód co `lacznik-toru` wyżej.
+  'no-point→galaz',
 ]);
 
 describe('B — inwentarz rozjazdów deklaracja↔kotwica jest zamknięty', () => {
@@ -248,11 +254,21 @@ describe('C — kontrola czułości wyroczni', () => {
     const { enm } = SIECI[0];
     const scene = buildSceneV3(enm, 2);
     const index = buildCanvasModelIndex(enm);
+    // GEOMETRIA-STACJI (Z-03): opis sekcji szyny SN stacji należy dziś do rekordu `Bus`
+    // sekcji (`${busRef}#busbar-voltage`), więc ucięcie sufiksu prowadzi do szyny, nie do
+    // stacji. Stan sprzed naprawy odtwarzamy na KOPII razem z dawną tożsamością napisu
+    // (`${stationRef}#busbar-voltage`, relacja sceny `meta.stacjaSzynySekcji`) — inaczej
+    // kontrola czułości mierzyłaby tylko napisy GPZ.
+    const dawnyRef = (ownerRef: string): string => {
+      const [baza, ...reszta] = ownerRef.split('#');
+      const stacja = scene.meta.stacjaSzynySekcji[baza];
+      return stacja ? [stacja, ...reszta].join('#') : ownerRef;
+    };
     const awanse = scene.labels
       .filter((label) => LABEL_OWNER_ELEMENT_KIND[label.ownerKind] !== ELEMENT_KIND_KOTWICY.stacja)
       .map((label) =>
         resolveCanvasMenuSubject(
-          { klasa: 'etykieta', ownerRef: label.ownerRef, elementKind: undefined, busRef: undefined },
+          { klasa: 'etykieta', ownerRef: dawnyRef(label.ownerRef), elementKind: undefined, busRef: undefined },
           index,
         ),
       )

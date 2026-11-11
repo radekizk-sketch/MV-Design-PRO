@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Opis kroku śladu rekordu werdyktu (karta #145) — parytet z KODEM silnika prób NC RfG
  * i iloczyn cech {pochodzenie odnośnika: silnik NC RfG / inny} × {klucz: w mapie / spoza}.

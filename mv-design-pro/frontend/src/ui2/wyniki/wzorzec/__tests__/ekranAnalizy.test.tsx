@@ -83,7 +83,7 @@ describe('EkranAnalizy — identyfikatory i akcje (§2.7)', () => {
       <EkranAnalizy
         {...propsFixture({
           naglowek: { analizaPL: 'Analiza testowa', runId: 'run-77' },
-          trybZaawansowania: 'basic',
+          szczegolyAudytowe: false,
         })}
       />,
     );
@@ -92,7 +92,7 @@ describe('EkranAnalizy — identyfikatory i akcje (§2.7)', () => {
       <EkranAnalizy
         {...propsFixture({
           naglowek: { analizaPL: 'Analiza testowa', runId: 'run-77' },
-          trybZaawansowania: 'expert',
+          szczegolyAudytowe: true,
         })}
       />,
     );

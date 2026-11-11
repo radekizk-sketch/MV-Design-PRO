@@ -1,7 +1,7 @@
 {
   "analysis_type": "SC_3F",
   "elements": {
-    "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn": {
+    "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -10,34 +10,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 9.62222459212
+          "value": 15.7458782639
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 23.7592975706
+          "value": 38.8800178593
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 9.78502903924
+          "value": 16.0122997337
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 249.992728131
+          "value": 2999.99272792
         }
       },
-      "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+      "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn",
       "severity": "INFO"
     },
-    "nn/1824e7319723877961289b024bb26475/feeder_bus": {
+    "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -46,34 +46,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 29.8665985999
+          "value": 9.04707536797
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 67.2415611972
+          "value": 23.9049504444
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 30.1500843627
+          "value": 9.36211588145
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 20.6921864897
+          "value": 235.049912958
         }
       },
-      "ref_id": "nn/1824e7319723877961289b024bb26475/feeder_bus",
+      "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
       "severity": "INFO"
     },
-    "nn/607cba5e38e803fb4e5114e62a4b9cdf/feeder_bus": {
+    "nn/6d47ebc785a3a9444cb0d9a08e095579/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -82,34 +82,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 29.8665985999
+          "value": 29.7175328384
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 67.2415611972
+          "value": 67.2912069022
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 30.1500843627
+          "value": 30.0080793314
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 20.6921864897
+          "value": 20.5889107007
         }
       },
-      "ref_id": "nn/607cba5e38e803fb4e5114e62a4b9cdf/feeder_bus",
+      "ref_id": "nn/6d47ebc785a3a9444cb0d9a08e095579/feeder_bus",
       "severity": "INFO"
     },
-    "nn/6cba2d59c8574d9ff99a8003cc1fcaa5/feeder_bus": {
+    "nn/7aa7cd3255ad853dbd72730a9fffb8c4/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -118,34 +118,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 29.8665985999
+          "value": 29.7175328384
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 67.2415611972
+          "value": 67.2912069022
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 30.1500843627
+          "value": 30.0080793314
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 20.6921864897
+          "value": 20.5889107007
         }
       },
-      "ref_id": "nn/6cba2d59c8574d9ff99a8003cc1fcaa5/feeder_bus",
+      "ref_id": "nn/7aa7cd3255ad853dbd72730a9fffb8c4/feeder_bus",
       "severity": "INFO"
     },
-    "nn/9ac95624ad9e0d551563f0053eef4814/feeder_bus": {
+    "nn/9fc9f6014a8a7ba52fed1dd39c0047d0/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -154,34 +154,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 29.8665985999
+          "value": 29.7175328384
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 67.2415611972
+          "value": 67.2912069022
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 30.1500843627
+          "value": 30.0080793314
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 20.6921864897
+          "value": 20.5889107007
         }
       },
-      "ref_id": "nn/9ac95624ad9e0d551563f0053eef4814/feeder_bus",
+      "ref_id": "nn/9fc9f6014a8a7ba52fed1dd39c0047d0/feeder_bus",
       "severity": "INFO"
     },
-    "nn/eca9dac3b3adc0f84a45a71dc6e738b1/feeder_bus": {
+    "nn/a03a840e51b5edc9d95f0674af4888eb/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -190,34 +190,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 29.8665985999
+          "value": 29.7175328384
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 67.2415611972
+          "value": 67.2912069022
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 30.1500843627
+          "value": 30.0080793314
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 20.6921864897
+          "value": 20.5889107007
         }
       },
-      "ref_id": "nn/eca9dac3b3adc0f84a45a71dc6e738b1/feeder_bus",
+      "ref_id": "nn/a03a840e51b5edc9d95f0674af4888eb/feeder_bus",
       "severity": "INFO"
     },
-    "nn/f741f87024e94982bfe795c1f6fd03b9/feeder_bus": {
+    "nn/b77a43fc591a4236c555a4eb9bb30a6a/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -226,34 +226,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 29.8665985999
+          "value": 29.7175328384
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 67.2415611972
+          "value": 67.2912069022
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 30.1500843627
+          "value": 30.0080793314
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 20.6921864897
+          "value": 20.5889107007
         }
       },
-      "ref_id": "nn/f741f87024e94982bfe795c1f6fd03b9/feeder_bus",
+      "ref_id": "nn/b77a43fc591a4236c555a4eb9bb30a6a/feeder_bus",
       "severity": "INFO"
     },
-    "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus": {
+    "nn/c42dce2f7b789d928f488b7a04ac9e93/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -262,34 +262,34 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 29.8665985999
+          "value": 29.7175328384
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 67.2415611972
+          "value": 67.2912069022
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 30.1500843627
+          "value": 30.0080793314
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 20.6921864897
+          "value": 20.5889107007
         }
       },
-      "ref_id": "stn/00fb3dfeeddd7716ad2a042e99dd461c/nn_bus",
+      "ref_id": "nn/c42dce2f7b789d928f488b7a04ac9e93/feeder_bus",
       "severity": "INFO"
     },
-    "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus": {
+    "stn/e175ec51477c27677da547384cfababc/nn_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -298,31 +298,67 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 9.39962695936
+          "value": 29.7175328384
         },
         "IP_A": {
           "code": "IP_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 22.0232461078
+          "value": 67.2912069022
         },
         "ITH_A": {
           "code": "ITH_A",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kA",
-          "value": 9.51074824132
+          "value": 30.0080793314
         },
         "SK_MVA": {
           "code": "SK_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 244.209471987
+          "value": 20.5889107007
         }
       },
-      "ref_id": "stn/00fb3dfeeddd7716ad2a042e99dd461c/sn_bus",
+      "ref_id": "stn/e175ec51477c27677da547384cfababc/nn_bus",
+      "severity": "INFO"
+    },
+    "stn/e175ec51477c27677da547384cfababc/sn_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "IK_3F_A": {
+          "code": "IK_3F_A",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kA",
+          "value": 8.86888942447
+        },
+        "IP_A": {
+          "code": "IP_A",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kA",
+          "value": 22.1778746686
+        },
+        "ITH_A": {
+          "code": "ITH_A",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kA",
+          "value": 9.03549821599
+        },
+        "SK_MVA": {
+          "code": "SK_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 230.420506348
+        }
+      },
+      "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_bus",
       "severity": "INFO"
     }
   },

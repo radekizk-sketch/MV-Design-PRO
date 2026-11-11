@@ -113,5 +113,10 @@
       "name": "GPZ"
     }
   ],
-  "bays": []
+  "bays": [
+    {
+      "ref_id": "sn/9d008ed355939bef762652554f56b2e4/der/source_field",
+      "name": "Pole źródłowe PV"
+    }
+  ]
 }

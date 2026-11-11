@@ -532,7 +532,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/readiness.py",
     "domain/result_contract_v1.py",
     "domain/results.py",
-    "domain/switchgear_config.py",
     "domain/validation.py",
     "domain/zwarcia_porownanie.py",
     "infrastructure/cgmes/cgmes_importer.py",
@@ -895,16 +894,14 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # regulacji, punkt pracy P/Q, moc i napiecie znamionowe) maja udokumentowane
     # zalozenie w docstringu `_z_conv_components`. DLUG NAZWANY: zalozenie
     # udokumentowane to nadal zalozenie — do zamiany na meldunek braku.
-    # Dwa wpisy `A:or:item.*` to koordynacja izolacji: napiecie obnizone i TOV
-    # podstawiane z krotnosci MCOV, gdy karta katalogowa ogranicznika nie istnieje
-    # (`mcov * 2.8`). To pozycja z inwentarza stalych — jedyna z dziewieciu dlugow
-    # karty, ktora ta bramka w ogole WIDZI, bo ma forme zapasowa; osiem pozostalych
-    # to nagie stale w dzialaniu (granica nr 1).
+    # Dwa wpisy `A:or:item.*` koordynacji izolacji (napiecie obnizone i TOV podstawiane
+    # z krotnosci MCOV bez karty ogranicznika, `mcov * 2.8`) ZDJETE karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): U_TOV liczy sie z k trybu punktu
+    # neutralnego, a dobor wstepny bez karty jest dana przyjeta ESTIMATED ze skrajnych
+    # stosunkow katalogu ogranicznikow (`_wiersz_izolacji`, wpis w `dane_przyjete`).
     "network_model/solvers/v126_academic.py": {
         "A:or:converter.p_mw": 1,
         "A:or:converter.q_mvar": 1,
-        "A:or:item.arrester_residual_10ka_kv": 1,
-        "A:or:item.predicted_tov_kv": 1,
         "B:ifexp:converter.control_delay_ms": 2,
         "B:ifexp:converter.filter_r_pu": 2,
         "B:ifexp:converter.rated_mva": 3,
@@ -921,10 +918,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # obciazalnosc 630 A KAZDEGO aparatu oraz `r_ohm/x_ohm or 0.001` kasujace
     # JAWNE 0,0 Ω aparatu — patrz `reads_contract_field`.
     "solver_input/v126_contracts.py": {
-        # Czestotliwosc bazowa sieci: brak -> 50 Hz. DLUG NAZWANY — wartosc
-        # znamionowa systemu, ale nadal podstawienie; do zamiany na wymog danej.
-        "A:or:enm.frequency_hz": 1,
-        "B:ifexp:enm.frequency_hz": 1,
+        # "A:or:enm.frequency_hz" i "B:ifexp:enm.frequency_hz" USUNIETE z zapadki (karta
+        # UX-04/POLE-ZU-SKLADOWA-ZEROWA, 2026-10-29): dawne `enm.buses[0].frequency_hz or 50.0
+        # if enm.buses else 50.0` zastapione czestotliwoscia sieci z naglowka modelu
+        # (`enm.header.defaults.frequency_hz`) — tej samej, z ktorej mapowanie skladowej
+        # zerowej i jedyna prawda uziemienia licza B0 baterii; zero podstawienia.
         # "A:or:generator.q_mvar" USUNIETE z zapadki (FAB-H, H2): dawny odczyt
         # `generator.q_mvar or 0.0` zastapiony wspolnym zrodlem prawdy
         # `solver_input/moc_bierna_wytworcy.py::moc_bierna_wytworcy`; Q nieznane
@@ -1239,7 +1237,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "enm/domain_operations.py": {
         "D:dictor:payload.dlugosc_m": 2,
         "D:dictor:segment.dlugosc_m": 1,
-        "F:dictget:insert_at.value": 4,
         "F:dictget:nn_block.outgoing_feeders_nn_count": 1,
         "F:dictget:s.order": 3,
         "F:dictget:seed.max_position": 1,
@@ -1275,6 +1272,18 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # syntaktycznie wypadl z wzorca skanera. Dlug ZMALAL -> zapadka obnizona
         # (ta sama zasada co "dlug-zmalal" w `backend_no_physics_guard.py`).
         "H:local:payload.nn_voltage_kv": 1,
+        # Karta MENU-KANON (2026-10-22), forma H, DLUG ZASTANY UJAWNIONY (nie nowy): liczba pol
+        # liniowych sekcji GPZ (`line_fields_per_section`, brak = 1). Na galezi bazowej ta
+        # sama wartosc zastepcza stala w petli po krotce synonimow (`for key in (...): ...
+        # continue` + `return 1`), ktorej skaner nie widzi; skasowanie synonimow bez nadawcy
+        # (spec operacji = klucze czytane przez handler) zmienilo ksztalt na forme H. Kreator
+        # zrodla GPZ wysyla pole zawsze; wartosc zastepcza dotyczy ladunkow bez kreatora.
+        # Scalenie z galezia UI/UX (2026-10-22): dawny drugi wpis
+        # "H:local:payload.transformer_count" ZDJETY — karta GPZ-MODEL zastapila wartosc
+        # zastepcza (brak = min(2, liczba sekcji)) odmowa `source.invalid_transformer_count`
+        # w `_granica_zasilania_gpz` (transformatory 110/SN istnieja tylko z rownowaznikiem
+        # po stronie 110 kV i jawna liczba); dlug usuniety, nie zmalal cicho.
+        "H:local:payload.line_fields_per_section": 1,
     },
     # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1
     # (klasa A6-12, 2026-09) — „watek nN" domknięty, plik odblokowany do edycji.

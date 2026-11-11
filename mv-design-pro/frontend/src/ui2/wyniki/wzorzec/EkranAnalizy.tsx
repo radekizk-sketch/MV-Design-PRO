@@ -14,7 +14,7 @@
 
 import './wzorzec.css';
 import '../../inspector/inspector.css';
-import { FreshnessBadge } from '../../inspector';
+import { FreshnessBadge, czyNieaktualne } from '../../inspector';
 import { PanelCoSieZmienilo } from '../../freshness';
 import { InformacjeAudytowe } from './InformacjeAudytowe';
 import { SekcjaZalozen } from './SekcjaZalozen';
@@ -32,7 +32,7 @@ export function EkranAnalizy({
   onEksport,
   onPrzelicz,
   onPokazElement,
-  trybZaawansowania,
+  szczegolyAudytowe,
   informacjeAudytowe = [],
   kluczWiersza,
   onWybierzWiersz,
@@ -51,8 +51,7 @@ export function EkranAnalizy({
   // wyniku byłby szumem, a bez `caseId` nie ma czego pytać — i to jest brak danej,
   // nie powód do zgadywania.
   const pokazPrzyczyny =
-    maSwiezosc && caseId !== undefined && rewizjaDanych! < rewizjaModelu!;
-  const trybEkspercki = trybZaawansowania === 'expert';
+    maSwiezosc && caseId !== undefined && czyNieaktualne(rewizjaDanych!, rewizjaModelu!);
 
   return (
     <div className="mvd-wyn" data-testid="mvd-wyn-ekran">
@@ -82,7 +81,7 @@ export function EkranAnalizy({
       {/* Karta #145: identyfikator przebiegu i pozostałe metadane produkcyjne wyłącznie
           tutaj — zwinięte, w trybie eksperckim — nigdy w nagłówku ani w tabeli. */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-wyn-informacje-audytowe"
         wiersze={[
           ...(runId ? [{ etykieta: WZORZEC_STRINGS.identyfikatorPrzebiegu, wartosc: runId }] : []),
@@ -104,7 +103,7 @@ export function EkranAnalizy({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={kluczWiersza}
         onWybierzWiersz={onWybierzWiersz}
         wybranyWiersz={wybranyWiersz}

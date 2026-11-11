@@ -32,7 +32,7 @@ function wiersz(over: Parameters<typeof runFixture>[0] = {}) {
 describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)', () => {
   it('brak wyboru → komunikat zachęty', () => {
     render(
-      <SzczegolyPrzebiegu przebieg={null} trybEkspercki={false} onPokazWyniki={() => {}} />,
+      <SzczegolyPrzebiegu przebieg={null} szczegolyAudytowe={false} onPokazWyniki={() => {}} />,
     );
     expect(screen.getByTestId('mvd-przebieg-brak-wyboru')).toHaveTextContent(
       T.szczegolyBrakWyboru,
@@ -41,7 +41,7 @@ describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)',
 
   it('sekcja parametrów: początek, zakończenie, czas trwania, odcisk (skrót + pełny w title)', () => {
     const w = wiersz();
-    render(<SzczegolyPrzebiegu przebieg={w} trybEkspercki={false} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={w} szczegolyAudytowe={false} onPokazWyniki={() => {}} />);
     expect(screen.getByTestId('mvd-przebieg-czas-trwania')).toHaveTextContent('45 s');
     const odcisk = within(screen.getByTestId('mvd-przebieg-odcisk')).getByTitle(w.odcisk);
     expect(odcisk).toHaveTextContent(formatOdcisk(w.odcisk));
@@ -51,7 +51,7 @@ describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)',
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ model_revision: null })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -67,7 +67,7 @@ describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)',
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ model_revision: 7 })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -78,7 +78,7 @@ describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)',
 
   it('„Wartości parametrów wejściowych solvera" nie jest renderowana (kontrolka bez dostawcy = fantom, TODO-UI2 §1 p. 10)', () => {
     render(
-      <SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />,
+      <SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />,
     );
     expect(screen.queryByText('Wartości parametrów wejściowych solvera')).toBeNull();
   });
@@ -87,7 +87,7 @@ describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)',
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ status: 'FAILED', error_message: 'Solver przerwany' })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -98,7 +98,7 @@ describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)',
 describe('SzczegolyPrzebiegu — identyfikatory tylko w trybie eksperckim (§2.7)', () => {
   it('tryb zwykły: sekcja techniczna z identyfikatorami NIE istnieje', () => {
     render(
-      <SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />,
+      <SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={false} onPokazWyniki={() => {}} />,
     );
     expect(screen.queryByTestId('mvd-przebieg-techniczne')).not.toBeInTheDocument();
     expect(screen.queryByText('run-1')).not.toBeInTheDocument();
@@ -106,7 +106,7 @@ describe('SzczegolyPrzebiegu — identyfikatory tylko w trybie eksperckim (§2.7
 
   it('tryb ekspercki: sekcja techniczna pokazuje identyfikatory przebiegu i przypadku', () => {
     render(
-      <SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />,
+      <SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />,
     );
     const sekcja = screen.getByTestId('mvd-przebieg-techniczne');
     expect(within(sekcja).getByText('run-1')).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('SzczegolyPrzebiegu — akcja „Pokaż wyniki" (karta §3 kryterium 3)
   it('klik przycisku → callback onPokazWyniki(runId)', () => {
     const onPokazWyniki = vi.fn();
     render(
-      <SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={onPokazWyniki} />,
+      <SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={false} onPokazWyniki={onPokazWyniki} />,
     );
     fireEvent.click(screen.getByTestId('mvd-przebieg-pokaz-wyniki'));
     expect(onPokazWyniki).toHaveBeenCalledTimes(1);
@@ -130,7 +130,7 @@ describe('SzczegolyPrzebiegu — akcja „Pokaż wyniki" (karta §3 kryterium 3)
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ status: 'RUNNING', finished_at: null })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={onPokazWyniki}
       />,
     );
@@ -150,7 +150,7 @@ describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ analysis_type: 'LOAD_FLOW' })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -165,7 +165,7 @@ describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ analysis_type: 'SC_3F' })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -176,7 +176,7 @@ describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ analysis_type: 'PHASE_STATE_SN' })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -185,7 +185,7 @@ describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (
 
   it('klik natywny „Zobacz wyniki" → przełącza aktywną przestrzeń na „wyniki"', async () => {
     const user = userEvent.setup();
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={false} onPokazWyniki={() => {}} />);
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
     await user.click(screen.getByTestId('mvd-przebieg-nastepny-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
@@ -195,7 +195,7 @@ describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ status: 'RUNNING', finished_at: null })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -206,7 +206,7 @@ describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (
     render(
       <SzczegolyPrzebiegu
         przebieg={wiersz({ status: 'FAILED', error_message: 'Solver przerwany' })}
-        trybEkspercki={false}
+        szczegolyAudytowe={false}
         onPokazWyniki={() => {}}
       />,
     );
@@ -216,14 +216,14 @@ describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (
 
 describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli mostu)', () => {
   it('renderuje sekcję z tytułem „Kontrakt analizy" dla wybranego przebiegu', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={false} onPokazWyniki={() => {}} />);
     const sekcja = screen.getByTestId('mvd-przebieg-kontrakt');
     expect(within(sekcja).getByText(T.sekcjaKontrakt)).toBeInTheDocument();
     expect(mockKontrakt).toHaveBeenCalledWith('run-1');
   });
 
   it('grupa „Kontekst ogólny": typ analizy, ważność wyniku, wersja układu, kompletność, zakres', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
     expect(within(grupa).getByText(T.etykietaTypAnalizy)).toBeInTheDocument();
     expect(within(grupa).getByText('rozpływ mocy')).toBeInTheDocument();
@@ -233,7 +233,7 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
   });
 
   it('grupa „Kontekst ogólny": rodzaj przypadku i projekt (fala W2 — parytet z panelem wkładów źródeł)', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
     expect(within(grupa).getByText(T.etykietaRodzajPrzypadku)).toBeInTheDocument();
     // Wartości przez realny formater mostu (parytet 1:1 — semantyka, nie surowy tekst).
@@ -243,7 +243,7 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
   });
 
   it('grupa „Kontekst ogólny": wariant, model IBG/OZE, wersja katalogu (W5b-K1 — domknięcie audytu W5a)', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
     expect(within(grupa).getByText(T.etykietaWariant)).toBeInTheDocument();
     expect(within(grupa).getByText(T.etykietaModelIbg)).toBeInTheDocument();
@@ -254,14 +254,14 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
   });
 
   it('grupa „Założenia rozpływu i zbieżności": OLTC z kontraktu (parytet z panelem zbieżności)', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-rozplyw');
     expect(within(grupa).getByText(T.etykietaZalozeniaOltc)).toBeInTheDocument();
     expect(within(grupa).getByText('zaczepy transformatorów ustalone')).toBeInTheDocument();
   });
 
   it('grupa „Założenia zwarciowo-sieciowe": uziemienie, stan łączników, temperatura, obciążenia, źródła', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-zwarcie');
     expect(within(grupa).getByText(T.etykietaUziemienie)).toBeInTheDocument();
     expect(within(grupa).getByText(T.etykietaStanLacznikow)).toBeInTheDocument();
@@ -278,7 +278,7 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
       isLoading: false,
       error: null,
     });
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const rozplyw = screen.getByTestId('mvd-przebieg-kontrakt-rozplyw');
     expect(within(rozplyw).getByText('Do konfiguracji')).toBeInTheDocument();
     const ogolne = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
@@ -287,7 +287,7 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
 
   it('stan ładowania → komunikat PL (role=status), bez grup', () => {
     mockKontrakt.mockReturnValue({ data: null, isLoading: true, error: null });
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     expect(screen.getByTestId('mvd-przebieg-kontrakt-ladowanie')).toHaveTextContent(
       T.kontraktLadowanie,
     );
@@ -296,7 +296,7 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
 
   it('stan błędu → komunikat PL (role=alert), bez grup', () => {
     mockKontrakt.mockReturnValue({ data: null, isLoading: false, error: 'HTTP 500' });
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const blad = screen.getByTestId('mvd-przebieg-kontrakt-blad');
     expect(blad).toHaveTextContent(T.kontraktBlad);
     expect(blad).toHaveAttribute('role', 'alert');
@@ -304,19 +304,19 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
   });
 
   it('tryb podstawowy → sekcja domyślnie zwinięta', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={false} onPokazWyniki={() => {}} />);
     expect(screen.getByTestId('mvd-przebieg-kontrakt')).not.toHaveAttribute('open');
   });
 
   it('tryb zaawansowany → sekcja domyślnie rozwinięta', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     expect(screen.getByTestId('mvd-przebieg-kontrakt')).toHaveAttribute('open');
   });
 });
 
 describe('SzczegolyPrzebiegu — grupa „Stany i warianty" (parytet paneli stanu fazowego i stabilności, W3)', () => {
   it('renderuje grupę „Stany i warianty" z etykietami stanu fazowego i stabilności', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
     expect(within(grupa).getByText(T.grupaStanyWarianty)).toBeInTheDocument();
     expect(within(grupa).getByText(T.etykietaIdentyfikatorPrzypadku)).toBeInTheDocument();
@@ -326,25 +326,25 @@ describe('SzczegolyPrzebiegu — grupa „Stany i warianty" (parytet paneli stan
   });
 
   it('Identyfikator przypadku: wartość przez realny formater mostu (caseRef, parytet z panelem stanu fazowego)', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
     expect(within(grupa).getByText(formatContractValue('case-1'))).toBeInTheDocument();
   });
 
   it('Brama jakości: wartość przez realny formater mostu (qualityGate)', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
     expect(within(grupa).getByText(formatContractValue('passed'))).toBeInTheDocument();
   });
 
   it('Kompletność zgodności przejściowej: wartość przez realny formater mostu (completenessLegacy)', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
     expect(within(grupa).getByText(formatContractValue('ok'))).toBeInTheDocument();
   });
 
   it('Scenariusz zakłócenia: wartość przez realny formater mostu (parytet z panelem stabilności dynamicznej)', () => {
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
     expect(within(grupa).getByText(formatContractValue('sc_3f'))).toBeInTheDocument();
   });
@@ -355,7 +355,7 @@ describe('SzczegolyPrzebiegu — grupa „Stany i warianty" (parytet paneli stan
       isLoading: false,
       error: null,
     });
-    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} szczegolyAudytowe={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
     expect(within(grupa).getAllByText('Do konfiguracji')).toHaveLength(4);
   });

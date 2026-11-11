@@ -19,7 +19,6 @@ import './arkusz.css';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { getActiveStudyCase } from '../../../../ui/study-cases/api';
-import { isModeAtLeast } from '../../../shell/modeModel';
 import { useShellStore } from '../../../shell/useShellStore';
 import { InformacjeAudytowe } from '../../../wyniki/wzorzec';
 import '../../../wyniki/wzorzec/wzorzec.css';
@@ -135,10 +134,7 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
   const setActiveCase = useAppStateStore((s) => s.setActiveCase);
   // Odcisk modelu to metadana produkcyjna — tylko w informacjach audytowych,
   // widocznych w trybie eksperckim (kontrakt prezentacji V12.7 §0.3).
-  const trybEkspercki = isModeAtLeast(
-    useShellStore((s) => s.advancementMode),
-    'expert',
-  );
+  const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
 
   const [plik, setPlik] = useState<File | null>(null);
   const [nazwa, setNazwa] = useState('');
@@ -245,7 +241,22 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
 
       <section className="mvd-ark-sekcja" aria-label={T.formatEyebrow}>
         <span className="mvd-ark-lbl">{T.formatEyebrow}</span>
-        <p className="mvd-ark-opis">{T.formatOpis}</p>
+        <p className="mvd-ark-opis">{T.formatWstep}</p>
+        <ul className="mvd-ark-opis" data-testid="mvd-ark-kolumny">
+          {[...T.formatArkusze, ...T.formatTabliczki].map((grupa) => (
+            <li key={grupa.nazwa}>
+              {grupa.nazwa}:{' '}
+              {grupa.kolumny.map((kolumna, i) => (
+                <span key={kolumna}>
+                  {i > 0 ? ', ' : null}
+                  <code>{kolumna}</code>
+                </span>
+              ))}
+            </li>
+          ))}
+        </ul>
+        <p className="mvd-ark-opis">{T.formatOpcjonalne}</p>
+        <p className="mvd-ark-opis">{T.formatTyp}</p>
       </section>
 
       <section className="mvd-ark-sekcja" aria-label={T.wyborEyebrow}>
@@ -381,7 +392,7 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
           ) : null}
           <InformacjeAudytowe
             wiersze={wynik.enm_hash ? [{ etykieta: T.raportOdcisk, wartosc: wynik.enm_hash }] : []}
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-ark-raport-audyt"
           />
         </section>

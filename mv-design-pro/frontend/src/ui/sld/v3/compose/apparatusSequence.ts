@@ -6,21 +6,23 @@
  * które MUSZĄ dawać identyczny gabaryt (test „spójność measure↔compose",
  * `compose/__tests__/station.test.ts`) — patrz nagłówek `compose/station.ts`.
  *
- * Dwie warstwy (spec §12.1 „prymat danych nad konwencją"):
- *  1. `apparatusSymbolsForRole` — stos KONWENCJI (fallback rysunkowy, §12.4),
- *     WYŁĄCZNIE gdy pole nie niesie `Bay.primary_devices`. Kolejność OD SZYNY
- *     W DÓŁ (§12.2/V12K-040): pole liniowe `DS→CB→CT→DS→ES→głowica`; pole TR
- *     `DS→bezpiecznik→TR2W`; pole pomiarowe `DS→VT→ES`; pole sprzęgła
- *     `DS→CB→CT`. Zero SA (surgeArrester) w konwencji — V12K-028: mimo że od
- *     F9.6 ENM zna `SURGE_ARRESTER` w `BayPrimaryDeviceKind`, SA WCIĄŻ nigdy
- *     nie jest rysowany „z domysłu" (§12.5) — jedyna ścieżka do glifu
- *     `surgeArrester` to `symbolIdForPrimaryDeviceKind` niżej (dane).
- *  2. `symbolIdForPrimaryDeviceKind` + `resolveBayApparatusSymbolIds` — ścieżka
- *     DANYCH (§12.1): gdy `bay.primaryDevices` niepuste (i mapowalne na co
- *     najmniej jeden symbol pola), stos budowany Z DANYCH, uporządkowanych
- *     już przez adapter wg `placement` (`v2/canvas/enmToSldAdapter.ts`
- *     `projectBayPrimaryDevices` — UPSTREAM przy szynie → DOWNSTREAM przy
- *     głowicy, ta sama kolejność „od szyny w dół" co konwencja).
+ * Dwie ścieżki (karta GEOMETRIA-STACJI §0 pkt 4, dyrektywa właściciela 2026-10-21 —
+ * rozstrzyga konflikt z dawną regułą SLD_CAD_SPEC_V3 §12.1/§12.4 „konwencja jako fallback",
+ * wpis `docs/v12xx/REJESTR_KONFLIKTOW.md` GEOMETRIA-STACJI-BRAK-WYPOSAZENIA):
+ *  1. ścieżka DANYCH (§12.1): `bay.primaryDevices` niepuste (i mapowalne na co najmniej
+ *     jeden symbol pola) — stos z DANYCH, uporządkowanych przez adapter wg `placement`
+ *     (`v2/canvas/enmToSldAdapter.ts` `projectBayPrimaryDevices` — UPSTREAM przy szynie →
+ *     DOWNSTREAM przy głowicy). Rekordem aparatu jest `Bay.primary_devices`, a gdy pole go
+ *     nie niesie — gałąź łączeniowa modelu wskazana w `Bay.equipment_refs` (aparat główny
+ *     pola, który operacja budowy stacji tworzy zawsze z pozycji katalogu).
+ *  2. BRAK DANYCH: pole bez żadnego rekordu aparatu rysuje JEDNĄ sylwetkę
+ *     `bayNoEquipment` („brak danych wyposażenia pola", bez stanu) i za nią wyłącznie
+ *     element MODELU, którego pole jest nośnikiem (transformator pola TR, źródło pola OZE)
+ *     — `elementyModeluPola`. Dawny stos konwencji (DS→CB→CT→DS→ES→głowica i jego warianty
+ *     per rola) SKASOWANY: rysował aparaty, których model nie ma, i barwił je stanem
+ *     zagregowanym z innych gałęzi.
+ * Pole rezerwowe/wolne (`MiniBlockBayDescriptor.reserve`) traci głowicę kablową i kończy się
+ * symbolem `bayReserve` (bez portu S — bez odejścia), §0 pkt 5.
  *
  * DECYZJA (mapowanie `LOAD_SWITCH`): biblioteka symboli v3 (`symbols/defs.ts`)
  * nie ma dziś dedykowanego glifu „rozłącznik" (odróżnialnego od odłącznika)
@@ -32,7 +34,7 @@
  *
  * DECYZJA (`GENERATOR_*`/`PCS`/`BATTERY` w `primary_devices`): to nie są
  * aparaty POLA (są źródłem/DER, renderowanym osobno, `derPv`/`derBess`/
- * `derGenerator` przez `apparatusSymbolsForRole` dla pól DER) — mapują się na
+ * `derWind`/`derUnknown` przez `glifZrodlaRoliPola` dla pól OZE bez rekordów) — mapują się na
  * `null` i są odfiltrowane ze stosu aparatów (mirror `BAY_PRIMARY_DEVICE_TO_
  * APPARATUS` w `v2/domain/apparatusContracts.ts`, ten sam podział).
  */
@@ -40,61 +42,67 @@
 import { APPARATUS_STACK_VERTICAL_GAP, APPARATUS_STACK_LATERAL_TAP } from '../layout/apparatusStack';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
 
-/** Znacznik pochodzenia stosu aparatów (spec §12.1, audytor DOM
- *  `data-apparatus-source`) — `'dane'` gdy stos zbudowany z
- *  `Bay.primary_devices`, `'konwencja'` gdy z tabeli fallback §12.4. */
-export type BayApparatusSource = 'dane' | 'konwencja';
+/** Znacznik pochodzenia stosu aparatów (audytor DOM `data-apparatus-source`) — `'dane'`
+ *  gdy stos zbudowany z rekordów aparatów modelu, `'brak'` gdy model ich nie niesie
+ *  (sylwetka `bayNoEquipment`, karta GEOMETRIA-STACJI §0 pkt 4c). */
+export type BayApparatusSource = 'dane' | 'brak';
+
+/** Glif źródła pola OZE wg roli pola — rodzaj źródła jest daną modelu (rola pola
+ *  wyprowadzona przez adapter z przyłączonych wytwórców), nie aparatem. `null` dla ról
+ *  nie-źródłowych. JEDNA tabela dla stacji i GPZ (`compose/gpz.ts glifZrodlaPolaGpz`). */
+export function glifZrodlaRoliPola(role: FieldRole): SymbolId | null {
+  if (role === FIELD_ROLE.DER_PV) return 'derPv';
+  if (role === FIELD_ROLE.DER_BESS) return 'derBess';
+  // GPZ-PARYTET cz. 2 (pkt 3): farma wiatrowa glifem turbiny, źródło nierozstrzygnięte
+  // glifem źródła nieokreślonego (nie PV, nie generator).
+  if (role === FIELD_ROLE.DER_FW) return 'derWind';
+  if (role === FIELD_ROLE.DER_UNKNOWN) return 'derUnknown';
+  return null;
+}
+
+function czyRolaTransformatorowa(role: FieldRole): boolean {
+  return role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER;
+}
+
+/** Pole, którego elementy modelu rozstrzyga `elementyModeluPola`: rola (z rekordu pola
+ *  i przyłączonych wytwórców, adapter) i transformator wskazany przez pole (rekord). */
+export type PoleElementowModelu = Pick<MiniBlockBayDescriptor, 'fieldRole' | 'transformerRef' | 'bateria'>;
 
 /**
- * Stos KONWENCJI (od szyny w dół, spec §12.2/§12.4) — fallback WYŁĄCZNIE dla
- * pola bez `primary_devices`. MUSI zostać zsynchronizowany z
- * `bayColumnFootprint` (`layout/measure.ts`, przez `stackFootprint` niżej —
- * jedna prawda, zero duplikacji tabeli).
+ * Elementy MODELU, których pole jest nośnikiem — NIE aparaty pola: transformator pola TR,
+ * źródło pola OZE i bateria kondensatorów na końcu toru pola. Transformator WYŁĄCZNIE z rekordu `Transformer` wskazanego przez pole
+ * (`transformerRef`, adapter) — rola TR bez rekordu transformatora nie rysuje transformatora
+ * (byłby fabrykacją elementu, którego solver nie liczy). Glif źródła OZE z roli pola, którą
+ * adapter wyprowadza z przyłączonych wytwórców (dana modelu). Dokładane za stosem aparatów,
+ * gdy dane aparatów ich nie zawierają (rekord `TRANSFORMER_DEVICE` już niesie transformator;
+ * wytwórca w `primary_devices` nie ma symbolu pola).
  */
-export function apparatusSymbolsForRole(role: FieldRole): readonly SymbolId[] {
-  if (role === FIELD_ROLE.RMU_TRANSFORMER) {
-    // Recenzja NO-GO 2026-07-17 pkt 5/6 (spec §12.5): pole TRANSFORMATOROWE
-    // BEZPIECZNIKOWE stacji SN/nN (RMU) — rozłącznik z bezpiecznikami +
-    // uziemnik (BOCZNY, §18.1 — dawny szablon w ogóle nie miał ES: pomiar
-    // recenzji pkt 6 „nie przedstawia uziemnika właściwego dla pola
-    // transformatorowego") + TR2W. Wariant wyłącznikowy = ścieżka DANYCH
-    // (`primary_devices` z CB), nie konwencja.
-    return ['fuseSwitch', 'earthSwitch', 'transformer2W'];
+export function elementyModeluPola(bay: PoleElementowModelu, symbolIds: readonly SymbolId[]): readonly SymbolId[] {
+  // UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola (`bay.bateria`,
+  // relacja `ShuntCapacitor.bus_ref === Bay.terminal_bus_ref`) zamyka stos pola — dana
+  // modelu, nie rola: pole BKR bez baterii nie rysuje baterii.
+  const bateria: readonly SymbolId[] = bay.bateria ? ['capacitorBank'] : [];
+  return [...elementyModeluPolaBezBaterii(bay, symbolIds), ...bateria];
+}
+
+function elementyModeluPolaBezBaterii(bay: PoleElementowModelu, symbolIds: readonly SymbolId[]): readonly SymbolId[] {
+  if (czyRolaTransformatorowa(bay.fieldRole)) {
+    return bay.transformerRef && !symbolIds.includes('transformer2W') ? ['transformer2W'] : [];
   }
-  if (role === FIELD_ROLE.TRANSFORMER) {
-    // pole TR (spec §12.4, poza RMU — GPZ/rozdzielnice wyłącznikowe):
-    // DS → bezpiecznik → TR2W (jak dotąd).
-    return ['disconnector', 'fuseSwitch', 'transformer2W'];
-  }
-  if (role === FIELD_ROLE.DER_PV) return ['derPv'];
-  if (role === FIELD_ROLE.DER_BESS) return ['derBess'];
-  if (role === FIELD_ROLE.DER_FW) return ['derGenerator'];
-  if (role === FIELD_ROLE.MEASUREMENT) {
-    // pole pomiarowe (spec §12.4): DS → VT → ES.
-    return ['disconnector', 'voltageTransformer', 'earthSwitch'];
-  }
-  if (role === FIELD_ROLE.COUPLER) {
-    // pole sprzęgła (spec §12.4): DS → CB → CT.
-    return ['disconnector', 'breaker', 'currentTransformer'];
-  }
-  if (role === FIELD_ROLE.RMU_LINE) {
-    // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): pole LINIOWE RMU stacji
-    // SN/nN — rozłącznik + uziemnik (BOCZNY) + głowica kablowa. Dawny
-    // szablon (DS→CB→CT→DS→ES→głowica) był kopią pola WYŁĄCZNIKOWEGO GPZ
-    // („uniwersalny szablon" — pomiar recenzji pkt 5); CB+CT w polu
-    // liniowym stacji kompaktowej pojawiają się WYŁĄCZNIE ze ścieżki
-    // danych (`primary_devices` — świadomy wybór rozdzielnicy), nigdy z
-    // konwencji.
-    return ['loadBreakSwitch', 'earthSwitch', 'cableHead'];
-  }
-  // Domyślnie: pole liniowe WYŁĄCZNIKOWE (LINE_IN/LINE_OUT/LINE_BRANCH/
-  // GPZ_LINE_BAY) — spec §12.4/§12.2: DS_szynowy → CB → CT → DS_liniowy →
-  // ES → głowica kablowa. (VT)/(SA) są WARUNKOWE (§12.2, obecne wyłącznie w
-  // danych) — konwencja rysuje WYŁĄCZNIE elementy bezwarunkowe.
-  return ['disconnector', 'breaker', 'currentTransformer', 'disconnector', 'earthSwitch', 'cableHead'];
+  // Glif źródła WYŁĄCZNIE przy polu bez rekordów aparatów: pole OZE z rekordami prowadzi
+  // tor do źródła z modelu (kabel → TR blokowy → źródło, `buildScene` tor DER-SN), który
+  // rysuje symbol źródła sam — drugi glif w polu byłby drugim, niepołączonym źródłem.
+  if (symbolIds.length > 0) return [];
+  const glif = glifZrodlaRoliPola(bay.fieldRole);
+  return glif ? [glif] : [];
+}
+
+/** Sylwetka pola bez rekordów aparatów: `bayNoEquipment` + elementy modelu pola. */
+export function symbolePolaBezDanych(bay: PoleElementowModelu): readonly SymbolId[] {
+  return ['bayNoEquipment', ...elementyModeluPola(bay, [])];
 }
 
 /** Gabaryt stosu symboli: szerokość = najszerszy symbol, wysokość = suma
@@ -128,7 +136,17 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
       return 'earthSwitch';
     case 'CT':
       return 'currentTransformer';
+    case 'UNBALANCE_CT':
+      // UX-04/POLE-BKR-MODEL: przekładnik niezrównoważenia OBEJMUJE połączenie między
+      // punktami gwiazd baterii (Zeszyt 1 Zał. 16), nie leży w torze pola — rysuje go glif
+      // baterii (`capacitorBank`, okrąg na połączeniu międzygwiazdowym, gdy pole niesie
+      // rekord; `v2/model/bateriaPola.ts`). Symbol w osi toru pola byłby fałszywą topologią.
+      return null;
     case 'VT':
+      return 'voltageTransformer';
+    case 'PHASE_TO_PHASE_VT':
+      // Przekładnik napięciowy międzyfazowy (rozładowanie baterii, U>) — symbol przekładnika
+      // napięciowego; para faz jest daną pola, nie kształtem symbolu.
       return 'voltageTransformer';
     case 'CABLE_HEAD':
       return 'cableHead';
@@ -138,7 +156,7 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
       return 'fuseSwitch';
     case 'SURGE_ARRESTER':
       // F9.6 (§12.5, V12K-028): SA WYŁĄCZNIE ze ścieżki danych — mapowanie
-      // istnieje tylko tutaj, NIGDY w `apparatusSymbolsForRole` (konwencja).
+      // istnieje tylko tutaj, nigdy z domysłu (brak danych = sylwetka `bayNoEquipment`).
       return 'surgeArrester';
     case 'GENERATOR_PV':
     case 'GENERATOR_BESS':
@@ -170,21 +188,44 @@ export function orderedSymbolPrimaryDevices<T extends { readonly kind: BayPrimar
 }
 
 /**
- * Rozstrzygnięcie „dane vs konwencja" (spec §12.1) — JEDNA prawda używana
- * przez `layout/measure.ts` (rezerwacja gabarytu) i `compose/station.ts`
- * (realny rysunek + znacznik `data-apparatus-source`). Gdy `bay.primaryDevices`
- * niepuste I zawiera co najmniej jeden aparat mapowalny na symbol pola (po
- * odfiltrowaniu DER-kindów) — ścieżka „dane"; inaczej fallback konwencji
- * (§12.4), source `'konwencja'`.
+ * Rozstrzygnięcie „dane vs brak danych" — JEDNA prawda używana przez `layout/measure.ts`
+ * (rezerwacja gabarytu) i `compose/station.ts` (rysunek + `data-apparatus-source`).
+ * Ścieżka danych: aparaty mapowalne na symbol pola (po odfiltrowaniu kindów DER), w porządku
+ * fizycznym `orderedSymbolPrimaryDevices`, + elementy modelu pola. Brak danych:
+ * `symbolePolaBezDanych`. Pole rezerwowe/wolne: bez głowicy kablowej, zakończone
+ * `bayReserve` (`zakonczenieRezerwy` — jedno miejsce reguły).
  */
 export function resolveBayApparatusSymbolIds(
-  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
+  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices' | 'reserve' | 'transformerRef'>,
 ): { readonly symbolIds: readonly SymbolId[]; readonly source: BayApparatusSource } {
   const ids = orderedSymbolPrimaryDevices(bay.primaryDevices)
     .map((d) => symbolIdForPrimaryDeviceKind(d.kind))
     .filter((id): id is SymbolId => id != null);
-  if (ids.length > 0) return { symbolIds: ids, source: 'dane' };
-  return { symbolIds: apparatusSymbolsForRole(bay.fieldRole), source: 'konwencja' };
+  if (ids.length > 0) {
+    return {
+      symbolIds: zakonczenieRezerwy([...ids, ...elementyModeluPola(bay, ids)], bay.reserve),
+      source: 'dane',
+    };
+  }
+  return { symbolIds: zakonczenieRezerwy(symbolePolaBezDanych(bay), bay.reserve), source: 'brak' };
+}
+
+/** Pole rezerwowe/wolne: głowica kablowa i odejście nie istnieją — sekwencja traci
+ *  `cableHead` i kończy się `bayReserve` (§0 pkt 5). Pozycje usuniętych głowic nie
+ *  przesuwają pozostałych aparatów względem ich rekordów — wołający dopasowujący rekordy
+ *  (`compose/station.ts stackItemsForBay`) filtruje TĄ SAMĄ funkcją `czyGlowicaRezerwy`. */
+export function zakonczenieRezerwy(
+  symbolIds: readonly SymbolId[],
+  reserve: MiniBlockBayDescriptor['reserve'],
+): readonly SymbolId[] {
+  if (!reserve) return symbolIds;
+  return [...symbolIds.filter((id) => !czyGlowicaRezerwy(id, reserve)), 'bayReserve'];
+}
+
+/** Predykat usunięcia z sekwencji pola rezerwowego — jedno źródło dla sekwencji symboli
+ *  i dla dopasowania rekordów aparatów (predykaty parami). */
+export function czyGlowicaRezerwy(symbolId: SymbolId, reserve: MiniBlockBayDescriptor['reserve']): boolean {
+  return Boolean(reserve) && symbolId === 'cableHead';
 }
 
 // ---------------------------------------------------------------------------
@@ -236,12 +277,17 @@ export interface BayApparatusPlan {
  */
 export function planApparatusSymbolIds(
   symbolIds: readonly SymbolId[],
+  // GPZ-PARYTET cz. 3: podział tor główny / aparat boczny jako PARAMETR — rozdzielnica GPZ
+  // dokłada do zbioru bocznego glif rodzaju źródła pola OZE (`compose/gpz.ts
+  // jestAparatemBocznymPolaGpz`), a jej budowa stosu i zaczep trasy używają TEGO SAMEGO
+  // predykatu (jedno źródło prawdy measure↔compose↔scena).
+  czyBoczny: (symbolId: SymbolId) => boolean = (symbolId) => LATERAL_APPARATUS_SYMBOLS.has(symbolId),
 ): Omit<BayApparatusPlan, 'source'> {
   const mainPath: SymbolId[] = [];
   const mainSequenceIndices: number[] = [];
   const laterals: LateralApparatusPlanEntry[] = [];
   symbolIds.forEach((symbolId, sequenceIndex) => {
-    if (LATERAL_APPARATUS_SYMBOLS.has(symbolId)) {
+    if (czyBoczny(symbolId)) {
       laterals.push({ symbolId, afterMainIndex: mainPath.length - 1, sequenceIndex });
     } else {
       mainPath.push(symbolId);
@@ -259,7 +305,7 @@ export function planApparatusSymbolIds(
 }
 
 export function planBayApparatus(
-  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
+  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices' | 'reserve' | 'transformerRef'>,
 ): BayApparatusPlan {
   const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
   return { ...planApparatusSymbolIds(symbolIds), source };

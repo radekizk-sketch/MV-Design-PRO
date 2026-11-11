@@ -11,15 +11,6 @@ export const ZRODLO_STRINGS = {
   odznakaNowy: 'Nowy GPZ',
   odznakaEdycja: 'Edycja GPZ',
 
-  // Zakres wariantu.
-  zakresTytul: 'Zakres wariantu GPZ',
-  zakresZrodloSn: 'Źródło SN',
-  zakresWnSn: 'GPZ WN/SN',
-  zakresInfo:
-    'Wariant „Źródło SN": parametry zwarciowe, uziemienie i pola liniowe pochodzą z pakietu '
-    + 'katalogowego GPZ. Pełny układ WN/SN (sekcje 110 kV, transformatory, składowa zerowa) '
-    + 'konfigurujesz w wariancie „GPZ WN/SN".',
-
   // Katalog.
   katalogTytul: 'Źródło danych i katalog',
   katalogPole: 'Typ źródła z katalogu',
@@ -40,9 +31,28 @@ export const ZRODLO_STRINGS = {
   oznaczenie: 'Oznaczenie ruchowe',
   napiecieSn: 'Napięcie SN',
   napiecieSnPomoc: 'Napięcie nominalne szyn SN. Wpływa na dobór katalogu transformatorów i kabli.',
-  uziemienie: 'Uziemienie punktu neutralnego',
+  uziemienie: 'Punkt neutralny sieci 110 kV',
   uziemienieR: 'R uziemienia',
   uziemienieX: 'X cewki',
+  uziemienieZTransformatora: (grupa: string | null, uziemiony: boolean | null): string => (grupa
+    ? `Transformatory 110/SN o grupie ${grupa}: ${uziemiony ? 'uzwojenie SN z wyprowadzonym punktem neutralnym daje drogę składowej zerowej po stronie SN' : 'uzwojenie SN nie daje drogi składowej zerowej — sieć SN bez zespołu uziemiającego pracuje jako izolowana'}. Punkt neutralny sieci SN uziemia zespół uziemiający sekcji (niżej) albo uzwojenie transformatora.`
+    : 'Punkt neutralny sieci SN wynika z grupy połączeń transformatora 110/SN i z zespołów uziemiających sekcji — wybierz transformator z katalogu.'),
+  uziemienieSnTytul: 'Uziemienie punktu neutralnego sieci SN',
+  uziemienieSnOpis:
+    'Sieć SN uziemia zespół uziemiający w polu ZU sekcji: transformator uziemiający ZNyn11 '
+    + 'z dławikiem gaszącym (Z.13, opcjonalnie z AWSC), z dławikiem równolegle z rezystorem '
+    + '(Z.14) albo z rezystorem (Z.15) — ENEA Zeszyt 1 §16. Równoważnik sieci nie opisuje '
+    + 'uziemienia sieci SN. Sekcja bez zespołu pracuje jako izolowana albo z punktem neutralnym '
+    + 'uzwojenia transformatora.',
+  sekcjaZespol: (nazwa: string): string => `Zespół uziemiający w sekcji „${nazwa}”`,
+  zespolWspolny:
+    'Zaznaczone sekcje dostają zespół tego samego typu. Inny typ w jednej sekcji dodasz po '
+    + 'zapisie z karty „Uziemienie” konfiguratora stacji.',
+  zespolSpz: 'SPZ zespołu (tylko przy rezystorze — ENEA Zeszyt 1 §26.9.6)',
+  zespolWylaczenieOdTr: 'Wyłączenie transformatora 110/SN sekcji wyłącza zespół',
+  zespolWylaczenieOdTrOpis:
+    'Przy rezystorze w punkcie neutralnym automatyczne wyłączenie pola SN transformatora '
+    + 'wyłącza zespół uziemiający (IRiESD II.4.5.4.3.5). Dotyczy sekcji z transformatorem w modelu.',
 
   // Parametry zwarciowe.
   zwarcieTytul: 'Parametry zwarciowe na szynach SN',
@@ -59,8 +69,8 @@ export const ZRODLO_STRINGS = {
     + 'z danych maksymalnych (założenie niekonserwatywne dla czułości zabezpieczeń).',
   sk3Min: 'Sk″min',
   sk3MinPomoc:
-    'Minimalna symetryczna moc zwarciowa 3-faz (IEC 60909-0 §6.2.1, c_min). Podaj Sk″min '
-    + 'albo Ik″min — jedno wystarczy.',
+    'Minimalna symetryczna moc zwarciowa 3-faz (IEC 60909-0 §6.2.1, $c_{\\min}$). Podaj '
+    + '$S_{k,\\min}^{\\prime\\prime}$ albo $I_{k,\\min}^{\\prime\\prime}$ — jedno wystarczy.',
   ik3Min: 'Ik″min',
   ik3MinPomoc: 'Minimalny prąd zwarciowy 3-faz — alternatywa dla Sk″min, gdy OSD podaje prąd, nie moc.',
   rxMin: 'Stosunek R/X (MIN)',
@@ -100,8 +110,9 @@ export const ZRODLO_STRINGS = {
   aparatBlad: 'Nie udało się pobrać katalogu aparatury SN.',
 
   // Składowa zerowa (advanced).
-  zeroTytul: 'Składowa zerowa',
-  zeroToggle: 'Definiuj R0/X0 dla obliczeń doziemnych',
+  zeroTytul: 'Składowa zerowa sieci 110 kV',
+  zeroToggle: 'Definiuj R0/X0 sieci 110 kV dla obliczeń doziemnych',
+  podsumIk1ZespolSn: 'z zespołu uziemiającego sekcji (bieg zwarć)',
   r0: 'R0',
   x0: 'X0',
   z0z1: 'Z0/Z1',
@@ -171,8 +182,19 @@ export const ZRODLO_STRINGS = {
 
   // Transformatory.
   transformatoryOpis:
-    'Liczba i typ transformatorów 110/SN zasilających szyny GPZ. Parametry (Sn, uk, grupa '
-    + 'połączeń) pochodzą z katalogu — wynik zwarciowy liczy backend.',
+    'Liczba i typ transformatorów 110/SN łączących wspólną szynę 110 kV (na niej równoważnik '
+    + 'sieci) z sekcjami SN — transformator n zasila sekcję n (po kolei, cyklicznie). Parametry '
+    + '(Sn, uk, grupa połączeń) pochodzą z katalogu; rozpływ przez każdy transformator i wkłady '
+    + 'zwarciowe liczy backend dla rzeczywistego stanu sprzęgła.',
+  transformatoryPozaModelem:
+    'Równoważnik sieci podany na szynach SN (z katalogu albo ręcznie po stronie SN) to moc '
+    + 'zwarciowa widziana z szyn SN — zawiera już impedancję transformatorów 110/SN. Granicą '
+    + 'modelu są wtedy szyny SN GPZ: transformatory 110/SN nie są elementami obliczeń i kreator '
+    + 'ich nie tworzy. Równoważnik zasila sekcję 1; kolejne sekcje zasila sprzęgło. Aby '
+    + 'zamodelować transformatory 110/SN (rozpływ przez każdy z nich, wkłady zwarciowe, '
+    + 'regulacja zaczepów), wybierz w kroku „Źródło” ręczny ekwiwalent (ekspercki) po stronie '
+    + '110 kV — transformatory połączą wtedy wspólną szynę 110 kV z sekcjami SN.',
+  transformatoryPozaModelemKrotko: 'W równoważniku SN (poza modelem)',
   transformatorKatalog: 'Typ transformatora 110/SN z katalogu',
   transformatorPlaceholder: '— transformator domyślny (dobór automatyczny) —',
   transformatorBlad: 'Nie udało się pobrać katalogu transformatorów.',
@@ -224,7 +246,7 @@ export const ZRODLO_STRINGS = {
 
   // Rozdzielnia.
   rozdzielniaOpis:
-    'Liczba sekcji szyn SN i sposób uziemienia punktu neutralnego. Sprzęgło powstaje '
+    'Liczba sekcji szyn SN i uziemienie punktu neutralnego sieci SN. Sprzęgło powstaje '
     + 'automatycznie między sekcjami (dla ≥ 2 sekcji).',
   sprzegloNota: 'Sprzęgło sekcyjne: powstaje automatycznie dla 2+ sekcji.',
 

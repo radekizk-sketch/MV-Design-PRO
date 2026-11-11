@@ -17,11 +17,8 @@
  * przebiegu byłoby fałszywym dowodem — wzorzec jakości, zero fabrykacji).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './wrazliwosc.css';
-import type { AdvancementMode } from '../../shell/modeModel';
-import { useAppStateStore } from '../../../ui/app-state';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSwiezoscNaglowka } from '../../freshness';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
@@ -35,9 +32,9 @@ import {
   naWierszeOgolne,
   naZalozeniaLf,
   naZalozeniaOgolne,
-  przebiegRozplywu,
 } from './model';
 import { WRAZLIWOSC_STRINGS as T } from './strings';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 // ---------------------------------------------------------------------------
 // Stan zasobu (brak przebiegu / ładowanie / błąd / gotowe)
@@ -82,16 +79,15 @@ function StanPanel({
 // ---------------------------------------------------------------------------
 
 export interface EkranWrazliwosciProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
 /** Brak dowodu przebiegu dla wartości builderów on-demand — celowy no-op. */
 const BEZ_DOWODU = () => {};
 
-export function EkranWrazliwosci({ trybZaawansowania }: EkranWrazliwosciProps) {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+export function EkranWrazliwosci({ szczegolyAudytowe }: EkranWrazliwosciProps) {
+  // Karta K8: bieg z magazynu kontekstu wyniku (aktywny bieg rodziny) — jedna prawda wyboru.
+  const przebieg = useAktywnyBieg('rozplyw');
   const runId = przebieg?.id ?? null;
   // V12K-264/265: znacznik świeżości nagłówka z JEDNEJ derywacji (K3).
   const swiezosc = useSwiezoscNaglowka(runId);
@@ -166,7 +162,7 @@ export function EkranWrazliwosci({ trybZaawansowania }: EkranWrazliwosciProps) {
               kolumny={KOLUMNY_LF}
               wiersze={naWierszeLf(stan.dane.lf.top_drivers, stan.dane.wezly)}
               onOtworzDowod={BEZ_DOWODU}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_WIERSZA_LF}
             />
           </section>
@@ -181,7 +177,7 @@ export function EkranWrazliwosci({ trybZaawansowania }: EkranWrazliwosciProps) {
               kolumny={KOLUMNY_OGOLNE}
               wiersze={naWierszeOgolne(stan.dane.ogolna.entries, stan.dane.wezly)}
               onOtworzDowod={BEZ_DOWODU}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_WIERSZA_OGOLNEGO}
             />
           </section>

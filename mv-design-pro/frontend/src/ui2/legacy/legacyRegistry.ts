@@ -13,10 +13,13 @@
  * Stan po E1.7c: stara rama (App/AppShellV12/CanonicalLayout/TopBar/
  * NavigationRail/StatusBarV12/ActiveCaseBar) SKASOWANA. Mosty aktywne:
  * LegacyWarsztat (trasy legacy + powierzchnie), LegacyInspektor (panel prawy),
- * LegacyPasekNarzedzi (pasek przepływu + wyszukiwanie ENM/przegląd zbiorczy/
- * metadane/historia), LegacyChrome (powiadomienia/pomoc/nakładki/skróty),
+ * LegacyChrome (powiadomienia/pomoc/nakładki/skróty),
  * SchematContextPanel (panel kontekstu schematu w lewym panelu),
  * AreaContextPanel i panele obszarów pozostają jako funkcje do przejęcia w U2.
+ * Dawny most LegacyPasekNarzedzi (pasek metryk + wyszukiwanie w modelu +
+ * przegląd zbiorczy + metadane + historia) skasowany w karcie K1 POWLOKA:
+ * jego polecenia niesie pasek narzędzi powłoki, wyszukiwanie — jedyna
+ * wyszukiwarka (paleta poleceń), metadane — menu projektu.
  */
 
 import { SPACE_IDS, type SpaceId } from '../shell/spaces';

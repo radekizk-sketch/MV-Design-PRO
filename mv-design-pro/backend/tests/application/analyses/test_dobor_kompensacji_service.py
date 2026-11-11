@@ -22,7 +22,7 @@ from uuid import uuid4
 
 import pytest
 from application.analyses.dobor_kompensacji import (
-    _q_kompensacji_znamionowa_mvar,
+    _q_kompensacji_z_rozplywu_mvar,
     build_compensation_sizing_view,
 )
 from enm.canonical_analysis import (
@@ -218,27 +218,28 @@ class TestMissingFieldsAreNotFabricatedZero:
     zapis, nie 0 — testuje bezpośrednio funkcje odczytu (bez powielania
     fizyki solvera w teście)."""
 
-    def test_missing_rated_mvar_skips_capacitor_not_zero(self) -> None:
-        snapshot = {
-            "shunt_capacitors": [
-                {"bus_ref": "bus_pcc", "status": "closed", "rated_mvar": 1.0},
-                {"bus_ref": "bus_pcc", "status": "closed"},  # rated_mvar brakuje
+    def test_bateria_poza_wyspa_rozwiazana_pominieta_nie_zero(self) -> None:
+        """Karta UX-04/POLE-BKR-MODEL: moc baterii w punkcie to WYNIK rozpływu
+        (``baterie_kondensatorow``); wpis bez wyniku (szyna poza wyspą rozwiązaną,
+        ``q_mvar is None``) nie wchodzi do sumy jako 0, wpis innej szyny — wcale."""
+        raw = {
+            "baterie_kondensatorow": [
+                {"bus_ref": "bus_pcc", "q_mvar": 1.0},
+                {"bus_ref": "bus_pcc", "q_mvar": None},
+                {"bus_ref": "bus_inna", "q_mvar": 7.0},
             ]
         }
-        total = _q_kompensacji_znamionowa_mvar(snapshot, "bus_pcc")
-        # Tylko kompletny wpis (1.0 Mvar) liczy się do sumy; uszkodzony wpis
-        # jest pominięty (nie fabrykuje 0.0 do sumy).
-        assert total == pytest.approx(1.0)
+        assert _q_kompensacji_z_rozplywu_mvar(raw, "bus_pcc") == pytest.approx(1.0)
 
-    def test_complete_capacitors_regression_sums_normally(self) -> None:
-        snapshot = {
-            "shunt_capacitors": [
-                {"bus_ref": "bus_pcc", "status": "closed", "rated_mvar": 1.0},
-                {"bus_ref": "bus_pcc", "status": "closed", "rated_mvar": 0.5},
+    def test_suma_baterii_w_punkcie_z_wyniku_rozplywu(self) -> None:
+        raw = {
+            "baterie_kondensatorow": [
+                {"bus_ref": "bus_pcc", "q_mvar": 1.0},
+                {"bus_ref": "bus_pcc", "q_mvar": 0.5},
             ]
         }
-        total = _q_kompensacji_znamionowa_mvar(snapshot, "bus_pcc")
-        assert total == pytest.approx(1.5)
+        assert _q_kompensacji_z_rozplywu_mvar(raw, "bus_pcc") == pytest.approx(1.5)
+        assert _q_kompensacji_z_rozplywu_mvar({}, "bus_pcc") == 0.0
 
     def test_missing_bus_voltage_kv_raises_not_zero(self) -> None:
         run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))

@@ -18,7 +18,6 @@ import { useMemo, useCallback } from 'react';
 import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
-import { useAppStateStore } from '../../app-state';
 import { publicTechnicalLabel, segmentPublicIdentity } from '../../shared/publicTechnicalLabels';
 import type { Branch, BranchPointSN } from '../../../types/enm';
 
@@ -90,9 +89,7 @@ interface BranchPoleCardProps {
 
 export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
   const snapshot = useSnapshotStore((s) => s.snapshot);
-  const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
-  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const branchPoint: BranchPointSN | undefined = useMemo(
     () => snapshot?.branch_points?.find((bp) => bp.ref_id === elementId),
@@ -179,13 +176,16 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
     });
   }, [branchPoint, openOperationForm]);
 
+  // Dobór z katalogu otwiera kreator przypisania (jak karty transformatora i łącznika).
+  // Dawne wywołanie wysyłało `element_id` bez wskazania pozycji katalogu — operacja czyta
+  // `element_ref` i wiązanie, więc przycisk zawsze kończył się odmową.
   const handleAssignCatalog = useCallback(() => {
-    if (!activeCaseId || !branchPoint) return;
-    executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
-      element_id: branchPoint.ref_id,
+    if (!branchPoint) return;
+    openOperationForm('assign_catalog_to_element', {
+      element_ref: branchPoint.ref_id,
       element_type: 'branch_point',
     });
-  }, [activeCaseId, branchPoint, executeDomainOperation]);
+  }, [branchPoint, openOperationForm]);
 
   const actions: CardAction[] = useMemo(() => {
     if (!branchPoint) return [];

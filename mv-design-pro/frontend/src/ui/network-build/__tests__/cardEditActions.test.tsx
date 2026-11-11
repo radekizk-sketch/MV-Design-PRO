@@ -101,7 +101,6 @@ describe('Karty obiektów - aktywne wejścia do edycji', () => {
           parent_segment_id: 'seg-c-1',
           ports: { MAIN_IN: 'bus/a', MAIN_OUT: 'bus/b', BRANCH: ['bus/c'] },
           branch_occupied: {},
-          switch_state: 'closed',
           completeness_status: 'KOMPLETNY',
         },
       ],

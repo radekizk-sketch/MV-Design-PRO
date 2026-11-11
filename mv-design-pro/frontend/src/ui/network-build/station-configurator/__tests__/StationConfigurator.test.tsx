@@ -1,8 +1,9 @@
 /**
- * PR-8a — Testy StationConfigurator (17 kroków).
+ * PR-8a — Testy StationConfigurator (16 kroków).
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { StationConfigBasicCard } from '../cards/StationConfigBasicCard';
@@ -22,7 +23,6 @@ const minimalProps = {
     snVoltageKv: 15,
     nnVoltageLevels: [0.4],
     completeness: 'complete' as const,
-    mvNeutralGroundings: [],
   },
   topology: {
     externalPorts: [],
@@ -43,20 +43,16 @@ const minimalProps = {
   },
   bays: { bays: [], hvFuses: [] },
   transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
-  nnSwitchgear: { switchgears: [] },
+  nnSwitchgear: { switchgears: [], loads: [], stanDanych: { stan: 'gotowe' as const } },
   derSources: { stationId: 'station_test', ders: [] },
-  loads: { loads: [] },
   protection: {
     relays: [],
-    automation: [],
-    interlocksConfigured: false,
-    controlMode: 'lokalne' as const,
   },
-  measurements: { cts: [], vts: [], metersCount: 0, telemetryCount: 0 },
+  measurements: { cts: [], vts: [], polaPomiarowe: [] },
   readiness: { items: [] },
 };
 
-describe('StationConfigurator — 17 kroków', () => {
+describe('StationConfigurator — 16 kroków', () => {
   it('renderuje cały przepływ konfiguracji z polskimi etykietami', () => {
     render(<StationConfigurator {...minimalProps} />);
     const labels = [
@@ -66,7 +62,7 @@ describe('StationConfigurator — 17 kroków', () => {
       'Aparatura SN',
       'Przekładniki prądowe',
       'Przekładniki napięciowe',
-      'Liczniki i telemechanika',
+      'Pola pomiarowe',
       'Transformator',
       'Uziemienie',
       'Strona nN',
@@ -74,7 +70,6 @@ describe('StationConfigurator — 17 kroków', () => {
       'Jakość energii',
       'Zabezpieczenia',
       'NC RfG i PTPiREE',
-      'SCADA i infrastruktura',
       'Analiza sieciowa',
       'Obliczenia i raport',
     ];
@@ -106,7 +101,7 @@ describe('StationConfigurator — 17 kroków', () => {
     expect(onOpenCalculations).toHaveBeenCalledOnce();
   });
 
-  it('jakość energii: brak mocy źródła albo odbioru nie jest zerem w sumie (karta PROOFPACK-KONTRAKT)', () => {
+  it('jakość energii: brak mocy źródła nie jest zerem w sumie (karta PROOFPACK-KONTRAKT)', () => {
     const der = (id: string, moc: number | null) =>
       ({
         id,
@@ -119,10 +114,13 @@ describe('StationConfigurator — 17 kroków', () => {
       <StationConfigurator
         {...minimalProps}
         derSources={{ stationId: 'station_test', ders: [der('PV 1', 400), der('PV 2', null)] }}
-        loads={{
+        nnSwitchgear={{
+          switchgears: [],
+          stanDanych: { stan: 'gotowe' },
+          // Odbiór modelu ma zawsze P i Q (`Load.p_mw`/`q_mvar` wymagane) — suma bez braków.
           loads: [
-            { loadId: 'o1', name: 'O1', attachmentPointPl: 'szyna nN', pMw: 0.2, qMvar: 0, statusForPf: 'gotowe', statusForVoltage: 'gotowe' },
-            { loadId: 'o2', name: 'O2', attachmentPointPl: 'szyna nN', pMw: null, qMvar: null, statusForPf: 'brak danych', statusForVoltage: 'brak danych' },
+            { loadId: 'o1', name: 'O1', attachmentPointPl: 'szyna nN', pMw: 0.2, qMvar: 0 },
+            { loadId: 'o2', name: 'O2', attachmentPointPl: 'szyna nN', pMw: 0.05, qMvar: 0.01 },
           ],
         }}
       />,
@@ -130,7 +128,7 @@ describe('StationConfigurator — 17 kroków', () => {
     fireEvent.click(screen.getByTestId('station-config-tab-power-quality'));
     const tresc = screen.getByTestId('station-config-content-power-quality').textContent ?? '';
     expect(tresc).toContain('400 kW + 1 bez mocy z katalogu');
-    expect(tresc).toContain('0.200 MW + 1 bez mocy');
+    expect(tresc).toContain('0.250 MW');
   });
 });
 
@@ -144,7 +142,6 @@ describe('StationConfigBasicCard', () => {
         snVoltageKv={15}
         nnVoltageLevels={[0.4, 0.69, 6.0]}
         completeness="partial"
-        mvNeutralGroundings={[]}
       />,
     );
     expect(screen.getByTestId('station-topological-type')).toHaveTextContent('przelotowa');
@@ -153,21 +150,46 @@ describe('StationConfigBasicCard', () => {
     expect(screen.getByText(/multi-voltage/)).toBeInTheDocument();
   });
 
-  it('zmiana nazwy wywołuje onChange', () => {
-    const onChange = vi.fn();
-    render(
+  // Karta UX-04/POLE-ZU: karta danych podstawowych pokazuje FAKTY MODELU — bez kontrolek,
+  // których konfigurator nie zapisywał (widma), i bez wyboru uziemienia SN (druga prawda).
+  it('fakty modelu bez kontrolek edycji; brak danych nazwany, nie domyślony', () => {
+    const { container } = render(
       <StationConfigBasicCard
         stationName="ST-01"
+        designation={null}
         topologicalType="końcowa"
+        constructionType={null}
         snVoltageKv={15}
         nnVoltageLevels={[0.4]}
         completeness="complete"
-        mvNeutralGroundings={[]}
-        onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByTestId('station-name-input'), { target: { value: 'ST-02' } });
-    expect(onChange).toHaveBeenCalledWith({ stationName: 'ST-02' });
+    expect(screen.getByTestId('station-name')).toHaveTextContent('ST-01');
+    expect(screen.getByTestId('station-designation')).toHaveTextContent('nie podano w modelu');
+    expect(screen.getByTestId('station-construction-type')).toHaveTextContent('nie podano w modelu');
+    expect(container.querySelectorAll('input, select, textarea')).toHaveLength(0);
+    expect(screen.queryByText(/uziemienie neutralne/i)).toBeNull();
+    // Bez stacji w modelu nie ma czego edytować — brak przycisku, nie martwy klik.
+    expect(screen.queryByTestId('station-edit-data')).toBeNull();
+  });
+
+  it('natywny klik „Zmień dane stacji w modelu” otwiera formularz operacji modelu', async () => {
+    const onEditStation = vi.fn();
+    render(
+      <StationConfigBasicCard
+        stationName="ST-01"
+        designation="S-7"
+        topologicalType="końcowa"
+        constructionType="wnetrzowa"
+        snVoltageKv={15}
+        nnVoltageLevels={[0.4]}
+        completeness="complete"
+        onEditStation={onEditStation}
+      />,
+    );
+    expect(screen.getByTestId('station-designation')).toHaveTextContent('S-7');
+    await userEvent.click(screen.getByTestId('station-edit-data'));
+    expect(onEditStation).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -397,15 +419,26 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
 
 describe('StationConfigNnSwitchgearCard', () => {
   it('renderuje wiele rozdzielnic nN dla multi-voltage stacji', () => {
+    const wiersz = (sectionId: string, kv: number) => ({
+      sectionId,
+      designation: sectionId,
+      nnVoltageKv: kv,
+      tier: 'main' as const,
+      incomersCount: 1,
+      couplersCount: 0,
+      feedersCount: 8,
+      loadFeedersCount: 2,
+      derFeedersCount: 0,
+      subBoardFeedersCount: 0,
+    });
     render(
       <StationConfigNnSwitchgearCard
-        switchgears={[
-          { designation: 'RnN-6kV-1', nnVoltageKv: 6.0, sectionsCount: 1, feedersCount: 8, loadsCount: 2, pvNnCount: 0, bessNnCount: 0, statusPl: 'kompletne' },
-          { designation: 'RnN-0.4kV-2', nnVoltageKv: 0.4, sectionsCount: 1, feedersCount: 12, loadsCount: 5, pvNnCount: 1, bessNnCount: 0, statusPl: 'częściowe' },
-        ]}
+        switchgears={[wiersz('RnN-6kV-1', 6.0), wiersz('RnN-0.4kV-2', 0.4)]}
+        loads={[]}
+        stanDanych={{ stan: 'gotowe' }}
       />,
     );
-    expect(screen.getByTestId('nn-switchgear-RnN-6kV-1')).toBeInTheDocument();
-    expect(screen.getByTestId('nn-switchgear-RnN-0.4kV-2')).toBeInTheDocument();
+    expect(screen.getByTestId('nn-switchgear-RnN-6kV-1')).toHaveTextContent('6 kV');
+    expect(screen.getByTestId('nn-switchgear-RnN-0.4kV-2')).toHaveTextContent('0.4 kV');
   });
 });

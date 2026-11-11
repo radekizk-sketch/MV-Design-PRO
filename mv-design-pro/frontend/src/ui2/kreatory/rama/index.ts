@@ -39,7 +39,7 @@ export type {
 export { PanelTeorii, PANEL_TEORII_WYMOG_PREFIX } from './panelTeorii';
 export type { PanelTeoriiProps } from './panelTeorii';
 
-export { TekstZWzorami } from './tekstZWzorami';
+export { TekstZWzorami, tekstBezWzorow } from './tekstZWzorami';
 export type { TekstZWzoramiProps } from './tekstZWzorami';
 
 export { VBW, VBH, PAD, PLW, PLH, px, py, RamkaWykresu } from './wykresPomoc';
@@ -52,6 +52,16 @@ export {
   kanonicznyRefZOperacji,
 } from './selekcjaPoOperacji';
 export type { SelekcjaFallback } from './selekcjaPoOperacji';
+
+export { useProbaOperacji, ZWLOKA_PROBY_MS } from './probaOperacji';
+export type { StanProbyOperacji } from './probaOperacji';
+export {
+  KontrolaPrzedZapisem,
+  PROBA_STRINGS,
+  komunikatProby,
+  wierszProby,
+} from './kontrolaPrzedZapisem';
+export type { KontrolaPrzedZapisemProps } from './kontrolaPrzedZapisem';
 
 export { bladPola } from './model';
 export type {

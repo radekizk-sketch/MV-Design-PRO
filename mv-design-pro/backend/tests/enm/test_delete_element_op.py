@@ -86,7 +86,6 @@ def _base_enm():
                 "name": "Magistrala główna",
                 "ordered_segment_refs": ["br/ab"],
                 "corridor_type": "radial",
-                "no_point_ref": "br/ab",
             }
         ],
         "measurements": [],

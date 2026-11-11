@@ -128,21 +128,6 @@ export function hasEnoughTransformerPower(
   return (type.rated_power_mva ?? 0) >= sourcePowerMva;
 }
 
-// Pure helpers - voltage
-export function voltageMatches(
-  left: number | null | undefined,
-  right: number | null | undefined,
-  toleranceKv = 0.5,
-): boolean {
-  return (
-    typeof left === 'number'
-    && Number.isFinite(left)
-    && typeof right === 'number'
-    && Number.isFinite(right)
-    && Math.abs(left - right) <= toleranceKv
-  );
-}
-
 // Pure helpers - feeder count (clamp 1..8 per InsertStationForm constraint)
 export function clampOutgoingFeederCount(value: number): number {
   if (!Number.isFinite(value)) return 1;
@@ -563,7 +548,7 @@ export interface StationSnFieldTemplate {
   /**
    * Blok fabryczny rodziny RMU, z którego pochodzi to pole — POLE PIERWSZEJ
    * KLASY payloadu operacji stacyjnej, o tej samej nazwie, co w kontrakcie
-   * `add_sn_bay_from_catalog`. Wcześniej wybór bloku jechał jako metadana
+   * `add_sn_bay` (pole z katalogu rozdzielnic). Wcześniej wybór bloku jechał jako metadana
    * `catalog_bindings.factory_configuration`, której żadna operacja stacyjna
    * nie czytała — pole rodziny blokowej kończyło zapis twardym błędem
    * katalogowym. Pole rodziny MODUŁOWEJ klucza nie niesie (brak bloku to brak

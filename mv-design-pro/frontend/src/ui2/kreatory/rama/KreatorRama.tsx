@@ -12,6 +12,7 @@ import type { ReactNode } from 'react';
 
 import './kreatory.css';
 import type { KrokKreatora } from './model';
+import { TekstZWzorami } from './tekstZWzorami';
 
 export interface AkcjaKreatora {
   readonly etykieta: string;
@@ -93,7 +94,7 @@ export function KreatorRama({
           </div>
           {odznaka ? <span className="mvd-kreator-odznaka">{odznaka}</span> : null}
         </div>
-        <p className="mvd-kreator-cel">{cel}</p>
+        <p className="mvd-kreator-cel"><TekstZWzorami tekst={cel} /></p>
         {kroki && kroki.length > 0 ? (
           <ol className="mvd-kreator-kroki" data-testid="mvd-kreator-kroki">
             {kroki.map((krok, i) => {
@@ -212,7 +213,7 @@ export function KreatorSekcja({ tytul, nota, children, testid }: KreatorSekcjaPr
     <section className="mvd-kreator-sekcja" data-testid={testid}>
       <div className="mvd-kreator-sekcja-head">
         <span className="mvd-kreator-sekcja-tytul">{tytul}</span>
-        {nota ? <span className="mvd-kreator-sekcja-nota">{nota}</span> : null}
+        {nota ? <span className="mvd-kreator-sekcja-nota"><TekstZWzorami tekst={nota} /></span> : null}
       </div>
       <div className="mvd-kreator-sekcja-cialo">{children}</div>
     </section>
@@ -223,7 +224,7 @@ export function KreatorSekcja({ tytul, nota, children, testid }: KreatorSekcjaPr
 export function KreatorInfo({ children, testid }: { children: ReactNode; testid?: string }) {
   return (
     <p className="mvd-kreator-sekcja--info" data-testid={testid}>
-      {children}
+      {typeof children === 'string' ? <TekstZWzorami tekst={children} /> : children}
     </p>
   );
 }

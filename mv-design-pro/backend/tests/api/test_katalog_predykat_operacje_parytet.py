@@ -34,7 +34,6 @@ from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
 _OPERACJA_RODZAJ: dict[str, str] = {
     "add_grid_source_sn": "source",  # "Dodanie źródła zasilania sieciowego (GPZ) do sieci SN"
     "add_sn_bay": "switch",  # "Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego"
-    "add_sn_bay_from_catalog": "switch",  # "Dodanie pola SN z katalogu rozdzielnic..."
     "continue_trunk_segment_sn": "cable",  # "Kontynuacja segmentu magistrali SN"
     "start_branch_segment_sn": "cable",  # "Rozpoczęcie nowego odgałęzienia od magistrali SN"
     "connect_secondary_ring_sn": "cable",  # "Zamknięcie pierścienia wtórnego"
@@ -75,9 +74,9 @@ _OPERACJE_POZA_TAKSONOMIA_RODZAJOW: frozenset[str] = frozenset(
         # (nie jest jednym z: cable/line_overhead/transformer/source/generator/
         # load/switch/breaker/fuse/measurement/protection/shunt_capacitor).
         "add_surge_arrester_sn",
-        # Aparat odpływowy nN: katalog materializowany PRZY PROMOCJI wpisu
-        # (`enm.migrations.nn_field_specs_promocja`), nie przez tę operację —
-        # `api/domain_ops_policy.py` nagłówek modułu, karta NAPRAWA-B.
+        # Aparat odpływowy nN: operacja sprawdza wskazaną pozycję i zapisuje wiązanie na
+        # polu, a aparat z katalogu tworzy PROMOCJA aparatów nN
+        # (`enm.migrations.promocja_aparatow_nn`) — nie ta operacja (karta W5-B).
         "add_nn_outgoing_field",
         # Rozdzielnica nN i sekcja GPZ tworzą `Substation`/metadane stacji —
         # kontener bez fizyki, nie element jednego z 12 rodzajów.
@@ -108,10 +107,10 @@ _ROZJAZD_TWORZENIE_ZNANY: frozenset[str] = frozenset(
         # `load` (tworzenie BLOCKER dla obciążenia nN via `add_nn_load`) — SN i nN
         # to dwie różne, dziś świadomie różne polityki pod jedną nazwą rodzaju.
         "add_load_sn",
-        # `add_generator_sn`: katalog OBOWIĄZKOWY, egzekwowany WYŁĄCZNIE przez
-        # domenę (`enm/domain_operations_v2.py::add_generator_sn`, kod
-        # `generator.catalog_required`, komentarz "K1.2 — element fizyczny, bez
-        # wyjątku dla generatorów") — `api/domain_ops_policy.py::validate_and_
+        # `add_generator_sn`: katalog ALBO jawna tabliczka `manual_params` (tryb
+        # EKSPERCKI_RECZNY, ZASADA NR 4), egzekwowane WYŁĄCZNIE przez domenę
+        # (`enm/domain_operations_v2.py::add_generator_sn`, kod
+        # `generator.catalog_required` dla braku obu) — `api/domain_ops_policy.py::validate_and_
         # materialize_catalog_binding` przepuszcza operacje spoza
         # `CATALOG_REQUIRED_OPERATIONS` bez kontroli WCZESNEJ (linia „if operation
         # not in CATALOG_REQUIRED_OPERATIONS: return None, {}”), więc żądanie bez

@@ -315,15 +315,18 @@ def test_line_run_4_kinds(run_kind: str) -> None:
     assert lr.run_kind == run_kind
 
 
-def test_line_run_ring_with_nop() -> None:
+def test_line_run_ring_bez_kopii_punktu_podzialu() -> None:
+    """W5-C: ciąg pierścieniowy NIE niesie punktu podziału — dawna `nop_station_ref`
+    (kopia z chwili utworzenia, nigdy aktualizowana i nieczytana) jest skasowana; punkt
+    podziału to `SwitchBranch.normal_state` (migracja: `enm/stan_normalny.py`)."""
     lr = LineRun(
         id="lr_ring_1",
         run_kind="ring",
         starting_bay_ref="bay_gpz_F01",
         starting_port_ref="sub_gpz:bay_gpz_F01:sn_output",
-        nop_station_ref="sub_st_3",  # NOP w stacji ST-3
     )
-    assert lr.nop_station_ref == "sub_st_3"
+    assert lr.run_kind == "ring"
+    assert "nop_station_ref" not in LineRun.model_fields
 
 
 # ---------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Scena SN na fixturze „Stacja B" (model z PEŁNĄ rozdzielnicą nN) —
  * architektura LV Domain Projection po B-02 (`docs/sld/
@@ -19,7 +20,7 @@ import { createHash } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel, Generator } from '../../../../types/enm';
+import type { EnergyNetworkModel, Generator } from '../../../../../types/enm';
 import {
   allSourcesConnected,
   allSourcesVisible,

@@ -153,6 +153,8 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
         otworzProjekt: vi.fn(),
         przywrocUklad: vi.fn(),
         polaczPonownie: vi.fn(),
+        przelaczSzczegolyAudytowe: vi.fn(),
+        przelaczMotyw: vi.fn(),
       },
     });
     render(
@@ -160,9 +162,7 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
         otwarta
         onZamknij={() => {}}
         pozycje={pozycje}
-        trybAktualny="expert"
         onWykonaj={(pozycja) => pozycja.akcja()}
-        onPrzelaczTryb={() => {}}
       />,
     );
     const input = screen.getByTestId('mvd-cmdk-input') as HTMLInputElement;

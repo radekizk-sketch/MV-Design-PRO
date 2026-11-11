@@ -10,6 +10,9 @@
 import { SYMBOL_DEFS, type SymbolId } from './defs';
 import { BASE_STROKE } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
+import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
+import type { UkladPolaczenBaterii } from '../../../../types/enm';
+import { PORTY_APARATOW_POLA_BKR, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatowPolaBkr';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -125,6 +128,21 @@ export interface GlyphProps {
   /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
    *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
   readonly gpzFeeders?: number;
+  /** Karta GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu —
+   *  WYŁĄCZNIE `Transformer2WGlyph`. `undefined` = wołający nie rozwiązuje grupy dla
+   *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
+   *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
+  readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów z modelu — WYŁĄCZNIE
+   *  `CapacitorBankGlyph` (układ połączeń i obecność rekordu przekładnika niezrównoważenia
+   *  pola). `undefined`/`uklad: null` = model nie deklaruje układu (znak „?"). */
+  readonly bateria?: GlifBaterii;
+}
+
+/** Dane glifu baterii kondensatorów (`v2/model/bateriaPola.ts BateriaPolaView` bez refu). */
+export interface GlifBaterii {
+  readonly uklad: UkladPolaczenBaterii | null;
+  readonly przekladnikNiezrownowazenia: boolean;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -402,6 +420,99 @@ export function VoltageIndicatorGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Środki znaków uzwojeń — w części okręgu WOLNEJ od drugiego okręgu (okręgi r=11
+ *  wokół (16,13) i (16,27) zachodzą na siebie w pasie y 16…24). */
+const ZNAK_UZWOJENIA_GORNEGO = { x: 16, y: 9 } as const;
+const ZNAK_UZWOJENIA_DOLNEGO = { x: 16, y: 31 } as const;
+/** Promień znaku uzwojenia (trójkąt/gwiazda/zygzak) — mieści się w okręgu r=11. */
+const ZNAK_UZWOJENIA_R = 4.5;
+
+function znakRodzajuUzwojenia(rodzaj: RodzajUzwojenia, c: { x: number; y: number }): string {
+  const r = ZNAK_UZWOJENIA_R;
+  // Współrzędne zaokrąglone do 0,01 — zapis ścieżki deterministyczny i krótki.
+  const f = (v: number): number => Math.round(v * 100) / 100;
+  const p = (kat: number, d: number, od = c) => ({ x: f(od.x + d * Math.cos(kat)), y: f(od.y + d * Math.sin(kat)) });
+  // Ramiona gwiazdy/zygzaka i wierzchołki trójkąta: góra, prawo-dół, lewo-dół.
+  const katy = [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6];
+  if (rodzaj === 'trojkat') {
+    const [a, b, d] = katy.map((kat) => p(kat, r));
+    return `M${a.x},${a.y} L${b.x},${b.y} L${d.x},${d.y} Z`;
+  }
+  if (rodzaj === 'gwiazda') {
+    return katy.map((kat) => { const k = p(kat, r); return `M${c.x},${c.y} L${k.x},${k.y}`; }).join(' ');
+  }
+  // Zygzak (IEC 60617-6): ramię gwiazdy załamane w połowie długości o 60°.
+  return katy
+    .map((kat) => {
+      const pol = p(kat, r / 2);
+      const koniec = p(kat + Math.PI / 3, r / 2, pol);
+      return `M${c.x},${c.y} L${pol.x},${pol.y} L${koniec.x},${koniec.y}`;
+    })
+    .join(' ');
+}
+
+function ZnakUzwojenia(props: {
+  readonly uzwojenie: Uzwojenie;
+  readonly c: { x: number; y: number };
+  readonly strona: 'gorne' | 'dolne';
+  readonly glif: GlyphProps;
+}): JSX.Element {
+  const { uzwojenie, c, strona, glif } = props;
+  const sw = grubosc(glif, 1);
+  return (
+    <g
+      data-uzwojenie={strona}
+      data-uzwojenie-rodzaj={uzwojenie.rodzaj}
+      data-uzwojenie-neutralny={uzwojenie.punktNeutralny ? 'true' : 'false'}
+    >
+      <path d={znakRodzajuUzwojenia(uzwojenie.rodzaj, c)} fill="none" stroke={stroke(glif)} strokeWidth={sw} />
+      {uzwojenie.punktNeutralny && (
+        <g data-uzwojenie-punkt-neutralny="true">
+          <line x1={c.x} y1={c.y} x2={c.x + ZNAK_UZWOJENIA_R + 1} y2={c.y} stroke={stroke(glif)} strokeWidth={sw} />
+          <circle cx={c.x + ZNAK_UZWOJENIA_R + 1} cy={c.y} r={1.1} fill={stroke(glif)} />
+        </g>
+      )}
+    </g>
+  );
+}
+
+function BrakUzwojenia(props: { readonly c: { x: number; y: number }; readonly strona: 'gorne' | 'dolne'; readonly glif: GlyphProps }): JSX.Element {
+  return (
+    <text
+      data-uzwojenie={props.strona}
+      data-uzwojenie-rodzaj="brak"
+      x={props.c.x}
+      y={props.c.y + 4.5}
+      textAnchor="middle"
+      fill={stroke(props.glif)}
+      fontFamily="sans-serif"
+      fontSize={13}
+      fontWeight={700}
+    >
+      ?
+    </text>
+  );
+}
+
+function OznaczenieUzwojen(props: { readonly glif: GlyphProps }): JSX.Element | null {
+  const u = props.glif.uzwojenia;
+  if (!u) return null;
+  if (u.stan !== 'znane') {
+    return (
+      <g data-uzwojenia-stan={u.stan}>
+        <BrakUzwojenia c={ZNAK_UZWOJENIA_GORNEGO} strona="gorne" glif={props.glif} />
+        <BrakUzwojenia c={ZNAK_UZWOJENIA_DOLNEGO} strona="dolne" glif={props.glif} />
+      </g>
+    );
+  }
+  return (
+    <g data-uzwojenia-stan="znane" data-uzwojenia-godzina={u.godzina}>
+      <ZnakUzwojenia uzwojenie={u.gorne} c={ZNAK_UZWOJENIA_GORNEGO} strona="gorne" glif={props.glif} />
+      <ZnakUzwojenia uzwojenie={u.dolne} c={ZNAK_UZWOJENIA_DOLNEGO} strona="dolne" glif={props.glif} />
+    </g>
+  );
+}
+
 export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('transformer2W', props)}>
@@ -409,6 +520,7 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={13} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <OznaczenieUzwojen glif={props} />
       {/* TR2W-BEZ-POLA (§0.C.5): marker stanu NIEKOMPLETNEGO — transformator
        *  przyłączony do szyny SN bez pola transformatorowego. Narożnik strony
        *  WN (u góry, przy punkcie przyłączenia — tam wchodzi pion z szyny),
@@ -647,6 +759,64 @@ export function DerWindGlyph(props: GlyphProps): JSX.Element {
       <line x1={16} y1={11} x2={9.1} y2={14.9} stroke={stroke(props)} strokeWidth={grubosc(props, 1.2)} />
     </g>
   ));
+}
+
+/**
+ * GPZ-PARYTET cz. 2 (pkt 3): źródło nieokreślone — ramka DER z pytajnikiem. Model nie
+ * rozstrzyga rodzaju (pole `OZE` bez wytwórcy albo z wytwórcami różnych rodzajów,
+ * wytwórca typu spoza rodzajów rysowanych), więc rysunek mówi to wprost zamiast udawać PV.
+ */
+export function DerUnknownGlyph(props: GlyphProps): JSX.Element {
+  return derFrame(props, 'derUnknown', (
+    <text
+      x={16} y={22} textAnchor="middle"
+      fill={stroke(props)} fontFamily="sans-serif" fontSize={16} fontWeight={700}
+    >
+      ?
+    </text>
+  ));
+}
+
+/**
+ * GEOMETRIA-STACJI (§0 pkt 4c): pole bez ŻADNEGO rekordu wyposażenia w modelu — tor pola
+ * doprowadzony do przerywanej ramki z pytajnikiem. Glif NIE czyta `state`: bez rekordu nie
+ * ma stanu, a więc i koloru stanu (dyrektywa właściciela 2026-10-21, zero fabrykacji).
+ */
+export function BayNoEquipmentGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('bayNoEquipment', props)} data-brak-wyposazenia="true">
+      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <rect
+        x={1} y={4} width={14} height={24}
+        fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+        strokeDasharray="3 2"
+      />
+      <text
+        x={8} y={21} textAnchor="middle"
+        fill={stroke(props)} fontFamily="sans-serif" fontSize={13} fontWeight={700}
+      >
+        ?
+      </text>
+      <line x1={8} y1={28} x2={8} y2={32} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    </g>
+  );
+}
+
+/**
+ * GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola rezerwowego/wolnego — krótki tor pola
+ * zamknięty poprzeczką i drugą, przerywaną: pole przygotowane, bez głowicy i bez odejścia.
+ */
+export function BayReserveGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('bayReserve', props)}>
+      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={2} y1={8} x2={14} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line
+        x1={4} y1={13} x2={12} y2={13}
+        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} strokeDasharray="2 2"
+      />
+    </g>
+  );
 }
 
 /**
@@ -1042,6 +1212,99 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN na końcu toru pola.
+ *
+ * Kondensator — symbol ogólny PN-EN 60617-4 nr 04-02-01: dwie równoległe okładki z
+ * doprowadzeniami w osi. Geometria okładek przeniesiona w skali 1:2 z elementu
+ * QElectroTech `10_electric/91_en_60617/en_60617_04/en_60617_04_02/en_60617_04_02_01.elmt`
+ * („Capacitor, general symbol": okładki szerokości 40 w odstępie 5, doprowadzenia w osi;
+ * licencja CC BY 3.0, autorzy: zespół QElectroTech) — tu okładki 20 w odstępie 2,5.
+ *
+ * Pod kondensatorem ZNAK UKŁADU POŁĄCZEŃ z modelu (`bateria.uklad`, zero domysłu):
+ *  • `PODWOJNA_GWIAZDA_IZOLOWANA` — dwie gwiazdy z izolowanymi punktami gwiazd połączonymi
+ *    przewodem; przekładnik niezrównoważenia (okrąg na połączeniu, port `obwod`) rysowany
+ *    WYŁĄCZNIE, gdy pole niesie jego rekord (ENEA Operator, Zeszyt 1 §17 s. 32, Zał. 16);
+ *  • `GWIAZDA_IZOLOWANA` — gwiazda bez połączenia z ziemią;
+ *  • `GWIAZDA_UZIEMIONA` — gwiazda z punktem gwiazdy połączonym z uziomem (jedyny układ
+ *    z drogą dla składowej zerowej — `backend/src/network_model/core/bateria_kondensatorow.py`);
+ *  • `TROJKAT` — trójkąt;
+ *  • brak danej — znak „?" (układ nieokreślony w modelu; obliczenie przyjmuje wartość
+ *    roboczą, którą pokazują dane przyjęte, nie rysunek).
+ */
+function gwiazda(cx: number, cy: number, r: number): string {
+  const dx = r * Math.sin(Math.PI / 3);
+  const dy = r * Math.cos(Math.PI / 3);
+  return `M ${cx} ${cy} L ${cx} ${cy - r} M ${cx} ${cy} L ${cx - dx} ${cy + dy} M ${cx} ${cy} L ${cx + dx} ${cy + dy}`;
+}
+
+export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  const s = stroke(props);
+  const uklad = props.bateria?.uklad ?? null;
+  const zPrzekladnikiem = uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && props.bateria?.przekladnikNiezrownowazenia === true;
+  return (
+    <g
+      {...glyphGroupProps('capacitorBank', props)}
+      data-uklad-baterii={uklad ?? 'NIEOKRESLONY'}
+      data-przekladnik-niezrownowazenia={zPrzekladnikiem ? 'tak' : 'nie'}
+    >
+      {/* Kondensator (PN-EN 60617-4 04-02-01): doprowadzenie, dwie okładki, doprowadzenie. */}
+      <line x1={16} y1={0} x2={16} y2={6} stroke={s} strokeWidth={w} />
+      <line x1={6} y1={6} x2={26} y2={6} stroke={s} strokeWidth={w} data-okladka-kondensatora="1" />
+      <line x1={6} y1={8.5} x2={26} y2={8.5} stroke={s} strokeWidth={w} data-okladka-kondensatora="2" />
+      <line x1={16} y1={8.5} x2={16} y2={14} stroke={s} strokeWidth={w} />
+      {uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && (
+        <g data-znak-ukladu="PODWOJNA_GWIAZDA_IZOLOWANA">
+          <path d="M 16 14 L 16 17 M 8 17 L 24 17 M 8 17 L 8 20 M 24 17 L 24 20" fill="none" stroke={s} strokeWidth={w} />
+          <path d={`${gwiazda(8, 25, 5)} ${gwiazda(24, 25, 5)}`} fill="none" stroke={s} strokeWidth={w} />
+          {zPrzekladnikiem ? (
+            <>
+              <line x1={8} y1={25} x2={13} y2={25} stroke={s} strokeWidth={w} />
+              <circle
+                cx={16} cy={25} r={3} fill="none" stroke={s} strokeWidth={w}
+                data-rodzaj-aparatu={RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA}
+                data-port={PORTY_APARATOW_POLA_BKR[RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA][0]}
+              />
+              <line x1={19} y1={25} x2={24} y2={25} stroke={s} strokeWidth={w} />
+            </>
+          ) : (
+            <line x1={8} y1={25} x2={24} y2={25} stroke={s} strokeWidth={w} />
+          )}
+        </g>
+      )}
+      {(uklad === 'GWIAZDA_IZOLOWANA' || uklad === 'GWIAZDA_UZIEMIONA') && (
+        <g data-znak-ukladu={uklad}>
+          <line x1={16} y1={14} x2={16} y2={20} stroke={s} strokeWidth={w} />
+          <path d={gwiazda(16, 25, 5)} fill="none" stroke={s} strokeWidth={w} />
+          {uklad === 'GWIAZDA_UZIEMIONA' && (
+            <>
+              <line x1={16} y1={25} x2={16} y2={31} stroke={s} strokeWidth={w} />
+              <line x1={10} y1={31} x2={22} y2={31} stroke={s} strokeWidth={w} />
+              <line x1={12} y1={34} x2={20} y2={34} stroke={s} strokeWidth={w} />
+              <line x1={14} y1={37} x2={18} y2={37} stroke={s} strokeWidth={w} />
+            </>
+          )}
+        </g>
+      )}
+      {uklad === 'TROJKAT' && (
+        <g data-znak-ukladu="TROJKAT">
+          <line x1={16} y1={14} x2={16} y2={19} stroke={s} strokeWidth={w} />
+          <path d="M 16 19 L 22 29 L 10 29 Z" fill="none" stroke={s} strokeWidth={w} />
+        </g>
+      )}
+      {uklad === null && (
+        <text
+          x={16} y={27} textAnchor="middle" data-znak-ukladu="NIEOKRESLONY"
+          fill={s} fontFamily="sans-serif" fontSize={10} fontWeight={700}
+        >
+          ?
+        </text>
+      )}
+    </g>
+  );
+}
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
@@ -1070,6 +1333,9 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derBess: DerBessGlyph,
   derGenerator: DerGeneratorGlyph,
   derWind: DerWindGlyph,
+  derUnknown: DerUnknownGlyph,
+  bayNoEquipment: BayNoEquipmentGlyph,
+  bayReserve: BayReserveGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
   gpzCollapsed: GpzCollapsedGlyph,
@@ -1078,6 +1344,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   nnBreaker: NnBreakerGlyph,
   nnFuseSwitch: NnFuseSwitchGlyph,
   lvPortal: LvPortalGlyph,
+  capacitorBank: CapacitorBankGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

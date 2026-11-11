@@ -20,15 +20,30 @@ WYLACZNIE pola, ktore maja dzis dostawce w kodzie (zasada „zero pol bez
 dostawcy", rejestr decyzji OW-9): `out_of_service` (N-1, nastawy), `setpoints`
 (polecenie OSD), `gen_scaling` (noc doboru kompensacji), `injections` (sondy
 zdolnosci przylaczeniowej i obszaru P-Q), `probe_shunts` (sonda baterii),
-`fault_spec` (scenariusz zwarciowy C6). Stany lacznikow, zaczepy, tryby zrodel,
-profile czasowe, tryby DER/BESS i generator zestawow kontyngencji NIE wchodza,
-dopoki nie ma ich konsumenta — deklaracja pola bez konsumenta bylaby fantomem.
+`fault_spec` (scenariusz zwarciowy C6), `switch_states` (W5-C: stan lacznika w
+scenariuszu — konsumentem jest assembler rozplywu i zwarc, ktory czyta `status`
+galezi migawki efektywnej). Zaczepy, tryby zrodel, profile czasowe, tryby DER/BESS
+i generator zestawow kontyngencji NIE wchodza, dopoki nie ma ich konsumenta —
+deklaracja pola bez konsumenta bylaby fantomem.
 
-SEMANTYKA NADPISAN (kolejnosc STALA: out_of_service → setpoints → gen_scaling →
-injections → probe_shunts; kazde nadpisanie zostawia wpis proweniencji w
+DWA POJECIA, NIE JEDNO (W5-C). `out_of_service` i `switch_states` opisuja co innego:
+  * `out_of_service` — ELEMENT NIEOBECNY (galaz, transformator, zrodlo znika z migawki
+    — wylaczenie z eksploatacji, kontyngencja N-1); jego szyny i reszta modelu zostaja;
+  * `switch_states` — STAN LACZNIKA (lacznik zostaje w migawce, zmienia sie jego
+    biezace polozenie `status`); otwarty lacznik przerywa droge pradu, ale nadal jest
+    elementem sieci (punkt podzialu, lacznik sekcyjny, sprzeglo). Model bazowy NIE jest
+    zmieniany — biezace polozenie w modelu zmieniaja wylacznie operacje
+    `open_switch`/`close_switch`, pozycje normalna — `set_normal_open_point`.
+
+SEMANTYKA NADPISAN (kolejnosc STALA: out_of_service → switch_states → setpoints →
+gen_scaling → injections → probe_shunts; kazde nadpisanie zostawia wpis proweniencji w
 `EffectiveNetworkSnapshot.nadpisania`):
   * `out_of_service` — element NIEOBECNY w migawce efektywnej (dokladnie tak, jak
     dzisiejsza kontyngencja N-1 usuwa galaz z listy), nie „status open";
+  * `switch_states` — `status` lacznika (`TYPY_LACZNIKOW_ENM`, takze bezpiecznik) w
+    migawce efektywnej; wpis proweniencji WYLACZNIE dla realnej zmiany (stan rowny
+    modelowi nie jest nadpisaniem — migawka ma wtedy hash modelu); lacznik wylaczony
+    `out_of_service` albo element nie-lacznik = `ScenariuszNieprzystajeError`;
   * `setpoints` — nadpisanie `p_mw`/`q_mvar` ISTNIEJACEGO generatora;
   * `gen_scaling` — mnoznik mocy czynnej generatorow (`"*"` = wszystkie);
     mnoznik `0.0` zapisuje dokladnie `0.0` (nie `-0.0` z mnozenia liczby ujemnej —
@@ -72,15 +87,18 @@ from uuid import NAMESPACE_URL, uuid5
 from domain.fault_scenario import FaultMode, FaultScenario
 from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from .bateria_kondensatorow import zapisz_tabliczke_baterii
 from .dziennik_zmian import sciezka_tymczasowa
 from .hash import compute_enm_hash, hash_migawki_enm
 from .models import EnergyNetworkModel, Generator, ShuntCapacitor
 from .nazwy_elementow import nazwa_nadana_po_identyfikatorze
 from .rewizje import digest_klucza
 from .slownik_komunikatow import NAZWY_KOLEKCJI_PL, lista_pl, opis_nazwy
+from .topology import TYPY_LACZNIKOW_ENM
 
 #: Sufiks katalogu scenariuszy nazwanych projektu: `<digest>.scen/`.
 SUFIKS_KATALOGU_SCENARIUSZY = ".scen"
@@ -851,6 +869,12 @@ class SondaKondensatora(BaseModel):
     catalog_ref: str = Field(min_length=1)
     catalog_namespace: str = "KOMPENSATOR_SN"
     id_seed: str = Field(min_length=1)
+    #: Tabliczka typu (pola kontraktu materializacji KOMPENSATOR_SN —
+    #: ``enm.bateria_kondensatorow.tabliczka_baterii_z_rekordu``): sonda niesie parametry
+    #: baterii typu (układ, stopnie, straty, dławik) jak element utworzony operacją — ten sam
+    #: zapisywacz ``zapisz_tabliczke_baterii`` (karta UX-04/POLE-BKR-MODEL). Pusta = sonda
+    #: z samą tabliczką Q_n/U_n (parametry baterii z wartości roboczych rejestru).
+    tabliczka: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
@@ -895,6 +919,10 @@ class OperatingScenario(BaseModel):
     injections: tuple[Wstrzyk, ...] = ()
     probe_shunts: tuple[SondaKondensatora, ...] = ()
     fault_spec: FaultScenario | None = None
+    switch_states: dict[str, Literal["closed", "open"]] = Field(default_factory=dict)
+    """W5-C: stan łącznika w scenariuszu (``ref_id`` łącznika → położenie). Łącznik zostaje
+    w migawce efektywnej ze zmienionym ``status`` — inne pojęcie niż ``out_of_service``
+    (element nieobecny); patrz nagłówek modułu."""
     dynamika: ScenariuszDynamiczny | None = None
     """
     Harmonogram zdarzeń czasowych (karta W6-1 SS0 p.5). `None` = brak scenariusza
@@ -909,6 +937,8 @@ class OperatingScenario(BaseModel):
     def _bez_duplikatow(self) -> OperatingScenario:
         if len(set(self.out_of_service)) != len(self.out_of_service):
             raise ValueError("out_of_service zawiera powtórzony ref_id")
+        if any(not ref for ref in self.switch_states):
+            raise ValueError("switch_states: pusty ref_id")
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
             raise ValueError("injections/probe_shunts zawierają powtórzony ref_id sondy")
@@ -928,6 +958,7 @@ class OperatingScenario(BaseModel):
         """Czy scenariusz zmienia migawke modelu (scenariusz zwarciowy jej nie zmienia)."""
         return bool(
             self.out_of_service
+            or self.switch_states
             or self.setpoints
             or self.gen_scaling
             or self.injections
@@ -954,6 +985,13 @@ class OperatingScenario(BaseModel):
             "injections": [w.model_dump(mode="json") for w in self.injections],
             "probe_shunts": [s.model_dump(mode="json") for s in self.probe_shunts],
             "fault_spec": _tresc_zwarcia(self.fault_spec),
+            # W5-C: klucz wyłącznie dla niepustych stanów łączników — scenariusz bez nich
+            # ma bajtowo tę samą treść i hash co przed kartą (odciski w magazynie).
+            **(
+                {"switch_states": dict(sorted(self.switch_states.items()))}
+                if self.switch_states
+                else {}
+            ),
             **({"dynamika": self.dynamika.tresc()} if self.dynamika is not None else {}),
         }
 
@@ -1048,7 +1086,7 @@ def _generator_sondy(wstrzyk: Wstrzyk) -> dict[str, Any]:
 
 
 def _bateria_sondy(sonda: SondaKondensatora) -> dict[str, Any]:
-    return ShuntCapacitor(
+    bateria = ShuntCapacitor(
         id=uuid5(NAMESPACE_URL, sonda.id_seed),
         ref_id=sonda.ref_id,
         name=sonda.name,
@@ -1061,6 +1099,9 @@ def _bateria_sondy(sonda: SondaKondensatora) -> dict[str, Any]:
         parameter_source="CATALOG",
         source_mode="KATALOG",
     ).model_dump(mode="json")
+    if sonda.tabliczka:
+        zapisz_tabliczke_baterii(bateria, sonda.tabliczka)
+    return bateria
 
 
 def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: OperatingScenario) -> None:
@@ -1176,6 +1217,26 @@ def apply_scenario(
             if not (isinstance(element, dict) and str(element.get("ref_id")) == ref_id)
         ]
         nadpisania.append(Nadpisanie("out_of_service", kolekcja, ref_id, "obecny", "nieobecny"))
+
+    galezie = _indeks_elementow(snapshot, "branches")
+    for ref_id, stan in sorted(scenariusz.switch_states.items()):
+        galaz = galezie.get(ref_id)
+        if galaz is None:
+            powod = (
+                "łącznik wyłączony z eksploatacji tym samym scenariuszem"
+                if ref_id in scenariusz.out_of_service
+                else "nie istnieje w modelu sieci"
+            )
+            raise ScenariuszNieprzystajeError(scenariusz.scenario_id, ref_id, powod)
+        if galaz.get("type") not in TYPY_LACZNIKOW_ENM:
+            raise ScenariuszNieprzystajeError(
+                scenariusz.scenario_id, ref_id, "element nie jest łącznikiem ani bezpiecznikiem"
+            )
+        przed = galaz.get("status") or "closed"
+        if przed == stan:
+            continue
+        galaz["status"] = stan
+        nadpisania.append(Nadpisanie("switch_states.status", "branches", ref_id, przed, stan))
 
     generatory = _indeks_elementow(snapshot, "generators")
     for ref_id, nastawa in scenariusz.setpoints.items():
@@ -1367,6 +1428,14 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
                 )
             }
             if spec.fault_mode == FaultMode.IMPEDANCE
+            else {}
+        ),
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC scenariusza (Z.13) — Z_N zespołu
+        # uziemiającego w biegu. Klucz WYŁĄCZNIE przy AWSC załączonej: payload i `input_hash`
+        # scenariuszy w stanie normalnym pozostają bajtowo te same.
+        **(
+            {KLUCZ_OPCJI_STANU_AWSC: spec.config.stan_awsc}
+            if spec.config.stan_awsc != "spoczynek"
             else {}
         ),
     }

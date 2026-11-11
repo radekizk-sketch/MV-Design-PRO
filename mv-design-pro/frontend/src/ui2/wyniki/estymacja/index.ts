@@ -15,7 +15,6 @@ export { EkranEstymacji } from './EkranEstymacji';
 export type { EkranEstymacjiProps } from './EkranEstymacji';
 
 export {
-  przebiegRozplywuEstymacji,
   KOLUMNY_WEZLY,
   KLUCZ_WIERSZA_WEZLY,
   KOLUMNY_POMIARY,

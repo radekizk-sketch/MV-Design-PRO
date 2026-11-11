@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { EkranKrzywych } from '../EkranKrzywych';
+import { KRZYWE_STRINGS } from '../strings';
 import {
   katalogNcRfgFixture,
   rekordyKonwerterowFixture,
@@ -80,12 +81,11 @@ function ustawKatalogGotowy() {
     device_withstand: [],
     pf_curves: [],
     block_transformers: [],
-    mv_neutral_groundings: [],
   });
 }
 
-async function wczytajISkonfiguruj(tryb: 'basic' | 'expert' = 'basic') {
-  render(<EkranKrzywych trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
+async function wczytajISkonfiguruj(tryb = false) {
+  render(<EkranKrzywych szczegolyAudytowe={tryb} onOtworzDowod={vi.fn()} />);
   await screen.findByTestId('mvd-krzywe-dobor');
   await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-typ'), TYP_Z_KRZYWA);
   await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-operator'), 'pse');
@@ -100,13 +100,13 @@ afterEach(() => {
 describe('EkranKrzywych — wczytanie katalogu', () => {
   it('błąd katalogu → jawny stan błędu, bez formularza doboru', async () => {
     pobierzKonwertery.mockRejectedValue(new Error('500 katalog'));
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-krzywe-katalog-blad')).toHaveTextContent('500 katalog');
     expect(screen.queryByTestId('mvd-krzywe-dobor')).not.toBeInTheDocument();
   });
 
   it('po wczytaniu pokazuje dobór typu i operatora oraz stan „uruchom"', async () => {
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-krzywe-dobor')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-krzywe-idle')).toBeInTheDocument();
     expect(pobierzPokrycie).not.toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('EkranKrzywych — typ bez krzywej producenta (kryterium 1)', () => {
   it('wybór typu bez krzywej → bieg dozwolony; odpowiedź = rekord „nie oceniono" z nazwanym brakiem', async () => {
     const widok = widokBezKrzywejFixture();
     pobierzPokrycie.mockResolvedValue(widok);
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-krzywe-dobor');
     await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-typ'), TYP_BEZ_KRZYWEJ);
     await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-operator'), 'pse');
@@ -133,7 +133,7 @@ describe('EkranKrzywych — typ bez krzywej producenta (kryterium 1)', () => {
   });
 
   it('lista typów oznacza typ bez krzywej adnotacją „brak krzywej producenta"', async () => {
-    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranKrzywych szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-krzywe-dobor');
     expect(screen.getByTestId('mvd-krzywe-typ')).toHaveTextContent('brak krzywej producenta');
   });
@@ -224,14 +224,14 @@ describe('EkranKrzywych — tryb ekspercki (identyfikatory)', () => {
   beforeEach(() => pobierzPokrycie.mockResolvedValue(widokPokryciaFixture()));
 
   it('tryb podstawowy ukrywa identyfikatory typu i operatora', async () => {
-    await wczytajISkonfiguruj('basic');
+    await wczytajISkonfiguruj(false);
     await userEvent.click(screen.getByTestId('mvd-krzywe-oblicz'));
     await screen.findByTestId('mvd-krzywe-wynik');
     expect(screen.queryByTestId('mvd-krzywe-eksp')).not.toBeInTheDocument();
   });
 
   it('tryb ekspercki odsłania catalog_item_id i operator_id w sekcji audytowej', async () => {
-    await wczytajISkonfiguruj('expert');
+    await wczytajISkonfiguruj(true);
     await userEvent.click(screen.getByTestId('mvd-krzywe-oblicz'));
     await screen.findByTestId('mvd-krzywe-wynik');
     await userEvent.click(screen.getByTestId('mvd-krzywe-eksp-przelacz'));
@@ -302,7 +302,6 @@ describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 
         },
       ],
       block_transformers: [],
-      mv_neutral_groundings: [],
     });
     const { useStationDerStore, useAppStateStore } = await przygotujModulIWynik();
     patchBindings.mockResolvedValue({});
@@ -355,6 +354,60 @@ describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 
       expect(screen.getByTestId('mvd-krzywe-wiazania-lvrt')).toHaveTextContent('0.05 pu');
       expect(screen.getByTestId('mvd-krzywe-wiazania-hvrt')).toHaveTextContent('1.30 pu');
     });
+
+    useStationDerStore.getState().reset();
+    useAppStateStore.setState({ activeProjectId: null, activeCaseId: null } as never);
+  });
+
+  /**
+   * Iloczyn: stan krzywej ride-through modułu {wczytywanie, blad, brak_profilu, spoza_katalogu,
+   * gotowe} × pola {LVRT, HVRT}. Odczyt katalogu w toku / nieudany i profil spoza katalogu NIE są
+   * „brakiem profilu operatora" (KONTRAKT_WERDYKTU_WYJASNIALNEGO).
+   */
+  it.each([
+    { stan: 'wczytywanie', profil: 'pse', tekst: KRZYWE_STRINGS.wiazaniaKrzyweWczytywanie },
+    { stan: 'blad', profil: 'pse', tekst: KRZYWE_STRINGS.wiazaniaKrzyweBlad },
+    { stan: 'brak_profilu', profil: null, tekst: KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora },
+    { stan: 'spoza_katalogu', profil: 'nieznany', tekst: KRZYWE_STRINGS.wiazaniaProfilSpozaKatalogu },
+    { stan: 'gotowe', profil: 'pse', tekst: '0.05 pu' },
+  ] as const)('krzywe LVRT/HVRT × stan $stan', async ({ stan, profil, tekst }) => {
+    const operatorPse = {
+      operator_id: 'pse',
+      operator_name_pl: 'PSE',
+      last_revision: '2024-Q4',
+      reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+      ride_through: {
+        lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+        hvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+      },
+    };
+    if (stan === 'wczytywanie') fetchNcRfgOperatorsSekcjaMock.mockReturnValue(new Promise(() => {}));
+    else if (stan === 'blad') fetchNcRfgOperatorsSekcjaMock.mockRejectedValue(new Error('awaria katalogu'));
+    else fetchNcRfgOperatorsSekcjaMock.mockResolvedValue([operatorPse]);
+    const { useStationDerStore, useAppStateStore } = await przygotujModulIWynik();
+    if (profil !== null) {
+      useStationDerStore.getState().updateDerProfiles('der-1', { nc_rfg_profile_ref: profil });
+    }
+    await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-wiazania-modul'), 'der-1');
+    for (const pole of ['lvrt', 'hvrt']) {
+      await vi.waitFor(() => {
+        const el = screen.getByTestId(`mvd-krzywe-wiazania-${pole}`);
+        expect(el).toHaveAttribute('data-stan', stan);
+        expect(el).toHaveTextContent(tekst);
+      });
+      const el = screen.getByTestId(`mvd-krzywe-wiazania-${pole}`);
+      if (stan === 'wczytywanie') expect(el).toHaveAttribute('aria-busy', 'true');
+      else expect(el).not.toHaveAttribute('aria-busy');
+      if (stan !== 'brak_profilu') {
+        expect(el).not.toHaveTextContent(KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora);
+      }
+    }
+    const bladKatalogu = screen.queryByTestId('mvd-krzywe-wiazania-blad-katalogu');
+    if (stan === 'blad') expect(bladKatalogu).toHaveTextContent('awaria katalogu');
+    else expect(bladKatalogu).toBeNull();
+    if (stan === 'wczytywanie' || stan === 'blad') {
+      expect(screen.getByTestId('mvd-krzywe-wiazania-pf')).toBeDisabled();
+    }
 
     useStationDerStore.getState().reset();
     useAppStateStore.setState({ activeProjectId: null, activeCaseId: null } as never);

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * R4 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.10) — testy bufora POPRZEDNIEGO
  * payloadu per `analysis_type` w `rawResultOverlayStore`. Reguła: nowy bieg TEJ

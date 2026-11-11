@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Guard kanonu: KAŻDA nazwa operacji domenowej wołana z UI musi być na białej liście
  * `CANONICAL_OPERATION_NAMES`.

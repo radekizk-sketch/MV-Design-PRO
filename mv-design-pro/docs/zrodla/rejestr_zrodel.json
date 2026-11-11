@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "checked_on": "2026-10-22",
+  "download_root": "docs/zrodla/pobrane",
+  "index_page": "https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
+  "copyright_policy": "local_cache_only_not_commit_pdf",
+  "sources": [
+    {
+      "id": "enea_gp_110_z1",
+      "kind": "official_public_pdf",
+      "title": "ENEA Operator: Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje dwutransformatorowe 110 kV/SN",
+      "url": "https://www.operator.enea.pl/media/675/stacje-elektroenergetyczne-110-kv-zeszyt-1-stacje-dwutransformatorowe-110-kvsn-obowiazuje",
+      "effective_from": "2024-04-02",
+      "version": "02.2023-2 / zmiana uchwałą 7/2024",
+      "pdf_pages": 99,
+      "filename": "enea_stacje_110_zeszyt_1_2024.pdf",
+      "key_references": [
+        "§11.1 (druk s. 18; PDF strona 18)",
+        "§13 rozdzielnia SN",
+        "§26.10.5 SZR SN (druk s. 55-56)",
+        "§26.11 sterowania i blokady",
+        "załącznik Z.1 schemat rozdzielni 110 kV",
+        "załącznik Z.2 rozdzielnia SN",
+        "załącznik Z.8 pole łącznika szyn H5",
+        "załącznik Z.12 pole łącznika szyn SN"
+      ],
+      "source_status": "oficjalny PDF odczytany i §11.1/§26.10.5 zweryfikowane 2026-10-22",
+      "alternate_urls": [
+        "https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/Stacje%20elektroenergetyczne%20110%20kV%20Zeszyt%201.%20Stacje%20dwutransformatorowe%20110%20kVSN%20-%20obowi%C4%85zuje%20od%2002.04.2024.pdf"
+      ]
+    },
+    {
+      "id": "enea_gp_110_z2",
+      "kind": "official_public_pdf",
+      "title": "ENEA Operator: Stacje elektroenergetyczne 110 kV. Zeszyt 2. Stacje jednotransformatorowe 110 kV/SN",
+      "url": "https://www.operator.enea.pl/media/676/0204stacje-elektroenergetyczne-110-kv-zeszyt-2-stacje-jednotransformatorowe-110-kvsn",
+      "effective_from": "2023-01-01",
+      "filename": "enea_stacje_110_zeszyt_2_2023.pdf",
+      "pdf_pages": 16,
+      "source_status": "oficjalny PDF otwierany przez stronę ENEA"
+    },
+    {
+      "id": "enea_gp_110_z3",
+      "kind": "official_public_pdf",
+      "title": "ENEA Operator: Stacje elektroenergetyczne 110 kV. Zeszyt 3. Rozdzielnie sieciowe 110 kV",
+      "url": "https://www.operator.enea.pl/media/677/0303stacje-elektroenergetyczne-110-kv-zeszyt-3-rozdzielnie-sieciowe-110-kv-obowiazuje-od",
+      "effective_from": "2023-01-01",
+      "filename": "enea_stacje_110_zeszyt_3_2023.pdf",
+      "pdf_pages": 14,
+      "source_status": "oficjalny PDF otwierany przez stronę ENEA"
+    },
+    {
+      "id": "enea_linie_110_2026",
+      "kind": "official_public_pdf",
+      "title": "ENEA Operator: Elektroenergetyczne linie napowietrzne i kablowe 110 kV",
+      "url": "https://www.operator.enea.pl/media/5143/elektroenegetyczne-linie-napowietrzne-i-kablowe-110-kv-obowiazuje-od-01102026pdf.pdf",
+      "effective_from": "2026-10-01",
+      "filename": "enea_linie_110_2026.pdf",
+      "pdf_pages": 49,
+      "source_status": "oficjalny PDF otwierany przez stronę ENEA"
+    },
+    {
+      "id": "dolega_stacje_2007",
+      "kind": "user_supplied_private_pdf",
+      "title": "Waldemar Dołęga: Stacje elektroenergetyczne, Politechnika Wrocławska, 2007",
+      "filename": "dolega_stacje_elektroenergetyczne.pdf",
+      "expected_sha256": "a0ec70ec3db43080b39d280c3346b6abe89faf61019669749836b26558a61b59",
+      "expected_pdf_pages": 251,
+      "chapter": "3.5.2 Układy mostkowe, druk s. 60, rys. 3.37",
+      "note": "druk s. 60 = strona 59 PDF dostarczonego w sesji (numeracja przesunięta); wersja tylko do użytku lokalnego i załączników sesji; brak publicznego adresu"
+    }
+  ]
+}

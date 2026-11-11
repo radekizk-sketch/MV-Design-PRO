@@ -7,6 +7,10 @@
  *  2. `set_normal_open_point` — wskazuje punkt normalnie otwarty (NOP), który
  *     przywraca pracę radialną (rozpływ mocy honoruje otwarty łącznik — brak gałęzi).
  * Katalog-first (KABEL_SN/LINIA_SN). Kontrakt payloadów 1:1 z retirowanym ConnectRingForm.
+ *
+ * Karta W5-C: kandydaci punktu podziału i dotychczasowe punkty podziału pochodzą z MODELU
+ * (`SwitchBranch.normal_state`, lustro `ui/shared/stanLacznika`), nie z kontekstu operacji
+ * (dawne `nop_candidates` zwracało istniejące punkty podziału zamiast kandydatów).
  */
 
 import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
@@ -26,6 +30,12 @@ export interface PierscienFormData {
   dlugosc_m: number | null;
   /** Wybrany element punktu normalnie otwartego (ref łącznika). */
   nop_ref: string | null;
+  /**
+   * Dotychczasowy punkt podziału do zamknięcia (`close_ref` operacji). Pusty = backend
+   * zamyka jedyny poprzedni punkt tego pierścienia; wymagany, gdy łącznik jest wspólny
+   * dla kilku pierścieni (odmowa `nop.previous_ambiguous` nazywa kandydatów).
+   */
+  close_ref: string | null;
 }
 
 export interface BladPola {
@@ -33,18 +43,11 @@ export interface BladPola {
   message: string;
 }
 
-export interface KandydatNop {
-  id: string;
-  label: string;
-  elementType?: string;
-}
-
 export interface KontekstPierscienia {
   terminalA_id?: string;
   terminalA_label?: string;
   terminalB_id?: string;
   terminalB_label?: string;
-  kandydaciNop: KandydatNop[];
 }
 
 export const DANE_DOMYSLNE: PierscienFormData = {
@@ -53,6 +56,7 @@ export const DANE_DOMYSLNE: PierscienFormData = {
   screen_bonding: '',
   dlugosc_m: 500,
   nop_ref: null,
+  close_ref: null,
 };
 
 function isPositive(v: number | null): v is number {
@@ -109,7 +113,8 @@ export function zbudujPayloadDomkniecie(
 }
 
 export function zbudujPayloadNop(data: PierscienFormData): Record<string, unknown> {
-  return { switch_ref: data.nop_ref?.trim() };
+  const closeRef = data.close_ref?.trim();
+  return { switch_ref: data.nop_ref?.trim(), ...(closeRef ? { close_ref: closeRef } : {}) };
 }
 
 export function fmtDlugosc(v: number | null): string {

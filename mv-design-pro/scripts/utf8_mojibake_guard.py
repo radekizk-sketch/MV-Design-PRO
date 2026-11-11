@@ -134,7 +134,6 @@ _ZNACZNIK_Z_UZASADNIENIEM = re.compile(
 #: wszystko, czego tu nie ma, JEST skanowane.
 SEGMENTY_POMIJANE: dict[str, str] = {
     ".git": "wewnetrzny magazyn gita \u2014 zapis obiektowy, nie tresc autorska",
-    ".claude": "worktree agentow \u2014 kopie repozytorium w trakcie pracy innych sesji",
     ".codex-backups": "kopie zapasowe narzedzia \u2014 duplikaty plikow, nie zrodlo",
     ".codex-screenshots": "zrzuty ekranu narzedzia \u2014 wyjscie przebiegu",
     "node_modules": "zaleznosci npm \u2014 kod obcy, nie nasz tekst",
@@ -164,6 +163,18 @@ SEGMENTY_POMIJANE: dict[str, str] = {
     "tmp": "zrzuty przebiegow QA/audytu \u2014 wyjscie narzedzia (dlug: karta W4)",
 }
 
+#: Sciezki (wzgledem korzenia skanu) pomijane w CALOSCI. Uzupelnienie listy segmentow
+#: tam, gdzie sama nazwa segmentu bylaby za szeroka. Do karty CLAUDE-MD-ANTHROPIC
+#: (2026-11-11) pomijany byl caly segment `.claude` — a wraz z nim tresc autorska
+#: sledzona przez git: definicje agentow `.claude/agents/*.md`, `.claude/settings.json`
+#: i reguly `.claude/rules/*.md`, do ktorych przeszla wiekszosc `CLAUDE.md`. Kopie
+#: repozytorium innych sesji leza wylacznie w `.claude/worktrees`, wiec tylko ta
+#: sciezka jest pomijana; reszta `.claude` jest skanowana, a pliki ignorowane przez
+#: gita (`.claude/*` poza wyjatkami w `.gitignore`) odejmuje `ignorowane_przez_gita`.
+SCIEZKI_POMIJANE: dict[str, str] = {
+    ".claude/worktrees": "worktree agentow \u2014 kopie repozytorium w trakcie pracy innych sesji",
+}
+
 SKANOWANE_ROZSZERZENIA = {
     ".ts",
     ".tsx",
@@ -184,7 +195,7 @@ def should_scan(path: Path) -> bool:
     return path.suffix.lower() in SKANOWANE_ROZSZERZENIA
 
 
-def czy_segment_pomijany(nazwa: str) -> bool:
+def czy_segment_pomijany(nazwa: str, sciezka_wzgledna: str | None = None) -> bool:
     """Czy segment sciezki o tej nazwie nie niesie tresci autorskiej.
 
     Dopasowanie do CALEGO segmentu, nie do podciagu nazwy: `network-build` i
@@ -193,10 +204,16 @@ def czy_segment_pomijany(nazwa: str) -> bool:
     podciagiem i ukrywaly 143 pliki `network-build` razem z uszkodzonymi
     etykietami UI.
 
+    `sciezka_wzgledna` (wzgledem korzenia skanu, z `/`) sprawdza dodatkowo
+    `SCIEZKI_POMIJANE` — pominiecie calej sciezki, gdy nazwa segmentu bylaby za
+    szeroka (`.claude/worktrees` tak, `.claude/rules` nie).
+
     JEDYNY predykat pomijania — obchod drzewa wola TE funkcje, wiec nie da sie
     zmienic regule dopasowania tak, zeby test tego nie zobaczyl.
     """
-    return nazwa in SEGMENTY_POMIJANE
+    return nazwa in SEGMENTY_POMIJANE or (
+        sciezka_wzgledna is not None and sciezka_wzgledna in SCIEZKI_POMIJANE
+    )
 
 
 def ignorowane_przez_gita(baza: Path, sciezki: list[Path]) -> set[Path]:
@@ -247,9 +264,13 @@ def iter_scannable_files(korzen: Path | None = None) -> list[Path]:
     zebrane: list[Path] = []
     for katalog, podkatalogi, pliki in os.walk(baza):
         biezacy = Path(katalog)
-        # Przycinamy drzewo W TRAKCIE obchodu — inaczej wejscie w `.claude`
+        # Przycinamy drzewo W TRAKCIE obchodu — inaczej wejscie w `.claude/worktrees`
         # oznaczaloby obejscie kopii repozytorium kazdej rownoleglej sesji.
-        podkatalogi[:] = sorted(n for n in podkatalogi if not czy_segment_pomijany(n))
+        podkatalogi[:] = sorted(
+            n
+            for n in podkatalogi
+            if not czy_segment_pomijany(n, (biezacy / n).relative_to(baza).as_posix())
+        )
         for nazwa in sorted(pliki):
             sciezka = biezacy / nazwa
             if should_scan(sciezka):

@@ -88,9 +88,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function wczytajISkonfiguruj(tryb: 'basic' | 'expert' = 'basic') {
+async function wczytajISkonfiguruj(tryb = false) {
   dodajModul(DER_REF);
-  render(<EkranFrt trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
+  render(<EkranFrt szczegolyAudytowe={tryb} onOtworzDowod={vi.fn()} />);
   await screen.findByTestId('mvd-frt-dobor');
   fireEvent.change(screen.getByTestId('mvd-frt-modul'), { target: { value: 'der-1' } });
   fireEvent.change(screen.getByTestId('mvd-frt-operator'), { target: { value: 'pse' } });
@@ -98,7 +98,7 @@ async function wczytajISkonfiguruj(tryb: 'basic' | 'expert' = 'basic') {
 
 describe('EkranFrt — stany wejściowe', () => {
   it('brak modułów DER → uczciwy stan, bez pobierania biegu', async () => {
-    render(<EkranFrt trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranFrt szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     // Montaż pobiera katalog operatorów (mikrotaski), ale bez modułów DER
     // formularz doboru (a z nim select operatora) nie jest renderowany — skutek
     // fetchu nie ma reprezentacji w UI, więc nie ma na co czekać przez
@@ -113,14 +113,14 @@ describe('EkranFrt — stany wejściowe', () => {
   it('błąd katalogu operatorów → jawny stan błędu, bez formularza doboru', async () => {
     dodajModul(DER_REF);
     pobierzKatalog.mockRejectedValue(new Error('500 katalog'));
-    render(<EkranFrt trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranFrt szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-frt-katalog-blad')).toHaveTextContent('500 katalog');
     expect(screen.queryByTestId('mvd-frt-dobor')).not.toBeInTheDocument();
   });
 
   it('po wczytaniu pokazuje dobór modułu/operatora/rodzaju oraz stan „uruchom"', async () => {
     dodajModul(DER_REF);
-    render(<EkranFrt trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranFrt szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-frt-dobor')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-frt-rodzaj')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-frt-idle')).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('EkranFrt — stany wejściowe', () => {
 describe('EkranFrt — moduł bez typu przekształtnika (kryterium 1)', () => {
   it('wybór modułu bez typu → uczciwy komunikat, bieg zablokowany, bez API', async () => {
     dodajModul(null, 'der-x', 'Magazyn bez urządzenia');
-    render(<EkranFrt trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranFrt szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-frt-dobor');
     fireEvent.change(screen.getByTestId('mvd-frt-modul'), { target: { value: 'der-x' } });
     fireEvent.change(screen.getByTestId('mvd-frt-operator'), { target: { value: 'pse' } });
@@ -143,7 +143,7 @@ describe('EkranFrt — moduł bez typu przekształtnika (kryterium 1)', () => {
 
   it('lista modułów oznacza moduł bez typu adnotacją PL', async () => {
     dodajModul(null, 'der-x', 'Magazyn bez urządzenia');
-    render(<EkranFrt trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranFrt szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-frt-dobor');
     expect(screen.getByTestId('mvd-frt-modul')).toHaveTextContent(
       'brak wskazanego typu przekształtnika',
@@ -273,7 +273,7 @@ describe('EkranFrt — prezentacja wyniku (kryteria 2, 3, 4)', () => {
 describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {
   it('tryb podstawowy ukrywa identyfikatory modułu i operatora', async () => {
     pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
-    await wczytajISkonfiguruj('basic');
+    await wczytajISkonfiguruj(false);
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
     expect(screen.queryByTestId('mvd-frt-eksp')).not.toBeInTheDocument();
@@ -281,7 +281,7 @@ describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {
 
   it('identyfikatory typu i operatora wyłącznie w „Informacjach audytowych" (karta #145)', async () => {
     pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
-    await wczytajISkonfiguruj('expert');
+    await wczytajISkonfiguruj(true);
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
     // Pierwszy plan (zwinięte informacje audytowe) bez identyfikatora typu przekształtnika.
@@ -296,7 +296,7 @@ describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {
 describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
   it('bez wybranego operatora → uczciwy stan, edytor ukryty, bez biegu', async () => {
     dodajModul(DER_REF);
-    render(<EkranFrt trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranFrt szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-frt-dobor');
     // Sekcja obecna, lecz bez kompletnego doboru — brak edytora i wywołań API.
     expect(screen.getByTestId('mvd-frt-sekw-brak-doboru')).toBeInTheDocument();

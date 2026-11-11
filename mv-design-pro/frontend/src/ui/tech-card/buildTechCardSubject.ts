@@ -28,7 +28,9 @@ import {
 import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
-import { stationSnFieldSpecs, stationSnapshotBays } from '../network-build/stationSnFields';
+import { stationSnBays } from '../network-build/stationSnFields';
+import { rolaKanonicznaPola } from '../shared/polaStacji';
+import { opisLacznikowPortow } from '../shared/stanLacznika';
 import type {
   BayCanonicalRole,
   BranchPointSN,
@@ -41,7 +43,6 @@ import {
   FIELD_ROLE_LABEL_PL,
   FIELD_ROLE_SHORT_TAG,
   FIELD_SOURCE_LABEL_PL,
-  canonicalFieldRole,
   fieldLabelPluralPl,
   isSourceFieldRole,
   type StationFieldRole,
@@ -88,7 +89,7 @@ export function buildTechCardSubject(
 
   const branchPoint = findBranchPoint(snapshot, id);
   if (branchPoint) {
-    return buildBranchPointSubject(branchPoint, options);
+    return buildBranchPointSubject(snapshot, branchPoint, options);
   }
 
   const generator = findGenerator(snapshot, id);
@@ -275,21 +276,16 @@ function buildStationSubject(
   const { displayName, typeLabel } = stationPublicIdentity(snapshot, station);
   const switchgearLabel = ukladRozdzielnicyStacjiPl(snapshot, station);
 
-  // Pola rozdzielni SN — TA SAMA kolejność źródeł co liczność pól na karcie stacji
-  // (`stationSnFieldCount`): specyfikacje pól stacji (`meta.field_specs`, jedyna postać pól
-  // stacji zbudowanych operacjami domenowymi), a dopiero przy ich braku pola `bays`.
-  // Karta S95-START (znalezisko uboczne, zmierzone na stacji wstawionej na odcinku): karta
-  // techniczna liczyła wyłącznie `bays`, więc taka stacja pokazywała zero pól każdej roli
-  // obok „1 pól SN" w sekcji struktury — dwa odczyty tych samych danych.
-  const specyPol = stationSnFieldSpecs(station);
-  const rolePol: readonly (string | null)[] = (specyPol.length > 0
-    ? specyPol.map((spec) => spec.bay_role)
-    : stationSnapshotBays(snapshot.bays, station).map((bay) => bay.bay_role as unknown)
-  ).map((rola) => (typeof rola === 'string' ? rola : null));
-  // Liczność pól wg ROLI kanonicznej (kanon słownictwa ról pól, karta #141): rola modelu
-  // przechodzi na rolę kanonu, więc pole odgałęźne (FEEDER) nie miesza się z wyjściowym (OUT).
+  // Pola rozdzielni SN — TA SAMA projekcja co liczność pól na karcie stacji
+  // (`stationSnFieldCount`): rekordy `bays` stacji na szynie SN (karta W5-B: jedyny nośnik
+  // pól). Karta S95-START (znalezisko uboczne): dwa odczyty tych samych danych dawały zero
+  // pól każdej roli obok „1 pól SN" w sekcji struktury — teraz jest jeden odczyt.
+  const polaSn = stationSnBays(snapshot, station);
+  // Liczność pól wg ROLI kanonicznej (kanon słownictwa ról pól, karta #141): rola kanoniczna
+  // rekordu (`field_role`), a bez niej rola modelu przez kanon — pole odgałęźne (LINIA_ODG)
+  // nie miesza się z wyjściowym (LINIA_OUT).
   const liczbaPol = (rola: BayCanonicalRole): number =>
-    rolePol.filter((rolaPola) => canonicalFieldRole(rolaPola) === rola).length;
+    polaSn.filter((pole) => rolaKanonicznaPola(pole) === rola).length;
   const grouped = {
     in: liczbaPol('LINIA_IN'),
     out: liczbaPol('LINIA_OUT'),
@@ -297,7 +293,7 @@ function buildStationSubject(
     tr: liczbaPol('TRANSFORMATOROWE'),
     coupler: liczbaPol('SPRZEGLO'),
     measurement: liczbaPol('POMIAROWE'),
-    oze: rolePol.filter((rolaPola) => isSourceFieldRole(rolaPola)).length,
+    oze: polaSn.filter((pole) => isSourceFieldRole(pole.field_role || pole.bay_role)).length,
   };
   const etykietaPol = (rola: StationFieldRole): string =>
     `${fieldLabelPluralPl(FIELD_ROLE_LABEL_PL[rola])} (${FIELD_ROLE_SHORT_TAG[rola]})`;
@@ -374,6 +370,7 @@ function buildStationSubject(
 }
 
 function buildBranchPointSubject(
+  snapshot: EnergyNetworkModel,
   branchPoint: BranchPointSN,
   options: BuildTechCardOptions,
 ): TechCardSubject {
@@ -433,9 +430,10 @@ function buildBranchPointSubject(
             : 'Słup linii napowietrznej z odgałęzieniem napowietrznym',
         },
         {
+          // W5-C: stan łączników portów z ICH gałęzi (położenie + pozycja normalna).
           key: 'stan',
-          label: 'Stan łącznika',
-          value: switchStateLabel(branchPoint.switch_state),
+          label: 'Stan łączników portów',
+          value: opisLacznikowPortow(snapshot, branchPoint.ref_id),
         },
       ],
     },
@@ -509,7 +507,7 @@ function buildBranchPointSubject(
 }
 
 /** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — duplikat
- *  świadomy wobec `ui/sld/shared/detailDrawerData.ts::CONTROL_MODE_LABEL_PL` (ten sam
+ *  świadomy wobec `ui/sld/shared/daneElementuKanwy.ts::CONTROL_MODE_LABEL_PL` (ten sam
  *  wzorzec co `derKindPublicName`/tamta mapa: moduł prezentacji nie importuje z innego
  *  poddrzewa `ui/` dla 5-wierszowej tabeli etykiet; wartości 1:1 z kontraktem backendu
  *  `meta.control_mode`, `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`). */
@@ -644,12 +642,6 @@ function terminalLabelForSegment(snapshot: EnergyNetworkModel, busRef: string): 
   if (!bus) return 'Wolny zacisk SN';
   const fallback = `Szyna SN ${bus.voltage_kv} kV`;
   return publicTechnicalLabel(bus.name, fallback);
-}
-
-function switchStateLabel(state: string | null | undefined): string {
-  if (state === 'closed') return 'Zamknięty';
-  if (state === 'open') return 'Otwarty';
-  return 'Nieokreślony';
 }
 
 function sourceModeLabel(mode: string | null | undefined): string {

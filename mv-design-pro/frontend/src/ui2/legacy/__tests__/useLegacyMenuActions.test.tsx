@@ -11,9 +11,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLegacyMenuActions } from '../useLegacyMenuActions';
 import { useShellStore } from '../../shell/useShellStore';
-import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../test/kontekstBiegu';
 
 let wykonaj: ((id: string) => void) | null = null;
 
@@ -27,8 +27,9 @@ describe('useLegacyMenuActions (K3-A2 — lądowisko wyników ui2)', () => {
     wykonaj = null;
     window.location.hash = '';
     useShellStore.setState({ activeSpace: 'projekt', wynikiTab: null, wynikiTabElement: null });
-    useAppStateStore.setState({ activeRunId: 'run-77' });
-    useExecutionRunsStore.setState({ activeRunId: null });
+    useExecutionRunsStore.getState().reset();
+    wyczyscKontekstWyniku();
+    ustawBiegOgladany('run-77');
     useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
   });
 

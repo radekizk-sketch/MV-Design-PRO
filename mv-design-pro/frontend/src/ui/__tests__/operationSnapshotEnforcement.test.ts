@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Operation → Snapshot Enforcement Tests (§3)
  *

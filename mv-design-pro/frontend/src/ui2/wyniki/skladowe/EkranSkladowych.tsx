@@ -24,16 +24,18 @@ import './skladowe.css';
 // nie renderuje ramy `EkranAnalizy`, która normalnie wnosi ten arkusz.
 import '../wzorzec/wzorzec.css';
 
-import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { SekcjaZalozen, TabelaWynikow, usePoprawWModelu } from '../wzorzec';
 import { useDaneSkladowych } from './api';
 import {
+  doziemienieWiersza,
   fmtImpedancjaUziemienia,
   fmtZespolona,
+  jestZwarciemJednofazowym,
   KLUCZ_PUNKT,
   KOLUMNY_SKLADOWYCH,
   naWierszeSkladowych,
@@ -42,10 +44,11 @@ import {
   uziemieniaSieci,
   uziemieniePunktu,
   werdyktPL,
-  wybierzPrzebiegNiesymetryczny,
+  wyborPrzebieguSkladowych,
   type Zespolona,
 } from './model';
 import { SKLADOWE_STRINGS as T } from './strings';
+import { biegiRodziny, useAktywnyBieg, useWybierzBieg } from '../kontekst/kontekstWyniku';
 
 function Stan({
   tytul,
@@ -95,17 +98,19 @@ function WartoscSkladowej({
 }
 
 export function EkranSkladowych() {
-  const trybZaawansowania = useShellStore((s) => s.advancementMode);
+  const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  // Karta K8: aktywny bieg rodziny „zwarcie" z magazynu kontekstu wyniku.
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-
-  const przebieg = useMemo(
-    () => wybierzPrzebiegNiesymetryczny(przebiegi, activeRunId),
-    [przebiegi, activeRunId],
+  const aktywnyZwarcia = useAktywnyBieg('zwarcie');
+  const wybierzBieg = useWybierzBieg();
+  const wybor = useMemo(
+    () => wyborPrzebieguSkladowych(aktywnyZwarcia, biegiRodziny(przebiegi, 'zwarcie')),
+    [aktywnyZwarcia, przebiegi],
   );
+  const przebieg = wybor.rodzaj === 'aktywny' ? wybor.przebieg : null;
   const dane = useDaneSkladowych(przebieg?.id ?? null);
   const rows = dane?.wynik?.rows ?? [];
 
@@ -126,6 +131,8 @@ export function EkranSkladowych() {
     wierszAktywny?.element_id ?? wierszAktywny?.target_id ?? null,
   );
   const uziemienia = uziemieniaSieci(dane?.snapshotPrzebiegu ?? null);
+  const doziemienie = doziemienieWiersza(wierszAktywny);
+  const wierszJednofazowy = jestZwarciemJednofazowym(wierszAktywny);
 
   const otworzDowod = () => {
     if (przebieg) setWynikiTab('dowod', przebieg.id);
@@ -139,7 +146,16 @@ export function EkranSkladowych() {
         <p className="mvd-skladowe-cel">{T.cel}</p>
       </header>
 
-      {!przebieg ? (
+      {wybor.rodzaj === 'aktywnySymetryczny' ? (
+        <Stan
+          tytul={T.symetrycznyTytul}
+          opis={T.symetrycznyOpis}
+          akcja={T.symetrycznyAkcja}
+          onAkcja={() => wybierzBieg(wybor.kandydat.id, 'ekran')}
+          tone="idle"
+          testid="mvd-skladowe-symetryczny"
+        />
+      ) : !przebieg ? (
         <Stan
           tytul={T.zeroTytul}
           opis={T.zeroOpis}
@@ -174,7 +190,7 @@ export function EkranSkladowych() {
               kolumny={KOLUMNY_SKLADOWYCH}
               wiersze={naWierszeSkladowych(rows)}
               onOtworzDowod={otworzDowod}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_PUNKT}
               onWybierzWiersz={setWybranyPunkt}
               wybranyWiersz={aktywnyPunkt}
@@ -304,6 +320,104 @@ export function EkranSkladowych() {
               </>
             )}
           </section>
+
+          {(doziemienie || wierszJednofazowy) && (
+            <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-doziemienie">
+              <h4>{T.doziemienieTytul}</h4>
+              <p className="mvd-skladowe-nota">{T.doziemienieOpis}</p>
+              {!doziemienie ? (
+                <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-doziemienie-brak-wiersza">
+                  {T.doziemienieBrakWiersza}
+                </p>
+              ) : (
+                <>
+                  <p data-testid="mvd-skladowe-doziemienie-naglowek">
+                    <b>{doziemienie.naglowek}</b>
+                  </p>
+                  <dl className="mvd-skladowe-siatka" data-testid="mvd-skladowe-doziemienie-wartosci">
+                    {doziemienie.wartosci.map((w) => (
+                      <div
+                        key={w.klucz}
+                        className="mvd-skladowe-wartosc"
+                        data-testid={`mvd-skladowe-doziemienie-${w.klucz}`}
+                      >
+                        <dt>
+                          <TekstZWzorami tekst={w.etykieta} />
+                        </dt>
+                        <dd className="mvd-num">{w.wartosc}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <div className="mvd-skladowe-wzor" data-testid="mvd-skladowe-doziemienie-wzor">
+                    <span className="mvd-skladowe-lbl">{T.doziemienieWzor}</span>
+                    <MathBlock latex={doziemienie.wzorLatex} />
+                  </div>
+                  <dl className="mvd-skladowe-siatka">
+                    {doziemienie.opisUziemienia && (
+                      <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-uziemienie">
+                        <dt>{T.doziemienieUziemienie}</dt>
+                        <dd>{doziemienie.opisUziemienia}</dd>
+                      </div>
+                    )}
+                    <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-podstawa">
+                      <dt>{T.doziemieniePodstawa}</dt>
+                      <dd>{doziemienie.podstawa}</dd>
+                    </div>
+                    {doziemienie.brak && (
+                      <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-brak">
+                        <dt>{T.doziemienieBrak}</dt>
+                        <dd>{doziemienie.brak}</dd>
+                      </div>
+                    )}
+                    {doziemienie.podwojne && (
+                      <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-podwojne">
+                        <dt>{T.doziemieniePodwojne}</dt>
+                        <dd>{doziemienie.podwojne}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  {doziemienie.zastrzezenia.length > 0 && (
+                    <ul className="mvd-skladowe-lista" data-testid="mvd-skladowe-doziemienie-zastrzezenia">
+                      {doziemienie.zastrzezenia.map((z) => (
+                        <li key={z}>{z}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {doziemienie.danePrzyjete.length > 0 && (
+                    <div data-testid="mvd-skladowe-doziemienie-dane-przyjete">
+                      <span className="mvd-skladowe-lbl">{T.doziemienieDanePrzyjete}</span>
+                      <ul className="mvd-skladowe-lista">
+                        {doziemienie.danePrzyjete.map((dana) => (
+                          <li key={dana.nazwa} title={dana.powod}>
+                            {dana.wartosc ? `${dana.nazwa}: ${dana.wartosc}` : dana.nazwa}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {doziemienie.kroki.length > 0 && (
+                    <div data-testid="mvd-skladowe-doziemienie-slad">
+                      <span className="mvd-skladowe-lbl">{T.doziemienieSlad}</span>
+                      <ol className="mvd-skladowe-lista">
+                        {doziemienie.kroki.map((krok) => (
+                          <li key={krok.klucz} data-testid={`mvd-skladowe-doziemienie-krok-${krok.klucz}`}>
+                            <span>{krok.tytul}</span>
+                            <MathBlock latex={krok.wzorLatex} />
+                            {krok.podstawienieLatex && <MathBlock latex={krok.podstawienieLatex} />}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {doziemienie.niepelny && (
+                    <p className="mvd-skladowe-nota" data-testid="mvd-skladowe-doziemienie-niepelny">
+                      {T.doziemienieNiepelny}
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
+          )}
 
           {wierszAktywny && (
             <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-raport">

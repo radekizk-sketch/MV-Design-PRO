@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw, wlaczSzczegolyAudytowe } from './powloka';
 const OUTPUT_DIR = katalogZrzutow(path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../docs/audit/visual/dowody',
@@ -97,8 +98,6 @@ async function dwiePaczki(request: APIRequestContext): Promise<{ przed: Buffer; 
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   const przed = await eksport(request, project.id);
   for (const [idx, nazwa] of ODCINKI.entries()) {
@@ -128,7 +127,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
-    await page.getByTestId('mvd-theme-toggle').click();
+    await przelaczMotyw(page);
     await page.waitForTimeout(300);
   }
   await expect
@@ -236,12 +235,9 @@ test('porównanie dwóch paczek projektu — wynik po nazwach elementów i nazwa
   await expect(siec.getByRole('rowheader', { name: 'Rewizja' })).toHaveCount(0);
   await expect(page.getByTestId('mvd-arch-por-audyt')).toHaveCount(0);
 
-  // Tryb ekspercki (natywny klik przełącznika powłoki) → zwinięte informacje
+  // „Szczegóły audytowe" (natywny klik w menu „Widok" powłoki) → zwinięte informacje
   // audytowe; po rozwinięciu — odciski obu paczek i zmiany metadanych nagłówka.
-  await page
-    .getByRole('group', { name: /tryb/i })
-    .getByRole('button', { name: 'Ekspercki' })
-    .click();
+  await wlaczSzczegolyAudytowe(page);
   const audyt = page.getByTestId('mvd-arch-por-audyt');
   await expect(audyt).toBeVisible();
   await expect(page.getByTestId('mvd-arch-por-audyt-lista')).toHaveCount(0);

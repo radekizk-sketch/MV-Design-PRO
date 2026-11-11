@@ -112,6 +112,9 @@ _ELEMENT_TYPE_TO_KIND: dict[str, OverlayElementKind] = {
     "Protection": OverlayElementKind.PROTECTION_ASSIGNMENT,
     "substation": OverlayElementKind.SUBSTATION,
     "Substation": OverlayElementKind.SUBSTATION,
+    # GPZ-PARYTET: pomiar zacisku pola GPZ (wiersz ``Bay`` z enm/wyniki_pol_gpz.py).
+    "bay": OverlayElementKind.BAY,
+    "Bay": OverlayElementKind.BAY,
 }
 
 
@@ -238,6 +241,61 @@ def _extract_overlay_warnings(
 # ---------------------------------------------------------------------------
 
 
+#: Klucz wartości wyniku elementu → (kod metryki nakładki, jednostka, format).
+#: JEDYNE źródło kodów metryk ``overlay_payload.elements[*].metrics`` wyniku
+#: ``/api/execution/runs/{run_id}/results/v1``. Zbiór kodów jest wyrocznią rejestru
+#: etykiet metryk frontu (``ui2/wyniki/etykietyMetryk.ts``): fikstura
+#: ``kody_metryk_wynikow`` (``scripts/eksport_fixtur_harnessu.py``) jest liczona
+#: z tej mapy, a test frontu żąda etykiety dla KAŻDEGO kodu (i niczego ponad).
+METRYKI_ELEMENTOW_WYNIKU: dict[str, tuple[str, str, str]] = {
+    # key → (code, unit, format_hint)
+    "ikss_ka": ("IK_3F_A", "kA", "fixed2"),
+    "ikss_a": ("IK_3F_A", "A", "fixed0"),
+    "ik_total_a": ("IK_3F_TOTAL_A", "A", "fixed0"),
+    "ik_thevenin_a": ("IK_3F_SYSTEM_A", "A", "fixed0"),
+    "ik_inverters_a": ("IK_3F_DER_A", "A", "fixed0"),
+    "ip_ka": ("IP_A", "kA", "fixed2"),
+    "ip_a": ("IP_A", "A", "fixed0"),
+    "ith_ka": ("ITH_A", "kA", "fixed2"),
+    "ith_a": ("ITH_A", "A", "fixed0"),
+    "sk_mva": ("SK_MVA", "MVA", "fixed2"),
+    "v_pu": ("V_PU", "p.u.", "fixed4"),
+    "u_kv": ("U_kV", "kV", "fixed2"),
+    "angle_deg": ("ANGLE_DEG", "\u00b0", "fixed2"),
+    "p_injected_mw": ("P_MW", "MW", "fixed4"),
+    "q_injected_mvar": ("Q_Mvar", "Mvar", "fixed4"),
+    "p_from_mw": ("P_MW", "MW", "fixed4"),
+    "q_from_mvar": ("Q_Mvar", "Mvar", "fixed4"),
+    "losses_p_mw": ("LOSSES_P_MW", "MW", "fixed4"),
+    "losses_q_mvar": ("LOSSES_Q_Mvar", "Mvar", "fixed4"),
+    "loading_pct": ("LOADING_PCT", "%", "fixed1"),
+    "i_a": ("I_A", "A", "fixed1"),
+    "s_mva": ("S_MVA", "MVA", "fixed2"),
+    # LF-KONTRAKT (V12K-161): domknięcie kontraktu wyników rozpływu —
+    # wielkości pochodne (bilans węzła / różnica napięć) liczone w warstwie
+    # interpretacji kanonicznej (wzorzec loading_pct), ZERO fizyki tutaj.
+    # cosφ = |P|/|S|; ΔU = |U_from|−|U_to| (kV) oraz (u_from−u_to)·100 [%U_n].
+    "cos_phi": ("COS_PHI", "", "fixed2"),
+    "delta_u_kv": ("DELTA_U_KV", "kV", "fixed2"),
+    "delta_u_pct": ("DELTA_U_PCT", "%", "fixed2"),
+    # V12K-089: metryki overlay OLTC (pozycja koncowa zaczepu + liczba
+    # przelaczen) z `oltc_control`. Obecne tylko na transformatorach z
+    # regulacja — reszta bez zmian (determinizm). format_hint "fixed0"
+    # (calkowite) — z udokumentowanego slownika, obslugiwane przez
+    # frontendowy formatMetric (audyt F2 2026-07-21).
+    "tap_position": ("TAP_POSITION", "", "fixed0"),
+    "tap_switch_count": ("TAP_SWITCH_COUNT", "", "fixed0"),
+    # GPZ-PARYTET: bilans GPZ i liczba alarmów wynikowych stacji (wiersz
+    # ``Substation`` z enm/wyniki_pol_gpz.py) — suma wierszy wyniku liczona
+    # w backendzie, front tylko wyświetla.
+    "p_supply_mw": ("P_SUPPLY_MW", "MW", "fixed4"),
+    "q_supply_mvar": ("Q_SUPPLY_Mvar", "Mvar", "fixed4"),
+    "p_feeders_mw": ("P_FEEDERS_MW", "MW", "fixed4"),
+    "q_feeders_mvar": ("Q_FEEDERS_Mvar", "Mvar", "fixed4"),
+    "alarm_count": ("ALARM_COUNT", "", "fixed0"),
+}
+
+
 def _extract_element_metrics(
     element_ref: str,
     element_type: str,
@@ -250,49 +308,9 @@ def _extract_element_metrics(
     """
     metrics: dict[str, OverlayMetricV1] = {}
 
-    _METRIC_MAP: dict[str, tuple[str, str, str]] = {
-        # key → (code, unit, format_hint)
-        "ikss_ka": ("IK_3F_A", "kA", "fixed2"),
-        "ikss_a": ("IK_3F_A", "A", "fixed0"),
-        "ik_total_a": ("IK_3F_TOTAL_A", "A", "fixed0"),
-        "ik_thevenin_a": ("IK_3F_SYSTEM_A", "A", "fixed0"),
-        "ik_inverters_a": ("IK_3F_DER_A", "A", "fixed0"),
-        "ip_ka": ("IP_A", "kA", "fixed2"),
-        "ip_a": ("IP_A", "A", "fixed0"),
-        "ith_ka": ("ITH_A", "kA", "fixed2"),
-        "ith_a": ("ITH_A", "A", "fixed0"),
-        "sk_mva": ("SK_MVA", "MVA", "fixed2"),
-        "v_pu": ("V_PU", "p.u.", "fixed4"),
-        "u_kv": ("U_kV", "kV", "fixed2"),
-        "angle_deg": ("ANGLE_DEG", "\u00b0", "fixed2"),
-        "p_injected_mw": ("P_MW", "MW", "fixed4"),
-        "q_injected_mvar": ("Q_Mvar", "Mvar", "fixed4"),
-        "p_from_mw": ("P_MW", "MW", "fixed4"),
-        "q_from_mvar": ("Q_Mvar", "Mvar", "fixed4"),
-        "losses_p_mw": ("LOSSES_P_MW", "MW", "fixed4"),
-        "losses_q_mvar": ("LOSSES_Q_Mvar", "Mvar", "fixed4"),
-        "loading_pct": ("LOADING_PCT", "%", "fixed1"),
-        "i_a": ("I_A", "A", "fixed1"),
-        "s_mva": ("S_MVA", "MVA", "fixed2"),
-        # LF-KONTRAKT (V12K-161): domknięcie kontraktu wyników rozpływu —
-        # wielkości pochodne (bilans węzła / różnica napięć) liczone w warstwie
-        # interpretacji kanonicznej (wzorzec loading_pct), ZERO fizyki tutaj.
-        # cosφ = |P|/|S|; ΔU = |U_from|−|U_to| (kV) oraz (u_from−u_to)·100 [%U_n].
-        "cos_phi": ("COS_PHI", "", "fixed2"),
-        "delta_u_kv": ("DELTA_U_KV", "kV", "fixed2"),
-        "delta_u_pct": ("DELTA_U_PCT", "%", "fixed2"),
-        # V12K-089: metryki overlay OLTC (pozycja koncowa zaczepu + liczba
-        # przelaczen) z `oltc_control`. Obecne tylko na transformatorach z
-        # regulacja — reszta bez zmian (determinizm). format_hint "fixed0"
-        # (calkowite) — z udokumentowanego slownika, obslugiwane przez
-        # frontendowy formatMetric (audyt F2 2026-07-21).
-        "tap_position": ("TAP_POSITION", "", "fixed0"),
-        "tap_switch_count": ("TAP_SWITCH_COUNT", "", "fixed0"),
-    }
-
     for key, val in values.items():
-        if key in _METRIC_MAP and val is not None:
-            code, unit, fmt = _METRIC_MAP[key]
+        if key in METRYKI_ELEMENTOW_WYNIKU and val is not None:
+            code, unit, fmt = METRYKI_ELEMENTOW_WYNIKU[key]
             if code not in metrics:
                 metrics[code] = OverlayMetricV1(
                     code=code,

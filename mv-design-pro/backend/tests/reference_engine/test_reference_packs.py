@@ -8,6 +8,7 @@ szablonu ⇒ czerwono.
 """
 
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, ENMHeader, Substation
+from enm.rola_pola_sn import ROLE_POLA_MODELU
 from network_model.catalog.bay_templates import BayTemplate, list_bay_templates
 from network_model.catalog.switchgear import (
     SWITCHGEAR_FAMILY_REGISTRY,
@@ -100,6 +101,9 @@ class TestPackRegistry:
             "TRANSFORMER_DEVICE",
             "FUSE",
             "SURGE_ARRESTER",
+            # Aparaty pola baterii kondensatorów (karta UX-04/POLE-BKR-MODEL).
+            "UNBALANCE_CT",
+            "PHASE_TO_PHASE_VT",
             "GENERATOR_PV",
             "GENERATOR_BESS",
             "GENERATOR_FW",
@@ -108,7 +112,10 @@ class TestPackRegistry:
         }
 
     def test_profile_mapping_covers_all_bay_roles(self) -> None:
-        for role in ("IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"):
+        # JEDNA lista ról modelu (`enm.rola_pola_sn.ROLE_POLA_MODELU`) — dawna lista literałów
+        # tutaj nie znała roli BKR (karta UX-04/POLE-BKR-MODEL), więc test nie wykrywał roli
+        # bez profilu.
+        for role in ROLE_POLA_MODELU:
             for station_type in ("gpz", "mv_lv"):
                 profile_id = profile_id_for_bay(role, station_type)
                 assert profile_id in FIELD_PROFILE_REGISTRY

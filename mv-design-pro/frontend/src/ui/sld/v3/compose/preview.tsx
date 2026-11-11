@@ -27,7 +27,15 @@
  * kompozycji to tory SN/WN klasy „normalny przewód", nie szyna.
  */
 import type { SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import {
+  SYMBOL_GLYPHS,
+  V3_STROKE_APPARATUS,
+  type GlifBaterii,
+  type GlyphProps,
+  type StationDerGlyphKind,
+  type SwitchState,
+} from '../symbols/glyphs';
+import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
@@ -130,16 +138,28 @@ export const APPARATUS_STROKE_WIDTH = V3_STROKE_APPARATUS;
  * WSZYSTKICH klas, więc PROPORCJE zostają nietknięte — hierarchia §22.4 jest
  * zachowana co do ilorazu na KAŻDEJ skali (a nie „mniej więcej"), łącznie z
  * odróżnialnością znaku ciągu dalszego S9-1 od toru, który znaczy. Wzmocnienie
- * gaśnie samo (`k = 1`) powyżej skali `próg / waga_magistrali` ≈ 0,63, więc
+ * gaśnie samo (`k = 1`) powyżej skali `próg / waga_magistrali` = 1,25, więc
  * przy pracy na pełnym szczególe rysunek jest bit-identyczny ze stanem sprzed
  * karty.
  *
- * Wartość 1,5 px: przy takiej grubości kreska magistrali jest na ekranie
- * wyraźnie cięższa od odgałęzienia (1,0 px) i od obwodu nN (0,75 px), a
- * jednocześnie nie zamienia się w pas — dobrana jako najmniejsza, przy której
- * trzy sąsiednie rangi są rozróżnialne po samej wadze.
+ * Wartość 3 px (K2b §0.4, dawniej 1,5 px): przy 1,5 px odgałęzienie miało na
+ * ekranie 1,0 px, obwód nN 0,75 px — w widoku roboczym całej sieci przewody SN
+ * zlewały się z tłem i z kreskami adnotacji, a właściciel ocenił, że „ogląda
+ * rysunek zamiast pracować na sieci". Karta K2b wymaga przewodu SN ≥ 2 px na
+ * ekranie; przy wzmocnieniu JEDNORODNYM podłoga magistrali wynika z niej przez
+ * iloraz wag (2 · 2,4 / 1,6 = 3 px), więc rangi zostają rozróżnialne po samej
+ * wadze: magistrala 3 px > odgałęzienie 2 px > obwód nN 1,5 px. Wzmocnienie
+ * gaśnie powyżej skali 3 / 2,4 = 1,25.
  */
-export const MIN_TRUNK_STROKE_SCREEN_PX = 1.5;
+export const MIN_TRUNK_STROKE_SCREEN_PX = 3;
+
+/**
+ * K2b §0.4 — PODŁOGA PRZEWODU SN [px ekranu], skutek `MIN_TRUNK_STROKE_SCREEN_PX`
+ * przez iloraz wag (`sn / snTrunk`): przewód odgałęzienia ma na ekranie co
+ * najmniej 2 px. Przypięte testem `hierarchiaWagKresek.test.ts`.
+ */
+export const MIN_SN_WIRE_STROKE_SCREEN_PX =
+  (MIN_TRUNK_STROKE_SCREEN_PX * SEGMENT_STROKE_WIDTH.sn) / SEGMENT_STROKE_WIDTH.snTrunk;
 
 /**
  * S9-8: mnożnik wagi kreski dla skali kamery (patrz `MIN_TRUNK_STROKE_SCREEN_PX`).
@@ -156,6 +176,15 @@ export function strokeScaleFactor(cameraScale: number): number {
  *  niezależne formuły tej samej wagi to gotowy rozjazd (reguła KLASA §3). */
 export function segmentStrokeWidthForScale(kind: PreviewSegmentKind, cameraScale: number): number {
   return SEGMENT_STROKE_WIDTH[kind] * strokeScaleFactor(cameraScale);
+}
+
+/** GEOMETRIA-STACJI (§0 pkt 1): klasa wagi kreski odcinka. Zejście pola TORU GŁÓWNEGO
+ *  stacji przelotowej/odgałęźnej/końcowej (`trackRole === 'glowny'`) ma wagę magistrali
+ *  (`snTrunk`) — ciąg główny czyta się przez stację jednym rzutem oka, a pole odgałęzienia
+ *  zostaje przy wadze toru odgałęźnego (`sn`). Jedno wejście dla kanwy i harnessu. */
+export function klasaWagiOdcinka(meta: PreviewElementMeta | undefined): PreviewSegmentKind {
+  const kind = meta?.kind ?? 'sn';
+  return kind === 'sn' && meta?.trackRole === 'glowny' ? 'snTrunk' : kind;
 }
 
 /**
@@ -230,7 +259,7 @@ export type PreviewElementKind =
   // (`canvas/hitAreas.ts` `punkt-odgalezny`) i własnym wpisem inwentarza.
   | 'branchPoint'
   // PORTAL DOMENY nN (LV Domain Projection po B-02): symbol `lvPortal` na zacisku
-  // nN transformatora stacji — NIE obiekt modelu (brak menu/szuflady), własny
+  // nN transformatora stacji — NIE obiekt modelu (brak menu i panelu elementu), własny
   // rodzaj trafienia (`canvas/hitAreas.ts` `portal-nn`); klik otwiera projekcję
   // nN stacji (`SldCanvasV3Workspace`).
   | 'lvPortal';
@@ -249,11 +278,15 @@ export interface PreviewElementMeta {
    *  przerywaną linią — FIX-E (recenzja F5b): wołający przenosi
    *  `GpzElementMeta.dashed` tutaj, harness renderuje `strokeDasharray`. */
   readonly dashed?: boolean;
+  /** K2b §0.4: rodzaj odcinka toru SN z ENM (adapter `segmentPaths[].segmentKind`):
+   *  `'overhead'` = linia napowietrzna — rysowana przerywaną
+   *  (`OVERHEAD_LINE_DASHARRAY`, ta sama co próbka legendy). Brak = kabel. */
+  readonly lineType?: 'overhead';
   /**
    * F8b-1 (spłata długu k1, REBUILD_PLAN_V3 F6b-2/F8a): realny ref ENM (lub
    * kompozyt zakotwiczony w realnym refie z sufiksem `#...`, ta sama
    * konwencja co `ComposedSegment.ownerRef`/`GpzElementMeta` — np. bayRef,
-   * segmentRef, station ref, `${stationId}#sn-bus`) elementu, którego ten
+   * segmentRef, station ref, `${busRef}#sn-bus`) elementu, którego ten
    * symbol/segment reprezentuje na scenie. Fundament selekcji (B) i nakładki
    * energizacji (C) — WOŁAJĄCY (`buildScene.ts`) NIE zgaduje: `undefined`,
    * gdy adapter nie daje jednoznacznego dopasowania (np. przęsło bez
@@ -278,7 +311,7 @@ export interface PreviewElementMeta {
    *  `ComposedSymbolInstance.deviceRef` / `ComposedGpzSymbolInstance.
    *  deviceRef`). Rozróżnia DWA aparaty JEDNEGO pola, które dzielą
    *  `ownerRef` (= ref pola): klik niesie go do inspektora
-   *  (`SldElementClickMeta.deviceRef`), a budowniczy szuflady rozwiązuje
+   *  (`SldElementClickMeta.deviceRef`), a budowniczy panelu elementu rozwiązuje
    *  PO NIM stan aparatu/identyfikator globalny. `undefined` dla stosu
    *  konwencji (§12.4 — brak `device_ref`, zero fabrykacji refu) i dla
    *  elementów nie-aparatowych. `ownerRef` NIETKNIĘTY (nadal ref pola —
@@ -290,14 +323,27 @@ export interface PreviewElementMeta {
    *  `theme/colorTokens.ts::voltageClassOf` z PIERWSZEŃSTWEM przed klasyfikacją
    *  substring po `ownerRef`. Brak pola = klasyfikacja jak dotąd. */
   readonly voltageClass?: 'hv' | 'sn' | 'nn';
-  /** F9.3 (SLD_CAD_SPEC_V3 §12.1): pochodzenie stosu aparatów pola —
-   *  `'dane'` gdy zbudowany z `Bay.primary_devices`, `'konwencja'` gdy z
-   *  fallbacku rysunkowego §12.4. Audytor DOM czyta to jako
-   *  `data-apparatus-source` na grupie symbolu (patrz `PreviewSymbolNode`
-   *  niżej i `canvas/SldCanvasV3.tsx`). `undefined` dla elementów, które nie
-   *  są aparatem pola (szyny, stacje, DER, segmenty).
+  /** Pochodzenie stosu aparatów pola — `'dane'` gdy zbudowany z rekordów aparatów modelu,
+   *  `'brak'` gdy model ich nie niesie (sylwetka „brak danych wyposażenia pola", karta
+   *  GEOMETRIA-STACJI §0 pkt 4c). Audytor DOM czyta to jako `data-apparatus-source` na
+   *  grupie symbolu (`PreviewSymbolNode` niżej i `canvas/SldCanvasV3.tsx`). `undefined`
+   *  dla elementów, które nie są aparatem pola (szyny, stacje, DER, segmenty).
    */
-  readonly apparatusSource?: 'dane' | 'konwencja';
+  readonly apparatusSource?: 'dane' | 'brak';
+  /** GEOMETRIA-STACJI (§0 pkt 4a): rekord aparatu — `Bay.primary_devices` (`'rekord_pola'`)
+   *  albo gałąź łączeniowa w `Bay.equipment_refs` (`'galaz_pola'`); DOM
+   *  `data-apparatus-origin`. */
+  readonly apparatusOrigin?: 'rekord_pola' | 'galaz_pola';
+  /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu (`catalog_ref`); DOM
+   *  `data-apparatus-type`. Brak = model nie niesie typu. */
+  readonly apparatusTypeRef?: string;
+  /** GEOMETRIA-STACJI (§0 pkt 5): pole rezerwowe/wolne, do którego należy symbol; DOM
+   *  `data-bay-reserve`. */
+  readonly bayReserve?: 'rezerwowe' | 'wolne';
+  /** GEOMETRIA-STACJI (§0 pkt 1): rola odcinka w sylwetce rodzaju stacji — tor główny
+   *  ciągu (pola liniowe stacji przelotowej/odgałęźnej/końcowej i szyna między nimi) albo
+   *  odgałęzienie stacji odgałęźnej; DOM `data-track-role`. */
+  readonly trackRole?: 'glowny' | 'odgalezienie';
   /** F10.2 (spec §19.1, V12K-035): pochodzenie IDENTYFIKATORA PER-APARAT
    *  (Q/QE/T) tego symbolu — `'konwencja'` gdy z fallbacku
    *  `apparatusIdentifiers` (`compose/apparatusSequence.ts`, dziś ZAWSZE,
@@ -439,7 +485,48 @@ export interface PreviewSymbol {
    *  `neutralEarthing`; niesie go scena aż do glifu, który rysuje rezystor,
    *  dławik, połączenie bezpośrednie albo przerwę (sieć izolowana). */
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
+  /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń transformatora z grupy połączeń
+   *  modelu — dla symbolu `transformer2W` (patrz `symbols/uzwojenia.ts`). */
+  readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — dla symbolu `capacitorBank`. */
+  readonly bateria?: GlifBaterii;
   readonly meta?: PreviewElementMeta;
+}
+
+/**
+ * GPZ-PARYTET (klasa „dana symbolu sceny gubiona w drodze do glifu"): JEDNA lista
+ * danych, które symbol sceny przekazuje glifowi, wspólna dla kanwy (`SldCanvasV3`)
+ * i harnessu kompozycji. Przed kartą kanwa i harness niosły DWIE ręczne listy
+ * propsów i obie gubiły pola: kanwa nie przekazywała `earthingKind` (punkt
+ * neutralny zawsze rysowany jako połączenie bezpośrednie) ani `gpzGlyph`
+ * (zwinięty GPZ na L0 rysowany z jedną sekcją, bez TR i bez pól), harness gubił
+ * `earthingKind`. Kolor i skalę kreski dokłada wołający.
+ */
+export function daneGlifuSymbolu(
+  symbol: PreviewSymbol,
+): Omit<GlyphProps, 'x' | 'y' | 'stroke' | 'strokeScale'> {
+  const meta = symbol.meta;
+  return {
+    state: symbol.state,
+    earthingKind: symbol.earthingKind,
+    uzwojenia: symbol.uzwojenia,
+    bateria: symbol.bateria,
+    labelLines: meta?.protectionCodes,
+    hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
+    // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora
+    // bez skonfigurowanego pola SN.
+    hasFieldGapWarning: meta?.transformerFieldGap === true,
+    meterQuantity: meta?.meterQuantity,
+    stationSectioned: meta?.stationGlyph?.sectioned,
+    stationLineTopology: meta?.stationGlyph?.lineTopology,
+    stationHasTransformer: meta?.stationGlyph?.hasTransformer,
+    stationDerOnMv: meta?.stationGlyph?.derOnMv,
+    stationDerBehindTr: meta?.stationGlyph?.derBehindTr,
+    stationNoOpen: meta?.stationGlyph?.noOpen,
+    gpzSections: meta?.gpzGlyph?.sections,
+    gpzTransformers: meta?.gpzGlyph?.transformers,
+    gpzFeeders: meta?.gpzGlyph?.feeders,
+  };
 }
 
 export interface PreviewSegment {
@@ -502,54 +589,52 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-parity-key={parityKeysOf(symbol.meta)}
       data-test-id={symbol.meta?.testId}
       data-apparatus-source={symbol.meta?.apparatusSource}
+      data-apparatus-origin={symbol.meta?.apparatusOrigin}
+      data-apparatus-type={symbol.meta?.apparatusTypeRef}
+      data-bay-reserve={symbol.meta?.bayReserve}
+      data-track-role={symbol.meta?.trackRole}
       data-config-id={symbol.meta?.configId}
       data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
       data-source-state={state}
     >
-      <Glyph
-        x={symbol.x}
-        y={symbol.y}
-        state={symbol.state}
-        stroke={effectiveStroke}
-        labelLines={symbol.meta?.protectionCodes}
-        hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
-        hasFieldGapWarning={symbol.meta?.transformerFieldGap === true}
-        meterQuantity={symbol.meta?.meterQuantity}
-        stationSectioned={symbol.meta?.stationGlyph?.sectioned}
-        stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}
-        stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
-        stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
-        stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
-        stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
-        gpzSections={symbol.meta?.gpzGlyph?.sections}
-        gpzTransformers={symbol.meta?.gpzGlyph?.transformers}
-        gpzFeeders={symbol.meta?.gpzGlyph?.feeders}
-      />
+      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} />
     </g>
   );
+}
+
+/** K2b §0.4: kreska LINII NAPOWIETRZNEJ (kreska–kropka) — ta sama w odcinku
+ *  sceny i w próbce legendy (`sheet/Frame.tsx` `LegendLineSample`). */
+export const OVERHEAD_LINE_DASHARRAY = '6 3 1 3';
+
+/**
+ * Wzór kreski odcinka — JEDNA reguła dla kanwy (`SldCanvasV3` `SceneSegmentNode`)
+ * i podglądu (`PreviewSegmentNode`); dawniej dwie kopie, które K2b musiałaby
+ * rozszerzać osobno (reguła KLASA §3).
+ *
+ * F9.9 (spec §17.1: „linia wyzwalania: przerywana, dash 4-2") — dasharray
+ * WŁASNY dla `protectionTrip`, odróżniony od `dashed` (4-3, szyna rezerwowa)
+ * i `leader` (3-2, leader etykiety). F10.5 (spec §20.1): `measurementLink`
+ * dostaje WŁASNY, INNY dasharray (2-2) — dwie linie wtórne muszą być
+ * rozróżnialne wizualnie (§20.1 dosłownie), nie tylko przez `ownerRef`.
+ * K2b §0.4: odcinek linii napowietrznej (`meta.lineType === 'overhead'`) —
+ * `OVERHEAD_LINE_DASHARRAY`; kabel ciągły.
+ */
+export function segmentDasharray(segment: PreviewSegment): string | undefined {
+  const kind = segment.meta?.kind ?? 'sn';
+  if (kind === 'protectionTrip') return '4 2';
+  if (kind === 'measurementLink') return '2 2';
+  if (segment.meta?.dashed) return '4 3';
+  if (kind === 'leader') return '3 2';
+  if (segment.meta?.lineType === 'overhead') return OVERHEAD_LINE_DASHARRAY;
+  return undefined;
 }
 
 function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly stroke: string }): JSX.Element | null {
   const { segment, stroke } = props;
   if (segment.points.length < 2) return null;
-  const kind = segment.meta?.kind ?? 'sn';
-  const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
-  // F9.9 (spec §17.1: „linia wyzwalania: przerywana, dash 4-2") — dasharray
-  // WŁASNY dla `protectionTrip`, odróżniony od `dashed` (4-3, szyna rezerwowa)
-  // i `leader` (3-2, leader etykiety). F10.5 (spec §20.1): `measurementLink`
-  // dostaje WŁASNY, INNY dasharray (2-2) — dwie linie wtórne muszą być
-  // rozróżnialne wizualnie (§20.1 dosłownie), nie tylko przez `ownerRef`.
-  const strokeDasharray =
-    kind === 'protectionTrip'
-      ? '4 2'
-      : kind === 'measurementLink'
-        ? '2 2'
-        : segment.meta?.dashed
-          ? '4 3'
-          : kind === 'leader'
-            ? '3 2'
-            : undefined;
+  const strokeWidth = SEGMENT_STROKE_WIDTH[klasaWagiOdcinka(segment.meta)];
+  const strokeDasharray = segmentDasharray(segment);
   return (
     <path
       d={pointsToPath(segment.points)}

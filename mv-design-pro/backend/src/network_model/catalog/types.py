@@ -26,16 +26,27 @@ Usage:
 import math
 import re
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.catalog.rodzaje_aparatury import (
+    WIELKOSCI_ZWARCIOWE_APARATU_SN,
+    WIELKOSCI_ZWARCIOWE_LACZNIKA,
+    wielkosc_zwarciowa_aparatu_sn_dotyczy,
+    wielkosc_zwarciowa_lacznika_dotyczy,
+)
 from network_model.catalog.wartosci_robocze import (
     KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
     pochodzenie_danej_karty,
+)
+from network_model.core.bateria_kondensatorow import (
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+    UKLADY_POLACZEN_BATERII,
+    sprzecznosc_parametrow_baterii,
 )
 from network_model.ir_fields import (
     wymagany_float,
@@ -43,6 +54,7 @@ from network_model.ir_fields import (
     wymagany_int,
     wymagany_str,
 )
+from network_model.nazwy import opis_rodzaju_i_nazwy
 from network_model.pochodne import simens_na_mikrosimens, susceptancja_z_pojemnosci_s_per_km
 
 # =============================================================================
@@ -117,6 +129,13 @@ class CatalogNamespace(Enum):
     #: `network_model.solvers.parametry_linii_napowietrznej` z geometrii słupa (standard ENEA
     #: Operator linii 110 kV §7.1 lit. j: parametry wyznaczane obliczeniowo dla projektu).
     PRZEWOD_LINII_WN = "PRZEWOD_LINII_WN"
+    #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: elementy zespołu uziemiającego punktu neutralnego
+    #: sieci SN (ENEA Zeszyt 1 §16, rysunki Z.13/Z.14/Z.15) — transformator uziemiający ZN
+    #: z uzwojeniem potrzeb własnych, dławik gaszący z zakresem regulacji i rezystor
+    #: uziemiający. Trzy osobne kontrakty materializacji, bo każdy niesie inne parametry.
+    TRANSFORMATOR_UZIEMIAJACY = "TRANSFORMATOR_UZIEMIAJACY"
+    DLAWIK_GASZACY = "DLAWIK_GASZACY"
+    REZYSTOR_UZIEMIAJACY = "REZYSTOR_UZIEMIAJACY"
 
 
 #: Kategoria katalogu → nazwa grupy katalogu w treści dla projektanta (karta #142).
@@ -151,6 +170,9 @@ NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
     "GENERATOR_SN": "Typy generatorów synchronicznych SN",
     "KARTA_WIDMOWA": "Karty widmowe urządzeń",
     "PRZEWOD_LINII_WN": "Typy przewodów linii napowietrznych 110 kV",
+    "TRANSFORMATOR_UZIEMIAJACY": "Typy transformatorów uziemiających SN",
+    "DLAWIK_GASZACY": "Typy dławików gaszących SN",
+    "REZYSTOR_UZIEMIAJACY": "Typy rezystorów uziemiających SN",
     "mv_branch_points": "Typy punktów rozgałęzienia SN",
 }
 
@@ -1712,6 +1734,41 @@ class TransformerType:
         )
 
 
+def _sprawdz_wielkosci_zwarciowe(
+    item_id: str,
+    rodzaj: str,
+    wartosci: tuple[tuple[str, float | None], ...],
+    dotyczy: Callable[[str, str], bool],
+) -> None:
+    """KAT-T-050: wielkość zwarciowa aparatu dodatnia albo ``None`` — nigdy zero.
+
+    Zero NIE jest ani brakiem danej, ani „nie dotyczy”: 0 kA zdolności wyłączania
+    wyłącznika albo prądu krótkotrwałego odłącznika opisuje aparat, który nie istnieje,
+    a każdy konsument (dobór, dowód wytrzymałości, eksport, raport, interfejs)
+    przeczytałby je jako liczbę. Wielkość, której rodzaj aparatu z definicji normy NIE
+    MA (zdolność wyłączania rozłącznika/odłącznika/uziemnika, I_cw bezpiecznika), jest
+    zawsze ``None`` — o „nie dotyczy” rozstrzyga rodzaj (``dotyczy(rodzaj, pole)``),
+    a ``None`` przy wielkości właściwej rodzajowi znaczy „brak danej z karty”.
+    """
+    for pole, wartosc in wartosci:
+        if wartosc is None:
+            continue
+        if not dotyczy(rodzaj, pole):
+            odmowa_twarda(
+                "KAT-T-050",
+                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — tej wielkości "
+                "rodzaj aparatu z definicji normy nie ma; „nie dotyczy” zapisuje się jako "
+                "None, rozstrzyga rodzaj.",
+            )
+        if not math.isfinite(wartosc) or wartosc <= 0:
+            odmowa_twarda(
+                "KAT-T-050",
+                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — prąd zwarciowy "
+                "aparatu jest dodatni; brak danej z karty zapisuje się jako None, nigdy "
+                "jako 0.",
+            )
+
+
 @dataclass(frozen=True)
 class SwitchEquipmentType:
     """
@@ -1727,8 +1784,12 @@ class SwitchEquipmentType:
         equipment_kind: Equipment kind (CIRCUIT_BREAKER, DISCONNECTOR, EARTH_SWITCH).
         un_kv: Rated voltage [kV].
         in_a: Rated current [A].
-        ik_ka: Short-circuit breaking current [kA] (for breakers).
-        icw_ka: Short-time withstand current [kA] (for disconnectors).
+        ik_ka: Znamionowy prąd zwarciowy łączeniowy [kA] (wyłącznik, reklozer,
+            bezpiecznik). ``None`` = brak danej z karty katalogowej — nigdy 0.0
+            (bramka KAT-T-050). Dla rodzaju bez zdolności wyłączania
+            (``RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA``) pole nie dotyczy.
+        icw_ka: Prąd krótkotrwały wytrzymywany I_cw [kA], 1 s. ``None`` = brak danej
+            z karty — nigdy 0.0 (KAT-T-050); dla bezpiecznika nie dotyczy.
         medium: Quenching medium (e.g., "SF6", "VACUUM").
         u_m_kv: Napiecie najwyzsze urzadzenia U_m [kV] wg IEC 62271-1 — karta
             UM-ICU-KATALOG. Dla aparatury SN rownowazne Ur z karty katalogowej
@@ -1749,16 +1810,30 @@ class SwitchEquipmentType:
     equipment_kind: str = "CIRCUIT_BREAKER"
     un_kv: float = 0.0
     in_a: float = 0.0
-    ik_ka: float = 0.0
-    icw_ka: float = 0.0
+    ik_ka: float | None = None
+    icw_ka: float | None = None
     medium: str | None = None
     u_m_kv: float | None = None
     i_cu_ka: float | None = None
+    #: Jakość danych pól pozycji (``{pole -> CardFieldStatus.to_dict()}``, ten sam kształt co
+    #: ``ConverterType.card_field_status``): pole wartości roboczej ma ``quality=ESTIMATED``
+    #: z podstawą (``source_ref``: norma z tablicą / standard OSD z punktem i stroną) albo
+    #: z jawnym założeniem (``note``). ``None`` = pozycja bez takiej deklaracji (dane
+    #: przepisane z karty katalogowej producenta) — klucz pomijany w ``to_dict``.
+    card_field_status: dict[str, dict[str, Any]] | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        _sprawdz_wielkosci_zwarciowe(
+            self.id,
+            self.equipment_kind,
+            tuple((pole, getattr(self, pole)) for pole in WIELKOSCI_ZWARCIOWE_LACZNIKA),
+            wielkosc_zwarciowa_lacznika_dotyczy,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -1774,6 +1849,7 @@ class SwitchEquipmentType:
             "medium": self.medium,
             "u_m_kv": self.u_m_kv,
             "i_cu_ka": self.i_cu_ka,
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1793,11 +1869,16 @@ class SwitchEquipmentType:
             equipment_kind=str(data.get("equipment_kind", "CIRCUIT_BREAKER")),
             un_kv=wymagany_float(data, "un_kv", context="SwitchEquipmentType"),
             in_a=wymagany_float(data, "in_a", context="SwitchEquipmentType"),
-            ik_ka=wymagany_float(data, "ik_ka", context="SwitchEquipmentType"),
-            icw_ka=wymagany_float(data, "icw_ka", context="SwitchEquipmentType"),
+            ik_ka=wymagany_float_lub_nieznany(data, "ik_ka", context="SwitchEquipmentType"),
+            icw_ka=wymagany_float_lub_nieznany(data, "icw_ka", context="SwitchEquipmentType"),
             medium=data.get("medium"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentów",
@@ -2988,6 +3069,20 @@ class LoadType:
 # =============================================================================
 
 
+#: Pola typu baterii kondensatorów z karty UX-04/POLE-BKR-MODEL — te same nazwy niesie element
+#: ENM (`enm.models.ShuntCapacitor`, wartość projektanta) i `materialized_params` elementu
+#: (kopia typu przy przypisaniu). JEDNA lista dla `to_dict`, materializacji i rozstrzygnięcia.
+POLA_BATERII_KONDENSATOROW_TYPU: tuple[str, ...] = (
+    "uklad_polaczen",
+    "liczba_stopni",
+    "tolerancja_pojemnosci_min_proc",
+    "tolerancja_pojemnosci_max_proc",
+    "dlawik_ograniczajacy",
+    "dlawik_indukcyjnosc_mh",
+    "rezystory_rozladowcze_wewnetrzne",
+)
+
+
 @dataclass(frozen=True)
 class ShuntCapacitorType:
     """Immutable shunt-capacitor-bank type definition for catalog.
@@ -3004,6 +3099,16 @@ class ShuntCapacitorType:
         rated_kv: Rated voltage [kV].
         loss_kw: Optional active dielectric/resistor losses [kW] (None => lossless).
         manufacturer: Manufacturer/source (optional).
+        uklad_polaczen: Układ połączeń (``network_model.core.bateria_kondensatorow``).
+        liczba_stopni: Liczba jednakowych stopni baterii (≥ 1).
+        tolerancja_pojemnosci_min_proc / tolerancja_pojemnosci_max_proc: Odchyłka pojemności
+            od znamionowej [%] (ujemna dolna, dodatnia górna).
+        dlawik_ograniczajacy / dlawik_indukcyjnosc_mh: Dławik szeregowy ograniczający prąd
+            załączania (jest / nie ma; indukcyjność [mH]).
+        rezystory_rozladowcze_wewnetrzne: Jednostki z wewnętrznymi rezystorami rozładowczymi.
+
+    Pola karty UX-04/POLE-BKR-MODEL: ``None`` = karta typu ich nie podaje — obliczenie biegnie
+    z wartością roboczą rejestru (``catalog.wartosci_robocze``, zasada nr 4).
     """
 
     id: str
@@ -3012,6 +3117,13 @@ class ShuntCapacitorType:
     rated_kv: float = 0.0
     loss_kw: float | None = None
     manufacturer: str | None = None
+    uklad_polaczen: str | None = None
+    liczba_stopni: int | None = None
+    tolerancja_pojemnosci_min_proc: float | None = None
+    tolerancja_pojemnosci_max_proc: float | None = None
+    dlawik_ograniczajacy: bool | None = None
+    dlawik_indukcyjnosc_mh: float | None = None
+    rezystory_rozladowcze_wewnetrzne: bool | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog kompensatorów MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -3026,6 +3138,7 @@ class ShuntCapacitorType:
             "rated_kv": self.rated_kv,
             "loss_kw": self.loss_kw,
             "manufacturer": self.manufacturer,
+            **{pole: getattr(self, pole) for pole in POLA_BATERII_KONDENSATOROW_TYPU},
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3034,6 +3147,60 @@ class ShuntCapacitorType:
                 verification_note=self.verification_note,
             ),
         }
+
+    def __post_init__(self) -> None:
+        """Granice pól karty UX-04/POLE-BKR-MODEL — te same co element ENM
+        (``enm.models.ShuntCapacitor``), sprawdzane przy KAŻDEJ budowie rekordu (konstruktor
+        i ``from_dict``), reguły nazwane w ``niezmienniki_katalogu`` (KAT-T-051…055)."""
+        opis = opis_rodzaju_i_nazwy("Typ baterii kondensatorów", self.name)
+        if self.uklad_polaczen is not None and self.uklad_polaczen not in UKLADY_POLACZEN_BATERII:
+            odmowa_twarda(
+                "KAT-T-051",
+                f"{opis}: nieznany układ połączeń {self.uklad_polaczen!r}. Dozwolone: "
+                f"{', '.join(NAZWY_UKLADOW_POLACZEN_BATERII_PL[u] for u in UKLADY_POLACZEN_BATERII)}.",
+            )
+        if self.liczba_stopni is not None and (
+            isinstance(self.liczba_stopni, bool)
+            or not isinstance(self.liczba_stopni, int)
+            or self.liczba_stopni < 1
+        ):
+            odmowa_twarda(
+                "KAT-T-052",
+                f"{opis}: liczba stopni musi być liczbą "
+                f"całkowitą ≥ 1 (podano {self.liczba_stopni!r}).",
+            )
+        for wartosc, nazwa_pola in (
+            (self.dlawik_ograniczajacy, "dławik ograniczający"),
+            (self.rezystory_rozladowcze_wewnetrzne, "wewnętrzne rezystory rozładowcze"),
+        ):
+            if wartosc is not None and not isinstance(wartosc, bool):
+                odmowa_twarda(
+                    "KAT-T-055",
+                    f"{opis}: {nazwa_pola} — wyłącznie tak/nie albo brak danej "
+                    f"(podano {wartosc!r}).",
+                )
+        dolna = self.tolerancja_pojemnosci_min_proc
+        gorna = self.tolerancja_pojemnosci_max_proc
+        if (dolna is not None and dolna > 0.0) or (gorna is not None and gorna < 0.0):
+            odmowa_twarda(
+                "KAT-T-053",
+                f"{opis}: przedział tolerancji pojemności "
+                f"[{dolna}; {gorna}] % nie zawiera wartości znamionowej (dolna ≤ 0 ≤ górna).",
+            )
+        if self.dlawik_indukcyjnosc_mh is not None and self.dlawik_indukcyjnosc_mh <= 0.0:
+            odmowa_twarda(
+                "KAT-T-054",
+                f"{opis}: indukcyjność dławika musi być "
+                f"dodatnia (podano {self.dlawik_indukcyjnosc_mh} mH).",
+            )
+        sprzecznosc = sprzecznosc_parametrow_baterii(
+            liczba_stopni=self.liczba_stopni,
+            stopnie_zalaczone=None,
+            dlawik_ograniczajacy=self.dlawik_ograniczajacy,
+            dlawik_indukcyjnosc_mh=self.dlawik_indukcyjnosc_mh,
+        )
+        if sprzecznosc is not None:
+            odmowa_twarda("KAT-T-054", f"{opis}: {sprzecznosc}.")
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ShuntCapacitorType":
@@ -3044,9 +3211,230 @@ class ShuntCapacitorType:
             rated_kv=wymagany_float(data, "rated_kv", context="ShuntCapacitorType"),
             loss_kw=(float(data["loss_kw"]) if data.get("loss_kw") is not None else None),
             manufacturer=data.get("manufacturer"),
+            uklad_polaczen=data.get("uklad_polaczen"),
+            liczba_stopni=data.get("liczba_stopni"),
+            tolerancja_pojemnosci_min_proc=_opcjonalny_float(
+                data, "tolerancja_pojemnosci_min_proc"
+            ),
+            tolerancja_pojemnosci_max_proc=_opcjonalny_float(
+                data, "tolerancja_pojemnosci_max_proc"
+            ),
+            dlawik_ograniczajacy=data.get("dlawik_ograniczajacy"),
+            dlawik_indukcyjnosc_mh=_opcjonalny_float(data, "dlawik_indukcyjnosc_mh"),
+            rezystory_rozladowcze_wewnetrzne=data.get("rezystory_rozladowcze_wewnetrzne"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog kompensatorów MV-DESIGN-PRO",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
+# ZESPÓŁ UZIEMIAJĄCY SN — transformator uziemiający, dławik gaszący, rezystor
+# (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, ENEA Zeszyt 1 §16)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class EarthingTransformerType:
+    """Typ transformatora uziemiającego (TRANSFORMATOR_UZIEMIAJACY).
+
+    Zeszyt 1 §16: układ połączeń ZNyn 11, regulacja beznapięciowa ±5 %, ONAN, uzwojenie
+    dolne 400 V, moc uzwojenia potrzeb własnych ≥ 100 kVA. ``r0_ohm``/``x0_ohm`` — impedancja
+    zerowa uzwojenia zygzak na fazę [Ω] (bocznik składowej zerowej przed 3·Z_N).
+    """
+
+    id: str
+    name: str
+    u_n_kv: float = 0.0
+    s_n_kva: float = 0.0
+    grupa_polaczen: str = "ZNyn11"
+    r0_ohm: float = 0.0
+    x0_ohm: float = 0.0
+    s_pw_kva: float | None = None
+    u_pw_kv: float | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog zespołów uziemiających MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "u_n_kv": self.u_n_kv,
+            "s_n_kva": self.s_n_kva,
+            "grupa_polaczen": self.grupa_polaczen,
+            "r0_ohm": self.r0_ohm,
+            "x0_ohm": self.x0_ohm,
+            "s_pw_kva": self.s_pw_kva,
+            "u_pw_kv": self.u_pw_kv,
+            "manufacturer": self.manufacturer,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "EarthingTransformerType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="EarthingTransformerType"),
+            s_n_kva=wymagany_float(data, "s_n_kva", context="EarthingTransformerType"),
+            grupa_polaczen=str(data.get("grupa_polaczen") or "ZNyn11"),
+            r0_ohm=wymagany_float(data, "r0_ohm", context="EarthingTransformerType"),
+            x0_ohm=wymagany_float(data, "x0_ohm", context="EarthingTransformerType"),
+            s_pw_kva=_opcjonalny_float(data, "s_pw_kva"),
+            u_pw_kv=_opcjonalny_float(data, "u_pw_kv"),
+            manufacturer=data.get("manufacturer"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog zespołów uziemiających MV-DESIGN-PRO",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class ArcSuppressionCoilType:
+    """Typ dławika gaszącego (DLAWIK_GASZACY).
+
+    Zeszyt 1 §16: regulacja płynna 10–100 %, praca dorywcza 2 h, uzwojenie wtórne 500 V
+    (≥ 500 A przez 60 s — przyłącze rezystora wymuszającego AWSC), uzwojenie pomiarowe
+    100 V; dobór na zakres minimum 40–400 A.
+    """
+
+    id: str
+    name: str
+    u_n_kv: float = 0.0
+    i_min_a: float = 0.0
+    i_max_a: float = 0.0
+    regulacja: str = "ciagla"
+    liczba_zaczepow: int | None = None
+    u_wtorne_v: float | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog zespołów uziemiających MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "u_n_kv": self.u_n_kv,
+            "i_min_a": self.i_min_a,
+            "i_max_a": self.i_max_a,
+            "regulacja": self.regulacja,
+            "liczba_zaczepow": self.liczba_zaczepow,
+            "u_wtorne_v": self.u_wtorne_v,
+            "manufacturer": self.manufacturer,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ArcSuppressionCoilType":
+        zaczepy = data.get("liczba_zaczepow")
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="ArcSuppressionCoilType"),
+            i_min_a=wymagany_float(data, "i_min_a", context="ArcSuppressionCoilType"),
+            i_max_a=wymagany_float(data, "i_max_a", context="ArcSuppressionCoilType"),
+            regulacja=str(data.get("regulacja") or "ciagla"),
+            liczba_zaczepow=int(zaczepy) if zaczepy is not None else None,
+            u_wtorne_v=_opcjonalny_float(data, "u_wtorne_v"),
+            manufacturer=data.get("manufacturer"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog zespołów uziemiających MV-DESIGN-PRO",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class NeutralEarthingResistorType:
+    """Typ rezystora uziemiającego (REZYSTOR_UZIEMIAJACY): R [Ω], prąd znamionowy [A],
+    dopuszczalny czas przepływu prądu znamionowego [s]."""
+
+    id: str
+    name: str
+    u_n_kv: float = 0.0
+    r_ohm: float = 0.0
+    i_n_a: float = 0.0
+    t_s: float = 0.0
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog zespołów uziemiających MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "u_n_kv": self.u_n_kv,
+            "r_ohm": self.r_ohm,
+            "i_n_a": self.i_n_a,
+            "t_s": self.t_s,
+            "manufacturer": self.manufacturer,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "NeutralEarthingResistorType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="NeutralEarthingResistorType"),
+            r_ohm=wymagany_float(data, "r_ohm", context="NeutralEarthingResistorType"),
+            i_n_a=wymagany_float(data, "i_n_a", context="NeutralEarthingResistorType"),
+            t_s=wymagany_float(data, "t_s", context="NeutralEarthingResistorType"),
+            manufacturer=data.get("manufacturer"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog zespołów uziemiających MV-DESIGN-PRO",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -3185,11 +3573,25 @@ class MVApparatusType:
     #: przez projektanta — nigdy sam człon nastawczy, który zaniżałby czas i zawyżał limit
     #: cieplny aparatu (karta WYTRZYMALOSC-PRAD-POLA).
     break_time_s: float | None = None
+    #: Jakość danych pól pozycji (``{pole -> CardFieldStatus.to_dict()}``, ten sam kształt co
+    #: ``ConverterType.card_field_status``): pole wartości roboczej ma ``quality=ESTIMATED``
+    #: z podstawą (``source_ref``: norma z tablicą / standard OSD z punktem i stroną) albo
+    #: z jawnym założeniem (``note``). ``None`` = pozycja bez takiej deklaracji (dane
+    #: przepisane z karty katalogowej producenta) — klucz pomijany w ``to_dict``.
+    card_field_status: dict[str, dict[str, Any]] | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        _sprawdz_wielkosci_zwarciowe(
+            self.id,
+            self.device_kind,
+            tuple((pole, getattr(self, pole)) for pole in WIELKOSCI_ZWARCIOWE_APARATU_SN),
+            wielkosc_zwarciowa_aparatu_sn_dotyczy,
+        )
 
     def pochodzenie_i_th(self) -> str | None:
         """Skąd pochodzi I_th tej pozycji (``None`` = karta tej danej nie niesie)."""
@@ -3217,6 +3619,7 @@ class MVApparatusType:
             "i_dyn_ka": self.i_dyn_ka,
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
             "break_time_s": self.break_time_s,
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3254,6 +3657,11 @@ class MVApparatusType:
             i_dyn_ka=(float(data["i_dyn_ka"]) if data.get("i_dyn_ka") is not None else None),
             break_time_s=(
                 float(data["break_time_s"]) if data.get("break_time_s") is not None else None
+            ),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
             ),
             **_catalog_metadata_kwargs(
                 data,
@@ -4940,16 +5348,90 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.KOMPENSATOR_SN.value: MaterializationContract(
         namespace=CatalogNamespace.KOMPENSATOR_SN.value,
+        # Karta UX-04/POLE-BKR-MODEL: parametry baterii typu (układ połączeń, stopnie,
+        # tolerancja pojemności, dławik, rezystory rozładowcze) — addytywne, kopiowane do
+        # `materialized_params` elementu WYŁĄCZNIE, gdy pozycja je niesie (brak = wartość
+        # robocza rejestru `wartosci_robocze`, zasada nr 4).
         solver_fields=(
             "rated_mvar",
             "rated_kv",
             "loss_kw",
+            *POLA_BATERII_KONDENSATOROW_TYPU,
         ),
         ui_fields=(
             ("rated_mvar", "Qn [Mvar]", "Mvar"),
             ("rated_kv", "Un [kV]", "kV"),
             ("loss_kw", "Straty [kW]", "kW"),
+            ("uklad_polaczen", "Układ połączeń", ""),
+            ("liczba_stopni", "Liczba stopni", ""),
+            ("tolerancja_pojemnosci_min_proc", "Tolerancja pojemności (dolna) [%]", "%"),
+            ("tolerancja_pojemnosci_max_proc", "Tolerancja pojemności (górna) [%]", "%"),
+            ("dlawik_ograniczajacy", "Dławik ograniczający prąd załączania", ""),
+            ("dlawik_indukcyjnosc_mh", "Indukcyjność dławika [mH]", "mH"),
+            ("rezystory_rozladowcze_wewnetrzne", "Wewnętrzne rezystory rozładowcze", ""),
         ),
+        pola_opcjonalne=POLA_BATERII_KONDENSATOROW_TYPU,
+    ),
+    CatalogNamespace.TRANSFORMATOR_UZIEMIAJACY.value: MaterializationContract(
+        namespace=CatalogNamespace.TRANSFORMATOR_UZIEMIAJACY.value,
+        solver_fields=(
+            "u_n_kv",
+            "s_n_kva",
+            "grupa_polaczen",
+            "r0_ohm",
+            "x0_ohm",
+            "s_pw_kva",
+            "u_pw_kv",
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+        ),
+        ui_fields=(
+            ("u_n_kv", "Un [kV]", "kV"),
+            ("s_n_kva", "Sn [kVA]", "kVA"),
+            ("grupa_polaczen", "Grupa połączeń", ""),
+            ("r0_ohm", "R0 [Ω]", "Ω"),
+            ("x0_ohm", "X0 [Ω]", "Ω"),
+            ("s_pw_kva", "S uzwojenia potrzeb własnych [kVA]", "kVA"),
+            ("u_pw_kv", "U uzwojenia potrzeb własnych [kV]", "kV"),
+        ),
+        pola_opcjonalne=("s_pw_kva", "u_pw_kv", KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
+    ),
+    CatalogNamespace.DLAWIK_GASZACY.value: MaterializationContract(
+        namespace=CatalogNamespace.DLAWIK_GASZACY.value,
+        solver_fields=(
+            "u_n_kv",
+            "i_min_a",
+            "i_max_a",
+            "regulacja",
+            "liczba_zaczepow",
+            "u_wtorne_v",
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+        ),
+        ui_fields=(
+            ("u_n_kv", "Un [kV]", "kV"),
+            ("i_min_a", "I min [A]", "A"),
+            ("i_max_a", "I max [A]", "A"),
+            ("regulacja", "Regulacja", ""),
+            ("liczba_zaczepow", "Liczba zaczepów", ""),
+            ("u_wtorne_v", "U uzwojenia wtórnego [V]", "V"),
+        ),
+        pola_opcjonalne=("liczba_zaczepow", "u_wtorne_v", KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
+    ),
+    CatalogNamespace.REZYSTOR_UZIEMIAJACY.value: MaterializationContract(
+        namespace=CatalogNamespace.REZYSTOR_UZIEMIAJACY.value,
+        solver_fields=(
+            "u_n_kv",
+            "r_ohm",
+            "i_n_a",
+            "t_s",
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+        ),
+        ui_fields=(
+            ("u_n_kv", "Un [kV]", "kV"),
+            ("r_ohm", "R [Ω]", "Ω"),
+            ("i_n_a", "In [A]", "A"),
+            ("t_s", "t [s]", "s"),
+        ),
+        pola_opcjonalne=(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,),
     ),
     CatalogNamespace.GENERATOR_SN.value: MaterializationContract(
         namespace=CatalogNamespace.GENERATOR_SN.value,

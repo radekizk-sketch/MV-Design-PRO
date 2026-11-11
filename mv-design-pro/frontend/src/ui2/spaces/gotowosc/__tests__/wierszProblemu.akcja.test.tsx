@@ -35,7 +35,7 @@ function renderuj(p: ProblemGotowosci) {
   render(
     <WierszProblemu
       problem={p}
-      trybEkspercki={false}
+      szczegolyAudytowe={false}
       onKlikWiersza={vi.fn()}
       onNaprawa={onNaprawa}
       nazwaElementu={(ref) => `Element ${ref}`}

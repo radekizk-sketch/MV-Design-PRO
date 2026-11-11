@@ -48,9 +48,11 @@ z konfiguracji użytkownika.
 - NR_P18_003: Cieplny (thermal_ok)
 - NR_P18_004: Selektywność (selectivity_ok)
 
-### P19 — Earthing / Ground Fault SN
-- NR_P19_001: Napięcie dotykowe (u_touch_v)
-- NR_P19_002: Prąd doziemny (i_earth_a)
+### P19 — Earthing / Ground Fault SN — SKASOWANY
+Reguły NR_P19_001/002 i progi `touch_voltage_*` / `earth_current_*` konfiguracji usunięte
+razem z pakietem P19 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5) — reguła bez
+producenta dowodu była stale „nieobliczona”. Ocenę napięć rażeniowych z kryterium,
+limitem i marginesem niosą rekordy werdyktu wyjaśnialnego biegu bezpieczeństwa uziomu V12.6.
 
 ### P11 / P17 — Coverage (INFO)
 - NR_P11_001: SC3F availability (ikss_ka / ip_ka / ith_ka)

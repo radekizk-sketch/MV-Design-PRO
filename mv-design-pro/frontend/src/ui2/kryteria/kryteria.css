@@ -4,50 +4,50 @@
 .mvd-kryteria {
   display: flex;
   flex-direction: column;
-  gap: var(--mvd-odstep-xs, 4px);
-  margin-top: var(--mvd-odstep-m, 12px);
-  padding: var(--mvd-odstep-m, 12px);
-  border: 1px solid var(--mvd-obramowanie, rgba(128, 128, 128, 0.35));
-  border-radius: var(--mvd-promien-s, 6px);
-  background: var(--mvd-tlo-panel, transparent);
+  gap: 4px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: transparent;
 }
 
 .mvd-kryteria__tytul {
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--mvd-tekst, inherit);
+  color: var(--mvd-ink);
 }
 
 .mvd-kryteria__opis {
-  margin: 0 0 var(--mvd-odstep-xs, 4px);
+  margin: 0 0 4px;
   font-size: 0.8rem;
-  color: var(--mvd-tekst-drugi, inherit);
+  color: var(--mvd-muted);
 }
 
 .mvd-kryteria__wiersz {
   display: flex;
   justify-content: space-between;
-  gap: var(--mvd-odstep-s, 8px);
+  gap: 8px;
   font-size: 0.82rem;
   padding: 2px 0;
 }
 
 .mvd-kryteria__etykieta {
-  color: var(--mvd-tekst-drugi, inherit);
+  color: var(--mvd-muted);
 }
 
 .mvd-kryteria__wartosc {
   font-variant-numeric: tabular-nums;
   font-family: var(--mvd-font-mono, ui-monospace, monospace);
-  color: var(--mvd-tekst, inherit);
+  color: var(--mvd-ink);
 }
 
 .mvd-kryteria__pole {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--mvd-odstep-s, 8px);
+  gap: 8px;
   font-size: 0.82rem;
   padding: 2px 0;
 }
@@ -55,30 +55,30 @@
 .mvd-kryteria__input {
   width: 8rem;
   padding: 2px 6px;
-  border: 1px solid var(--mvd-obramowanie, rgba(128, 128, 128, 0.35));
-  border-radius: var(--mvd-promien-s, 4px);
-  background: var(--mvd-tlo-pole, transparent);
-  color: var(--mvd-tekst, inherit);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--mvd-ink);
   font-family: var(--mvd-font-mono, ui-monospace, monospace);
 }
 
 .mvd-kryteria__braki {
-  margin: var(--mvd-odstep-xs, 4px) 0 0;
+  margin: 4px 0 0;
   padding-left: 1.1rem;
   font-size: 0.8rem;
-  color: var(--mvd-tekst-ostrzezenie, inherit);
+  color: var(--mvd-warn);
 }
 
 .mvd-kryteria__uwaga {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--mvd-tekst-ostrzezenie, inherit);
+  color: var(--mvd-warn);
 }
 
 .mvd-kryteria__wzor {
-  margin: var(--mvd-odstep-xs, 4px) 0 0;
+  margin: 4px 0 0;
   font-size: 0.75rem;
   font-family: var(--mvd-font-mono, ui-monospace, monospace);
-  color: var(--mvd-tekst-drugi, inherit);
+  color: var(--mvd-muted);
   overflow-x: auto;
 }

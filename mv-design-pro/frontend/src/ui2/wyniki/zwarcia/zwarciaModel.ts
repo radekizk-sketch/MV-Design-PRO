@@ -7,7 +7,7 @@
  * - Wiersz zwarciowy: `ShortCircuitRow` (`ui/results-inspector/types.ts:157-167`):
  *   target_id, element_id?, target_name, ikss_ka, ip_ka, ith_ka, sk_mva,
  *   fault_type, flags. Budowany w backendzie w `enm/canonical_analysis.py:1655-1682`
- *   (fault_type = short_circuit_type: „3F"/„2F"/„2F+Z"/„1F"; flags obecnie []).
+ *   (fault_type = short_circuit_type: „3F"/„2F"/„2F+G"/„1F"; flags obecnie []).
  * - Tabela wyników: `ShortCircuitResults` (`types.ts:172-176`): run_id, rows.
  * - Store read-only: `useResultsInspectorStore.shortCircuitResults`
  *   (`ui/results-inspector/store.ts:104`), `selectedRunId` (`store.ts:96`).

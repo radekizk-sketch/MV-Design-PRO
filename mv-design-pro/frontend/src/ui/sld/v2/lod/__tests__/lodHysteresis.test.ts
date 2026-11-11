@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Phase 0A — Histereza LOD + debounce.
  *

@@ -303,13 +303,6 @@ export function useActiveCaseResultStatus(): StudyCaseResultStatus | null {
 }
 
 /**
- * Hook: Get count of study cases.
- */
-export function useCasesCount(): number {
-  return useStudyCasesStore((state) => state.cases.length);
-}
-
-/**
  * Hook: Check if cases are loading.
  */
 export function useIsLoading(): boolean {

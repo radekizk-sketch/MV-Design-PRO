@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * T2-LOD — KONTRAKT POLITYKI LOD nN (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`
  * §„POLITYKA LOD nN", BINDING).

@@ -11,7 +11,6 @@
 import { useCallback } from 'react';
 
 import { useAppStateStore } from '../../ui/app-state';
-import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
 import {
   ROUTES,
   getCurrentSearchParams,
@@ -25,6 +24,7 @@ import {
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useShellStore } from '../shell/useShellStore';
 import { REPORT_SURFACE_SCREEN_CODE } from '../../ui/workspace/types';
+import { useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
 
 function openSldOverlayFromCurrentContext(): void {
   if (typeof window === 'undefined') {
@@ -67,14 +67,12 @@ export const POZYCJE_MENU_LEGACY: readonly PozycjaMenuLegacy[] = [
  */
 export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
-  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   // K3-A2: akcje z zakładkowym dostawcą ui2 (wyniki/porównanie/dowód) prowadzą
   // do warsztatu przestrzeni „Wyniki" zamiast powierzchni trasowych mostu.
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
   const setWynikiTab = useShellStore((state) => state.setWynikiTab);
-  const effectiveRunId = activeRunId ?? executionActiveRunId;
 
   return useCallback((actionId: string) => {
     switch (actionId) {
@@ -108,7 +106,7 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         // „Pozostałe analizy" — otwiera ją orkiestrator z hasha, bez
         // dublowania openRouteSurface tutaj).
         setActiveSpace('wyniki');
-        navigateToAnalysis({ runId: effectiveRunId });
+        navigateToAnalysis({ runId: runIdOgladany });
         break;
       case 'compare':
         // K3-A2: zakładka ui2 „Porównanie A/B" zamiast trasy mostu #compare.
@@ -122,14 +120,14 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
           entityRef: getCurrentSearchParams().get('sel'),
           subjectKind: 'report',
-          subjectRef: effectiveRunId,
+          subjectRef: runIdOgladany,
           payload: {
-            runId: effectiveRunId,
+            runId: runIdOgladany,
             selectedName: getCurrentSearchParams().get('name'),
             selectedType: getCurrentSearchParams().get('type'),
           },
         });
-        navigateToReport({ runId: effectiveRunId });
+        navigateToReport({ runId: runIdOgladany });
         break;
       case 'variants':
         navigateToVariants({ caseId: activeCaseId });
@@ -145,13 +143,13 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
           route: 'analysis',
           openMode: 'replace_right_panel',
         });
-        navigateToAnalysis({ caseId: activeCaseId, runId: effectiveRunId });
+        navigateToAnalysis({ caseId: activeCaseId, runId: runIdOgladany });
         break;
       case 'proof':
       case 'whitebox':
         // K3-A2: zakładka ui2 „Dowód obliczeń" (kontekst = aktywny przebieg,
         // gdy jest) zamiast trasy mostu #proof.
-        setWynikiTab('dowod', effectiveRunId);
+        setWynikiTab('dowod', runIdOgladany);
         setActiveSpace('wyniki');
         break;
       case 'protection':
@@ -179,7 +177,7 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
   }, [
     activeCaseId,
     handleCalculate,
-    effectiveRunId,
+    runIdOgladany,
     openRouteSurface,
     setActiveSpace,
     setWynikiTab,

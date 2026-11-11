@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * lodController — testy progów zoom→LodLevel (+ histereza), polityki widoczności
  * per poziom (L0 omija aparaty/wyniki, L2 je zawiera), wirtualizacji viewportu

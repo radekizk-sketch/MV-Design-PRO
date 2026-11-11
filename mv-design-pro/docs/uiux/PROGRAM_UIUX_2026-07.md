@@ -316,7 +316,7 @@ identyfikatory testów, commitów i zrzutów.
 | **UX-06** | **P0** | U5; E1–E15; W9 | pełna ścieżka projektanta w jednej aplikacji od GPZ do raportu i odbioru | T+01…T+10 + Playwright na realnym backendzie, regresja obu motywów, B-02 | **NIEODEBRANE** |
 | **UX-07** | P1 | U1/U4; E12/E15; W9/W10 | wersje projektu, szkic, cofnij/ponów, porównanie A/B i stany przed/po | operacje odwracalne w ENM z historią i własnym wynikiem, E2E | DO OCENY |
 | **UX-08** | P2 | U2/U4; E4/E13; W10 | wygoda katalogów, szablonów i eksportów bez nowych równoległych modułów | kompletna karta, raport, lista urządzeń i parytet zdolności | DO OCENY |
-| **UX-09** | **P3 / STOP** | poza bieżącą misją UI | GIS, MDI, mapy, import geograficzny, DNP3/SCADA — zachować jedynie referencje i ewentualny przyszły interfejs danych | brak implementacji bez odrębnego polecenia właściciela | **ODŁOŻONE** |
+| **UX-09** | **P3 — ostatnia pozycja kolejki** (decyzja właściciela 2026-10-28; zastępuje STOP) | po zamknięciu wszystkich pozostałych kart | GIS, MDI, mapy, import geograficzny, DNP3/SCADA; materiał GPT: PR #494–#497, #501, #503, #505 (R05–R15), zamrożony do startu karty | status w `PLANS.md` §C.4 |
 
 Nie jest to nowy plan względem E1–E15: to **jawne uporządkowanie i integracja w tych samych
 epikach**; w §6 nie wolno tworzyć duplikujących epików ani w planach W i SLD kolejnej kolejki UI.
@@ -333,7 +333,7 @@ epikach**; w §6 nie wolno tworzyć duplikujących epików ani w planach W i SLD
    fizyki; po niej podłącz wynik do widoku bez zmiany kontraktu ENM.
 3. **UX-06** jest bramką integracyjną P0 każdej partii. **Nie odkładać do ostatniego etapu**:
    po każdej nowej zdolności sprawdzaj cały tor GPZ→stacje→OZE→obliczenia→wynik→dowód/raport.
-4. **UX-07/08** tylko po zamknięciu odpowiadających im P0. **UX-09: stop.**
+4. **UX-07/08** tylko po zamknięciu odpowiadających im P0. **UX-09 (GIS): na samym końcu kolejki** (decyzja właściciela 2026-10-28).
 5. Zrzuty i protokół właściciela są aktualizowane po każdej istotnej zmianie ekranu;
    automatyczna regresja wizualna nie zastępuje werdyktu właściciela.
 6. Brak zgody właściciela wymaganej przez B-02 nie blokuje napraw P0, ale blokuje
@@ -363,6 +363,14 @@ ponowny odczyt i powtórzenie obliczeń; ekran przy małej szerokości i oba mot
 - ocena wizualna **B-02 wyłącznie przez właściciela**; zielone CI ≠ B-02.
 
 ### 12.5a OBOWIĄZKOWA BRAMKA UX-04 — H5, symbole i rysunki ENEA (P0)
+
+**Przekazanie właściciela 2026-10-28 (wiążące):** przebudowa rozdzielni SN 15 kV GPZ wg
+[`PRZEKAZANIE_GPZ_SN_15KV_2026-10-28.md`](PRZEKAZANIE_GPZ_SN_15KV_2026-10-28.md). R5 odrzucone;
+kolejność standard ENEA → typ pola → sekwencja aparatów i porty → geometria QET → połączenia →
+automatyczny układ → SCADA → walidacja; najpierw wzorzec kanoniczny pola liniowego, potem pola
+T1/T2, pomiar Z.17, sprzęgło dwucelkowe i cała rozdzielnia; logika łączeniowa walidowana na całej
+topologii wynikowej. Karty: UX-04/POLE-LINIOWE-WZORZEC, UX-04/POLA-TR-POMIAR-SPRZEGLO,
+UX-04/LOGIKA-LACZENIOWA w `PLANS.md` §C.1. Kryteria H5-01…H5-05 poniżej obowiązują dalej.
 
 **To jest część ISTNIEJĄCEGO programu UI/UX prowadzonego przez Opusa, a nie osobna
 roadmapa ani nowy epik.** Nazwa „H5” w raporcie/ocenie wizualnej nie jest automatycznie

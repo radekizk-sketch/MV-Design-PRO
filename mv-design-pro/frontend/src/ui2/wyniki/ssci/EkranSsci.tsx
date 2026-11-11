@@ -19,8 +19,9 @@
 
 import { useState } from 'react';
 import './ssci.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
+import { MathInline } from '../../../ui/proof/MathRenderer';
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   fetchStabilnoscSsci,
   utworzPrzebiegSsci,
@@ -96,9 +97,9 @@ function PanelPrzeksztaltnika({ dane }: { dane: WidokStabilnosciSsci }) {
         )}
       </div>
       <div className="mvd-ssci-metryka mvd-ssci-metryka--neutral">
-        <span className="mvd-ssci-metryka-etyk">{S.metrRezystancjaUjemna}</span>
+        <span className="mvd-ssci-metryka-etyk"><TekstZWzorami tekst={S.metrRezystancjaUjemna} /></span>
         <span className="mvd-ssci-metryka-wartosc mvd-num" data-testid="mvd-ssci-rezystancja-ujemna">
-          {opisRezystancjiUjemnej(w)}
+          <TekstZWzorami tekst={opisRezystancjiUjemnej(w)} />
         </span>
         <span className="mvd-ssci-metryka-opis">{S.metrRezystancjaOpis}</span>
       </div>
@@ -122,9 +123,9 @@ function PanelMetryk({ dane }: { dane: WidokStabilnosciSsci }) {
             className="mvd-ssci-metryka mvd-ssci-metryka--neutral"
             data-testid={`mvd-ssci-metryka-${m.klucz}`}
           >
-            <span className="mvd-ssci-metryka-etyk">{m.etykieta}</span>
+            <span className="mvd-ssci-metryka-etyk"><TekstZWzorami tekst={m.etykieta} /></span>
             <span className="mvd-ssci-metryka-wartosc mvd-num">{m.wartosc}</span>
-            {m.opis && <span className="mvd-ssci-metryka-opis">{m.opis}</span>}
+            {m.opis && <span className="mvd-ssci-metryka-opis"><TekstZWzorami tekst={m.opis} /></span>}
           </div>
         ))}
       </div>
@@ -171,7 +172,7 @@ function PanelBrakow({ dane }: { dane: WidokStabilnosciSsci }) {
   return (
     <section className="mvd-ssci-braki" data-testid="mvd-ssci-braki">
       <h3 className="mvd-ssci-sekcja-tytul">{S.brakiTytul}</h3>
-      <p className="mvd-ssci-pole-opis">{S.brakiOpis}</p>
+      <p className="mvd-ssci-pole-opis"><TekstZWzorami tekst={S.brakiOpis} /></p>
       <p className="mvd-num mvd-ssci-braki-lista">
         {S.brakiPola}: {missing.join(', ')}
       </p>
@@ -203,7 +204,7 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
           <table className="mvd-ssci-slad-tabela">
             <thead>
               <tr>
-                <th>{S.sladKolSymbol}</th>
+                <th>{S.sladKolWzor}</th>
                 <th>{S.sladKolPodstawienie}</th>
                 <th>{S.sladKolWynik}</th>
                 <th>{S.sladKolJednostka}</th>
@@ -212,7 +213,9 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
             <tbody>
               {kroki.map((k) => (
                 <tr key={k.symbol}>
-                  <td className="mvd-num">{k.symbol}</td>
+                  <td>
+                    <MathInline latex={k.formula_latex} />
+                  </td>
                   <td>{k.substitution_pl}</td>
                   <td>{k.result_pl}</td>
                   <td>{k.unit_check_pl}</td>
@@ -232,10 +235,10 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
 
 function WynikSsci({
   dane,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   dane: WidokStabilnosciSsci;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const w = dane.verdict;
   return (
@@ -254,20 +257,20 @@ function WynikSsci({
 
       <PanelProweniencji dane={dane} />
 
-      {trybEkspercki && w.white_box.length > 0 && <SladSsci kroki={w.white_box} />}
+      {szczegolyAudytowe && w.white_box.length > 0 && <SladSsci kroki={w.white_box} />}
 
       {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych"; próg
           wzmocnienia (wielkość inżynierska) zostaje na pierwszym planie trybu eksperckiego. */}
-      {trybEkspercki && (
+      {szczegolyAudytowe && (
         <dl className="mvd-ssci-eksp" data-testid="mvd-ssci-eksp">
           <div className="mvd-ssci-eksp-para">
-            <dt>{S.ekspProgGain}</dt>
+            <dt><TekstZWzorami tekst={S.ekspProgGain} /></dt>
             <dd className="mvd-num">{fmtGain(dane.gain_crossover_mag)}</dd>
           </div>
         </dl>
       )}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-ssci-informacje-audytowe"
         wiersze={[{ etykieta: S.ekspAnalizaId, wartosc: dane.analysis_id }]}
       />
@@ -290,14 +293,13 @@ type StanWerdyktu =
 // ---------------------------------------------------------------------------
 
 export interface EkranSsciProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
 }
 
-export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
+export function EkranSsci({ szczegolyAudytowe }: EkranSsciProps) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   // K6 / H-5: bez aktywnego zakresu obliczeń jedyny sensowny krok to jego wybór.
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   const [stan, setStan] = useState<StanWerdyktu>({ rodzaj: 'idle' });
   const [runId, setRunId] = useState<string | null>(null);
@@ -326,7 +328,7 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
       <div className="mvd-ssci" data-testid="mvd-ssci-ekran">
         <header className="mvd-ssci-naglowek">
           <h2 className="mvd-ssci-tytul">{S.tytul}</h2>
-          <p className="mvd-ssci-opis">{S.opisWstep}</p>
+          <p className="mvd-ssci-opis"><TekstZWzorami tekst={S.opisWstep} /></p>
         </header>
         <StanPanel
           komunikat={S.brakPrzypadku}
@@ -343,18 +345,20 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
     <div className="mvd-ssci" data-testid="mvd-ssci-ekran">
       <header className="mvd-ssci-naglowek">
         <h2 className="mvd-ssci-tytul">{S.tytul}</h2>
-        <p className="mvd-ssci-opis">{S.opisWstep}</p>
+        <p className="mvd-ssci-opis"><TekstZWzorami tekst={S.opisWstep} /></p>
       </header>
 
       {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-ssci-przebieg-informacje-audytowe"
         wiersze={runId ? [{ etykieta: S.runId, wartosc: runId }] : []}
       />
 
       <section className="mvd-ssci-akcja-sekcja">
-        <p className="mvd-ssci-pole-opis">{S.uruchomOpis}</p>
+        <p className="mvd-ssci-pole-opis">
+          <TekstZWzorami tekst={S.uruchomOpis} />
+        </p>
         <div className="mvd-ssci-akcje">
           <button
             type="button"
@@ -374,7 +378,7 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
       {stan.rodzaj === 'blad' && (
         <StanPanel komunikat={S.blad} opis={stan.komunikat} wariant="blad" testid="mvd-ssci-blad" />
       )}
-      {stan.rodzaj === 'gotowe' && <WynikSsci dane={stan.dane} trybEkspercki={trybEkspercki} />}
+      {stan.rodzaj === 'gotowe' && <WynikSsci dane={stan.dane} szczegolyAudytowe={szczegolyAudytowe} />}
     </div>
   );
 }

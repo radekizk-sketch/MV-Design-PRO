@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPolaSn } from '../KreatorPolaSn';
+import { domainOpsEndpoint } from '../../../../ui/topology/domainApi';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -109,9 +110,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pick() {
-  await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-pole-katalog')).toBeInTheDocument();
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-pole-katalog').querySelector('option[value="app-1"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-katalog'), 'app-1');
 }
 
@@ -174,9 +175,9 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     await waitFor(() => {
       expect(fetchBayTemplatesMock).toHaveBeenCalledWith('ZPUE', 'transformatorowe');
     });
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-kreator-pole-szablon-wybor')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-pole-szablon-wybor').querySelector('option[value="tmpl-tr-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-szablon-wybor'), 'tmpl-tr-1');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
@@ -385,5 +386,74 @@ describe('KreatorPolaSn — katalogowe pole rodziny (S3)', () => {
     );
     // Werdykt należy do backendu — kreator nie zamyka drogi zapisu.
     expect(screen.getByTestId('mvd-kreator-pole-zapisz')).not.toBeDisabled();
+  });
+});
+
+/**
+ * Werdykt konfiguracji katalogowej PRZED zapisem — tryb próby tej samej operacji
+ * (`add_sn_bay` + `dry_run`). Ścieżka natywna: wybór rodziny i szablonu w selektach.
+ * ILOCZYN: werdykt backendu {VALID z opisem, odmowa z komunikatem} × szablon {wskazany, brak}.
+ */
+describe('KreatorPolaSn — kontrola katalogowa przed zapisem', () => {
+  beforeEach(() => {
+    appState.activeCaseId = 'case-1';
+    resolved.station = 'st-1';
+    resolved.bus = 'bus-1';
+    fetchBayTemplatesMock.mockReset();
+    fetchBayTemplatesMock.mockResolvedValue([
+      { template_ref: 'tmpl-tr-1', manufacturer_ref: 'ZPUE', switchgear_family_ref: 'fam-1', notes_pl: 'Pole transformatorowe' },
+    ]);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  async function wybierzSzablon() {
+    await pick();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'TR');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rodzina'), 'fam-1');
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-pole-szablon-wybor').querySelector('option[value="tmpl-tr-1"]')).not.toBeNull(),
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-szablon-wybor'), 'tmpl-tr-1');
+  }
+
+  it.each([
+    {
+      nazwa: 'VALID — opis źródła i roli z katalogu',
+      odpowiedz: { dry_run: true, preview: { werdykt: 'VALID', zrodlo_opis_pl: 'pole TR rodziny RELF', bay_role: 'TR' } },
+      stan: 'zgodna',
+      tekst: /zgodna z katalogiem rozdzielnic.*pole TR rodziny RELF/,
+    },
+    {
+      nazwa: 'odmowa — komunikat walidatora rodziny',
+      odpowiedz: {
+        dry_run: true,
+        error: 'Rodzina nie obsługuje napięcia szyny 30 kV.',
+        error_code: 'sn.pole_katalogowe_niezgodne',
+        preview: { werdykt: 'INVALID' },
+      },
+      stan: 'niezgodna',
+      tekst: /niezgodna z katalogiem.*nie obsługuje napięcia szyny 30 kV/,
+    },
+  ])('$nazwa', async ({ odpowiedz, stan, tekst }) => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(odpowiedz), { status: 200 })));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<KreatorPolaSn />);
+    expect(screen.queryByTestId('mvd-kreator-pole-kontrola-katalogowa')).not.toBeInTheDocument();
+    await wybierzSzablon();
+
+    const kontrola = await screen.findByTestId('mvd-kreator-pole-kontrola-katalogowa');
+    await waitFor(() => expect(kontrola).toHaveAttribute('data-stan', stan));
+    expect(kontrola.textContent).toMatch(tekst);
+    // Próba TEJ SAMEJ operacji co zapis, z flagą dry_run — nie osobna operacja.
+    const [url, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as unknown as [string, RequestInit];
+    expect(url).toBe(domainOpsEndpoint('case-1'));
+    const cialo = JSON.parse(String(init.body)) as { operation: { name: string; payload: Record<string, unknown> } };
+    expect(cialo.operation.name).toBe('add_sn_bay');
+    expect(cialo.operation.payload).toMatchObject({ dry_run: true, bay_template_ref: 'tmpl-tr-1', bus_ref: 'bus-1' });
+    // Próba nie zapisuje modelu.
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

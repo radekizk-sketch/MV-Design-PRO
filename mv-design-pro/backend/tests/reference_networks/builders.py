@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from enm.hash import hash_migawki_enm
+from enm.pola import pola_stacji
 
 
 def _snapshot_hash(enm: dict[str, Any]) -> str:
@@ -22,11 +23,10 @@ def _snapshot_hash(enm: dict[str, Any]) -> str:
 
 
 def _branch_field_ref(enm: dict[str, Any], station_ref: str) -> str:
-    station = next(s for s in enm.get("substations", []) if s.get("ref_id") == station_ref)
-    for spec in station.get("meta", {}).get("field_specs", []):
+    for spec in pola_stacji(enm, station_ref):
         role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
         if role in {"LINIA_ODG", "FEEDER"}:
-            return f"{spec['field_ref']}.BRANCH"
+            return f"{spec['ref_id']}.BRANCH"
     raise AssertionError(f"Brak pola odgałęźnego w stacji {station_ref}")
 
 
@@ -73,8 +73,6 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -168,8 +166,6 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
             "sk3_mva": 200.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-200mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -282,8 +278,6 @@ def build_gn03_sn_pierscien() -> dict[str, Any]:
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-300mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -389,8 +383,6 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"

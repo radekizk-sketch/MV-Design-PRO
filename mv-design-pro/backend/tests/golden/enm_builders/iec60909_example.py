@@ -22,7 +22,7 @@ from enm.kompilator_grafu import (
 def build_iec60909_example_enm() -> BenchmarkEnm:
     enm = pusty_enm(name="IEC 60909-4 Example", sn_nominal_kv=33.0)
 
-    # Źródło WPROST na szynie 110 kV (skip_hv_transformer — BUS-HV JEST
+    # Źródło WPROST na szynie 110 kV (równoważnik na własnej szynie — BUS-HV JEST
     # szczytem sieci literatury, transformator do 33 kV jest ELEMENTEM
     # jawnym poniżej, nie wewnętrznym mechanizmem GPZ). X/R=10 -> rx_ratio=0,1.
     enm, bus_hv = dodaj_zrodlo_slack(

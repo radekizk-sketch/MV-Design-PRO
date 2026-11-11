@@ -7,6 +7,7 @@
  * (Determinism Rule) — przecinek dziesiętny zgodnie z konwencją PL.
  */
 
+import { TRACE_VALUE_CODES } from '../../../ui/results-inspector/types';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 export const ZWARCIA_STRINGS = {
@@ -87,7 +88,7 @@ export const ZWARCIA_STRINGS = {
   zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
   zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
   // Karta OD-14: zwarcie przez impedancję przejścia Z_f zapisane na biegu.
-  zalImpedancjaPrzejscia: 'Impedancja przejścia w miejscu zwarcia Z_f',
+  zalImpedancjaPrzejscia: 'Impedancja przejścia w miejscu zwarcia $Z_f$',
   zalImpedancjaPrzejsciaUwaga:
     'Zwarcie przez impedancję przejścia — wynik poza zakresem normy IEC 60909, która definiuje prąd zwarcia metalicznego. Nie jest podstawą doboru aparatury, wytrzymałości, nastaw nadprądowych ani dowodu w punkcie przyłączenia.',
 
@@ -100,11 +101,12 @@ export const ZWARCIA_STRINGS = {
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
   walidacjaTytul: 'Walidacja metody IEC 60909',
   wkladyNiedostepneOpis:
-    'Brak migawki modelu albo parametrów biegu potrzebnych do rozbicia maszynowego tego punktu. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
-  wkladyBlad: 'Nie udało się pobrać wkładów do zwarcia.',
+    'Rozbicie maszynowe wymaga migawki modelu sieci i parametrów biegu (scenariusz, współczynnik c, czas wyłączenia) — bez nich serwer nie ma z czego go policzyć. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+  // Stany ODCZYTU (odczyt w toku ≠ brak danych, błąd odczytu ≠ brak danych).
+  wkladyWczytywanie: 'Odczyt rozbicia maszynowego dla tego punktu…',
+  wkladyBlad: 'Nie udało się pobrać rozbicia maszynowego dla tego punktu.',
   wkladyBladOpis:
-    'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
-  wkladyLadowanie: 'Pobieranie wkładów do zwarcia dla tego punktu…',
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń) — to nie jest brak wkładów w sieci. Wybierz punkt ponownie albo odśwież przebieg.',
   wkladyBrakPunktow: 'Brak punktów zwarcia do wyboru.',
 
   // Sekcja wkładów — filtr, wykres udziałów, szczegół źródła (karta W-A F2)
@@ -136,10 +138,10 @@ export const ZWARCIA_STRINGS = {
   rozplywNiedostepny: 'Rozpływ gałęziowy niedostępny w tym przebiegu.',
   rozplywNiedostepnyOpis:
     'Starszy wynik nie niesie wkładów gałęziowych. Uruchom ponownie obliczenie zwarciowe, aby je uzyskać.',
-  rozplywBlad: 'Nie udało się pobrać rozpływu prądu zwarciowego.',
+  rozplywWczytywanie: 'Odczyt rozpływu gałęziowego dla tego punktu…',
+  rozplywBlad: 'Nie udało się pobrać rozpływu gałęziowego dla tego punktu.',
   rozplywBladOpis:
-    'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
-  rozplywLadowanie: 'Pobieranie rozpływu prądu zwarciowego dla tego punktu…',
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń) — to nie jest brak rozpływu w przebiegu. Wybierz punkt ponownie albo odśwież przebieg.',
   rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
   rozplywBrakWkladowOpis:
     'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
@@ -163,14 +165,26 @@ export const ZWARCIA_STRINGS = {
   sladRozplywuPusty: 'Brak kroków podziału dla tego punktu zwarcia.',
   sladRozplywuPustyOpis:
     'Rozpływ policzony, ale ślad obliczeń dokumentuje wyłącznie podział prądu od sieci zastępczej (Thevenina) — ten punkt zwarcia nie ma wkładu z tego źródła.',
-  sladRozplywuLadowanie: 'Pobieranie śladu podziału prądu zwarciowego dla tego punktu…',
+  sladRozplywuWczytywanie: 'Odczyt śladu podziału prądu zwarciowego dla tego punktu…',
   sladRozplywuBlad: 'Nie udało się pobrać śladu podziału prądu zwarciowego.',
   sladRozplywuBladOpis:
     'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
 
+  // Sekcja „Sieć składowej zerowej" — ślad WHITE BOX budowy macierzy Y0 biegu 1F/2F+G.
+  sladZerowejTytul: 'Sieć składowej zerowej — ślad obliczeń',
+  sladZerowejOpis:
+    'Budowa macierzy admitancyjnej składowej zerowej po elementach sieci: impedancja zerowa '
+    + 'źródeł, impedancja zerowa i pojemność doziemna linii i kabli, połączenie transformatorów '
+    + 'w składowej zerowej wg grupy połączeń i uziemienia punktów neutralnych, droga zerowa '
+    + 'baterii kondensatorów. Z tej macierzy pochodzi impedancja Z0 w miejscu zwarcia. '
+    + 'Wyłącznie odczyt jawnego śladu obliczeń, zero obliczeń w interfejsie.',
+  sladZerowejNiedostepny: 'Bieg nie niesie śladu sieci składowej zerowej.',
+  sladZerowejNiedostepnyOpis:
+    'Starszy wynik nie ma tego pola. Uruchom ponownie obliczenie zwarciowe, aby go uzyskać.',
+
   // Sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7) — ślad WHITE BOX wyprowadzenia
   // impedancji zastępczej źródeł sieciowych biegu (IEC 60909-0:2016 §6.2.1 eq. 6).
-  zrodlaTytul: 'Źródła sieciowe (Z_Q)',
+  zrodlaTytul: 'Źródła sieciowe ($Z_Q$)',
   zrodlaOpis:
     'Wyprowadzenie impedancji zastępczej źródeł sieciowych zasilających ten bieg '
     + '(IEC 60909-0:2016 §6.2.1 eq. 6) — jeden wiersz na scenariusz źródła. Wartości '
@@ -185,14 +199,14 @@ export const ZWARCIA_STRINGS = {
   zrodlaKolMocPrad: 'S″kQ / I″kQ',
   zrodlaKolC: 'c',
   zrodlaKolRx: 'R/X',
-  zrodlaKolZq: '|Z_Q|',
+  zrodlaKolZq: '$|Z_Q|$',
   zrodlaKolWzor: 'Wzór',
 
   // Sekcja „Pasmo MIN/MAX" (karta W3-G3, aneks D7) — oba scenariusze c_max/c_min
   // JEDNEGO przypadku obok siebie, z proweniencją każdej strony.
   pasmoTytul: 'Pasmo MIN/MAX (IEC 60909)',
   pasmoOpis:
-    'Wielkości zwarciowe przy c_max i c_min tego samego przypadku obok siebie — '
+    'Wielkości zwarciowe przy $c_{\\max}$ i $c_{\\min}$ tego samego przypadku obok siebie — '
     + 'dwa biegi kanoniczne z jednej migawki modelu, zero obliczeń w interfejsie.',
   pasmoKolIkssMax: 'Ik" (max)',
   pasmoKolIkssMin: 'Ik" (min)',
@@ -284,18 +298,16 @@ export const ZWARCIA_STRINGS = {
 } as const;
 
 /**
- * Słownik polskich nazw rodzajów zwarcia. Klucze = wartości `fault_type`
- * (`short_circuit_type`) z kontraktu wyników: „3F", „2F", „2F+Z", „1F"
- * (execution_runs.py:149-155). Dodatkowo akceptowane warianty `SC_3F`/`sc_3f`
- * (fault_scenarios.py:84, analysisRunContract.ts:138-142). Normalizacja: wielkie
+ * Słownik polskich nazw rodzajów zwarcia — JEDNO źródło z opisami kodów śladu
+ * (`TRACE_VALUE_CODES.short_circuit_type`): klucze = wartości `fault_type`
+ * (`short_circuit_type`) kontraktu wiersza wyniku, czyli kody `ShortCircuitType`
+ * backendu „3F", „2F", „2F+G", „1F" (równość przypina
+ * `backend/tests/enm/test_slad_sieci_zerowej_w_wyniku.py`). Do tej poprawki słownik był
+ * osobną kopią z kluczem „2F+Z", którego wiersz wyniku nie niesie — bieg 2F+G pokazywał
+ * „rodzaj nieznany". Dodatkowo akceptowane warianty `SC_3F`/`sc_3f`. Normalizacja: wielkie
  * litery, usunięcie prefiksu `SC_`.
  */
-const RODZAJ_ZWARCIA_PL: Record<string, string> = {
-  '3F': 'zwarcie trójfazowe',
-  '2F': 'zwarcie dwufazowe',
-  '2F+Z': 'zwarcie dwufazowe z ziemią',
-  '1F': 'zwarcie jednofazowe (doziemne)',
-};
+const RODZAJ_ZWARCIA_PL: Readonly<Record<string, string>> = TRACE_VALUE_CODES.short_circuit_type;
 
 /** Mapuje `fault_type` na polską nazwę rodzaju zwarcia (read-only, bez fizyki). */
 export function rodzajZwarciaPL(faultType: string | null): string {

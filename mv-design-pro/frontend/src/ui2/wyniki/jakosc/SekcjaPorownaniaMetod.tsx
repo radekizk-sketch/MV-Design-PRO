@@ -26,7 +26,6 @@ import './jakosc.css';
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { fetchPowerFlowTrace } from '../../../ui/power-flow-results/api';
 import { createPowerFlowComparison } from '../../../ui/power-flow-comparison/api';
@@ -55,6 +54,9 @@ type StanOdkrycia =
   | { faza: 'brakFd'; nr: WynikBieguMetody }
   | { faza: 'brakNr'; fd: WynikBieguMetody }
   | { faza: 'blad' }
+  /** Para NR/FD niekompletna, a ślad części biegów NIE został odczytany — nie wiadomo,
+   * czy brakująca metoda istnieje (błąd odczytu ≠ brak biegu). */
+  | { faza: 'bladOdczytuSladow'; nieodczytane: number; razem: number }
   | { faza: 'gotowe'; nr: WynikBieguMetody; fd: WynikBieguMetody; porownanie: PowerFlowComparisonResult };
 
 function StanMetod({
@@ -89,11 +91,11 @@ function StanMetod({
 }
 
 export interface SekcjaPorownaniaMetodProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
-export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: SekcjaPorownaniaMetodProps) {
+export function SekcjaPorownaniaMetod({ szczegolyAudytowe, onOtworzDowod }: SekcjaPorownaniaMetodProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const kandydaci = useMemo(() => kandydaciRozplywuOdNajnowszego(runs), [runs]);
   const kluczKandydatow = kandydaci.map((r) => r.id).join(',');
@@ -112,6 +114,7 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
       }
       let nr: WynikBieguMetody | null = null;
       let fd: WynikBieguMetody | null = null;
+      let nieodczytane = 0;
       for (const run of kandydaci) {
         if (nr && fd) break;
         try {
@@ -119,8 +122,10 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
           if (!nr && slad.solver_method === 'newton-raphson') nr = { run, slad };
           if (!fd && slad.solver_method === 'fast-decoupled') fd = { run, slad };
         } catch {
-          // Bieg bez dostępnego śladu (np. skasowany w międzyczasie) — pomijamy
-          // kandydata, nie przerywamy odkrycia pozostałych.
+          // Ślad nieodczytany — odkrycie trwa dalej po pozostałych kandydatach,
+          // ale błąd jest LICZONY: bez kompletu pary nie wolno wnioskować „brak
+          // biegu metodą X" z biegu, którego śladu nie przeczytano.
+          nieodczytane += 1;
         }
       }
       if (anulowane) return;
@@ -131,6 +136,10 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
         } catch {
           if (!anulowane) setStan({ faza: 'blad' });
         }
+        return;
+      }
+      if (nieodczytane > 0) {
+        setStan({ faza: 'bladOdczytuSladow', nieodczytane, razem: kandydaci.length });
         return;
       }
       if (nr && !fd) {
@@ -214,6 +223,15 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
         />
       )}
 
+      {stan.faza === 'bladOdczytuSladow' && (
+        <StanMetod
+          tytul={T.metodyBladOdczytuSladow(stan.nieodczytane, stan.razem)}
+          opis={T.metodyBladOdczytuSladowOpis}
+          wariant="blad"
+          testid="mvd-jakosc-metody-blad-odczytu"
+        />
+      )}
+
       {stan.faza === 'gotowe' && (
         <>
           <SekcjaZalozen zalozenia={naZalozeniaPorownaniaMetod(stan.nr, stan.fd)} />
@@ -229,7 +247,7 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
             kolumny={KOLUMNY_DELTA_SZYN}
             wiersze={naWierszeDeltaSzyn(stan.porownanie.bus_diffs, nazwaObiektu)}
             onOtworzDowod={onOtworzDowod}
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             kluczWiersza="szyna"
           />
         </>

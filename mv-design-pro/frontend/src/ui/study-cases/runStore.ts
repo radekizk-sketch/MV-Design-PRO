@@ -10,12 +10,17 @@
  * INVARIANTS:
  * - Run is created in PENDING, queued (QUEUED), RUNNING, then DONE, FAILED or CANCELLED
  * - ResultSet available ONLY for DONE runs
- * - activeRunId tracks the most recent run for UI display
+ * - sledzonyRunId: bieg ZLECONY z tego magazynu, którego cykl życia opisuje
+ *   `runStatus` (zdarzenie „wyniki-gotowe" magistrali). To NIE jest kontekst wyniku:
+ *   który bieg pokazują schemat, panel, pasek i ekrany, mówi wyłącznie magazyn
+ *   kontekstu wyniku (`ui2/wyniki/kontekst`, karta K8) — dawne `activeRunId` tego
+ *   magazynu było drugą kopią „wybranego biegu" i zostało skasowane.
  * - runResultsCache stores fetched result sets to avoid re-fetching
  */
 
 import { create } from 'zustand';
 import type {
+  ExecutionAnalysisType,
   ExecutionRun,
   ExecutionResultSet,
   RunStatus,
@@ -30,8 +35,8 @@ interface ExecutionRunsState {
   // Active study case context
   activeStudyCaseId: string | null;
 
-  // Active run (most recent for display)
-  activeRunId: string | null;
+  /** Bieg zlecony w tym magazynie, którego stan śledzi `runStatus` (nie kontekst wyniku). */
+  sledzonyRunId: string | null;
 
   // Current run status
   runStatus: RunStatus | null;
@@ -41,6 +46,13 @@ interface ExecutionRunsState {
 
   // Cached result sets (run_id → ResultSet)
   runResultsCache: Record<string, ExecutionResultSet>;
+
+  /**
+   * Rodzaj analizy biegu W TOKU (od zlecenia do stanu końcowego) — pasek stanu
+   * powłoki pokazuje, CO się liczy (karta K1 POWLOKA, §9: stan obliczeń widoczny
+   * globalnie). Gaśnie razem z `isExecutingRun`.
+   */
+  trwajacaAnaliza: ExecutionAnalysisType | null;
 
   // Loading states
   isCreatingRun: boolean;
@@ -57,17 +69,17 @@ interface ExecutionRunsState {
   loadRuns: (caseId: string) => Promise<void>;
   loadRunResults: (runId: string) => Promise<ExecutionResultSet>;
   pollRunStatus: (runId: string) => Promise<ExecutionRun>;
-  setActiveRun: (runId: string | null) => void;
   clearRunError: () => void;
   reset: () => void;
 }
 
 const initialState = {
   activeStudyCaseId: null,
-  activeRunId: null,
+  sledzonyRunId: null,
   runStatus: null,
   runs: [],
   runResultsCache: {},
+  trwajacaAnaliza: null,
   isCreatingRun: false,
   isExecutingRun: false,
   isLoadingRuns: false,
@@ -87,7 +99,7 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
   setActiveStudyCaseId: (caseId) => {
     set({
       activeStudyCaseId: caseId,
-      activeRunId: null,
+      sledzonyRunId: null,
       runStatus: null,
       runs: [],
     });
@@ -108,12 +120,17 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
    * 3. Update local state
    */
   createAndExecuteRun: async (caseId, request) => {
-    set({ isCreatingRun: true, isExecutingRun: true, runError: null });
+    set({
+      isCreatingRun: true,
+      isExecutingRun: true,
+      trwajacaAnaliza: request.analysis_type,
+      runError: null,
+    });
     try {
       // Step 1: Create run
       const run = await api.createRun(caseId, request);
       set({
-        activeRunId: run.id,
+        sledzonyRunId: run.id,
         runStatus: run.status as RunStatus,
         isCreatingRun: false,
       });
@@ -125,6 +142,7 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
       set({
         runStatus: executedRun.status as RunStatus,
         isExecutingRun: false,
+        trwajacaAnaliza: null,
       });
 
       // Reload runs list
@@ -138,6 +156,7 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
         runError: message,
         isCreatingRun: false,
         isExecutingRun: false,
+        trwajacaAnaliza: null,
       });
       throw err;
     }
@@ -215,21 +234,6 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
   },
 
   /**
-   * Set active run for display.
-   */
-  setActiveRun: (runId) => {
-    set({ activeRunId: runId });
-    if (runId) {
-      const run = get().runs.find((r) => r.id === runId);
-      if (run) {
-        set({ runStatus: run.status as RunStatus });
-      }
-    } else {
-      set({ runStatus: null });
-    }
-  },
-
-  /**
    * Clear run error.
    */
   clearRunError: () => {
@@ -247,13 +251,6 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
 // =============================================================================
 // Derived Hooks
 // =============================================================================
-
-/**
- * Hook: Get active run ID.
- */
-export function useActiveRunId(): string | null {
-  return useExecutionRunsStore((state) => state.activeRunId);
-}
 
 /**
  * Hook: Get current run status.

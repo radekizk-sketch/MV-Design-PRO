@@ -76,6 +76,24 @@ export type PochodzenieDanej = 'model' | 'deklarowane';
  */
 export type PowodBlokady = PowodPominieciaDer | 'brak_wejscia_modelu';
 
+/**
+ * Stan odczytu wejść modułów z zatwierdzonego modelu przypadku (`GET …/wejscia`) — JEDNO
+ * źródło dla okna macierzy i kolumn (`zbudujModuly`). `brak` = odczytu nie zlecono (przypadek
+ * albo operator niewybrane); `wczytywanie` i `blad` to stany ODCZYTU, nie stany danych modułu.
+ */
+export type StanWejscModelu =
+  | { readonly stan: 'brak' }
+  | { readonly stan: 'wczytywanie' }
+  | { readonly stan: 'gotowe'; readonly wejscia: WejsciaPrzypadkuNcRfg }
+  | { readonly stan: 'blad'; readonly komunikat: string };
+
+/**
+ * Kolumna czeka na odczyt wejść albo odczyt się nie udał — to NIE jest brak danych modułu
+ * (KONTRAKT_WERDYKTU_WYJASNIALNEGO: brak danych ≠ dane w drodze). Stan neutralny, bez
+ * etykiety werdyktu i bez powodu blokady.
+ */
+export type OczekiwanieWejsc = 'wczytywanie_wejsc' | 'blad_odczytu_wejsc';
+
 /** Flagi zdolności wejścia modułu — nazwy 1:1 z kontraktem (`has_*`/`*_enabled`/…). */
 export const POLA_ZDOLNOSCI = [
   'has_lvrt_curve',
@@ -147,7 +165,9 @@ export interface OpisModuluModelu {
 
 /** Kolumna macierzy: moduł modelu + blokada z mostu + wejście modelu + formularz „co-jeśli". */
 export interface OpisModulu extends OpisModuluModelu {
-  /** null = moduł gotowy do biegu; wartość = jawny powód braku danych. */
+  /** Odczyt wejść w toku albo nieudany (`null` = odczyt rozstrzygnięty albo niezlecony). */
+  readonly oczekiwanie: OczekiwanieWejsc | null;
+  /** Jawny powód braku danych modułu (`null` = brak braku); przy `oczekiwanie` zawsze `null`. */
   readonly powodBlokady: PowodBlokady | null;
   /**
    * Wejście modułu złożone z modelu przez most backendu (`null` — moduł zablokowany):
@@ -165,6 +185,12 @@ export type KomorkaMacierzy =
       readonly derRef: string;
       readonly testId: string;
       readonly powodModulu: PowodBlokady;
+    }
+  | {
+      readonly stan: 'oczekiwanie_wejsc';
+      readonly derRef: string;
+      readonly testId: string;
+      readonly oczekiwanie: OczekiwanieWejsc;
     }
   | { readonly stan: 'brak_biegu'; readonly derRef: string; readonly testId: string }
   | {
@@ -296,23 +322,45 @@ export function opisyModulow(ders: readonly StationDerConnection[]): OpisModuluM
   }));
 }
 
+/** Oczekiwanie kolumny dla stanu odczytu wejść (`null` = odczyt rozstrzygnięty albo niezlecony). */
+export function oczekiwanieWejsc(odczyt: StanWejscModelu): OczekiwanieWejsc | null {
+  if (odczyt.stan === 'wczytywanie') return 'wczytywanie_wejsc';
+  if (odczyt.stan === 'blad') return 'blad_odczytu_wejsc';
+  return null;
+}
+
+/** Moduł objęty biegiem: odczyt wejść rozstrzygnięty i bez powodu braku danych. */
+export function modulGotowy(opis: Pick<OpisModulu, 'oczekiwanie' | 'powodBlokady'>): boolean {
+  return opis.oczekiwanie === null && opis.powodBlokady === null;
+}
+
 /**
- * Kolumny macierzy (kolejność `selectAllDers`) z formularzem wstępnym z wejść modelu. Blokada
+ * Kolumny macierzy (kolejność `selectAllDers`) z formularzem wstępnym z wejść modelu. Stan
+ * odczytu w toku albo nieudany → `oczekiwanie` (neutralnie, bez powodu blokady). Blokada
  * modułu pochodzi WYŁĄCZNIE z mostu: DER pominięty (`pominiete` — brak mocy / napięcia) →
- * jego powód; DER, którego most nie objął albo wejścia niewczytane (`wejscia === null`) →
- * `brak_wejscia_modelu`. Moc i napięcie kolumny — z modelu (migawka), tylko do opisu.
+ * jego powód; DER, którego most nie objął, albo odczyt niezlecony (brak przypadku/operatora)
+ * → `brak_wejscia_modelu`. Moc i napięcie kolumny — z modelu (migawka), tylko do opisu.
  */
 export function zbudujModuly(
   ders: readonly StationDerConnection[],
-  wejscia: WejsciaPrzypadkuNcRfg | null,
+  odczyt: StanWejscModelu,
 ): OpisModulu[] {
+  const oczekiwanie = oczekiwanieWejsc(odczyt);
+  const wejscia = odczyt.stan === 'gotowe' ? odczyt.wejscia : null;
   return opisyModulow(ders).map((opis) => {
     const wejscie = wejscia?.modules.find((m) => m.der_ref === opis.derRef) ?? null;
     const pominiety = wejscia?.pominiete.find((p) => p.der_ref === opis.derRef) ?? null;
     const powodBlokady: PowodBlokady | null =
-      pominiety !== null ? pominiety.powod : wejscie === null ? 'brak_wejscia_modelu' : null;
+      oczekiwanie !== null
+        ? null
+        : pominiety !== null
+          ? pominiety.powod
+          : wejscie === null
+            ? 'brak_wejscia_modelu'
+            : null;
     return {
       ...opis,
+      oczekiwanie,
       powodBlokady,
       wejscieModelu: wejscie,
       formularz:
@@ -335,7 +383,8 @@ export type BledyFormularza = Readonly<
 export type WynikWejscia =
   | { readonly stan: 'ok'; readonly wejscie: WejscieModuluNcRfg }
   | { readonly stan: 'blad'; readonly bledy: BledyFormularza }
-  | { readonly stan: 'zablokowany'; readonly powod: PowodBlokady };
+  | { readonly stan: 'zablokowany'; readonly powod: PowodBlokady }
+  | { readonly stan: 'oczekiwanie'; readonly oczekiwanie: OczekiwanieWejsc };
 
 /**
  * Składa `WejscieModuluNcRfg` z wejścia modelu i formularza. Moduł zablokowany (pominięty
@@ -344,6 +393,7 @@ export type WynikWejscia =
  */
 export function zbudujWejscieModulu(opis: OpisModulu, operatorId: string): WynikWejscia {
   const model = opis.wejscieModelu;
+  if (opis.oczekiwanie !== null) return { stan: 'oczekiwanie', oczekiwanie: opis.oczekiwanie };
   if (opis.powodBlokady !== null || model === null) {
     return { stan: 'zablokowany', powod: opis.powodBlokady ?? 'brak_wejscia_modelu' };
   }
@@ -424,6 +474,14 @@ export function mapujMacierz(
   return definicje.map((test) => ({
     test,
     komorki: moduly.map((modul): KomorkaMacierzy => {
+      if (modul.oczekiwanie !== null) {
+        return {
+          stan: 'oczekiwanie_wejsc',
+          derRef: modul.derRef,
+          testId: test.test_id,
+          oczekiwanie: modul.oczekiwanie,
+        };
+      }
       if (modul.powodBlokady !== null) {
         return {
           stan: 'brak_danych_modul',

@@ -28,7 +28,7 @@ describe('SekcjaMagazynu — dopasowanie z katalogu (kryterium 1)', () => {
       der_kind: 'BESS',
       catalogs: { device_catalog_ref: 'conv-bess-nn-1mw-0p4kv' },
     });
-    render(<SekcjaMagazynu der={der} trybEkspercki={false} />);
+    render(<SekcjaMagazynu der={der} szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-magazyn-rekord')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-oze-magazyn-pojemnosc')).toHaveTextContent('2,000 MWh');
     expect(pobierzKonwertery).toHaveBeenCalledWith('BESS');
@@ -41,10 +41,10 @@ describe('SekcjaMagazynu — dopasowanie z katalogu (kryterium 1)', () => {
       der_kind: 'BESS',
       catalogs: { device_catalog_ref: 'conv-bess-nn-1mw-0p4kv' },
     });
-    const { rerender } = render(<SekcjaMagazynu der={der} trybEkspercki={false} />);
+    const { rerender } = render(<SekcjaMagazynu der={der} szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-magazyn-rekord')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-magazyn-ekspert')).not.toBeInTheDocument();
-    rerender(<SekcjaMagazynu der={der} trybEkspercki={true} />);
+    rerender(<SekcjaMagazynu der={der} szczegolyAudytowe={true} />);
     // Karta #145: identyfikator rekordu i pole dopasowania wyłącznie w „Informacjach
     // audytowych" — zwinięte; pierwszy plan bez identyfikatora.
     const audyt = await screen.findByTestId('mvd-oze-magazyn-ekspert');
@@ -63,7 +63,7 @@ describe('SekcjaMagazynu — dopasowanie z katalogu (kryterium 1)', () => {
       der_kind: 'BESS',
       catalogs: { battery_catalog_ref: 'bess_bat_byd_2880' },
     });
-    render(<SekcjaMagazynu der={der} trybEkspercki={false} />);
+    render(<SekcjaMagazynu der={der} szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-magazyn-nieodnaleziona')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-magazyn-rekord')).not.toBeInTheDocument();
   });
@@ -75,13 +75,13 @@ describe('SekcjaMagazynu — dopasowanie z katalogu (kryterium 1)', () => {
       der_kind: 'BESS',
       catalogs: { device_catalog_ref: 'conv-bess-nn-1mw-0p4kv' },
     });
-    render(<SekcjaMagazynu der={der} trybEkspercki={false} />);
+    render(<SekcjaMagazynu der={der} szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-magazyn-blad')).toHaveTextContent('sieć padła');
   });
 
   it('moduł nie-BESS → sekcja pominięta i brak pobrania katalogu', () => {
     const der = derFixture({ id: 'pv-1', der_kind: 'PV' });
-    const { container } = render(<SekcjaMagazynu der={der} trybEkspercki={false} />);
+    const { container } = render(<SekcjaMagazynu der={der} szczegolyAudytowe={false} />);
     expect(container.firstChild).toBeNull();
     expect(pobierzKonwertery).not.toHaveBeenCalled();
   });

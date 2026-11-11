@@ -36,7 +36,7 @@ describe('useSelectionStore', () => {
       resultStatus: 'NONE',
       propertyGridOpen: false,
       treeExpandedNodes: new Set<string>(),
-      sldCenterOnElement: null,
+      sldWskazanie: null,
     });
   });
 
@@ -303,13 +303,51 @@ describe('useSelectionStore', () => {
   describe('centerSldOnElement', () => {
     it('should set center element', () => {
       useSelectionStore.getState().centerSldOnElement('bus-001');
-      expect(useSelectionStore.getState().sldCenterOnElement).toBe('bus-001');
+      expect(useSelectionStore.getState().sldWskazanie?.ref).toBe('bus-001');
     });
 
     it('should clear center element', () => {
       useSelectionStore.getState().centerSldOnElement('bus-001');
       useSelectionStore.getState().centerSldOnElement(null);
-      expect(useSelectionStore.getState().sldCenterOnElement).toBeNull();
+      expect(useSelectionStore.getState().sldWskazanie).toBeNull();
+    });
+
+    // K2 §0.5: ponowne wskazanie TEGO SAMEGO refu musi dać NOWE wskazanie
+    // (dawny licznik lokalny kanwy liczył wyłącznie zmiany refu, więc drugi klik
+    // „pokaż na schemacie" w ten sam wiersz wyniku nie kadrował).
+    it('K2: każde wywołanie — także dla tego samego refu — nadaje nowy numer sekwencji', () => {
+      const start = useSelectionStore.getState().sldWskazanieSeq;
+      useSelectionStore.getState().centerSldOnElement('bus-001');
+      const pierwsze = useSelectionStore.getState().sldWskazanie;
+      useSelectionStore.getState().centerSldOnElement('bus-001');
+      const drugie = useSelectionStore.getState().sldWskazanie;
+      expect(pierwsze).toEqual({ ref: 'bus-001', seq: start + 1, tryb: 'kadruj' });
+      expect(drugie).toEqual({ ref: 'bus-001', seq: start + 2, tryb: 'kadruj' });
+    });
+
+    it('K2: tryb „kotwicz" jest przenoszony jawnie, domyślny tryb to „kadruj"', () => {
+      useSelectionStore.getState().centerSldOnElement('bus-001', 'kotwicz');
+      expect(useSelectionStore.getState().sldWskazanie?.tryb).toBe('kotwicz');
+      useSelectionStore.getState().centerSldOnElement('bus-002');
+      expect(useSelectionStore.getState().sldWskazanie?.tryb).toBe('kadruj');
+    });
+
+    it('K2: numer sekwencji nie maleje po clearSelection ani po wskazaniu null', () => {
+      useSelectionStore.getState().centerSldOnElement('bus-001');
+      const seq = useSelectionStore.getState().sldWskazanieSeq;
+      useSelectionStore.getState().clearSelection();
+      useSelectionStore.getState().centerSldOnElement(null);
+      expect(useSelectionStore.getState().sldWskazanie).toBeNull();
+      useSelectionStore.getState().centerSldOnElement('bus-001');
+      expect(useSelectionStore.getState().sldWskazanie?.seq).toBe(seq + 1);
+    });
+
+    it('K2: potwierdzenie obsługi jest monotoniczne (starsze potwierdzenie nie cofa licznika)', () => {
+      useSelectionStore.getState().centerSldOnElement('bus-001');
+      const seq = useSelectionStore.getState().sldWskazanieSeq;
+      useSelectionStore.getState().potwierdzWskazanieSld(seq);
+      useSelectionStore.getState().potwierdzWskazanieSld(seq - 1);
+      expect(useSelectionStore.getState().sldWskazanieObsluzone).toBe(seq);
     });
   });
 
@@ -327,7 +365,7 @@ describe('useSelectionStore', () => {
       const state = useSelectionStore.getState();
       expect(state.selectedElements).toEqual([]);
       expect(state.selectedElement).toBeNull();
-      expect(state.sldCenterOnElement).toBeNull();
+      expect(state.sldWskazanie).toBeNull();
     });
   });
 });

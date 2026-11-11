@@ -15,7 +15,8 @@ Sekwencja V1:
   5. start_branch_segment_sn (z szyny stacji)
   6. insert_station_on_segment_sn (C, segment 2, ratio=0.5)
   7. connect_secondary_ring_sn
-  8. set_normal_open_point
+  8. insert_section_switch_sn (rozłącznik na odcinku zamykającym pierścień)
+  9. set_normal_open_point (ten rozłącznik — punkt podziału jest ŁĄCZNIKIEM, W5-C)
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ import copy
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.topology import punkty_podzialu
 
 from tests.catalog_test_helpers import gpz_payload
 
@@ -311,22 +313,44 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
     s = r7["snapshot"]
 
     # -----------------------------------------------------------------------
-    # KROK 8: set_normal_open_point
-    #   Jawny segment_ref — ostatni segment (ring closure).
+    # KROK 8: insert_section_switch_sn
+    #   Jawny segment_id — odcinek zamykający pierścień (ostatnia gałąź kroku 7),
+    #   jawny aparat z katalogu i jawne miejsce wstawienia.
     # -----------------------------------------------------------------------
-    # Ring closure segment: last branch added
-    branches = s.get("branches", [])
-    ring_segment_ref = branches[-1]["ref_id"]
-
+    ring_segment_ref = s.get("branches", [])[-1]["ref_id"]
+    przed = {b["ref_id"] for b in s.get("branches", [])}
     r8 = execute_domain_operation(
         enm_dict=s,
-        op_name="set_normal_open_point",
-        payload={"segment_ref": ring_segment_ref},
+        op_name="insert_section_switch_sn",
+        payload={
+            "segment_id": ring_segment_ref,
+            "insert_at": {"mode": "RATIO", "value": 0.5},
+            "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+        },
     )
-    # NOP updates, does not create — no expect_created
-    _assert_step_ok(r8, "Krok 8: set_normal_open_point", expect_created=False)
+    _assert_step_ok(r8, "Krok 8: insert_section_switch_sn")
     results.append(r8)
     s = r8["snapshot"]
+    (ring_switch_ref,) = (
+        b["ref_id"]
+        for b in s["branches"]
+        if b["ref_id"] not in przed and b.get("type") in {"switch", "breaker"}
+    )
+
+    # -----------------------------------------------------------------------
+    # KROK 9: set_normal_open_point
+    #   Jawny switch_ref — rozłącznik z kroku 8. Punkt podziału jest pozycją normalną
+    #   ŁĄCZNIKA (`normal_state`), nie odcinkiem linii i nie polem magistrali (W5-C).
+    # -----------------------------------------------------------------------
+    r9 = execute_domain_operation(
+        enm_dict=s,
+        op_name="set_normal_open_point",
+        payload={"switch_ref": ring_switch_ref},
+    )
+    # NOP updates, does not create — no expect_created
+    _assert_step_ok(r9, "Krok 9: set_normal_open_point", expect_created=False)
+    results.append(r9)
+    s = r9["snapshot"]
 
     return results, s
 
@@ -340,13 +364,11 @@ class TestGoldenNetworkV1E2E:
     """Pelna sekwencja V1 budowy sieci SN od GPZ — test E2E."""
 
     def test_full_v1_sequence_step_by_step(self) -> None:
-        """Wykonaj 8 krokow, weryfikuj asercje po kazdym i po calej sekwencji."""
+        """Wykonaj 9 krokow, weryfikuj asercje po kazdym i po calej sekwencji."""
         results, final_snapshot = _run_full_v1_sequence()
 
-        # Sprawdz, ze mamy 9 krokow (1 + 3 + 1 + 1 + 1 + 1 + 1 + 1 = 9
-        #   but we actually push 9: r1, r2a, r2b, r2c, r3, r4, r5, r6, r7, r8 = 10)
-        # Actually: r1 + 3*(r2) + r3 + r4 + r5 + r6 + r7 + r8 = 10
-        assert len(results) == 10, f"Oczekiwano 10 wynikow, jest {len(results)}"
+        # Wyniki: r1 + 3*(r2) + r3 + r4 + r5 + r6 + r7 + r8 + r9 = 11
+        assert len(results) == 11, f"Oczekiwano 11 wynikow, jest {len(results)}"
 
         s = final_snapshot
 
@@ -430,7 +452,7 @@ class TestGoldenNetworkV1E2E:
     def test_creation_steps_have_created_ids(self) -> None:
         """Kroki tworzace elementy maja niepuste created_element_ids.
 
-        Krok 8 (set_normal_open_point) NIE tworzy — omijamy.
+        Krok 9 (set_normal_open_point) NIE tworzy — omijamy.
         """
         results, _ = _run_full_v1_sequence()
         # All steps except the last one (NOP) should have created_element_ids
@@ -457,14 +479,17 @@ class TestGoldenNetworkV1E2E:
         open_b = [b for b in s.get("branches", []) if b.get("status") == "open"]
         assert len(open_b) >= 1, "Brak otwartego brancha po set_normal_open_point"
 
-    def test_final_corridor_has_no_point_ref(self) -> None:
-        """Po NOP: korytarz ma ustawiony no_point_ref."""
+    def test_final_ring_has_normal_open_point(self) -> None:
+        """Po NOP: dokładnie jeden łącznik normalnie otwarty (pozycja normalna łącznika —
+        jedyne źródło; magistrala nie niesie kopii punktu podziału)."""
         _, s = _run_full_v1_sequence()
-        corridors = s.get("corridors", [])
-        has_nop = any(
-            c.get("no_point_ref") is not None and c.get("no_point_ref") != "" for c in corridors
-        )
-        assert has_nop, "Oczekiwano no_point_ref w korytarzu po set_normal_open_point"
+        model = EnergyNetworkModel.model_validate(s)
+        nop = punkty_podzialu(model)
+        assert len(nop) == 1, nop
+        galaz = next(b for b in s["branches"] if b["ref_id"] == nop[0])
+        assert galaz["type"] in {"switch", "breaker"}
+        assert galaz["status"] == "open"
+        assert all("no_point_ref" not in c for c in s.get("corridors", []))
 
     def test_final_materialized_params_present(self) -> None:
         """Odpowiedz po kazdym kroku zawiera materialized_params."""

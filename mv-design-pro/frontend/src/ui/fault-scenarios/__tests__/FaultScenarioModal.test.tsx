@@ -66,18 +66,24 @@ function scenariuszZ(config: ShortCircuitConfig, id = 'sc-1'): FaultScenario {
 function odmowaBackendu(config: unknown, wymagany: boolean): Response | null {
   if (config === undefined || config === null) {
     return wymagany
-      ? odpowiedz(422, { detail: [{ loc: ['body', 'config'], msg: 'Field required' }] })
+      ? odpowiedz(422, { detail: [{ type: 'missing', loc: ['body', 'config'], msg: 'wartość jest wymagana' }] })
       : null;
   }
   const c = config as Record<string, unknown>;
   const obce = Object.keys(c).filter((k) => !DOZWOLONE_KLUCZE_CONFIG.has(k));
   if (obce.length > 0) {
     return odpowiedz(422, {
-      detail: obce.map((k) => ({ loc: ['body', 'config', k], msg: 'Extra inputs are not permitted' })),
+      detail: obce.map((k) => ({
+        type: 'extra_forbidden',
+        loc: ['body', 'config', k],
+        msg: 'wartość nie należy do tego formularza',
+      })),
     });
   }
   if (c.scenariusz !== 'MAX' && c.scenariusz !== 'MIN') {
-    return odpowiedz(422, { detail: [{ loc: ['body', 'config', 'scenariusz'], msg: 'Field required' }] });
+    return odpowiedz(422, {
+      detail: [{ type: 'missing', loc: ['body', 'config', 'scenariusz'], msg: 'wartość jest wymagana' }],
+    });
   }
   // Karta SC-IB-ITH-ZRODLA: t_b sprawdza domena (`czas_tb_z_danych`) — odmowa nazwana z kodem.
   const tb = c.breaking_time_seconds;

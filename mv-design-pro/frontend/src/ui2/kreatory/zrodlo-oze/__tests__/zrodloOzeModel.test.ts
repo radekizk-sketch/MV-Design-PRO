@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
 import type { ConverterType } from '../../../../ui/catalog/types';
@@ -11,6 +12,8 @@ import {
   TECHNOLOGIA_OPCJE,
   bessLabel,
   converterCatalogNamespace,
+  daneZKontekstu,
+  BRAK_PAKIETU_BATERII_PL,
   maKontekst,
   materializedParams,
   regulacjaLabel,
@@ -19,7 +22,6 @@ import {
   technologiaLabel,
   refUtworzonegoWytworcy,
   trybQWymagaWartosci,
-  walidujDerSn,
   walidujFormularz,
   wariantLabel,
   zbudujDerTopology,
@@ -423,7 +425,8 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
     const topo = zbudujDerTopology(DER_SN, 'bus_sn_1');
     expect(topo.connection_level).toBe('sn');
     expect(topo.has_block_transformer).toBe(true);
-    expect(topo.has_dedicated_mv_field).toBe(true);
+    // Pole SN toru DER powstaje zawsze (backend) — flaga nie jest daną ładunku.
+    expect(topo).not.toHaveProperty('has_dedicated_mv_field');
     expect(topo.mv_bus_ref).toBe('bus_sn_1');
     expect(topo.inverter_output_voltage_kv).toBe(0.4);
     expect(topo.lv_switchgear_variant).toBe('multi-feeder');
@@ -498,23 +501,6 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
     expect(cfg?.cable_head).toBe(true);
   });
 
-  it('walidujDerSn wymaga katalogów toru i spójności napięć', () => {
-    expect(walidujDerSn(DER_SN)).toEqual([]);
-    const braki = walidujDerSn({
-      ...DANE_DER_SN_DOMYSLNE,
-      inverter_output_voltage_kv: 0.4,
-    });
-    const fields = braki.map((b) => b.field);
-    expect(fields).toContain('block_transformer_catalog_ref');
-    expect(fields).toContain('mv_field_apparatus_catalog_ref');
-    expect(fields).toContain('mv_cable_catalog_ref');
-  });
-
-  it('walidujDerSn wykrywa niezgodność napięcia strony nN TR blokowego', () => {
-    const braki = walidujDerSn({ ...DER_SN, block_transformer_secondary_voltage_kv: 0.69 });
-    expect(braki.map((b) => b.field)).toContain('block_transformer_secondary_voltage_kv');
-  });
-
   it('sugerujDerSn wyprowadza napięcia z katalogu falownika i szyny SN', () => {
     const seeded = sugerujDerSn(
       { ...DANE_DER_SN_DOMYSLNE, inverter_output_voltage_kv: null },
@@ -558,14 +544,6 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
     );
   });
 
-  it('walidujDerSn ostrzega o niespójnym sposobie przyłączenia (rozdzielnia bez rozdzielni nN)', () => {
-    const braki = walidujDerSn({
-      ...DER_SN,
-      connection_method: 'der_przez_rozdzielnie_producenta',
-      has_manufacturer_lv_switchgear: false,
-    });
-    expect(braki.map((b) => b.field)).toContain('connection_method');
-  });
 });
 
 // K9-A: buildery sekwencji zapisu (wiązania + limity) i ref utworzonego wytwórcy.
@@ -632,5 +610,39 @@ describe('sekwencja zapisu K9-A', () => {
         snapshot: { generators: [] },
       }),
     ).toBeNull();
+  });
+});
+
+/*
+ * K6: pakiet baterii BESS i preselekcja z kontekstu. Iloczyn: technologia {PV, BESS, FW} ×
+ * pakiet {wybrany, brak} — błąd i pole ładunku wyłącznie dla BESS.
+ */
+describe('K6 — pakiet baterii BESS i preselekcja kreatora', () => {
+  it.each([
+    ['PV', null, false, undefined],
+    ['PV', 'bat-1', false, undefined],
+    ['FW', 'bat-1', false, undefined],
+    ['BESS', null, true, undefined],
+    ['BESS', '  ', true, undefined],
+    ['BESS', 'bat-1', false, 'bat-1'],
+  ] as const)('%s × pakiet %s → błąd %s, ładunek %s', (tech, bateria, blad, wLadunku) => {
+    const d = dane({ source_technology: tech, battery_catalog_ref: bateria });
+    const bledy = walidujFormularz(d, KONTEKST).filter((b) => b.field === 'battery_catalog_ref');
+    expect(bledy.length > 0).toBe(blad);
+    if (blad) expect(bledy[0].message).toBe(BRAK_PAKIETU_BATERII_PL);
+    const ladunek = zbudujPayload(d, KONTEKST, { ...KONWERTER, kind: tech === 'FW' ? 'WIND' : tech } as ConverterType, null);
+    expect(ladunek.battery_catalog_ref).toBe(wLadunku);
+  });
+
+  it('daneZKontekstu: słownikowe wartości preselekcji, reszta domyślna; śmieci ignorowane', () => {
+    expect(daneZKontekstu(null)).toEqual(DANE_DOMYSLNE);
+    expect(daneZKontekstu({ source_technology: 'BESS', connection_variant: 'block_transformer', power_setpoint_mw: 2.5 })).toEqual({
+      ...DANE_DOMYSLNE,
+      source_technology: 'BESS',
+      connection_variant: 'block_transformer',
+      power_setpoint_mw: 2.5,
+    });
+    expect(daneZKontekstu({ source_technology: 'X', connection_variant: 'sn_side', power_setpoint_mw: 0 })).toEqual(DANE_DOMYSLNE);
+    expect(daneZKontekstu({ power_setpoint_mw: Number.NaN }).power_setpoint_mw).toBeNull();
   });
 });

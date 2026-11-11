@@ -1,4 +1,4 @@
-"""Testy PR-12 — CalculationReadinessService + ValidationProblemService + ReportReadinessAdapter."""
+"""Testy PR-12 — CalculationReadinessService + ReportReadinessAdapter."""
 
 from __future__ import annotations
 
@@ -11,9 +11,7 @@ from application.calculation_readiness.service import (
     ReadinessTypeReport,
 )
 from application.report_readiness.adapter import ReportReadinessAdapter
-from application.validation_problem.service import ValidationProblemService
 from enm.models import (
-    Bay,
     Bus,
     Cable,
     EnergyNetworkModel,
@@ -21,7 +19,6 @@ from enm.models import (
     Generator,
     Load,
     Source,
-    Substation,
     Transformer,
 )
 
@@ -824,55 +821,6 @@ class TestCalculationReadinessService:
             # Brak zakazanych tokenów
             for forbidden in ["snapshot", "case", "run", "wizard", "legacy", "fallback"]:
                 assert forbidden.lower() not in label.lower()
-
-
-# ---------------------------------------------------------------------------
-# ValidationProblemService
-# ---------------------------------------------------------------------------
-
-
-class TestValidationProblemService:
-    def test_bay_without_ports_emits_error(self) -> None:
-        enm = EnergyNetworkModel(
-            header=_header(),
-            substations=[Substation(ref_id="sub_1", name="GPZ", station_type="gpz")],
-            bays=[
-                Bay(
-                    ref_id="bay_no_ports",
-                    name="Pole bez portów",
-                    bay_role="IN",
-                    substation_ref="sub_1",
-                    bus_ref="bus_1",
-                    # ports=[] — brak portów
-                ),
-            ],
-        )
-        svc = ValidationProblemService()
-        report = svc.collect_problems(enm)
-        bay_problems = [p for p in report.problems if "bay_no_ports" in p.problem_id]
-        assert len(bay_problems) >= 1
-        assert bay_problems[0].severity == "error"
-        assert "fix_actions" in bay_problems[0].model_dump() or bay_problems[0].fix_actions
-
-    def test_endpoint_missing_emits_warning(self) -> None:
-        enm = _minimal_enm_with_pf_data()
-        # Cable without endpoint_a_port (default)
-        svc = ValidationProblemService()
-        report = svc.collect_problems(enm)
-        endpoint_problems = [
-            p for p in report.problems if p.problem_id.startswith("endpoint_missing")
-        ]
-        assert len(endpoint_problems) >= 1
-        assert endpoint_problems[0].severity == "warning"
-
-    def test_report_aggregates_severity_counts(self) -> None:
-        enm = _empty_enm()
-        svc = ValidationProblemService()
-        report = svc.collect_problems(enm)
-        # Pusty ENM ma blocked PF → readiness errors
-        total = report.error_count + report.warning_count + report.info_count
-        assert total >= 0
-        assert report.is_blocking == (report.error_count > 0)
 
 
 # ---------------------------------------------------------------------------

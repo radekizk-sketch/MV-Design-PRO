@@ -92,7 +92,7 @@ function przypadek(over: Partial<StudyCaseListItem> = {}): StudyCaseListItem {
 }
 
 function props() {
-  return { projektId: 'proj-1', trybZaawansowania: 'basic' as const };
+  return { projektId: 'proj-1', szczegolyAudytowe: false as const };
 }
 
 function odpowiedzNakladki(ok = true, status = 200): Response {

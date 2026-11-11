@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W3-KABLE-ETYKIETY §7/§6 — testy CZYSTEGO formattera etykiety technicznej
  * linii (`layout/lineLabel.ts`). Determinizm + zero fabrykacji (brakująca dana

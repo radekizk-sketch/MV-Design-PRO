@@ -15,13 +15,17 @@ jest więc w całości wyjaśniona wzbogaceniem trzech projekcji kart referencyj
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import hashlib
 import json
 
+from network_model.catalog.mv_shunt_capacitor_catalog import (
+    _SOURCE as _ZRODLO_BATERII_REFERENCYJNE,
+)
 from network_model.catalog.odcisk import _kanon, odcisk_katalogu, zrzut_kanoniczny
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import POLA_KARTY_PROJEKCJI
+from network_model.catalog.types import POLA_BATERII_KONDENSATOROW_TYPU, POLA_KARTY_PROJEKCJI
 
 from tests.dziedziny import fabryki as f
 
@@ -79,6 +83,69 @@ ODCISK_SPRZED_KARTY = "1a8bcd4ba4a73c5dfb14a1f0315f82492a820cbb785226991432f8636
 #: `ODCISK_SPRZED_KARTY` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
 #: poniżej (przeliczona na drzewie partii 9, po katalogu z proweniencją i torze V112).
 ODCISK_PO_W5E_TTIT = "e83ee88bce1a45b0ef7e57931612c100764968c4fcd42281b133215fc3b1c062"
+#: Karta KATALOG-APARATURA-WN (2026-10-22, zakres po decyzji właściciela: 110 kV to granica
+#: zasilania GPZ): 2 typy minimalne łączników topologii 110 kV (rekord aparatury łączeniowej
+#: + jego projekcja APARAT_SN). Dowód liść po liściu (zrzut kanoniczny baza `956e3e37d` vs
+#: drzewo karty): wyłącznie nowe identyfikatory, 0 zmienionych pozycji istniejących — pole
+#: `card_field_status` dodane do obu typów jest poza odciskiem, gdy ma wartość `None`
+#: (`odcisk._POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE`). Zrzut z wyciętymi pozycjami karty daje
+#: DOKŁADNIE `ODCISK_PO_W5E_TTIT`.
+POZYCJE_APARATURY_WN: dict[str, tuple[str, ...]] = {
+    "switch_equipment_types": ("sw-cb-110kv", "sw-ds-110kv"),
+    "mv_apparatus_types": ("sw-cb-110kv", "sw-ds-110kv"),
+}
+#: Wartość zrzutu z wyciętymi polami karty projekcji (jak `ODCISK_PO_W5E_TTIT`); pełny odcisk
+#: katalogu domyślnego po karcie: 0d50891f64dd97c345b62dbe0bbb7b1b4a6cfdd8477c77cc6154930a26f290fd.
+ODCISK_PO_APARATURZE_WN = "f9295f20b4955ebe0decac54818aaa7c5bed0d6d0e58ddd8a0362eaf2638859b"
+#: Decyzja architekta 2026-10-22 (karta KATALOG-APARATURA-WN, commit 3): zero nie jest zapisem
+#: „nie dotyczy” — wielkość niewłaściwa rodzajowi aparatu jest ``None`` (bramka KAT-T-050;
+#: na gałęzi UI/UX nosiła kod KAT-T-048, przenumerowana przy scaleniu z kartą LINIA-110).
+#: Dowód liść po liściu (zrzut kanoniczny `757814661` vs drzewo): różni się DOKŁADNIE 41
+#: liści, wszystkie wartość → null i wszystkie wypisane w `MIGRACJA_ZERA`: `ik_ka` 17 rekordów
+#: łączników (13 × 0.0 rozłączników/odłączników/uziemników, 4 × dodatnia kopia I_cw
+#: rozłączników i odłączników ZPUE/Elektrometal), `icw_ka` 7 bezpieczników ETI VV (0.0) i ich
+#: lustro `breaking_capacity_ka` w 17 projekcjach APARAT_SN; 0 nowych i 0 usuniętych pozycji.
+#: Zrzut z przywróconymi dawnymi wartościami tych liści daje DOKŁADNIE `ODCISK_PO_APARATURZE_WN`.
+#: Pełny odcisk katalogu domyślnego po migracji:
+#: 1e263e8341928cfc122f72521187c585336dbbb1dbd222531b45e15efab5f157 (przed: 0d50891f…290fd).
+ODCISK_PO_MIGRACJI_ZERA = "337501af699a826a088b967352e4b488e2afc7a7ea5ffefa65800f5c01c524a7"
+_IK_PRZED_MIGRACJA: dict[str, float] = {
+    **{
+        ref: 0.0
+        for ref in (
+            "sw-ds-abb-ojs-12kv-630a",
+            "sw-ds-abb-ojs-17kv-630a",
+            "sw-ds-abb-ojs-24kv-630a",
+            "sw-ds-generic-slupowy-17kv-400a",
+            "sw-es-generic-12kv",
+            "sw-es-generic-17kv",
+            "sw-ls-abb-nal-12kv-400a",
+            "sw-ls-abb-nal-12kv-630a",
+            "sw-ls-abb-nal-24kv-400a",
+            "sw-ls-abb-nal-24kv-630a",
+            "sw-ls-schneider-rm6-12kv-630a",
+            "sw-ls-schneider-rm6-17kv-400a",
+            "sw-ls-schneider-sm6-24kv-630a",
+        )
+    },
+    "sw-ds-elektrometal-12kv-630a": 16.0,
+    "sw-ds-elektrometal-24kv-1250a": 20.0,
+    "sw-ls-zpue-nal-12kv-630a": 16.0,
+    "sw-ls-zpue-nal-24kv-630a": 16.0,
+}
+#: (przestrzeń, pozycja, pole) → wartość przed migracją (po migracji: ``None``).
+MIGRACJA_ZERA: dict[tuple[str, str, str], float] = {
+    **{("switch_equipment_types", ref, "ik_ka"): v for ref, v in _IK_PRZED_MIGRACJA.items()},
+    **{
+        ("mv_apparatus_types", ref, "breaking_capacity_ka"): v
+        for ref, v in _IK_PRZED_MIGRACJA.items()
+    },
+    **{
+        ("switch_equipment_types", f"sw-fuse-eti-vv-{wariant}", "icw_ka"): 0.0
+        for wariant in ("12kv-16a", "12kv-40a", "12kv-63a", "12kv-100a", "12kv-200a")
+        + ("17kv-63a", "17kv-100a")
+    },
+}
 #: Karta LINIA-110 (2026-10-22): nowa przestrzeń `overhead_conductor_types` (4 przewody linii
 #: 110 kV z tablicy PN-EN 50182). Dowód: zrzut BEZ tej przestrzeni daje DOKŁADNIE
 #: `ODCISK_PO_W5E_TTIT` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
@@ -91,7 +158,53 @@ ODCISK_PO_LINIA_110 = "4f66d5626e211540eb1f1afe34d6da1d90ec50800758e208893e7383f
 #: puste wypada z odcisku (``_POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE``). Zrzut bez tych 87 map
 #: daje DOKŁADNIE ``ODCISK_PO_LINIA_110`` — żadna liczba katalogu się nie zmieniła.
 ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b80f855c0"
+#: Scalenie gałęzi UI/UX (karta KATALOG-APARATURA-WN) z programem (karta LINIA-110), 2026-10-28:
+#: obie karty zmieniły rozłączne przestrzenie katalogu. Dowód obiema drogami w teście niżej:
+#: wycięcie zmian LINIA-110 daje DOKŁADNIE ``ODCISK_PO_MIGRACJI_ZERA`` (łańcuch UI/UX), a
+#: cofnięcie zmian aparatury WN — DOKŁADNIE ``ODCISK_PO_Z0_ROBOCZE`` (łańcuch programu).
+#: Pełny odcisk katalogu domyślnego po scaleniu:
+#: d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061.
+ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
+    "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
+)
+#: Karta UX-04/POLE-BKR-MODEL (2026-10-28): typ baterii kondensatorów niesie pola karty
+#: (układ połączeń, stopnie, tolerancja, dławik, rezystory rozładowcze), a pozycje referencyjne
+#: — układ z ENEA Zeszyt 1 §17 s. 32 i Zał. 16 w źródle. Dowód liść po liściu (zrzut bazy
+#: `1465336df` vs drzewo karty): różnią się WYŁĄCZNIE liście `shunt_capacitor_types` — 7 nowych
+#: pól × 6 pozycji i `source_reference` 5 pozycji referencyjnych; wycięcie ich daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110``. Pełny odcisk katalogu domyślnego po karcie:
+#: 46ec81535a6f8799fa5678885a27ea8b0cd96733d6944f2e88b02fdb7866c47f.
+ODCISK_PO_BATERII_BKR = "e0fbf7f1be94901452cf8f77475f505d154bfe915c7d1cc8ed2be7c785a86f39"
+_ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28): trzy nowe przestrzenie elementów zespołu
+#: uziemiającego sekcji SN (2 transformatory uziemiające ZNyn11, 3 dławiki gaszące, 4 rezystory
+#: uziemiające). Dowód w teście niżej: zrzut BEZ tych przestrzeni daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna przestrzeń ani liść się nie
+#: zmieniły. Pełny odcisk katalogu domyślnego po karcie:
+#: e1626d8f87c56d793b33657338b5116084618b76e37989896fcec8c0274ce961.
+#: Po scaleniu z kartą UX-04/POLE-BKR-MODEL ogniwo stoi NA ``ODCISK_PO_BATERII_BKR`` (wycięcie
+#: trzech przestrzeni zespołu daje dokładnie odcisk po baterii BKR). Pełny odcisk katalogu
+#: domyślnego po scaleniu obu kart (pomiar 2026-10-29):
+#: 98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33.
+ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127bf8ad95394d3630fa4"
+PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
+    "earthing_transformer_types": 2,
+    "arc_suppression_coil_types": 3,
+    "neutral_earthing_resistor_types": 4,
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
+
+
+def _wytnij_pola_baterii_bkr(zrzut: dict[str, object]) -> int:
+    """Cofa zmiany karty UX-04/POLE-BKR-MODEL w zrzucie; zwraca liczbę zmienionych pozycji."""
+    zmienione = 0
+    for postac in zrzut["shunt_capacitor_types"].values():  # type: ignore[attr-defined]
+        for nazwa in POLA_BATERII_KONDENSATOROW_TYPU:
+            postac.pop(nazwa)
+        if postac["source_reference"] == _ZRODLO_BATERII_REFERENCYJNE:
+            postac["source_reference"] = _ZRODLO_BATERII_PRZED_KARTA
+            zmienione += 1
+    return zmienione
 
 
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
@@ -99,6 +212,34 @@ def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
         zrzut, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=_kanon
     )
     return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
+
+
+def _wytnij_wartosci_robocze_sn(zrzut: dict[str, object]) -> int:
+    """Usuwa mapy ``wartosci_robocze`` pozycji SN (karta LINIA-110); zwraca ich liczbę."""
+    oznaczone = 0
+    for przestrzen in ("line_types", "cable_types"):
+        for postac in zrzut[przestrzen].values():  # type: ignore[attr-defined]
+            if "wartosci_robocze" in postac:
+                assert postac["wartosci_robocze"], "pusta mapa wartości roboczych w odcisku"
+                postac.pop("wartosci_robocze")
+                oznaczone += 1
+    return oznaczone
+
+
+def _cofnij_migracje_zera(zrzut: dict[str, object]) -> None:
+    """Przywraca liście sprzed migracji zera (karta KATALOG-APARATURA-WN, commit 3)."""
+    assert len(MIGRACJA_ZERA) == 41
+    for (przestrzen, identyfikator, pole), dawna in MIGRACJA_ZERA.items():
+        postac = zrzut[przestrzen][identyfikator]  # type: ignore[index]
+        assert postac[pole] is None, (przestrzen, identyfikator, pole)
+        postac[pole] = dawna
+
+
+def _wytnij_aparature_wn(zrzut: dict[str, object]) -> None:
+    """Usuwa typy minimalne łączników 110 kV (karta KATALOG-APARATURA-WN)."""
+    for przestrzen, identyfikatory in POZYCJE_APARATURY_WN.items():
+        for identyfikator in identyfikatory:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
 
 
 def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
@@ -128,15 +269,28 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
+    for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
+        assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_BATERII_BKR
+    assert _wytnij_pola_baterii_bkr(zrzut) == 5
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110
+
+    # Droga 1 — wycięcie zmian karty LINIA-110 odtwarza łańcuch gałęzi UI/UX.
+    zrzut_bez_linii_110 = copy.deepcopy(zrzut)
+    assert _wytnij_wartosci_robocze_sn(zrzut_bez_linii_110) == 87
+    zrzut_bez_linii_110.pop("overhead_conductor_types")
+    assert _odcisk_zrzutu(zrzut_bez_linii_110) == ODCISK_PO_MIGRACJI_ZERA
+    _cofnij_migracje_zera(zrzut_bez_linii_110)
+    assert _odcisk_zrzutu(zrzut_bez_linii_110) == ODCISK_PO_APARATURZE_WN
+    _wytnij_aparature_wn(zrzut_bez_linii_110)
+    assert _odcisk_zrzutu(zrzut_bez_linii_110) == ODCISK_PO_W5E_TTIT
+
+    # Droga 2 — cofnięcie zmian karty KATALOG-APARATURA-WN odtwarza łańcuch programu.
+    _cofnij_migracje_zera(zrzut)
+    _wytnij_aparature_wn(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_Z0_ROBOCZE
-    oznaczone = 0
-    for przestrzen in ("line_types", "cable_types"):
-        for postac in zrzut[przestrzen].values():  # type: ignore[attr-defined]
-            if "wartosci_robocze" in postac:
-                assert postac["wartosci_robocze"], "pusta mapa wartości roboczych w odcisku"
-                postac.pop("wartosci_robocze")
-                oznaczone += 1
-    assert oznaczone == 87
+    assert _wytnij_wartosci_robocze_sn(zrzut) == 87
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_LINIA_110
     bez_przewodow_wn = {
         przestrzen: postac

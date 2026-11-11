@@ -33,7 +33,9 @@ import './ui2/theme/tokens.css';
 // maja wlasne tokeny i klasy, wiec kolizji nie ma, ale to jest powod, dla ktorego
 // arkusz jest tu wymieniony jawnie zamiast „przy okazji".
 import './index.css';
-// Scena „swiezosc" renderuje CaseBar poza AppShell — style paska ładuje shell.css.
+// Scena „swiezosc" renderuje pasek projektu poza AppShell — style paska ładuje shell.css
+// (klasy wspólne: komponenty.css).
+import './ui2/theme/komponenty.css';
 import './ui2/shell/shell.css';
 
 import { KreatorKompensatoraSn } from './ui2/kreatory/kompensator';
@@ -171,6 +173,9 @@ import przegladWiarygodnosciKatalogu from './harness-fixtures/generated/przeglad
 import skladoweScenyWynik from './harness-fixtures/generated/skladowe_scena_wynik.json';
 import skladoweScenySlad from './harness-fixtures/generated/skladowe_scena_slad.json';
 import skladoweScenyMigawka from './harness-fixtures/generated/skladowe_scena_migawka.json';
+// Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5): scena „wyniki-skladowe-doziemienie" — ta sama
+// sieć w czterech sposobach pracy punktu neutralnego, każdy z REALNEGO biegu 1F backendu.
+import doziemienieSposobyScena from './harness-fixtures/generated/doziemienie_sposoby_scena.json';
 import zbieznoscScenyNaglowek from './harness-fixtures/generated/zbieznosc_scena_naglowek.json';
 import zbieznoscScenyWynik from './harness-fixtures/generated/zbieznosc_scena_wynik.json';
 import zbieznoscScenySlad from './harness-fixtures/generated/zbieznosc_scena_slad.json';
@@ -307,7 +312,7 @@ import { PanelDiagnozy } from './ui2/spaces/obliczenia/diagnoza';
 import { PrzegladarkaSzablonow } from './ui2/spaces/model/szablony';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
 import { PozycjeDoPrzegladu } from './ui/catalog/PozycjeDoPrzegladu';
-import { CaseBar } from './ui2/shell/CaseBar';
+import { PasekProjektu } from './ui2/shell/PasekProjektu';
 import { useShellCaseInfo } from './ui2/shell/shellStatus';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
@@ -361,6 +366,32 @@ document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#071
 // Dane scen, które odwoływały się do zmyślonych identyfikatorów, przepisane na
 // identyfikatory realne (patrz historia zmian tej karty) — parytet pilnowany
 // testem `backend/tests/e2e/test_creator_harness_katalogi_parytet.py`.
+
+// --- Scena „wyniki-skladowe-doziemienie" (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5) ---
+// Ekran E-29 na sieci GPZ 110/15 kV + 2 km kabla SN w czterech sposobach pracy punktu
+// neutralnego (izolowany, kompensowany, przez rezystor, bezpośrednio): każdy komplet
+// (wynik, ślad, migawka) to odpowiedzi końcówek REALNEGO biegu 1F backendu
+// (`eksport_fixtur_harnessu.py::doziemienie_sposoby_scena` — ta sama sieć co wyrocznia ręczna
+// `tests/enm/test_doziemienie_tryby_punktu_neutralnego.py`). Sposób z parametru `sposob`
+// adresu; bez parametru — sieć izolowana (pierwszy sposób wyroczni). Nieznany sposób jest
+// błędem sceny, nie cichym zastępstwem.
+interface ScenaDoziemienia {
+  readonly wynik: { readonly run_id: string };
+  readonly slad: unknown;
+  readonly migawka: { readonly snapshot: unknown };
+}
+const SPOSOB_DOZIEMIENIA_DOMYSLNY = 'izolowany';
+function scenaDoziemieniaZUrl(): ScenaDoziemienia | null {
+  if (creatorZUrl() !== 'wyniki-skladowe-doziemienie') return null;
+  const sceny = doziemienieSposobyScena as unknown as Readonly<Record<string, ScenaDoziemienia>>;
+  const sposob = new URLSearchParams(window.location.search).get('sposob') ?? SPOSOB_DOZIEMIENIA_DOMYSLNY;
+  const scena = sceny[sposob];
+  if (scena === undefined) {
+    throw new Error(`scena doziemienia: nieznany sposób „${sposob}" (znane: ${Object.keys(sceny).join(', ')})`);
+  }
+  return scena;
+}
+const SCENA_DOZIEMIENIA = scenaDoziemieniaZUrl();
 
 // --- Fixture'y scen dowodowych E-29..E-32 -------------------------------
 // HARNESS-RESZTA-2 (2026-09-17): sceny E-29 „Składowe symetryczne i sieć zerowa"
@@ -418,6 +449,54 @@ function wynikKoordynacjiDlaZadania(
 /** Biegi oceny zabezpieczeń sceny E-28 — lista rośnie po natywnym kliku „Oceń zabezpieczenia". */
 let biegiOcenySceny: { id: string; status: string; created_at: string }[] = [];
 
+/**
+ * Rejestr biegów przypadku sceny E-28 — JEDNO źródło zasiewu magazynu biegów i atrapy
+ * `GET /api/execution/study-cases/case-demo/runs` (predykaty parami). Ekran po ocenie
+ * zabezpieczeń odczytuje rejestr z serwera (`loadRuns`, karta UIUX-K8), a backend oddaje w nim
+ * KAŻDY bieg przypadku: oba biegi zwarciowe, rozpływ i bieg oceny jako `PROTECTION`
+ * (`canonical_analysis.to_execution_dict`). Wcześniej scena zasiewała magazyn trzema biegami,
+ * a lista z serwera była pusta — po natywnym kliku „Oceń” ekran tracił biegi zwarciowe
+ * i pokazywał stan zerowy zamiast wyniku oceny.
+ */
+function rejestrBiegowKoordynacji(): ExecutionRun[] {
+  return [
+    {
+      // HARNESS-RESZTA-2: identyfikatory z fixtur REALNYCH biegow backendu.
+      id: koordynacjaScenyZwarciaMax.run_id,
+      analysis_type: 'SC_3F',
+      status: 'DONE',
+      finished_at: '2026-07-28T08:00:00Z',
+      started_at: '2026-07-28T07:59:00Z',
+    } as unknown as ExecutionRun,
+    {
+      // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
+      // odmawia bez biegu minimalnego).
+      id: koordynacjaScenyZwarciaMin.run_id,
+      analysis_type: 'SC_3F',
+      status: 'DONE',
+      finished_at: '2026-07-28T08:02:00Z',
+      started_at: '2026-07-28T08:01:00Z',
+    } as unknown as ExecutionRun,
+    {
+      id: koordynacjaScenyWynik.pf_run_id,
+      analysis_type: 'LOAD_FLOW',
+      status: 'DONE',
+      finished_at: '2026-07-28T08:05:00Z',
+      started_at: '2026-07-28T08:04:00Z',
+    } as unknown as ExecutionRun,
+    ...biegiOcenySceny.map(
+      (bieg) =>
+        ({
+          id: bieg.id,
+          analysis_type: 'PROTECTION',
+          status: 'DONE',
+          started_at: bieg.created_at,
+          finished_at: bieg.created_at,
+        }) as unknown as ExecutionRun,
+    ),
+  ];
+}
+
 const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
   // świeżości — wariant bierze się z ROZJAZDU REWIZJI (migawka rev. 2 vs
@@ -445,6 +524,9 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   'wyniki-zbieznosc': zbieznoscScenyNaglowek.id,
   // Scena E-29 czyta wyniki biegu 1F REALNEGO backendu (HARNESS-RESZTA-2).
   'wyniki-skladowe': skladoweScenyWynik.run_id,
+  ...(SCENA_DOZIEMIENIA !== null
+    ? { 'wyniki-skladowe-doziemienie': SCENA_DOZIEMIENIA.wynik.run_id }
+    : {}),
   arcflash: arcflashScenyWynik.context.run_id,
   migotanie: migotanieScenyWynik.context.run_id,
   // Karta AB-P1: ekran dynamiki (E-32) pokazuje znacznik świeżości wyniku z tej samej
@@ -494,15 +576,8 @@ const NAZWA_STACJI_DEMO = (stacjaDemoScenyMigawka.substations as { ref_id: strin
 const ZRODLO_STACJI_DEMO = (
   stacjaDemoScenyMigawka.sources as { sk3_mva: number; rx_ratio: number }[]
 )[0];
-const TRAFO_WN_SN_STACJI_DEMO = (
-  stacjaDemoScenyMigawka.transformers as { sn_mva: number; ulv_kv: number }[]
-).find((trafo) => trafo.ulv_kv === NAPIECIE_SZYNY_SN_STACJI_DEMO)!;
 const SK3_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.sk3_mva;
 const RX_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.rx_ratio;
-const MOC_TRAFO_WN_SN_STACJI_DEMO = TRAFO_WN_SN_STACJI_DEMO.sn_mva;
-const NAPIECIE_WN_STACJI_DEMO = (
-  stacjaDemoScenyMigawka.buses as { voltage_kv: number }[]
-).reduce((maks, szyna) => Math.max(maks, szyna.voltage_kv), 0);
 
 /**
  * Moduły warsztatu wytwórców Z MODELU — odwzorowanie PRODUKCYJNE
@@ -711,6 +786,10 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.endsWith('/results/short-circuit')) return jsonOK(skladoweScenyWynik);
     if (url.endsWith('/results/trace')) return jsonOK(skladoweScenySlad);
     if (url.endsWith('/snapshot')) return jsonOK(skladoweScenyMigawka);
+  } else if (creator === 'wyniki-skladowe-doziemienie' && SCENA_DOZIEMIENIA !== null) {
+    if (url.endsWith('/results/short-circuit')) return jsonOK(SCENA_DOZIEMIENIA.wynik);
+    if (url.endsWith('/results/trace')) return jsonOK(SCENA_DOZIEMIENIA.slad);
+    if (url.endsWith('/snapshot')) return jsonOK(SCENA_DOZIEMIENIA.migawka);
   } else if (creator === 'wyniki-zbieznosc') {
     if (url.includes('/power-flow-runs/') && url.endsWith('/results')) return jsonOK(zbieznoscScenyWynik);
     if (url.includes('/power-flow-runs/') && url.endsWith('/trace')) return jsonOK(zbieznoscScenySlad);
@@ -762,6 +841,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       return jsonOK(koordynacjaScenyOcena);
     }
     if (url.endsWith('/protection-runs')) return jsonOK({ runs: biegiOcenySceny, total: biegiOcenySceny.length });
+    if (
+      url.endsWith('/api/execution/study-cases/case-demo/runs')
+      && (init?.method ?? 'GET').toUpperCase() === 'GET'
+    ) {
+      const rejestr = rejestrBiegowKoordynacji();
+      return jsonOK({ runs: rejestr, count: rejestr.length });
+    }
     // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
     // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
     // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
@@ -1510,7 +1596,13 @@ const MIGAWKA_MODELU_SCENY: Readonly<Record<string, unknown>> = {
   estymacja: sieckZlotaScenyMigawka,
   'wyniki-stan-fazowy': sieckZlotaScenyMigawka,
   'wyniki-warsztat': sieckZlotaScenyMigawka,
-  'wyniki-skladowe': skladoweScenyMigawka,
+  // Magazyn modelu dostaje MODEL biegu (pole `snapshot` odpowiedzi `/snapshot`), nie kopertę
+  // odpowiedzi — dawniej scena E-29 wkładała kopertę `{run_id, snapshot_id, snapshot}`
+  // i most nazw (`useNazwaObiektu`) nie widział żadnej szyny ani gałęzi modelu.
+  'wyniki-skladowe': skladoweScenyMigawka.snapshot,
+  ...(SCENA_DOZIEMIENIA !== null
+    ? { 'wyniki-skladowe-doziemienie': SCENA_DOZIEMIENIA.migawka.snapshot }
+    : {}),
   oltc: zbieznoscScenyMigawka,
   koordynacja: koordynacjaScenyMigawka,
   'sila-sieci': ozeAnalizScenyMigawka,
@@ -1533,7 +1625,7 @@ if (creator === 'arcflash') {
     id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [run], activeRunId: arcflashScenyWynik.context.run_id,
+    runs: [run],
   } as never);
 } else if (creator === 'dokumentacja') {
   // Hub „Dokumentacja" (F-E8.1): pełny kontekst toru pracy — projekt, wariant,
@@ -1555,7 +1647,7 @@ if (creator === 'arcflash') {
   } as never);
   const run = przebiegPfScenyZlotej as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [run], activeRunId: przebiegPfScenyZlotej.id,
+    runs: [run],
   } as never);
 } else if (creator === 'diagnoza') {
   // Diagnoza przebiegu (D7): najbardziej informacyjny stan do oceny wizualnej —
@@ -1589,7 +1681,6 @@ if (creator === 'arcflash') {
   const biegDiagnozy = diagnozaScenyBieg as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
     runs: [biegDiagnozy],
-    activeRunId: diagnozaScenyBieg.id,
     activeStudyCaseId: diagnozaScenyBieg.study_case_id,
   } as never);
 } else if (creator === 'pulpit') {
@@ -1645,7 +1736,7 @@ if (creator === 'arcflash') {
     started_at: '2026-07-22T08:00:00Z', finished_at: '2026-07-22T08:00:04Z',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runKomp], activeRunId: kompensacjaScenyWynik.context.run_id,
+    runs: [runKomp],
   } as never);
   // HARNESS-RESZTA-2: migawka sieci zlotej — TEJ SAMEJ, na ktorej policzono
   // wynik doboru kompensacji; nazwy i napiecia szyn z modelu, nie z listy
@@ -1702,7 +1793,7 @@ if (creator === 'arcflash') {
     id: silaSieciScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runSc], activeRunId: silaSieciScenyWynik.context.run_id,
+    runs: [runSc],
   } as never);
 } else if (creator === 'odbior-zgodnosc') {
   // Runda dowodowa V-B: „Zgodnosc powykonawcza" — wymaga zakonczonego
@@ -1712,7 +1803,7 @@ if (creator === 'arcflash') {
     id: odbiorZgodnoscScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runOdbioru], activeRunId: odbiorZgodnoscScenyWynik.analysis_id,
+    runs: [runOdbioru],
   } as never);
 } else if (creator === 'estymacja') {
   // Runda dowodowa V-B: „Estymacja stanu (WLS)" — wymaga zakonczonego
@@ -1722,7 +1813,7 @@ if (creator === 'arcflash') {
     id: estymacjaScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runEstymacji], activeRunId: estymacjaScenyWynik.analysis_id,
+    runs: [runEstymacji],
   } as never);
 } else if (creator === 'akademickie') {
   // B-02 / W3-E: migawka z NAZWAMI obiektów sieci złotej (te same referencje, które
@@ -1834,7 +1925,6 @@ if (creator === 'arcflash') {
     // co macierz + biegi PF i SC tego modelu z rejestru (UUID z fixtury przebiegów).
     useExecutionRunsStore.setState({
       runs: wniosekScenyMacierzPrzebiegi as unknown as ExecutionRun[],
-      activeRunId: null,
     } as never);
   }
 } else if (creator === 'certyfikat' || creator === 'wniosek') {
@@ -1850,7 +1940,6 @@ if (creator === 'arcflash') {
   if (creator === 'wniosek') {
     useExecutionRunsStore.setState({
       runs: wniosekScenyMagazynPrzebiegi as unknown as ExecutionRun[],
-      activeRunId: null,
     } as never);
   }
 } else if (creator === 'oltc') {
@@ -1859,7 +1948,7 @@ if (creator === 'arcflash') {
 } else if (creator === 'wyniki-skladowe') {
   // Scena E-29 (karta Z-1): przebieg zwarcia NIESYMETRYCZNEGO (SC_1F) → ekran
   // wybiera go automatycznie; dane spływają z podmienionych końcówek wyników.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useExecutionRunsStore.setState({
     runs: [
       {
@@ -1872,11 +1961,26 @@ if (creator === 'arcflash') {
       } as unknown as ExecutionRun,
     ],
   } as never);
+} else if (creator === 'wyniki-skladowe-doziemienie' && SCENA_DOZIEMIENIA !== null) {
+  // Scena doziemienia (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5): przebieg 1F REALNEGO
+  // biegu sposobu z adresu — ekran wybiera go automatycznie, jedyny wiersz to szyna SN stacji.
+  useShellStore.setState({ szczegolyAudytowe: true });
+  useExecutionRunsStore.setState({
+    runs: [
+      {
+        id: SCENA_DOZIEMIENIA.wynik.run_id,
+        analysis_type: 'SC_1F',
+        status: 'DONE',
+        finished_at: '2026-10-30T10:00:00Z',
+        started_at: '2026-10-30T09:59:00Z',
+      } as unknown as ExecutionRun,
+    ],
+  } as never);
 } else if (creator === 'wyniki-zbieznosc') {
   // Scena E-30 (karta Z-1): zakończony rozpływ (LOAD_FLOW) + snapshot z
   // transformatorem OLTC (założenia zaczepów modelu) — HARNESS-RESZTA-2:
   // migawka i przebieg pochodzą z TEGO SAMEGO realnego biegu backendu.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useSnapshotStore.setState({
     snapshot: zbieznoscScenyMigawka,
@@ -1897,41 +2001,14 @@ if (creator === 'arcflash') {
   // Scena E-28: ekran koordynacji WYMAGA zakonczonych biegow zwarciowych (MAX i MIN,
   // scenariusz zapisany na biegu) i rozplywu — bez nich pokazuje uczciwy stan zerowy.
   // Urzadzenia i nastawy niesie model sceny; ocene i koordynacje uruchamia NATYWNY klik.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useAppStateStore.getState().setActiveCase('case-demo', 'Wariant zimowy', null, 'FRESH');
-  useExecutionRunsStore.setState({
-    runs: [
-      {
-        // HARNESS-RESZTA-2: identyfikatory z fixtur REALNYCH biegow backendu.
-        id: koordynacjaScenyZwarciaMax.run_id,
-        analysis_type: 'SC_3F',
-        status: 'DONE',
-        finished_at: '2026-07-28T08:00:00Z',
-        started_at: '2026-07-28T07:59:00Z',
-      } as unknown as ExecutionRun,
-      {
-        // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
-        // odmawia bez biegu minimalnego).
-        id: koordynacjaScenyZwarciaMin.run_id,
-        analysis_type: 'SC_3F',
-        status: 'DONE',
-        finished_at: '2026-07-28T08:02:00Z',
-        started_at: '2026-07-28T08:01:00Z',
-      } as unknown as ExecutionRun,
-      {
-        id: koordynacjaScenyWynik.pf_run_id,
-        analysis_type: 'LOAD_FLOW',
-        status: 'DONE',
-        finished_at: '2026-07-28T08:05:00Z',
-        started_at: '2026-07-28T08:04:00Z',
-      } as unknown as ExecutionRun,
-    ],
-  } as never);
+  useExecutionRunsStore.setState({ runs: rejestrBiegowKoordynacji() } as never);
 } else if (creator === 'wyniki-stan-fazowy') {
   // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN)
   // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useExecutionRunsStore.setState({
     runs: [
@@ -1951,7 +2028,7 @@ if (creator === 'arcflash') {
 ) {
   // Scena E-32 (karta AB-P1): model sceny (migawka po wiązaniu PV) i — w wariancie
   // z wynikiem — zakończony bieg `DYNAMIKA_RMS` z fixtury REALNEGO biegu backendu.
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   useSnapshotStore.setState({ snapshot: dynamikaScenyMigawka } as never);
   useExecutionRunsStore.setState({ runs: biegiSceny(creator) } as never);
 } else if (creator === 'zrodlo-dyspozycyjne') {
@@ -2108,10 +2185,33 @@ if (migawkaModeluSceny !== undefined && useSnapshotStore.getState().snapshot ===
   useSnapshotStore.setState({ snapshot: migawkaModeluSceny } as never);
 }
 
-/** Pasek przypadku ze znacznikiem świeżości (K4) — info z realnego hooka powłoki. */
+/**
+ * Pasek projektu ze znacznikiem świeżości wyników (K4; od karty K1 POWLOKA pasek
+ * projektu zastępuje dawny pasek przypadku) — info z realnego hooka powłoki.
+ * Scena pokazuje wyłącznie układ paska: akcje nawigacyjne nie mają tu celu.
+ */
 function SwiezoscScena() {
   const info = useShellCaseInfo();
-  return <CaseBar info={info} onPrzejdzDoObliczen={() => undefined} />;
+  const bezCelu = () => undefined;
+  return (
+    <PasekProjektu
+      info={info}
+      themeMode={theme}
+      onThemeToggle={bezCelu}
+      szczegolyAudytowe={false}
+      onToggleSzczegolyAudytowe={bezCelu}
+      leftCollapsed={false}
+      rightCollapsed={true}
+      bottomOpen={false}
+      onToggleLeft={bezCelu}
+      onToggleRight={bezCelu}
+      onToggleBottom={bezCelu}
+      onResetLayout={bezCelu}
+      onPrzejdzDoObliczen={bezCelu}
+      blokadaObliczen={null}
+      biegTrwa={false}
+    />
+  );
 }
 
 function Harness() {
@@ -2140,22 +2240,22 @@ function Harness() {
         przebieg={{
           id: walidacjaScenyWynik.context.run_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );
   else if (creator === 'rozplyw')
-    node = <EkranRozplywu trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranRozplywu szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia')
-    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranZwarc szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-tolerancja-robocza')
-    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranZwarc szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-rozplyw')
     // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie
     // „sieć nadrzędna" vs identyfikator falownika w sekcji RozplywZwarciowy).
-    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranZwarc szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'porownanie')
-    node = <EkranPorownania projektId="proj-demo" trybZaawansowania="expert" />;
+    node = <EkranPorownania projektId="proj-demo" szczegolyAudytowe />;
   else if (creator === 'kompensacja')
     // R2-B: preselekcja wezla z deep-linku — bus_sn_b, jedyny wezel zasiewu
     // (linie ok. 2320 nizej) dajacy realny dobor kandydata katalogowego
@@ -2163,14 +2263,14 @@ function Harness() {
     // zasiewie po konwersji sceny na realny bieg backendu).
     node = (
       <EkranKompensacji
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         preselekcjaWezla="bus_sn_b"
         onPreselekcjaSkonsumowana={() => undefined}
         onOtworzDowod={() => undefined}
       />
     );
   else if (creator === 'lom')
-    node = <EkranLom trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranLom szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'wiazania')
     node = (
       <PvSourceSurface
@@ -2197,16 +2297,16 @@ function Harness() {
       />
     );
   else if (creator === 'frt')
-    node = <EkranFrt trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranFrt szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
   else if (creator === 'macierz' || creator === 'certyfikat')
-    node = <MacierzNcRfg trybZaawansowania="expert" />;
+    node = <MacierzNcRfg szczegolyAudytowe />;
   else if (creator === 'wniosek' || creator === 'wniosek-braki')
-    node = <EkranWniosku trybZaawansowania="expert" />;
+    node = <EkranWniosku szczegolyAudytowe />;
   else if (creator === 'pulpit-oze')
-    node = <PulpitOze trybZaawansowania="expert" onNawiguj={() => undefined} />;
+    node = <PulpitOze szczegolyAudytowe onNawiguj={() => undefined} />;
   else if (creator === 'koordynacja') node = <EkranKoordynacji />;
-  else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
+  else if (creator === 'wyniki-skladowe' || creator === 'wyniki-skladowe-doziemienie') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
   else if (creator === 'wyniki-stan-fazowy') node = <EkranStanuFazowego />;
   else if (
@@ -2214,20 +2314,20 @@ function Harness() {
     creator === 'wyniki-dynamika-brak' ||
     creator === 'wyniki-dynamika-odbior-brak'
   )
-    node = <EkranDynamiki trybZaawansowania="expert" />;
+    node = <EkranDynamiki szczegolyAudytowe />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
-    node = <EkranKompensacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
-  else if (creator === 'sila-sieci') node = <SekcjaSilySieci trybEkspercki />;
+    node = <EkranKompensacji szczegolyAudytowe onOtworzDowod={() => undefined} />;
+  else if (creator === 'sila-sieci') node = <SekcjaSilySieci szczegolyAudytowe />;
   else if (creator === 'odbior-zgodnosc')
-    node = <EkranOdbioru trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranOdbioru szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'estymacja')
-    node = <EkranEstymacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
-  else if (creator === 'ssci') node = <EkranSsci trybZaawansowania="expert" />;
+    node = <EkranEstymacji szczegolyAudytowe onOtworzDowod={() => undefined} />;
+  else if (creator === 'ssci') node = <EkranSsci szczegolyAudytowe />;
   else if (creator === 'wyniki-warsztat')
     node = (
       <WynikiWarsztat
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         pozostale={<div />}
         onOtworzDokumentacje={() => undefined}
       />
@@ -2237,19 +2337,19 @@ function Harness() {
     const rodzajZAdresu = new URLSearchParams(location.search).get('rodzaj');
     node = (
       <EkranAnalizAkademickich
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         rodzajPoczatkowy={(rodzajZAdresu ?? undefined) as never}
       />
     );
   } else if (creator === 'ocena' || creator === 'ocena-przekroczenia')
-    node = <EkranOceny trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+    node = <EkranOceny szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'migotanie')
     node = (
       <SekcjaMigotania
         przebieg={{
           id: migotanieScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );
@@ -2269,7 +2369,7 @@ function Harness() {
         przebieg={{
           id: cieplnaScenyWynik.run_id, analysis_type: 'SC_3F', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );
@@ -2279,7 +2379,7 @@ function Harness() {
         przebieg={{
           id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
         } as unknown as ExecutionRun}
-        trybZaawansowania="expert"
+        szczegolyAudytowe
         onOtworzDowod={() => undefined}
       />
     );
@@ -2317,7 +2417,7 @@ function Harness() {
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
-          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-dynamika-odbior-brak', 'akademickie',
+          'wyniki-skladowe', 'wyniki-skladowe-doziemienie', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-dynamika-odbior-brak', 'akademickie',
           'ocena', 'ocena-przekroczenia',
         ].includes(creator)
           ? 1400
@@ -2391,8 +2491,6 @@ async function zasiejSceneStacji(): Promise<void> {
     sk3_mva: SK3_ZRODLA_STACJI_DEMO,
     rx_ratio: RX_ZRODLA_STACJI_DEMO,
     catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
-    hv_voltage_kv: NAPIECIE_WN_STACJI_DEMO,
-    transformer_sn_mva: MOC_TRAFO_WN_SN_STACJI_DEMO,
   });
   if (!gpz || gpz.error) throw new Error(`add_grid_source_sn: ${gpz?.error ?? 'brak odpowiedzi'}`);
   const odcinek = await wykonaj(przypadek.id, 'continue_trunk_segment_sn', {

@@ -270,7 +270,7 @@
   gap: 10px;
   padding: 12px;
   margin-bottom: 12px;
-  border: 1px solid var(--mvd-border);
+  border: 1px solid var(--mvd-line);
   border-radius: 8px;
   background: var(--mvd-surface);
 }
@@ -295,7 +295,7 @@
 .mvd-jakosc-af-pole input,
 .mvd-jakosc-af-pole select {
   padding: 6px 8px;
-  border: 1px solid var(--mvd-border);
+  border: 1px solid var(--mvd-line);
   border-radius: 6px;
   background: var(--mvd-bg);
   color: var(--mvd-ink);
@@ -312,7 +312,7 @@
   border: 1px solid var(--mvd-accent);
   border-radius: 6px;
   background: var(--mvd-accent);
-  color: var(--mvd-on-accent, #fff);
+  color: var(--mvd-accent-ink);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -521,7 +521,7 @@
   font-variant-numeric: tabular-nums;
 }
 .mvd-cieplny-tabela td.mvd-mono {
-  font-family: var(--mvd-mono, ui-monospace, monospace);
+  font-family: var(--mvd-font-mono);
 }
 .mvd-cieplny-normy {
   margin: 0;

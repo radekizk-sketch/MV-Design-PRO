@@ -74,7 +74,7 @@ def _reset_services():
     yield
 
 
-def _seed_valid_enm(case_id: str) -> None:
+def _seed_valid_enm(case_id: str, *, r_kabla_ohm_per_km: float = 0.253) -> None:
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
@@ -125,7 +125,7 @@ def _seed_valid_enm(case_id: str) -> None:
                         "catalog_ref": "KABEL_SN_TEST",
                         "parameter_source": "CATALOG",
                         "length_km": 0.2,
-                        "r_ohm_per_km": 0.253,
+                        "r_ohm_per_km": r_kabla_ohm_per_km,
                         "x_ohm_per_km": 0.073,
                         "b_siemens_per_km": 2.6e-07,
                     }
@@ -240,16 +240,29 @@ class TestGoldenFixture:
         response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
         assert response.status_code == 201, response.text
 
+    def test_golden_sc1f_kabel_bez_z0_z_wartoscia_robocza_kwalifikuje_sie_i_bieg_powstaje(self):
+        """Zasada nr 4: kabel modelu bez R′0/X′0 (R′1, X′1 dodatnie) liczy się z wartością
+        roboczą R′0 = 3·R′1, X′0 = 3·X′1 — kwalifikowalność i `create_run` przepuszczają bieg
+        (ten sam predykat `enm.skladowa_zerowa_galezi` po obu stronach)."""
+        _seed_valid_enm(CASE_ID)
+        scenario = _create_scenario(name="Golden 1F", fault_type="SC_1F", element_ref="bus-main")
+        sid = scenario["scenario_id"]
+        eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
+        assert eligibility["status"] == "ELIGIBLE", eligibility
+        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        assert response.status_code == 201, response.text
+
     def test_golden_sc1f_model_bez_z0_ta_sama_blokada_w_kwalifikowalnosci_i_biegu(self):
         """Predykaty parami: kwalifikowalność i `create_run` odmawiają TYM SAMYM kodem.
 
-        Kabel modelu nie ma Z0 (ostrzeżenie walidatora) — zwarcie doziemne nie jest dostępne.
-        Kwalifikowalność zwraca blokadę z kodem bramy modelu i elementem, a bieg utworzony
-        z pominięciem kwalifikowalności (opcje wprost) odmawia tym samym kodem.
+        Kabel modelu nie ma Z0 ani podstawy wartości roboczej (R′1 = 0; ostrzeżenie walidatora
+        W001) — zwarcie doziemne nie jest dostępne. Kwalifikowalność zwraca blokadę z kodem bramy
+        modelu i elementem, a bieg utworzony z pominięciem kwalifikowalności (opcje wprost)
+        odmawia tym samym kodem.
         """
         from enm.canonical_analysis import KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ
 
-        _seed_valid_enm(CASE_ID)
+        _seed_valid_enm(CASE_ID, r_kabla_ohm_per_km=0.0)
         scenario = _create_scenario(name="Golden 1F", fault_type="SC_1F", element_ref="bus-main")
         sid = scenario["scenario_id"]
         eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()

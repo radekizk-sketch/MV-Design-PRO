@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.pole_katalogowe import czy_wybor_katalogowy
 from enm.slownik_komunikatow import opis_operacji, pole
-from enm.zrodlo_zwarcie import tryb_danych
+from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
+from enm.zrodlo_zwarcie import klucz_mocy_zwarciowej, strona_rownowaznika, tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
     validate_catalog_binding,
@@ -17,30 +19,19 @@ DEFAULT_CATALOG_VERSION = "2024.1"
 
 # Operations that require catalog binding in their payload
 #
-# `add_nn_outgoing_field` NIE JEST tu wpisana (karta NAPRAWA-B, znalezisko #2 —
-# rozjazd kontraktu catalog_ref). Zmierzone: `enm.domain_operations_v2.
-# _add_nn_outgoing_field_internal` i `_append_nn_source_meta_field` NIE czytają
-# `payload["catalog_ref"]`/`payload["catalog_binding"]` w ŻADNEJ gałęzi — ani
-# FEEDER, ani SOURCE. Domenowy inwentarz bramy katalogowej
-# (`enm.domain_operations_v2.V2_CATALOG_GATE_INVENTORY`) tej operacji też nie
-# zna, z tego samego powodu. Realny kreator „Pole odpływowe nN"
-# (`ui2/kreatory/pole-nn/KreatorPolaNn.tsx`) świadomie NIE pokazuje pickera
-# katalogu (własny docstring: „backend go dla tej operacji nie honoruje") —
-# przed tą naprawą KAŻDE żądanie tego kreatora przez produkcyjny endpoint
-# (`POST .../enm/domain-ops`) dostawało `422 catalog.ref_required`, bo brama
-# API była SUROWSZA od operacji i od formularza jednocześnie: trzy niezależne
-# przekonania o tym samym kontrakcie, z których żadne dwa się nie zgadzały.
-# Naprawa PREDYKATY PARAMI: wymóg bramy wynika teraz z tego samego pomiaru co
-# konsumpcja operacji — brak konsumpcji ⇒ brak wymogu. Referencję katalogową
-# aparatu odpływowego materializuje `enm.migrations.nn_field_specs_promocja`
-# PRZY PROMOCJI wpisu (`meta.catalog_binding`/`meta.catalog_bindings`, gdy są),
-# nie ta operacja — to inny etap łańcucha, z własnym kontraktem (fail-open:
-# brak wiązania przy promocji legacy daje W061, nie blokadę).
+# `add_nn_outgoing_field` NIE JEST tu wpisana: wiązanie aparatu pola nN jest OPCJONALNE
+# (realny kreator „Pole odpływowe nN", `ui2/kreatory/pole-nn/KreatorPolaNn.tsx`, pickera
+# aparatu nie ma, a szablon stacji wskazuje `catalog_ref` odpływu). Wskazana pozycja jest
+# jednak CZYTANA przez operację (`enm.domain_operations_v2._wiazanie_aparatu_pola_nn`:
+# brama istnienia w `APARAT_NN`, wiązanie na polu w `meta.catalog_binding`, skąd bierze je
+# promocja aparatów nN `enm.migrations.promocja_aparatow_nn`), więc brama API sprawdza jej
+# ISTNIENIE jako referencję inwentarza (`_referencje_dodatkowe`), nie wymóg obecności.
+# Historia (karta NAPRAWA-B, znalezisko #2): dawna brama wymagała referencji, której
+# operacja nie czytała — kreator dostawał `422 catalog.ref_required` na każde żądanie.
 CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
     {
         "add_grid_source_sn",
         "add_sn_bay",
-        "add_sn_bay_from_catalog",
         "continue_trunk_segment_sn",
         "insert_branch_pole_on_segment_sn",
         "start_branch_segment_sn",
@@ -119,10 +110,14 @@ def _extract_binding_from_container(
 def _segment_namespace(segment: Any) -> str | None:
     if not isinstance(segment, dict):
         return None
-    segment_kind = segment.get("rodzaj") or segment.get("segment_kind") or segment.get("type")
-    if segment_kind in {"KABEL", "KABEL_SN", "cable"}:
+    # Rodzaj odcinka czytany TYM SAMYM kluczem i słownikiem co handler (``segment.rodzaj``:
+    # ``KABEL`` / ``LINIA_NAPOWIETRZNA``) — dawne zamienniki bramy (``segment_kind``,
+    # ``type``, ``KABEL_SN``, ``cable``…) handler pomijał, więc brama wybierała przestrzeń
+    # katalogu z klucza, którego operacja nie czyta.
+    segment_kind = segment.get("rodzaj", "KABEL")  # domyślny rodzaj handlera
+    if segment_kind == "KABEL":
         return "KABEL_SN"
-    if segment_kind in {"LINIA_NAPOWIETRZNA", "LINIA_SN", "line_overhead"}:
+    if segment_kind == "LINIA_NAPOWIETRZNA":
         return "LINIA_SN"
     return None
 
@@ -187,7 +182,10 @@ def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
 
     # CV-4.3 K7: ten sam predykat trybu danych co mapper/walidator (moc zwarciowa ALBO
     # prąd zwarciowy, IEC 60909-0 eq. 6 zapisana prądem); R/X wymagane jak dotąd.
-    sk3_mva = manual.get("sk3_mva", payload.get("sk3_mva"))
+    # Karta GPZ-MODEL: S″_kQ po tej stronie, po której podano równoważnik — ten sam
+    # predykat strony i klucza co operacja domenowa (`enm/zrodlo_zwarcie.py`).
+    klucz_sk3 = klucz_mocy_zwarciowej(strona_rownowaznika(manual, payload))
+    sk3_mva = manual.get(klucz_sk3, payload.get(klucz_sk3))
     ik3_ka = manual.get("ik3_ka", payload.get("ik3_ka"))
     rx_ratio = manual.get("rx_ratio", payload.get("rx_ratio"))
     return (
@@ -213,6 +211,23 @@ def _uses_manual_nn_load(payload: dict[str, Any]) -> bool:
     return payload.get("source_mode") == "EKSPERCKI_RECZNY"
 
 
+#: Pole pozycji katalogu transformatora SN/nN — klucz czytany przez handler i nazwa pola
+#: formularza w odmowie bramy („wybierz ją w polu …”). Odmowa nazywa pole, które projektant
+#: ma w formularzu; dawniej każda operacja dostawała ogólne „Typ z katalogu” (``catalog_ref``),
+#: także transformator, którego handler ``catalog_ref`` nie czyta.
+_POLE_POZYCJI_TRANSFORMATORA = "transformer_catalog_ref"
+_OPERACJE_POZYCJI_TRANSFORMATORA = frozenset(
+    {"add_transformer_sn_nn", "insert_station_on_segment_sn", "append_station_on_endpoint"}
+)
+
+
+def pole_pozycji_katalogu(operation: str) -> str:
+    """Klucz pola pozycji katalogu, które odmowa bramy każe wypełnić."""
+    if operation in _OPERACJE_POZYCJI_TRANSFORMATORA:
+        return _POLE_POZYCJI_TRANSFORMATORA
+    return "catalog_ref"
+
+
 def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     """Extract catalog_binding from payload, preferring canonical nested contracts."""
 
@@ -233,7 +248,7 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         candidate = _extract_binding_from_container(
             payload.get("transformer"),
             namespace="TRAFO_SN_NN",
-            ref_keys=("transformer_catalog_ref",),
+            ref_keys=(_POLE_POZYCJI_TRANSFORMATORA,),
         )
         if candidate is not None:
             return candidate
@@ -245,16 +260,18 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         candidate = _extract_binding_from_container(
             payload.get("transformer"),
             namespace="TRAFO_SN_NN",
-            ref_keys=("transformer_catalog_ref", "catalog_ref"),
+            ref_keys=(_POLE_POZYCJI_TRANSFORMATORA, "catalog_ref"),
         )
         if candidate is not None:
             return candidate
 
     if operation == "add_transformer_sn_nn":
+        # Klucze = klucze czytane przez handler (`transformer_catalog_ref`, `catalog_binding`);
+        # `catalog_ref` handler pomija — brama nie może go przyjmować (test spec = handler).
         candidate = _extract_binding_from_container(
             payload,
             namespace="TRAFO_SN_NN",
-            ref_keys=("transformer_catalog_ref", "catalog_ref"),
+            ref_keys=(_POLE_POZYCJI_TRANSFORMATORA,),
         )
         if candidate is not None:
             return candidate
@@ -277,11 +294,9 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         if candidate is not None:
             return candidate
 
-    # Aparat glowny pola SN: ta sama pozycja katalogu dla obu drog dokladania
-    # pola (deklaracja rola+aparat oraz materializacja z katalogu rodzin). Brama
-    # kluczujaca po nazwie operacji musi znac OBIE, inaczej ta sama literowka
-    # daje raz 422, a raz `HTTP 200` z kodem bledu w tresci.
-    if operation in {"add_sn_bay", "add_sn_bay_from_catalog"}:
+    # Aparat glowny pola SN: ta sama pozycja katalogu dla obu planow pola operacji
+    # `add_sn_bay` (deklaracja rola+aparat oraz materializacja z katalogu rodzin).
+    if operation == "add_sn_bay":
         candidate = _extract_binding_from_container(
             payload,
             namespace="APARAT_SN",
@@ -584,7 +599,6 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("insert_section_switch_sn", "catalog_binding", "APARAT_SN", True),
     # --- Transformator SN/nN wolnostojący (V1) ------------------------------
     PozycjaBramyApi("add_transformer_sn_nn", "transformer_catalog_ref", "TRAFO_SN_NN", True),
-    PozycjaBramyApi("add_transformer_sn_nn", "catalog_ref", "TRAFO_SN_NN", True),
     PozycjaBramyApi(
         "add_transformer_sn_nn",
         "transformer_tap_changer_catalog_ref",
@@ -667,20 +681,12 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_relay", "catalog_ref", "ZABEZPIECZENIE", True),
     PozycjaBramyApi("add_relay", "protection.catalog_item_id", "ZABEZPIECZENIE", True),
     PozycjaBramyApi("add_sn_bay", "catalog_binding", "APARAT_SN", True),
-    PozycjaBramyApi("add_sn_bay_from_catalog", "catalog_binding", "APARAT_SN", True),
     PozycjaBramyApi("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
-    # `add_nn_outgoing_field` NIE MA tu pozycji (karta NAPRAWA-B, znalezisko #2 —
-    # naprawiony rozjazd kontraktu). Poprzedni wpis twierdził „brama SUROWSZA od
-    # operacji, fail-closed z rozmysłem" — pomiar tej karty pokazał, że to
-    # nieprawda: operacja (`_add_nn_outgoing_field_internal`,
-    # `_append_nn_source_meta_field`) nie czyta `catalog_ref`/`catalog_binding` w
-    # ŻADNEJ gałęzi, więc dawny wpis bramkował referencję, której materializacja
-    # i tak nigdzie nie trafiała — realny kreator (`ui2/kreatory/pole-nn/
-    # KreatorPolaNn.tsx`) nigdy jej nie wysyłał i dostawał `422
-    # catalog.ref_required` na KAŻDE żądanie. Inwentarz tej bramy dokumentuje
-    # WYŁĄCZNIE referencje faktycznie czytane z payloadu (nagłówek modułu) — ta
-    # operacja żadnej nie czyta, więc nie ma tu czego wpisać (nie „niebramkowana
-    # pozycja z uzasadnieniem", bo nie ma pozycji).
+    # Aparat pola nN (odpływ albo pole źródłowe) — wskazanie OPCJONALNE, ale czytane przez
+    # operację (`_wiazanie_aparatu_pola_nn`: wiązanie na polu dla promocji aparatów nN),
+    # więc brama sprawdza ISTNIENIE wskazanej pozycji (`_referencje_dodatkowe`).
+    PozycjaBramyApi("add_nn_outgoing_field", "catalog_ref", "APARAT_NN", True),
+    PozycjaBramyApi("add_nn_outgoing_field", "catalog_binding", "APARAT_NN", True),
     # --- P0.1 nN — topologia obwodów nN (karta P0.1, C §4.1) -----------------
     PozycjaBramyApi("add_nn_cable_segment", "catalog_ref", "KABEL_NN", True),
     PozycjaBramyApi("add_nn_cable_segment", "catalog_binding", "KABEL_NN", True),
@@ -690,6 +696,14 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_nn_rcd", "catalog_binding", "APARAT_NN_RCD", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_ref", "APARAT_NN", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_binding", "APARAT_NN", True),
+    # Zasilenie rozdzielnicy nN — LUSTRO `_add_nn_cable_segment_internal` (ta sama para
+    # dróg wskazania co `add_nn_cable_segment`, w bloku `supply`).
+    PozycjaBramyApi("add_nn_distribution_board", "supply.catalog_ref", "KABEL_NN", True),
+    PozycjaBramyApi("add_nn_distribution_board", "supply.catalog_binding", "KABEL_NN", True),
+    # W5-C: wyposażenie pola SN — przestrzeń z rodzaju aparatu wpisu listy (tryb `katalog`).
+    PozycjaBramyApi(
+        "set_bay_equipment", "devices[].catalog_ref", "APARAT_SN|CT|VT|OGRANICZNIK_SN", True
+    ),
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN (V2) ------------------
     PozycjaBramyApi(
         "add_converter_source",
@@ -753,6 +767,52 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     # --- Kompensacja, ograniczniki, wiązania DER (V2) -----------------------
     PozycjaBramyApi("add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True),
     PozycjaBramyApi("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
+    # --- Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN ------------
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_ref",
+        "TRANSFORMATOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_binding",
+        "TRANSFORMATOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn", "zespoly_uziemiajace[].dlawik.catalog_ref", "DLAWIK_GASZACY", True
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].dlawik.catalog_binding",
+        "DLAWIK_GASZACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_ref",
+        "REZYSTOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_binding",
+        "REZYSTOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_zespol_uziemiajacy_sn", "catalog_binding", "TRANSFORMATOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "catalog_ref", "TRANSFORMATOR_UZIEMIAJACY", True),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "dlawik.catalog_binding", "DLAWIK_GASZACY", True),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "dlawik.catalog_ref", "DLAWIK_GASZACY", True),
+    PozycjaBramyApi(
+        "add_zespol_uziemiajacy_sn", "rezystor.catalog_binding", "REZYSTOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyApi(
+        "add_zespol_uziemiajacy_sn", "rezystor.catalog_ref", "REZYSTOR_UZIEMIAJACY", True
+    ),
     # --- CV-4.3 K1: odbiór/generator wprost na szynie -----------------------
     PozycjaBramyApi("add_load_sn", "catalog_binding", "OBCIAZENIE", True),
     PozycjaBramyApi("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
@@ -797,15 +857,6 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
         "rozjazd, przed którym broni ta karta. Istnienie sprawdza warstwa domenowa "
         "przy materializacji gałęzi i transformatora; rozszerzenie kontraktu bramy o "
         "migawkę jest osobną kartą.",
-    ),
-    PozycjaBramyApi(
-        "update_element_parameters",
-        "catalog_binding",
-        "",
-        False,
-        "jak `assign_catalog_to_element`: przestrzeń pochodzi z elementu w migawce, "
-        "której brama nie dostaje. Operacja aktualizuje parametry istniejącego "
-        "elementu, a jego wiązanie katalogowe zostało zbramkowane przy tworzeniu.",
     ),
 )
 
@@ -1022,6 +1073,19 @@ def _referencje_dodatkowe(
                     pole_sn.get("apparatus_catalog_binding"),
                 )
 
+    if operation == "add_nn_outgoing_field":
+        # LUSTRO `enm.domain_operations_v2._wiazanie_aparatu_pola_nn` (wiązanie ma
+        # pierwszeństwo, potem `catalog_item_id`/`catalog_ref` na wierzchu ładunku).
+        # Przestrzeń wynika z RODZAJU elementu (`APARAT_NN`), nie z wiązania ładunku —
+        # operacja sprowadza wiązanie do tej przestrzeni, brama pyta w tej samej.
+        _dodaj(
+            "Aparat pola nN",
+            "APARAT_NN",
+            _ref_z_wiazania(payload.get("catalog_binding"))
+            or payload.get("catalog_item_id")
+            or payload.get("catalog_ref"),
+        )
+
     if operation == "add_shunt_compensator_sn":
         _dodaj(
             "Bateria kondensatorów SN",
@@ -1031,6 +1095,39 @@ def _referencje_dodatkowe(
             or payload.get("catalog_ref"),
             payload.get("catalog_binding"),
         )
+
+    def _dodaj_zespol(zespol: dict[str, Any]) -> None:
+        # LUSTRO `enm.domain_operations_v2.add_zespol_uziemiajacy_sn`: przestrzenie wynikają
+        # z RODZAJU elementu (transformator uziemiający, dławik, rezystor), nie z wiązania.
+        _dodaj(
+            "Transformator uziemiający",
+            "TRANSFORMATOR_UZIEMIAJACY",
+            _ref_z_wiazania(zespol.get("catalog_binding"))
+            or zespol.get("catalog_item_id")
+            or zespol.get("catalog_ref"),
+            zespol.get("catalog_binding"),
+        )
+        for klucz, opis_pl, przestrzen in (
+            ("dlawik", "Dławik gaszący", "DLAWIK_GASZACY"),
+            ("rezystor", "Rezystor uziemiający", "REZYSTOR_UZIEMIAJACY"),
+        ):
+            urzadzenie = zespol.get(klucz)
+            if isinstance(urzadzenie, dict):
+                _dodaj(
+                    opis_pl,
+                    przestrzen,
+                    _ref_z_wiazania(urzadzenie.get("catalog_binding"))
+                    or urzadzenie.get("catalog_item_id")
+                    or urzadzenie.get("catalog_ref"),
+                    urzadzenie.get("catalog_binding"),
+                )
+
+    if operation == "add_zespol_uziemiajacy_sn":
+        _dodaj_zespol(payload)
+    if operation == "add_grid_source_sn" and isinstance(payload.get("zespoly_uziemiajace"), list):
+        for zespol in payload["zespoly_uziemiajace"]:
+            if isinstance(zespol, dict):
+                _dodaj_zespol(zespol)
 
     if operation == "add_surge_arrester_sn":
         _dodaj(
@@ -1065,6 +1162,36 @@ def _referencje_dodatkowe(
             or payload.get("catalog_ref"),
             payload.get("catalog_binding"),
         )
+
+    if operation == "add_nn_distribution_board":
+        # LUSTRO `enm.domain_operations_v2._add_nn_cable_segment_internal` wołanej dla
+        # `payload.supply` (`_require_catalog_ref`: jawna referencja → wiązanie).
+        zasilenie = payload.get("supply")
+        if isinstance(zasilenie, dict):
+            _dodaj(
+                "Kabel zasilający rozdzielnicy nN",
+                "KABEL_NN",
+                zasilenie.get("catalog_ref"),
+                zasilenie.get("catalog_binding"),
+            )
+
+    if operation == "set_bay_equipment" and payload.get("mode") == "katalog":
+        # LUSTRO `enm.wyposazenie_pola._sprawdz_aparat`: wyłącznie tryb `katalog` czyta
+        # `devices`, a pozycję sprawdza w przestrzeni RODZAJU aparatu. Rodzaj bez
+        # katalogu SN z podaną referencją odrzuca warstwa domenowa własnym kodem
+        # (`bay_equipment.catalog_not_applicable`) — nie ma tu przestrzeni do pytania.
+        aparaty = payload.get("devices")
+        for numer, aparat in enumerate(aparaty if isinstance(aparaty, list) else [], start=1):
+            if not isinstance(aparat, dict):
+                continue
+            rodzaj = str(aparat.get("kind"))
+            przestrzen_aparatu = PRZESTRZEN_KATALOGU_APARATU.get(rodzaj)
+            if przestrzen_aparatu is not None:
+                _dodaj(
+                    f"Aparat {numer} ({NAZWY_RODZAJOW_APARATU_POLA_PL[rodzaj]})",
+                    przestrzen_aparatu,
+                    aparat.get("catalog_ref"),
+                )
 
     # Karta AB-H0 §0.7.3: karta widmowa projektu wskazuje typ przekształtnika
     # (`urzadzenie_ref`) — ten sam typ, który operacja sprawdza w katalogu MODELU
@@ -1376,11 +1503,12 @@ def _proba_konfiguracji_pola_bez_zapisu(operation: str, payload: dict[str, Any])
     """Próba konfiguracji pola katalogowego, która NICZEGO nie tworzy.
 
     Wymóg wiązania katalogowego chroni ELEMENT, który operacja zapisuje do
-    modelu. `add_sn_bay_from_catalog` w trybie próby nie zapisuje niczego —
-    zwraca werdykt zgodności konfiguracji katalogowej (rodzina · pole · blok ·
-    jednostka), czyli rozstrzyga krok, który w konfiguratorze POPRZEDZA wybór
-    konkretnej pozycji aparatu. Żądanie pozycji aparatu do werdyktu o niczym
-    zablokowałoby dokładnie ten krok.
+    modelu. `add_sn_bay` z wyborem katalogowym (`czy_wybor_katalogowy` — TEN SAM
+    predykat, którym operacja wybiera plan pola z katalogu) w trybie próby nie zapisuje
+    niczego — zwraca werdykt zgodności konfiguracji katalogowej (rodzina · pole · blok ·
+    jednostka · napięcie szyny), czyli rozstrzyga krok, który w kreatorze pola
+    POPRZEDZA wybór konkretnej pozycji aparatu. Żądanie pozycji aparatu do werdyktu
+    o niczym zablokowałoby dokładnie ten krok.
 
     Wyjątek dotyczy WYŁĄCZNIE braku wiązania: próba, która wiązanie PODAJE,
     przechodzi pełną walidację i materializację jak każde inne żądanie —
@@ -1388,7 +1516,9 @@ def _proba_konfiguracji_pola_bez_zapisu(operation: str, payload: dict[str, Any])
     sam kształt, co wyjątek `append_station_on_endpoint` bez transformatora:
     brama pilnuje elementów, które naprawdę powstają.
     """
-    return operation == "add_sn_bay_from_catalog" and bool(payload.get("dry_run"))
+    return (
+        operation == "add_sn_bay" and bool(payload.get("dry_run")) and czy_wybor_katalogowy(payload)
+    )
 
 
 def validate_and_materialize_catalog_binding(
@@ -1485,7 +1615,7 @@ def validate_and_materialize_catalog_binding(
                         "code": "catalog.ref_required",
                         "message_pl": (
                             f"Operacja {opis_operacji(operation)} wymaga pozycji katalogu — "
-                            f"wybierz ją w polu {pole('catalog_ref', operation)}."
+                            f"wybierz ją w polu {pole(pole_pozycji_katalogu(operation), operation)}."
                         ),
                     }
                 ],

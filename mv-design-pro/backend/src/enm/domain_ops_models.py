@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from enm.models import PhaseSet
+from enm.rola_pola_sn import RolaPolaModelu
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -294,33 +295,19 @@ class CatalogBindingPayload(_FrozenBase):
 # ===========================================================================
 
 
-class AnchorValue(_FrozenBase):
-    """Wartość kotwicząca — pozycja względem istniejącego elementu.
-
-    Używana gdy mode='ANCHOR' w InsertAt.
-    """
-
-    anchor_id: str
-    """Identyfikator elementu kotwiczącego."""
-
-    offset_m: float
-    """Przesunięcie od kotwicy w metrach."""
-
-
 class InsertAt(_FrozenBase):
     """Kanoniczny model pozycji wstawienia elementu na segmencie.
 
-    Trzy tryby:
+    Dwa tryby (``TRYBY_POZYCJI_PODZIALU``, reguła ``wspolczynnik_podzialu`` handlerów):
     - RATIO: pozycja jako ułamek długości segmentu (0.0–1.0)
     - ODLEGLOSC_OD_POCZATKU_M: odległość od początku segmentu w metrach
-    - ANCHOR: pozycja względem istniejącego elementu (AnchorValue)
     """
 
-    mode: Literal["RATIO", "ODLEGLOSC_OD_POCZATKU_M", "ANCHOR"]
+    mode: Literal["RATIO", "ODLEGLOSC_OD_POCZATKU_M"]
     """Tryb określania pozycji wstawienia."""
 
-    value: float | AnchorValue
-    """Wartość pozycji — float dla RATIO/ODLEGLOSC, AnchorValue dla ANCHOR."""
+    value: float
+    """Wartość pozycji — ułamek albo metry, zależnie od trybu."""
 
 
 # ===========================================================================
@@ -395,7 +382,7 @@ class SNFieldSpec(_FrozenBase):
 
     NIE JEST kanałem wyboru bloku fabrycznego RMU: blok ma własne pola
     pierwszej klasy (`factory_configuration_ref` + `factory_unit_index`)
-    o nazwach WSPÓLNYCH z operacją `add_sn_bay_from_catalog`. Metadana
+    o nazwach WSPÓLNYCH z planem pola katalogowego operacji `add_sn_bay`. Metadana
     `catalog_bindings.factory_configuration`, którą kreator stacji wysyłał
     zamiast nich, została usunięta — była drugim nazewnictwem tej samej prawdy,
     którego żadna operacja stacyjna nie czytała."""
@@ -451,7 +438,7 @@ class SNFieldSpec(_FrozenBase):
     factory_configuration_ref: str | None = None
     """Blok fabryczny rodziny RMU (`FactoryConfiguration.configuration_ref`),
     z którego pochodzi to pole — TA SAMA nazwa pola, co w kontrakcie operacji
-    `add_sn_bay_from_catalog`. Pole rodziny o torze BLOK_RMU nie jest luźną
+    `add_sn_bay` (pole z katalogu rozdzielnic). Pole rodziny o torze BLOK_RMU nie jest luźną
     szafą: bez wskazania bloku operacja stacyjna odrzuca je twardym błędem
     katalogowym, bo pojedyncza celka nie opisuje tego wyrobu."""
 
@@ -960,8 +947,10 @@ class InsertSectionSwitchSNPayload(_FrozenBase):
     switch_name: str | None = None
     """Opcjonalna nazwa łącznika."""
 
-    normal_state: Literal["closed", "open"] = "closed"
-    """Stan normalny łącznika."""
+    normal_state: Literal["closed", "open"] | None = None
+    """Pozycja normalna łącznika (W5-C): ``"open"`` = punkt normalnie otwarty, ``"closed"`` =
+    normalnie zamknięty; ``None`` = niezadeklarowana — łącznik powstaje zamknięty, bez pozycji
+    normalnej (bez domysłu). Zadeklarowana pozycja ustawia też bieżące położenie (``status``)."""
 
 
 class ConnectSecondaryRingSNPayload(_FrozenBase):
@@ -999,14 +988,17 @@ class PrzepnijElementNaPolePayload(_FrozenBase):
 class SetNormalOpenPointPayload(_FrozenBase):
     """Payload operacji: set_normal_open_point.
 
-    Ustawia punkt normalnie otwarty (NOP) na łączniku w pierścieniu.
+    Przenosi punkt normalnie otwarty (NOP) pierścienia na wskazany łącznik — atomowo
+    (``enm/operacje_lacznikow.py``): wskazany łącznik normalnie otwarty, poprzedni punkt
+    podziału tego samego pierścienia normalnie zamknięty.
     """
 
     switch_ref: str
     """Referencja łącznika, który ma być punktem NOP."""
 
-    corridor_ref: str | None = None
-    """Opcjonalna referencja magistrali (korytarza)."""
+    close_ref: str | None = None
+    """Który z poprzednich punktów podziału zamknąć, gdy wskazany łącznik jest wspólny dla
+    kilku (topologia „theta"); przy jednym kandydacie opcjonalny."""
 
 
 class AddTransformerSNNNPayload(_FrozenBase):
@@ -1094,7 +1086,7 @@ class AddSnBayPayload(_FrozenBase):
     station_ref: str | None = None
     """Opcjonalna referencja stacji/GPZ/ZKSN zawierającej szynę."""
 
-    bay_role: Literal["IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"] = "FEEDER"
+    bay_role: RolaPolaModelu = "FEEDER"
     """Rola pola w kontrakcie ENM."""
 
     funkcja_pomiaru: Literal["UKLAD_ENERGII", "NAPIECIA_SZYN"] | None = None
@@ -1125,8 +1117,8 @@ class AddSnBayPayload(_FrozenBase):
     """Kanoniczne powiązanie katalogowe aparatu SN (fallback ekspercki)."""
 
     # V12K-058 (G-POLE-R): powiązanie pola z szablonem producenta — parytet z kreatorem
-    # stacji/GPZ (append_station_on_endpoint, add_grid_source_sn). Refy trafiają na
-    # field_spec przez _build_field_spec; protection wywodzi backend z szablonu.
+    # stacji/GPZ (append_station_on_endpoint, add_grid_source_sn). Refy trafiają na rekord
+    # pola przez `enm.pola.zbuduj_pole`; protection wywodzi backend z szablonu.
     switchgear_family_ref: str | None = None
     """Rodzina rozdzielnicy producenta (Reference Engine)."""
 
@@ -1139,21 +1131,10 @@ class AddSnBayPayload(_FrozenBase):
     protection_ref: str | None = None
     """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
 
-
-class AddSnBayFromCatalogPayload(_FrozenBase):
-    """Payload: add_sn_bay_from_catalog — pole stacji z KATALOGU rozdzielnic.
-
-    Kanon: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §2–§5, etap S5.
-    Rola pola, funkcja, rodzina, producent i całe wyposażenie pochodzą
-    z katalogu — payload wskazuje WYBÓR, a nie parametry.
-    """
-
-    bus_ref: str
-    """Referencja szyny SN, do której przypinane jest pole."""
-
-    station_ref: str | None = None
-    """Opcjonalna referencja stacji/GPZ/ZKSN zawierającej szynę."""
-
+    # Pole z KATALOGU rozdzielnic (kanon `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md`
+    # §2–§5, etap S5): wskazanie katalogowego pola albo jednostki bloku RMU przełącza
+    # operację na plan katalogowy — rola pola, funkcja, rodzina, producent i wyposażenie
+    # pochodzą wtedy z katalogu (`enm.pole_katalogowe.czy_wybor_katalogowy`).
     complete_bay_template_ref: str | None = None
     """Katalogowe pole rodziny MODUŁOWEJ (`CompleteMvBayTemplate.template_ref`).
     Wyklucza się z `factory_configuration_ref`."""
@@ -1165,25 +1146,9 @@ class AddSnBayFromCatalogPayload(_FrozenBase):
     """Numer jednostki bloku (1-based). Numer, a nie litera: blok powtarza
     litery jednostek (LLT ma dwie jednostki „L")."""
 
-    switchgear_family_ref: str | None = None
-    """Rodzina rozdzielnicy — gdy podana, MUSI zgadzać się z rodziną wybranego
-    pola/bloku (rozjazd = twardy błąd, nie ciche nadpisanie)."""
-
-    field_name: str | None = None
-    """Opcjonalna nazwa pola."""
-
-    gpz_section_id: str | None = None
-    """Sekcja GPZ, jeśli pole dotyczy konkretnej sekcji."""
-
-    catalog_binding: dict[str, Any] | None = None
-    """Kanoniczne powiązanie katalogowe aparatu głównego pola (APARAT_SN)."""
-
-    protection_ref: str | None = None
-    """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
-
     dry_run: bool = False
-    """Tryb próby: pełna walidacja i podgląd BOM bez mutacji modelu.
-    Źródło werdyktu VALID/INVALID dla konfiguratora pól SN."""
+    """Tryb próby (wyłącznie dla wyboru katalogowego): pełna walidacja i podgląd BOM bez
+    mutacji modelu — werdykt VALID/INVALID kreatora pola SN przed zapisem."""
 
 
 class ConverterSourceFieldPayload(_FrozenBase):
@@ -1402,51 +1367,83 @@ class AddNNLoadPayload(_FrozenBase):
     load_label: str | None = None
 
 
-DOMAIN_EVENT_TYPES: list[str] = [
-    "SEGMENT_SPLIT",
-    "CUT_NODE_CREATED",
-    "STATION_CREATED",
-    "PORTS_CREATED",
-    "FIELDS_CREATED_SN",
-    "DEVICES_CREATED_SN",
-    "TR_CREATED",
-    "BUS_NN_CREATED",
-    "FIELDS_CREATED_NN",
-    "DEVICES_CREATED_NN",
-    "RECONNECTED_GRAPH",
-    "LOGICAL_VIEWS_UPDATED",
-    "SOURCE_CREATED",
-    "BUS_CREATED",
-    "BRANCH_CREATED",
-    "SWITCH_INSERTED",
-    "RING_CONNECTED",
-    "NOP_SET",
-    "TRANSFORMER_CREATED",
-    "CATALOG_ASSIGNED",
-    "PARAMETERS_UPDATED",
-    "NN_SOURCE_FIELD_CREATED",
-    "PV_INVERTER_CREATED",
+DOMAIN_EVENT_TYPES: tuple[str, ...] = (
+    "AUX_LOAD_CREATED",
+    "BAY_EQUIPMENT_SET",
     "BESS_INVERTER_CREATED",
-    "FW_INVERTER_CREATED",
-    "GENSET_CREATED",
-    "UPS_CREATED",
-    "NN_LOAD_CREATED",
-    "NN_SOURCE_CATALOG_ASSIGNED",
-    # V2 — Ochrona
+    "BESS_SOURCE_CREATED",
+    "BRANCH_CREATED",
+    "BRANCH_POINT_CREATED",
+    "BUS_CREATED",
+    "BUS_NN_CREATED",
+    "CATALOG_ASSIGNED",
+    "CATALOG_CLEARED",
     "CT_CREATED",
+    "CUT_NODE_CREATED",
+    "DEVICES_CREATED_NN",
+    "DEVICES_CREATED_SN",
+    "ELEMENT_DELETED",
+    "ELEMENT_REATTACHED_TO_FIELD",
+    "FIELDS_CREATED_NN",
+    "FIELDS_CREATED_SN",
+    "FIELD_DEVICE_CREATED_SN",
+    "FIELD_DEVICE_UPDATED_SN",
+    "FIELD_TERMINAL_CREATED_SN",
+    "FIELD_UPDATED_SN",
+    "FW_INVERTER_CREATED",
+    "FW_SOURCE_CREATED",
+    "GENERATOR_SN_CREATED",
+    "GENSET_CREATED",
+    "GPZ_LINE_FIELD_CREATED_SN",
+    "GPZ_SECTION_ADDED",
+    "GPZ_SECTION_DELETED",
+    "GPZ_SECTION_UPDATED",
+    "LOAD_SN_CREATED",
+    "LOGICAL_VIEWS_UPDATED",
+    "MEASUREMENT_SECONDARY_CIRCUIT_SET",
+    "NN_CABLE_LAYING_CONDITIONS_SET",
+    "NN_CABLE_SEGMENT_CREATED",
+    "NN_FEEDER_ELEMENT_COPIED",
+    "NN_LOAD_CREATED",
+    "NN_RCD_CREATED",
+    "NN_SECTION_COUPLER_CREATED",
+    "NN_SOURCE_FIELD_CREATED",
+    "NN_SWITCH_DEVICE_CREATED",
+    "NOP_CLEARED",
+    "NOP_SET",
+    "PARAMETERS_UPDATED",
+    "PORTS_CREATED",
+    "PROTECTION_CREATED",
+    "PROTECTION_SETTINGS_UPDATED",
+    "PV_INVERTER_CREATED",
+    "RECONNECTED_GRAPH",
+    "RING_CONNECTED",
+    "SEGMENTS_MERGED",
+    "SEGMENT_SPLIT",
+    "SHUNT_COMPENSATOR_CREATED",
+    "SOURCE_CREATED",
+    "STATION_APPENDED_ON_ENDPOINT",
+    "STATION_CREATED",
+    "SUBSTATION_CREATED",
+    "SURGE_ARRESTER_CREATED",
+    "SWITCH_CLOSED",
+    "SWITCH_INSERTED",
+    "SWITCH_OPENED",
+    "TAP_CHANGER_SET",
+    "TRANSFORMER_CREATED",
+    "TR_CREATED",
+    "UPS_CREATED",
     "VT_CREATED",
-    "RELAY_CREATED",
-    "RELAY_SETTINGS_UPDATED",
-    "TCC_CURVE_COMPUTED",
-    "SELECTIVITY_VALIDATED",
-    # V2 — Study Case
-    "STUDY_CASE_CREATED",
-    "CASE_STATE_UPDATED",
-    "ANALYSIS_RUN_STARTED",
-    "ANALYSIS_RUN_COMPLETED",
-    "RESULTS_MAPPED",
-]
-"""Lista dozwolonych typów zdarzeń domenowych."""
+    "ZESPOL_UZIEMIAJACY_CREATED",
+    "ZESPOL_UZIEMIAJACY_UPDATED",
+)
+"""Rejestr typów zdarzeń domenowych — DOKŁADNIE typy emitowane przez operacje (W5-C).
+
+Dawna lista (i jej martwa kopia ``enm/domain_event_types.py`` bez konsumenta) rozjechała
+się z kodem: 33 emitowane typy nie były w rejestrze, 13 wpisów (studium, przebiegi, przekaźniki)
+nie było nigdy emitowanych. Test ``tests/enm/test_rejestr_zdarzen_domenowych.py`` pilnuje obu
+kierunków: każdy literał ``"event_type"`` w ``src/enm`` jest w rejestrze i każdy wpis rejestru
+występuje w kodzie operacji."""
 
 
 # ===========================================================================
@@ -1494,8 +1491,10 @@ class TrunkViewV1(_FrozenBase):
     segments: list[str]
     """Uporządkowana lista identyfikatorów segmentów magistrali."""
 
-    no_point_ref: str | None = None
-    """Identyfikator punktu normalnie otwartego (NOP), jeśli istnieje."""
+    no_point_refs: list[str] = []
+    """Punkty normalnie otwarte magistrali (W5-C): łączniki z ``normal_state="open"`` leżące
+    na magistrali albo na pętli zawierającej jej odcinek — wyprowadzone akcesorem
+    ``enm.topology.punkty_podzialu_korytarza`` (jedno źródło, posortowane po ``ref_id``)."""
 
     terminals: list[TerminalRef] = []
     """Terminale magistrali (punkty końcowe dostępne do rozbudowy)."""
@@ -1544,7 +1543,7 @@ class LineFieldV1(_FrozenBase):
     """
 
     field_ref: str
-    """Identyfikator pola (specyfikacja `meta.field_specs` stacji albo GPZ)."""
+    """Identyfikator pola (`Bay.ref_id` rekordu `bays` stacji albo GPZ)."""
 
     station_ref: str
     """Stacja albo GPZ, do której należy pole."""

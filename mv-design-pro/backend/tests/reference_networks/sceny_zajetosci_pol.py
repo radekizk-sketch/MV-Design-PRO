@@ -66,8 +66,6 @@ def _gpz(*, z_zaciskami: bool, sekcje: int = 2) -> dict[str, Any]:
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "catalog_ref": ZRODLO,
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
         "sections_count": sekcje,
         "line_fields_per_section": 2,
     }
@@ -184,11 +182,9 @@ def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
         if stan == "brak_pol":
             # Operacja budowy GPZ wymaga co najmniej jednego pola na sekcję — stan „brak
             # pól” istnieje wyłącznie jako model zastany (archiwum); odtwarzamy go wprost.
+            # Karta W5-B: pola są rekordami `bays` — kasujemy rekordy pól liniowych GPZ.
             enm = copy.deepcopy(enm)
-            gpz = next(s for s in enm["substations"] if s.get("station_type") == "gpz")
-            gpz["meta"]["field_specs"] = [
-                f for f in gpz["meta"]["field_specs"] if f.get("field_ref") not in pola
-            ]
+            enm["bays"] = [f for f in enm.get("bays") or [] if f.get("ref_id") not in pola]
             pola = []
 
     # Zajmowane są wyłącznie pola WOLNE (pole wyjściowe stacji wstawionej w odcinek jest zajęte

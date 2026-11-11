@@ -39,7 +39,7 @@ from network_model.core.topologia import (
 )
 from network_model.core.ybus import AdmittanceMatrixBuilder
 
-from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
+from tests.golden.parytet_assemblera.harness import kopie_sieci_enm_rejestru
 
 # --------------------------------------------------------------------------- jądro
 
@@ -265,7 +265,7 @@ def test_typy_maszyn_sa_jednym_zrodlem_prawdy_z_mapowaniem_enm_ir() -> None:
 
 
 def _sieci() -> list[tuple[str, EnergyNetworkModel]]:
-    return sieci_enm_rejestru()
+    return kopie_sieci_enm_rejestru()
 
 
 @pytest.fixture(scope="module")

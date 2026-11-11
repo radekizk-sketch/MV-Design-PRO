@@ -605,7 +605,6 @@ class StationAudit2ConfigORM(Base):
     Audit2 Station Config ORM (Punkt 3 — Phase 2 backend integration).
 
     Persystencja stanu audytu 2 per (project_id, station_id):
-    - mv_neutral_grounding_ref: B.1 typ uziemienia neutralnego SN
     - tap_changer_refs: eng.13 lista przelacznikow zaczepow per transformator
     - der_specs: lista DER z polami audit2 (BESS modes, block-trafo, P(f))
 
@@ -620,7 +619,6 @@ class StationAudit2ConfigORM(Base):
         GUID(), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     station_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    mv_neutral_grounding_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tap_changer_refs: Mapped[list[Any]] = mapped_column(
         DeterministicJSON(), nullable=False, default=list
     )

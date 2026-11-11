@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * BuildSequence tests — event-sourced builder commands.
  *

@@ -13,17 +13,27 @@ from typing import Annotated, Any, Literal, get_args
 from uuid import UUID, uuid4
 
 from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
+from network_model.core.bateria_kondensatorow import (
+    UkladPolaczenBaterii,
+    sprzecznosc_parametrow_baterii,
+)
 from network_model.core.uziemienie import (
+    GrupaTransformatoraUziemiajacego,
+    RegulacjaDlawika,
     RolaUziemnika,
+    StanLacznikaPunktuNeutralnego,
+    StronaRezystoraAwsc,
     TypPunktuNeutralnego,
     UziemienieEkranuKabla,
 )
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StrictBool, StrictInt, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
+from .rola_pola_sn import RolaKanonicznaPolaSn, RolaPolaModelu
+from .stan_normalny import migruj_punkty_podzialu_slownika
 from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
@@ -45,9 +55,11 @@ class GroundingConfig(BaseModel):
     """Sposób pracy punktu neutralnego — JEDYNY typ w systemie (W5-A §1 p. 1).
 
     Nośniki: ``Transformer.hv_neutral``/``lv_neutral`` (punkt gwiazdowy uzwojenia
-    z wyprowadzonym neutralnym) i ``Source.neutral_grounding`` (punkt neutralny
-    sieci SN zasilanej z równoważnika GPZ). Zero kopii: ``Bus.grounding`` i
-    ``substation.meta["grounding"]`` skasowane z migracją przy wczytaniu.
+    z wyprowadzonym neutralnym) i ``Source.neutral_grounding`` (punkt neutralny sieci
+    110 kV albo nN za granicą modelu — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3).
+    Punkt neutralny sieci SN opisuje zespół uziemiający (``ZespolUziemiajacy``) albo
+    uzwojenie transformatora — ``enm/uziemienie_sekcji.py``. Zero kopii: ``Bus.grounding``
+    i ``substation.meta["grounding"]`` skasowane z migracją przy wczytaniu.
     """
 
     type: TypPunktuNeutralnego
@@ -430,11 +442,23 @@ class Cable(BranchBase):
 
 
 class SwitchBranch(BranchBase):
-    """Wyłącznik, rozłącznik, sprzęgło, sekcjoner."""
+    """Wyłącznik, rozłącznik, sprzęgło, sekcjoner.
+
+    W5-C (jedna prawda stanu łączeniowego): ``status`` (pole bazowe) jest JEDYNYM
+    stanem czytanym przez fizykę — bieżące położenie łącznika w modelu bazowym.
+    ``normal_state`` to POZYCJA NORMALNA z projektu (punkt normalnie otwarty =
+    ``"open"``); ``None`` = niezadeklarowana, nie domysł. Punkty podziału sieci
+    wyprowadza akcesor ``enm.topology.punkty_podzialu`` wyłącznie z tego pola —
+    dawna kopia ``Corridor.no_point_ref`` jest skasowana (migracja
+    ``enm/stan_normalny.py``). Stan łącznika w scenariuszu ruchowym nadpisuje
+    ``status`` w migawce efektywnej (``OperatingScenario.switch_states``), model
+    bazowy zostaje bez zmian.
+    """
 
     type: Literal["switch", "breaker", "bus_coupler", "disconnector"]
     r_ohm: float | None = None
     x_ohm: float | None = None
+    normal_state: Literal["closed", "open"] | None = None
 
 
 class FuseBranch(BranchBase):
@@ -554,10 +578,11 @@ class Source(ENMElement):
     source_side: Literal["SN", "HV_110"] | None = None
     sn_voltage_kv: float | None = None
     voltage_hv_kv: float | None = None
-    # W5-A §1 p. 1: opis inżynierski punktu neutralnego sieci SN zasilanej z tego
-    # równoważnika (GPZ). Fizyka czyta, jak dotąd, `r0_ohm`/`x0_ohm` | `z0_z1_ratio`;
-    # kreator GPZ wyprowadza je z (Z_T0 + 3·Z_N) w `pochodne/skladowe_zerowe.py`
-    # i zapisuje OBA: opis i liczby (proweniencja `WYPROWADZONE` w `meta`).
+    # W5-A §1 p. 1 i karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3): opis punktu
+    # neutralnego sieci za granicą modelu po stronie 110 kV (albo nN). Fizyka czyta
+    # `r0_ohm`/`x0_ohm` | `z0_z1_ratio` WYŁĄCZNIE dla źródła spoza pasma SN
+    # (`enm.uziemienie_sekcji.impedancja_zerowa_zrodla_dozwolona`); źródło na szynie SN
+    # z tymi danymi zgłasza walidator (W-W5-02), a operacja odmawia ich zapisu.
     neutral_grounding: GroundingConfig | None = None
     sk3_hv_mva: float | None = None
     sk3_mva: float | None = None
@@ -638,15 +663,36 @@ class Load(ENMElement):
 
 
 class ShuntCapacitor(ENMElement):
-    """Stała bateria kondensatorów (kompensacja mocy biernej) na szynie.
+    """Bateria kondensatorów równoległych SN (kompensacja mocy biernej) na szynie.
 
-    Element FIRST-CLASS ENM: reprezentuje równoległą susceptancję pojemnościową
-    przyłączoną do jednej szyny. W rozpływie mocy mapuje się na istniejący
-    mechanizm shuntów solvera (ShuntSpec) przez susceptancję b_pu liczoną z
-    pierwszych zasad: B = Q_rated / U_rated² → b_pu = Q_rated / S_base.
+    Element FIRST-CLASS ENM: równoległa admitancja pojemnościowa przyłączona do jednej szyny —
+    w GPZ do zacisku pola baterii kondensatorów (`Bay.bay_role == "BKR"`, `terminal_bus_ref`
+    pola = `bus_ref` baterii; ENEA Operator, Zeszyt 1 §13, §17, Zał. 16). W rozpływie mocy
+    mapuje się na mechanizm boczników solvera (`ShuntSpec`) przez admitancję z pierwszych
+    zasad: B = Q_n·(n_zał/n)/U_n² [S], b_pu = B·U_b²/S_b — moc bierna przy napięciu U
+    wynosi Q = Q_n·(n_zał/n)·(U/U_n)² (`network_model.pochodne.bateria_kondensatorow`).
 
-    Przełączanie dyskretne (sterowane napięciem) NIE jest w zakresie —
-    modelujemy stały bank (status in_service: closed/open).
+    Pola karty UX-04/POLE-BKR-MODEL (wszystkie addytywne; `None`/pusta lista = dana
+    nienadana przez projektanta — poza odciskiem `enm/hash.py`). Wartość nadana na elemencie
+    ma pierwszeństwo przed parametrem typu katalogowego (`materialized_params`, kopia przy
+    przypisaniu typu), a brak obu = wartość robocza rejestru
+    (`network_model.catalog.wartosci_robocze`, zasada nr 4) — rozstrzyga
+    `enm.bateria_kondensatorow.parametry_baterii`.
+
+    * `uklad_polaczen` — układ połączeń (`network_model.core.bateria_kondensatorow`);
+    * `liczba_stopni` — liczba jednakowych stopni baterii (≥ 1);
+    * `stopnie_zalaczone` — stan każdego stopnia (`True` = załączony), długość równa liczbie
+      stopni; `None` = wszystkie stopnie załączone. Stan całej baterii (wyłącznik pola) to
+      `status`;
+    * `tolerancja_pojemnosci_min_proc` / `_max_proc` — dopuszczalna odchyłka pojemności od
+      znamionowej [%] (zakres mocy biernej w śladzie rozpływu);
+    * `dlawik_ograniczajacy` / `dlawik_indukcyjnosc_mh` — dławik szeregowy ograniczający prąd
+      załączania (jest / nie ma; indukcyjność [mH], gdy jest);
+    * `rezystory_rozladowcze_wewnetrzne` — jednostki mają wewnętrzne rezystory rozładowcze
+      (gdy nie — pole BKR wymaga przekładników napięciowych rozładowczych);
+    * `wylaczenie_od_transformatorow` — transformatory, których wyłączenie od strony SN wyłącza
+      baterię (IRiESD II.4.5.4.4.2). Dane dla logiki łączeniowej; walidator sprawdza
+      kompletność wobec transformatorów zasilających sekcję baterii.
     """
 
     bus_ref: str
@@ -659,6 +705,151 @@ class ShuntCapacitor(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+    uklad_polaczen: UkladPolaczenBaterii | None = None
+    # Typy ścisłe: te same granice co typ katalogowy (KAT-T-052, KAT-T-055) — wartość logiczna
+    # nie jest liczbą stopni, a liczba ani napis („1”, „yes”) nie jest wartością logiczną.
+    liczba_stopni: StrictInt | None = Field(default=None, ge=1)
+    stopnie_zalaczone: list[StrictBool] | None = None
+    tolerancja_pojemnosci_min_proc: float | None = Field(default=None, le=0.0)
+    tolerancja_pojemnosci_max_proc: float | None = Field(default=None, ge=0.0)
+    dlawik_ograniczajacy: StrictBool | None = None
+    dlawik_indukcyjnosc_mh: float | None = Field(default=None, gt=0.0)
+    rezystory_rozladowcze_wewnetrzne: StrictBool | None = None
+    wylaczenie_od_transformatorow: list[str] = []
+
+    @model_validator(mode="after")
+    def _spojnosc_stopni_i_dlawika(self) -> ShuntCapacitor:
+        """Sprzeczność parametrów nadanych na elemencie (stan stopni pusty albo innej długości
+        niż liczba stopni, indukcyjność dławika bez dławika) — JEDNO zdanie z liścia
+        ``sprzecznosc_parametrow_baterii``, to samo, które czyta odmowa zapisu parametrów.
+        Zgodność stanu stopni z liczbą stopni typu (gdy liczba nie jest nadana na elemencie)
+        sprawdza walidator modelu (E043)."""
+        sprzecznosc = sprzecznosc_parametrow_baterii(
+            liczba_stopni=self.liczba_stopni,
+            stopnie_zalaczone=self.stopnie_zalaczone,
+            dlawik_ograniczajacy=self.dlawik_ograniczajacy,
+            dlawik_indukcyjnosc_mh=self.dlawik_indukcyjnosc_mh,
+        )
+        if sprzecznosc is not None:
+            raise ValueError(f"bateria {self.ref_id!r}: {sprzecznosc}")
+        return self
+
+
+# ---------------------------------------------------------------------------
+# ZespolUziemiajacy (zespół uziemiający punktu neutralnego sieci SN — ENEA Z.13/Z.14/Z.15)
+# ---------------------------------------------------------------------------
+
+
+class RezystorWymuszajacyAwsc(BaseModel):
+    """Rezystor wymuszający składową czynną prądu doziemnego (AWSC, rysunek Z.13).
+
+    Zeszyt 1 §16: rezystor zabudowany po stronie wtórnej dławika (uzwojenie 500 V),
+    wymuszający po stronie pierwotnej prąd 20–40 A; strona pierwotna przy prądach > 40 A.
+    ``i_wymuszany_a`` = prąd czynny po stronie PIERWOTNEJ (ta wielkość wchodzi do Z_N
+    jako R_w = U_n/(√3·I_w) równolegle z X_L). Łącznik rezystora jest w stanie normalnym
+    otwarty (automatyka w spoczynku) — z natury urządzenia załączanego czasowo, więc model
+    nie niesie jego stanu: przypadek obliczeniowy wybiera stan ``stan_awsc`` scenariusza
+    zwarciowego (Case Immutability Rule; ``spoczynek`` albo ``zalaczony``). Czasy automatyki
+    są daną dla logiki łączeniowej i zabezpieczeń, nie dla fizyki Z_N.
+    """
+
+    i_wymuszany_a: Annotated[float, Field(gt=0)] | None = None
+    strona: StronaRezystoraAwsc | None = None
+    czas_zwloki_s: Annotated[float, Field(ge=0)] | None = None
+    czas_zalaczenia_s: Annotated[float, Field(gt=0)] | None = None
+
+
+class DlawikGaszacy(BaseModel):
+    """Dławik gaszący w punkcie neutralnym transformatora uziemiającego (Z.13, Z.14).
+
+    Zakres regulacji I_min–I_max (Zeszyt 1 §16: dobór na minimum 40–400 A, regulacja płynna
+    10–100 %), regulacja płynna albo zaczepowa, stan dostrojenia ``i_nastawy_a`` (prąd
+    indukcyjny nastawiony — wynik regulacji nadążnej albo położenie zaczepu). Brak nastawy
+    = wartość robocza ESTIMATED (środek zakresu), nigdy cicha domyślka. ``stan_odlacznika``
+    = odłącznik dławika (Zeszyt 1 §16: odłączenie dławika bez wyłączania transformatora
+    uziemiającego; Z.14: odłącznik każdej gałęzi).
+    """
+
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    materialized_params: dict | None = None
+    i_min_a: Annotated[float, Field(gt=0)] | None = None
+    i_max_a: Annotated[float, Field(gt=0)] | None = None
+    regulacja: RegulacjaDlawika | None = None
+    liczba_zaczepow: Annotated[int, Field(ge=2)] | None = None
+    i_nastawy_a: Annotated[float, Field(gt=0)] | None = None
+    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
+    awsc: RezystorWymuszajacyAwsc | None = None
+
+
+class RezystorUziemiajacy(BaseModel):
+    """Rezystor uziemiający punkt neutralny (Z.14 gałąź rezystora, Z.15).
+
+    ``r_ohm`` — rezystancja [Ω], ``i_n_a`` — prąd znamionowy [A], ``t_s`` — dopuszczalny
+    czas przepływu prądu znamionowego [s]. ``stan_odlacznika`` — odłącznik gałęzi rezystora.
+    """
+
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    materialized_params: dict | None = None
+    r_ohm: Annotated[float, Field(gt=0)] | None = None
+    i_n_a: Annotated[float, Field(gt=0)] | None = None
+    t_s: Annotated[float, Field(gt=0)] | None = None
+    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
+
+
+class ZespolUziemiajacy(ENMElement):
+    """Zespół uziemiający sieci SN: transformator uziemiający ZN z elementami punktu
+    neutralnego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) — JEDYNY nośnik uziemienia punktu
+    neutralnego sieci SN obok punktu neutralnego uzwojenia transformatora.
+
+    Element fizyczny na końcu toru pola ZU (port ``transformator_uziemiajacy`` szablonu pola):
+    ``bus_ref`` — szyna SN, do której przyłączony jest transformator uziemiający (przez
+    wyłącznik pola ZU modelowany jak każdy łącznik gałęzią ``SwitchBranch`` — stan łącznika
+    ZU wynika z topologii, nie z kopii w tym rekordzie); ``bay_ref`` — pole ZU.
+
+    Transformator uziemiający (``catalog_ref`` w przestrzeni ``TRANSFORMATOR_UZIEMIAJACY``):
+    grupa ZNyn, S_n, U_n, impedancja zerowa Z_0,TU = R_0 + jX_0 [Ω/fazę] i uzwojenie potrzeb
+    własnych 400/230 V (drugi port: ``odbior_pw_ref`` wskazuje odbiór potrzeb własnych stacji
+    zasilany z tego uzwojenia — Zeszyt 1 §27.1, potrzeby własne GPZ nie mają osobnego pola).
+    W składowej zgodnej i przeciwnej zygzak nie wnosi impedancji (prąd magnesujący pomijalny);
+    w składowej zerowej zespół jest bocznikiem Z_0 = Z_0,TU + 3·Z_N.
+
+    Punkt neutralny: ``dlawik`` (Z.13, z opcjonalnym ``awsc``), ``rezystor`` (Z.15) albo oba
+    równolegle (Z.14, każda gałąź z własnym odłącznikiem). ``uziemienie_bezposrednie`` —
+    punkt neutralny transformatora uziemiającego połączony wprost z ziemią (Z_N = 0; poza
+    rozwiązaniami dopuszczonymi przez Zeszyt 1 §16, ale fizycznie możliwe) — jawna deklaracja,
+    nigdy wniosek z braku elementów: zespół bez dławika, bez rezystora i bez tej deklaracji
+    jest brakiem MODELU z nazwaną przyczyną, a deklaracja razem z dławikiem lub rezystorem —
+    sprzecznością nazwaną. Wariant i Z_N wyprowadza ``enm.uziemienie_sekcji`` — nigdy kopia
+    w modelu.
+
+    Automatyka (dane reguł walidatora, logika operacji łączeniowych należy do osobnej karty):
+    ``spz`` — SPZ transformatora uziemiającego (Zeszyt 1 §26.9.6: wyłącznie w sieci uziemionej
+    przez rezystor); ``wylaczenie_od_transformatorow_refs`` — transformatory 110 kV/SN, których
+    każde automatyczne wyłączenie pola SN wyłącza ten zespół (IRiESD II.4.5.4.3.5: obowiązkowe
+    przy rezystorze).
+    """
+
+    bus_ref: str
+    bay_ref: str | None = None
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None
+    materialized_params: dict | None = None
+    grupa_polaczen: GrupaTransformatoraUziemiajacego | None = None
+    u_n_kv: Annotated[float, Field(gt=0)] | None = None
+    s_n_kva: Annotated[float, Field(gt=0)] | None = None
+    r0_ohm: Annotated[float, Field(ge=0)] | None = None
+    x0_ohm: Annotated[float, Field(ge=0)] | None = None
+    s_pw_kva: Annotated[float, Field(gt=0)] | None = None
+    u_pw_kv: Annotated[float, Field(gt=0)] | None = None
+    odbior_pw_ref: str | None = None
+    dlawik: DlawikGaszacy | None = None
+    rezystor: RezystorUziemiajacy | None = None
+    uziemienie_bezposrednie: bool = False
+    spz: bool = False
+    wylaczenie_od_transformatorow_refs: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -1148,7 +1339,6 @@ class LineRun(BaseModel):
     starting_port_ref: str  # konkretny port pola wyjściowego
     segments: list[LineRunSegmentRef] = []
     stations: list[LineRunStationRef] = []
-    nop_station_ref: str | None = None  # stacja z punktem normalnie otwartym (dla pierścieni)
     parent_run_ref: str | None = None  # dla odgałęzień: ref do ciągu macierzystego
     branch_origin_station_ref: str | None = None  # punkt startu odgałęzienia
 
@@ -1251,12 +1441,83 @@ class NnSection(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class Bay(ENMElement):
-    """Pole rozdzielcze SN (IN, OUT, TR, COUPLER, FEEDER, MEASUREMENT, OZE)."""
+class MetadanePochodzeniaPola(BaseModel):
+    """Metadane POCHODZENIA pola (karta W5-B, dawne klucze `bay_kind`/`source_status`/
+    `source_refs` wpisu dawny słownik pól SN w `meta` stacji): skąd pole wzięło się w modelu (kreator, szablon,
+    import) i z jakich źródeł danych. Dane inżynierskie o pochodzeniu, nie fizyka."""
 
-    bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
-    substation_ref: str
+    bay_kind: str | None = None
+    source_status: str | None = None
+    source_refs: list[str] = []
+
+
+class WyborBlokuPola(BaseModel):
+    """Wybór BLOKU FABRYCZNEGO pola rodziny RMU (karta W5-B; dawne klucze
+    `factory_configuration_ref`/`factory_unit_index` wpisu). Pole rodziny blokowej jest
+    jednostką konkretnego wyrobu, nie luźną celką — numer jednostki bez bloku nie istnieje."""
+
+    factory_configuration_ref: str
+    factory_unit_index: int | None = None
+
+
+class OgranicznikPrzepiecPola(BaseModel):
+    """Ogranicznik przepięć zainstalowany w polu (`add_surge_arrester_sn`; dawny klucz
+    `surge_arresters[]` wpisu). Wejście koordynacji izolacji V12.6 czyta tę listę."""
+
+    device_ref: str
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+
+
+class Bay(ENMElement):
+    """Pole rozdzielnicy — JEDYNY nośnik pól SN, nN i ZKSN (karta W5-B, 2026-09-30).
+
+    Do karty W5-B pola żyły w trzech nietypowanych słownikach (dawny słownik pól SN w `meta` stacji,
+    dawny słownik pól nN w `meta` stacji, dawny słownik pól ZKSN punktu rozgałęzienia)
+    i w tej kolekcji naraz; każdy czytelnik składał je po swojemu. Teraz kolekcja `bays` jest
+    jedynym źródłem: pole stacji wskazuje `substation_ref`, pole rozdzielnicy odgałęźnej ZKSN
+    wskazuje `branch_point_ref` (dokładnie jedno z dwóch). Poziom pola (SN/nN) NIE jest polem
+    rekordu — wynika z napięcia szyny `bus_ref` (`enm.pola.czy_pole_nn`, pasmo z
+    `network_model.pochodne.pasma_napieciowe`).
+
+    `meta` (słownik `ENMElement`) niesie adnotacje inżynierskie bez typowanego odpowiednika
+    (np. `gpz_line_field_index`, `assigned_corridor_ref`, `feeder_role`, `transformer_ref`,
+    `catalog_binding`, `field_status`); klucze mające typowany odpowiednik (`field_role`,
+    `terminal_bus_ref`, `gpz_section_id`) w `meta` NIE występują — migracja
+    `enm/migrations/field_specs_promocja.py` je przenosi, a pisarz `enm.pola.dodaj_pole`
+    odmawia dubli.
+    """
+
+    bay_role: RolaPolaModelu
+    # Właściciel pola: stacja (pole SN/nN) ALBO punkt rozgałęzienia ZKSN — dokładnie jedno.
+    substation_ref: str | None = None
+    branch_point_ref: str | None = None
+    # Port punktu rozgałęzienia obsługiwany przez pole ZKSN (`MAIN_IN`/`MAIN_OUT`/`BRANCH[_n]`).
+    branch_point_port_id: str | None = None
     bus_ref: str
+    # Rola KANONICZNA pola (`enm.rola_pola_sn`: LINIA_IN/LINIA_OUT/LINIA_ODG/TRANSFORMATOROWE/
+    # SPRZEGLO/POMIAROWE/PV_SN/BESS_SN/FW_SN). `bay_role` jest aliasem modelu; rola kanoniczna
+    # rozróżnia np. pole odgałęźne (OUT + LINIA_ODG) od wyjściowego ciągu (OUT + LINIA_OUT).
+    field_role: str | None = None
+    # Własny ZACISK pola — szyna za aparatem pola (POLA-W-TORZE). JEDYNY nośnik zacisku
+    # (dawne klucze zacisku w `meta` wpisu — przenosi je migracja przy wczytaniu).
+    terminal_bus_ref: str | None = None
+    # Pomiar pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5): układ energii vs pomiar
+    # napięcia szyn; rodzaj układu pomiarowego energii.
+    funkcja_pomiaru: str | None = None
+    rodzaj_pomiaru: str | None = None
+    # Powiązania producenckie pola (rodzina rozdzielnicy, producent, aparat wskazany na polu,
+    # identyfikator konfiguracji z szablonu).
+    switchgear_family_ref: str | None = None
+    manufacturer_ref: str | None = None
+    apparatus_catalog_ref: str | None = None
+    config_id: str | None = None
+    # Powiązania katalogowe wpisu pola (kształt payloadu kreatora; pole nN: wiązanie aparatu
+    # odpływowego czytane przez promocję aparatów nN).
+    catalog_bindings: dict[str, Any] | None = None
+    wybor_bloku: WyborBlokuPola | None = None
+    metadane_pochodzenia: MetadanePochodzeniaPola | None = None
+    surge_arresters: list[OgranicznikPrzepiecPola] = []
     gpz_section_id: str | None = None
     equipment_refs: list[str] = []
     protection_ref: str | None = None
@@ -1296,6 +1557,23 @@ class Bay(ENMElement):
     # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
     # (ścieżka konwencji rysunku, zero domysłu).
     primary_devices: list[BayPrimaryDevice] = []
+
+    @model_validator(mode="after")
+    def _wlasciciel_pola(self) -> Bay:
+        """Pole ma DOKŁADNIE jednego właściciela: stację albo punkt rozgałęzienia ZKSN.
+        Port punktu rozgałęzienia ma sens wyłącznie dla pola ZKSN."""
+        ma_stacje = isinstance(self.substation_ref, str) and bool(self.substation_ref.strip())
+        ma_punkt = isinstance(self.branch_point_ref, str) and bool(self.branch_point_ref.strip())
+        if ma_stacje == ma_punkt:
+            raise ValueError(
+                f"pole {self.ref_id!r} musi wskazywać dokładnie jednego właściciela: "
+                "substation_ref (pole stacji) albo branch_point_ref (pole ZKSN)"
+            )
+        if self.branch_point_port_id is not None and not ma_punkt:
+            raise ValueError(
+                f"pole {self.ref_id!r}: branch_point_port_id dotyczy wyłącznie pola ZKSN"
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -1357,6 +1635,11 @@ class BayPrimaryDevice(BaseModel):
         # F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
         # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
         "SURGE_ARRESTER",
+        # UX-04/POLE-BKR-MODEL (ENEA Zeszyt 1 §17, Zał. 16): przekładnik prądowy
+        # niezrównoważenia baterii (połączenie międzygwiazdowe) i przekładnik napięciowy
+        # międzyfazowy (rozładowanie baterii, U>) — `catalog.rodzaje_aparatury`.
+        "UNBALANCE_CT",
+        "PHASE_TO_PHASE_VT",
     ]
     placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
@@ -1586,6 +1869,12 @@ class BayScenarioState(BaseModel):
     source: Literal["bazowy", "wariant", "symulacja_przelaczen", "ruch"] = "bazowy"
 
 
+TrybPracyZrodla = Literal["praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"]
+# Jeden słownik trybu pracy źródła: zapis (`set_source_operating_mode`), odczyt
+# (`application/field_read_model._generator_operating_mode`) i pole modelu niżej.
+TRYBY_PRACY_ZRODLA: tuple[str, ...] = get_args(TrybPracyZrodla)
+
+
 class BaySourceEndpoint(BaseModel):
     source_kind: Literal["PV", "BESS", "FW"]
     inverter_ref: str | None = None
@@ -1594,24 +1883,12 @@ class BaySourceEndpoint(BaseModel):
     block_transformer_ref: str | None = None
     requires_vt: bool = False
     requires_synchrocheck: bool = False
-    operating_mode: Literal[
-        "praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"
-    ] = "gotowosc"
+    operating_mode: TrybPracyZrodla = "gotowosc"
 
 
 class BayBaseModel(BaseModel):
     bay_ref: str
-    bay_role: Literal[
-        "LINIA_IN",
-        "LINIA_OUT",
-        "TRANSFORMATOROWE",
-        "LINIA_ODG",
-        "SPRZEGLO",
-        "POMIAROWE",
-        "PV_SN",
-        "BESS_SN",
-        "FW_SN",
-    ]
+    bay_role: RolaKanonicznaPolaSn
     specialization: Literal["BRAK", "POTRZEBY_WLASNE"] = "BRAK"
     substation_ref: str
     gpz_section_id: str | None = None
@@ -1647,6 +1924,14 @@ class BayBaseModel(BaseModel):
     # (exclude_none). Nie wypełniać na istniejących fixture'ach.
     bay_template_ref: str | None = None
     switchgear_family_ref: str | None = None
+    # W5-C: stan danych wyposażenia pola — z REKORDU `Bay.primary_devices` (nie z aparatów
+    # wyprowadzonych z gałęzi pola, którymi odczyt uzupełnia rysunek pola bez rekordu):
+    # MODEL (każdy aparat z pozycją katalogową), PROPOZYCJA (wartość robocza — z szablonu
+    # albo rodzaj bez katalogu SN), BRAK_DANYCH (rekord bez aparatów). Reguła jedna:
+    # `enm.wyposazenie_pola.stan_danych_wyposazenia`; dane przyjęte (jakość ESTIMATED) —
+    # `dane_przyjete_wyposazenia`.
+    equipment_data_state: Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"] = "BRAK_DANYCH"
+    equipment_assumed_data: list[dict[str, Any]] = []
 
 
 class BayShortCircuitSourceContribution(BaseModel):
@@ -1688,14 +1973,6 @@ class BayEarthFaultPath(BaseModel):
     closure_path_elements: list[str] = []
     transformer_contribution_ref: str | None = None
     grounding_device_ref: str | None = None
-    # EARTHING-1 (most produkcyjny SC_1F -> uziemienia): dane PROJEKTOWE uziomu
-    # potrzebne do napiec dotykowego/krokowego (PN-EN 50522). Addytywne, None =
-    # dana niedostarczona (ZERO zgadywania — brak => readiness fix-action,
-    # pack nie liczy). Nie sa fizyka: to wejscie projektowe (rezystancja uziomu
-    # z pomiaru rezystywnosci gruntu; wspolczynnik podzialu r z torow powrotnych
-    # ekran/OPGW). Prad doziemny I''k1 pochodzi z solvera SC_1F.
-    earth_electrode_resistance_ohm: float | None = None  # R_u = Z_E [Ω]
-    earth_return_split_factor: float | None = None  # r (0..1): udzial wracajacy uziomem
 
 
 class BayProofBinding(BaseModel):
@@ -1752,7 +2029,9 @@ class Corridor(ENMElement):
 
     corridor_type: Literal["radial", "ring", "mixed"]
     ordered_segment_refs: list[str]
-    no_point_ref: str | None = None
+    # W5-C: punkt normalnie otwarty NIE jest polem magistrali — wyprowadza go akcesor
+    # `enm.topology.punkty_podzialu_korytarza` z `SwitchBranch.normal_state` (jedno
+    # źródło). Dawne `no_point_ref` migruje `enm/stan_normalny.py`.
 
 
 # ---------------------------------------------------------------------------
@@ -1796,7 +2075,8 @@ class BranchPointSN(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] = "KATALOG"
     ports: BranchPointSNPorts | None = None
     branch_occupied: dict[str, str] = {}
-    switch_state: Literal["open", "closed"] | None = None
+    # W5-C: dawne `switch_state` (kopia stanu łączników portów) skasowane — stan żyje na
+    # gałęziach łączników portów (`status`/`normal_state`); migracja `enm/stan_normalny.py`.
     materialized_params: dict | None = None
     completeness_status: Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None = None
     runtime_inputs: dict | None = None
@@ -1861,6 +2141,26 @@ class KatalogProjektu(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def migruj_zapis_zastany_slownika(data: dict[str, Any]) -> dict[str, Any]:
+    """JEDYNA lista migracji zastanego zapisu migawki ENM (słownik → słownik).
+
+    Woła ją walidator ``before`` modelu (każda droga przez ``EnergyNetworkModel``) ORAZ
+    wejście operacji domenowych (``enm.domain_operations.execute_domain_operation``), które
+    pracują na słowniku i oddają go w odpowiedzi — bez tego migawka odpowiedzi niosłaby
+    skasowane klucze, choć walidacja tej samej migawki je zdejmuje. Jedno źródło listy
+    migracji dla obu dróg (predykat parami). Bez kluczy zastanych zwraca TEN SAM obiekt.
+
+    * W5-A: jedna reprezentacja uziemienia (``enm/uziemienie.py``);
+    * W5-C: punkt podziału z dawnej kopii ``Corridor.no_point_ref`` (i martwej
+      ``LineRun.nop_station_ref``, kopii ``BranchPointSN.switch_state``) →
+      ``SwitchBranch.normal_state`` (``enm/stan_normalny.py``).
+
+    Utraty nazywają raporty modułów migracji; wpis do dziennika robi magazyn.
+    """
+    data = migruj_uziemienie_slownika(data, uklady_nn=UKLADY_SIECI_NN)[0]
+    return migruj_punkty_podzialu_slownika(data)[0]
+
+
 class EnergyNetworkModel(BaseModel):
     header: ENMHeader
     buses: list[Bus] = []
@@ -1870,6 +2170,9 @@ class EnergyNetworkModel(BaseModel):
     loads: list[Load] = []
     generators: list[Generator] = []
     shunt_capacitors: list[ShuntCapacitor] = []
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające SN (transformator ZN + dławik /
+    # rezystor / układ równoległy). Pusta lista poza odciskiem (`enm/hash.py`).
+    zespoly_uziemiajace: list[ZespolUziemiajacy] = []
     substations: list[Substation] = []
     bays: list[Bay] = []
     junctions: list[Junction] = []
@@ -1887,8 +2190,10 @@ class EnergyNetworkModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _migracja_uziemienia_przy_wczytaniu(cls, data: Any) -> Any:
-        """W5-A: jedna reprezentacja uziemienia — migracja ZASTANEGO zapisu.
+    def _migracje_zapisu_zastanego_przy_wczytaniu(cls, data: Any) -> Any:
+        """Migracje ZASTANEGO zapisu (W5-A uziemienie, W5-C punkty podziału).
+
+        W5-A: jedna reprezentacja uziemienia.
 
         `Bus.grounding` → `Source.neutral_grounding`, `substation.meta
         ["nn_earthing_system"]` → `Transformer.lv_earthing_system`, klucze
@@ -1899,7 +2204,7 @@ class EnergyNetworkModel(BaseModel):
         do dziennika robi magazyn (`enm/store.py`).
         """
         if isinstance(data, dict):
-            return migruj_uziemienie_slownika(data, uklady_nn=UKLADY_SIECI_NN)[0]
+            return migruj_zapis_zastany_slownika(data)
         return data
 
 

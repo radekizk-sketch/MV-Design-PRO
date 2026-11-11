@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F6a — testy `scene/buildScene.ts` (SLD_CAD_SPEC_V3 §5/§7/§9/§10/§11/
  * §16; REBUILD_PLAN_V3 F6). Uruchamiane na REALNEJ fixturze `sldSubstrate52s`
@@ -73,6 +74,8 @@ import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { GRID, type V3Rect } from '../../core/grid';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
+import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -86,7 +89,14 @@ const fixturePath = resolve(
   'fixtures',
   'sldSubstrate52s.enm.json',
 );
-const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+/** Sieć referencyjna jak w migawce: pola niosą wyłącznie gałąź wyłącznika (`equipment_refs`). */
+const enmZastany = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+// GEOMETRIA-STACJI (§0 pkt 4a): wyrocznie tego pliku (głowice kablowe, odczepy lateralne,
+// pasma etykiet aparatów) potrzebują aparatów, które istnieją WYŁĄCZNIE z rekordów modelu —
+// dawniej dostarczała je konwencja roli. Fikstura deklaruje rekordy wyposażenia pól jawnie
+// (`zRekordamiAparatowPol`, pola OZE bez rekordów = przypadek braku danych); sieć zastana
+// (`enmZastany`) pokrywa test ścieżki gałęzi pola niżej.
+const enm = zRekordamiAparatowPol(enmZastany);
 
 const LODS: readonly SceneLod[] = [0, 1, 2];
 
@@ -203,20 +213,33 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
       });
 
-      it('F9.3 (§12.1): KAŻDY aparat pola STACJI (składający `apparatusSource`, spec §12.1) na fixturze nosi "konwencja" (brak primary_devices, f92-1)', () => {
-        // `apparatusSource` jest ustawiane WYŁĄCZNIE przez `composeStation`
-        // (`v3/compose/station.ts`) — GPZ (`compose/gpz.ts`, POZA
-        // autoryzacją F9.3) ma WŁASNĄ, nietkniętą gramatykę aparatów i NIE
-        // niesie tego pola; filtrowanie po obecności `apparatusSource`
-        // (nie po `elementKind`, który miesza stacje SN z GPZ) odróżnia
-        // dokładnie te symbole, które przeszły przez F9.3.
+      it('F9.3 (§12.1) → GEOMETRIA-STACJI (§0 pkt 4): pochodzenie stosu pola STACJI z danych — rekordy aparatów „dane", pola OZE bez rekordów „brak" (jedna sylwetka bez stanu)', () => {
+        // KOREKTA: dawniej fikstura bez `primary_devices` rysowała stosy konwencji („konwencja").
+        // Konwencja skasowana; fikstura niesie rekordy (patrz `zRekordamiAparatowPol`).
         const stationFieldApparatus = scene.symbols.filter((s) => s.meta?.apparatusSource != null);
-        // LOD 0 (spec §7): stacje są symbolem zbiorczym `stationCollapsed`,
-        // ŻADEN aparat pola nie jest rysowany — filtr jest wtedy pusty
-        // (wyrocznia wciąż prawdziwa, wacuously) — sanity length>0 dotyczy
-        // WYŁĄCZNIE LOD 1/2, gdzie `composeStation` faktycznie się wykonuje.
         if (lod !== 0) expect(stationFieldApparatus.length).toBeGreaterThan(0);
-        expect(stationFieldApparatus.every((s) => s.meta?.apparatusSource === 'konwencja')).toBe(true);
+        expect(stationFieldApparatus.every((s) => s.meta?.apparatusSource === 'dane' || s.meta?.apparatusSource === 'brak')).toBe(true);
+        const brak = stationFieldApparatus.filter((s) => s.meta?.apparatusSource === 'brak');
+        expect(brak.every((s) => s.symbolId === 'bayNoEquipment' || s.meta?.elementKind !== 'apparatus')).toBe(true);
+        expect(brak.filter((s) => s.symbolId === 'bayNoEquipment').every((s) => s.state === undefined)).toBe(true);
+      });
+
+      it('GEOMETRIA-STACJI (§0 pkt 4a): sieć zastana — pole bez `primary_devices` rysuje gałąź łączeniową z `equipment_refs` (ref, stan), bez aparatów spoza modelu', () => {
+        const zastana = buildSceneV3(enmZastany, lod);
+        const galezie = new Map((enmZastany.branches ?? []).map((b) => [b.ref_id, b]));
+        const aparaty = zastana.symbols.filter((s) => s.meta?.apparatusSource != null && s.meta?.elementKind === 'apparatus');
+        if (lod !== 0) expect(aparaty.length).toBeGreaterThan(0);
+        for (const s of aparaty) {
+          if (s.symbolId === 'bayNoEquipment') {
+            expect(s.meta?.deviceRef).toBeUndefined();
+            continue;
+          }
+          expect(s.meta?.apparatusSource).toBe('dane');
+          expect(galezie.has(s.meta!.deviceRef!), `${s.meta?.testId}: gałąź pola w modelu`).toBe(true);
+          expect(['breaker', 'switch']).toContain(galezie.get(s.meta!.deviceRef!)!.type);
+        }
+        // Żaden aparat z dawnej konwencji (głowica, uziemnik, przekładnik) bez rekordu.
+        expect(zastana.symbols.filter((s) => s.meta?.apparatusSource != null && ['cableHead', 'earthSwitch', 'currentTransformer', 'loadBreakSwitch'].includes(s.symbolId))).toEqual([]);
       });
     });
   }
@@ -564,22 +587,17 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
   const scene2 = buildSceneV3(enm, 2);
 
   /**
-   * SCHEMAT-10 S3 (V12K-135, D7): fixtura `sldSubstrate52s` ma WSZYSTKIE
-   * `line_runs[].nop_station_ref` na `null` (i `corridors[].no_point_ref` na
-   * ref łącznika, nie ref stacji — GAP osobny, patrz raport karty S3) — na
-   * fixturze bazowej `props.isNop` NIGDY nie jest `true`, więc testy NOP na
-   * `enm` surowym są puste (pętla po zerowym zbiorze). Ten helper zwraca
-   * GŁĘBOKI KLON fixtury z jednym polem nadpisanym: `nop_station_ref` ciągu
-   * głównego = REALNY ref pierwszej stacji ciągu głównego — dowód na
-   * FAKTYCZNIE wyrenderowanym markerze, nie na pustym zbiorze.
+   * SCHEMAT-10 S3 (V12K-135, D7): fixtura `sldSubstrate52s` nie niesie punktu normalnie
+   * otwartego — na fixturze bazowej `props.isNop` NIGDY nie jest `true`, więc testy NOP na
+   * `enm` surowym są puste (pętla po zerowym zbiorze). Ten helper zwraca GŁĘBOKI KLON
+   * fixtury z punktem podziału w pierwszej stacji ciągu głównego — ustawionym TAK, jak
+   * robi to model (karta W5-C): pozycja normalna łącznika pola stacji `normal_state='open'`
+   * (dawna kopia `LineRun.nop_station_ref` skasowana) — dowód na FAKTYCZNIE wyrenderowanym
+   * markerze, nie na pustym zbiorze.
    */
   function enmWithSyntheticNop(): { readonly enm: EnergyNetworkModel; readonly targetStationRef: string } {
     const targetStationRef = scene2.meta.mainTrunkStationIds[0];
-    const clone = structuredClone(enm);
-    const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
-    if (!mainRun) throw new Error('fixtura bez ciągu main_trunk w line_runs — helper NOP wymaga go do testu');
-    (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
-    return { enm: clone, targetStationRef };
+    return { enm: zPunktemPodzialuWStacji(enm, targetStationRef), targetStationRef };
   }
 
   it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, lvPortal→lvPortal, reszta→apparatus', () => {
@@ -633,9 +651,12 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
       }
     }
-    // L0: brak osobnego noPoint; NOP w markerze sylwetki stacji docelowej.
+    // L0: brak osobnego noPoint STACJI; NOP stacji w markerze sylwetki stacji
+    // docelowej. (K2b §0.4: fikstura niesie też NOP ŁĄCZNIKA w `Corridor.no_point_ref`
+    // — ten ma własny symbol `noPoint` na każdym poziomie, przy bloku stacji;
+    // asercja zawężona do NOP-stacji, intencja GS-1 bez zmian.)
     const scene0 = buildSceneV3(enmWithNop, 0);
-    expect(scene0.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+    expect(scene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === targetStationRef)).toBe(false);
     const nopGlyph = scene0.symbols.find(
       (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef,
     );
@@ -1212,9 +1233,26 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // (sonda karty, `k2/pion_sonda.txt`): kod HEAD + nowa fikstura = 22752/45992/45992,
     // nowy kod + stara fikstura = 22752/45728/45728 (znaki powiązania zastępują dwa słupki
     // końca otwartego 1:1, ±16 px); rozbicie liść po liściu = 33 × `#lv-load-drop`.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22752);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45992);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45992);
+    // GEOMETRIA-STACJI (2026-10-21): L1/L2 45992 → 45984 (−8), L0 bez zmian. Fikstura niesie
+    // rekordy aparatów pól (`zRekordamiAparatowPol`) — stosy pól stacji i GPZ identyczne jak
+    // dawna konwencja (pomiar per właściciel odcinka, kod HEAD + fikstura zastana vs kod
+    // karty + fikstura z rekordami: jedyna różnica to `#tr-field-to-bus`). GPZ sieci
+    // referencyjnej nie ma w modelu pól WN TR ani TR, więc tor transformatora niesie dwie
+    // sylwetki braku danych zamiast aparatów z konwencji (DS+CB+CT / DS+CB+CT+ES): odcinek
+    // pole TR → szyna SN 48 → 40 px.
+    // GPZ-MODEL (2026-10-22, na bazie GEOMETRIA-STACJI i W5-C): 22752/45984/45984 →
+    // 23168/46400/46400 (+416 jednolicie) — REGENERACJA fikstury, nie zmiana układu. Substrat
+    // dostaje GPZ z równoważnikiem 110 kV i transformatorem WN/SN (tryb A,
+    // `sld_substrate_52s.py`) zamiast fikcji „równoważnik na szynach SN + TR obok"; ziarno GPZ
+    // obejmuje ładunek operacji, a od niego pochodzą identyfikatory WSZYSTKICH odcinków
+    // i stacji (precedens SLD-SUBSTRAT wyżej). DOWÓD 2×2 (sonda karty): kod karty na fiksturze
+    // bazy `f7235700e` daje dokładnie 22752/45984/45984 (kod ±0), a TREŚĆ fikstury bazy
+    // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
+    // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
+    // `id.localeCompare`, nie trasowanie.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23168);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46400);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46400);
   });
 });
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Parytet nazw pól śladu porównania zabezpieczeń z KODEM backendu (karta #145).
  *

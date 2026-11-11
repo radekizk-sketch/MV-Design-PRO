@@ -17,13 +17,17 @@
 import { useMemo, useState } from 'react';
 
 import './generator.css';
-import { useAppStateStore } from '../../../../ui/app-state';
+import { useRunIdOgladany, useWybierzBieg } from '../../../wyniki/kontekst/kontekstWyniku';
 import {
   exportProofPack,
   exportReport,
   type ProofExportFormat,
   type ReportExportFormat,
 } from '../../../../ui/results/reportExportApi';
+import {
+  formatWStanie,
+  useDostepnoscEksportuWywodu,
+} from '../../../../ui/results/useDostepnoscEksportuWywodu';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { useGotowoscDokumentacji, useTabeleWyniku } from './api';
@@ -65,12 +69,14 @@ const FORMATY_DOWODU: ReadonlyArray<{ format: ProofExportFormat; etykieta: strin
 
 export function GeneratorRaportu() {
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-  const aktywnyRunId = useAppStateStore((s) => s.activeRunId);
+  // Karta K8: bieg raportu = bieg oglądany z magazynu kontekstu wyniku; wybór tutaj
+  // zmienia kontekst wszędzie (schemat, panel dolny, „Dowody", pasek stanu).
+  const runIdOgladany = useRunIdOgladany();
+  const wybierzBieg = useWybierzBieg();
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
 
   const dostepne = useMemo(() => przebiegiDoRaportu(przebiegi), [przebiegi]);
-  const [wybranyRun, setWybranyRun] = useState<string | null>(null);
-  const runId = wybranyRun ?? domyslnyPrzebieg(dostepne, aktywnyRunId);
+  const runId = domyslnyPrzebieg(dostepne, runIdOgladany);
 
   const [profil, setProfil] = useState<ProfilRaportu>(DOMYSLNY_PROFIL);
   const [poziom, setPoziom] = useState<PoziomSzczegolowosci>(DOMYSLNY_POZIOM);
@@ -87,6 +93,17 @@ export function GeneratorRaportu() {
   const gotowoscPw = useGotowoscDokumentacji(runId);
   const dokumentacjaWykonawczaZablokowana =
     profil === 'wykonawczy' && !gotowoscPw.werdykt.gotowy;
+  // Brama eksportu wywodu (karta UI-02 PANEL-DOLNY): serwer liczy dostępność tą samą
+  // funkcją, którą buduje eksport — format niedostępny jest nieaktywny z przyczyną.
+  const eksportWywodu = useDostepnoscEksportuWywodu(runId);
+
+  const powodyDowodu = [
+    ...new Set(
+      FORMATY_DOWODU.map(({ format }) => formatWStanie(eksportWywodu, format))
+        .filter((f) => !f.dostepny && f.powod_pl)
+        .map((f) => f.powod_pl as string),
+    ),
+  ];
 
   const przelaczSekcje = (sekcja: SekcjaRaportu) => {
     setSekcje((biezace) =>
@@ -141,7 +158,7 @@ export function GeneratorRaportu() {
             data-testid="mvd-generator-przebieg"
             value={runId}
             onChange={(e) => {
-              setWybranyRun(e.target.value);
+              wybierzBieg(e.target.value, 'ekran');
               setTabela('');
               setStan({ rodzaj: 'bezczynny' });
             }}
@@ -309,25 +326,34 @@ export function GeneratorRaportu() {
           <h4>{T.dowodGrupa}</h4>
           <p className="mvd-gen-opis">{T.dowodOpis}</p>
           <div className="mvd-gen-przyciski">
-            {FORMATY_DOWODU.map(({ format, etykieta }) => (
-              <button
-                key={format}
-                type="button"
-                className="mvd-gen-akcja mvd-gen-akcja--wtorna"
-                data-testid={`mvd-generator-dowod-${format}`}
-                disabled={stan.rodzaj === 'pracuje'}
-                onClick={() =>
-                  void wykonaj(`dowod-${format}`, () =>
-                    exportProofPack(runId, format, { zapiszDoMagazynu: doMagazynu }),
-                  )
-                }
-              >
-                {stan.rodzaj === 'pracuje' && stan.klucz === `dowod-${format}`
-                  ? T.pracuje
-                  : etykieta}
-              </button>
-            ))}
+            {FORMATY_DOWODU.map(({ format, etykieta }) => {
+              const dostepnosc = formatWStanie(eksportWywodu, format);
+              return (
+                <button
+                  key={format}
+                  type="button"
+                  className="mvd-gen-akcja mvd-gen-akcja--wtorna"
+                  data-testid={`mvd-generator-dowod-${format}`}
+                  disabled={stan.rodzaj === 'pracuje' || !dostepnosc.dostepny}
+                  title={dostepnosc.dostepny ? undefined : (dostepnosc.powod_pl ?? undefined)}
+                  onClick={() =>
+                    void wykonaj(`dowod-${format}`, () =>
+                      exportProofPack(runId, format, { zapiszDoMagazynu: doMagazynu }),
+                    )
+                  }
+                >
+                  {stan.rodzaj === 'pracuje' && stan.klucz === `dowod-${format}`
+                    ? T.pracuje
+                    : etykieta}
+                </button>
+              );
+            })}
           </div>
+          {eksportWywodu.rodzaj !== 'ladowanie' && powodyDowodu.length > 0 && (
+            <p className="mvd-gen-opis" data-testid="mvd-generator-dowod-powod">
+              {`${T.dowodNiedostepny}: ${powodyDowodu.join(' ')}`}
+            </p>
+          )}
         </div>
 
         {stan.rodzaj === 'gotowe' && (

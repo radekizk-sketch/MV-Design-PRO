@@ -85,20 +85,20 @@
     },
     {
       "k": 2,
-      "norm_mismatch": 0.00162311479642,
-      "max_mismatch_pu": 0.00158439840674,
+      "norm_mismatch": 0.00162311479898,
+      "max_mismatch_pu": 0.00158439840942,
       "cause_if_failed": null
     },
     {
       "k": 3,
-      "norm_mismatch": 1.35045420759e-06,
-      "max_mismatch_pu": 1.26099178489e-06,
+      "norm_mismatch": 1.35045271385e-06,
+      "max_mismatch_pu": 1.2609899074e-06,
       "cause_if_failed": null
     },
     {
       "k": 4,
-      "norm_mismatch": 4.40618922045e-12,
-      "max_mismatch_pu": 3.02888995361e-12,
+      "norm_mismatch": 6.90264118944e-12,
+      "max_mismatch_pu": 6.01533317328e-12,
       "cause_if_failed": null
     }
   ],

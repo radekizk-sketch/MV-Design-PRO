@@ -3,7 +3,7 @@
 Weryfikuje, że nowa operacja domenowa materializuje baterię kondensatorów do
 kolekcji ENM `shunt_capacitors` (katalog-first), że walidacje działają, że
 podgląd solvera liczy poprawnie z pierwszych zasad, oraz że istniejący mechanizm
-PF (`_build_shunt_specs_from_snapshot`) konsumuje utworzony element bez zmian.
+PF (`enm.assembler._boczniki_solvera_z_baterii`) konsumuje utworzony element bez zmian.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from enm.assembler import _build_shunt_specs_from_snapshot
+from enm.assembler import _admitancje_baterii_z_migawki, _boczniki_solvera_z_baterii
 from enm.domain_operations import execute_domain_operation
 from network_model.solvers.shunt_compensator_preview import (
     ShuntCompensatorPreviewInput,
@@ -67,11 +67,14 @@ def test_created_element_is_consumed_by_power_flow_shunt_mechanism() -> None:
     )
     snapshot = result["snapshot"]
     base_mva = 100.0
-    specs = _build_shunt_specs_from_snapshot(snapshot, base_mva)
+    specs = _boczniki_solvera_z_baterii(_admitancje_baterii_z_migawki(snapshot, base_mva))
     assert len(specs) == 1
     # b_pu = Q_rated / S_base (dodatnia susceptancja pojemnościowa).
     assert specs[0].b_pu == pytest.approx(2.4 / base_mva)
-    assert specs[0].g_pu == 0.0
+    # g_pu = P_str / S_base: straty czynne pozycji katalogu (1,2 kW) wchodzą do rozpływu jako
+    # konduktancja równoległa (karta UX-04/POLE-BKR-MODEL). Przed kartą `meta.loss_kw` był
+    # zapisywany, ale żaden konsument go nie czytał (g_pu = 0 przy stratach w danych).
+    assert specs[0].g_pu == pytest.approx(1.2e-3 / base_mva)
 
 
 def test_open_status_is_preserved() -> None:
@@ -83,7 +86,9 @@ def test_open_status_is_preserved() -> None:
     )
     assert result["snapshot"]["shunt_capacitors"][0]["status"] == "open"
     # Otwarta bateria jest pomijana przez solver.
-    assert _build_shunt_specs_from_snapshot(result["snapshot"], 100.0) == []
+    assert (
+        _boczniki_solvera_z_baterii(_admitancje_baterii_z_migawki(result["snapshot"], 100.0)) == []
+    )
 
 
 def test_missing_bus_is_rejected() -> None:

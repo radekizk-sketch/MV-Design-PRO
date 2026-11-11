@@ -33,11 +33,6 @@
   color: var(--mvd-accent);
 }
 
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
 /* --- Q1: pasek statusu obliczeń ------------------------------------------- */
 
 .mvd-dok-status {

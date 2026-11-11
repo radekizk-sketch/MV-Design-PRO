@@ -38,12 +38,16 @@ export type SymbolId =
   | 'derBess'          // magazyn energii
   | 'derGenerator'     // generator (G w okręgu)
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
+  | 'derUnknown'       // źródło nieokreślone (rodzaj nierozstrzygnięty w modelu)
+  | 'bayNoEquipment'   // brak danych wyposażenia pola (sylwetka bez stanu, karta GEOMETRIA-STACJI)
+  | 'bayReserve'       // zakończenie pola rezerwowego/wolnego (bez głowicy i odejścia)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
   | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
   | 'loadArrow'        // odbiór (strzałka IEC 60617) — projekcja nN (`lv-domain/`)
+  | 'capacitorBank'    // bateria kondensatorów równoległych SN (UX-04/POLE-BKR-MODEL)
   // Aparaty nN — rodzina ODRĘBNA od aparatury SN (device_kind katalogu
   // APARAT_NN/APARAT_NN_MCB/WKLADKA_NN), bo fizyczne aparaty nN (MCB modułowy,
   // wkładka NH w podstawie bezpiecznikowej) mają INNĄ sylwetkę niż odpowiedniki
@@ -249,6 +253,37 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   derWind: def('derWind', 32, 32, [
     { name: 'ac', x: 16, y: 0, dir: 'N' },
   ], 'Farma wiatrowa'),
+  // GPZ-PARYTET cz. 2 (pkt 3): źródło, którego rodzaju model nie rozstrzyga — gabaryt i port
+  // jak pozostałe DER, glif „?” w ramce (`glyphs.tsx`); nigdy PV ani generator z domysłu.
+  derUnknown: def('derUnknown', 32, 32, [
+    { name: 'ac', x: 16, y: 0, dir: 'N' },
+  ], 'Źródło nieokreślone'),
+  // GEOMETRIA-STACJI (§0 pkt 4c, dyrektywa właściciela 2026-10-21): pole, którego model nie
+  // niesie ŻADNEGO rekordu aparatu (ani `Bay.primary_devices`, ani gałęzi łączeniowej
+  // w `equipment_refs`), rysuje się JEDNĄ jawną sylwetką „brak danych wyposażenia pola"
+  // zamiast stosu aparatów z konwencji. Sylwetka nie ma stanu (glif ignoruje `state`)
+  // — kolor stanu bez rekordu byłby fabrykacją. Gabaryt 16×32 (2×4 GRID), porty N/S
+  // w osi toru pola jak każdy aparat szeregowy.
+  bayNoEquipment: def('bayNoEquipment', 16, 32, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 32, dir: 'S' },
+  ], 'Brak danych wyposażenia pola'),
+  // GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola REZERWOWEGO (`bay_kind` „rezerwowe",
+  // ten sam predykat co backend `enm/rodzaj_stacji.py`) albo pola WOLNEGO (pole liniowe,
+  // do którego zacisku model nie przyłącza żadnego odcinka). Bez głowicy kablowej
+  // i bez odejścia — JEDEN port N; za nim nic się nie przyłącza.
+  bayReserve: def('bayReserve', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Pole rezerwowe (bez odejścia)'),
+  // UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN (`ShuntCapacitor` ENM) na
+  // końcu toru pola — element MODELU, którego pole jest nośnikiem (jak transformator pola TR),
+  // nie aparat pola. JEDEN port N (za baterią nic się nie przyłącza). Gabaryt 32×40
+  // (4×5 GRID): pas 0–16 kondensator (symbol ogólny PN-EN 60617-4 04-02-01), pas 16–40
+  // znak układu połączeń (podwójna gwiazda z przekładnikiem niezrównoważenia, gwiazda
+  // izolowana, gwiazda uziemiona, trójkąt) — glif `CapacitorBankGlyph`.
+  capacitorBank: def('capacitorBank', 32, 40, [
+    { name: 'top', x: 16, y: 0, dir: 'N' },
+  ], 'Bateria kondensatorów'),
   // F9.4 (spec §13.1/§13.2): sieć zewnętrzna (Source ENM) — jeden port
   // `bottom` (S), gabaryt 16×24 jak `disconnector`/`earthSwitch` (aparat
   // jednokolumnowy, nie DER 32×32 — ten symbol nie jest instalacją DER).
@@ -404,3 +439,18 @@ export function makeBusbarDef(length: number): BusbarDef {
     ],
   };
 }
+
+/**
+ * APARATY CIĄGŁOŚCI ELEKTRYCZNEJ — łączniki, którymi tor da się przerwać.
+ * To one odpowiadają na pytanie „czym to odcinam", więc ich zniknięcie z
+ * rysunku jest utratą informacji, nie uproszczeniem.
+ */
+export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
+  'breaker',
+  'disconnector',
+  'loadBreakSwitch',
+  'fuseSwitch',
+  'noPoint',
+  'lineSwitch',
+  'lineBreaker',
+];

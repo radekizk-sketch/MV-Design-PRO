@@ -198,11 +198,6 @@
   font-size: 12px;
 }
 
-.mvd-num {
-  font-family: var(--mvd-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
 /* --- Sekcja „Sekwencja zapadów" (P43) --- */
 .mvd-frt-sekwencja {
   display: flex;

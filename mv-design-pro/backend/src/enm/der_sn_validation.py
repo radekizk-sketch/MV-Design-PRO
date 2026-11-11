@@ -8,7 +8,7 @@ z ❌-semantyką kanonu; kody błędów stabilne (wzorzec `converter.sn_requires
 
 ZERO fizyki solvera: porównania napięć/mocy oraz prąd znamionowy z tabliczki
 (I = S / (√3·U)) to walidacja DOBOROWA (nameplate), nie obliczenia rozpływu/zwarcia —
-analogicznie do istniejącego `_same_nominal_voltage` w warstwie domenowej. Rozpływ,
+z jedną równością napięć znamionowych `to_samo_napiecie_znamionowe`. Rozpływ,
 zwarcia i straty liczą wyłącznie dedykowane solvery na zmaterializowanym torze.
 """
 
@@ -18,16 +18,15 @@ from dataclasses import dataclass
 from typing import Literal
 
 from network_model.pochodne import prad_znamionowy_a
+from network_model.pochodne.pasma_napieciowe import to_samo_napiecie_znamionowe
 
 # ---------------------------------------------------------------------------
-# Tolerancje napięciowe — JEDNA konwencja repo (nie nowa).
-# Źródło: frontend/src/ui2/kreatory/stacja/stacjaModel.ts
-#   SN_VOLTAGE_TOLERANCE_KV = 0.01, NN_VOLTAGE_TOLERANCE_KV = 0.001
-# (dobór transformatora do napięć strony SN/nN stacji). Backend przyjmuje te same
-# wartości, aby walidacja doborowa toru DER była spójna z kreatorem stacji.
+# Zgodność napięć znamionowych — JEDNA równość danych w produkcie
+# (`pasma_napieciowe.to_samo_napiecie_znamionowe`, lustro frontu `toSamoNapiecieZnamionowe`).
+# Dawne tolerancje bezwzględne 0,01 kV (SN) i 0,001 kV (nN) były trzecią i czwartą
+# wersją tej samej równości obok 1e-6 kV operacji domenowych i 0,5 kV kreatora stacji
+# legacy — ta sama para napięć dawała różne werdykty zależnie od drogi.
 # ---------------------------------------------------------------------------
-SN_VOLTAGE_TOLERANCE_KV = 0.01
-NN_VOLTAGE_TOLERANCE_KV = 0.001
 
 
 ConnectionMethod = Literal[
@@ -61,11 +60,6 @@ class CascadeWarning:
 
     code: str
     message_pl: str
-
-
-def voltages_match(left_kv: float, right_kv: float, tolerance_kv: float) -> bool:
-    """Zgodność napięć znamionowych w granicach tolerancji doborowej."""
-    return abs(left_kv - right_kv) <= tolerance_kv
 
 
 def rated_current_a(sn_mva: float, voltage_kv: float) -> float | None:
@@ -151,8 +145,8 @@ def validate_connection_method(
 def validate_inverter_lv_voltage(
     inverter_output_kv: float, block_secondary_kv: float
 ) -> ValidationError | None:
-    """Wymaganie 2: U_AC falownika ↔ strona nN TR blokowego (tolerancja nN)."""
-    if not voltages_match(inverter_output_kv, block_secondary_kv, NN_VOLTAGE_TOLERANCE_KV):
+    """Wymaganie 2: U_AC falownika ↔ strona nN TR blokowego (to samo napięcie znamionowe)."""
+    if not to_samo_napiecie_znamionowe(inverter_output_kv, block_secondary_kv):
         return ValidationError(
             "converter.der_sn.napiecie_falownika_niezgodne",
             f"❌ Niezgodność napięcia falownika ({inverter_output_kv:g} kV) z napięciem strony "
@@ -164,8 +158,8 @@ def validate_inverter_lv_voltage(
 def validate_sn_voltage(
     block_primary_kv: float, sn_bus_voltage_kv: float
 ) -> ValidationError | None:
-    """Wymaganie 6: strona SN TR blokowego ↔ napięcie szyny SN przyłączenia (tolerancja SN)."""
-    if not voltages_match(block_primary_kv, sn_bus_voltage_kv, SN_VOLTAGE_TOLERANCE_KV):
+    """Wymaganie 6: strona SN TR blokowego ↔ szyna SN przyłączenia (to samo napięcie znamionowe)."""
+    if not to_samo_napiecie_znamionowe(block_primary_kv, sn_bus_voltage_kv):
         return ValidationError(
             "converter.der_sn.napiecie_sn_niezgodne",
             f"❌ Transformator nie odpowiada napięciu sieci (TR {block_primary_kv:g} kV, "

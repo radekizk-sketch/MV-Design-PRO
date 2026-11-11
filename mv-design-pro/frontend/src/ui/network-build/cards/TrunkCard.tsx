@@ -119,6 +119,14 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
     [trunkView],
   );
 
+  const noPointLabel = useMemo(() => {
+    const refs = trunkView?.no_point_refs ?? [];
+    if (refs.length === 0) return '—';
+    return refs
+      .map((ref) => snapshot?.branches?.find((b) => b.ref_id === ref)?.name ?? ref)
+      .join(', ');
+  }, [trunkView, snapshot]);
+
   const sections = useMemo((): CardSection[] => {
     if (!corridor) return [];
 
@@ -130,9 +138,11 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
         { key: 'ref_id', label: 'ID', value: corridor.ref_id },
         { key: 'type', label: 'Rodzaj', value: corridorTypeLabel(corridor.corridor_type) },
         {
+          // W5-C: punkty podziału magistrali z widoku logicznego backendu
+          // (`punkty_podzialu_korytarza` — z pozycji normalnej łączników), nie z kopii.
           key: 'no_point',
-          label: 'Normalny punkt otwarcia',
-          value: corridor.no_point_ref ?? '—',
+          label: 'Punkt normalnie otwarty',
+          value: noPointLabel,
         },
       ],
     };
@@ -197,7 +207,7 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
     };
 
     return [identSection, segmentsSection, terminalsSection, summarySection];
-  }, [corridor, segmentBranches, trunkTerminals, totalLengthKm]);
+  }, [corridor, segmentBranches, trunkTerminals, totalLengthKm, noPointLabel]);
 
   const hasOpenTerminal = useMemo(
     () => trunkTerminals.some((t) => t.status === 'OTWARTY'),

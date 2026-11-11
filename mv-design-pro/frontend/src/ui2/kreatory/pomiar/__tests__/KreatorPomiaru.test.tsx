@@ -73,7 +73,9 @@ vi.mock('../../../../ui/field/fieldReadModelSelectors', () => ({
 }));
 
 async function pickCt() {
-  await waitFor(() => expect(screen.getByTestId('mvd-kreator-pomiar-katalog')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByTestId('mvd-kreator-pomiar-katalog').querySelector('option[value="ct-1"]')).not.toBeNull(),
+  );
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pomiar-katalog'), 'ct-1');
 }
 
@@ -119,7 +121,9 @@ describe('KreatorPomiaru — realna ścieżka', () => {
     activeForm = { op: 'add_vt', context: {} };
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorPomiaru />);
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-pomiar-katalog')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-pomiar-katalog').querySelector('option[value="vt-1"]')).not.toBeNull(),
+    );
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pomiar-katalog'), 'vt-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-pomiar-zapisz'));
 

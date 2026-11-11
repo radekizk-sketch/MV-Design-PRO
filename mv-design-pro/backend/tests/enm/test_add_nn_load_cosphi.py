@@ -25,7 +25,6 @@ def _enm_with_feeder() -> dict:
                 "name": "ST-1",
                 "station_type": "mv_lv",
                 "bus_refs": ["bus-nn"],
-                "field_specs": [],
             }
         ],
     )
@@ -62,6 +61,7 @@ def test_reactive_power_derived_from_cos_phi() -> None:
     assert load["q_mvar"] > 0.0  # regresja phantomu (było 0.0)
 
 
+@pytest.mark.ladunek_spoza_kontraktu
 def test_load_profile_ref_kasacja_w6_1() -> None:
     """Karta W6-1 SS0 p.8 (K-E): pole niosące referencję profilu obciążenia
     było zapisywane w `meta` bez ŻADNEGO czytelnika w repo — skasowane.

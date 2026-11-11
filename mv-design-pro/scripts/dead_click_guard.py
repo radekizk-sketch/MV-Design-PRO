@@ -25,6 +25,11 @@ DELETE_ACTION_OBJECT_LABEL_PL in sldActionExecutor.ts. A roadmap toast was
 never real coverage (the model/screen the user asked for never opens); this
 guard now requires a REAL provider for every registry action, not just the
 'budowa' group the old hint_only check singled out below.
+
+V12K-352 (2026-10-22): the menu entries carry a canon section (Otwórz … Usuń)
+instead of a group; the former 'budowa' group is the sections 'Dodaj' and
+'Operacje'. The dead legacy registry ui/context-menu/contextMenuRegistry.ts was
+deleted; SLD_MENU_REGISTRY is the only menu registry.
 """
 from __future__ import annotations
 
@@ -62,36 +67,48 @@ def require_tokens(path: Path, tokens: list[str]) -> list[str]:
     return [token for token in tokens if token not in content]
 
 
-def extract_sld_registry_ids() -> set[str]:
+def _sld_menu_entries() -> list[tuple[str, str]]:
+    """All (id, section) menu entries declared in SldCommandService.ts.
+
+    V12K-352: the registry is composed of the per-kind arrays of
+    ``export const SLD_MENU_REGISTRY`` AND of the shared helper lists
+    (``POZYCJE_*``) spread into them, so slicing the text from the first mention
+    of the registry name (a doc comment can mention it first) loses entries — the
+    guard measured 3 ids instead of 53 after the canon rework. Every menu entry is
+    an object literal carrying both ``id`` and the required ``section`` field
+    (``SldMenuAction``), so the whole module is parsed for exactly that shape.
+    """
     content = read(SLD_V2_DIR / "command" / "SldCommandService.ts")
-    registry_start = content.find("SLD_MENU_REGISTRY")
-    registry_end = content.find("};", registry_start)
-    if registry_start < 0 or registry_end < 0:
+    if "export const SLD_MENU_REGISTRY" not in content:
         raise RuntimeError("SLD_MENU_REGISTRY not found")
-    registry = content[registry_start:registry_end]
-    return set(re.findall(r"""\bid:\s*['"]([a-z][a-z0-9_-]+)['"]""", registry))
+    pattern = re.compile(
+        r"""\{\s*id:\s*['"]([a-z][a-z0-9_-]+)['"][^{}]*?section:\s*['"]([^'"]+)['"]""",
+        re.DOTALL,
+    )
+    entries = pattern.findall(content)
+    if not entries:
+        raise RuntimeError("SLD_MENU_REGISTRY has no entries with a section")
+    return entries
+
+
+def extract_sld_registry_ids() -> set[str]:
+    return {action_id for action_id, _section in _sld_menu_entries()}
 
 
 def extract_sld_build_action_ids() -> set[str]:
-    """Action ids declared with group: 'budowa' (network-building operations).
+    """Action ids in the model-changing build sections 'Dodaj' and 'Operacje'.
 
     Karta S9-5: a build action promises a change of the network model. Its only
     honest providers are a canonical domain operation (opByAction) or a real
     screen that performs the change (ACTION_TO_SCREEN / dedicated branch). A
     roadmap toast is NOT a provider - the click leaves the model untouched,
     which is exactly the dead position the SLD audit measured (P-7 / B-4).
+    V12K-352: the former group 'budowa' became the canon sections 'Dodaj' and
+    'Operacje' (the same split the executor uses to block preview mode).
     """
-    content = read(SLD_V2_DIR / "command" / "SldCommandService.ts")
-    registry_start = content.find("SLD_MENU_REGISTRY")
-    registry_end = content.find("};", registry_start)
-    if registry_start < 0 or registry_end < 0:
-        raise RuntimeError("SLD_MENU_REGISTRY not found")
-    registry = content[registry_start:registry_end]
-    pattern = re.compile(
-        r"""\{\s*id:\s*['"]([a-z][a-z0-9_-]+)['"][^}]*?group:\s*['"]budowa['"]""",
-        re.DOTALL,
-    )
-    return set(pattern.findall(registry))
+    return {
+        action_id for action_id, section in _sld_menu_entries() if section in ("Dodaj", "Operacje")
+    }
 
 
 def extract_dedicated_branch_ids(content: str) -> set[str]:
@@ -129,6 +146,11 @@ def check_sld_menu_path() -> list[str]:
     for token in [
         "buildSldOperationContext",
         "ACTION_TO_SCREEN",
+        # V12K-352: jeden klasyfikator wykonawcy pozycji menu (testowany na
+        # kazdej pozycji rejestru) i blokada podgladu z sekcji pozycji.
+        "export function wykonawcaAkcjiMenu",
+        "switch (wykonawcaAkcjiMenu(",
+        "czyAkcjaZmieniaModel(actionId, kind)",
         "openOperationForm",
         "openRouteSurface",
     ]:
@@ -198,6 +220,22 @@ _WPIS_POWIERZCHNI = re.compile(r"entry\(\s*'(\w+)',\s*'([A-Z][A-Za-z0-9]*)'")
 #: Próg sanity (nie dokładny pin) — chroni przed katastroficznym wyczyszczeniem
 #: rejestru, nie przed pojedynczą, zweryfikowaną kasacją. Pomiar 2026-10-22: 30 wpisów.
 MIN_WPISOW_POWIERZCHNI = 30
+#: Deklaracja komponentu eksportowanego z pliku `.tsx` (plik może nieść kilka komponentów,
+#: np. `KreatorOdbioruNn.tsx` eksportuje `KreatorOdbioruNn` i `KreatorOdbioruSn`).
+_EKSPORT_KOMPONENTU = re.compile(
+    r"^export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9]*)\b", re.MULTILINE
+)
+
+
+def zywe_komponenty(korzen: Path) -> set[str]:
+    """Nazwy komponentów z plików `.tsx` poza testami: nazwa pliku i eksportowane deklaracje."""
+    nazwy: set[str] = set()
+    for plik in sorted(korzen.rglob("*.tsx")):
+        if "__tests__" in plik.parts or ".test." in plik.name or ".spec." in plik.name:
+            continue
+        nazwy.add(plik.stem)
+        nazwy.update(_EKSPORT_KOMPONENTU.findall(read(plik)))
+    return nazwy
 
 
 def check_modal_registry() -> list[str]:
@@ -207,8 +245,10 @@ def check_modal_registry() -> list[str]:
     żadnego montażu (`TopologyPanel` nie był nigdzie renderowany), więc próg strażnika
     był spełniany przez martwy kod. Modale skasowano (karta PODSTAWA-Q, commit 3);
     jedynym rejestrem operacja → dostawca jest `OPERATION_SURFACE_REGISTRY`, a każdy
-    jego komponent musi istnieć jako plik `.tsx` w `frontend/src` (inaczej klik
-    akcji naprawczej otwierałby powierzchnię bez dostawcy).
+    jego komponent musi istnieć w `frontend/src` poza testami — jako plik `.tsx` albo
+    eksportowana deklaracja w pliku `.tsx` (inaczej klik akcji naprawczej otwierałby
+    powierzchnię bez dostawcy). Scalenie z gałęzią UI/UX (2026-10-28): `KreatorOdbioruSn`
+    jest drugim komponentem pliku `KreatorOdbioruNn.tsx` — sama nazwa pliku była za wąska.
     """
     content = read(OPERATION_SURFACE_REGISTRY_FILE)
     wpisy = _WPIS_POWIERZCHNI.findall(content)
@@ -219,12 +259,12 @@ def check_modal_registry() -> list[str]:
             f"Operation surface registry has only {len(wpisy)} entries; "
             f"expected at least {MIN_WPISOW_POWIERZCHNI}"
         )
-    pliki = {plik.stem for plik in FRONTEND_SRC.rglob("*.tsx") if "__tests__" not in plik.parts}
+    komponenty = zywe_komponenty(FRONTEND_SRC)
     for operacja, komponent in wpisy:
-        if komponent not in pliki:
+        if komponent not in komponenty:
             errors.append(
                 f"Operation surface '{operacja}' points at component '{komponent}' "
-                "with no .tsx file in frontend/src (dead provider)"
+                "with no .tsx file or exported declaration in frontend/src (dead provider)"
             )
     return errors
 

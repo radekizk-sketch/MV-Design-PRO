@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * V12K-233: rozwiazanie klasy przekladnika z PRAWDZIWEGO katalogu.
  *

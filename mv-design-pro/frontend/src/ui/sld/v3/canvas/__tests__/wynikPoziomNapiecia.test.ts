@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA WN-WYNIK — klasa „wynik jednego poziomu napięcia na szynie innego
  * poziomu" (zgłoszenie właściciela: etykieta „U 15,02 kV" na szynie WN 110 kV).

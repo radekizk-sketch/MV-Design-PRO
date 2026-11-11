@@ -125,10 +125,14 @@ export const OSD_STRINGS = {
   sladSymbolNastaw: 'nastaw',
   sladSymbolBazowy: 'bieg bazowy',
   sladSymbolPolecenie: 'bieg z poleceniem',
-  sladWzorNastaw: 'P_po, Q_po = nastaw wynikajacy z polecenia OSD; nadpisany wylacznie dla wskazanego zrodla',
-  sladWzorBieg: 'rozplyw mocy (ta sama sciezka wykonania); podsumowanie z result_v1.summary',
-  sladZbieznyTak: 'zbiezny',
-  sladZbieznyNie: 'niezbiezny',
+  // `formula_latex` kroków śladu renderuje KaTeX (`SladAnalizy` → `MathInline`) — czysty LaTeX,
+  // proza w `\text{}` (dawny zapis ASCII z identyfikatorem `result_v1.summary` KaTeX składał
+  // w tryb matematyczny bez spacji).
+  sladWzorNastaw:
+    '(P, Q)_{\\mathrm{po}} = \\text{nastaw z polecenia OSD — tylko dla wskazanego źródła}',
+  sladWzorBieg: '\\text{rozpływ mocy — ta sama ścieżka wykonania co bieg rozpływu projektu}',
+  sladZbieznyTak: 'zbieżny',
+  sladZbieznyNie: 'niezbieżny',
 
   // Założenia / identyfikatory
   zalPolecenie: 'Polecenie',

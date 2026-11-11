@@ -178,6 +178,14 @@ class ShortCircuitConfigRequest(BaseModel):
         ),
         json_schema_extra={"x-unit": "s"},
     )
+    stan_awsc: Literal["spoczynek", "zalaczony"] = Field(
+        "spoczynek",
+        description=(
+            "Stan automatyki wymuszania składowej czynnej (AWSC) sieci skompensowanej w tym "
+            "przypadku: spoczynek — dławik gaszący sam (Z_N = jX_L), zalaczony — rezystor "
+            "wymuszający równolegle z dławikiem (Z_N = R‖jX_L); ENEA Zeszyt 1 §16, rys. Z.13"
+        ),
+    )
 
     def do_domeny(self) -> dict[str, Any]:
         """Słownik konfiguracji w kształcie `ShortCircuitConfig.from_dict` — jedno mapowanie.
@@ -191,6 +199,7 @@ class ShortCircuitConfigRequest(BaseModel):
             "thermal_time_seconds": self.thermal_time_seconds,
             "include_branch_contributions": self.include_branch_contributions,
             "breaking_time_seconds": self.breaking_time_seconds,
+            "stan_awsc": self.stan_awsc,
         }
 
 

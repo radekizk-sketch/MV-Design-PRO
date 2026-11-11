@@ -93,8 +93,6 @@ def _zbuduj_magistrale(case_key: str, liczba_odcinkow: int) -> list[str]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     for numer in range(liczba_odcinkow):
@@ -164,8 +162,8 @@ class TestWyscigZastosowaniaSzablonu:
         """4 watki x `apply` na jednym przypadku: +4 stacje, rewizja +8, zero bledow.
 
         P0.1 nN (karta P0.1, LV-INV-12): `apply_template_to_case` zaczyna od
-        `get_enm`, ktory TERAZ TAKZE promuje `nn_field_specs` -> realne elementy
-        (`enm/migrations/nn_field_specs_promocja.py`), a promocja MUTUJE model i
+        `get_enm`, ktory TERAZ TAKZE promuje pola nN (`bays`) -> realne elementy
+        (`enm/migrations/promocja_aparatow_nn.py`), a promocja MUTUJE model i
         podbija rewizje jak kazda inna automigracja (ten sam wzorzec co migracja
         punktu przylaczenia — `enm/store.py::_get_enm_pod_blokada`). Szablon zawsze
         zostawia po sobie nN-owe „field spec" do promocji, wiec kazde z 4 zastosowan

@@ -47,14 +47,14 @@
  * `RawOverlayPayload.elements` dla LOAD_FLOW nie niosło elementów gałęzi.
  * F9.6 (c) dołożyła pętlę po `build_branch_results(run)` w tej samej gałęzi
  * PF (aliasując `p_mw`/`q_mvar` na klucze `p_from_mw`/`q_from_mvar`
- * rozpoznawane przez `_METRIC_MAP`, zero zmiany `build_branch_results` ani
+ * rozpoznawane przez `METRYKI_ELEMENTOW_WYNIKU`, zero zmiany `build_branch_results` ani
  * `PowerFlowResult` — Frozen Result API nietknięte) — `buildFlowOverlayFromScene`
  * niżej dostaje dziś realne dane na KAŻDYM przebiegu LOAD_FLOW (test kontraktu:
  * `backend/tests/test_canonical_analysis_api.py
  * ::test_resultset_v1_includes_branch_elements_for_load_flow`). Dodatkowo
  * naprawiono (d): v2 `ResultOverlayLayer.tsx`/`SldCanvasV2.tsx` czytały kod
  * metryki `'Q_MVAR'` (wielkie litery), podczas gdy backend
- * (`result_builder_v1.py` `_METRIC_MAP`) emituje kod `'Q_Mvar'` (mieszana
+ * (`result_builder_v1.py` `METRYKI_ELEMENTOW_WYNIKU`) emituje kod `'Q_Mvar'` (mieszana
  * wielkość liter) — rozjazd kluczy, Q nigdy się nie rozwiązywał nawet w v2;
  * `buildFlowOverlayFromScene` niżej używa POPRAWNEGO kodu `'Q_Mvar'`
  * (zweryfikowanego wprost w źródle backendu) od zawsze, nie kopiował błędu v2.
@@ -135,6 +135,7 @@ import {
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
 import type { SceneV3 } from '../scene/buildScene';
+import type { GpzWynikiOverlay } from './gpzWyniki';
 
 export interface SldV3Overlay {
   /**
@@ -248,16 +249,23 @@ export interface SldV3Overlay {
   readonly resultLabelsByOwnerRef?: Readonly<Record<string, import('./resultLabels').ResultLabelEntry>>;
   /**
    * R2 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.8): flaga NIEAKTUALNOŚCI wyników
-   * względem modelu (Case Immutability Rule — zmiana modelu unieważnia wynik
-   * przypadku). KONSUMOWANA z ISTNIEJĄCEGO statusu ważności (`SldCanvasV3
-   * Workspace` przewierca `useAppStateStore.activeCaseResultStatus === 'OUTDATED'`
-   * — ten sam status, którego używa hook świeżości `ui2/freshness/useSwiezosc
-   * Wynikow`; ZAKAZ równoległego trackera zmian modelu w warstwie SLD). `true`
+   * względem modelu (Case Immutability Rule — zmiana modelu unieważnia wynik).
+   * Karta K8: `SldCanvasV3Workspace` liczy ją JEDNYM predykatem świeżości BIEGU
+   * nakładki (`ui2/wyniki/kontekst/kontekstWyniku.swiezoscBiegu`: rewizja biegu ≠
+   * rewizja bieżąca ⇒ nieaktualny; werdykt serwera przypadku jest daną wejściową)
+   * — nie statusem przypadku, bo oglądany bieg nie musi być ostatnim. `true`
    * ⇒ kanwa wyszarza etykiety wyników i pokazuje baner „⚠ wyniki nieaktualne"
    * (etykiety NIE znikają — inżynier ma widzieć, że wartości są stare). Brak/
    * `false` ⇒ prezentacja normalna. Zero fizyki, zero zgadywania — sam sygnał.
    */
   readonly resultsStale?: boolean;
+  /**
+   * GPZ-PARYTET (§0 pkt 5): wyniki pól i bilansu GPZ z `results/v1` (wiersze `Bay`
+   * i `Substation` liczone przez backend) dla belki nagłówka i tabeli „Pola GPZ".
+   * `null`/brak = brak wyniku rozpływu mocy — kanwa pisze to jawnie w nagłówku
+   * i w tytule tabeli, wartości „brak". Nieaktualność: `resultsStale`.
+   */
+  readonly gpzWyniki?: GpzWynikiOverlay | null;
   /**
    * Deklaracja POCHODZENIA nakładki (spec §14.2 „overlay wyłącznie z
    * wyniku", program P-A): z którego przypadku obliczeniowego pochodzą
@@ -284,6 +292,12 @@ export interface SldV3Overlay {
      *  MUSZĄ nieść timestamp. Brak/`undefined` ⇒ badge NIE renderuje wiersza
      *  czasu (uczciwy brak, zero fabrykacji czasu we froncie). */
     readonly completedAtLabel?: string;
+    /** Karta K8: rodzina analizy biegu (`kontekstWyniku.RodzinaAnalizy`) — atrybut DOM. */
+    readonly rodzina?: string;
+    /** Karta K8: świeżość biegu z JEDNEGO predykatu (`kontekstWyniku.swiezoscBiegu`). */
+    readonly swiezosc?: 'aktualny' | 'nieaktualny' | 'nieznany';
+    /** Zdanie świeżości po polsku („nieaktualny — rew. 11, model rew. 12"). */
+    readonly swiezoscLabel?: string;
   };
 }
 
@@ -441,7 +455,7 @@ export interface FlowMetricReading {
  * buduje `points[0]` = strona `fromTerminal` (adapter), `points[last]` =
  * strona `toTerminal` — TA SAMA konwencja co znak `p_from_mw` backendu
  * (dodatni = moc płynie OD węzła „from" DO węzła „to", `result_builder_v1.py`
- * `_METRIC_MAP["p_from_mw"]`); `forward=true` ⇒ strzałka `points[0]→points[
+ * `METRYKI_ELEMENTOW_WYNIKU["p_from_mw"]`); `forward=true` ⇒ strzałka `points[0]→points[
  * last]`, `forward=false` ⇒ odwrócona. Renderer (`SldCanvasV3.tsx`
  * `flowOverlayGeometry`) rozwiązuje to geometrycznie — ten kontrakt niesie
  * WYŁĄCZNIE dane, nie rysuje.
@@ -473,7 +487,7 @@ export interface TransformerOltcOverlay {
 // wejście ⇒ identyczny wynik (JSON.stringify porównywalny, patrz test).
 // ---------------------------------------------------------------------------
 
-/** Kody metryk backendu (`result_builder_v1.py` `_METRIC_MAP`) — WPROST z
+/** Kody metryk backendu (`result_builder_v1.py` `METRYKI_ELEMENTOW_WYNIKU`) — WPROST z
  *  wyniku, zero reinterpretacji. Uwaga `Q_Mvar` (mieszana wielkość liter,
  *  NIE `Q_MVAR` — patrz nagłówek pliku, znaleziony rozjazd z v2). */
 const FLOW_METRIC_CODE_P = 'P_MW';
@@ -930,7 +944,7 @@ export function faultFlowOverlayTracesToInput(
 // `transformer2W` (= `transformerRef` = `element_ref` gałęzi), zero DOM/Date.
 // ---------------------------------------------------------------------------
 
-/** Kody metryk OLTC (`result_builder_v1.py` `_METRIC_MAP`, V12K-089):
+/** Kody metryk OLTC (`result_builder_v1.py` `METRYKI_ELEMENTOW_WYNIKU`, V12K-089):
  *  `TAP_POSITION`/`TAP_SWITCH_COUNT` (całkowite, `format_hint="fixed0"`). */
 const OLTC_METRIC_CODE_POSITION = 'TAP_POSITION';
 const OLTC_METRIC_CODE_SWITCHES = 'TAP_SWITCH_COUNT';

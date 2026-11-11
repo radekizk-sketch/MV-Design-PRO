@@ -8,16 +8,26 @@
  */
 
 import { ListaRekordowWymagan, NaglowekModuluNcRfg } from '../ncrfg/komponenty';
-import type { PozycjaModulu } from './pulpitModel';
+import type { PozycjaModulu, StanOcenyModelu } from './pulpitModel';
 import { PULPIT_STRINGS } from './strings';
 
 export interface SekcjaZgodnosciProps {
   readonly pozycja: PozycjaModulu;
-  /** Czy ocena modelu jest wczytana (odróżnia „bez oceny" od „moduł poza oceną"). */
-  readonly ocenaWczytana: boolean;
+  /**
+   * Stan odczytu oceny modelu — odróżnia „ocena niezlecona", „odczyt w toku", „odczyt
+   * nieudany" od „moduł poza oceną" (dopiero przy wczytanej ocenie).
+   */
+  readonly stanOceny: StanOcenyModelu;
 }
 
-export function SekcjaZgodnosci({ pozycja, ocenaWczytana }: SekcjaZgodnosciProps): JSX.Element {
+const TEKST_BEZ_WYNIKU: Readonly<Record<StanOcenyModelu, string>> = {
+  niezlecona: PULPIT_STRINGS.zgodnoscBezOceny,
+  wczytywanie: PULPIT_STRINGS.zgodnoscWczytywanie,
+  blad: PULPIT_STRINGS.zgodnoscBladOceny,
+  wczytana: PULPIT_STRINGS.zgodnoscPozaOcena,
+};
+
+export function SekcjaZgodnosci({ pozycja, stanOceny }: SekcjaZgodnosciProps): JSX.Element {
   return (
     <section
       className="mvd-oze-panel"
@@ -32,8 +42,13 @@ export function SekcjaZgodnosci({ pozycja, ocenaWczytana }: SekcjaZgodnosciProps
             {PULPIT_STRINGS.zgodnoscPominiety}: {pozycja.pominietyPowodPl}
           </p>
         ) : (
-          <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-pulpit-zgodnosc-bez-oceny">
-            {ocenaWczytana ? PULPIT_STRINGS.zgodnoscPozaOcena : PULPIT_STRINGS.zgodnoscBezOceny}
+          <p
+            className="mvd-oze-panel-etyk"
+            data-testid="mvd-oze-pulpit-zgodnosc-bez-oceny"
+            data-stan={stanOceny}
+            aria-busy={stanOceny === 'wczytywanie' ? true : undefined}
+          >
+            {TEKST_BEZ_WYNIKU[stanOceny]}
           </p>
         )
       ) : (

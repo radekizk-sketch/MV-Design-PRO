@@ -48,7 +48,7 @@ from pathlib import Path
 from typing import Any
 
 from enm.dziennik_zmian import sciezka_tymczasowa
-from enm.hash import compute_enm_hash
+from enm.hash import compute_enm_hash, hash_migawki_enm
 from enm.models import EnergyNetworkModel
 
 logger = logging.getLogger(__name__)
@@ -217,7 +217,8 @@ def wczytaj_rewizje(klucz: str, rewizja: int) -> EnergyNetworkModel:
     """Odczytaj migawke rewizji `rewizja` i SPRAWDZ jej tozsamosc.
 
     Sprawdzane sa dwie rzeczy: numer rewizji (w pliku i w naglowku modelu) oraz
-    hash tresci przeliczony `compute_enm_hash` wobec hasha zapisanego w migawce.
+    hash tresci przeliczony z zapisanej migawki (`hash_migawki_enm`) wobec hasha
+    zapisanego w migawce.
     Rozjazd = `RewizjaUszkodzonaError`; brak pliku = `RewizjaNieistniejeError`.
     `header.hash_sha256` modelu NIE jest tu kryterium — hash tresci go wyklucza,
     a naglowek modelu z archiwum/testu moze go nie niesc.
@@ -236,7 +237,12 @@ def wczytaj_rewizje(klucz: str, rewizja: int) -> EnergyNetworkModel:
             f"{model.header.revision}, oczekiwano {rewizja}"
         )
     hash_zapisany = payload.get("hash_sha256")
-    hash_przeliczony = compute_enm_hash(model)
+    # Hash liczony z ZAPISANEJ treści migawki, nie z modelu po walidacji: walidator
+    # modelu migruje zapis zastany (W5-A uziemienie, W5-C punkty podziału), więc model
+    # rewizji sprzed migracji ma inną treść niż ta, którą zahaszowano przy zapisie —
+    # weryfikacja z modelu uznałaby całą historię za „uszkodzoną". Dla migawki bez
+    # migracji oba odciski są równe co do bitu (`hash_migawki_enm` ≡ `compute_enm_hash`).
+    hash_przeliczony = hash_migawki_enm(payload["snapshot"])
     if hash_zapisany != hash_przeliczony:
         raise RewizjaUszkodzonaError(
             f"Migawka {sciezka}: hash zapisany {hash_zapisany!r} nie zgadza się "
@@ -264,11 +270,23 @@ class RaportUzgodnienia:
         )
 
 
-def uzgodnij_indeks(klucz: str, biezacy: EnergyNetworkModel) -> RaportUzgodnienia:
+def uzgodnij_indeks(
+    klucz: str,
+    biezacy: EnergyNetworkModel,
+    *,
+    hash_zapisanej_tresci: str | None = None,
+) -> RaportUzgodnienia:
     """Doprowadz indeks migawek do zgodnosci z HEAD (regula spojnosci z naglowka modulu).
 
     Wolane RAZ przy wczytaniu modelu z nosnika (`enm/store.py`), pod blokada twin.
     Nigdy nie zmienia HEAD; zmienia wylacznie pliki w `.rev/`.
+
+    ``hash_zapisanej_tresci`` — odcisk SUROWEJ migawki HEAD z nosnika
+    (`hash_migawki_enm`), podawany przez magazyn. Walidator modelu migruje zapis
+    zastany (W5-A, W5-C), wiec odcisk modelu `biezacy` rozni sie od odcisku tej
+    samej rewizji zapisanej przed migracja; porownanie z odciskiem modelu
+    zastepowaloby migawke rewizji biezacej trescia PO migracji i gubilo stan sprzed
+    niej (migracja dostaje wlasna rewizje w magazynie). Brak = odcisk modelu.
     """
     katalog = katalog_rewizji(klucz)
     rewizja_head = biezacy.header.revision
@@ -294,6 +312,7 @@ def uzgodnij_indeks(klucz: str, biezacy: EnergyNetworkModel) -> RaportUzgodnieni
     odtworzona = False
     zastapiona = False
     hash_head = compute_enm_hash(biezacy)
+    hash_porownania = hash_zapisanej_tresci or hash_head
     hash_biezacej = hash_migawki(klucz, rewizja_head) if katalog.is_dir() else None
     if hash_biezacej is None:
         przygotuj_rewizje(klucz, biezacy, hash_sha256=hash_head).zatwierdz()
@@ -303,7 +322,7 @@ def uzgodnij_indeks(klucz: str, biezacy: EnergyNetworkModel) -> RaportUzgodnieni
             klucz,
             rewizja_head,
         )
-    elif hash_biezacej != hash_head:
+    elif hash_biezacej != hash_porownania:
         przygotuj_rewizje(klucz, biezacy, hash_sha256=hash_head).zatwierdz()
         zastapiona = True
         logger.warning(

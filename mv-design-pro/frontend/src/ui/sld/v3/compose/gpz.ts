@@ -1,8 +1,8 @@
 /**
  * SLD V3 F5b — kompozycja GPZ z prymitywów (SLD_CAD_SPEC_V3 §3 "GPZ",
- * §8 "Co przejmujemy z v2"). Czysta funkcja: wejście = `GpzCanonicalRendererProps`
+ * §8 "Co przejmujemy z v2"). Czysta funkcja: wejście = `CanonicalGpzProps`
  * (TYP kanoniczny propsów GPZ, importowany WYŁĄCZNIE jako typ — zero cienia
- * modelu, zakaz renderu przez v2, patrz nagłówek `v2/renderer/GpzCanonicalRenderer.tsx`)
+ * modelu, renderer v2 GPZ skasowany kartą GPZ-PARYTET, typ żyje w `v2/canvas/canonicalGpzModel.ts`)
  * + `origin` (punkt zaczepienia na siatce arkusza). Wyjście — w KSZTAŁCIE
  * `StationComposition` (`./station`, F5a): instancje symboli z portami W
  * ŚWIECIE, odcinki wewnętrzne, wejścia dla `layout/labels.ts` `resolveLabels`
@@ -45,7 +45,8 @@ import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/gri
 import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
-import type { SwitchState } from '../symbols/glyphs';
+import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
+import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import type { RoutePort, RouteVertex } from '../layout/route';
@@ -53,21 +54,35 @@ import {
   colorSegmentLabelRows,
   type SegmentLabelSlotX,
 } from '../layout/segments';
-import type {
-  PortCaptionOwnerInput,
-  SimpleAnchoredOwnerInput,
-  StationNameBandOwnerInput,
-  StationNameBandRow,
+import {
+  przesunKotwiczonaEtykiete,
+  type PortCaptionOwnerInput,
+  type SimpleAnchoredOwnerInput,
+  type StationNameBandOwnerInput,
+  type StationNameBandRow,
 } from '../layout/labels';
 import { stackFootprint } from './station';
+import {
+  panelePolGpz,
+  przesunAdnotacjeGpz,
+  szerokoscSlotowNaglowka,
+  ulozTabeliGpz,
+  wymiaryTabeliGpz,
+  type GpzAdnotacje,
+  type PoleTabeliGpzWejscie,
+} from './gpzAdnotacje';
 import { createUnikalnyTestId } from './unikalnyTestId';
 import {
   LATERAL_APPARATUS_SYMBOLS,
   LATERAL_BRANCH_GAP,
   bayApparatusPlanFootprint,
+  glifZrodlaRoliPola,
   planApparatusSymbolIds,
   symbolIdForPrimaryDeviceKind,
+  type BayApparatusSource,
 } from './apparatusSequence';
+import { FIELD_ROLE } from '../../v2/domain/apparatusContracts';
+import type { RolaPolaZrodlowego } from '../../v2/model/polaZModelu';
 import {
   PROTECTION_ANNOTATION_DIAMETER,
   PROTECTION_FULL_LIST_LABEL_CLASS,
@@ -83,12 +98,13 @@ import type {
   BayFieldRole,
   CanonicalGpzBay,
   CanonicalGpzBusbarTopology,
+  CanonicalGpzCoupler,
   CanonicalGpzHvSystemSource,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
-  GpzCanonicalRendererProps,
-} from '../../v2/renderer/GpzCanonicalRenderer';
-import type { BayPrimaryDeviceView } from '../../v2/renderer/MiniBlockRmuRenderer';
+  CanonicalGpzProps,
+} from '../../v2/canvas/canonicalGpzModel';
+import type { BayPrimaryDeviceView } from '../../v2/model/widokPolStacji';
 
 // ---------------------------------------------------------------------------
 // Meta — atrybuty data-* potrzebne wyrocznaim migrowanym z v2 (§8).
@@ -106,6 +122,15 @@ export interface GpzElementMeta {
   readonly sectionId?: string;
   readonly transformerRef?: string;
   readonly bayRef?: string;
+  /** GEOMETRIA-STACJI (Z-07): `Branch.ref_id` gałęzi sprzęgła (`bus_coupler`). */
+  readonly couplerRef?: string;
+  /** GEOMETRIA-STACJI (§0 pkt 4): pochodzenie stosu pola (`'dane'`/`'brak'`), rekord
+   *  aparatu (`Bay.primary_devices`/gałąź pola) i typ z modelu — ta sama oś co stacje. */
+  readonly apparatusSource?: BayApparatusSource;
+  readonly apparatusOrigin?: 'rekord_pola' | 'galaz_pola';
+  readonly apparatusTypeRef?: string;
+  /** GEOMETRIA-STACJI §0 pkt 5: pole rezerwowe/wolne (ten sam predykat co stacje). */
+  readonly bayReserve?: 'rezerwowe' | 'wolne';
   readonly busbarRole?: 'primary' | 'reserve';
   /** Jawna klasa napięcia symbolu (V12K-217). Aparaty pola WN transformatora
    *  stoją po stronie 110 kV, ale ich `transformerRef`/`bayRef` tego nie
@@ -128,7 +153,7 @@ export interface GpzElementMeta {
    *  — `undefined` dla segmentów, które NIE są szyną sekcji SN GPZ. */
   readonly busbarKind?: 'busGpz';
   /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM tej szyny —
-   *  `CanonicalGpzSection.busRef` (sekcja SN) lub `GpzCanonicalRendererProps.
+   *  `CanonicalGpzSection.busRef` (sekcja SN) lub `CanonicalGpzProps.
    *  hvBusRef` (szyna WN). Metadana ADDYTYWNA: `ownerRef` segmentu sceny
    *  (`${sectionId}#bus-primary` itp.) pozostaje NIETKNIĘTY (determinizm/goldeny),
    *  a warstwa wynikowa/energizacja używa TEGO refu do dopasowania klucza
@@ -156,13 +181,17 @@ export interface ComposedGpzSymbolInstance {
    *  `neutralEarthing`; przechodzi do glifu, który rysuje rezystor, dławik,
    *  połączenie bezpośrednie albo przerwę (sieć izolowana). */
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
-  /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): `BayPrimaryDevice.
-   *  device_ref` — WYŁĄCZNIE gdy `bay.primaryDevices` dostarcza sekwencję
-   *  DOKŁADNIE odpowiadającą (długość + kolejność symboli) szablonowi
-   *  `FieldApparatusSpec[]` użytemu do budowy TEGO stosu (patrz
-   *  `primaryDeviceItemsForTemplate` niżej) — WHITE BOX, zero częściowego
-   *  dopasowania. `undefined` gdy dane nieobecne/nie zgadzają się (jak przed
-   *  F11.1 — pozycjonowanie po `symbolId`). Ten sam kształt co
+  /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu — WYŁĄCZNIE
+   *  dla symbolu `transformer2W`; przechodzi przez scenę do glifu. */
+  readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE dla symbolu
+   *  `capacitorBank`; przechodzą przez scenę do glifu (układ połączeń, przekładnik). */
+  readonly bateria?: GlifBaterii;
+  /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): ref rekordu aparatu tej
+   *  pozycji stosu (`BayPrimaryDevice.device_ref` albo ref gałęzi pola) — stos GPZ jest
+   *  budowany Z rekordów (`specyfikacjaPolaGpz`, GEOMETRIA-STACJI §0 pkt 4), więc każda
+   *  pozycja aparatu ma swój rekord; `undefined` dla pozycji bez rekordu (sylwetka braku
+   *  danych, glif źródła, zakończenie rezerwy). Ten sam kształt co
    *  `compose/station.ts` `ComposedSymbolInstance.deviceRef`, więc
    *  `ComposedGpzSymbolInstance` jest strukturalnie zgodny z `PlacedStackDevice`
    *  (`./protectionMarking`) — `resolveStationProtectionMarking`/
@@ -185,7 +214,7 @@ export interface GpzSectionMeta {
   readonly sectionId: string;
   readonly order: number;
   readonly label: string;
-  readonly busVoltageKv: number;
+  readonly busVoltageKv: number | null;
   readonly busbarTopology: CanonicalGpzBusbarTopology;
 }
 
@@ -224,10 +253,9 @@ export interface GpzCompositionLabelInputs {
  * nie-luką-danych wyjątkiem (§17.6, `protectionMarkingGaps` w
  * `scene/buildScene.ts`).
  *
- * F11.1: `buildFieldStack` niżej dopasowuje TERAZ `bay.primaryDevices`
- * (`CanonicalGpzBay.primaryDevices`, adapter `enmToCanonicalGpzAdapter.ts`,
- * wzorzec stacyjne `stackItemsForBay`) do szablonu pola — WYŁĄCZNIE gdy
- * sekwencja się DOKŁADNIE zgadza (`primaryDeviceItemsForTemplate`) — i niesie
+ * F11.1 + GEOMETRIA-STACJI: `buildFieldStack` niżej buduje stos Z rekordów
+ * `bay.primaryDevices` (`CanonicalGpzBay.primaryDevices`, adapter
+ * `enmToCanonicalGpzAdapter.ts`, wzorzec stacyjne `stackItemsForBay`) i niesie
  * `deviceRef`/`linkedRef` na `ComposedGpzSymbolInstance`. Gdy dane się
  * zgadzają, `resolveStationProtectionMarking` (`./protectionMarking`,
  * REUŻYTA WPROST — zero duplikatu logiki stacja↔GPZ) rozwiązuje tor
@@ -259,6 +287,9 @@ export interface ComposedGpzProtectionSymbol {
  */
 export interface GpzGridSourceInput {
   readonly id: string;
+  /** Szyna przyłączenia źródła w modelu (`Source.bus_ref`, `SldSourceView.connectionRef`) —
+   *  źródło na szynach SN zaczepia się przy sekcji, której szyną jest ta szyna. */
+  readonly connectionRef?: string | null;
 }
 
 export interface GpzComposition {
@@ -298,6 +329,10 @@ export interface GpzComposition {
    *  (rysowana przez kanwę/preview z meta sceny), NIE segment toru mocy;
    *  `null` dla kompozycji pustej. */
   readonly zone: GpzZoneDecoration | null;
+  /** GPZ-PARYTET: adnotacje bloku (tła pól wg roli, tabela „Pola GPZ", sloty bilansu
+   *  i alarmów w nagłówku) — geometria bez wartości; wartości dokłada render z wyniku
+   *  backendu. `null` razem z `zone` (kompozycja pusta). */
+  readonly adnotacje: GpzAdnotacje | null;
   readonly bbox: V3Rect;
 }
 
@@ -322,82 +357,145 @@ const HV_LINE_BAY_GAP = 2 * GRID;
 interface FieldApparatusSpec {
   readonly symbolId: SymbolId;
   readonly parityKeys: readonly string[];
+  /** GEOMETRIA-STACJI (§0 pkt 4): rekord aparatu modelu, z którego pozycja pochodzi
+   *  (`undefined` = pozycja bez rekordu: sylwetka braku danych, glif źródła, zakończenie
+   *  rezerwy). Stan, `deviceRef` i typ symbolu biorą się WYŁĄCZNIE stąd. */
+  readonly device?: BayPrimaryDeviceView;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE pozycja `capacitorBank`. */
+  readonly bateria?: GlifBaterii;
 }
 
-const DS_BUS: FieldApparatusSpec = { symbolId: 'disconnector', parityKeys: ['gpz.apparatus.ds.bus', 'gpz.apparatus.ds'] };
-const DS_LIN: FieldApparatusSpec = { symbolId: 'disconnector', parityKeys: ['gpz.apparatus.ds.line', 'gpz.apparatus.ds'] };
-const CB_MAIN: FieldApparatusSpec = { symbolId: 'breaker', parityKeys: ['gpz.apparatus.cb.main', 'gpz.apparatus.cb'] };
-const CT: FieldApparatusSpec = { symbolId: 'currentTransformer', parityKeys: ['gpz.apparatus.ct'] };
-const ES_SIDE: FieldApparatusSpec = { symbolId: 'earthSwitch', parityKeys: ['gpz.apparatus.es.side'] };
-const CABLE_HEAD: FieldApparatusSpec = { symbolId: 'cableHead', parityKeys: ['gpz.apparatus.cable_head'] };
-const VT: FieldApparatusSpec = { symbolId: 'voltageTransformer', parityKeys: [] };
-
-/** Pole liniowe/odgałęźne (spec §3 „pola liniowe"; grammar 1:1 z v2
- *  `getBayApparatusPolicy` LINE_*): DS_bus + CB + CT + DS_lin + ES + głowica. */
-function lineFieldSpec(): readonly FieldApparatusSpec[] {
-  return [DS_BUS, CB_MAIN, CT, DS_LIN, ES_SIDE, CABLE_HEAD];
+/** Klucze parytetu aparatu z rekordu — pierwsze wystąpienie odłącznika to odłącznik
+ *  szynowy, kolejne — liniowy (kolejność rekordów od szyny w dół, `placement`). */
+function kluczeParytetuAparatu(symbolId: SymbolId, poprzednieOdlaczniki: number): readonly string[] {
+  switch (symbolId) {
+    case 'disconnector':
+      return poprzednieOdlaczniki === 0
+        ? ['gpz.apparatus.ds.bus', 'gpz.apparatus.ds']
+        : ['gpz.apparatus.ds.line', 'gpz.apparatus.ds'];
+    case 'breaker':
+      return ['gpz.apparatus.cb.main', 'gpz.apparatus.cb'];
+    case 'currentTransformer':
+      return ['gpz.apparatus.ct'];
+    case 'earthSwitch':
+      return ['gpz.apparatus.es.side'];
+    case 'cableHead':
+      return ['gpz.apparatus.cable_head'];
+    default:
+      return [];
+  }
 }
 
-/** Pole TR w sekcji SN (fallback — normalnie TR renderowany przez
- *  `transformers`/pole TR dedykowane, patrz `composeTrField`; ta gałąź
- *  obsługuje starsze dane ENM z `bay.fieldRole === 'TRANSFORMER'` wprost w
- *  `section.bays`) i pole TR dedykowane — TA SAMA gramatyka (spec §3: „pole
- *  TR: DS+CB+CT+ES"). */
-function transformerFieldSpec(): readonly FieldApparatusSpec[] {
-  return [DS_BUS, CB_MAIN, CT, ES_SIDE];
+/** GEOMETRIA-STACJI (§0 pkt 4c): pole bez rekordów aparatów — JEDNA sylwetka bez stanu. */
+const BRAK_DANYCH_WYPOSAZENIA: FieldApparatusSpec = {
+  symbolId: 'bayNoEquipment',
+  parityKeys: ['gpz.bay.no_equipment_data'],
+};
+
+/** GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola rezerwowego/wolnego (bez głowicy i odejścia). */
+const ZAKONCZENIE_REZERWY: FieldApparatusSpec = { symbolId: 'bayReserve', parityKeys: ['gpz.bay.reserve'] };
+
+/** Role źródła pola OZE rysowane w GPZ (rodzaj rozstrzygnięty albo nieokreślony). */
+const ROLE_ZRODLA_POLA_GPZ: readonly RolaPolaZrodlowego[] = [
+  FIELD_ROLE.DER_PV,
+  FIELD_ROLE.DER_BESS,
+  FIELD_ROLE.DER_FW,
+  FIELD_ROLE.DER_UNKNOWN,
+];
+
+/** Glif rodzaju źródła pola OZE — TEN SAM, który rysuje pole źródłowe stacji
+ *  (`glifZrodlaRoliPola`, jedna tabela rola → glif). */
+function glifZrodlaPolaGpz(rola: RolaPolaZrodlowego): SymbolId {
+  return glifZrodlaRoliPola(rola) ?? 'derUnknown';
 }
 
-/** Pole sprzęgła (bay-based, w `section.bays`, ODRĘBNE od `props.couplers`
- *  między-sekcyjnych) — v2 `getBayApparatusPolicy` COUPLER: DS+CB+CT, brak ES. */
-function couplerBaySpec(): readonly FieldApparatusSpec[] {
-  return [DS_BUS, CB_MAIN, CT];
+/** Zbiór glifów źródła pola OZE, wyprowadzony z tej samej tabeli (zero drugiej listy). */
+const GLIFY_ZRODLA_POLA_GPZ: ReadonlySet<SymbolId> = new Set(ROLE_ZRODLA_POLA_GPZ.map(glifZrodlaPolaGpz));
+
+/**
+ * Karta GPZ-PARYTET cz. 3 (pkt 1): aparat BOCZNY pola GPZ — uziemnik/VT/ogranicznik (§18.1)
+ * oraz glif rodzaju źródła pola OZE. Glif źródła wisi obok głowicy kablowej (odgałęzienie
+ * od jej portu S), bo z głowicy wychodzi kabel do źródła: nie jest zakończeniem toru i nie
+ * przejmuje zaczepu trasy. JEDEN predykat dla planu gabarytu (`gpzFieldPlanFootprint`),
+ * budowy stosu (`buildFieldStack`) i zaczepu trasy na scenie (`buildScene.ts
+ * gpzBayBottomPort`) — predykaty parami z jednego źródła.
+ */
+export function jestAparatemBocznymPolaGpz(symbolId: SymbolId): boolean {
+  return LATERAL_APPARATUS_SYMBOLS.has(symbolId) || GLIFY_ZRODLA_POLA_GPZ.has(symbolId);
 }
 
-/** Pole pomiarowe — v2 `getBayApparatusPolicy` MEASUREMENT: DS+VT+ES. */
-function measurementFieldSpec(): readonly FieldApparatusSpec[] {
-  return [DS_BUS, VT, ES_SIDE];
+/**
+ * GEOMETRIA-STACJI (§0 pkt 4, dyrektywa właściciela 2026-10-21): stos pola GPZ Z REKORDÓW
+ * aparatów modelu (`CanonicalGpzBay.primaryDevices` — `Bay.primary_devices` albo gałęzie
+ * łączeniowe w `equipment_refs`, `projectBayPrimaryDevices`), a bez nich — JEDNA sylwetka
+ * `bayNoEquipment`. Dawne stałe gramatyki ról (pole liniowe DS+CB+CT+DS+ES+głowica, pole TR
+ * DS+CB+CT+ES, pole WN TR DS+CB+CT, sprzęgło DS+CB+CT, pole pomiarowe DS+VT+ES, pole WN
+ * CB+DS) SKASOWANE: rysowały aparaty, których model nie ma, i dopasowywały rekordy tylko
+ * przy pełnej zgodności z gramatyką. Pole bez rekordu `Bay` (tor transformatora bez pola WN
+ * albo pola TR w modelu) — `null` — też dostaje sylwetkę braku danych.
+ * Pole źródłowe dokłada glif rodzaju źródła (element modelu, nie aparat); pole
+ * rezerwowe/wolne traci głowicę i kończy się zakończeniem rezerwy.
+ */
+function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparatusSpec[] {
+  const rezerwa = bay?.reserve;
+  const rekordy = (bay?.primaryDevices ?? []).filter((device) => {
+    const id = symbolIdForPrimaryDeviceKind(device.kind);
+    return id != null && !(rezerwa && id === 'cableHead');
+  });
+  let odlaczniki = 0;
+  const aparaty: FieldApparatusSpec[] = rekordy.map((device) => {
+    const symbolId = symbolIdForPrimaryDeviceKind(device.kind)!;
+    const parityKeys = kluczeParytetuAparatu(symbolId, odlaczniki);
+    if (symbolId === 'disconnector') odlaczniki += 1;
+    return { symbolId, parityKeys, device };
+  });
+  const stos: FieldApparatusSpec[] = aparaty.length > 0 ? aparaty : [BRAK_DANYCH_WYPOSAZENIA];
+  if (bay?.fieldRole === 'SOURCE') {
+    // GPZ-PARYTET cz. 3 (pkt 1): glif rodzaju źródła z modelu (nierozstrzygnięty → źródło
+    // nieokreślone, nigdy PV z domysłu).
+    stos.push({
+      symbolId: glifZrodlaPolaGpz(bay.rolaZrodla ?? FIELD_ROLE.DER_UNKNOWN),
+      parityKeys: ['gpz.bay.source_kind'],
+    });
+  }
+  if (bay?.bateria) {
+    // UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola — element
+    // modelu zamykający stos (jak w stacjach `elementyModeluPola`); układ połączeń i rekord
+    // przekładnika niezrównoważenia z modelu (`v2/model/bateriaPola.ts`).
+    stos.push({
+      symbolId: 'capacitorBank',
+      parityKeys: ['gpz.bay.capacitor_bank'],
+      bateria: {
+        uklad: bay.bateria.uklad,
+        przekladnikNiezrownowazenia: bay.bateria.przekladnikNiezrownowazenia,
+      },
+    });
+  }
+  if (rezerwa) stos.push(ZAKONCZENIE_REZERWY);
+  return stos;
 }
 
-function fieldApparatusSpecForBay(bay: CanonicalGpzBay): readonly FieldApparatusSpec[] {
-  const base = ((): readonly FieldApparatusSpec[] => {
-    switch (bay.fieldRole) {
-      case 'LINE_IN':
-      case 'LINE_OUT':
-      case 'LINE_BRANCH':
-        return lineFieldSpec();
-      case 'TRANSFORMER':
-        return transformerFieldSpec();
-      case 'COUPLER':
-        return couplerBaySpec();
-      case 'MEASUREMENT':
-        return measurementFieldSpec();
-    }
-  })();
-  // esState='absent' (spec/v2: `apparatus.es && esState !== 'absent'`) — pole
-  // BEZ uziemnika na fizycznym łączu (rzadkie, ale realne w ENM).
-  if (bay.esState === 'absent') return base.filter((s) => s.symbolId !== 'earthSwitch');
-  return base;
+/** Pochodzenie stosu pola GPZ (audytor DOM `data-apparatus-source`, ta sama oś co stacje). */
+function zrodloStosuGpz(specs: readonly FieldApparatusSpec[]): BayApparatusSource {
+  return specs.some((spec) => spec.device) ? 'dane' : 'brak';
 }
 
-/** Pole WN TR (spec §3 „pole WN TR: DS+CB+CT") — DS+CB+CT, BEZ ES (ziemia po
- *  stronie WN nie jest częścią gramatyki §3 dla tego pola). */
-function hvTrFieldSpec(): readonly FieldApparatusSpec[] {
-  return [DS_BUS, CB_MAIN, CT];
-}
-
-/** Pole TR dedykowane (spec §3 „pole TR: DS+CB+CT+ES") — TA SAMA gramatyka
- *  co `transformerFieldSpec` (pole TR w sekcji SN, gałąź fallback) — jedna
- *  funkcja, dwa miejsca użycia. */
-const trFieldSpec = transformerFieldSpec;
-
-/** Pole liniowe WN (`hvSections[].bays`) — spec §3 nie rozwija gramatyki pól
- *  WN poza polem TR; uproszczony stos CB+DS (kanon v2 `HvLineBay`: CB dalej
- *  od szyny, DS bliżej szyny) — DECYZJA (luka spec, patrz raport końcowy). */
-function hvLineBaySpec(): readonly FieldApparatusSpec[] {
-  return [
-    { symbolId: 'breaker', parityKeys: ['gpz.hv.bay', 'gpz.apparatus.cb'] },
-    { symbolId: 'disconnector', parityKeys: ['gpz.hv.bay', 'gpz.apparatus.ds'] },
-  ];
+/** Przyrostek identyfikatora testowego aparatu toru transformatora — z symbolu. */
+function przyrostekAparatuToru(symbolId: SymbolId): string {
+  switch (symbolId) {
+    case 'disconnector':
+      return 'ds';
+    case 'breaker':
+      return 'cb';
+    case 'currentTransformer':
+      return 'ct';
+    case 'earthSwitch':
+      return 'es';
+    case 'bayNoEquipment':
+      return 'brak-danych';
+    default:
+      return symbolId;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -432,58 +530,12 @@ function portsInWorld(symbolId: SymbolId, x: number, y: number): Readonly<Record
   return out;
 }
 
-/**
- * F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ — usunięcie wyjątku
- * §17.6): dopasowuje `bay.primaryDevices` (ENM `Bay.primary_devices`, GDY
- * obecne — dziś ZAWSZE `undefined` na fixturze referencyjnej, STOP-notatka
- * F9.2 `v2/canvas/enmToSldAdapter.ts`) do STAŁEGO szablonu
- * `FieldApparatusSpec[]` użytego do budowy stosu tego pola.
- *
- * GPZ, w przeciwieństwie do stacji (`compose/station.ts` `stackItemsForBay`,
- * gdzie sekwencja symboli PRZY DANYCH pochodzi WPROST z `primaryDevices`),
- * ma gramatykę pola KONWENCYJNĄ i STAŁĄ (`fieldApparatusSpecForBay` — F11.1
- * jej NIE zmienia, layout/bands/tapX GPZ pozostają nietykalne). Rejestr
- * device-ref jest więc dopasowaniem WARUNKOWYM: dopiero gdy sekwencja
- * `symbolId` wyprowadzona z `primaryDevices` (po odfiltrowaniu kindów
- * niemapowalnych — `symbolIdForPrimaryDeviceKind`, TA SAMA funkcja co stacje)
- * ma DOKŁADNIE tę samą długość I kolejność co `specs`, każda pozycja stosu
- * dostaje `deviceRef`/`linkedRef`/stan z DANYCH — WHITE BOX, zero
- * częściowego/domyślnego przypisania. Gdy sekwencje się NIE zgadzają (inna
- * długość/kolejność, np. dane niosą inny zestaw aparatów niż zakłada
- * konwencja GPZ) — `null`: CAŁY stos pozostaje BEZ rejestru (fallback
- * pozycjonowania okręgu po `symbolId`, jak przed F11.1) — nigdy zgadywanie
- * per-pozycja.
- */
-function primaryDeviceItemsForTemplate(
-  bay: CanonicalGpzBay,
-  specs: readonly FieldApparatusSpec[],
-): readonly BayPrimaryDeviceView[] | null {
-  const devices = bay.primaryDevices;
-  if (!devices || devices.length === 0) return null;
-  const mapped: BayPrimaryDeviceView[] = [];
-  for (const device of devices) {
-    if (symbolIdForPrimaryDeviceKind(device.kind) != null) mapped.push(device);
-  }
-  if (mapped.length !== specs.length) return null;
-  const aligned = mapped.every(
-    (device, index) => symbolIdForPrimaryDeviceKind(device.kind) === specs[index].symbolId,
-  );
-  return aligned ? mapped : null;
-}
-
 function buildFieldStack(
   specs: readonly FieldApparatusSpec[],
   centerX: number,
   topY: number,
   testIdFor: (index: number, symbolId: SymbolId) => string | undefined,
-  stateFor: (index: number, symbolId: SymbolId) => SwitchState | undefined,
   metaExtra: Partial<GpzElementMeta>,
-  // F11.1: rejestr device-ref, index-aligned do `specs` (ten sam indeks co
-  // `testIdFor`/`stateFor`) — patrz docstring `primaryDeviceItemsForTemplate`.
-  // `null`/pominięty = brak rejestru (stosy szablonowe bez `Bay` za nimi —
-  // pole WN TR/pole TR dedykowane, patrz wywołania niżej — zostają BEZ
-  // rejestru z konstrukcji, uczciwie: nie ma `CanonicalGpzBay` źródłowego).
-  deviceItems: readonly BayPrimaryDeviceView[] | null = null,
 ): FieldStack {
   // Karta S9-4 (tożsamość zaznaczenia) — UNIKALNOŚĆ testId W STOSIE POLA.
   // `testIdFor` dostaje `(index, symbolId)`, ale wszystkie wywołania budują
@@ -501,11 +553,27 @@ function buildFieldStack(
   const unikalny = createUnikalnyTestId();
   const unikalnyTestId = (index: number, symbolId: SymbolId): string | undefined =>
     unikalny(testIdFor(index, symbolId));
+  // GEOMETRIA-STACJI (§0 pkt 4): stan, `deviceRef` i typ WYŁĄCZNIE z rekordu aparatu pozycji
+  // (`FieldApparatusSpec.device`); pozycja bez rekordu nie ma stanu (bez koloru stanu).
+  const zrodlo = zrodloStosuGpz(specs);
+  const daneRekordu = (spec: FieldApparatusSpec) => ({
+    state: spec.device?.switchState,
+    deviceRef: spec.device?.deviceRef,
+    linkedRef: spec.device?.linkedRef,
+  });
+  const metaPozycji = (spec: FieldApparatusSpec, index: number): GpzElementMeta => ({
+    parityKeys: spec.parityKeys,
+    testId: unikalnyTestId(index, spec.symbolId),
+    ...metaExtra,
+    apparatusSource: zrodlo,
+    ...(spec.device?.pochodzenie ? { apparatusOrigin: spec.device.pochodzenie } : {}),
+    ...(spec.device?.typeRef ? { apparatusTypeRef: spec.device.typeRef } : {}),
+  });
   // F10.1 (spec §18.1/§18.2, V12K-033): podział na TOR GŁÓWNY (oś) i APARATY
   // BOCZNE (ES/VT/SA — odgałęzienie poziome od portu S poprzedzającego
   // aparatu szeregowego). TA SAMA reguła co `compose/station.ts::buildBayStack`
   // i `planApparatusSymbolIds` (jedna prawda). `index` przekazywany do
-  // `testIdFor`/`stateFor` = pozycja w ORYGINALNEJ liście `specs` (parytet
+  // `testIdFor` = pozycja w ORYGINALNEJ liście `specs` (parytet
   // testId/stanów z danymi wejściowymi zachowany).
   const mainSpecs: { readonly spec: FieldApparatusSpec; readonly index: number }[] = [];
   const lateralSpecs: {
@@ -514,7 +582,7 @@ function buildFieldStack(
     readonly afterMainIndex: number;
   }[] = [];
   specs.forEach((spec, index) => {
-    if (LATERAL_APPARATUS_SYMBOLS.has(spec.symbolId)) {
+    if (jestAparatemBocznymPolaGpz(spec.symbolId)) {
       lateralSpecs.push({ spec, index, afterMainIndex: mainSpecs.length - 1 });
     } else {
       mainSpecs.push({ spec, index });
@@ -534,19 +602,14 @@ function buildFieldStack(
     const def = SYMBOL_DEFS[spec.symbolId];
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(spec.symbolId, x, y);
-    // F11.1: `deviceItems` jest index-aligned do `specs` ORYGINALNEJ listy —
-    // `index` tu jest DOKŁADNIE tym indeksem (patrz `specs.forEach((spec,
-    // index) => ...)` wyżej, budujący `mainSpecs`/`lateralSpecs`).
-    const deviceItem = deviceItems?.[index];
     const instance: ComposedGpzSymbolInstance = {
       symbolId: spec.symbolId,
       x,
       y,
-      state: deviceItem?.switchState ?? stateFor(index, spec.symbolId),
-      deviceRef: deviceItem?.deviceRef,
-      linkedRef: deviceItem?.linkedRef,
+      ...daneRekordu(spec),
+      ...(spec.bateria ? { bateria: spec.bateria } : {}),
       ports,
-      meta: { parityKeys: spec.parityKeys, testId: unikalnyTestId(index, spec.symbolId), ...metaExtra },
+      meta: metaPozycji(spec, index),
     };
     instances.push(instance);
     mainInstances.push(instance);
@@ -593,16 +656,13 @@ function buildFieldStack(
       const lx = mainRightX + LATERAL_BRANCH_GAP + used;
       consumedAtAnchor.set(afterMainIndex, used + LATERAL_BRANCH_GAP + def.width);
       const ports = portsInWorld(spec.symbolId, lx, anchor.y);
-      const deviceItem = deviceItems?.[index];
       instances.push({
         symbolId: spec.symbolId,
         x: lx,
         y: anchor.y,
-        state: deviceItem?.switchState ?? stateFor(index, spec.symbolId),
-        deviceRef: deviceItem?.deviceRef,
-        linkedRef: deviceItem?.linkedRef,
+        ...daneRekordu(spec),
         ports,
-        meta: { parityKeys: spec.parityKeys, testId: unikalnyTestId(index, spec.symbolId), ...metaExtra },
+        meta: metaPozycji(spec, index),
       });
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
       branchSegments.push({
@@ -652,6 +712,11 @@ interface SectionLayout {
   readonly x: number;
   readonly width: number;
   readonly fields: readonly FieldColumnLayout[];
+  /** Osie X wież transformatorów tej sekcji (`transformerRef` → X), z `layoutSections`. */
+  readonly osieWiez: ReadonlyMap<string, number>;
+  /** Wolny pas na szynie między zajętością pasma tej sekcji (szyna z blokiem źródła)
+   *  a etykietą sekcji następnej — miejsce wyłącznika sprzęgła; `null` dla ostatniej. */
+  readonly pasSprzegla: { readonly lewo: number; readonly prawo: number } | null;
 }
 
 /** F9.9 R-1: szerokość kolumny adnotacji zabezpieczeń pola GPZ — TA SAMA
@@ -683,7 +748,7 @@ function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
  *  — jedna prawda). `mainStack.width` wyznacza OŚ stosu; pełna szerokość
  *  zawiera rozszerzenie boczne w prawo. */
 function gpzFieldPlanFootprint(spec: readonly FieldApparatusSpec[]) {
-  return bayApparatusPlanFootprint(planApparatusSymbolIds(spec.map((s) => s.symbolId)));
+  return bayApparatusPlanFootprint(planApparatusSymbolIds(spec.map((s) => s.symbolId), jestAparatemBocznymPolaGpz));
 }
 
 /** Szerokość WYMAGANA kolumny pola: gabaryt stosu aparatów (`stackFootprint`,
@@ -704,11 +769,23 @@ function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldAppa
  *  (`Bay.bay_number`, potem `feeder_short_name`) zawsze wygrywają; OSTATNI
  *  fallback = deterministyczny licznik per klasa roli w kolejności
  *  kompozycji sekcji (F01… liniowe, FT1… TR, FS1… sprzęgła, FP1…
- *  pomiarowe) — pole bez ŻADNEGO oznacznika w danych przestaje być
+ *  pomiarowe, FK1… baterii kondensatorów, FZ1… zespołów uziemiających — klasa jak w stacjach,
+ *  `directions.ts`) — pole bez ŻADNEGO oznacznika w danych przestaje być
  *  anonimowe. Kolejność fallbacków zachowuje FIX-A (dedup feederName)
  *  i geometrię fixtury referencyjnej 1:1. */
 function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, number>): string {
-  const cls = role === 'TRANSFORMER' ? 'FT' : role === 'COUPLER' ? 'FS' : role === 'MEASUREMENT' ? 'FP' : 'F';
+  const cls =
+    role === 'TRANSFORMER'
+      ? 'FT'
+      : role === 'COUPLER'
+        ? 'FS'
+        : role === 'MEASUREMENT'
+          ? 'FP'
+          : role === 'CAPACITOR_BANK'
+            ? 'FK'
+            : role === 'EARTHING_UNIT'
+              ? 'FZ'
+              : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
@@ -719,7 +796,7 @@ function layoutSectionFields(section: CanonicalGpzSection, startX: number): { re
   let cursor = startX + SECTION_MARGIN;
   const ordinalCounters = new Map<string, number>();
   section.bays.forEach((bay, index) => {
-    const spec = fieldApparatusSpecForBay(bay);
+    const spec = specyfikacjaPolaGpz(bay);
     // F10.1: oś stosu = połowa szerokości TORU GŁÓWNEGO (aparaty boczne
     // rozszerzają kolumnę w prawo, nie przesuwają osi).
     const footprint = gpzFieldPlanFootprint(spec).mainStack;
@@ -738,17 +815,94 @@ function layoutSectionFields(section: CanonicalGpzSection, startX: number): { re
 
 /** Prefix-sum sekcji SN (spec §5.3 arytmetyka, zastosowana do sekcji GPZ —
  *  ZERO stałych PITCH: `width` każdej sekcji z liczby pól §3). Sekcje
- *  uporządkowane wg `order` (kanon ENM), nie wg kolejności wejścia. */
-function layoutSections(sections: readonly CanonicalGpzSection[], startX: number): readonly SectionLayout[] {
+ *  uporządkowane wg `order` (kanon ENM), nie wg kolejności wejścia.
+ *
+ *  Pasmo NAD szyną SN sekcji zajmują, od lewej: etykieta sekcji (wyśrodkowana na
+ *  lewym końcu szyny), grupa wież transformatorów (pole WN TR → TR2W → pole TR,
+ *  `grupaWiez`) i blok źródła zasilania na szynach SN przy prawym końcu szyny
+ *  (`blokZrodla`). Jedna arytmetyka rezerwuje je wszystkie:
+ *   - grupa wież jest wyśrodkowana na środku sekcji, ale nie wchodzi na etykietę
+ *     sekcji (lewy zasięg grupy ≥ prawa krawędź etykiety + `FIELD_GAP`);
+ *   - sekcja jest dość szeroka, by zejście każdej wieży trafiało w jej szynę
+ *     z marginesem `SECTION_MARGIN`;
+ *   - sekcja następna zaczyna się co najmniej `SECTION_GAP` za poprzednią i tak,
+ *     by lewa krawędź jej etykiety leżała za całą zajętością pasma poprzedniej
+ *     (szyna z blokiem źródła, wieże) o pas sprzęgła (`PAS_SPRZEGLA`), w którym
+ *     stoi wyłącznik sprzęgła międzysekcyjnego (`pasSprzegla`).
+ *  Sekcja z dość szeroką kolumną pól i jedną wieżą zostaje w dotychczasowym
+ *  miejscu (wieża na środku sekcji). */
+function layoutSections(
+  sections: readonly CanonicalGpzSection[],
+  startX: number,
+  pasmo: {
+    readonly grupy: ReadonlyMap<string, GrupaWiez>;
+    readonly blokZrodla: ReadonlyMap<string, number>;
+    /** Szerokość pasa sprzęgła ZA sekcją (`sectionId` sekcji lewej pary), gdy pary
+     *  łączy sprzęgło (`szerokoscPasaSprzegla`); bez sprzęgła — `PAS_SPRZEGLA`. */
+    readonly pasSprzeglaZa: ReadonlyMap<string, number>;
+  },
+): { readonly layouts: readonly SectionLayout[]; readonly zajetoscPasma: number | null } {
   const ordered = [...sections].sort((a, b) => a.order - b.order);
   const out: SectionLayout[] = [];
   let cursor = startX;
-  ordered.forEach((section) => {
-    const { fields, width } = layoutSectionFields(section, cursor);
-    out.push({ section, x: cursor, width, fields });
+  let poprzednia: { readonly prawaSzyny: number; readonly zajetosc: number; readonly pas: number } | null = null;
+  for (const section of ordered) {
+    const polowaEtykiety = polowaEtykietySekcji(section);
+    if (poprzednia !== null) {
+      const brak = poprzednia.zajetosc + poprzednia.pas + polowaEtykiety - cursor;
+      if (brak > 0) cursor += snapUp(brak);
+      out[out.length - 1] = {
+        ...out[out.length - 1],
+        pasSprzegla: { lewo: poprzednia.prawaSzyny, prawo: cursor - polowaEtykiety },
+      };
+    }
+    const { fields, width: szerokoscPol } = layoutSectionFields(section, cursor);
+    const grupa = pasmo.grupy.get(section.sectionId) ?? null;
+    // Dosunięcie niżej daje też minimum `rozpietosc + 2 × SECTION_MARGIN` (baza ≥ x + margines,
+    // bo `zaEtykieta` ≥ x + `FIELD_GAP` = x + `SECTION_MARGIN`).
+    let width = szerokoscPol;
+    const osieWiez = new Map<string, number>();
+    let prawaWiez = -Infinity;
+    if (grupa) {
+      const naSrodku = snapToGrid(cursor + width / 2 - grupa.rozpietosc / 2);
+      const zaEtykieta = snapUp(cursor + polowaEtykiety + FIELD_GAP + grupa.lewo);
+      const baza = Math.max(naSrodku, zaEtykieta);
+      width = Math.max(width, snapUp(baza + grupa.rozpietosc + SECTION_MARGIN - cursor));
+      grupa.wieze.forEach((wieza, i) => osieWiez.set(wieza.transformer.transformerRef, baza + grupa.przesuniecia[i]));
+      prawaWiez = baza + grupa.rozpietosc + grupa.prawo;
+    }
+    const prawaSzyny = cursor + width;
+    const blok = pasmo.blokZrodla.get(section.sectionId) ?? 0;
+    out.push({ section, x: cursor, width, fields, osieWiez, pasSprzegla: null });
+    poprzednia = {
+      prawaSzyny: prawaSzyny + blok,
+      zajetosc: Math.max(prawaSzyny + blok, prawaWiez),
+      pas: pasmo.pasSprzeglaZa.get(section.sectionId) ?? PAS_SPRZEGLA,
+    };
     cursor += width + SECTION_GAP;
-  });
-  return out;
+  }
+  return { layouts: out, zajetoscPasma: poprzednia === null ? null : poprzednia.zajetosc };
+}
+
+/** Pas sprzęgła między zajętością pasma sekcji a etykietą sekcji następnej:
+ *  wyłącznik sprzęgła z prześwitem `FIELD_GAP` po obu stronach. */
+const PAS_SPRZEGLA = SYMBOL_DEFS.breaker.width + 2 * FIELD_GAP;
+
+/** Pas sprzęgła danego sprzęgła: wyłącznik albo jego oznacznik nad nim (szerszy z nich,
+ *  oznacznik wyśrodkowany na osi wyłącznika) z prześwitem `FIELD_GAP` po obu stronach. */
+/** GEOMETRIA-STACJI (Z-07/Z-08): glif sprzęgła na osi szyny — tor poziomy, rodzaj z danych
+ *  (`CanonicalGpzCoupler.rodzaj`: wyłącznik → `lineBreaker`, łącznik → `lineSwitch`). */
+function symbolSprzegla(coupler: CanonicalGpzCoupler): 'lineBreaker' | 'lineSwitch' {
+  return coupler.rodzaj === 'wylacznik' ? 'lineBreaker' : 'lineSwitch';
+}
+
+function szerokoscPasaSprzegla(coupler: CanonicalGpzCoupler): number {
+  return snapUp(Math.max(SYMBOL_DEFS[symbolSprzegla(coupler)].width, measureLabelWidth(coupler.designation, 't3')) + 2 * FIELD_GAP);
+}
+
+/** Połowa szerokości etykiety sekcji (etykieta wyśrodkowana na lewym końcu szyny). */
+function polowaEtykietySekcji(section: CanonicalGpzSection): number {
+  return snapUp(Math.ceil(measureLabelWidth(sectionLabelText(section), 't2') / 2));
 }
 
 function sectionLayoutById(layouts: readonly SectionLayout[]): ReadonlyMap<string, SectionLayout> {
@@ -760,7 +914,11 @@ function sectionLayoutById(layouts: readonly SectionLayout[]): ReadonlyMap<strin
  *  marginesu lewego niżej i budowa etykiety w pętli sekcji), zero
  *  duplikacji formuły tekstu. */
 function sectionLabelText(section: CanonicalGpzSection): string {
-  return `${section.label} · ${liczbaRysunkuPl(section.busVoltageKv)} kV`;
+  // GPZ-PARYTET: napięcie wyłącznie z modelu (`Bus.voltage_kv`). Brak danej = sama nazwa
+  // sekcji + wpis `gpz.section.voltage.missing` (zero zastępczego 15 kV).
+  return section.busVoltageKv != null
+    ? `${section.label} · ${liczbaRysunkuPl(section.busVoltageKv)} kV`
+    : section.label;
 }
 
 /**
@@ -775,28 +933,142 @@ function sectionLabelText(section: CanonicalGpzSection): string {
  * wyjątkiem" — clamp pozycji zniekształciłby ten slot, przesunięcie startu
  * układu sekcji go zachowuje): start sekcji przesunięty w prawo o połowę
  * szerokości etykiety NAJBARDZIEJ LEWEJ sekcji (ta sama formuła tekstu jak
- * przy budowie `sectionLabels` niżej — `sectionLabelText`). Sekcje inne niż
- * najbardziej lewa mogą też mieć etykietę szerszą niż ich własna kolumna,
- * ale wystają w kolumnę SĄSIADA (SECTION_GAP), nie za krawędź arkusza — poza
- * zakresem D2 (potwierdzone na fixturze: 1 sekcja, brak sąsiada z tej strony). */
+ * przy budowie `sectionLabels` niżej — `sectionLabelText`). Etykiety sekcji
+ * kolejnych rezerwuje `layoutSections` (sekcja zaczyna się za zajętością pasma
+ * sekcji poprzedniej o pas sprzęgła i połowę swojej etykiety). */
 function firstSectionLabelLeftMargin(sections: readonly CanonicalGpzSection[]): number {
   if (sections.length === 0) return 0;
   const first = [...sections].sort((a, b) => a.order - b.order)[0];
-  const halfWidth = Math.ceil(measureLabelWidth(sectionLabelText(first), 't2') / 2);
-  return snapUp(halfWidth);
+  return polowaEtykietySekcji(first);
 }
 
-/** Sekcja docelowa transformatora — 1:1 z v2 (`GpzCanonicalRenderer.tsx`
- *  `TransformersBlock`): mapowanie przez `lvSectionId`, fallback po indeksie
- *  wśród sekcji uporządkowanych `order`. */
-function targetSectionForTransformer(
+/** Sekcja docelowa transformatora: sekcja, której szyną jest szyna strony SN
+ *  transformatora w modelu (`lvSectionId` z adaptera, `Transformer.lv_bus_ref`).
+ *  Transformator, którego szyna SN nie jest szyną żadnej sekcji, nie ma sekcji
+ *  docelowej — dawny zastępczy przydział po indeksie wśród sekcji dowiązywał go
+ *  zejściem do szyny, z którą model go nie łączy. */
+function sekcjaDocelowaTransformatora(
   transformer: CanonicalGpzTransformer,
-  index: number,
-  byId: ReadonlyMap<string, SectionLayout>,
-  ordered: readonly SectionLayout[],
-): SectionLayout | null {
-  if (transformer.lvSectionId && byId.has(transformer.lvSectionId)) return byId.get(transformer.lvSectionId)!;
-  return ordered[index] ?? null;
+  sectionIds: ReadonlySet<string>,
+): string | null {
+  return transformer.lvSectionId && sectionIds.has(transformer.lvSectionId) ? transformer.lvSectionId : null;
+}
+
+
+/** Wiersze tabliczki transformatora (pasmo nazwy na prawo od symbolu TR2W) —
+ *  jedna funkcja dla budowy etykiety i pomiaru zasięgu wieży (`zasiegWiezy`). */
+function wierszeTabliczkiTransformatora(transformer: CanonicalGpzTransformer): StationNameBandRow[] {
+  // F13.1 (spec §21.1/D3-9): grupa połączeń (Yd11 itp.) DOPISANA do wiersza
+  // mocy — „Yd11 · 25 MVA" — WYŁĄCZNIE gdy ENM ją niesie (`vectorGroup`
+  // nullable, uczciwy brak: żaden literał zastępczy). Trzeci wiersz
+  // (przekładnia) NIETKNIĘTY.
+  const ratingRowText = transformer.vectorGroup
+    ? `${transformer.vectorGroup} · ${transformer.snMva} MVA`
+    : `${transformer.snMva} MVA`;
+  // Recenzja NO-GO 2026-07-17 pkt 4: uk%/Pk z ENM (materializacja
+  // katalogowa) na tabliczce TR — WYŁĄCZNIE gdy dane są (uczciwy brak,
+  // zero literałów zastępczych).
+  const shortCircuitParts: string[] = [];
+  if (transformer.ukPercent != null) shortCircuitParts.push(`uk ${liczbaRysunkuPl(transformer.ukPercent)}%`);
+  if (transformer.pkKw != null) shortCircuitParts.push(`Pk ${liczbaRysunkuPl(transformer.pkKw)} kW`);
+  // SLD-02 (V12K-091): wiersz regulacji zaczepów z modelu (`tap_changer`
+  // → oltc). WYŁĄCZNIE gdy regulacja obecna (uczciwy brak: bez wiersza).
+  const oltcRowText = transformer.oltc
+    ? `${transformer.oltc.kind} ${transformer.oltc.positionLabel} · ${transformer.oltc.modeLabel}`
+      + (transformer.oltc.setpointLabel ? ` · ${transformer.oltc.setpointLabel}` : '')
+    : null;
+  // KD-11: oznaczenie transformatora („TR1") to TOŻSAMOŚĆ — bez niego z
+  // rysunku nie da się odczytać, który to transformator; moc/grupa połączeń,
+  // przekładnia, dane zwarciowe i zaczepy to DANE SZCZEGÓŁOWE.
+  return [
+    { text: transformer.designation, labelClass: 't1', role: 'tozsamosc' },
+    { text: ratingRowText, labelClass: 't2', role: 'dane' },
+    {
+      text: `${liczbaRysunkuPl(transformer.uhvKv)}/${liczbaRysunkuPl(transformer.ulvKv)} kV`,
+      labelClass: 't2',
+      role: 'dane',
+    },
+    ...(shortCircuitParts.length > 0
+      ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3', role: 'dane' } as StationNameBandRow]
+      : []),
+    ...(oltcRowText
+      ? [{ text: oltcRowText, labelClass: 't3', role: 'dane' } as StationNameBandRow]
+      : []),
+  ];
+}
+
+/** Odsunięcie lewej krawędzi pasma tabliczki transformatora od osi wieży. */
+function odsuniecieTabliczki(): number {
+  return snapToGrid(SYMBOL_DEFS.transformer2W.width / 2 + GRID);
+}
+
+function szerokoscTabliczki(wiersze: readonly StationNameBandRow[]): number {
+  return snapUp(Math.max(...wiersze.map((row) => measureLabelWidth(row.text, row.labelClass))));
+}
+
+/** Zasięg poziomy wieży transformatora względem jej osi — TA SAMA arytmetyka co
+ *  budowa wieży w `composeGpz`: plany stosów pola WN TR i pola TR
+ *  (`gpzFieldPlanFootprint`, tor główny wyśrodkowany na osi, aparaty boczne
+ *  w prawo), kolumny adnotacji pól modelu (`fieldColumnRequiredWidth`), symbol
+ *  TR2W i pasmo tabliczki na prawo od niego. */
+interface ZasiegWiezy {
+  readonly lewo: number;
+  readonly prawo: number;
+}
+
+function zasiegWiezy(transformer: CanonicalGpzTransformer): ZasiegWiezy {
+  const polowaTr = SYMBOL_DEFS.transformer2W.width / 2;
+  let lewo = polowaTr;
+  let prawo = polowaTr;
+  const stosy: ReadonlyArray<readonly [CanonicalGpzBay | null, readonly FieldApparatusSpec[]]> = [
+    [transformer.poleWn, specyfikacjaPolaGpz(transformer.poleWn)],
+    [transformer.poleTr, specyfikacjaPolaGpz(transformer.poleTr)],
+  ];
+  for (const [pole, specyfikacja] of stosy) {
+    const plan = gpzFieldPlanFootprint(specyfikacja);
+    const polowa = plan.mainStack.width / 2;
+    lewo = Math.max(lewo, polowa);
+    prawo = Math.max(prawo, plan.width - polowa);
+    if (pole) {
+      const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
+      prawo = Math.max(prawo, snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)) - polowa);
+    }
+  }
+  prawo = Math.max(prawo, odsuniecieTabliczki() + szerokoscTabliczki(wierszeTabliczkiTransformatora(transformer)));
+  return { lewo: snapUp(lewo), prawo: snapUp(prawo) };
+}
+
+/** Grupa wież jednej sekcji (albo wież bez sekcji docelowej) ułożona obok siebie
+ *  w porządku `transformerRef` (deterministycznie, niezależnie od kolejności
+ *  wejścia): oś wieży `i + 1` = oś wieży `i` + prawy zasięg `i` + `FIELD_GAP` +
+ *  lewy zasięg `i + 1`. `przesuniecia` — osie względem osi pierwszej wieży,
+ *  `rozpietosc` — oś ostatniej względem pierwszej, `lewo`/`prawo` — zasięg
+ *  pierwszej w lewo i ostatniej w prawo. */
+interface GrupaWiez {
+  readonly wieze: readonly { readonly transformer: CanonicalGpzTransformer; readonly zasieg: ZasiegWiezy }[];
+  readonly przesuniecia: readonly number[];
+  readonly rozpietosc: number;
+  readonly lewo: number;
+  readonly prawo: number;
+}
+
+function grupaWiez(transformatory: readonly CanonicalGpzTransformer[]): GrupaWiez {
+  const wieze = [...transformatory]
+    .sort((a, b) => (a.transformerRef < b.transformerRef ? -1 : a.transformerRef > b.transformerRef ? 1 : 0))
+    .map((transformer) => ({ transformer, zasieg: zasiegWiezy(transformer) }));
+  const przesuniecia: number[] = [];
+  let os = 0;
+  wieze.forEach((wieza, i) => {
+    if (i > 0) os += wieze[i - 1].zasieg.prawo + FIELD_GAP + wieza.zasieg.lewo;
+    przesuniecia.push(os);
+  });
+  return {
+    wieze,
+    przesuniecia,
+    rozpietosc: os,
+    lewo: wieze[0]?.zasieg.lewo ?? 0,
+    prawo: wieze[wieze.length - 1]?.zasieg.prawo ?? 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -824,13 +1096,6 @@ function computeBbox(symbols: readonly ComposedGpzSymbolInstance[], segments: re
   if (!Number.isFinite(minX)) return { x: 0, y: 0, width: 0, height: 0 };
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
-
-function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): SwitchState | undefined {
-  if (state == null || state === 'absent') return undefined;
-  return state;
-}
-
-
 
 /** F13.1 (spec §21.1/§21.2, D3-8/D3-10): tabliczka danych systemu — „Sk″ 250
  *  MVA · Ik″ 9,62 kA · 110 kV" — WYŁĄCZNIE człony, dla których ENM niesie
@@ -865,16 +1130,53 @@ function gpzSystemSourceDataplateText(source: CanonicalGpzHvSystemSource): strin
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
+/** Wiersze tabliczki źródła systemowego (pod symbolem źródła, na prawo) — jedna
+ *  funkcja dla budowy etykiety i rezerwacji bloku źródła w paśmie sekcji. */
+function wierszeZrodlaSystemowego(
+  source: CanonicalGpzHvSystemSource,
+  sourceOnHv: boolean,
+): StationNameBandRow[] {
+  const dataplate = gpzSystemSourceDataplateText(source);
+  // KD-11: NAZWA ŹRÓDŁA to tożsamość (mimo klasy `t2` — klasa
+  // typograficzna nie rozstrzyga znaczenia); opis ekwiwalentu i
+  // tabliczka danych zwarciowych to dane szczegółowe.
+  const rows: StationNameBandRow[] = [{ text: source.name, labelClass: 't2', role: 'tozsamosc' }];
+  // Recenzja NO-GO 2026-07-17 pkt 3: gdy źródło to EKWIWALENT na
+  // szynach SN (`!sourceOnHv`), tabliczka mówi to WPROST — inaczej
+  // czytelnik bierze dane zwarciowe ekwiwalentu za parametry
+  // przyłącza systemowego WN (fałsz prezentacji pkt 2).
+  if (!sourceOnHv) rows.push({ text: 'Ekwiwalent sieci zasilającej', labelClass: 't3', role: 'dane' });
+  if (dataplate) rows.push({ text: dataplate, labelClass: 't3', role: 'dane' });
+  return rows;
+}
+
+/** Odsunięcie pierwszego symbolu źródła od końca szyny (przedłużenie szyny do zaczepu). */
+const ODSUNIECIE_ZRODLA = 3 * GRID;
+
+/** Szerokość bloku źródeł przy prawym końcu szyny — ta sama arytmetyka co budowa
+ *  bloku w `composeGpz` (symbole co `szerokość + GRID`, tabliczka źródła systemowego
+ *  za ostatnim symbolem), z zapasem na przyciągnięcie zaczepu do siatki. */
+function szerokoscBlokuZrodel(
+  zrodla: readonly GpzGridSourceInput[],
+  hvSystemSource: CanonicalGpzHvSystemSource | null,
+  wiersze: readonly StationNameBandRow[] | null,
+): number {
+  const def = SYMBOL_DEFS.gridSource;
+  const symbole = ODSUNIECIE_ZRODLA + GRID + zrodla.length * (def.width + GRID) - GRID;
+  const zTabliczka = hvSystemSource && wiersze && zrodla.some((z) => z.id === hvSystemSource.sourceRef);
+  return snapUp(symbole + (zTabliczka ? GRID + szerokoscTabliczki(wiersze) : 0));
+}
+
 /**
  * Komponuje GPZ z prymitywów (spec §3, §8). Czysta funkcja — deterministyczna
  * (to samo wejście ⇒ identyczny wynik, test w `__tests__/gpz.test.ts`).
  *
  * `origin` — punkt zaczepienia na siatce arkusza (WORLD); `props.x`/`props.y`
- * z `GpzCanonicalRendererProps` to STARA geometria slotowa v2 (PITCH) i NIE
+ * z `CanonicalGpzProps` to STARA geometria slotowa v2 (PITCH) i NIE
  * jest tu czytana (analogicznie do `StationMeasureInput`/UWAGA w `layout/measure.ts`).
  */
 export function composeGpz(
-  props: GpzCanonicalRendererProps,
+  props: CanonicalGpzProps,
   origin: { readonly x: number; readonly y: number },
   gridSources: readonly GpzGridSourceInput[] = [],
   // F9.9 B-1/R-1 (spec §17.4): szczegółowość warstwy adnotacji zabezpieczeń —
@@ -917,14 +1219,15 @@ export function composeGpz(
   // -- 1. Pola liniowe WN (hvSections) — rząd nad szyną WN, prefix-sum. -----
   const hvBusY = originY + HV_MARGIN_TOP;
   let hvLineBayCursor = originX + SECTION_MARGIN;
-  const hvLineBaySpecTemplate = hvLineBaySpec();
-  const hvLineBayFootprint = stackFootprint(hvLineBaySpecTemplate.map((s) => s.symbolId));
 
   hvSections
     .slice()
     .sort((a, b) => a.order - b.order)
     .forEach((hvSection) => {
       hvSection.bays.forEach((bay) => {
+        // GEOMETRIA-STACJI (§0 pkt 4): stos pola WN z rekordów aparatów (brak → sylwetka).
+        const hvLineBaySpecTemplate = specyfikacjaPolaGpz(bay);
+        const hvLineBayFootprint = stackFootprint(hvLineBaySpecTemplate.map((s) => s.symbolId));
         const centerX = snapToGrid(hvLineBayCursor + hvLineBayFootprint.width / 2);
         const topY = hvBusY - GRID - hvLineBayFootprint.height;
         const stack = buildFieldStack(
@@ -932,11 +1235,13 @@ export function composeGpz(
           centerX,
           topY,
           (_i, id) => `gpz-canonical-hv-bay-${bay.bayRef}-${id}`,
-          (_i, id) => (id === 'breaker' ? bay.cbState : id === 'disconnector' ? bay.dsState : undefined),
-          { sectionId: hvSection.sectionId, bayRef: bay.bayRef },
+          { sectionId: hvSection.sectionId, bayRef: bay.bayRef, ...(bay.reserve ? { bayReserve: bay.reserve } : {}) },
         );
         symbols.push(...stack.instances);
         stack.instances.forEach((instance) => tag(instance.meta.parityKeys));
+        // Klucz pola WN niosły dawniej pozycje stałej gramatyki pola WN (CB+DS) — po jej
+        // kasacji (GEOMETRIA-STACJI §0 pkt 4) niesie go samo pole, niezależnie od rekordów.
+        tag(['gpz.hv.bay']);
         // F10.1 (spec §18.1): odcinki odgałęzień bocznych ES/VT/SA.
         stack.branchSegments.forEach((branch, bi) => {
           segments.push({
@@ -970,21 +1275,323 @@ export function composeGpz(
   // sekcji najbardziej w lewo, żeby nie wystawała za lewą krawędź arkusza.
   const sectionsStartX =
     (hvSections.length > 0 ? hvLineBayCursor + SECTION_GAP : originX) + firstSectionLabelLeftMargin(props.sections);
-  const sectionLayouts = layoutSections(props.sections, sectionsStartX);
+  // Wieże transformatorów: szablony stosów toru i grupy wież per sekcja docelowa
+  // (`sekcjaDocelowaTransformatora`) — PRZED układem sekcji, bo szerokość i położenie
+  // sekcji zależą od zasięgu jej wież (`layoutSections`).
+  const idSekcji = new Set(props.sections.map((section) => section.sectionId));
+  const transformatoryWgSekcji = new Map<string, CanonicalGpzTransformer[]>();
+  const transformatoryBezSekcji: CanonicalGpzTransformer[] = [];
+  props.transformers.forEach((transformer) => {
+    const sekcja = sekcjaDocelowaTransformatora(transformer, idSekcji);
+    if (sekcja === null) {
+      transformatoryBezSekcji.push(transformer);
+      return;
+    }
+    const lista = transformatoryWgSekcji.get(sekcja) ?? [];
+    lista.push(transformer);
+    transformatoryWgSekcji.set(sekcja, lista);
+  });
+  const grupyWiez = new Map<string, GrupaWiez>();
+  transformatoryWgSekcji.forEach((lista, sekcja) => grupyWiez.set(sekcja, grupaWiez(lista)));
+
+  // Źródło zasilania (F9.4/F13.1, recenzja NO-GO 2026-07-17 pkt 2/3): strona zaczepu
+  // podąża za SZYNĄ ŹRÓDŁA (`hvSystemSource.sourceOnHvBus`); brak informacji = szczyt
+  // kolumny WN. Źródło na szynach SN zaczepia się przy prawym końcu szyny SWOJEJ sekcji
+  // (sekcja, której `busRef` = `connectionRef` źródła) — blok źródła wchodzi do
+  // rezerwacji pasma tej sekcji. Źródło SN bez sekcji o swojej szynie nie jest
+  // dowiązywane do cudzej szyny (wpis `gpz.source.unattached`).
+  const sourceOnHv = props.hvSystemSource?.sourceOnHvBus ?? true;
+  const attachAboveHv = hasHvContent && sourceOnHv;
+  const zrodlaSnWgSekcji = new Map<string, GpzGridSourceInput[]>();
+  let zrodlaNiedowiazane = false;
+  if (!attachAboveHv) {
+    gridSources.forEach((source) => {
+      const sekcja = props.sections.find((section) => section.busRef != null && section.busRef === source.connectionRef);
+      if (!sekcja) {
+        zrodlaNiedowiazane = true;
+        return;
+      }
+      const lista = zrodlaSnWgSekcji.get(sekcja.sectionId) ?? [];
+      lista.push(source);
+      zrodlaSnWgSekcji.set(sekcja.sectionId, lista);
+    });
+  }
+  const wierszeZrodla = props.hvSystemSource ? wierszeZrodlaSystemowego(props.hvSystemSource, sourceOnHv) : null;
+  const blokZrodla = new Map<string, number>();
+  zrodlaSnWgSekcji.forEach((lista, sekcja) => blokZrodla.set(sekcja, szerokoscBlokuZrodel(lista, props.hvSystemSource ?? null, wierszeZrodla)));
+  // Pas sprzęgła za sekcją lewą pary sąsiednich (w porządku `order`) sekcji sprzęgła.
+  const porzadekSekcji = [...props.sections].sort((a, b) => a.order - b.order).map((section) => section.sectionId);
+  const pasSprzeglaZa = new Map<string, number>();
+  props.couplers.forEach((coupler) => {
+    const lewa = porzadekSekcji.indexOf(coupler.leftSectionId);
+    const prawa = porzadekSekcji.indexOf(coupler.rightSectionId);
+    if (lewa < 0 || prawa < 0 || Math.abs(lewa - prawa) !== 1) return;
+    const za = porzadekSekcji[Math.min(lewa, prawa)];
+    pasSprzeglaZa.set(za, Math.max(pasSprzeglaZa.get(za) ?? PAS_SPRZEGLA, szerokoscPasaSprzegla(coupler)));
+  });
+  const { layouts: sectionLayouts, zajetoscPasma } = layoutSections(props.sections, sectionsStartX, {
+    grupy: grupyWiez,
+    blokZrodla,
+    pasSprzeglaZa,
+  });
+  // Wieże bez sekcji docelowej: jedna grupa na prawo od zajętości pasma sekcji (albo od
+  // marginesu GPZ, gdy sekcji brak) — bez zejścia do szyny SN, której model im nie
+  // przypisuje (wpis braku danych niżej).
+  const osieWiezBezSekcji = new Map<string, number>();
+  if (transformatoryBezSekcji.length > 0) {
+    const grupa = grupaWiez(transformatoryBezSekcji);
+    const lewaKrawedz = zajetoscPasma !== null ? zajetoscPasma + PAS_SPRZEGLA : originX + SECTION_MARGIN;
+    const baza = snapUp(lewaKrawedz + grupa.lewo);
+    grupa.wieze.forEach((wieza, i) => osieWiezBezSekcji.set(wieza.transformer.transformerRef, baza + grupa.przesuniecia[i]));
+  }
+
+  // GPZ-PARYTET cz. 3 (pkt 2): adnotacje zabezpieczeń/CT/VT pola — JEDNA funkcja dla pól
+  // sekcji i pól toru transformatora (pole WN TR, pole TR); pole przeniesione z sekcji do
+  // wieży zachowuje okrąg przekaźnika, tor wyzwalania, linię pomiarową i przekładnie CT.
+  //  - `rightX` — prawa krawędź zarezerwowanej kolumny pola (okrąg prawo-wyrównany);
+  //  - `textAnchorX` — krawędź pasma adnotacji CT/VT tuż za planem stosu;
+  //  - `metaPola` — meta odcinków adnotacji (sekcja albo transformator + `bayRef`).
+  const adnotacjePolaGpz = (
+    bay: CanonicalGpzBay,
+    instances: readonly ComposedGpzSymbolInstance[],
+    rightX: number,
+    textAnchorX: number,
+    metaPola: Partial<GpzElementMeta>,
+  ): void => {
+    // F11.1 (spec §17.1-§17.4/§20.1, ZNIESIENIE wyjątku §17.6 — R-1):
+    // okrąg przekaźnika pola SN GPZ TERAZ dostaje tor wyzwalania + linię
+    // pomiarową, GDY dane się rozwiązują na NARYSOWANY stos (rejestr
+    // device-ref, `deviceItems` wyżej) — `resolveStationProtectionMarking`
+    // (`./protectionMarking`) REUŻYTA WPROST, TA SAMA funkcja co stacje
+    // (`compose/station.ts`), zero duplikatu logiki dopasowania
+    // `breaker_ref`/`ct_ref`. Kody: `protectionMarking.codes` (rejestr
+    // ENM, F11.1) z fallbackiem na legacy `protectionCodes` (kompatybilność
+    // wsteczna — wywołujący niosący WYŁĄCZNIE `protectionCodes`, bez pełnego
+    // `protectionMarking`, dostaje TYLKO okrąg — bez refów nie ma czego
+    // rozwiązywać, `resolveStationProtectionMarking` i tak zwraca
+    // `tripTarget`/`ctAnchor` puste). Okrąg prawo-wyrównany do rezerwacji
+    // kolumny (`rightX`, `gpzBayAnnotationWidth` — jedna prawda
+    // rezerwacja↔rysunek). LOD §17.4: `'full'` kody (2 pierwsze) + tor +
+    // linia pomiarowa + „52" + pełna lista (>2, R-2) + adnotacje CT;
+    // `'circle-only'` sam kontur; `'none'` nic.
+    const gpzCodes = bay.protectionMarking?.codes ?? bay.protectionCodes ?? [];
+    const hasCtRatings = (bay.ctRatingAnnotations?.length ?? 0) > 0;
+    const hasVtMountings = (bay.vtMountingAnnotations?.length ?? 0) > 0;
+    if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings || hasVtMountings)) {
+      if (gpzCodes.length > 0) {
+        // Wejście strukturalnie zgodne z `Pick<MiniBlockBayDescriptor,
+        // 'protectionMarking'>` — `resolveStationProtectionMarking` nie
+        // zna/potrzebuje GPZ, operuje WYŁĄCZNIE na kodach + refach + stosie
+        // (`PlacedStackDevice[]`, `ComposedGpzSymbolInstance` jest z
+        // konstrukcji zgodny — patrz docstring pola `deviceRef` wyżej).
+        const marking = resolveStationProtectionMarking(
+          {
+            protectionMarking: {
+              codes: gpzCodes,
+              breakerRef: bay.protectionMarking?.breakerRef,
+              ctRef: bay.protectionMarking?.ctRef,
+            },
+          },
+          instances,
+        );
+        if (marking) {
+          const anchorCenter = protectionDeviceCenter(marking.anchor);
+          const circleLeftX = snapToGrid(rightX - PROTECTION_ANNOTATION_DIAMETER);
+          const circleTopY = snapToGrid(anchorCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
+          const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
+          const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
+          protectionSymbols.push({
+            symbolId: 'protectionRelay',
+            bayRef: bay.bayRef,
+            x: circleLeftX,
+            y: circleTopY,
+            protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
+          });
+          const fullList = annotationDetail === 'full' ? fullCodesListText(marking.codes) : null;
+          if (fullList) {
+            // R-2 (§17.3 zd. 2) — ten sam model co `compose/station.ts`
+            // (`#protection-codes-full`): etykieta pod okręgiem, prawo-
+            // dosunięta do rezerwacji (measure zarezerwował
+            // `snapUp(szerokość)+GRID`).
+            const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
+            protectionLabels.push({
+              ownerRef: `${bay.bayRef}#protection-codes-full`,
+              ownerKind: 'protection',
+              text: fullList,
+              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+              anchor: {
+                x: rightX - Math.ceil(fullListWidth / 2),
+                y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
+              },
+              placement: 'below',
+            });
+          }
+
+          if (annotationDetail === 'full' && marking.tripTarget) {
+            // §17.2: „nigdy linia do domyślnego aparatu" — dochodzi
+            // WYŁĄCZNIE do aparatu rozwiązanego z `breaker_ref`, zaczepiona
+            // na jego REJESTROWANYM porcie N (wzorzec `compose/station.ts`).
+            const targetDef = SYMBOL_DEFS[marking.tripTarget.symbolId];
+            const targetNorth = targetDef.ports.find((p) => p.dir === 'N');
+            const targetPort = targetNorth
+              ? { x: marking.tripTarget.x + targetNorth.x, y: marking.tripTarget.y + targetNorth.y }
+              : { x: marking.tripTarget.x + targetDef.width / 2, y: marking.tripTarget.y };
+            protectionSegments.push({
+              ownerRef: `${bay.bayRef}#trip-line`,
+              points: [
+                targetPort,
+                { x: linkPortWorld.x, y: targetPort.y },
+                { x: linkPortWorld.x, y: linkPortWorld.y },
+              ],
+              meta: { parityKeys: [], ...metaPola },
+            });
+            protectionLabels.push({
+              ownerRef: `${bay.bayRef}#device-number`,
+              ownerKind: 'protection',
+              text: '52',
+              labelClass: 't4',
+              anchor: { x: marking.tripTarget.x + targetDef.width, y: targetPort.y },
+              placement: 'right',
+            });
+          } else if (annotationDetail === 'full') {
+            // §17.2/§17.6 (F11.1 — wyjątek ZNIESIONY): brak rozwiązywalnego
+            // `breaker_ref` w stosie pola — okrąg BEZ linii wyzwalania,
+            // luka danych zgłoszona TERAZ TAK SAMO jak dla stacji (dawniej
+            // dla GPZ ten przypadek był udokumentowanym wyjątkiem §17.6 —
+            // ZNIESIONY, parytet GPZ↔stacje).
+            missingData.push('bay.protection.trip_link_unresolved');
+          }
+
+          if (annotationDetail === 'full' && marking.ctAnchor) {
+            // F10.5/F11.1 (spec §20.1): linia SYGNAŁU POMIAROWEGO
+            // CT→przekaźnik — ODRĘBNA od toru wyzwalania (zakaz „jednej
+            // anonimowej linii", §20.1).
+            const ctDef = SYMBOL_DEFS[marking.ctAnchor.symbolId];
+            const ctNorth = ctDef.ports.find((p) => p.dir === 'N');
+            const ctPort = ctNorth
+              ? { x: marking.ctAnchor.x + ctNorth.x, y: marking.ctAnchor.y + ctNorth.y }
+              : { x: marking.ctAnchor.x + ctDef.width / 2, y: marking.ctAnchor.y };
+            measurementSegments.push({
+              ownerRef: `${bay.bayRef}#measurement-link`,
+              points: [
+                ctPort,
+                { x: linkPortWorld.x, y: ctPort.y },
+                { x: linkPortWorld.x, y: linkPortWorld.y },
+              ],
+              meta: { parityKeys: [], ...metaPola },
+            });
+          } else if (annotationDetail === 'full') {
+            missingData.push('bay.protection.measurement_link_unresolved');
+          }
+        }
+      }
+
+      // F11.1 (spec §18.3): adnotacje przekładni CT — TA SAMA funkcja co
+      // stacje (`resolveCtRatingAnnotations`), dopasowanie na aparat
+      // `currentTransformer` NARYSOWANEGO stosu przez `linked_ref` (rejestr
+      // device-ref, `deviceItems` wyżej). Zaczep PO PRAWEJ toru głównego —
+      // ta sama krawędź co sidecar oznaczenia pola (`footprint.width`,
+      // wzorzec `compose/station.ts` `stackLeftX+planFootprint.width`).
+      if (annotationDetail === 'full' && hasCtRatings) {
+        const ctAnnotations = resolveCtRatingAnnotations(bay.ctRatingAnnotations, instances);
+        const ctTextAnchorX = textAnchorX;
+        ctAnnotations.forEach((ann, ctIndex) => {
+          const center = protectionDeviceCenter(ann.device);
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
+            ownerKind: 'protection',
+            text: ann.text,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: { x: ctTextAnchorX, y: center.y },
+            placement: 'right',
+            // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,
+            // geometrycznie neutralny (tekst adnotacji bez zmian).
+            ctPurpose: ann.purpose,
+          });
+        });
+        if (ctAnnotations.length === 0) {
+          // Wzorzec `bay.protection.trip_link_unresolved` wyżej: dane
+          // przekładni CT wskazane, ale ŻADEN aparat NARYSOWANEGO stosu nie
+          // niesie pasującego `linked_ref` (rejestr device-ref nierozwiązany
+          // /nieobecny) — luka danych zgłoszona zamiast cichego pominięcia.
+          missingData.push('bay.protection.ct_rating_anchor_unresolved');
+        }
+      }
+
+      // CTVT-RENDER (spec §20.2, parytet ze stacjami): adnotacje montażu VT —
+      // TA SAMA funkcja co stacje (`resolveVtMountingAnnotations`), dopasowanie
+      // na aparat `voltageTransformer` NARYSOWANEGO stosu przez `linked_ref`.
+      // Lewe pasmo współdzielone z CT (`ctTextAnchorX`), kotwica na Y aparatu
+      // VT (różne od CT ⇒ brak kolizji). `gpzBayAnnotationWidth` rezerwuje
+      // `max(CT, VT)` — jedna prawda measure↔compose.
+      if (annotationDetail === 'full' && hasVtMountings) {
+        const vtAnnotations = resolveVtMountingAnnotations(bay.vtMountingAnnotations, instances);
+        const vtTextAnchorX = textAnchorX;
+        vtAnnotations.forEach((ann, vtIndex) => {
+          const center = protectionDeviceCenter(ann.device);
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#vt-mounting-${ann.device.deviceRef ?? vtIndex}`,
+            ownerKind: 'protection',
+            text: ann.text,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: { x: vtTextAnchorX, y: center.y },
+            placement: 'right',
+          });
+        });
+        if (vtAnnotations.length === 0) {
+          // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
+          // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`.
+          missingData.push('bay.protection.vt_mounting_anchor_unresolved');
+        }
+      }
+      // GPZ nie rysuje miernika „M" (poza zakresem F11.1 — brak
+      // `meteringMeasurementRef` na `CanonicalGpzBay`), więc kolizja
+      // okrąg/adnotacja CT analogiczna do stacyjnego `minGap`
+      // (`compose/station.ts`) nie występuje: `ctAnnotations` leżą we
+      // WŁASNYM pasmie tuż za torem głównym, `gpzBayAnnotationWidth`/
+      // `ctRatingAnnotationsWidth` (`./protectionMarking`) sumują
+      // rezerwacje (nie max()ują) — jedna prawda measure↔compose.
+    }
+  };
+
   const sectionById = sectionLayoutById(sectionLayouts);
 
   // -- 3. Geometria pionowa: WN → pole WN TR → TR2W → pole TR → szyna SN. --
-  const hvFieldSpecTemplate = hvTrFieldSpec();
-  const hvFieldFootprint = stackFootprint(hvFieldSpecTemplate.map((s) => s.symbolId));
-  const trFieldSpecTemplate = trFieldSpec();
-  const trFieldFootprint = stackFootprint(trFieldSpecTemplate.map((s) => s.symbolId));
+  // GEOMETRIA-STACJI (§0 pkt 4): stosy toru transformatora z rekordów aparatów pól WN TR
+  // i TR (brak → sylwetka) — wysokość pasma = najwyższy stos wszystkich wież (wieże
+  // równają do jednej osi TR2W; krótszy stos domyka odcinek do TR i do szyny SN).
+  const wysokoscPasma = (stosy: readonly (readonly FieldApparatusSpec[])[]): number =>
+    Math.max(...stosy.map((stos) => stackFootprint(stos.map((spec) => spec.symbolId)).height));
+  const stosyWn = props.transformers.map((transformer) => specyfikacjaPolaGpz(transformer.poleWn));
+  const stosyTr = props.transformers.map((transformer) => specyfikacjaPolaGpz(transformer.poleTr));
+  const hvFieldFootprint = { height: wysokoscPasma(stosyWn.length > 0 ? stosyWn : [[BRAK_DANYCH_WYPOSAZENIA]]) };
+  const trFieldFootprint = { height: wysokoscPasma(stosyTr.length > 0 ? stosyTr : [[BRAK_DANYCH_WYPOSAZENIA]]) };
   const trHeight = SYMBOL_DEFS.transformer2W.height;
 
   const hvFieldTopY = hvBusY + GRID;
   const trTopY = hvFieldTopY + hvFieldFootprint.height + STACK_GAP;
   const trFieldTopY = trTopY + trHeight + STACK_GAP;
+  // GEOMETRIA-STACJI (§0 pkt 4): tabliczka transformatora (pasmo na prawo od TR2W, od osi
+  // `trTopY` w dół) należy do wieży — kończy się nad pasmem nad szyną SN, w którym stoją
+  // blok źródła zasilania (`rysujBlokZrodel`: symbol `3·GRID + wysokość` nad szyną) i opis
+  // sekcji (prześwit `BUSBAR_LABEL_PATH_CLEARANCE` + wiersz t2). Dawniej wysokość wieży
+  // dawały stosy aparatów „z konwencji", więc tabliczka mieściła się przypadkiem; wieża
+  // z rekordów modelu (albo sylwetki braku danych) bywa niższa od tabliczki.
+  const wysokoscTabliczek = Math.max(
+    0,
+    ...props.transformers.map((transformer) =>
+      wierszeTabliczkiTransformatora(transformer).reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
+    ),
+  );
+  const pasmoNadSzynaSn = Math.max(
+    3 * GRID + SYMBOL_DEFS.gridSource.height,
+    BUSBAR_LABEL_PATH_CLEARANCE + labelLineHeight('t2') + GRID,
+  );
   const snBusY = props.transformers.length > 0
-    ? trFieldTopY + trFieldFootprint.height + STACK_GAP
+    ? Math.max(
+        trFieldTopY + trFieldFootprint.height + STACK_GAP,
+        snapUp(trTopY + wysokoscTabliczek + GRID + pasmoNadSzynaSn),
+      )
     : hvBusY + 2 * HV_MARGIN_TOP;
 
   // -- 4. Sekcje SN: szyna(y) + pola liniowe/sprzęgła/pomiarowe. ------------
@@ -998,6 +1605,7 @@ export function composeGpz(
       busbarTopology: topology,
     });
     tag(['gpz.section']);
+    if (layout.section.busVoltageKv == null) missingData.push('gpz.section.voltage.missing');
 
     const busLeftX = layout.x;
     const busRightX = layout.x + layout.width;
@@ -1096,23 +1704,18 @@ export function composeGpz(
       // sidecar oznacznika NIE może wejść w strefę odgałęzień ES/VT/SA.
       const footprint = gpzFieldPlanFootprint(spec);
       const topY = snBusY + GRID;
-      // F11.1 (spec §17.2/§20.1): rejestr device-ref — `null` gdy
-      // `field.bay.primaryDevices` nieobecne LUB nie odpowiadają DOKŁADNIE
-      // temu szablonowi (patrz docstring `primaryDeviceItemsForTemplate`).
-      const deviceItems = primaryDeviceItemsForTemplate(field.bay, spec);
+      // GEOMETRIA-STACJI (§0 pkt 4): rekordy aparatów niesie sama specyfikacja stosu
+      // (`specyfikacjaPolaGpz`) — `deviceRef`/stan każdej pozycji z JEJ rekordu.
       const stack = buildFieldStack(
         spec,
         field.centerX,
         topY,
         (_i, id) => `gpz-canonical-bay-${field.bay.bayRef}-${id}`,
-        (_i, id) => {
-          if (id === 'breaker') return field.bay.cbState;
-          if (id === 'disconnector') return field.bay.dsState;
-          if (id === 'earthSwitch') return switchStateOrUndefined(field.bay.esState);
-          return undefined;
+        {
+          sectionId: layout.section.sectionId,
+          bayRef: field.bay.bayRef,
+          ...(field.bay.reserve ? { bayReserve: field.bay.reserve } : {}),
         },
-        { sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
-        deviceItems,
       );
       symbols.push(...stack.instances);
       stack.instances.forEach((instance) => tag([...instance.meta.parityKeys, 'gpz.bay']));
@@ -1183,200 +1786,13 @@ export function composeGpz(
         });
       }
 
-      // F11.1 (spec §17.1-§17.4/§20.1, ZNIESIENIE wyjątku §17.6 — R-1):
-      // okrąg przekaźnika pola SN GPZ TERAZ dostaje tor wyzwalania + linię
-      // pomiarową, GDY dane się rozwiązują na NARYSOWANY stos (rejestr
-      // device-ref, `deviceItems` wyżej) — `resolveStationProtectionMarking`
-      // (`./protectionMarking`) REUŻYTA WPROST, TA SAMA funkcja co stacje
-      // (`compose/station.ts`), zero duplikatu logiki dopasowania
-      // `breaker_ref`/`ct_ref`. Kody: `protectionMarking.codes` (rejestr
-      // ENM, F11.1) z fallbackiem na legacy `protectionCodes` (kompatybilność
-      // wsteczna — wywołujący niosący WYŁĄCZNIE `protectionCodes`, bez pełnego
-      // `protectionMarking`, dostaje TYLKO okrąg — bez refów nie ma czego
-      // rozwiązywać, `resolveStationProtectionMarking` i tak zwraca
-      // `tripTarget`/`ctAnchor` puste). Okrąg prawo-wyrównany do rezerwacji
-      // kolumny (`field.rightX`, `gpzBayAnnotationWidth` — jedna prawda
-      // rezerwacja↔rysunek). LOD §17.4: `'full'` kody (2 pierwsze) + tor +
-      // linia pomiarowa + „52" + pełna lista (>2, R-2) + adnotacje CT;
-      // `'circle-only'` sam kontur; `'none'` nic.
-      const gpzCodes = field.bay.protectionMarking?.codes ?? field.bay.protectionCodes ?? [];
-      const hasCtRatings = (field.bay.ctRatingAnnotations?.length ?? 0) > 0;
-      const hasVtMountings = (field.bay.vtMountingAnnotations?.length ?? 0) > 0;
-      if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings || hasVtMountings)) {
-        if (gpzCodes.length > 0) {
-          // Wejście strukturalnie zgodne z `Pick<MiniBlockBayDescriptor,
-          // 'protectionMarking'>` — `resolveStationProtectionMarking` nie
-          // zna/potrzebuje GPZ, operuje WYŁĄCZNIE na kodach + refach + stosie
-          // (`PlacedStackDevice[]`, `ComposedGpzSymbolInstance` jest z
-          // konstrukcji zgodny — patrz docstring pola `deviceRef` wyżej).
-          const marking = resolveStationProtectionMarking(
-            {
-              protectionMarking: {
-                codes: gpzCodes,
-                breakerRef: field.bay.protectionMarking?.breakerRef,
-                ctRef: field.bay.protectionMarking?.ctRef,
-              },
-            },
-            stack.instances,
-          );
-          if (marking) {
-            const anchorCenter = protectionDeviceCenter(marking.anchor);
-            const circleLeftX = snapToGrid(field.rightX - PROTECTION_ANNOTATION_DIAMETER);
-            const circleTopY = snapToGrid(anchorCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
-            const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
-            const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
-            protectionSymbols.push({
-              symbolId: 'protectionRelay',
-              bayRef: field.bay.bayRef,
-              x: circleLeftX,
-              y: circleTopY,
-              protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
-            });
-            const fullList = annotationDetail === 'full' ? fullCodesListText(marking.codes) : null;
-            if (fullList) {
-              // R-2 (§17.3 zd. 2) — ten sam model co `compose/station.ts`
-              // (`#protection-codes-full`): etykieta pod okręgiem, prawo-
-              // dosunięta do rezerwacji (measure zarezerwował
-              // `snapUp(szerokość)+GRID`).
-              const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
-              protectionLabels.push({
-                ownerRef: `${field.bay.bayRef}#protection-codes-full`,
-                ownerKind: 'protection',
-                text: fullList,
-                labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-                anchor: {
-                  x: field.rightX - Math.ceil(fullListWidth / 2),
-                  y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
-                },
-                placement: 'below',
-              });
-            }
-
-            if (annotationDetail === 'full' && marking.tripTarget) {
-              // §17.2: „nigdy linia do domyślnego aparatu" — dochodzi
-              // WYŁĄCZNIE do aparatu rozwiązanego z `breaker_ref`, zaczepiona
-              // na jego REJESTROWANYM porcie N (wzorzec `compose/station.ts`).
-              const targetDef = SYMBOL_DEFS[marking.tripTarget.symbolId];
-              const targetNorth = targetDef.ports.find((p) => p.dir === 'N');
-              const targetPort = targetNorth
-                ? { x: marking.tripTarget.x + targetNorth.x, y: marking.tripTarget.y + targetNorth.y }
-                : { x: marking.tripTarget.x + targetDef.width / 2, y: marking.tripTarget.y };
-              protectionSegments.push({
-                ownerRef: `${field.bay.bayRef}#trip-line`,
-                points: [
-                  targetPort,
-                  { x: linkPortWorld.x, y: targetPort.y },
-                  { x: linkPortWorld.x, y: linkPortWorld.y },
-                ],
-                meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
-              });
-              protectionLabels.push({
-                ownerRef: `${field.bay.bayRef}#device-number`,
-                ownerKind: 'protection',
-                text: '52',
-                labelClass: 't4',
-                anchor: { x: marking.tripTarget.x + targetDef.width, y: targetPort.y },
-                placement: 'right',
-              });
-            } else if (annotationDetail === 'full') {
-              // §17.2/§17.6 (F11.1 — wyjątek ZNIESIONY): brak rozwiązywalnego
-              // `breaker_ref` w stosie pola — okrąg BEZ linii wyzwalania,
-              // luka danych zgłoszona TERAZ TAK SAMO jak dla stacji (dawniej
-              // dla GPZ ten przypadek był udokumentowanym wyjątkiem §17.6 —
-              // ZNIESIONY, parytet GPZ↔stacje).
-              missingData.push('bay.protection.trip_link_unresolved');
-            }
-
-            if (annotationDetail === 'full' && marking.ctAnchor) {
-              // F10.5/F11.1 (spec §20.1): linia SYGNAŁU POMIAROWEGO
-              // CT→przekaźnik — ODRĘBNA od toru wyzwalania (zakaz „jednej
-              // anonimowej linii", §20.1).
-              const ctDef = SYMBOL_DEFS[marking.ctAnchor.symbolId];
-              const ctNorth = ctDef.ports.find((p) => p.dir === 'N');
-              const ctPort = ctNorth
-                ? { x: marking.ctAnchor.x + ctNorth.x, y: marking.ctAnchor.y + ctNorth.y }
-                : { x: marking.ctAnchor.x + ctDef.width / 2, y: marking.ctAnchor.y };
-              measurementSegments.push({
-                ownerRef: `${field.bay.bayRef}#measurement-link`,
-                points: [
-                  ctPort,
-                  { x: linkPortWorld.x, y: ctPort.y },
-                  { x: linkPortWorld.x, y: linkPortWorld.y },
-                ],
-                meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
-              });
-            } else if (annotationDetail === 'full') {
-              missingData.push('bay.protection.measurement_link_unresolved');
-            }
-          }
-        }
-
-        // F11.1 (spec §18.3): adnotacje przekładni CT — TA SAMA funkcja co
-        // stacje (`resolveCtRatingAnnotations`), dopasowanie na aparat
-        // `currentTransformer` NARYSOWANEGO stosu przez `linked_ref` (rejestr
-        // device-ref, `deviceItems` wyżej). Zaczep PO PRAWEJ toru głównego —
-        // ta sama krawędź co sidecar oznaczenia pola (`footprint.width`,
-        // wzorzec `compose/station.ts` `stackLeftX+planFootprint.width`).
-        if (annotationDetail === 'full' && hasCtRatings) {
-          const ctAnnotations = resolveCtRatingAnnotations(field.bay.ctRatingAnnotations, stack.instances);
-          const ctTextAnchorX = snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width);
-          ctAnnotations.forEach((ann, ctIndex) => {
-            const center = protectionDeviceCenter(ann.device);
-            protectionLabels.push({
-              ownerRef: `${field.bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
-              ownerKind: 'protection',
-              text: ann.text,
-              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-              anchor: { x: ctTextAnchorX, y: center.y },
-              placement: 'right',
-              // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,
-              // geometrycznie neutralny (tekst adnotacji bez zmian).
-              ctPurpose: ann.purpose,
-            });
-          });
-          if (ctAnnotations.length === 0) {
-            // Wzorzec `bay.protection.trip_link_unresolved` wyżej: dane
-            // przekładni CT wskazane, ale ŻADEN aparat NARYSOWANEGO stosu nie
-            // niesie pasującego `linked_ref` (rejestr device-ref nierozwiązany
-            // /nieobecny) — luka danych zgłoszona zamiast cichego pominięcia.
-            missingData.push('bay.protection.ct_rating_anchor_unresolved');
-          }
-        }
-
-        // CTVT-RENDER (spec §20.2, parytet ze stacjami): adnotacje montażu VT —
-        // TA SAMA funkcja co stacje (`resolveVtMountingAnnotations`), dopasowanie
-        // na aparat `voltageTransformer` NARYSOWANEGO stosu przez `linked_ref`.
-        // Lewe pasmo współdzielone z CT (`ctTextAnchorX`), kotwica na Y aparatu
-        // VT (różne od CT ⇒ brak kolizji). `gpzBayAnnotationWidth` rezerwuje
-        // `max(CT, VT)` — jedna prawda measure↔compose.
-        if (annotationDetail === 'full' && hasVtMountings) {
-          const vtAnnotations = resolveVtMountingAnnotations(field.bay.vtMountingAnnotations, stack.instances);
-          const vtTextAnchorX = snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width);
-          vtAnnotations.forEach((ann, vtIndex) => {
-            const center = protectionDeviceCenter(ann.device);
-            protectionLabels.push({
-              ownerRef: `${field.bay.bayRef}#vt-mounting-${ann.device.deviceRef ?? vtIndex}`,
-              ownerKind: 'protection',
-              text: ann.text,
-              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-              anchor: { x: vtTextAnchorX, y: center.y },
-              placement: 'right',
-            });
-          });
-          if (vtAnnotations.length === 0) {
-            // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
-            // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`.
-            missingData.push('bay.protection.vt_mounting_anchor_unresolved');
-          }
-        }
-        // GPZ nie rysuje miernika „M" (poza zakresem F11.1 — brak
-        // `meteringMeasurementRef` na `CanonicalGpzBay`), więc kolizja
-        // okrąg/adnotacja CT analogiczna do stacyjnego `minGap`
-        // (`compose/station.ts`) nie występuje: `ctAnnotations` leżą we
-        // WŁASNYM pasmie tuż za torem głównym, `gpzBayAnnotationWidth`/
-        // `ctRatingAnnotationsWidth` (`./protectionMarking`) sumują
-        // rezerwacje (nie max()ują) — jedna prawda measure↔compose.
-      }
+      adnotacjePolaGpz(
+        field.bay,
+        stack.instances,
+        field.rightX,
+        snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width),
+        { sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
+      );
     });
 
     // Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): VT SZYNY sekcji —
@@ -1410,6 +1826,8 @@ export function composeGpz(
         labelClass: 't4',
         anchor: { x: vtCenterX, y: vtTopY + vtDef.height },
         placement: 'below',
+        // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
+        obrysKotwicy: { x: vtX, y: vtTopY, width: vtDef.width, height: vtDef.height },
       });
     });
   });
@@ -1423,36 +1841,52 @@ export function composeGpz(
     const second = leftLayout.x <= rightLayout.x ? rightLayout : leftLayout;
     const gapStart = first.x + first.width;
     const gapEnd = second.x;
-    const midX = snapToGrid((gapStart + gapEnd) / 2);
-    const cbDef = SYMBOL_DEFS.breaker;
+    // Wyłącznik sprzęgła na środku pasa sprzęgła (za blokiem źródła sekcji lewej, przed
+    // etykietą sekcji prawej — `layoutSections`), gdy sekcje sąsiadują w porządku `order`.
+    const pas = sectionLayouts[sectionLayouts.indexOf(first) + 1] === second ? first.pasSprzegla : null;
+    const midX = snapToGrid(pas ? (pas.lewo + pas.prawo) / 2 : (gapStart + gapEnd) / 2);
+    // GEOMETRIA-STACJI (Z-07/Z-08): sprzęgło = gałąź `bus_coupler` modelu, glif TORU
+    // POZIOMEGO w osi szyny w stanie z gałęzi; łącznik szyn dochodzi z obu stron do portów
+    // glifu (pod nożem nie biegnie ciągła kreska, więc otwarte sprzęgło czyta się jako
+    // przerwa). Oznaczenie POD glifem — nad szyną stoją opisy sekcji.
+    const symbolId = symbolSprzegla(coupler);
+    const cbDef = SYMBOL_DEFS[symbolId];
     const cbX = snapToGrid(midX - cbDef.width / 2);
     const cbY = snapToGrid(snBusY - cbDef.height / 2);
     const couplerMeta: GpzElementMeta = {
-      parityKeys: ['gpz.coupler', 'gpz.apparatus.cb'],
+      parityKeys: ['gpz.coupler', coupler.rodzaj === 'wylacznik' ? 'gpz.apparatus.cb' : 'gpz.apparatus.ds'],
       testId: `gpz-canonical-coupler-${coupler.couplerId}`,
       sectionId: coupler.leftSectionId,
+      couplerRef: coupler.couplerId,
     };
     tag(couplerMeta.parityKeys);
     symbols.push({
-      symbolId: 'breaker',
+      symbolId,
       x: cbX,
       y: cbY,
       state: coupler.closedState,
-      ports: portsInWorld('breaker', cbX, cbY),
+      ports: portsInWorld(symbolId, cbX, cbY),
       meta: couplerMeta,
     });
     segments.push({
-      ownerRef: `${coupler.couplerId}#tie`,
-      points: [{ x: gapStart, y: snBusY }, { x: gapEnd, y: snBusY }],
+      ownerRef: `${coupler.couplerId}#tie-a`,
+      points: [{ x: gapStart, y: snBusY }, { x: Math.max(gapStart, cbX), y: snBusY }],
       meta: { parityKeys: ['gpz.coupler'], sectionId: coupler.leftSectionId },
+    });
+    segments.push({
+      ownerRef: `${coupler.couplerId}#tie-b`,
+      points: [{ x: Math.min(gapEnd, cbX + cbDef.width), y: snBusY }, { x: gapEnd, y: snBusY }],
+      meta: { parityKeys: ['gpz.coupler'], sectionId: coupler.rightSectionId },
     });
     fieldDesignations.push({
       ownerRef: `${coupler.couplerId}#designation`,
       ownerKind: 'apparatus',
       text: coupler.designation,
       labelClass: 't3',
-      anchor: { x: midX, y: cbY },
-      placement: 'above',
+      anchor: { x: midX, y: cbY + cbDef.height },
+      placement: 'below',
+      // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
+      obrysKotwicy: { x: cbX, y: cbY, width: cbDef.width, height: cbDef.height },
     });
   });
 
@@ -1509,28 +1943,45 @@ export function composeGpz(
   }
 
   // -- 6. Transformatory: pole WN TR → TR2W → pole TR. ----------------------
-  const orderedSectionLayouts = sectionLayouts; // już wg `order`
   const transformerTapXs: number[] = [];
-  props.transformers.forEach((transformer, index) => {
-    const target = targetSectionForTransformer(transformer, index, sectionById, orderedSectionLayouts);
-    const trCenterX = target ? snapToGrid(target.x + target.width / 2) : snapToGrid(originX + SECTION_MARGIN + SYMBOL_DEFS.transformer2W.width / 2);
+  /** GEOMETRIA-STACJI (§0 pkt 3): zaczep WN każdego transformatora z SZYNĄ WN modelu
+   *  (`CanonicalGpzTransformer.hvBusRef`) — szyna WN rysowana jest z szyn modelu. */
+  const transformerHvTaps: { readonly x: number; readonly busRef: string | null }[] = [];
+  props.transformers.forEach((transformer) => {
+    const sekcjaDocelowa = sekcjaDocelowaTransformatora(transformer, idSekcji);
+    const target = sekcjaDocelowa !== null ? sectionById.get(sekcjaDocelowa) ?? null : null;
+    const trCenterX = target
+      ? target.osieWiez.get(transformer.transformerRef)!
+      : osieWiezBezSekcji.get(transformer.transformerRef)!;
+    if (!target) missingData.push(`gpz.transformer.section.missing:${transformer.transformerRef}`);
     transformerTapXs.push(trCenterX);
+    transformerHvTaps.push({ x: trCenterX, busRef: transformer.hvBusRef ?? null });
 
+    // GPZ-PARYTET cz. 3 (pkt 2): pole WN TR / pole TR modelu przypisane transformatorowi
+    // (`poleWn`/`poleTr` z adaptera — jedno przypisanie wyklucza je z sekcji i dołącza tu)
+    // niesie stany łączników, rejestr aparatów i `bayRef` toru; bez pola w modelu (albo
+    // bez rekordów aparatów pola) — sylwetka braku danych wyposażenia, bez stanu.
+    const poleWn = transformer.poleWn;
+    const poleTr = transformer.poleTr;
+    const hvFieldSpecs = specyfikacjaPolaGpz(poleWn);
     const hvBayTestIdBase = `gpz-canonical-hv-tr-bay-${transformer.transformerRef}`;
     const hvStack = buildFieldStack(
-      hvFieldSpecTemplate,
+      hvFieldSpecs,
       trCenterX,
       hvFieldTopY,
-      (_i, id) => `${hvBayTestIdBase}-${id === 'disconnector' ? 'ds' : id === 'breaker' ? 'cb' : 'ct'}`,
-      () => 'unknown',
+      (_i, id) => `${hvBayTestIdBase}-${przyrostekAparatuToru(id)}`,
       // V12K-217: aparaty tego stosu stoją po stronie 110 kV (pole WN
       // transformatora), więc dostają klasę napięcia WPROST z kompozycji —
       // jedyne miejsce, które tę stronę zna.
-      { transformerRef: transformer.transformerRef, voltageClass: 'hv' },
+      {
+        transformerRef: transformer.transformerRef,
+        voltageClass: 'hv',
+        ...(poleWn ? { bayRef: poleWn.bayRef } : {}),
+      },
     );
     symbols.push(...hvStack.instances);
     hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
-    // F10.1: odgałęzienia boczne (dziś brak w hvFieldSpec — defensywnie).
+    // F10.1: odgałęzienia boczne pola WN TR (ES/VT/SA z rekordów).
     hvStack.branchSegments.forEach((branch, bi) => {
       segments.push({
         ownerRef: `${transformer.transformerRef}#hv-lateral-${bi}`,
@@ -1554,14 +2005,25 @@ export function composeGpz(
 
     const trDef = SYMBOL_DEFS.transformer2W;
     const trX = snapToGrid(trCenterX - trDef.width / 2);
+    // GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń WN/SN wyłącznie z grupy połączeń
+    // modelu. Brak grupy albo zapis spoza notacji IEC 60076-1 = jawny brak (glif „?"
+    // + wpis braku danych), nigdy domyślne Dyn11.
+    const uzwojenia = uzwojeniaZGrupyPolaczen(transformer.vectorGroup);
     const trMeta: GpzElementMeta = {
-      parityKeys: ['gpz.transformer.symbol'],
+      parityKeys:
+        uzwojenia.stan === 'znane'
+          ? ['gpz.transformer.symbol', 'gpz.transformer.winding.hv', 'gpz.transformer.winding.sn']
+          : ['gpz.transformer.symbol'],
       testId: `gpz-canonical-transformer-${transformer.transformerRef}`,
       transformerRef: transformer.transformerRef,
     };
     tag(trMeta.parityKeys);
+    if (uzwojenia.stan === 'brak') missingData.push(`gpz.transformer.vector_group.missing:${transformer.transformerRef}`);
+    if (uzwojenia.stan === 'nierozpoznane') {
+      missingData.push(`gpz.transformer.vector_group.unrecognized:${transformer.transformerRef}`);
+    }
     const trPorts = portsInWorld('transformer2W', trX, trTopY);
-    symbols.push({ symbolId: 'transformer2W', x: trX, y: trTopY, ports: trPorts, meta: trMeta });
+    symbols.push({ symbolId: 'transformer2W', x: trX, y: trTopY, ports: trPorts, meta: trMeta, uzwojenia });
 
     // Zejście HV→TR: od dolnego portu pola WN TR do górnego portu TR2W (jeśli
     // pole WN TR kończy się wyżej niż TR — zwykle styk 1:1, ale krótki
@@ -1573,13 +2035,13 @@ export function composeGpz(
     });
 
     const trFieldTestIdBase = `gpz-canonical-tr-field-${transformer.transformerRef}`;
+    const trFieldSpecs = specyfikacjaPolaGpz(poleTr);
     const trFieldStack = buildFieldStack(
-      trFieldSpecTemplate,
+      trFieldSpecs,
       trCenterX,
       trFieldTopY,
-      (_i, id) => `${trFieldTestIdBase}-${id === 'disconnector' ? 'ds' : id === 'breaker' ? 'cb' : id === 'currentTransformer' ? 'ct' : 'es'}`,
-      () => 'unknown',
-      { transformerRef: transformer.transformerRef },
+      (_i, id) => `${trFieldTestIdBase}-${przyrostekAparatuToru(id)}`,
+      { transformerRef: transformer.transformerRef, ...(poleTr ? { bayRef: poleTr.bayRef } : {}) },
     );
     symbols.push(...trFieldStack.instances);
     trFieldStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
@@ -1591,6 +2053,40 @@ export function composeGpz(
         meta: { parityKeys: [], transformerRef: transformer.transformerRef },
       });
     });
+
+    // GPZ-PARYTET cz. 3 (pkt 2): pole WN TR / pole TR z modelu niesie w wieży to samo co
+    // pole sekcji — oznacznik z danych (bay_number / feeder_short_name; bez numeracji
+    // zastępczej, wieżę opisuje oznaczenie transformatora) i adnotacje zabezpieczeń/CT/VT
+    // tą samą funkcją (`adnotacjePolaGpz`), z kolumną zarezerwowaną tą samą arytmetyką
+    // co pole sekcji (`fieldColumnRequiredWidth`).
+    const stosyToru: ReadonlyArray<readonly [CanonicalGpzBay | null, FieldStack, readonly FieldApparatusSpec[]]> = [
+      [poleWn, hvStack, hvFieldSpecs],
+      [poleTr, trFieldStack, trFieldSpecs],
+    ];
+    for (const [pole, stos, specyfikacja] of stosyToru) {
+      if (!pole) continue;
+      const planPola = gpzFieldPlanFootprint(specyfikacja);
+      const lewaKrawedz = trCenterX - planPola.mainStack.width / 2;
+      const textAnchorX = snapToGrid(lewaKrawedz + planPola.width);
+      const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
+      if (oznaczenie) {
+        fieldDesignations.push({
+          ownerRef: `${pole.bayRef}#designation`,
+          ownerKind: 'apparatus',
+          text: oznaczenie,
+          labelClass: 't3',
+          anchor: { x: textAnchorX, y: stos.topPort.y + labelLineHeight('t3') / 2 },
+          placement: 'right',
+        });
+      }
+      adnotacjePolaGpz(
+        pole,
+        stos.instances,
+        lewaKrawedz + snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)),
+        textAnchorX,
+        { transformerRef: transformer.transformerRef, bayRef: pole.bayRef },
+      );
+    }
 
     const fieldAnchorMeta: GpzElementMeta = {
       parityKeys: ['gpz.transformer.field_anchor_connector'],
@@ -1607,57 +2103,23 @@ export function composeGpz(
 
     // Zejście pole TR → szyna SN sekcji docelowej (kotwiczenie na busie, NIE
     // bezpośrednio do TR — spec §8/§3: „ZERO bezpośredniego styku z szyną SN").
-    segments.push({
-      ownerRef: `${transformer.transformerRef}#tr-field-to-bus`,
-      points: [{ x: trCenterX, y: trFieldStack.bottomPort.y }, { x: trCenterX, y: snBusY }],
-      meta: { parityKeys: ['gpz.bay.power_path'], transformerRef: transformer.transformerRef, sectionId: target?.section.sectionId },
-    });
+    // Bez sekcji docelowej nie ma szyny, do której zejście prowadziłoby w modelu.
+    if (target) {
+      segments.push({
+        ownerRef: `${transformer.transformerRef}#tr-field-to-bus`,
+        points: [{ x: trCenterX, y: trFieldStack.bottomPort.y }, { x: trCenterX, y: snBusY }],
+        meta: { parityKeys: ['gpz.bay.power_path'], transformerRef: transformer.transformerRef, sectionId: target.section.sectionId },
+      });
+    }
 
-    // F13.1 (spec §21.1/D3-9): grupa połączeń (Yd11 itp.) DOPISANA do wiersza
-    // mocy — „Yd11 · 25 MVA" — WYŁĄCZNIE gdy ENM ją niesie (`vectorGroup`
-    // nullable, uczciwy brak: żaden literał zastępczy). Trzeci wiersz
-    // (przekładnia) NIETKNIĘTY.
-    const ratingRowText = transformer.vectorGroup
-      ? `${transformer.vectorGroup} · ${transformer.snMva} MVA`
-      : `${transformer.snMva} MVA`;
-    // Recenzja NO-GO 2026-07-17 pkt 4: uk%/Pk z ENM (materializacja
-    // katalogowa) na tabliczce TR — WYŁĄCZNIE gdy dane są (uczciwy brak,
-    // zero literałów zastępczych). Zaczepy/punkt neutralny → plan (dane null).
-    const shortCircuitParts: string[] = [];
-    if (transformer.ukPercent != null) shortCircuitParts.push(`uk ${liczbaRysunkuPl(transformer.ukPercent)}%`);
-    if (transformer.pkKw != null) shortCircuitParts.push(`Pk ${liczbaRysunkuPl(transformer.pkKw)} kW`);
-    // SLD-02 (V12K-091): wiersz regulacji zaczepów z modelu (`tap_changer`
-    // → oltc). WYŁĄCZNIE gdy regulacja obecna (uczciwy brak: bez wiersza).
-    // Domyka komentarz „Zaczepy → plan (dane null)" wyżej. READ-ONLY.
-    const oltcRowText = transformer.oltc
-      ? `${transformer.oltc.kind} ${transformer.oltc.positionLabel} · ${transformer.oltc.modeLabel}`
-        + (transformer.oltc.setpointLabel ? ` · ${transformer.oltc.setpointLabel}` : '')
-      : null;
-    // KD-11: oznaczenie transformatora („TR1") to TOŻSAMOŚĆ — bez niego z
-    // rysunku nie da się odczytać, który to transformator; moc/grupa połączeń,
-    // przekładnia, dane zwarciowe i zaczepy to DANE SZCZEGÓŁOWE.
-    const trRows: StationNameBandRow[] = [
-      { text: transformer.designation, labelClass: 't1', role: 'tozsamosc' },
-      { text: ratingRowText, labelClass: 't2', role: 'dane' },
-      {
-        text: `${liczbaRysunkuPl(transformer.uhvKv)}/${liczbaRysunkuPl(transformer.ulvKv)} kV`,
-        labelClass: 't2',
-        role: 'dane',
-      },
-      ...(shortCircuitParts.length > 0
-        ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3', role: 'dane' } as StationNameBandRow]
-        : []),
-      ...(oltcRowText
-        ? [{ text: oltcRowText, labelClass: 't3', role: 'dane' } as StationNameBandRow]
-        : []),
-    ];
+    const trRows = wierszeTabliczkiTransformatora(transformer);
     if (transformer.oltc) parityKeys.add('gpz.transformer.oltc');
     transformerLabels.push({
       ownerRef: `${transformer.transformerRef}#label`,
       nameSlot: {
-        x: snapToGrid(trCenterX + trDef.width / 2 + GRID),
+        x: trCenterX + odsuniecieTabliczki(),
         y: trTopY,
-        width: snapUp(Math.max(...trRows.map((row) => measureLabelWidth(row.text, row.labelClass)))),
+        width: szerokoscTabliczki(trRows),
         height: trRows.reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
       },
       rows: trRows,
@@ -1676,7 +2138,54 @@ export function composeGpz(
   // zaczepy pól WN TR — zaczepy zebrane WPROST z kroku 6, zero
   // rekonstrukcji ze zbudowanych symboli).
   let hvBusRightEdge: number | null = null;
-  if (hasHvContent) {
+  /** Szyna WN, do której zaczepia się blok źródła systemowego (jej prawy koniec). */
+  let hvSourceAttach: { readonly rightX: number } | null = null;
+  // GEOMETRIA-STACJI (§0 pkt 3): szyny WN MODELU wskazane przez zaczepy transformatorów.
+  // Kilka NIEPOŁĄCZONYCH szyn WN (model bez sekcji WN: transformator na własnej szynie
+  // 110 kV) = kilka odcinków, każdy z własnym refem wyniku i opisem — wspólna kreska
+  // przez wszystkie zaczepy rysowała połączenie, którego model nie ma.
+  const hvModelBuses = [...new Set(transformerHvTaps.map((tap) => tap.busRef).filter((ref): ref is string => ref != null))];
+  const hvBusVoltageKv = props.hvSystemSource?.hvBusVoltageKv ?? hvSections[0]?.busVoltageKv ?? null;
+  if (hasHvContent && hvSections.length === 0 && hvModelBuses.length > 1) {
+    const ordered = hvModelBuses
+      .map((busRef) => ({ busRef, xs: transformerHvTaps.filter((tap) => tap.busRef === busRef).map((tap) => tap.x) }))
+      .sort((p, q) => Math.min(...p.xs) - Math.min(...q.xs));
+    ordered.forEach((bus, index) => {
+      const prevRight = index > 0 ? Math.max(...ordered[index - 1].xs) : null;
+      const nextLeft = index < ordered.length - 1 ? Math.min(...ordered[index + 1].xs) : null;
+      const minX = Math.min(...bus.xs);
+      const maxX = Math.max(...bus.xs);
+      // Margines odcinka nie sięga połowy odstępu do zaczepu sąsiedniej szyny — odcinki
+      // szyn niepołączonych nie stykają się na rysunku.
+      const leftMargin = prevRight != null ? Math.min(SECTION_MARGIN, snapToGrid((minX - prevRight) / 2) - GRID) : SECTION_MARGIN;
+      const rightMargin = nextLeft != null ? Math.min(SECTION_MARGIN, snapToGrid((nextLeft - maxX) / 2) - GRID) : SECTION_MARGIN;
+      const busLeft = snapToGrid(minX - Math.max(GRID, leftMargin));
+      const busRight = snapToGrid(maxX + Math.max(GRID, rightMargin));
+      const meta: GpzElementMeta = {
+        parityKeys: ['gpz.bus.hv'],
+        testId: `gpz-canonical-hv-bus-${bus.busRef}`,
+        busbarRole: 'primary',
+        busResultRef: bus.busRef,
+      };
+      tag(meta.parityKeys);
+      segments.push({ ownerRef: `${bus.busRef}#hv-bus`, points: [{ x: busLeft, y: hvBusY }, { x: busRight, y: hvBusY }], meta });
+      if (hvBusVoltageKv != null) {
+        sectionLabels.push({
+          ownerRef: `${bus.busRef}#hv-bus-label`,
+          ownerKind: 'busbar-voltage',
+          text: `Szyna WN · ${liczbaRysunkuPl(hvBusVoltageKv)} kV`,
+          labelClass: 't2',
+          anchor: { x: snapToGrid((busLeft + busRight) / 2), y: hvBusY },
+          placement: 'above',
+          clearance: BUSBAR_LABEL_PATH_CLEARANCE,
+        });
+        tag(['gpz.bus.hv.label']);
+      }
+      if (index === ordered.length - 1) hvBusRightEdge = busRight;
+      const zrodloNaSzynie = gridSources.some((source) => source.connectionRef === bus.busRef);
+      if (zrodloNaSzynie) hvSourceAttach = { rightX: busRight };
+    });
+  } else if (hasHvContent) {
     const hvBayLeft = hvSections.length > 0 ? originX + SECTION_MARGIN : null;
     const hvBayRight = hvSections.length > 0 ? hvLineBayCursor - HV_LINE_BAY_GAP : null;
     const candidatesX = [
@@ -1687,15 +2196,28 @@ export function composeGpz(
     const left = candidatesX.length > 0 ? snapToGrid(Math.min(...candidatesX) - SECTION_MARGIN) : originX;
     const right = candidatesX.length > 0 ? snapToGrid(Math.max(...candidatesX) + SECTION_MARGIN) : originX + 4 * GRID;
     const busLeft = left;
-    const busRight = right;
+    // Karta GPZ-MODEL: etykieta szyny WN stoi nad LEWYM końcem szyny, wyśrodkowana na
+    // nim (`placement: 'above'`), a blok źródła zaczepia się przy PRAWYM końcu — ta sama
+    // arytmetyka co pasmo sekcji SN (`layoutSections`: etykieta → treść → blok źródła).
+    // GPZ z jednym transformatorem ma szynę WN krótszą niż połowa etykiety, więc bez tej
+    // rezerwy symbol źródła wchodził na „Szyna WN · 110 kV" i silnik etykiet ją usuwał
+    // (dawniej źródło stało na szynach SN obok transformatora bez zasilania i kolizja
+    // nie występowała). Szyna sięga co najmniej prawego końca etykiety + GRID.
+    const hvBusLabelText = hvBusVoltageKv != null ? `Szyna WN · ${liczbaRysunkuPl(hvBusVoltageKv)} kV` : null;
+    const busRight =
+      hvBusLabelText != null
+        ? Math.max(right, busLeft + snapUp(Math.ceil(measureLabelWidth(hvBusLabelText, 't2') / 2)) + GRID)
+        : right;
     hvBusRightEdge = busRight;
+    hvSourceAttach = { rightX: busRight };
 
     const hvBusMeta: GpzElementMeta = {
       parityKeys: ['gpz.bus.hv'],
       testId: 'gpz-canonical-hv-bus',
       busbarRole: 'primary',
-      // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN ze snapshotu (adapter).
-      busResultRef: props.hvBusRef ?? undefined,
+      // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN ze snapshotu (adapter); jedna szyna
+      // modelu wskazana przez zaczepy transformatorów jest tym samym rekordem.
+      busResultRef: props.hvBusRef ?? (hvModelBuses.length === 1 ? hvModelBuses[0] : undefined),
     };
     tag(hvBusMeta.parityKeys);
     segments.push({ ownerRef: `${props.id}#hv-bus`, points: [{ x: busLeft, y: hvBusY }, { x: busRight, y: hvBusY }], meta: hvBusMeta });
@@ -1706,15 +2228,14 @@ export function composeGpz(
     // jest napięciem szyny ŹRÓDŁA i dla ekwiwalentu SN niosłoby 15 kV na
     // etykiecie szyny WN) albo `hvSections[0].busVoltageKv` (ścieżka
     // `gpz_hv_sections` niepuste) — gdy żadne nieobecne, brak etykiety.
-    const hvBusVoltageKv = props.hvSystemSource?.hvBusVoltageKv ?? hvSections[0]?.busVoltageKv ?? null;
-    if (hvBusVoltageKv != null) {
+    if (hvBusLabelText != null) {
       sectionLabels.push({
         ownerRef: `${props.id}#hv-bus-label`,
         ownerKind: 'busbar-voltage',
         // F13.1 (przejęcie nadzorcy): forma zamknięta „Szyna WN · V kV" —
         // spójna z `BUSBAR_LABEL_TEXT_PATTERN` (buildScene.ts, §19.2+§21.1);
         // samo „110 kV" łamało wzorzec (malformed-text w busbar_label_probe).
-        text: `Szyna WN · ${liczbaRysunkuPl(hvBusVoltageKv)} kV`,
+        text: hvBusLabelText,
         labelClass: 't2',
         anchor: { x: busLeft, y: hvBusY },
         placement: 'above',
@@ -1733,114 +2254,122 @@ export function composeGpz(
   // na poziomie SN (dawna lokalizacja kolidowała czytelnością z D3-2). Gdy
   // BRAK kolumny WN (`!hasHvContent` — GPZ bez danych TR/WN, rzadki stan
   // niekompletny) zaczep ZOSTAJE nad szyną SN (fallback 1:1 z poprzedniej
-  // wersji, zero regresji dla tego przypadku). DECYZJA ZAKRESU (STOP-notatka
-  // raportu F9.4, nadal aktualna dla wariantu SN): dopasowanie `Source.bus_ref`
-  // → KONKRETNA sekcja (gdy GPZ ma >1 sekcję) wymaga `bus_ref` na
-  // `CanonicalGpzSection`, którego adapter v2 dziś nie eksponuje — fallback
-  // deterministyczny na sekcję order=0. Minimalna realizacja: jeden glif per
-  // wpis `gridSources`, rozstawione poziomo gdy >1 (dual-feed, rzadkie).
-  if (gridSources.length > 0) {
-    const firstSection = sectionLayouts[0] ?? null;
-    // Recenzja NO-GO 2026-07-17 pkt 2/3: strona zaczepu podąża za SZYNĄ
-    // ŹRÓDŁA (`hvSystemSource.sourceOnHvBus`) — EKWIWALENT na szynach SN
-    // zaczepia się nad szyną SN (nie wieńczy kolumny WN cudzym napięciem);
-    // brak informacji (adapter bez `hvSystemSource`) = zachowanie dotychczasowe.
-    const sourceOnHv = props.hvSystemSource?.sourceOnHvBus ?? true;
-    const attachAboveHv = hasHvContent && hvBusRightEdge != null && sourceOnHv;
-    if (!attachAboveHv && !firstSection) {
-      missingData.push('gpz.source.unattached');
-    } else {
-      const def = SYMBOL_DEFS.gridSource;
-      // attachY/attachRightEdge/extensionOwnerRef różnią się WYŁĄCZNIE
-      // punktem zaczepu (szyna WN vs szyna SN) — reszta geometrii (rozstaw
-      // poziomy symboli, odcinek zejścia, przedłużenie szyny do zaczepu)
-      // WSPÓLNA dla obu gałęzi (zero duplikacji arytmetyki).
-      const attachY = attachAboveHv ? hvBusY : snBusY;
-      const busContentRightX = attachAboveHv ? hvBusRightEdge! : firstSection!.x + firstSection!.width;
-      const extensionOwnerRef = attachAboveHv ? `${props.id}#hv-bus-source-extension` : `${props.id}#source-bus-extension`;
-      const attachX = snapToGrid(busContentRightX + 3 * GRID);
-      const symbolY = attachY - 3 * GRID - def.height;
-      let cursorX = attachX;
+  // wersji). Źródło na szynach SN zaczepia się przy sekcji, której szyną
+  // (`CanonicalGpzSection.busRef`) jest szyna źródła (`connectionRef` =
+  // `Source.bus_ref`) — dawny zastępczy przydział do sekcji `order = 0` dowiązywał
+  // źródło do cudzej szyny; blok źródła jest rezerwowany w paśmie tej sekcji
+  // (`layoutSections`). Jeden glif per wpis `gridSources`, rozstawione poziomo.
+  // Blok źródeł przy prawym końcu szyny (WN: szczyt kolumny WN; SN: szyna sekcji
+  // źródła): symbole co `szerokość + GRID`, zejście do szyny, tabliczka źródła
+  // systemowego za OSTATNIM symbolem bloku (przy kilku źródłach tabliczka nie wchodzi na
+  // symbole sąsiednie) i przedłużenie szyny do zaczepu.
+  const rysujBlokZrodel = (
+    zrodla: readonly GpzGridSourceInput[],
+    attachY: number,
+    busContentRightX: number,
+    extensionOwnerRef: string,
+  ): void => {
+    const def = SYMBOL_DEFS.gridSource;
+    const attachX = snapToGrid(busContentRightX + ODSUNIECIE_ZRODLA);
+    const symbolY = attachY - 3 * GRID - def.height;
+    let cursorX = attachX;
+    let tabliczka: StationNameBandOwnerInput | null = null;
+    for (const source of zrodla) {
+      const x = cursorX;
+      const y = symbolY;
+      const ports = portsInWorld('gridSource', x, y);
+      const meta: GpzElementMeta = {
+        parityKeys: ['gpz.source.external_grid'],
+        testId: `gpz-canonical-source-${source.id}`,
+        sourceRef: source.id,
+      };
+      tag(meta.parityKeys);
+      symbols.push({ symbolId: 'gridSource', x, y, ports, meta });
 
-      gridSources.forEach((source) => {
-        const x = cursorX;
-        const y = symbolY;
-        const ports = portsInWorld('gridSource', x, y);
-        const meta: GpzElementMeta = {
-          parityKeys: ['gpz.source.external_grid'],
-          testId: `gpz-canonical-source-${source.id}`,
-          sourceRef: source.id,
-        };
-        tag(meta.parityKeys);
-        symbols.push({ symbolId: 'gridSource', x, y, ports, meta });
-
-        const bottomPort = ports.bottom ?? { x: x + def.width / 2, y: y + def.height, dir: 'S' };
-        segments.push({
-          ownerRef: `${source.id}#grid-source-drop`,
-          points: [
-            { x: bottomPort.x, y: bottomPort.y },
-            { x: bottomPort.x, y: attachY },
-          ],
-          meta: { parityKeys: ['gpz.source.external_grid'], sourceRef: source.id },
-        });
-
-        // F13.1 (spec §21.1/D3-10): nazwa źródła + tabliczka danych systemu
-        // POD symbolem — WYŁĄCZNIE gdy adapter rozwiązał `hvSystemSource` I
-        // jego `sourceRef` odpowiada TEMU wpisowi `gridSources` (ten sam ref
-        // — `Source.ref_id` — po obu stronach, `SldSourceView.id`/
-        // `enmToCanonicalGpzAdapter.ts`). Brak dopasowania ⇒ ZERO etykiety
-        // (uczciwy brak, glif źródła zostaje — ciągłość/pokrycie nietknięte).
-        // Reużywa `transformerLabels` (StationNameBandOwnerInput, WYŁĄCZNIE
-        // kształt struktury — nie semantyka „transformator") zamiast nowego
-        // pola w `GpzCompositionLabelInputs`: `buildScene.ts` (poza
-        // autoryzacją tej fazy, edytowany równolegle) czyta DZIŚ TYLKO
-        // `labels.transformerLabels`/`labels.stationName` do
-        // `stationNameBands` — nowe pole wymagałoby tam dodatkowej linii.
-        if (props.hvSystemSource && props.hvSystemSource.sourceRef === source.id) {
-          const dataplate = gpzSystemSourceDataplateText(props.hvSystemSource);
-          // KD-11: NAZWA ŹRÓDŁA to tożsamość (mimo klasy `t2` — klasa
-          // typograficzna nie rozstrzyga znaczenia); opis ekwiwalentu i
-          // tabliczka danych zwarciowych to dane szczegółowe.
-          const rows: StationNameBandRow[] = [
-            { text: props.hvSystemSource.name, labelClass: 't2', role: 'tozsamosc' },
-          ];
-          // Recenzja NO-GO 2026-07-17 pkt 3: gdy źródło to EKWIWALENT na
-          // szynach SN (`!sourceOnHv`), tabliczka mówi to WPROST — inaczej
-          // czytelnik bierze dane zwarciowe ekwiwalentu za parametry
-          // przyłącza systemowego WN (fałsz prezentacji pkt 2).
-          if (!sourceOnHv) {
-            rows.push({ text: 'Ekwiwalent sieci zasilającej', labelClass: 't3', role: 'dane' });
-          }
-          if (dataplate) rows.push({ text: dataplate, labelClass: 't3', role: 'dane' });
-          transformerLabels.push({
-            ownerRef: `${source.id}#system-source-label`,
-            nameSlot: {
-              x: snapToGrid(x + def.width + GRID),
-              y,
-              width: snapUp(Math.max(
-                ...rows.map((row) => measureLabelWidth(row.text, row.labelClass)),
-              )),
-              height: rows.reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
-            },
-            rows,
-          });
-        }
-
-        cursorX += def.width + GRID;
+      const bottomPort = ports.bottom ?? { x: x + def.width / 2, y: y + def.height, dir: 'S' };
+      segments.push({
+        ownerRef: `${source.id}#grid-source-drop`,
+        points: [
+          { x: bottomPort.x, y: bottomPort.y },
+          { x: bottomPort.x, y: attachY },
+        ],
+        meta: { parityKeys: ['gpz.source.external_grid'], sourceRef: source.id },
       });
 
-      // Odcinek KOŃCOWY szyny (WN gdy kolumna WN obecna, inaczej SN) → punkt
-      // zaczepu (poza rezerwacją treści, spec §14.1 „ciągłość" — źródło musi
-      // mieć trasę DO szyny, nie tylko wisieć nad nią).
+      // F13.1 (spec §21.1/D3-10): nazwa źródła + tabliczka danych systemu —
+      // WYŁĄCZNIE gdy adapter rozwiązał `hvSystemSource` I jego `sourceRef`
+      // odpowiada TEMU wpisowi `gridSources` (ten sam ref — `Source.ref_id` — po obu
+      // stronach). Brak dopasowania ⇒ ZERO etykiety (uczciwy brak, glif źródła
+      // zostaje). Reużywa `transformerLabels` (kształt pasma nazwy, nie semantyka).
+      if (props.hvSystemSource && wierszeZrodla && props.hvSystemSource.sourceRef === source.id) {
+        tabliczka = {
+          ownerRef: `${source.id}#system-source-label`,
+          nameSlot: {
+            x: 0,
+            y,
+            width: szerokoscTabliczki(wierszeZrodla),
+            height: wierszeZrodla.reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
+          },
+          rows: wierszeZrodla,
+        };
+      }
+      cursorX += def.width + GRID;
+    }
+    if (tabliczka !== null) {
+      const t: StationNameBandOwnerInput = tabliczka;
+      transformerLabels.push({ ...t, nameSlot: { ...t.nameSlot, x: snapToGrid(cursorX) } });
+    }
+
+    // Odcinek KOŃCOWY szyny → punkt zaczepu (poza rezerwacją treści, spec §14.1
+    // „ciągłość" — źródło musi mieć trasę DO szyny, nie tylko wisieć nad nią).
+    segments.push({
+      ownerRef: extensionOwnerRef,
+      points: [
+        { x: snapToGrid(busContentRightX), y: attachY },
+        { x: snapToGrid(cursorX - GRID), y: attachY },
+      ],
+      meta: { parityKeys: ['gpz.source.external_grid'] },
+    });
+  };
+
+  if (gridSources.length > 0) {
+    const attach: { readonly rightX: number } | null = hvSourceAttach;
+    if (attachAboveHv && hvBusRightEdge != null && attach != null && attach.rightX !== hvBusRightEdge) {
+      // GEOMETRIA-STACJI (§0 pkt 3): źródło systemowe na szynie WN, która NIE jest skrajna
+      // prawa (kilka niepołączonych szyn WN modelu). Przedłużenie w osi szyny przeszłoby
+      // przez odcinki szyn, z którymi źródło nie ma połączenia — przyłącze biegnie więc
+      // POWYŻEJ szyn (2×GRID) i schodzi na prawy koniec WŁASNEJ szyny.
+      const routeY = hvBusY - 2 * GRID;
+      rysujBlokZrodel(gridSources, routeY, hvBusRightEdge, `${props.id}#hv-bus-source-extension`);
       segments.push({
-        ownerRef: extensionOwnerRef,
+        ownerRef: `${props.id}#hv-source-route`,
         points: [
-          { x: snapToGrid(busContentRightX), y: attachY },
-          { x: snapToGrid(cursorX - GRID), y: attachY },
+          { x: snapToGrid(hvBusRightEdge), y: routeY },
+          { x: attach.rightX, y: routeY },
+          { x: attach.rightX, y: hvBusY },
         ],
         meta: { parityKeys: ['gpz.source.external_grid'] },
       });
+    } else if (attachAboveHv && hvBusRightEdge != null) {
+      rysujBlokZrodel(gridSources, hvBusY, hvBusRightEdge, `${props.id}#hv-bus-source-extension`);
+    } else {
+      // Przedłużenie szyny pierwszej (wg `order`) sekcji ze źródłem: `<gpz>#source-bus-extension`
+      // (wyrocznia `gpzHvColumnGaps`); kolejne: `<gpz>/<sekcja>#source-bus-extension` (ten sam
+      // sufiks — czytelnicy rozpoznają przedłużenie szyny po końcówce identyfikatora).
+      let pierwszyBlok = true;
+      sectionLayouts.forEach((layout) => {
+        const zrodla = zrodlaSnWgSekcji.get(layout.section.sectionId);
+        if (!zrodla) return;
+        rysujBlokZrodel(
+          zrodla,
+          snBusY,
+          layout.x + layout.width,
+          pierwszyBlok ? `${props.id}#source-bus-extension` : `${props.id}/${layout.section.sectionId}#source-bus-extension`,
+        );
+        pierwszyBlok = false;
+      });
     }
+    if (zrodlaNiedowiazane) missingData.push('gpz.source.unattached');
   }
 
   // -- 8+9. Strefa GPZ + nagłówek-tytuł (spec §21.2, D3-2/D3-2bis/D3-12;
@@ -1877,14 +2406,68 @@ export function composeGpz(
   })();
   let zone: GpzZoneDecoration | null = null;
   const firstTransformer = props.transformers[0];
+  // GPZ-PARYTET (§0 pkt 1): nazwa WYŁĄCZNIE z modelu (`Substation.name`). Brak nazwy =
+  // jawny tekst braku + wpis `gpz.name.missing`, bez wymyślonej nazwy i bez klucza
+  // `gpz.header.name` (nagłówek istnieje, nazwy w nim nie ma).
   // Recenzja NO-GO 2026-07-17 pkt 3: nazwa GPZ z ENM często JUŻ zaczyna się
   // od „GPZ …" — sklejanie stałego prefiksu dawało duplikację „GPZ GPZ 15 kV"
   // w nagłówku strefy. Prefiks dokładamy TYLKO gdy nazwa go nie niesie.
-  const headerName = /^GPZ\b/i.test(props.name.trim()) ? props.name.trim() : `GPZ ${props.name}`;
+  const nazwaModelu = props.name?.trim() ? props.name.trim() : null;
+  if (nazwaModelu === null) missingData.push('gpz.name.missing');
+  const headerName =
+    nazwaModelu === null
+      ? 'GPZ — brak nazwy w modelu'
+      : /^GPZ\b/i.test(nazwaModelu)
+        ? nazwaModelu
+        : `GPZ ${nazwaModelu}`;
   const headerText = firstTransformer
     ? `${headerName} · ${liczbaRysunkuPl(firstTransformer.uhvKv)}/${liczbaRysunkuPl(firstTransformer.ulvKv)} kV`
     : headerName;
-  const headerHeight = labelLineHeight('t1') + GRID;
+  // GPZ-PARYTET (§0 pkt 3–5): belka nagłówka ma CZTERY wiersze — nazwa, bilans
+  // zasilania, bilans odpływów, alarmy — a pod nią tabela „Pola GPZ" (karty pól: rola, automatyka, pomiary). Tabela stoi
+  // NAD treścią elektryczną, bo pod treścią wychodzą trasy kabli z pól (magistrala
+  // i odpływy) — tam przecinałyby ją tory.
+  const wierszNaglowka = labelLineHeight('t1');
+  const headerHeight = 4 * wierszNaglowka + GRID;
+  const slotyNaglowka = szerokoscSlotowNaglowka();
+  const polaTabeli: PoleTabeliGpzWejscie[] = [];
+  hvSections
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .forEach((hvSection) => {
+      hvSection.bays.forEach((bay) => {
+        polaTabeli.push({
+          bayRef: bay.bayRef,
+          oznaczenie: (bay.bayNumber ?? bay.feederName ?? '').trim() || null,
+          rola: bay.rolaPola,
+          plakietki: bay.statusFlags,
+        });
+      });
+    });
+  // GPZ-PARYTET cz. 3 (pkt 2): pola toru transformatora (WN TR, TR) z modelu mają kartę
+  // w tabeli „Pola GPZ" jak każde pole — po przeniesieniu z sekcji do wieży nie znikają.
+  props.transformers.forEach((transformer) => {
+    for (const pole of [transformer.poleWn, transformer.poleTr]) {
+      if (!pole) continue;
+      polaTabeli.push({
+        bayRef: pole.bayRef,
+        oznaczenie: (pole.bayNumber ?? pole.feederName ?? '').trim() || null,
+        rola: pole.rolaPola,
+        plakietki: pole.statusFlags,
+      });
+    }
+  });
+  sectionLayouts.forEach((layout) => {
+    layout.fields.forEach((field) => {
+      polaTabeli.push({
+        bayRef: field.bay.bayRef,
+        oznaczenie: field.designation,
+        rola: field.bay.rolaPola,
+        plakietki: field.bay.statusFlags,
+      });
+    });
+  });
+  let adnotacjePlan: GpzAdnotacje | null = null;
   let headerSlot = {
     x: originX,
     y: originY,
@@ -1898,9 +2481,30 @@ export function composeGpz(
     // pomiar agenta na fixturze: bez marginesu 111488 < 135744 największej
     // stacji).
     const frameMargin = 6 * GRID;
+    // Szerokość wnętrza ramy bez tabeli: treść elektryczna z marginesami albo belka
+    // nagłówka (nazwa, bilans, alarmy). Tabela pól łamie karty w TEJ szerokości —
+    // nie poszerza ramy (szerokość GPZ przesuwa świat sieci i łamanie arkusza).
+    // Wiersze bilansu, alarmów i tabela są wcięte o GRID względem slotu nazwy — tyle,
+    // ile pasmo nazw odsuwa tekst nazwy od krawędzi swojego slotu (slot = tekst + 2·GRID,
+    // tekst wyśrodkowany), więc wszystkie wiersze belki zaczynają się w jednej pionowej linii.
+    const wciecieBelki = GRID;
+    const szerokoscBelkiNaglowka = Math.max(
+      headerSlot.width,
+      wciecieBelki + slotyNaglowka.zasilanie,
+      wciecieBelki + slotyNaglowka.odplywy,
+      wciecieBelki + slotyNaglowka.alarmy,
+    );
+    const dostepnaSzerokoscTabeli =
+      Math.max(contentBboxSoFar.width + 2 * frameMargin, 2 * GRID + szerokoscBelkiNaglowka) - 2 * GRID - wciecieBelki;
+    const wymiaryTabeli = wymiaryTabeliGpz(polaTabeli, dostepnaSzerokoscTabeli);
+    const tabelaHeight = wymiaryTabeli.height > 0 ? wymiaryTabeli.height + 2 * GRID : 0;
     const frameLeft = snapToGrid(contentBboxSoFar.x - frameMargin);
-    const frameTop = snapToGrid(contentBboxSoFar.y - frameMargin - headerHeight);
-    const frameRight = snapUp(contentBboxSoFar.x + contentBboxSoFar.width + frameMargin);
+    const frameTop = snapToGrid(contentBboxSoFar.y - frameMargin - tabelaHeight - headerHeight);
+    // Rama obejmuje treść ORAZ belkę nagłówka i tabelę (mierzone szerokości).
+    const szerokoscBelki = Math.max(szerokoscBelkiNaglowka, wciecieBelki + wymiaryTabeli.width);
+    const frameRight = snapUp(
+      Math.max(contentBboxSoFar.x + contentBboxSoFar.width + frameMargin, frameLeft + GRID + szerokoscBelki + GRID),
+    );
     const frameBottom = snapUp(contentBboxSoFar.y + contentBboxSoFar.height + frameMargin);
     zone = {
       x: frameLeft,
@@ -1908,7 +2512,8 @@ export function composeGpz(
       width: frameRight - frameLeft,
       height: frameBottom - frameTop,
     };
-    tag(['gpz.zone.frame', 'gpz.zone.header']);
+    tag(['gpz.frame', 'gpz.header', 'gpz.header.balance', 'gpz.header.alarms']);
+    if (nazwaModelu !== null) tag(['gpz.header.name']);
     // Nagłówek WEWNĄTRZ ramy (górna belka) — nigdy poza arkuszem po
     // translacji końcowej niżej.
     headerSlot = {
@@ -1916,6 +2521,24 @@ export function composeGpz(
       y: snapToGrid(frameTop + GRID / 2),
       width: headerSlot.width,
       height: headerSlot.height,
+    };
+    const tabela =
+      polaTabeli.length > 0
+        ? ulozTabeliGpz(
+            polaTabeli,
+            headerSlot.x + wciecieBelki,
+            snapUp(headerSlot.y + 4 * wierszNaglowka + GRID),
+            dostepnaSzerokoscTabeli,
+          )
+        : null;
+    if (tabela) tag(['gpz.measurements']);
+    if (polaTabeli.some((pole) => pole.plakietki.length > 0)) tag(['gpz.status_flags']);
+    adnotacjePlan = {
+      zasilanie: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + wierszNaglowka, width: slotyNaglowka.zasilanie, height: wierszNaglowka },
+      odplywy: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + 2 * wierszNaglowka, width: slotyNaglowka.odplywy, height: wierszNaglowka },
+      alarmy: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + 3 * wierszNaglowka, width: slotyNaglowka.alarmy, height: wierszNaglowka },
+      tabela,
+      panele: [],
     };
   }
   const stationName: StationNameBandOwnerInput = {
@@ -1942,7 +2565,25 @@ export function composeGpz(
     if (zone) {
       zone = { ...zone, x: zone.x + shiftX, y: zone.y + shiftY };
     }
+    if (adnotacjePlan) adnotacjePlan = przesunAdnotacjeGpz(adnotacjePlan, shiftX, shiftY);
   }
+
+  // GPZ-PARYTET (§0 pkt 3): tła pól liczone PO translacji, z ostatecznych położeń
+  // symboli pola i okręgów jego zabezpieczeń.
+  const panele = panelePolGpz(polaTabeli, [
+    ...symbols
+      .filter((sym) => sym.meta.bayRef !== undefined)
+      .map((sym) => ({
+        bayRef: sym.meta.bayRef!,
+        rect: { x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height },
+      })),
+    ...protectionSymbols.map((p) => ({
+      bayRef: p.bayRef,
+      rect: { x: p.x, y: p.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER },
+    })),
+  ]);
+  if (adnotacjePlan && panele.length > 0) tag(['gpz.bay.panel']);
+  const adnotacje: GpzAdnotacje | null = adnotacjePlan ? { ...adnotacjePlan, panele } : null;
 
   const contentBbox = computeBbox(symbols, segments);
   // Bbox kompozycji obejmuje ramę strefy (dekoracja też musi zmieścić się w
@@ -1977,6 +2618,7 @@ export function composeGpz(
     protectionSegments,
     measurementSegments,
     zone,
+    adnotacje,
     // V12K-223: opis do LEGENDY arkusza. Zero fabrykacji — brak modelu
     // uziemienia daje `null`, a legenda wtedy nic o nim nie pisze.
     neutralEarthingNotePl: props.snNeutralEarthing
@@ -2035,7 +2677,8 @@ function translateGpzComposition(
   });
   const moveAnchored = (list: SimpleAnchoredOwnerInput[]) => {
     list.forEach((l, i) => {
-      list[i] = { ...l, anchor: movePoint(l.anchor) };
+      // K2b×K3: kotwica i obrys symbolu przesuwane razem (jedno źródło pary).
+      list[i] = przesunKotwiczonaEtykiete(l, dx, dy);
     });
   };
   moveAnchored(parts.sectionLabels);
@@ -2091,19 +2734,15 @@ export function noGpzSymbolOverlaps(composition: GpzComposition): boolean {
 /** endsAtPorts (spec §11.3): każdy odcinek kończy się w porcie symbolu lub na
  *  szynie (busbar) tej samej kompozycji — analogicznie do
  *  `compose/station.ts` `internalSegmentsEndAtPortsOrBus`. F13.1 (spec
- *  §21.2): rama strefy GPZ (`#zone-frame`, `busbarKind`-owner
- *  `'gpz.zone.frame'`) jest ADNOTACJĄ KOMPOZYCYJNĄ (jak `protectionSegments`/
- *  `measurementSegments`, poza `composition.segments` semantycznie, ale TU
- *  fizycznie w tej samej liście — patrz DECYZJA w kroku 9 `composeGpz`,
- *  konieczna bo `buildScene.ts` nie ma dodatkowego kanału bez zmiany poza
- *  autoryzacją zadania) — jej narożniki NIE są węzłami toru mocy, więc
- *  WYŁĄCZONA z tej wyroczni, analogicznie do wyjątku adnotacji w spec §17.1/
- *  §20.1e. */
+ *  §21.2): rama strefy GPZ (klucz `gpz.frame`) jest DEKORACJĄ w osobnym kanale
+ *  (`GpzComposition.zone`), nie odcinkiem w `composition.segments`, więc ta
+ *  wyrocznia jej nie widzi. */
 export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition): boolean {
   const ports: RoutePort[] = [];
   composition.symbols.forEach((s) => Object.values(s.ports).forEach((p) => ports.push(p)));
   const busSegments = composition.segments.filter((s) => s.meta.busbarRole === 'primary' || s.meta.ringClosure);
-  const powerPathSegments = composition.segments.filter((s) => s.meta.testId !== 'gpz-canonical-zone-frame');
+  // Bez wyjątków: rama strefy nie jest odcinkiem, więc wyrocznia sprawdza KAŻDY odcinek.
+  const powerPathSegments = composition.segments;
 
   const endpointValid = (p: RouteVertex): boolean => {
     if (ports.some((port) => port.x === p.x && port.y === p.y)) return true;
@@ -2132,12 +2771,13 @@ export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition):
 }
 
 /**
- * no_direct_110kv_tr_tie_without_switchgear (migracja
- * `GpzCanonicalRenderer.noDirectTie.test.tsx` 1:1, spec §8): dla KAŻDEGO
+ * Zakaz bezpośredniego styku 110 kV–TR–SN bez rozdzielni (migracja testu renderera v2
+ * 1:1, spec §8; renderer v2 skasowany kartą GPZ-PARYTET, strażnik strukturalny
+ * strażnik strukturalny zakazu styku 110 kV–TR w `scripts/` pilnuje tego pliku): dla KAŻDEGO
  * transformatora — połączenie WN kończy się na aparaturze pola WN TR (nie na
- * szynie WN wprost do TR), połączenie SN kończy się na aparaturze pola TR
- * (nie wprost na szynie SN), i ŻADEN segment „lv_connector" (bezpośredni
- * styk) nie istnieje.
+ * szynie WN wprost do TR), połączenie SN kończy się na polu TR (nie wprost na
+ * szynie SN), każde z obu pól ma stos (aparaty z rekordów albo sylwetka braku
+ * danych) i ŻADEN segment „lv_connector" (bezpośredni styk) nie istnieje.
  */
 export function noDirectTransformerBusTies(composition: GpzComposition): boolean {
   return composition.transformers.every((tr) => {
@@ -2150,14 +2790,18 @@ export function noDirectTransformerBusTies(composition: GpzComposition): boolean
     const forbiddenDirectLv = composition.segments.some(
       (s) => s.meta.transformerRef === tr.transformerRef && s.meta.parityKeys.includes('gpz.transformer.lv_connector'),
     );
-    const hasSymbol = (testId: string): boolean => composition.symbols.some((s) => s.meta.testId === testId);
+    // GEOMETRIA-STACJI (§0 pkt 4): między połączeniem a szyną stoi POLE — stos aparatów
+    // z rekordów modelu albo jawna sylwetka braku danych wyposażenia (`bayNoEquipment`).
+    // Dawny warunek „DS+CB+CT(+ES) zawsze obecne" wymagał aparatów z konwencji, których
+    // model nie ma; zakaz bezpośredniego styku zostaje: pole bez ŻADNEGO symbolu = styk.
+    const hasFieldStack = (prefix: string): boolean =>
+      composition.symbols.some((s) => s.meta.testId?.startsWith(`${prefix}-`));
 
     return (
       !!hvConnector && hvConnector.meta.directTie110 === false && hvConnector.meta.terminatesAt === 'hv_tr_bay_apparatus' &&
       !!fieldAnchor && fieldAnchor.meta.directTieSn === false && fieldAnchor.meta.terminatesAt === 'tr_field_anchor' &&
       !forbiddenDirectLv &&
-      hasSymbol(`${tr.hvBayTestId}-ds`) && hasSymbol(`${tr.hvBayTestId}-cb`) && hasSymbol(`${tr.hvBayTestId}-ct`) &&
-      hasSymbol(`${tr.trFieldTestId}-ds`) && hasSymbol(`${tr.trFieldTestId}-cb`) && hasSymbol(`${tr.trFieldTestId}-ct`) && hasSymbol(`${tr.trFieldTestId}-es`)
+      hasFieldStack(tr.hvBayTestId) && hasFieldStack(tr.trFieldTestId)
     );
   });
 }
@@ -2182,7 +2826,7 @@ export function busbarTopologyOf(composition: GpzComposition, sectionId: string)
  * Brak parametru pokazujemy jako sam tryb — nigdy wartości zastępczej.
  */
 function neutralEarthingLabelPl(
-  e: NonNullable<GpzCanonicalRendererProps['snNeutralEarthing']>,
+  e: NonNullable<CanonicalGpzProps['snNeutralEarthing']>,
 ): string {
   if (e.kind === 'resistor') {
     return e.rOhm != null
@@ -2190,9 +2834,11 @@ function neutralEarthingLabelPl(
       : 'Punkt neutralny: rezystor';
   }
   if (e.kind === 'coil') {
+    // Zespół Z.14: dławik gaszący z rezystorem równoległym — opis niesie oba aparaty.
+    const rezystor = e.rOhm != null ? ` ‖ rezystor ${liczbaPl(e.rOhm)} Ω` : '';
     return e.xOhm != null
-      ? `Punkt neutralny: dławik ${liczbaPl(e.xOhm)} Ω`
-      : 'Punkt neutralny: dławik gaszący';
+      ? `Punkt neutralny: dławik ${liczbaPl(e.xOhm)} Ω${rezystor}`
+      : `Punkt neutralny: dławik gaszący${rezystor}`;
   }
   if (e.kind === 'direct') return 'Punkt neutralny: uziemiony bezpośrednio';
   return 'Punkt neutralny: izolowany';

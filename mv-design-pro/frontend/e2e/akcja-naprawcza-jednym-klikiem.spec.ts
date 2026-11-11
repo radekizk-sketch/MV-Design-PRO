@@ -16,14 +16,19 @@
  *    parametrów TEGO źródła z kluczem `sk3_min_mva` i kursorem w polu wartości;
  * 4. wpis poprawnej wartości i zapis zdejmują blokadę.
  *
- * Zrzuty (oba motywy) trafiają do `docs/audit/visual/C-12/` z przedrostkiem
- * `C12_ZRZUT_PREFIKS` (domyślnie `po`; bieg na bazie przed kartą: `przed`).
+ * Zrzuty (oba motywy) są przeznaczone dla `docs/audit/visual/C-12/` z przedrostkiem
+ * `C12_ZRZUT_PREFIKS` (domyślnie `po`; bieg na bazie przed kartą: `przed`). Katalog
+ * rozstrzyga `katalogZrzutow` (jedno źródło, karta SZYBKIE-TESTY): zwykły bieg pisze pod
+ * `test-results/zrzuty-dokumentacji/`, a do drzewa dokumentacji wyłącznie bieg
+ * z `ZRZUTY_DO_DOKUMENTACJI=1` — wcześniej spec pisał wprost do `docs/` i każdy bieg
+ * nadpisywał dwa śledzone zrzuty (strażnik drzewa kończył bieg błędem).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/C-12'));
@@ -39,7 +44,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    sources?: Array<{ ref_id: string; name: string }>;
+    sources?: Array<{ ref_id: string; name?: string }>;
   };
   readiness?: {
     blockers?: Array<{ code: string; element_ref?: string | null; canonical_code?: string }>;
@@ -116,7 +121,6 @@ async function otworzPowlokeZKontekstem(
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -136,9 +140,9 @@ async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   const plik = (motyw: string) =>
     path.join(KATALOG_ZRZUTOW, `${PRZEDROSTEK_ZRZUTOW}-${nazwa}-${motyw}.png`);
   await page.screenshot({ path: plik('dark') });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await page.screenshot({ path: plik('light') });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem na brakującym polu', async ({
@@ -154,8 +158,6 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse | null = null;
   for (const [idx, dlugosc] of [300, 250].entries()) {
@@ -169,8 +171,11 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
     });
   }
   const zrodlo = op?.snapshot?.sources?.[0]?.ref_id;
-  const nazwaZrodla = op?.snapshot?.sources?.[0]?.name;
   expect(zrodlo).toBeTruthy();
+  // Formularz podpisuje element NAZWĄ z migawki, nie identyfikatorem maszynowym (karta
+  // ETYKIETA-STACJI-PRZELOTOWEJ, naprawa W043) — asercja „formularz TEGO elementu"
+  // porównuje więc nazwę z tej samej migawki, z której pochodzi ref.
+  const nazwaZrodla = op?.snapshot?.sources?.[0]?.name;
   expect(nazwaZrodla).toBeTruthy();
 
   // Błąd danych: S''kQmin (400 MVA) większa od S''kQmax (250 MVA).
@@ -205,11 +210,8 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
   // Formularz operacji domenowej dla TEGO elementu, z fokusem na brakującym polu.
   const formularz = page.getByTestId('mvd-kreator-edycja');
   await expect(formularz).toBeVisible({ timeout: 20000 });
-  // Element nazwany nazwą z modelu, nigdy identyfikatorem (karta #144, `nazwy_elementow`):
-  // asercja na identyfikatorze była czerwona od scalenia C-12 z regułą nazw (partia 8).
-  const sekcjaElementu = formularz.getByTestId('mvd-kreator-edycja-element');
-  await expect(sekcjaElementu).toContainText(nazwaZrodla as string);
-  await expect(sekcjaElementu).not.toContainText(zrodlo as string);
+  await expect(formularz.getByTestId('mvd-kreator-edycja-element')).toContainText(nazwaZrodla as string);
+  await expect(formularz.getByTestId('mvd-kreator-edycja-element')).not.toContainText(zrodlo as string);
   await expect(page.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('sk3_min_mva');
   await expect(page.getByTestId('mvd-kreator-edycja-wartosc-0')).toBeFocused();
 
@@ -222,9 +224,9 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
   // Zbliżenie: sekcja parametrów formularza z polem wskazanym przez akcję naprawczą.
   const sekcja = page.getByTestId('mvd-kreator-edycja-parametry');
   await sekcja.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${PRZEDROSTEK_ZRZUTOW}-formularz-pole-dark.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await sekcja.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${PRZEDROSTEK_ZRZUTOW}-formularz-pole-light.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   const zapis = page.waitForResponse(
     (r) =>
       r.url().includes('/enm/domain-ops')

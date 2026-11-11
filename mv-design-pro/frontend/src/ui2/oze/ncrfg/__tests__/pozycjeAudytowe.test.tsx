@@ -39,13 +39,13 @@ describe('ZapisDokumentu — identyfikatory poza pierwszym planem', () => {
     { etykieta_pl: 'Bieg śladu', tresc_pl: 'bieg run-7; wersja silnika 1.2.0' },
   ];
 
-  afterEach(() => useShellStore.setState({ advancementMode: 'basic' } as never));
+  afterEach(() => useShellStore.setState({ szczegolyAudytowe: false } as never));
 
   it.each([
-    ['basic', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ])('tryb %s: pozycje merytoryczne w zapisie, audytowe tylko w informacjach audytowych', (tryb, ekspert) => {
-    useShellStore.setState({ advancementMode: tryb } as never);
+    useShellStore.setState({ szczegolyAudytowe: tryb } as never);
     render(<ZapisDokumentu blok={BLOK} testid="zapis" />);
     fireEvent.click(screen.getByTestId('zapis-przelacz'));
     const zapis = screen.getByTestId('zapis');

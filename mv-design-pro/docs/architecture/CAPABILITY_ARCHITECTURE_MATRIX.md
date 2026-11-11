@@ -46,7 +46,7 @@ Fundament MUSI nieść (§6–§7, §19–§20) — z oznaczeniem stanu w ENM dz
 | Pojęcie | W ENM dziś | Luka | Wycinek konwergencji |
 |---|---|---|---|
 | stabilna tożsamość assetu | `ref_id` (`ENMElement`); `id: uuid4` bez funkcji (A1-14) | tłumaczenie na uuid5 w 4 przestrzeniach (A1-06) | CV-4 (jedna przestrzeń w IR) |
-| hierarchia: stacja / sekcja / pole / aparat | `Substation`, `GPZSection`, `NnSection`, `Bay`, `BayPrimaryDevice` | aktywna prawda w `meta.field_specs` (A1-02) | CV-5 (typowany `Bay` → kasacja `meta.field_specs` procedurą) |
+| hierarchia: stacja / sekcja / pole / aparat | `Substation`, `GPZSection`, `NnSection`, `Bay`, `BayPrimaryDevice` | **od W5-B (2026-09-30)**: `bays` jedynym nośnikiem pól (`enm/pola.py`); dawny słownik pól w `meta` stacji skasowany z migracją przy wczytaniu (A1-02 zamknięte) | CV-5 (zrealizowane kartą W5-B) |
 | urządzenia przewodzące + terminale + ConnectivityNode | `Bus` (≡ CN, patrz `CANONICAL_TWIN_ARCHITECTURE.md` §A.3), `Port`/`PortRef`/`ConnectionNode` jako metadane bez egzekwowania (A1-03) | terminale nie są kontraktem łączności | CV-5 (terminale addytywne, egzekwowane walidatorem) |
 | łączność fizyczna vs stan łącznika vs in_service | `SwitchBranch.status`, `BaySwitchState`, 8 reprezentacji stanu (A1-07) | brak EARTHED/TRIPPED; stan w 8 miejscach | CV-3 (`EffectiveState` + `OperatingScenario`) |
 | poziom napięcia, przynależność fazowa, N, PEN, PE | `Bus.voltage_kv` (liczba); brak faz; „żyła powrotna" bez N/PE (A11-04) | model fazowy | CV-5 (`Terminal.phases`, `EarthingSystem`) |

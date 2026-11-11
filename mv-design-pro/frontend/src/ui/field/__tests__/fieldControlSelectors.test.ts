@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -61,6 +62,8 @@ function fieldItem(): FieldReadModelItem {
           local_remote_transfer_supported: false,
         },
         interlocks: { entries: [] },
+        equipment_data_state: 'MODEL',
+        equipment_assumed_data: [],
       },
     },
   };

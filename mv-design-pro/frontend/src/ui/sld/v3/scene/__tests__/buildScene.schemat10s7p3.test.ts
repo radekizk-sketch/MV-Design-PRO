@@ -44,6 +44,8 @@ import { computeStationTaps } from '../../layout/segments';
 import { GRID } from '../../core/grid';
 import type { StationMeasureInput } from '../../layout/measure';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
+import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -118,15 +120,10 @@ function withLongPolishName(model: EnergyNetworkModel, targetRef: string): Energ
   } as EnergyNetworkModel;
 }
 
-/** Wstrzyknięcie syntetycznego punktu NO na ciąg główny (wzorzec
- *  `enmWithSyntheticNop` z S3 — fixtura bazowa ma `nop_station_ref=null`). */
+/** Wstrzyknięcie punktu NO w pierwszej stacji ciągu głównego (wzorzec `enmWithSyntheticNop`
+ *  z S3; karta W5-C: pozycja normalna łącznika pola, nie kopia `LineRun.nop_station_ref`). */
 function withSyntheticNop(model: EnergyNetworkModel): EnergyNetworkModel {
-  const clone = structuredClone(model);
-  const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
-  if (!mainRun) throw new Error('fixtura bez main_trunk — nie da się wstrzyknąć NO');
-  const targetStationRef = buildSceneV3(model, 2).meta.mainTrunkStationIds[0];
-  (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
-  return clone;
+  return zPunktemPodzialuWStacji(model, buildSceneV3(model, 2).meta.mainTrunkStationIds[0]);
 }
 
 function stationHash(stationId: string): string {
@@ -202,7 +199,11 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
   });
 
   it('§11f (różne footprinty razem): stacja/switchgear/PV/BESS/trafo/pomiar współistnieją bez kolizji; NO wstrzyknięty renderuje się', () => {
-    const scene = buildSceneV3(bigEnm, 2);
+    // GEOMETRIA-STACJI (§0 pkt 4): aparaty pola rysują się wyłącznie z rekordów modelu.
+    // Intencja testu — heterogeniczne footprinty, w tym przekładnik prądowy pola — wymaga
+    // więc rekordów aparatów w fiksturze (`zRekordamiAparatowPol`: pola GPZ z CT). Dawniej
+    // CT dorysowywała konwencja roli niezależnie od danych pola (fabrykacja aparatu).
+    const scene = buildSceneV3(zRekordamiAparatowPol(bigEnm), 2);
     const symbolIds = new Set(scene.symbols.map((s) => s.symbolId));
     // Fixtura MUSI być heterogeniczna — inaczej test §11f byłby pusty.
     expect(symbolIds.has('transformer2W'), 'transformator blokowy obecny').toBe(true);
@@ -210,7 +211,7 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
     expect(symbolIds.has('derBess'), 'BESS obecny').toBe(true);
     expect(symbolIds.has('currentTransformer'), 'pole pomiarowe (CT) obecne').toBe(true);
     expect(symbolIds.has('gridSource'), 'źródło GPZ obecne').toBe(true);
-    const switchgear = ['breaker', 'disconnector', 'loadBreakSwitch', 'fuseSwitch', 'earthSwitch'];
+    const switchgear = ['breaker', 'disconnector', 'loadBreakSwitch', 'fuseSwitch', 'earthSwitch'] as const;
     expect(switchgear.some((id) => symbolIds.has(id)), 'aparatura łączeniowa obecna').toBe(true);
     // Heterogeniczne footprinty NIE kolidują (światła §5 rozdzielone działają).
     const m = layoutMetricsReport(scene);

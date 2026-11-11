@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Parytet predykatu „napięcie w paśmie nN” — kreator stacji SN/nN ↔ bramki backendu.
  *

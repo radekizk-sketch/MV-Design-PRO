@@ -4,9 +4,9 @@
  * założenia. ZERO fizyki i ZERO ocen lokalnych: liczniki dotkliwości, progi,
  * werdykty i uzasadnienia przepisywane WPROST z odpowiedzi backendu.
  *
- * Wybór przebiegu rozpływu — reużycie `przebiegRozplywu` z modelu okna „Jakość
- * wyników" (jedno źródło prawdy doboru przebiegu LOAD_FLOW/DONE, tak samo jak
- * w oknie „Wrażliwość").
+ * Przebieg rozpływu nie jest wybierany tutaj: ekran czyta aktywny bieg rodziny
+ * „rozpływ" z magazynu kontekstu wyniku (`ui2/wyniki/kontekst`, karta K8) —
+ * tak samo jak okno „Wrażliwość" i każdy inny ekran wyników.
  */
 
 import type { ElementType } from '../../../ui/types';
@@ -20,7 +20,6 @@ import {
   nazwaElementu,
 } from './strings';
 
-export { przebiegRozplywu } from '../jakosc/jakoscModel';
 
 /**
  * Typ elementu sieci dla wiersza rankingu N-1 (karta UI2 p.6) — mapowanie

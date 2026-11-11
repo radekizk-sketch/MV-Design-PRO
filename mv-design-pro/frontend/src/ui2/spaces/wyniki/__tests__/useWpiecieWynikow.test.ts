@@ -14,6 +14,7 @@ import { useResultsInspectorStore } from '../../../../ui/results-inspector/store
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useWpiecieWynikow } from '../useWpiecieWynikow';
 import { przebiegFixture } from './fixtures';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 const selectRunPf = vi.fn(async () => {});
 const loadResults = vi.fn(async () => {});
@@ -28,11 +29,11 @@ beforeEach(() => {
   useResultsInspectorStore.setState({ selectRun: selectRunSc, loadShortCircuitResults });
   useExecutionRunsStore.setState({
     runs: [],
-    activeRunId: null,
     activeStudyCaseId: null,
     isLoadingRuns: false,
   });
-  useAppStateStore.setState({ activeRunId: null, activeCaseId: null });
+  useAppStateStore.setState({ activeCaseId: null });
+  wyczyscKontekstWyniku();
 });
 
 /**
@@ -83,7 +84,7 @@ describe('useWpiecieWynikow — montaż', () => {
 
   it('aktywny zakończony rozpływ: selectRun+loadResults rozpływu, rodzaj=rozplyw', async () => {
     useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });
-    useAppStateStore.setState({ activeRunId: 'run-lf-1' });
+    ustawBiegOgladany('run-lf-1');
     const { result } = renderHook(() => useWpiecieWynikow());
     expect(result.current.aktywnyRodzaj).toBe('rozplyw');
     await waitFor(() => expect(selectRunPf).toHaveBeenCalledWith('run-lf-1'));
@@ -95,7 +96,7 @@ describe('useWpiecieWynikow — montaż', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    ustawBiegOgladany('run-sc-1');
     const { result } = renderHook(() => useWpiecieWynikow());
     expect(result.current.aktywnyRodzaj).toBe('zwarcie');
     await waitFor(() => expect(selectRunSc).toHaveBeenCalledWith('run-sc-1'));
@@ -107,7 +108,7 @@ describe('useWpiecieWynikow — montaż', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-2', analysis_type: 'SC_1F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-2' });
+    ustawBiegOgladany('run-sc-2');
     const { result } = renderHook(() => useWpiecieWynikow());
     expect(result.current.aktywnyRodzaj).toBe('zwarcie');
     await waitFor(() => expect(selectRunSc).toHaveBeenCalledWith('run-sc-2'));
@@ -117,7 +118,7 @@ describe('useWpiecieWynikow — montaż', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-x', analysis_type: 'DYNAMIKA_RMS' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-x' });
+    ustawBiegOgladany('run-x');
     const { result } = renderHook(() => useWpiecieWynikow());
     expect(result.current.aktywnyRodzaj).toBeNull();
     expect(selectRunPf).not.toHaveBeenCalled();
@@ -125,10 +126,10 @@ describe('useWpiecieWynikow — montaż', () => {
   });
 
   it('rejestr przebiegów doładowany PO montażu (hydratacja K2): wynik ładowany', async () => {
-    // INTENCJA (K2, defekt H-0): po zimnym starcie activeRunId pochodzi z URL,
+    // INTENCJA (K2, defekt H-0): po zimnym starcie oglądany bieg pochodzi z URL,
     // a rejestr przebiegów hydratuje z serwera PO montażu hooka — ładowanie
     // musi zostać ponowione, gdy rejestr się pojawi (deps: aktywnyRodzaj).
-    useAppStateStore.setState({ activeRunId: 'run-sc-3' });
+    ustawBiegOgladany('run-sc-3');
     const { result, rerender } = renderHook(() => useWpiecieWynikow());
     expect(result.current.aktywnyRodzaj).toBeNull();
     expect(selectRunSc).not.toHaveBeenCalled();
@@ -149,7 +150,7 @@ describe('useWpiecieWynikow — montaż', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-lf-2', status: 'RUNNING' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-lf-2' });
+    ustawBiegOgladany('run-lf-2');
     const { result } = renderHook(() => useWpiecieWynikow());
     expect(result.current.aktywnyRodzaj).toBeNull();
     expect(selectRunPf).not.toHaveBeenCalled();
@@ -179,9 +180,12 @@ describe('useWpiecieWynikow — zdarzenie magistrali wyniki-gotowe', () => {
   });
 
   it('po odmontowaniu: subskrypcja zwolniona (zero ładowań)', () => {
-    useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-9' })] });
+    // Karta K8: zakończony bieg w rejestrze jest domyślnie OGLĄDANY (najnowszy DONE),
+    // więc montaż z nim w rejestrze ładowałby go słusznie. Rejestr dostaje bieg dopiero
+    // po odmontowaniu — jedynym możliwym wyzwalaczem ładowania jest wtedy subskrypcja.
     const { unmount } = renderHook(() => useWpiecieWynikow());
     unmount();
+    useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-9' })] });
     act(() => {
       emituj({ typ: 'wyniki-gotowe', runId: 'run-lf-9', przypadekId: 'case-1' });
     });
@@ -194,7 +198,7 @@ describe('useWpiecieWynikow — zdarzenie magistrali wyniki-gotowe', () => {
       selectedRunId: 'run-lf-1',
       results: { converged: true } as never,
     });
-    useAppStateStore.setState({ activeRunId: 'run-lf-1' });
+    ustawBiegOgladany('run-lf-1');
     renderHook(() => useWpiecieWynikow());
     await Promise.resolve();
     expect(selectRunPf).not.toHaveBeenCalled();
@@ -209,7 +213,7 @@ describe('useWpiecieWynikow — zdarzenie magistrali wyniki-gotowe', () => {
       selectedRunId: 'run-sc-1',
       shortCircuitResults: { run_id: 'run-sc-1', rows: [] } as never,
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    ustawBiegOgladany('run-sc-1');
     renderHook(() => useWpiecieWynikow());
     await Promise.resolve();
     expect(selectRunSc).not.toHaveBeenCalled();

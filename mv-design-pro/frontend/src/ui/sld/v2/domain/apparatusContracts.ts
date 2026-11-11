@@ -109,9 +109,8 @@ export const APPARATUS_KIND_LABELS_PL: Readonly<Record<ApparatusKind, string>> =
  * Mapowanie ENM `BayPrimaryDeviceKind` → V2 `ApparatusKind`.
  *
  * Nie wszystkie ENM kindy mapują się 1:1 (np. `GENERATOR_PV/BESS/FW` to
- * DER, nie aparat pola; mapują się na `null` i są obsługiwane przez
- * DerRenderer). Używamy tej tabeli w `BayRenderer` przy parsowaniu
- * `BayPrimaryDevice[]` z ENM.
+ * DER, nie aparat pola; mapują się na `null` — źródło rysuje glif źródła
+ * z `v3/compose/sourceKind.ts`, nie symbol aparatu pola).
  */
 export const BAY_PRIMARY_DEVICE_TO_APPARATUS: Readonly<
   Record<BayPrimaryDeviceKind, ApparatusKind | null>
@@ -127,7 +126,11 @@ export const BAY_PRIMARY_DEVICE_TO_APPARATUS: Readonly<
   FUSE: APPARATUS_KIND.FUSE,
   // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): SA rysowany WYŁĄCZNIE z danych.
   SURGE_ARRESTER: APPARATUS_KIND.SURGE_ARRESTER,
-  // DER device kinds: rendered by DerRenderer, not BayRenderer.
+  // Aparaty pola baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): przekładnik
+  // niezrównoważenia jest przekładnikiem prądowym, międzyfazowy — napięciowym.
+  UNBALANCE_CT: APPARATUS_KIND.CT,
+  PHASE_TO_PHASE_VT: APPARATUS_KIND.VT,
+  // Rodzaje DER: glif źródła (`v3/compose/sourceKind.ts`), nie symbol aparatu pola.
   GENERATOR_PV: null,
   GENERATOR_BESS: null,
   GENERATOR_FW: null,
@@ -159,6 +162,19 @@ export const FIELD_ROLE = {
   DER_PV: 'DER_PV',
   DER_BESS: 'DER_BESS',
   DER_FW: 'DER_FW',
+  /** Pole źródłowe, którego rodzaju źródła model nie rozstrzyga (rola `OZE` bez
+   *  przyłączonego wytwórcy albo z wytwórcami różnych rodzajów) — jawny symbol źródła
+   *  nieokreślonego, nigdy PV z domysłu (karta GPZ-PARYTET cz. 2, pkt 3). */
+  DER_UNKNOWN: 'DER_UNKNOWN',
+  /** Pole baterii kondensatorów równoległych SN (rola modelu `BKR`, kanoniczna
+   *  `BATERIA_KONDENSATOROW`; ENEA Operator, Stacje 110 kV, Zeszyt 1 §13 s. 23 i Zał. 16).
+   *  Do karty UX-04/POLE-BKR-MODEL adapter stacji zamieniał `BKR` po cichu na pole
+   *  odgałęźne, a adapter GPZ — na pole liniowe odpływowe (dobór feedera sieci). */
+  CAPACITOR_BANK: 'CAPACITOR_BANK',
+  /** Pole zespołu uziemiającego SN (rola modelu `ZU`, kanoniczna `ZESPOL_UZIEMIAJACY`;
+   *  ENEA Zeszyt 1 Zał. 13–15). Do karty UX-04/POLE-ZU-SKLADOWA-ZEROWA adapter stacji
+   *  zamieniał `ZU` na pole odgałęźne, a adapter GPZ — na pole liniowe odpływowe. */
+  EARTHING_UNIT: 'EARTHING_UNIT',
 } as const;
 
 export type FieldRole = (typeof FIELD_ROLE)[keyof typeof FIELD_ROLE];
@@ -179,32 +195,19 @@ export function isSnFieldRole(role: FieldRole): boolean {
     role === FIELD_ROLE.RMU_TRANSFORMER ||
     role === FIELD_ROLE.DER_PV ||
     role === FIELD_ROLE.DER_BESS ||
-    role === FIELD_ROLE.DER_FW
+    role === FIELD_ROLE.DER_FW ||
+    role === FIELD_ROLE.DER_UNKNOWN ||
+    role === FIELD_ROLE.CAPACITOR_BANK ||
+    role === FIELD_ROLE.EARTHING_UNIT
   );
 }
-
-/** Mapowanie ENM `Bay.bay_role` (raw enum) → kanoniczne `FieldRole`. */
-export const ENM_BAY_ROLE_TO_FIELD_ROLE: Readonly<
-  Record<'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE', FieldRole>
-> = {
-  IN: FIELD_ROLE.LINE_IN,
-  OUT: FIELD_ROLE.LINE_OUT,
-  TR: FIELD_ROLE.TRANSFORMER,
-  COUPLER: FIELD_ROLE.COUPLER,
-  FEEDER: FIELD_ROLE.LINE_OUT,
-  MEASUREMENT: FIELD_ROLE.MEASUREMENT,
-  // OZE jest renderowane przez DerRenderer; tutaj fallback na LINE_OUT
-  // dla pola łącznikowego między DER a stacją (gdy używamy klasycznego
-  // pola SN do przyłączenia DER w wariancie DEDICATED_MV_CONNECTION).
-  OZE: FIELD_ROLE.DER_PV,
-};
 
 // =============================================================================
 // 3. ApparatusInstance — instancja aparatu na potrzeby renderingu
 // =============================================================================
 
 /**
- * Instancja aparatu w polu (operator-grade input dla `BayRenderer`).
+ * Instancja aparatu w polu (operator-grade opis aparatu pola).
  *
  * Wszystkie pola są deterministyczne i `domain_ref` traceable — zgodnie z
  * Cardinal Rule planu (zasada nadrzędna).

@@ -270,7 +270,7 @@ function klasaOdcinka(segment: PreviewSegment): HitObjectClass {
  * ROZSTRZYGNIĘCIE: rodzaj i ref obiektu MODELU dla kliknięcia w uchwyt (etykieta,
  * znacznik wyniku) pochodzą z KOTWICY W MODELU (`canvasMenuSubject.
  * resolveCanvasMenuSubject` + bijekcja `ELEMENT_KIND_KOTWICY`) — jedno wywołanie
- * na trafienie, wspólne dla menu, szuflady i selekcji. Ta tabela pozostaje
+ * na trafienie, wspólne dla menu, panelu elementu inspektora i selekcji. Ta tabela pozostaje
  * WSKAZÓWKĄ RYSUNKOWĄ i jest używana wyłącznie tam, gdzie pytanie dotyczy
  * napisu, nie obiektu:
  *  * `'protectionAnnotation'` — napis adnotacji zabezpieczeń nie ma obiektu

@@ -1,0 +1,12 @@
+# UX-04/POLE-ZU-SKLADOWA-ZEROWA: aktywne sciezki KODU, schematu bazy, migawki kontraktu
+# i aktywnych kontraktow dokumentacji (grupa `zu_`).
+backend/src
+backend/tests
+backend/migrations
+backend/schemas
+frontend/src
+frontend/e2e
+scripts
+docs/system
+docs/domain
+docs/ui

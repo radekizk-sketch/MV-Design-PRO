@@ -86,6 +86,12 @@ export interface TemplateSchema {
   vt_options: readonly CatalogChoice[];
   energy_meter_options: readonly CatalogChoice[];
   manufacturer_profile_default: string;
+  /**
+   * Równoważniki sieci (`ZRODLO_SN`, warunki przyłączenia OSD) szablonu GPZ — korzenia
+   * modelu (`add_grid_source_sn`); pusta lista dla szablonów wpinanych w odcinek.
+   * Backend: `schema.py::_schema_to_dict` (`grid_source_options`).
+   */
+  grid_source_options: readonly CatalogChoice[];
 }
 
 export interface StationTemplateSummary {

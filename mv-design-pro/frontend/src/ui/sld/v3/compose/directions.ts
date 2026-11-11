@@ -17,17 +17,15 @@
  *
  * DECYZJA (luka spec §9 — role pól nie zawsze rozróżniają kierunek wprost):
  * role jawne ENM (`LINE_IN`/`LINE_OUT`/`LINE_BRANCH`) są jednoznaczne, ale
- * `RMU_LINE`/`GPZ_LINE_BAY` (role generyczne „pole liniowe" — patrz
- * `MINI_BLOCK_FOOTPRINT.defaultSnBayRoles`, `v2/renderer/MiniBlockFootprints.ts`)
+ * `RMU_LINE`/`GPZ_LINE_BAY` (role generyczne „pole liniowe")
  * NIE niosą kierunku w samej roli. Przyjęto konwencję POZYCYJNĄ wśród pól
  * LINIOWYCH tej stacji (w kolejności `snBays`, NIE wśród wszystkich pól):
  * pierwsze pole liniowe = poprzednik (wejście z ciągu), drugie = następnik
- * (wyjście), trzecie i kolejne = odgałęzienia — mirror v2
- * `miniBlockPortRoleLabel` (`MiniBlockRmuRenderer.tsx`), ale liczone WYŁĄCZNIE
- * wśród pól liniowych (v2 liczy pozycję wśród WSZYSTKICH pól stacji, co dla
- * footprintu `mv_lv_sectional` — pole liniowe drugiej sekcji leżące ZA polem
- * TR/SPR pierwszej sekcji — dawałoby błędne „ODG" zamiast „WE" tej sekcji;
- * v3 tej wady NIE dziedziczy, bo liczy pozycję tylko wśród pól LINIOWYCH).
+ * (wyjście), trzecie i kolejne = odgałęzienia — liczone WYŁĄCZNIE wśród pól
+ * liniowych (dawny renderer v2, skasowany w GPZ-PARYTET cz. 2, liczył pozycję
+ * wśród WSZYSTKICH pól stacji, co dla stacji sekcyjnej — pole liniowe drugiej
+ * sekcji leżące ZA polem TR/SPR pierwszej sekcji — dawało błędne „ODG" zamiast
+ * „WE" tej sekcji).
  *
  *  3. F10.2/F10.6 (spec §19.1, V12K-035, POPRAWKA A3): dawny punkt 3 tego
  *     nagłówka (`bayApparatusDesignation`, F6b) opisywał JEDEN oznacznik
@@ -43,12 +41,12 @@
  *  Rodzaj stacji (końcowa/przelotowa/odgałęźna/sekcyjna, F10.2 §19.3) NIE mieszka tu:
  *  jedyną regułą produktu jest `ui/shared/rodzajStacji.ts` (lustro backendu
  *  `enm/rodzaj_stacji.py`, karta ETYKIETA-STACJI-PRZELOTOWEJ), którą adapter wpisuje
- *  w `StationOnRunRendererProps.topologicalType`.
+ *  w `StationOnRunViewModel.topologicalType`.
  */
 
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
-import { FIELD_ROLE_LABEL_PL, fieldLabelInSentencePl } from '../../v2/station-rozdzielnia/contract';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL, fieldLabelInSentencePl } from '../../v2/station-rozdzielnia/contract';
+import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import type { LineRunV1 } from '../../../../types/enm';
 
 /** Surowe tokeny zakazane na rysunku (spec §9) — dopasowanie na CAŁYCH
@@ -69,7 +67,7 @@ export const FORBIDDEN_RAW_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
  * `FieldRole` bez danych): „potrzeb własnych"/„inne technologiczne" NIE mają
  * odpowiednika w obecnym enumie — nie są zwracane.
  * SŁOWNICTWO (karta #141): nazwa roli pola pochodzi z kanonu słownictwa ról pól
- * (`FIELD_ROLE_LABEL_PL`) — to samo słowo co w kreatorze, szufladzie i nazwie
+ * (`FIELD_ROLE_LABEL_PL`) — to samo słowo co w kreatorze, inspektorze i nazwie
  * pola nadanej przez backend („pole sprzęgła", nie „sprzęgłowe"; pola DER to
  * „pole źródłowe PV/BESS/FW" z kanonu, nie osobne „generatorowe"). Wyjątkiem
  * jest klasa pól liniowych: spec §9 zakazuje na rysunku semantyki wejścia/wyjścia,
@@ -103,6 +101,12 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.BESS_SN);
     case FIELD_ROLE.DER_FW:
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.FW_SN);
+    case FIELD_ROLE.DER_UNKNOWN:
+      return fieldLabelInSentencePl(FIELD_SOURCE_LABEL_PL);
+    case FIELD_ROLE.CAPACITOR_BANK:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW);
+    case FIELD_ROLE.EARTHING_UNIT:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.ZESPOL_UZIEMIAJACY);
     default:
       return 'pole';
   }
@@ -118,7 +122,7 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  * między sobą („pole liniowe" ×3 + „pole transformatorowe"). Recenzja NO-GO
  * 2026-07-17 pkt 9 rozstrzygnęła, że rysunek zostaje przy KRÓTKICH Q/QE/T
  * „w obrębie OPISANEGO pola", a identyfikator globalny (`S01.F01.Q2`) żyje w
- * inspektorze (`ui/sld/shared/detailDrawerData.ts`). Zrealizowana była tylko
+ * inspektorze (`ui/sld/shared/daneElementuKanwy.ts`). Zrealizowana była tylko
  * PIERWSZA połowa tej pary: oznaczniki skrócono, a pole nigdy nie dostało
  * OPISU, po którym dałoby się je wskazać — sama ROLA („pole liniowe") powtarza
  * się w rozdzielni tyle razy, ile jest pól tej roli. Reguła KLASA §3
@@ -128,8 +132,8 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  * PRYMAT DANYCH (§12.1) I ZAKAZ FABRYKACJI. Numer pola z danych
  * (`Bay.bay_number`, „10"/„23/1") jest oznacznikiem PIERWSZEGO wyboru i tak
  * właśnie działa ścieżka GPZ (`compose/gpz.ts`). Dla pól SN STACJI danej nie
- * ma: read-model `StationFieldSpec` (`v2/canvas/enmToSldAdapter.ts`) nie niesie
- * `bay_number` ani `feeder_short_name` — nazwane wprost jako dług, nie obejście.
+ * ma: rekord pola (`Bay`, karta W5-B) ma miejsce na `bay_number`, ale operacje
+ * stacyjne backendu go nie wypełniają — nazwane wprost jako dług, nie obejście.
  * Zostaje wtedy OSTATNI fallback: deterministyczny licznik pozycyjny w
  * kolejności kompozycji rozdzielnicy — dokładnie ta sama konwencja, którą
  * repo stosuje już w DWÓCH miejscach (pola GPZ oraz identyfikator globalny
@@ -138,7 +142,7 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  *
  * KONWENCJA (jedna dla całego rysunku): `F01`, `F02`… pola liniowe · `FT1`…
  * transformatorowe · `FS1`… sprzęgła · `FP1`… pomiarowe · `FG1`… źródłowe
- * (DER). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
+ * (DER) · `FK1`… baterii kondensatorów (kompensacyjne) · `FZ1`… zespołów uziemiających. Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
  * jednej klasy nie przenumerowuje pozostałych.
  */
 export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, number>): string {
@@ -150,8 +154,13 @@ export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, n
         : role === FIELD_ROLE.MEASUREMENT
           ? 'FP'
           : role === FIELD_ROLE.DER_PV || role === FIELD_ROLE.DER_BESS || role === FIELD_ROLE.DER_FW
+            || role === FIELD_ROLE.DER_UNKNOWN
             ? 'FG'
-            : 'F';
+            : role === FIELD_ROLE.CAPACITOR_BANK
+              ? 'FK'
+              : role === FIELD_ROLE.EARTHING_UNIT
+                ? 'FZ'
+                : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
@@ -214,6 +223,18 @@ export function isLineLikeRole(role: FieldRole): boolean {
     || role === FIELD_ROLE.RMU_LINE
     || role === FIELD_ROLE.GPZ_LINE_BAY
   );
+}
+
+/**
+ * GEOMETRIA-STACJI (§0 pkt 5): pole TORU — pole liniowe, które prowadzi odcinek (nie jest
+ * rezerwowe ani wolne). JEDEN predykat dla podpisów kierunku (`stationBayCaptions`) i portów
+ * routingu (`findLineBayIndices`): kolejność pól toru wyznacza poprzednika, następnika
+ * i N-te odgałęzienie. Do karty pole wolne liczyło się jak pole toru — w stacji o polach
+ * [IN, OUT, FEEDER (wolne), FEEDER (z odgałęzieniem)] kabel odgałęzienia i podpis „odg."
+ * wychodziły z pola WOLNEGO, a pole, z którego model prowadzi odgałęzienie, stało bez opisu.
+ */
+export function czyPoleToru(bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'reserve'>): boolean {
+  return isLineLikeRole(bay.fieldRole) && !bay.reserve;
 }
 
 /** Klasyfikacja kierunku pola liniowego (spec §9, DECYZJA w nagłówku pliku).
@@ -416,19 +437,26 @@ export function stationBayCaptions(
 ): readonly (string | null)[] {
   const lineBayIndices: number[] = [];
   snBays.forEach((bay, index) => {
-    if (isLineLikeRole(bay.fieldRole)) lineBayIndices.push(index);
+    if (czyPoleToru(bay)) lineBayIndices.push(index);
   });
 
   let branchIndex = 0;
   return snBays.map((bay, index) => {
     const lineBayPosition = lineBayIndices.indexOf(index);
-    const direction = classifyLineBayDirection(bay.fieldRole, lineBayPosition);
+    // Pole wolne/rezerwowe nie ma odpływu, więc nie ma kierunku (i nie zabiera numeru odgałęzienia).
+    const direction = czyPoleToru(bay) ? classifyLineBayDirection(bay.fieldRole, lineBayPosition) : null;
     const thisBranchIndex = direction === 'branch' ? branchIndex++ : -1;
-    return bayDirectionCaption({
+    const podpis = bayDirectionCaption({
       direction,
       context,
       branchIndex: thisBranchIndex,
       designationFallback: bay.designation,
     });
+    // GEOMETRIA-STACJI (§0 pkt 5): odpływ pola liniowego kończy się nazwą celu
+    // (`Bay.outgoing_destination_ref` → nazwa stacji celu, adapter): podpis kierunku ciągu
+    // (gdy jest) i „→ ⟨cel⟩" — cel zadeklarowany w modelu jest zawsze nazwany, odpływ nie
+    // biegnie poza kadr bez opisu. Pole rezerwowe/wolne nie ma odpływu, więc nie ma celu.
+    if (direction == null || !bay.destinationName) return podpis;
+    return podpis != null ? `${podpis} → ${bay.destinationName}` : `→ ${bay.destinationName}`;
   });
 }

@@ -11,7 +11,7 @@
  * Interakcje natywne (`userEvent`).
  */
 
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -30,6 +30,7 @@ import { atrapaSieci, odpowiedzJson } from '../../ncrfg/__tests__/atrapaSieci';
 import type { ZgodnoscPrzypadkuNcRfg } from '../../ncrfg/typy';
 import { useNcRfgStore } from '../../ncRfgStore';
 import { PulpitOze } from '../PulpitOze';
+import { stanOcenyModelu } from '../pulpitModel';
 import { PULPIT_STRINGS } from '../strings';
 
 // Sekcje analiz (siła sieci, adekwatność Q, katalog konwerterów) — domena poza NC RfG,
@@ -45,7 +46,7 @@ const PRZYPADEK = zgodnoscFixture().case_id;
 const SCIEZKA_OCENY = `/api/ncrfg-tests/cases/${PRZYPADEK}/compliance`;
 const noop = (): void => {};
 
-function trasy(ocena: () => Response = () => odpowiedzJson(200, zgodnoscFixture())) {
+function trasy(ocena: () => Response | Promise<Response> = () => odpowiedzJson(200, zgodnoscFixture())) {
   return atrapaSieci([
     { metoda: 'GET', sciezka: '/api/ncrfg-tests/catalog', odpowiedz: () => odpowiedzJson(200, katalogFixture()) },
     { metoda: 'GET', sciezka: SCIEZKA_OCENY, odpowiedz: ocena },
@@ -82,7 +83,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
   it('bez aktywnego przypadku: nazwany stan, zero zapytań o ocenę, odświeżenie zablokowane', async () => {
     const wywolania = trasy();
     useAppStateStore.setState({ activeCaseId: null } as never);
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     expect(await screen.findByTestId('mvd-oze-pulpit-brak-przypadku')).toHaveTextContent(
       PULPIT_STRINGS.brakPrzypadku,
     );
@@ -102,7 +103,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
 
   it('ocena wczytana sama: przypadek i operator z modelu w zapytaniu; bez biegu „co-jeśli"', async () => {
     const wywolania = trasy();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await ocenaWczytana();
     const zapytania = wywolania.filter((w) => w.sciezka === SCIEZKA_OCENY);
     expect(zapytania).toHaveLength(1);
@@ -114,7 +115,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
 
   it('pozycja = typ z klasyfikacji, dowód certyfikatu z wykazu (numer dokumentu) albo jawny brak, plakietki W', async () => {
     trasy();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await ocenaWczytana();
     const bieg = zgodnoscFixture().bieg!;
     expect(bieg.modules.some((m) => m.dowod_certyfikatu !== null)).toBe(true);
@@ -143,7 +144,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
   it('karta modułu: nagłówek wyniku (źródło danych — zatwierdzony model, dowód) i rekordy W z kartą po kliknięciu', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await ocenaWczytana();
     await uzytkownik.click(screen.getByTestId(`mvd-oze-pulpit-poz-${PV.id}`));
     const zgodnosc = screen.getByTestId('mvd-oze-pulpit-zgodnosc');
@@ -169,7 +170,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
       certyfikaty_odrzucone: [{ der_ref: BESS.id, rekord_ref: null, powod_pl: powod }],
     };
     trasy(() => odpowiedzJson(200, ocena));
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await ocenaWczytana();
     const dowod = screen.getByTestId(`mvd-oze-pulpit-poz-dowod-${BESS.id}`);
     expect(dowod).toHaveAttribute('data-stan', 'odrzucony');
@@ -196,7 +197,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
     };
     trasy(() => odpowiedzJson(200, ocena));
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await screen.findByTestId(`mvd-oze-pulpit-poz-wymagania-${BESS.id}`);
     expect(screen.getByTestId(`mvd-oze-pulpit-poz-klasa-${PV.id}`)).toHaveTextContent(powod);
     expect(screen.queryByTestId(`mvd-oze-pulpit-poz-dowod-${PV.id}`)).toBeNull();
@@ -206,7 +207,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
 
   it('błąd oceny → nazwany komunikat z treścią serwera, bez wyniku', async () => {
     trasy(() => odpowiedzJson(404, { detail: 'Przypadek nie ma zatwierdzonego modelu' }));
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     expect(await screen.findByTestId('mvd-oze-pulpit-blad-oceny')).toHaveTextContent(
       'Przypadek nie ma zatwierdzonego modelu',
     );
@@ -216,7 +217,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
   it('odświeżenie (natywny klik) ponawia zapytanie o ocenę tego samego przypadku', async () => {
     const wywolania = trasy();
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await ocenaWczytana();
     const odswiez = screen.getByTestId('mvd-oze-pulpit-odswiez');
     await waitFor(() => expect(odswiez).toBeEnabled());
@@ -232,7 +233,7 @@ describe('operator — z modelu albo jawny wybór (nigdy domyślny)', () => {
       ders: { [BESS.id]: BESS, [PV.id]: { ...PV, profiles: { ...PV.profiles, nc_rfg_profile_ref: 'pse' } } },
     });
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     const wybor = (await screen.findByTestId('mvd-oze-pulpit-operator-wybor')) as HTMLSelectElement;
     await waitFor(() => expect(wybor).toBeEnabled());
     expect(wybor.value).toBe('');
@@ -249,7 +250,7 @@ describe('pozostałe sekcje karty modułu', () => {
   it('sekcja magazynu dla BESS z danymi, ukryta dla PV (natywny klik)', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     expect(await screen.findByTestId('mvd-oze-pulpit-magazyn')).toBeInTheDocument();
     await uzytkownik.click(screen.getByTestId(`mvd-oze-pulpit-poz-${PV.id}`));
     expect(screen.queryByTestId('mvd-oze-pulpit-magazyn')).toBeNull();
@@ -257,7 +258,7 @@ describe('pozostałe sekcje karty modułu', () => {
 
   it('bez przebiegów sekcje siły sieci i mocy biernej pokazują jawne instrukcje', async () => {
     trasy();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     expect(await screen.findByTestId('mvd-oze-sila-brak-przebiegu')).toHaveTextContent(PULPIT_STRINGS.silaBrakPrzebiegu);
     expect(screen.getByTestId('mvd-oze-adekw-brak-przebiegu')).toHaveTextContent(PULPIT_STRINGS.adekwBrakPrzebiegu);
   });
@@ -265,7 +266,7 @@ describe('pozostałe sekcje karty modułu', () => {
   it('wyróżnienie moduł→węzeł: klik włącza, ponowny wyłącza, przenosi się na inny moduł', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     const pozPv = await screen.findByTestId(`mvd-oze-pulpit-poz-${PV.id}`);
     const pozBess = screen.getByTestId(`mvd-oze-pulpit-poz-${BESS.id}`);
     await uzytkownik.click(pozPv);
@@ -282,7 +283,7 @@ describe('pozostałe sekcje karty modułu', () => {
     trasy();
     const onNawiguj = vi.fn();
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="basic" onNawiguj={onNawiguj} />);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={onNawiguj} />);
     await uzytkownik.click(await screen.findByTestId('mvd-oze-pulpit-dokumenty-przejdz'));
     expect(onNawiguj).toHaveBeenCalledWith('dokumentacja');
   });
@@ -294,8 +295,8 @@ describe('rozdział od biegu „co-jeśli" macierzy i metadane oceny', () => {
     const uzytkownik = userEvent.setup();
     render(
       <>
-        <PulpitOze trybZaawansowania="basic" onNawiguj={noop} />
-        <MacierzNcRfg trybZaawansowania="basic" />
+        <PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />
+        <MacierzNcRfg szczegolyAudytowe={false} />
       </>,
     );
     await ocenaWczytana();
@@ -311,11 +312,92 @@ describe('rozdział od biegu „co-jeśli" macierzy i metadane oceny', () => {
   it('odcisk oceny wyłącznie w informacjach audytowych trybu eksperckiego', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<PulpitOze trybZaawansowania="expert" onNawiguj={noop} />);
+    render(<PulpitOze szczegolyAudytowe onNawiguj={noop} />);
     await ocenaWczytana();
     await uzytkownik.click(screen.getByTestId('mvd-oze-pulpit-odcisk-przelacz'));
     expect(screen.getByTestId('mvd-oze-pulpit-odcisk-lista')).toHaveTextContent(
       zgodnoscFixture().bieg!.deterministic_hash,
+    );
+  });
+});
+
+/**
+ * Iloczyn cech: stan odczytu oceny modelu {niezlecona, wczytywanie, blad, wczytana} × miejsce
+ * prezentacji {pozycja listy, sekcja zgodności karty}. Odczyt w toku i odczyt nieudany to nie
+ * „ocena modelu niewczytana" ani „moduł poza oceną" (KONTRAKT_WERDYKTU_WYJASNIALNEGO).
+ */
+describe('stan odczytu oceny modelu — wczytywanie i błąd ≠ brak oceny', () => {
+  it.each([
+    { zlecalna: false, ocenaJest: false, blad: false, oczekiwany: 'niezlecona' },
+    { zlecalna: false, ocenaJest: true, blad: true, oczekiwany: 'niezlecona' },
+    { zlecalna: true, ocenaJest: false, blad: false, oczekiwany: 'wczytywanie' },
+    { zlecalna: true, ocenaJest: false, blad: true, oczekiwany: 'blad' },
+    { zlecalna: true, ocenaJest: true, blad: false, oczekiwany: 'wczytana' },
+    { zlecalna: true, ocenaJest: true, blad: true, oczekiwany: 'wczytana' },
+  ] as const)(
+    'zlecalna $zlecalna × ocena $ocenaJest × błąd $blad → $oczekiwany',
+    ({ zlecalna, ocenaJest, blad, oczekiwany }) => {
+      expect(stanOcenyModelu(zlecalna, ocenaJest, blad)).toBe(oczekiwany);
+    },
+  );
+
+  it('ocena w toku: lista i sekcja zgodności mówią „w trakcie odczytu", nie „niewczytana" ani „poza oceną"', async () => {
+    let zwolnij: (r: Response) => void = () => {};
+    trasy(() => new Promise<Response>((r) => { zwolnij = r; }));
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
+    for (const der of [BESS, PV]) {
+      expect(await screen.findByTestId(`mvd-oze-pulpit-poz-klasa-${der.id}`)).toHaveTextContent(
+        PULPIT_STRINGS.listaWczytywanie,
+      );
+    }
+    const sekcja = screen.getByTestId('mvd-oze-pulpit-zgodnosc-bez-oceny');
+    expect(sekcja).toHaveAttribute('data-stan', 'wczytywanie');
+    expect(sekcja).toHaveAttribute('aria-busy', 'true');
+    expect(sekcja).toHaveTextContent(PULPIT_STRINGS.zgodnoscWczytywanie);
+    expect(sekcja).not.toHaveTextContent(PULPIT_STRINGS.zgodnoscPozaOcena);
+    expect(screen.queryByTestId('mvd-oze-pulpit-blad-oceny')).toBeNull();
+    await act(async () => { zwolnij(odpowiedzJson(200, zgodnoscFixture())); });
+    await ocenaWczytana();
+  });
+
+  it('błąd odczytu: lista i sekcja zgodności mówią „odczyt nieudany", nie „poza oceną"', async () => {
+    trasy(() => odpowiedzJson(500, { detail: 'awaria serwera' }));
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
+    expect(await screen.findByTestId('mvd-oze-pulpit-blad-oceny')).toHaveTextContent('awaria serwera');
+    for (const der of [BESS, PV]) {
+      const klasa = screen.getByTestId(`mvd-oze-pulpit-poz-klasa-${der.id}`);
+      expect(klasa).toHaveTextContent(PULPIT_STRINGS.listaBladOceny);
+      expect(klasa).not.toHaveTextContent(PULPIT_STRINGS.listaPozaOcena);
+    }
+    const sekcja = screen.getByTestId('mvd-oze-pulpit-zgodnosc-bez-oceny');
+    expect(sekcja).toHaveAttribute('data-stan', 'blad');
+    expect(sekcja).not.toHaveAttribute('aria-busy');
+    expect(sekcja).toHaveTextContent(PULPIT_STRINGS.zgodnoscBladOceny);
+  });
+
+  it('spóźniona odpowiedź poprzedniego przypadku nie nadpisuje stanu bieżącego', async () => {
+    let zwolnijStara: (r: Response) => void = () => {};
+    let numer = 0;
+    atrapaSieci([
+      { metoda: 'GET', sciezka: '/api/ncrfg-tests/catalog', odpowiedz: () => odpowiedzJson(200, katalogFixture()) },
+      {
+        metoda: 'GET',
+        sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/compliance$/,
+        odpowiedz: () => {
+          numer += 1;
+          if (numer === 1) return new Promise<Response>((r) => { zwolnijStara = r; });
+          return new Promise<Response>(() => {});
+        },
+      },
+    ]);
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
+    await waitFor(() => expect(numer).toBe(1));
+    act(() => { useAppStateStore.setState({ activeCaseId: 'inny-przypadek' } as never); });
+    await waitFor(() => expect(numer).toBe(2));
+    await act(async () => { zwolnijStara(odpowiedzJson(200, zgodnoscFixture())); });
+    expect(screen.queryByTestId(`mvd-oze-pulpit-poz-wymagania-${PV.id}`)).toBeNull();
+    expect(screen.getByTestId(`mvd-oze-pulpit-poz-klasa-${PV.id}`)).toHaveTextContent(
+      PULPIT_STRINGS.listaWczytywanie,
     );
   });
 });

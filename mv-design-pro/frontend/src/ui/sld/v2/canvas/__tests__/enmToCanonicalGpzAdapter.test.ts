@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * enmToCanonicalGpzAdapter tests — Phase R3 (operator-grade rebuild).
  *
@@ -8,16 +9,20 @@ import { describe, expect, it } from 'vitest';
 import type {
   Bay,
   BayPrimaryDevice,
-  Branch,
   Bus,
   EnergyNetworkModel,
+  Generator,
   Measurement,
   ProtectionAssignment,
+  Source,
   Substation,
   Transformer,
+  ZespolUziemiajacy,
 } from '../../../../../types/enm';
-import type { RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
-import { buildCanonicalGpzProps } from '../enmToCanonicalGpzAdapter';
+import { buildCanonicalGpzProps, flagiStatusuPola, rolaPolaGpz } from '../enmToCanonicalGpzAdapter';
+import { czyPoleKabloweGpz } from '../canonicalGpzModel';
+import { pole } from '../../../../../test/pola';
+import { BAY_MODEL_ROLES } from '../../../../../types/enm';
 
 type EnmFragment = Pick<
   EnergyNetworkModel,
@@ -36,6 +41,8 @@ type EnmFragment = Pick<
   // puste czyta `snapshot.sources` — `buildCanonicalGpzProps` wymaga tej
   // kolekcji dokładnie jak produkcyjny wywołujący (`buildScene.ts`).
   | 'sources'
+  // Karta UX-04/POLE-ZU: aparat punktu neutralnego sieci SN z zespołów uziemiających stacji.
+  | 'zespoly_uziemiajace'
 >;
 
 function emptyEnm(): EnmFragment {
@@ -49,44 +56,6 @@ function emptyEnm(): EnmFragment {
     protection_assignments: [],
     measurements: [],
     sources: [],
-  };
-}
-
-function cable(refId: string, fromBus: string, toBus: string): Branch {
-  return {
-    id: refId,
-    ref_id: refId,
-    name: refId,
-    tags: [],
-    meta: {},
-    type: 'cable',
-    from_bus_ref: fromBus,
-    to_bus_ref: toBus,
-    status: 'closed',
-    length_km: 1,
-    r_ohm_per_km: 0.1,
-    x_ohm_per_km: 0.1,
-  } as Branch;
-}
-
-function lfOverlay(elements: Record<string, Record<string, number | null>>): RawOverlayPayload {
-  return {
-    run_id: 'run-1',
-    analysis_type: 'LOAD_FLOW',
-    elements: Object.fromEntries(
-      Object.entries(elements).map(([refId, metrics]) => [
-        refId,
-        {
-          ref_id: refId,
-          kind: 'branch',
-          badges: [],
-          severity: 'INFO',
-          metrics: Object.fromEntries(
-            Object.entries(metrics).map(([code, value]) => [code, { code, value, unit: '' }]),
-          ),
-        },
-      ]),
-    ),
   };
 }
 
@@ -117,18 +86,7 @@ function bus(refId: string, voltageKv: number): Bus {
 }
 
 function bay(refId: string, role: Bay['bay_role'], substationRef: string, busRef: string, overrides: Partial<Bay> = {}): Bay {
-  return {
-    id: refId,
-    ref_id: refId,
-    name: refId,
-    tags: [],
-    meta: {},
-    bay_role: role,
-    substation_ref: substationRef,
-    bus_ref: busRef,
-    equipment_refs: [],
-    ...overrides,
-  } as Bay;
+  return pole({ ref_id: refId, name: refId, bay_role: role, substation_ref: substationRef, bus_ref: busRef, ...overrides });
 }
 
 function transformer(refId: string, overrides: Partial<Transformer> = {}): Transformer {
@@ -156,7 +114,7 @@ function transformer(refId: string, overrides: Partial<Transformer> = {}): Trans
 describe('buildCanonicalGpzProps — walidacja', () => {
   it('Brak substation → throw', () => {
     const enm = emptyEnm();
-    expect(() => buildCanonicalGpzProps(enm, 'NONEXISTENT', { x: 0, y: 0 })).toThrow();
+    expect(() => buildCanonicalGpzProps(enm, 'NONEXISTENT')).toThrow();
   });
 
   it('Substation typu mv_lv → throw (NIE GPZ)', () => {
@@ -164,7 +122,7 @@ describe('buildCanonicalGpzProps — walidacja', () => {
       ...emptyEnm(),
       substations: [{ ...gpz('s'), station_type: 'mv_lv' } as Substation],
     };
-    expect(() => buildCanonicalGpzProps(enm, 's', { x: 0, y: 0 })).toThrow(/nie jest typu 'gpz'/);
+    expect(() => buildCanonicalGpzProps(enm, 's')).toThrow(/nie jest typu 'gpz'/);
   });
 });
 
@@ -175,15 +133,19 @@ describe('buildCanonicalGpzProps — walidacja', () => {
 describe('buildCanonicalGpzProps — nazwa GPZ (zakaz placeholderów)', () => {
   it('Substation.name → CanonicalGpzProps.name', () => {
     const enm: EnmFragment = { ...emptyEnm(), substations: [gpz('GPZ-5', { name: 'GPZ-5 PST' })] };
-    const props = buildCanonicalGpzProps(enm, 'GPZ-5', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'GPZ-5');
     expect(props.name).toBe('GPZ-5 PST');
   });
 
-  it('Brak name (pusty string) → "—" (NIE placeholder "GPZ 1")', () => {
-    const enm: EnmFragment = { ...emptyEnm(), substations: [gpz('GPZ-5', { name: '' })] };
-    const props = buildCanonicalGpzProps(enm, 'GPZ-5', { x: 0, y: 0 });
-    expect(props.name).toBe('—');
-  });
+  // Karta GPZ-PARYTET: brak nazwy w modelu = jawny brak (`null`), nie znak zastępczy „—"
+  // udający nazwę (kompozycja zgłasza wtedy `gpz.name.missing`).
+  for (const pusta of ['', '   ']) {
+    it(`Brak name (${JSON.stringify(pusta)}) → null (jawny brak, NIE placeholder)`, () => {
+      const enm: EnmFragment = { ...emptyEnm(), substations: [gpz('GPZ-5', { name: pusta })] };
+      const props = buildCanonicalGpzProps(enm, 'GPZ-5');
+      expect(props.name).toBeNull();
+    });
+  }
 });
 
 /* ---------------------------------------------------------------------------
@@ -200,7 +162,7 @@ describe('buildCanonicalGpzProps — transformatory', () => {
         transformer('tr-2', { name: 'Transformator TR-2', sn_mva: 16 }),
       ],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.transformers).toHaveLength(2);
     expect(props.transformers[0].designation).toBe('TR1');
     expect(props.transformers[1].designation).toBe('TR2');
@@ -210,7 +172,7 @@ describe('buildCanonicalGpzProps — transformatory', () => {
 
   it('Brak transformatorów → pusta tablica (NIE placeholder)', () => {
     const enm: EnmFragment = { ...emptyEnm(), substations: [gpz()] };
-    const props = buildCanonicalGpzProps(enm, 'GPZ-1', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'GPZ-1');
     expect(props.transformers).toEqual([]);
   });
 
@@ -220,7 +182,7 @@ describe('buildCanonicalGpzProps — transformatory', () => {
       substations: [gpz('g', { transformer_refs: ['t'] })],
       transformers: [transformer('t', { name: 'TR-1' })],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.transformers[0].designation).toBe('TR1');
   });
 
@@ -230,7 +192,7 @@ describe('buildCanonicalGpzProps — transformatory', () => {
       substations: [gpz('g', { transformer_refs: ['t'] })],
       transformers: [transformer('t', { name: '' })],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.transformers[0].designation).toBe('T1');
   });
 });
@@ -239,59 +201,178 @@ describe('buildCanonicalGpzProps — transformatory', () => {
    TR-bay ↔ wieża reconciliation (eliminacja podwójnej reprezentacji)
    --------------------------------------------------------------------------- */
 
-describe('buildCanonicalGpzProps — pole TR vs wieża (anty-podwójny render)', () => {
-  it('Transformator z polem bay_role:"TR" → POMIJANY jako wieża (renderuje się przez pole)', () => {
-    const enm: EnmFragment = {
+describe('buildCanonicalGpzProps — pole TR modelu jako pole toru transformatora (GPZ-PARYTET cz. 3 pkt 2)', () => {
+  // Dawniej transformator wskazany przez pole TR był pomijany jako wieża, a pole TR w sekcji
+  // nie ma symbolu transformatora — transformator znikał z rysunku. Teraz KAŻDY transformator
+  // stacji ma tor (pole WN TR → TR2W → pole TR), a jednoznacznie przypisane pole TR modelu
+  // zostaje przeniesione z sekcji do toru (jedno przypisanie steruje obiema stronami).
+  function galaz(ref: string, type: string, status: 'open' | 'closed') {
+    return { id: ref, ref_id: ref, name: ref, type, status, from_bus_ref: 'bus-15', to_bus_ref: `${ref}-k`, tags: [], meta: {} } as never;
+  }
+  function enmTr(bays: Bay[], transformers: Transformer[] = [transformer('tr-1', { name: 'TR-1' })]): EnmFragment {
+    return {
       ...emptyEnm(),
       substations: [gpz('g', {
-        transformer_refs: ['tr-1'],
+        transformer_refs: transformers.map((t) => t.ref_id),
         gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+        gpz_hv_sections: [{ section_id: 'h1', order: 1, name: 'WN', bus_ref: 'bus-110' }],
       })],
-      transformers: [transformer('tr-1', { name: 'TR-1' })],
-      bays: [bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] })],
-      buses: [bus('bus-15', 15)],
+      transformers,
+      bays,
+      buses: [bus('bus-15', 15), bus('bus-110', 110)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
-    // Wieża pominięta — transformator NIE w props.transformers.
-    expect(props.transformers).toHaveLength(0);
-    // ...ale pole TR jest w sekcji jako pole o roli TRANSFORMER.
-    const trBay = props.sections[0].bays.find((b) => b.bayRef === 'bay-tr1');
-    expect(trBay?.fieldRole).toBe('TRANSFORMER');
+  }
+  const polaSekcji = (props: ReturnType<typeof buildCanonicalGpzProps>): string[] => [
+    ...props.sections.flatMap((s) => s.bays.map((b) => b.bayRef)),
+    ...(props.hvSections ?? []).flatMap((s) => s.bays.map((b) => b.bayRef)),
+  ];
+
+  // Iloczyn: nośnik relacji {equipment_refs, meta.transformer_ref} × strona {SN, WN}.
+  for (const nosnik of ['equipment_refs', 'meta.transformer_ref'] as const) {
+    for (const strona of ['SN', 'WN'] as const) {
+      it(`pole TR (${nosnik}, strona ${strona}) → tor transformatora, nie sekcja`, () => {
+        const relacja: Partial<Bay> =
+          nosnik === 'equipment_refs' ? { equipment_refs: ['tr-1'] } : { meta: { transformer_ref: 'tr-1' } };
+        const props = buildCanonicalGpzProps(
+          enmTr([
+            bay('bay-tr1', 'TR', 'g', strona === 'SN' ? 'bus-15' : 'bus-110', {
+              gpz_section_id: strona === 'SN' ? 's1' : 'h1',
+              ...relacja,
+            }),
+          ]),
+          'g',
+        );
+        expect(props.transformers.map((t) => t.transformerRef)).toEqual(['tr-1']);
+        const tr = props.transformers[0];
+        expect(strona === 'SN' ? tr.poleTr?.bayRef : tr.poleWn?.bayRef).toBe('bay-tr1');
+        expect(strona === 'SN' ? tr.poleWn : tr.poleTr).toBeNull();
+        expect(polaSekcji(props)).not.toContain('bay-tr1');
+      });
+    }
+  }
+
+  it('transformator BEZ pola TR → tor zostaje, pola toru nieobecne (null)', () => {
+    const props = buildCanonicalGpzProps(enmTr([bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })]), 'g');
+    expect(props.transformers.map((t) => [t.transformerRef, t.poleTr, t.poleWn])).toEqual([['tr-1', null, null]]);
+    expect(polaSekcji(props)).toEqual(['b-out']);
   });
 
-  it('Transformator BEZ pola TR (starszy snapshot) → wieża ZOSTAJE (brak regresji)', () => {
-    const enm: EnmFragment = {
-      ...emptyEnm(),
-      substations: [gpz('g', {
-        transformer_refs: ['tr-1'],
-        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
-      })],
-      transformers: [transformer('tr-1', { name: 'TR-1' })],
-      bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
-      buses: [bus('bus-15', 15)],
-    };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
-    expect(props.transformers).toHaveLength(1);
-    expect(props.transformers[0].transformerRef).toBe('tr-1');
+  it('mix: jeden transformator z polem TR, drugi bez — OBA mają tor', () => {
+    const props = buildCanonicalGpzProps(
+      enmTr(
+        [bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] })],
+        [transformer('tr-1', { name: 'TR-1' }), transformer('tr-2', { name: 'TR-2' })],
+      ),
+      'g',
+    );
+    expect(props.transformers.map((t) => [t.transformerRef, t.poleTr?.bayRef ?? null])).toEqual([
+      ['tr-1', 'bay-tr1'],
+      ['tr-2', null],
+    ]);
+    expect(polaSekcji(props)).toEqual([]);
   });
 
-  it('Mix: jeden TR z polem (pominięty), drugi bez (wieża zostaje)', () => {
+  it('niejednoznaczne: dwa pola TR jednego transformatora → oba zostają w sekcji, tor bez pola', () => {
+    const props = buildCanonicalGpzProps(
+      enmTr([
+        bay('bay-tr1a', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] }),
+        bay('bay-tr1b', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] }),
+      ]),
+      'g',
+    );
+    expect(props.transformers[0].poleTr).toBeNull();
+    expect(polaSekcji(props).sort()).toEqual(['bay-tr1a', 'bay-tr1b']);
+  });
+
+  it('niejednoznaczne: pole TR wskazujące dwa transformatory → zostaje w sekcji, oba tory bez pola', () => {
+    const props = buildCanonicalGpzProps(
+      enmTr(
+        [bay('bay-tr12', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1', 'tr-2'] })],
+        [transformer('tr-1'), transformer('tr-2')],
+      ),
+      'g',
+    );
+    expect(props.transformers.map((t) => t.poleTr)).toEqual([null, null]);
+    expect(polaSekcji(props)).toEqual(['bay-tr12']);
+  });
+
+  it('pole o roli innej niż TR wskazujące transformator nie jest polem toru', () => {
+    const props = buildCanonicalGpzProps(
+      enmTr([bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] })]),
+      'g',
+    );
+    expect(props.transformers[0].poleTr).toBeNull();
+    expect(polaSekcji(props)).toEqual(['b-out']);
+  });
+
+  it('pole toru niesie stan łącznika z modelu (gałąź wyłącznika pola TR)', () => {
+    for (const stan of ['closed', 'open'] as const) {
+      const enm = enmTr([
+        bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1', 'q-tr1'] }),
+      ]);
+      enm.branches = [galaz('q-tr1', 'breaker', stan)];
+      expect(buildCanonicalGpzProps(enm, 'g').transformers[0].poleTr?.cbState).toBe(stan);
+    }
+  });
+
+  it('determinizm: odwrócona kolejność pól i transformatorów → te same props', () => {
+    const pola = [
+      bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] }),
+      bay('bay-tr2', 'TR', 'g', 'bus-110', { gpz_section_id: 'h1', equipment_refs: ['tr-2'] }),
+      bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' }),
+    ];
+    const trafa = [transformer('tr-1'), transformer('tr-2')];
+    const a = buildCanonicalGpzProps(enmTr(pola, trafa), 'g');
+    const b = buildCanonicalGpzProps(enmTr([...pola].reverse(), [...trafa].reverse()), 'g');
+    expect(JSON.stringify(b)).toBe(JSON.stringify(a));
+  });
+});
+
+describe('buildCanonicalGpzProps — pole źródłowe OZE z rodzajem źródła z modelu (GPZ-PARYTET cz. 3 pkt 1)', () => {
+  function gen(ref: string, genType: Generator['gen_type'], fieldRef: string | null): Generator {
+    return {
+      id: ref, ref_id: ref, name: ref, tags: [], bus_ref: 'bus-15', p_mw: 1, gen_type: genType,
+      meta: fieldRef ? { field_ref: fieldRef } : {},
+    } as Generator;
+  }
+  // Iloczyn: wytwórcy pola {PV, BESS, FW ×4 typy, brak, mieszane, rodzaj nierysowany, wytwórca innego pola}.
+  const PRZYPADKI: ReadonlyArray<readonly [string, readonly Generator[], string]> = [
+    ['PV', [gen('g1', 'pv_inverter', 'oze')], 'DER_PV'],
+    ['BESS', [gen('g1', 'bess', 'oze')], 'DER_BESS'],
+    ['FW wind_inverter', [gen('g1', 'wind_inverter', 'oze')], 'DER_FW'],
+    ['FW fw_pmsg + fw_dfig + fw_scig', [gen('g1', 'fw_pmsg', 'oze'), gen('g2', 'fw_dfig', 'oze'), gen('g3', 'fw_scig', 'oze')], 'DER_FW'],
+    ['brak wytwórcy', [], 'DER_UNKNOWN'],
+    ['mieszane PV + BESS', [gen('g1', 'pv_inverter', 'oze'), gen('g2', 'bess', 'oze')], 'DER_UNKNOWN'],
+    ['rodzaj nierysowany (synchronous)', [gen('g1', 'synchronous', 'oze')], 'DER_UNKNOWN'],
+    ['wytwórca innego pola', [gen('g1', 'pv_inverter', 'inne')], 'DER_UNKNOWN'],
+  ];
+  for (const [opis, generatory, oczekiwana] of PRZYPADKI) {
+    it(`OZE × ${opis} → fieldRole SOURCE, rolaZrodla ${oczekiwana}`, () => {
+      const enm: EnmFragment = {
+        ...emptyEnm(),
+        substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+        bays: [bay('oze', 'OZE', 'g', 'bus-15', { gpz_section_id: 's1' })],
+        generators: [...generatory],
+        buses: [bus('bus-15', 15)],
+      };
+      const pole1 = buildCanonicalGpzProps(enm, 'g').sections[0].bays[0];
+      expect(pole1.fieldRole).toBe('SOURCE');
+      expect(pole1.rolaZrodla).toBe(oczekiwana);
+      expect(pole1.rolaPola).toBe('zrodlowe');
+    });
+  }
+
+  it('rodzaj źródła tylko w polu OZE — pole odpływowe nie niesie rolaZrodla', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
-      substations: [gpz('g', {
-        transformer_refs: ['tr-1', 'tr-2'],
-        gpz_sections: [
-          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' },
-          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15' },
-        ],
-      })],
-      transformers: [transformer('tr-1', { name: 'TR-1' }), transformer('tr-2', { name: 'TR-2' })],
-      bays: [bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] })],
+      substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+      bays: [bay('out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      generators: [gen('g1', 'pv_inverter', 'out')],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
-    // Tylko tr-2 jako wieża; tr-1 renderuje się przez pole.
-    expect(props.transformers.map((t) => t.transformerRef)).toEqual(['tr-2']);
+    const pole1 = buildCanonicalGpzProps(enm, 'g').sections[0].bays[0];
+    expect(pole1.fieldRole).toBe('LINE_OUT');
+    expect(pole1.rolaZrodla).toBeUndefined();
   });
 });
 
@@ -316,9 +397,9 @@ describe('buildCanonicalGpzProps — protection_codes pola', () => {
       })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
-    const trBay = props.sections[0].bays.find((b) => b.bayRef === 'bay-tr1');
-    expect(trBay?.protectionCodes).toEqual(codes);
+    const props = buildCanonicalGpzProps(enm, 'g');
+    // GPZ-PARYTET cz. 3: pole TR transformatora GPZ jest polem toru transformatora.
+    expect(props.transformers[0].poleTr?.protectionCodes).toEqual(codes);
   });
 
   it('Bay bez protection_codes → protectionCodes = [] (data-honest, brak placeholdera)', () => {
@@ -330,7 +411,7 @@ describe('buildCanonicalGpzProps — protection_codes pola', () => {
       bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.sections[0].bays[0].protectionCodes).toEqual([]);
   });
 });
@@ -389,7 +470,7 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
       bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays[0];
     expect(b.primaryDevices).toBeUndefined();
     expect(b.protectionMarking).toBeUndefined();
@@ -411,7 +492,7 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
       } as never],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays[0];
     expect(b.primaryDevices?.map((d) => d.deviceRef)).toEqual(['ds-bus', 'ct-1', 'cb-1']);
   });
@@ -428,7 +509,7 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
       buses: [bus('bus-15', 15)],
       protection_assignments: [protectionAssignment('pa-1', { breaker_ref: 'cb-1', ct_ref: 'ct-1' })],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays[0];
     expect(b.protectionMarking).toEqual({ codes: ['50/51', '51N'], breakerRef: 'cb-1', ctRef: 'ct-1', ctRefsSecondary: undefined });
   });
@@ -441,7 +522,7 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
       buses: [bus('bus-15', 15)],
       measurements: [measurement('m-1', { bay_ref: 'b-out', name: 'T1', rating: { ratio_primary: 300, ratio_secondary: 5 } })],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays[0];
     // W5 (§12–15/uwaga 7): `purpose` addytywnie z `Measurement.purpose` (wariant
     // CT z danych) — `resolveBayCtRatingAnnotations` współdzielony ze stacją,
@@ -451,26 +532,19 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
     ]);
   });
 
-  it('mergeBaysWithFieldSpecs (pole syntetyzowane z field_specs) przenosi protection_ref — naprawa F11.1 (znalezisko własne, pole ginęło cicho przed tą fazą)', () => {
+  it('pole GPZ (rekord `bays`) przenosi protection_ref — F11.1 (dawniej ginęło przy syntezie pola z drugiego kanału)', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
-      substations: [gpz('g', {
-        bus_refs: ['bus-15'],
-        meta: {
-          field_specs: [{
-            field_ref: 'fs-1',
-            bus_ref: 'bus-15',
-            bay_role: 'FEEDER',
-            name: 'Pole liniowe GPZ',
-            protection_codes: ['50/51'],
-            protection_ref: 'pa-1',
-          }],
-        },
+      substations: [gpz('g', { bus_refs: ['bus-15'] })],
+      bays: [bay('fs-1', 'FEEDER', 'g', 'bus-15', {
+        name: 'Pole liniowe GPZ',
+        protection_codes: ['50/51'],
+        protection_ref: 'pa-1',
       })],
       buses: [bus('bus-15', 15)],
       protection_assignments: [protectionAssignment('pa-1', { breaker_ref: 'cb-1', ct_ref: 'ct-1' })],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays.find((x) => x.bayRef === 'fs-1');
     expect(b?.protectionMarking?.breakerRef).toBe('cb-1');
     expect(b?.protectionMarking?.ctRef).toBe('ct-1');
@@ -493,7 +567,7 @@ describe('buildCanonicalGpzProps — LV sekcje', () => {
       })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.sections).toHaveLength(2);
     expect(props.sections[0].label).toBe('S1');
     expect(props.sections[1].label).toBe('S2');
@@ -502,7 +576,7 @@ describe('buildCanonicalGpzProps — LV sekcje', () => {
 
   it('Brak gpz_sections + brak bays → []', () => {
     const enm: EnmFragment = { ...emptyEnm(), substations: [gpz()] };
-    const props = buildCanonicalGpzProps(enm, 'GPZ-1', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'GPZ-1');
     expect(props.sections).toEqual([]);
   });
 
@@ -513,7 +587,7 @@ describe('buildCanonicalGpzProps — LV sekcje', () => {
       bays: [bay('b1', 'OUT', 'GPZ-1', 'bus-15')],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'GPZ-1', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'GPZ-1');
     expect(props.sections).toHaveLength(1);
     expect(props.sections[0].label).toBe('S1');
     expect(props.sections[0].sectionId).toMatch(/__synth-section/);
@@ -532,7 +606,7 @@ describe('buildCanonicalGpzProps — LV sekcje', () => {
       ],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const bays = props.sections[0].bays;
     expect(bays.find((b) => b.bayRef === 'b-out')?.fieldRole).toBe('LINE_OUT');
     expect(bays.find((b) => b.bayRef === 'b-tr')?.fieldRole).toBe('TRANSFORMER');
@@ -554,11 +628,13 @@ describe('buildCanonicalGpzProps — LV sekcje', () => {
       ],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays[0];
     expect(b.bayNumber).toBe('10');
     expect(b.feederName).toBe('STAROŁĘCKA');
-    expect(b.destinationLabel).toBe('→ ST-001');
+    // GEOMETRIA-STACJI (§0 pkt 5): podpis celu bez strzałki — strzałkę dokłada kompozycja
+    // (dawniej dokładały ją obie warstwy, podpis z podwójną strzałką); cel bez rekordu = ref.
+    expect(b.destinationLabel).toBe('ST-001');
   });
 });
 
@@ -577,75 +653,15 @@ describe('buildCanonicalGpzProps — HV sekcje', () => {
       })],
       buses: [bus('bus-110', 110)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.hvSections).toHaveLength(1);
     expect(props.hvSections![0].busVoltageKv).toBe(110);
   });
 
   it('Brak gpz_hv_sections → [] (NIE syntezuje, Inv 9)', () => {
     const enm: EnmFragment = { ...emptyEnm(), substations: [gpz()] };
-    const props = buildCanonicalGpzProps(enm, 'GPZ-1', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'GPZ-1');
     expect(props.hvSections).toEqual([]);
-  });
-});
-
-/* ---------------------------------------------------------------------------
-   Pomiary P/Q/I z overlay rozpływu mocy
-   --------------------------------------------------------------------------- */
-
-describe('buildCanonicalGpzProps — pomiary pola z overlay rozpływu', () => {
-  function gpzWith2Feeders(): EnmFragment {
-    return {
-      ...emptyEnm(),
-      substations: [gpz('g', {
-        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
-      })],
-      bays: [
-        bay('bay-A', 'OUT', 'g', 'bus-15', {
-          gpz_section_id: 's1',
-          outgoing_destination_ref: 'bus-dstA',
-        }),
-        bay('bay-B', 'OUT', 'g', 'bus-15', {
-          gpz_section_id: 's1',
-          outgoing_destination_ref: 'bus-dstB',
-        }),
-      ],
-      buses: [bus('bus-15', 15)],
-      branches: [
-        cable('br-A', 'bus-15', 'bus-dstA'),
-        cable('br-B', 'bus-15', 'bus-dstB'),
-      ],
-    };
-  }
-
-  it('2 pola liniowe na sekcji + overlay → kanoniczne bays niosą poprawne pomiary', () => {
-    const enm = gpzWith2Feeders();
-    const overlay = lfOverlay({
-      'br-A': { P_MW: 2.5, Q_Mvar: 0.8, I_A: 96.2 },
-      'br-B': { P_MW: 1.0, Q_Mvar: 0.3, I_A: 40.0 },
-    });
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 }, overlay);
-    const bays = props.sections[0].bays;
-    const a = bays.find((b) => b.bayRef === 'bay-A');
-    const b = bays.find((b) => b.bayRef === 'bay-B');
-    expect(a?.measurements).toEqual({ pMw: 2.5, qMvar: 0.8, i1A: 96.2 });
-    expect(b?.measurements).toEqual({ pMw: 1.0, qMvar: 0.3, i1A: 40.0 });
-  });
-
-  it('pole bez dopasowania w overlay → measurements null', () => {
-    const enm = gpzWith2Feeders();
-    const overlay = lfOverlay({ 'br-A': { P_MW: 2.5, Q_Mvar: 0.8, I_A: 96.2 } });
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 }, overlay);
-    const b = props.sections[0].bays.find((bay) => bay.bayRef === 'bay-B');
-    expect(b?.measurements).toBeNull();
-  });
-
-  it('brak overlay → wszystkie measurements null (backward-compatible)', () => {
-    const enm = gpzWith2Feeders();
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
-    for (const b of props.sections[0].bays) {
-      expect(b.measurements).toBeNull();
-    }
   });
 });
 
@@ -654,22 +670,59 @@ describe('buildCanonicalGpzProps — pomiary pola z overlay rozpływu', () => {
    --------------------------------------------------------------------------- */
 
 describe('buildCanonicalGpzProps — sprzęgła', () => {
-  it('Coupler między 2 sekcjami z right_coupler_ref → mapping', () => {
+  // GEOMETRIA-STACJI (§0 pkt 2): JEDNO źródło sprzęgła — gałąź `bus_coupler` modelu między
+  // szynami dwóch sekcji. Pole COUPLER (i `right_coupler_ref` sekcji) tylko dokłada oznaczenie
+  // i rodzaj aparatu; samo nie tworzy sprzęgła. Dawniej test budował sprzęgło z samego pola
+  // COUPLER między sekcjami na TEJ SAMEJ szynie — przypadek, którego model nie opisuje.
+  function sprzeglo(ref: string, fromBus: string, toBus: string): never {
+    return { id: ref, ref_id: ref, name: `Sprzęgło ${ref}`, type: 'bus_coupler', status: 'closed', from_bus_ref: fromBus, to_bus_ref: toBus, tags: [], meta: {} } as never;
+  }
+  function dwieSekcje(): Substation[] {
+    return [gpz('g', {
+      bus_refs: ['bus-15a', 'bus-15b'],
+      gpz_sections: [
+        { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15a', right_coupler_ref: 'cpl-9' },
+        { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15b', left_coupler_ref: 'cpl-9' },
+      ],
+    })];
+  }
+
+  it('gałąź bus_coupler między szynami 2 sekcji → sprzęgło; pole COUPLER dokłada oznaczenie', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
-      substations: [gpz('g', {
-        gpz_sections: [
-          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15', right_coupler_ref: 'cpl-9' },
-          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15', left_coupler_ref: 'cpl-9' },
-        ],
-      })],
-      bays: [bay('cpl-9', 'COUPLER', 'g', 'bus-15')],
-      buses: [bus('bus-15', 15)],
+      substations: dwieSekcje(),
+      bays: [bay('cpl-9', 'COUPLER', 'g', 'bus-15a', { name: 'Pole sprzęgła S1–S2', equipment_refs: ['q-cpl'] })],
+      branches: [sprzeglo('q-cpl', 'bus-15b', 'bus-15a')],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.couplers).toHaveLength(1);
+    expect(props.couplers[0].couplerId).toBe('q-cpl');
     expect(props.couplers[0].leftSectionId).toBe('s1');
     expect(props.couplers[0].rightSectionId).toBe('s2');
+    expect(props.couplers[0].bayRef).toBe('cpl-9');
+    expect(props.couplers[0].designation).toBe('Pole sprzęgła S1–S2');
+  });
+
+  it('gałąź bus_coupler BEZ pola COUPLER → sprzęgło z nazwą gałęzi (pole nie warunkuje istnienia)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: dwieSekcje(),
+      branches: [sprzeglo('q-cpl', 'bus-15a', 'bus-15b')],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g');
+    expect(props.couplers.map((c) => [c.couplerId, c.bayRef, c.designation])).toEqual([['q-cpl', null, 'Sprzęgło q-cpl']]);
+  });
+
+  it('pole COUPLER (i right_coupler_ref) BEZ gałęzi bus_coupler → couplers=[] (zero sprzęgła z samego pola)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: dwieSekcje(),
+      bays: [bay('cpl-9', 'COUPLER', 'g', 'bus-15a')],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
+    };
+    expect(buildCanonicalGpzProps(enm, 'g').couplers).toEqual([]);
   });
 
   it('1 sekcja → couplers=[]', () => {
@@ -680,8 +733,76 @@ describe('buildCanonicalGpzProps — sprzęgła', () => {
       })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.couplers).toEqual([]);
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   Stan łączników z modelu (GPZ-PARYTET cz. 2, pkt 2)
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — stan łączników pola i sprzęgła z modelu', () => {
+  function galaz(ref: string, type: string, status: 'open' | 'closed' | undefined, from = 'bus-15a', to = `${ref}-k`) {
+    return { id: ref, ref_id: ref, name: ref, type, status, from_bus_ref: from, to_bus_ref: to, tags: [], meta: {} } as never;
+  }
+  // GEOMETRIA-STACJI (§0 pkt 1–2): sekcje na RÓŻNYCH szynach, sprzęgło = gałąź `bus_coupler`
+  // między nimi; stan sprzęgła ze `status` gałęzi (brak statusu = nieznany — trzeci rysunek).
+  // Dawniej „brak gałęzi sprzęgła" dawał sprzęgło nieustalone z samego pola COUPLER; teraz
+  // brak gałęzi = brak sprzęgła (osobny test w bloku „sprzęgła"), a stan nieznany pochodzi
+  // z gałęzi bez `status`.
+  function enmZeStanami(stanPola: 'open' | 'closed' | null, stanSprzegla: 'open' | 'closed' | null): EnmFragment {
+    return {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        bus_refs: ['bus-15a', 'bus-15b'],
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15a', right_coupler_ref: 'cpl' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15b', left_coupler_ref: 'cpl' },
+        ],
+      })],
+      bays: [
+        bay('pole-1', 'OUT', 'g', 'bus-15a', { gpz_section_id: 's1', equipment_refs: stanPola ? ['q-pole'] : [] }),
+        bay('cpl', 'COUPLER', 'g', 'bus-15a', { equipment_refs: ['q-cpl'] }),
+      ],
+      branches: [
+        ...(stanPola ? [galaz('q-pole', 'breaker', stanPola)] : []),
+        galaz('q-cpl', 'bus_coupler', stanSprzegla ?? undefined, 'bus-15a', 'bus-15b'),
+      ],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
+    };
+  }
+
+  // Iloczyn: obiekt {pole odpływowe, sprzęgło} × stan w modelu {zamknięty, otwarty, brak danej}.
+  for (const stan of ['closed', 'open', null] as const) {
+    it(`pole i sprzęgło: gałąź ${stan ?? 'brak'} → ${stan ?? 'unknown'}`, () => {
+      const props = buildCanonicalGpzProps(enmZeStanami(stan, stan), 'g');
+      const pole1 = props.sections.flatMap((s) => s.bays).find((b) => b.bayRef === 'pole-1');
+      expect(pole1?.cbState).toBe(stan ?? 'unknown');
+      expect(props.couplers[0].closedState).toBe(stan ?? 'unknown');
+    });
+  }
+
+  it('stany pola i sprzęgła niezależne (sprzęgło otwarte, pole zamknięte)', () => {
+    const props = buildCanonicalGpzProps(enmZeStanami('closed', 'open'), 'g');
+    expect(props.sections.flatMap((s) => s.bays).find((b) => b.bayRef === 'pole-1')?.cbState).toBe('closed');
+    expect(props.couplers[0].closedState).toBe('open');
+  });
+
+  it('rekord aparatu sprzeczny ze statusem gałęzi → nieustalony (jak K6a)', () => {
+    const enm = enmZeStanami('closed', 'closed');
+    enm.bays = enm.bays.map((b) =>
+      b.ref_id === 'cpl'
+        ? ({
+            ...b,
+            primary_devices: [{
+              device_ref: 'q0', linked_ref: 'q-cpl', symbol_ref: 'symbol:ds', kind: 'DS', placement: 'MIDSTREAM',
+              is_controllable: true, switch_state: { actual_state: 'otwarty' },
+            } as BayPrimaryDevice],
+          } as Bay)
+        : b,
+    );
+    expect(buildCanonicalGpzProps(enm, 'g').couplers[0].closedState).toBe('unknown');
   });
 });
 
@@ -699,7 +820,7 @@ describe('buildCanonicalGpzProps — Q-numbering IEC 81346', () => {
       bays: [bay('b1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const q = props.sections[0].bays[0].qDesignations;
     expect(q.cb).toBe('Q0');
     expect(q.dsBus).toBe('Q1');
@@ -717,7 +838,7 @@ describe('buildCanonicalGpzProps — Q-numbering IEC 81346', () => {
       bays: [bay('b1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const q = props.sections[0].bays[0].qDesignations;
     expect(q.cb).toBe('Q0');
     expect(q.dsBus).toBe('Q1');
@@ -733,37 +854,11 @@ describe('buildCanonicalGpzProps — Q-numbering IEC 81346', () => {
       bays: [bay('b1', 'MEASUREMENT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     const q = props.sections[0].bays[0].qDesignations;
     expect(q.cb).toBeUndefined();
     expect(q.dsBus).toBe('Q1');
     expect(q.es).toBe('Q8');
-  });
-});
-
-/* ---------------------------------------------------------------------------
-   Header propagation
-   --------------------------------------------------------------------------- */
-
-describe('buildCanonicalGpzProps — header (transmisja + bilans + alarmy)', () => {
-  it('options.balance + alarms + transmissionStatus propagowane', () => {
-    const enm: EnmFragment = { ...emptyEnm(), substations: [gpz()] };
-    const props = buildCanonicalGpzProps(enm, 'GPZ-1', {
-      x: 0,
-      y: 0,
-      transmissionStatus: 'ok',
-      controlAvailability: 'remote',
-      balance: { pMw: -3.1, qMvar: -0.4 },
-      alarms: { enclosureDoorOpen: true },
-      addressLine: 'ul. Poznańska 13/15',
-      radioId: 'radio nr 587',
-    });
-    expect(props.transmissionStatus).toBe('ok');
-    expect(props.controlAvailability).toBe('remote');
-    expect(props.balance).toEqual({ pMw: -3.1, qMvar: -0.4 });
-    expect(props.alarms?.enclosureDoorOpen).toBe(true);
-    expect(props.addressLine).toBe('ul. Poznańska 13/15');
-    expect(props.radioId).toBe('radio nr 587');
   });
 });
 
@@ -783,9 +878,9 @@ describe('buildCanonicalGpzProps — determinizm', () => {
       bays: [bay('b1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
     };
-    const ref = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const ref = buildCanonicalGpzProps(enm, 'g');
     for (let i = 0; i < 5; i++) {
-      expect(buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 })).toEqual(ref);
+      expect(buildCanonicalGpzProps(enm, 'g')).toEqual(ref);
     }
   });
 });
@@ -808,37 +903,49 @@ describe('buildCanonicalGpzProps - regresja przypisania pol SN do sekcji', () =>
       buses: [bus('bus-15', 15)],
     };
 
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
 
     expect(props.sections).toHaveLength(2);
     expect(props.sections[0].bays.map((b) => b.bayRef)).toEqual(['bay-01', 'bay-03']);
     expect(props.sections[1].bays.map((b) => b.bayRef)).toEqual(['bay-02', 'bay-04']);
   });
 });
-describe('buildCanonicalGpzProps - meta.field_specs', () => {
-  it('renderuje pola SN GPZ zapisane jako field_specs, gdy snapshot.bays jest pusty', () => {
+describe('buildCanonicalGpzProps — pola GPZ wyłącznie z rekordów `bays` (karta W5-B)', () => {
+  it('rekordy pól GPZ trafiają do sekcji wg `gpz_section_id`', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', {
-        meta: {
-          field_specs: [
-            { field_ref: 'field-01', name: 'Pole odpływowe SN 1', bay_role: 'OUT', bus_ref: 'bus-15', gpz_section_id: 's1', bay_number: '1' },
-            { field_ref: 'field-02', name: 'Pole odpływowe SN 2', bay_role: 'OUT', bus_ref: 'bus-15', gpz_section_id: 's2', bay_number: '2' },
-          ],
-        },
         gpz_sections: [
           { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' },
           { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15' },
         ],
       })],
-      bays: [],
+      bays: [
+        bay('field-01', 'OUT', 'g', 'bus-15', { name: 'Pole odpływowe SN 1', gpz_section_id: 's1', bay_number: '1' }),
+        bay('field-02', 'OUT', 'g', 'bus-15', { name: 'Pole odpływowe SN 2', gpz_section_id: 's2', bay_number: '2' }),
+      ],
       buses: [bus('bus-15', 15)],
     };
 
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
 
-    expect(props.sections[0].bays.map((bay) => bay.bayRef)).toEqual(['field-01']);
-    expect(props.sections[1].bays.map((bay) => bay.bayRef)).toEqual(['field-02']);
+    expect(props.sections[0].bays.map((b) => b.bayRef)).toEqual(['field-01']);
+    expect(props.sections[1].bays.map((b) => b.bayRef)).toEqual(['field-02']);
+  });
+
+  it('NEGATYW: sekcje GPZ bez rekordów pól ⇒ zero pól (brak syntezy pól z innych danych)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      bays: [bay('obce', 'OUT', 'inna-stacja', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15)],
+    };
+
+    const props = buildCanonicalGpzProps(enm, 'g');
+
+    expect(props.sections.flatMap((s) => s.bays)).toEqual([]);
   });
 });
 
@@ -866,7 +973,7 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
       buses: [bus('bus-sn-1', 15), bus('bus-sn-2', 15), bus('bus-110', 110)],
     };
 
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
 
     const byId = new Map(props.sections.map((s) => [s.sectionId, s]));
     // Prymat danych: bus_ref DOKŁADNIE ze snapshotu, nie z parsowania sectionId.
@@ -887,7 +994,7 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
       buses: [bus('bus-15', 15)],
     };
 
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.sections[0].busRef ?? null).toBeNull();
   });
 
@@ -898,16 +1005,17 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
       bays: [bay('bay-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.hvBusRef ?? null).toBeNull();
   });
 
   /* KARTA WN-WYNIK — ODMOWA ZAMIAST PODSTAWIENIA po stronie WN.
      Kompozycja rysuje JEDEN odcinek szyny WN, więc punkt wyniku wolno mu
-     przypisać wyłącznie wtedy, gdy model ma DOKŁADNIE JEDNĄ szynę WN. GPZ 2×TR
-     ma dwie odrębne szyny 110 kV — dotąd `find(...)` cicho brał pierwszą i
-     jeden narysowany odcinek pokazywał wielkość jednego z dwóch węzłów. */
-  it('GPZ 2×TR (DWIE szyny 110 kV) ⇒ hvBusRef=null — rysunek ma JEDNĄ szynę WN, więc odmawiamy zamiast podstawiać pierwszą', () => {
+     przypisać wyłącznie wtedy, gdy model ma DOKŁADNIE JEDNĄ szynę WN. Kreator GPZ
+     buduje jedną wspólną szynę WN (karta GPZ-MODEL — test niżej); kilka szyn WN
+     w stacji daje tylko jawne sekcje WN — wtedy `find(...)` cicho brałby pierwszą
+     i jeden narysowany odcinek pokazywałby wielkość jednego z dwóch węzłów. */
+  it('GPZ z DWIEMA szynami 110 kV ⇒ hvBusRef=null — rysunek ma JEDNĄ szynę WN, więc odmawiamy zamiast podstawiać pierwszą', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', {
@@ -922,10 +1030,36 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
         transformer('tr2', { hv_bus_ref: 'bus-110-tr2', lv_bus_ref: 'bus-15' }),
       ],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.hvBusRef ?? null).toBeNull();
     // Sekcja SN pozostaje jednoznaczna — odmowa dotyczy WYŁĄCZNIE strony WN.
     expect(props.sections[0].busRef).toBe('bus-15');
+  });
+
+  it('GPZ 3×TR na JEDNEJ wspólnej szynie 110 kV (karta GPZ-MODEL) ⇒ hvBusRef wskazuje tę szynę', () => {
+    // Kształt modelu z kreatora GPZ, przypadek A: wszystkie transformatory WN/SN
+    // mają stronę górną na tej samej szynie WN, każdy stronę dolną na swojej sekcji SN.
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        bus_refs: ['bus-110', 'bus-15-s1', 'bus-15-s2'],
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15-s1' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15-s2' },
+        ],
+        transformer_refs: ['tr1', 'tr2', 'tr3'],
+      })],
+      bays: [bay('bay-1', 'OUT', 'g', 'bus-15-s1', { gpz_section_id: 's1' })],
+      buses: [bus('bus-110', 110), bus('bus-15-s1', 15), bus('bus-15-s2', 15)],
+      transformers: [
+        transformer('tr1', { hv_bus_ref: 'bus-110', lv_bus_ref: 'bus-15-s1' }),
+        transformer('tr2', { hv_bus_ref: 'bus-110', lv_bus_ref: 'bus-15-s2' }),
+        transformer('tr3', { hv_bus_ref: 'bus-110', lv_bus_ref: 'bus-15-s1' }),
+      ],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g');
+    expect(props.hvBusRef).toBe('bus-110');
+    expect(props.transformers.map((t) => t.hvBusRef)).toEqual(['bus-110', 'bus-110', 'bus-110']);
   });
 
   it('GPZ 1×TR (JEDNA szyna 110 kV) mimo drugiej szyny WN spoza bus_refs ⇒ hvBusRef wskazuje szynę TEJ stacji', () => {
@@ -940,69 +1074,197 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
       bays: [bay('bay-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15), bus('bus-110', 110), bus('bus-110-obca', 110)],
     };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.hvBusRef).toBe('bus-110');
   });
 });
 
+
 /* ---------------------------------------------------------------------------
-   Karta #135 — stan ruchowy pola bez fabrykacji: „w manipulacji" wyłącznie ze
-   źródła runtime (polecenie w toku albo blokada z rekordu źródła); brak źródła
-   i blokada nieustalona (null) NIE są blokadą.
+   Karta GPZ-PARYTET — rola pola (tło `gpz.bay.panel`) i plakietki SPZ/SCO
+   (`gpz.status_flags`) WYŁĄCZNIE z danych modelu. Iloczyn cech: rola pola
+   (7 ról ENM) × kody funkcji EAZ ({brak, 79, 81U, 79+81U, zapis małymi literami
+   ze spacją}) × ścieżka (funkcja czysta, adapter end-to-end).
    --------------------------------------------------------------------------- */
 
-describe('buildCanonicalGpzProps — manipulacja tylko ze źródła runtime (karta #135)', () => {
-  function poleGpz(runtime: Bay['runtime_state']): boolean | undefined {
-    const enm: EnmFragment = {
-      ...emptyEnm(),
-      substations: [gpz('g', {
-        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
-      })],
-      bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1', runtime_state: runtime })],
-      buses: [bus('bus-15', 15)],
-    };
-    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
-    return props.sections[0].bays.find((b) => b.bayRef === 'b-out')?.inManipulation;
+// Jedna lista ról modelu (`types/enm.ts::BAY_MODEL_ROLES`) — nowa rola wchodzi do iloczynu sama.
+const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = BAY_MODEL_ROLES;
+
+describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)', () => {
+  const OCZEKIWANA = {
+    IN: 'zasilajace',
+    OUT: 'liniowe',
+    FEEDER: 'liniowe',
+    TR: 'transformatorowe',
+    COUPLER: 'sprzeglo',
+    MEASUREMENT: 'pomiarowe',
+    OZE: 'zrodlowe',
+    ZU: 'uziemiajace',
+    BKR: 'kompensacyjne',
+  } as const;
+
+  for (const rola of ROLE_ENM) {
+    it(`bay_role=${rola} → rolaPola=${OCZEKIWANA[rola]} (funkcja i adapter)`, () => {
+      expect(rolaPolaGpz(rola)).toBe(OCZEKIWANA[rola]);
+      const enm: EnmFragment = {
+        ...emptyEnm(),
+        substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+        bays: [bay('b', rola, 'g', 'bus-15', { gpz_section_id: 's1' })],
+        buses: [bus('bus-15', 15)],
+      };
+      const props = buildCanonicalGpzProps(enm, 'g');
+      expect(props.sections[0].bays[0].rolaPola).toBe(OCZEKIWANA[rola]);
+    });
   }
 
-  function runtime(blokada: boolean | null, polecenie: boolean): NonNullable<Bay['runtime_state']> {
-    return {
-      secondary_communication_status: 'ok',
-      control_availability: 'dostepne',
-      measurement_availability: 'dostepne',
-      primary_device_states: {
-        b_out_cb: { actual_state: 'zamkniety', control_mode: null, communication_ok: null, interlock_blocked: blokada },
-      },
-      active_alarms: [],
-      pending_command: polecenie
-        ? {
-            command_ref: 'cmd-1',
-            target_device_ref: 'b_out_cb',
-            command: 'otworz',
-            state: 'oczekuje',
-            created_at: '2026-09-24T08:00:00Z',
-          }
-        : null,
-      energization_and_safety: {
-        energized_from_bus_side: false,
-        energized_from_feeder_side: false,
-        grounded: false,
-        visible_isolation_gap: false,
-        safe_to_work: false,
-      },
-    };
+  // Rola stosu pola i predykat pola kablowego (wybór pola magistrali i feederów sieci) — iloczyn
+  // po WSZYSTKICH rolach modelu. Pole ZU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) i pole BKR
+  // spadały dawniej w `default: LINE_OUT` — kandydat na pole magistrali sieci.
+  const ROLA_STOSU = {
+    IN: ['LINE_IN', true],
+    OUT: ['LINE_OUT', true],
+    FEEDER: ['LINE_BRANCH', true],
+    TR: ['TRANSFORMER', false],
+    COUPLER: ['COUPLER', false],
+    MEASUREMENT: ['MEASUREMENT', false],
+    OZE: ['SOURCE', true],
+    ZU: ['EARTHING_UNIT', false],
+    BKR: ['CAPACITOR_BANK', false],
+  } as const;
+  for (const rola of ROLE_ENM) {
+    it(`bay_role=${rola} → rola stosu ${ROLA_STOSU[rola][0]}, pole kablowe: ${ROLA_STOSU[rola][1]}`, () => {
+      const enm: EnmFragment = {
+        ...emptyEnm(),
+        substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+        bays: [bay('b', rola, 'g', 'bus-15', { gpz_section_id: 's1' })],
+        buses: [bus('bus-15', 15)],
+      };
+      const [pole] = buildCanonicalGpzProps(enm, 'g').sections[0].bays;
+      expect(pole.fieldRole).toBe(ROLA_STOSU[rola][0]);
+      expect(czyPoleKabloweGpz(pole.fieldRole)).toBe(ROLA_STOSU[rola][1]);
+    });
   }
 
-  it('brak źródła runtime → pole nie jest w manipulacji', () => {
-    expect(poleGpz(null)).toBe(false);
+  it('rola OZE nie jest już zlewana z odpływem (dawne mapowanie OZE → LINE_OUT gubiło ją)', () => {
+    expect(rolaPolaGpz('OZE')).not.toBe(rolaPolaGpz('OUT'));
   });
+});
 
-  const BLOKADY: ReadonlyArray<boolean | null> = [true, false, null];
-  for (const blokada of BLOKADY) {
-    for (const polecenie of [true, false]) {
-      it(`blokada=${String(blokada)} polecenie=${String(polecenie)} → manipulacja = polecenie ∨ blokada===true`, () => {
-        expect(poleGpz(runtime(blokada, polecenie))).toBe(polecenie || blokada === true);
+describe('buildCanonicalGpzProps — plakietki SPZ/SCO z kodów funkcji EAZ pola', () => {
+  const KODY: ReadonlyArray<readonly [string, readonly string[]]> = [
+    ['brak', []],
+    ['79', ['79']],
+    ['81U', ['81U']],
+    ['79+81U', ['50', '51', '79', '81U']],
+    ['zapis małymi literami ze spacją', [' 79 ', '81u']],
+  ];
+  for (const rola of ROLE_ENM) {
+    for (const [opis, kody] of KODY) {
+      it(`rola=${rola} × kody=${opis}`, () => {
+        const oczekiwane: string[] = [];
+        if (kody.some((k) => k.trim() === '79')) oczekiwane.push('SPZ');
+        if (kody.some((k) => k.trim().toUpperCase() === '81U') && rola !== 'OZE') oczekiwane.push('SCO');
+        expect(flagiStatusuPola({ protection_codes: [...kody], bay_role: rola })).toEqual(oczekiwane);
+        const enm: EnmFragment = {
+          ...emptyEnm(),
+          substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+          bays: [bay('b', rola, 'g', 'bus-15', { gpz_section_id: 's1', protection_codes: [...kody] })],
+          buses: [bus('bus-15', 15)],
+        };
+        expect(buildCanonicalGpzProps(enm, 'g').sections[0].bays[0].statusFlags).toEqual(oczekiwane);
       });
     }
   }
+});
+
+describe('buildCanonicalGpzProps — napięcie sekcji bez wartości domyślnej', () => {
+  it('sekcja wskazująca szynę spoza modelu → busVoltageKv null (dawniej 15 kV z powietrza)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-brak' }] })],
+      bays: [bay('b', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15)],
+    };
+    expect(buildCanonicalGpzProps(enm, 'g').sections[0].busVoltageKv).toBeNull();
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: aparat punktu neutralnego sieci SN na schemacie
+   GPZ — WYŁĄCZNIE zainstalowany element zespołu uziemiającego na szynie SN stacji albo
+   punkt neutralny uzwojenia SN transformatora. Iloczyn cech: element zespołu {dławik,
+   rezystor, dławik ‖ rezystor, bezpośrednie, bez elementu} × nośnik {zespół na szynie
+   stacji, zespół na szynie innej stacji, uzwojenie SN TR, źródło 110 kV z opisem
+   punktu neutralnego}.
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — aparat punktu neutralnego sieci SN z modelu', () => {
+  function zespol(busRef: string, elementy: Partial<ZespolUziemiajacy>): ZespolUziemiajacy {
+    return { id: 'zu-1', ref_id: 'zu-1', name: 'ZU 1', tags: [], meta: {}, bus_ref: busRef, ...elementy } as ZespolUziemiajacy;
+  }
+  function siec(over: Partial<EnmFragment>): EnmFragment {
+    return {
+      ...emptyEnm(),
+      substations: [
+        gpz('g', {
+          bus_refs: ['bus-110', 'bus-15'],
+          transformer_refs: ['tr-1'],
+          gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+        }),
+      ],
+      buses: [bus('bus-110', 110), bus('bus-15', 15), bus('bus-obca', 15)],
+      transformers: [transformer('tr-1')],
+      ...over,
+    };
+  }
+
+  const ZESPOLY: ReadonlyArray<readonly [string, Partial<ZespolUziemiajacy>, unknown]> = [
+    ['dławik (Z.13)', { dlawik: { i_min_a: 40, i_max_a: 400 } }, { kind: 'coil' }],
+    ['rezystor (Z.15)', { rezystor: { r_ohm: 43.3 } }, { kind: 'resistor', rOhm: 43.3 }],
+    ['dławik ‖ rezystor (Z.14)', { dlawik: {}, rezystor: { r_ohm: 50 } }, { kind: 'coil', rOhm: 50 }],
+    ['uziemienie bezpośrednie', { uziemienie_bezposrednie: true }, { kind: 'direct' }],
+    ['bez elementu', {}, null],
+  ];
+  for (const [nazwa, elementy, oczekiwane] of ZESPOLY) {
+    it(`zespół na szynie SN stacji: ${nazwa}`, () => {
+      const props = buildCanonicalGpzProps(siec({ zespoly_uziemiajace: [zespol('bus-15', elementy)] }), 'g');
+      expect(props.snNeutralEarthing).toEqual(oczekiwane);
+    });
+  }
+
+  it('zespół na szynie SN innej stacji nie jest aparatem tej stacji', () => {
+    const props = buildCanonicalGpzProps(
+      siec({ zespoly_uziemiajace: [zespol('bus-obca', { rezystor: { r_ohm: 43.3 } })] }),
+      'g',
+    );
+    expect(props.snNeutralEarthing).toBeNull();
+  });
+
+  it('punkt neutralny uzwojenia SN transformatora stacji uziemiony przez rezystor', () => {
+    const props = buildCanonicalGpzProps(
+      siec({ transformers: [transformer('tr-1', { lv_neutral: { type: 'resistor_grounded', r_ohm: 43.3 } })] }),
+      'g',
+    );
+    expect(props.snNeutralEarthing).toEqual({ kind: 'resistor', rOhm: 43.3, xOhm: undefined });
+  });
+
+  it('opis punktu neutralnego sieci 110 kV na źródle GPZ NIE jest punktem neutralnym sieci SN', () => {
+    const zrodlo = {
+      id: 'src', ref_id: 'src', name: 'Sieć 110 kV', tags: [], meta: {}, bus_ref: 'bus-110',
+      substation_ref: 'g', model: 'short_circuit_power', neutral_grounding: { type: 'directly_grounded' },
+    } as unknown as Source;
+    const props = buildCanonicalGpzProps(siec({ sources: [zrodlo] }), 'g');
+    expect(props.snNeutralEarthing).toBeNull();
+  });
+
+  it('zespół ma pierwszeństwo przed uzwojeniem transformatora', () => {
+    const props = buildCanonicalGpzProps(
+      siec({
+        transformers: [transformer('tr-1', { lv_neutral: { type: 'directly_grounded' } })],
+        zespoly_uziemiajace: [zespol('bus-15', { dlawik: {} })],
+      }),
+      'g',
+    );
+    expect(props.snNeutralEarthing).toEqual({ kind: 'coil' });
+  });
 });

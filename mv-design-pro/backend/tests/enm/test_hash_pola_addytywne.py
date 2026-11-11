@@ -89,7 +89,29 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         ),
         "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
         "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
-        "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii"),
+        # W5-C: `SwitchBranch.normal_state` (pozycja normalna łącznika) — to samo prawo
+        # (test odcisku: `tests/enm/test_stan_normalny_lacznikow.py::
+        # test_pozycja_normalna_niezadeklarowana_poza_odciskiem`).
+        # + karta LINIA-110: geometria słupa i proweniencja parametrów z geometrii.
+        "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii", "normal_state"),
+        # Karta W5-B: pola typowane rekordu pola rozdzielnicy (test odcisku:
+        # `tests/enm/test_hash_w5b_bays.py`).
+        "bays": (
+            "branch_point_ref",
+            "branch_point_port_id",
+            "field_role",
+            "terminal_bus_ref",
+            "funkcja_pomiaru",
+            "rodzaj_pomiaru",
+            "switchgear_family_ref",
+            "manufacturer_ref",
+            "apparatus_catalog_ref",
+            "config_id",
+            "catalog_bindings",
+            "wybor_bloku",
+            "metadane_pochodzenia",
+            "surge_arresters",
+        ),
         "generators": (
             "dynamika",
             "modele_widmowe",
@@ -97,6 +119,19 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "data_umowy_przylaczeniowej",
             "nastawy_zabezpieczen",
             "deklaracje_modulu",
+        ),
+        # Karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie —
+        # to samo prawo; test odcisku: `tests/enm/test_bateria_kondensatorow_model.py`
+        # (bateria bez pól karty i z polami `None` haszuje jak przed kartą).
+        "shunt_capacitors": (
+            "uklad_polaczen",
+            "liczba_stopni",
+            "stopnie_zalaczone",
+            "tolerancja_pojemnosci_min_proc",
+            "tolerancja_pojemnosci_max_proc",
+            "dlawik_ograniczajacy",
+            "dlawik_indukcyjnosc_mh",
+            "rezystory_rozladowcze_wewnetrzne",
         ),
     }
 

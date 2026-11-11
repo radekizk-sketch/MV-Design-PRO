@@ -43,6 +43,10 @@ export function deviceKindLabel(kind: string | null | undefined): string {
       return 'Bateria';
     case 'SURGE_ARRESTER':
       return 'Ogranicznik przepięć';
+    case 'UNBALANCE_CT':
+      return 'Przekładnik niezrównoważenia baterii';
+    case 'PHASE_TO_PHASE_VT':
+      return 'Przekładnik napięciowy międzyfazowy';
     default:
       return kind ?? 'Aparat do wyboru';
   }

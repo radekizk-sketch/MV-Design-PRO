@@ -27,8 +27,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './kompensacja.css';
-import type { AdvancementMode } from '../../shell/modeModel';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
@@ -41,7 +39,6 @@ import {
   type WidokDoboruKompensacji,
   type ZapytanieDoboruKompensacji,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import {
   kolumnyTabeliKompensacji,
   krokiSladuKompensacji,
@@ -50,6 +47,7 @@ import {
 import { KOMPENSACJA_STRINGS as T, fmtCosfiKomp, fmtKvKomp, fmtMvarKomp } from './strings';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_COSFI_MIN = 0.95;
 
@@ -119,14 +117,13 @@ function NotaCosfi({ konwencja }: { konwencja: string }) {
 
 function WynikKompensacji({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokDoboruKompensacji;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
   const nazwaObiektu = useNazwaObiektu();
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
@@ -187,7 +184,7 @@ function WynikKompensacji({
       </dl>
 
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-komp-informacje-audytowe"
         wiersze={[
           { etykieta: T.zalPrzebieg, wartosc: dane.context.run_id },
@@ -235,7 +232,7 @@ function WynikKompensacji({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       {dane.dobor !== null ? (
@@ -329,7 +326,7 @@ function WynikKompensacji({
 // ---------------------------------------------------------------------------
 
 export interface EkranKompensacjiProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /**
    * Pre-selekcja węzła z deep-linku akcji naprawczej (R2-B): ref węzła
    * przekroczenia bilansu mocy biernej. Stosowana WYŁĄCZNIE, gdy ref istnieje
@@ -345,14 +342,13 @@ export interface EkranKompensacjiProps {
 }
 
 export function EkranKompensacji({
-  trybZaawansowania,
+  szczegolyAudytowe,
   preselekcjaWezla = null,
   onPreselekcjaSkonsumowana,
   onOtworzDowod,
 }: EkranKompensacjiProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);
@@ -533,7 +529,7 @@ export function EkranKompensacji({
           ) : (
             <WynikKompensacji
               dane={stan.dane}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               onOtworzDowod={onOtworzDowod}
             />
           )}

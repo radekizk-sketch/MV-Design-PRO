@@ -244,9 +244,25 @@ function mapaBledow(bledy: readonly BladFormularza[]): Map<string, string> {
   return new Map(bledy.map((b) => [b.sciezka, b.komunikat]));
 }
 
+/**
+ * Stan ODCZYTU listy zapisanych scenariuszy przypadku. `wczytywanie` i `blad` to
+ * stany zapytania — wybór „zapisany scenariusz" nie udaje pustej listy, dopóki
+ * lista nie jest odczytana (odczyt w toku ≠ brak zapisanych scenariuszy).
+ */
+export type StanScenariuszy =
+  | { readonly odczyt: 'wczytywanie' }
+  | { readonly odczyt: 'blad'; readonly komunikat: string }
+  | { readonly odczyt: 'gotowe'; readonly lista: readonly ScenariuszDynamiki[] };
+
+/** Zapisane scenariusze — wyłącznie z odczytanej listy (w toku / błąd → brak opcji). */
+export function listaScenariuszy(stan: StanScenariuszy): readonly ScenariuszDynamiki[] {
+  return stan.odczyt === 'gotowe' ? stan.lista : [];
+}
+
 export interface EdytorScenariuszaProps {
   readonly opis: OpisScenariusza;
-  readonly scenariusze: readonly ScenariuszDynamiki[];
+  /** Lista zapisanych scenariuszy — JEDNO źródło: lista wyłącznie ze stanu `gotowe`. */
+  readonly odczytScenariuszy: StanScenariuszy;
   readonly wybranyId: string | null;
   readonly elementy: ElementyModelu;
   readonly onWybierz: (scenarioId: string | null) => void;
@@ -271,7 +287,8 @@ function stanPoczatkowy(opis: OpisScenariusza, scenariusz: ScenariuszDynamiki | 
 }
 
 export function EdytorScenariusza(props: EdytorScenariuszaProps) {
-  const wybrany = props.scenariusze.find((s) => s.scenario_id === props.wybranyId) ?? null;
+  const wybrany =
+    listaScenariuszy(props.odczytScenariuszy).find((s) => s.scenario_id === props.wybranyId) ?? null;
   // Zmiana wybranego scenariusza (albo jego rewizji) ładuje formularz od nowa.
   return (
     <EdytorScenariuszaFormularz
@@ -284,7 +301,7 @@ export function EdytorScenariusza(props: EdytorScenariuszaProps) {
 
 function EdytorScenariuszaFormularz({
   opis,
-  scenariusze,
+  odczytScenariuszy,
   wybrany,
   elementy,
   onWybierz,
@@ -329,14 +346,25 @@ function EdytorScenariuszaFormularz({
             data-testid="mvd-dynamika-scenariusz-wybor"
             value={wybrany?.scenario_id ?? ''}
             onChange={(e) => onWybierz(e.target.value || null)}
+            disabled={odczytScenariuszy.odczyt !== 'gotowe'}
+            aria-busy={odczytScenariuszy.odczyt === 'wczytywanie'}
           >
             <option value="">{T.scenariuszNowy}</option>
-            {scenariusze.map((s) => (
+            {listaScenariuszy(odczytScenariuszy).map((s) => (
               <option key={s.scenario_id} value={s.scenario_id}>
                 {s.name} ({T.scenariuszRewizja} {s.revision})
               </option>
             ))}
           </select>
+          {odczytScenariuszy.odczyt === 'wczytywanie' ? (
+            <span className="mvd-dynamika-opis" data-testid="mvd-dynamika-scenariusze-wczytywanie">
+              {T.scenariuszeWczytywanie}
+            </span>
+          ) : odczytScenariuszy.odczyt === 'blad' ? (
+            <span className="mvd-dynamika-blad-pola" role="alert" data-testid="mvd-dynamika-scenariusze-blad">
+              {T.scenariuszeBlad}: {odczytScenariuszy.komunikat}
+            </span>
+          ) : null}
         </label>
         <label className="mvd-dynamika-pole" data-blad={mapa.get('nazwa') ? 'tak' : undefined}>
           <span className="mvd-dynamika-pole-etykieta">{T.scenariuszNazwa} *</span>

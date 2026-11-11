@@ -49,9 +49,10 @@ from typing import Any
 
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_stacji
 from network_model.core.topologia import przeglad_wszerz_od
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
-from network_model.nazwy import opis_rodzaju_i_nazwy
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from network_model.odmowa_danych import OdmowaDanychError
 
 
@@ -150,7 +151,7 @@ def _gpz_substation(enm: dict[str, Any]) -> dict[str, Any]:
 def _gpz_line_fields(enm: dict[str, Any]) -> list[dict[str, Any]]:
     fields = [
         spec
-        for spec in _gpz_substation(enm).get("meta", {}).get("field_specs", [])
+        for spec in pola_stacji(enm, _gpz_substation(enm).get("ref_id"))
         if "gpz_line_field" in (spec.get("tags") or [])
     ]
     fields.sort(key=lambda f: f["meta"]["gpz_line_field_index"])
@@ -169,10 +170,11 @@ def dodaj_zrodlo_slack(
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Dodaj szynę bilansującą jako ekwiwalent ręczny WPROST na jej własnym
-    napięciu (`skip_hv_transformer=True` — CV-4.3 K1: sieć referencyjna z
+    napięciu — równoważnik na szynach SN (CV-4.3 K1: sieć referencyjna z
     literatury JEST szczytem modelu, bez nadrzędnego układu 110 kV, którego
-    publikacja nie opisuje; zob. uzasadnienie w `enm/domain_operations.py::
-    _resolve_manual_source_equivalent`). Zwraca (enm, bus_ref źródła/GPZ).
+    publikacja nie opisuje; granica zasilania SN `enm/domain_operations.py::
+    _granica_zasilania_gpz` — bez transformatorów WN/SN). Zwraca (enm, bus_ref
+    źródła/GPZ).
 
     ``u_set_pu`` — napięcie zadane szyny bilansującej z literatury (MATPOWER ``Vm``
     szyny slack / pandapower ``ext_grid.vm_pu``); ``None`` = 1,0 p.u. Do 2026-09-09
@@ -200,10 +202,9 @@ def dodaj_zrodlo_slack(
                 "sn_voltage_kv": voltage_kv,
                 "sk3_mva": sk3_mva,
                 "rx_ratio": rx_ratio,
-                "skip_hv_transformer": True,
                 **({"u_set_pu": u_set_pu} if u_set_pu is not None else {}),
             },
-            "line_fields_count": max(line_fields_count, 1),
+            "line_fields_per_section": max(line_fields_count, 1),
             "source_name": source_name,
             **(
                 {"lv_voltage_tolerance": lv_voltage_tolerance}
@@ -586,7 +587,7 @@ def zbuduj_topologie(
             if not gpz_first_departure_done:
                 enm, new_ref = kontynuuj_z_pola(
                     enm,
-                    field_ref=gpz_fields[gpz_field_index]["field_ref"],
+                    field_ref=gpz_fields[gpz_field_index]["ref_id"],
                     catalog_ref=edge.catalog_ref,
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
@@ -599,7 +600,7 @@ def zbuduj_topologie(
                 gpz_field_index += 1
                 enm, new_ref = rozpocznij_z_pola(
                     enm,
-                    field_ref=gpz_fields[gpz_field_index]["field_ref"],
+                    field_ref=gpz_fields[gpz_field_index]["ref_id"],
                     catalog_ref=edge.catalog_ref,
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
@@ -922,7 +923,7 @@ def _pola_liniowe_gpz_szyny(enm: dict[str, Any], bus_ref: str) -> list[dict[str,
             continue
         pola = [
             spec
-            for spec in stacja.get("meta", {}).get("field_specs", [])
+            for spec in pola_stacji(enm, stacja.get("ref_id"))
             if "gpz_line_field" in (spec.get("tags") or [])
         ]
         pola.sort(key=lambda f: f["meta"]["gpz_line_field_index"])
@@ -931,7 +932,16 @@ def _pola_liniowe_gpz_szyny(enm: dict[str, Any], bus_ref: str) -> list[dict[str,
 
 
 def _przemianuj(enm: dict[str, Any], element_ref: str, new_name: str) -> dict[str, Any]:
-    return wykonaj(enm, "rename_element", {"element_ref": element_ref, "new_name": new_name})
+    """Nazwa elementu z grafu — ta sama operacja, którą projektant zmienia nazwę w kreatorze
+    „Edycja parametrów elementu" (`update_element_parameters`, parametr `name`)."""
+    nazwa = nazwa_nadana(new_name)
+    if nazwa is None:
+        raise BenchmarkBuildError(f"Brak nazwy elementu {element_ref} w grafie wejściowym.")
+    return wykonaj(
+        enm,
+        "update_element_parameters",
+        {"element_ref": element_ref, "parameters": {"name": nazwa}},
+    )
 
 
 def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
@@ -970,7 +980,6 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
         rownowaznik: dict[str, Any] = {
             "sn_voltage_kv": szyna.voltage_kv,
             "rx_ratio": zrodlo.rx_ratio,
-            "skip_hv_transformer": True,
         }
         for klucz in ("sk3_mva", "ik3_ka", "sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"):
             wartosc = getattr(zrodlo, klucz)
@@ -1042,7 +1051,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     indeks_pola_gpz[lit_biezacej] = 0
                     enm, ref_nowej = kontynuuj_z_pola(
                         enm,
-                        field_ref=pola[0]["field_ref"],
+                        field_ref=pola[0]["ref_id"],
                         catalog_ref=odcinek.catalog_ref,
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),
@@ -1054,7 +1063,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     indeks_pola_gpz[lit_biezacej] += 1
                     enm, ref_nowej = rozpocznij_z_pola(
                         enm,
-                        field_ref=pola[indeks_pola_gpz[lit_biezacej]]["field_ref"],
+                        field_ref=pola[indeks_pola_gpz[lit_biezacej]]["ref_id"],
                         catalog_ref=odcinek.catalog_ref,
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),
@@ -1097,8 +1106,8 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
             ref_trafo = enm["transformers"][-1]["ref_id"]
             wynik.transformer_map[edge_id] = ref_trafo
             # Szyna po drugiej stronie transformatora i sam transformator dostają nazwy
-            # z grafu (operacja tworzy je bez nazwy; `rename_element` to ta sama droga,
-            # którą nazwę zmienia projektant w kreatorze).
+            # z grafu (operacja tworzy je bez nazwy; `update_element_parameters` z parametrem
+            # `name` to ta sama droga, którą nazwę zmienia projektant w kreatorze).
             enm = _przemianuj(enm, ref_nowej, szyny[lit_nowej].name)
             if trafo.name is not None:
                 enm = _przemianuj(enm, ref_trafo, trafo.name)

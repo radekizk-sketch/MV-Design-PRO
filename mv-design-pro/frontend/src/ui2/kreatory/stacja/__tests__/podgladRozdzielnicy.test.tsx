@@ -972,3 +972,43 @@ describe('SLD-GEN-POLA — determinizm rysunku', () => {
     expect(container.querySelector('[data-testid="mvd-podglad-naglowek"]')).toBeTruthy();
   });
 });
+
+/**
+ * GEOMETRIA-STACJI (§0 pkt 4b) — aparat PROPOZYCJI SZABLONU. Kreator rysuje kompozycję
+ * szablonu, której model sieci jeszcze nie niesie, więc każdy symbol aparatu jest jawnie
+ * oznaczony (`data-propozycja-szablonu`, styl przerywany) i nie ma stanu łącznika, a nad
+ * rysunkiem stoi opis „propozycja szablonu". Iloczyn: {pole liniowe, pole TR} × {z
+ * kompozycją, bez kompozycji (pusta rozdzielnica — brak propozycji, brak opisu)}.
+ */
+describe('GEOMETRIA-STACJI — aparaty podglądu kreatora to propozycja szablonu (§0 pkt 4b)', () => {
+  it('każdy symbol aparatu nosi znacznik propozycji, bez stanu łącznika; opis „propozycja szablonu" obecny', () => {
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[
+          pole('LINIA_IN', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_IN.template_ref),
+          pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY', undefined, SZABLON_SAFERING_TRANSFORMER.template_ref),
+        ]}
+        aparaty={KATALOG}
+        transformatory={TRAFO}
+        transformatorRef="tr-630"
+        snVoltageKv={15}
+        szablonyPol={BLOK_RMU_K_K_T}
+      />,
+    );
+    const symbole = Array.from(container.querySelectorAll('[data-symbol-pola]'));
+    expect(symbole.length).toBeGreaterThan(0);
+    for (const symbol of symbole) {
+      expect(symbol.getAttribute('data-propozycja-szablonu')).toBe('true');
+      expect(symbol.classList.contains('mvd-podglad-propozycja')).toBe(true);
+      expect(symbol.querySelector('[data-switch-state]')).toBeNull();
+    }
+    const opis = container.querySelector('[data-testid="mvd-podglad-propozycja"]');
+    expect(opis?.textContent).toContain('propozycja szablonu');
+  });
+
+  it('rozdzielnica bez pól nie ma czego proponować — brak opisu propozycji', () => {
+    const { container } = render(<PodgladRozdzielnicySn snFields={[]} snVoltageKv={15} />);
+    expect(container.querySelectorAll('[data-symbol-pola]').length).toBe(0);
+    expect(container.querySelector('[data-testid="mvd-podglad-propozycja"]')).toBeNull();
+  });
+});

@@ -7,6 +7,7 @@ Golden Networks — deterministyczne sieci referencyjne.
 from __future__ import annotations
 
 from enm.domain_operations import execute_domain_operation
+from enm.pola import pola_stacji
 
 
 def _empty_enm() -> dict:
@@ -28,11 +29,11 @@ def _empty_enm() -> dict:
 
 
 def _branch_field_ref(enm: dict, station_ref: str) -> str:
-    station = next(s for s in enm.get("substations", []) if s.get("ref_id") == station_ref)
-    for spec in station.get("meta", {}).get("field_specs", []):
+    # Karta W5-B: pola stacji są rekordami `bays` (jedyny nośnik pól).
+    for spec in pola_stacji(enm, station_ref):
         role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
         if role in {"LINIA_ODG", "FEEDER"}:
-            return f"{spec['field_ref']}.BRANCH"
+            return f"{spec['ref_id']}.BRANCH"
     raise AssertionError(f"Brak pola odgałęźnego w stacji {station_ref}")
 
 
@@ -51,8 +52,6 @@ class TestGN01SNProsta:
                 "sk3_mva": 500.0,
                 "rx_ratio": 0.1,
                 "catalog_ref": "src-gpz-15kv-500mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -132,8 +131,6 @@ class TestGN02SNODG:
             {
                 "voltage_kv": 15.0,
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -216,8 +213,6 @@ class TestGN03SNRingNOP:
             {
                 "voltage_kv": 15.0,
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -299,8 +294,6 @@ class TestRepeatability:
                     "voltage_kv": 15.0,
                     "sk3_mva": 500.0,
                     "catalog_ref": "src-gpz-15kv-500mva-rx010",
-                    "hv_voltage_kv": 110.0,
-                    "transformer_sn_mva": 25.0,
                 },
             )
             assert r.get("error") is None, f"GPZ failed: {r.get('error')}"

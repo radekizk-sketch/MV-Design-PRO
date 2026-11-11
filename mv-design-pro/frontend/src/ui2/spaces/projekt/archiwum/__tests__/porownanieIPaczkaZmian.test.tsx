@@ -302,8 +302,8 @@ describe('Porównanie dwóch paczek', () => {
   });
 
   it('tryb ekspercki → metadane porównania WYŁĄCZNIE w informacjach audytowych', async () => {
-    const poprzedni = useShellStore.getState().advancementMode;
-    useShellStore.setState({ advancementMode: 'expert' });
+    const poprzedni = useShellStore.getState().szczegolyAudytowe;
+    useShellStore.setState({ szczegolyAudytowe: true });
     try {
       const user = userEvent.setup();
       vi.stubGlobal('fetch', vi.fn(async () => odp(200, WYNIK_ROZNICE)));
@@ -333,7 +333,7 @@ describe('Porównanie dwóch paczek', () => {
       // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
       // re-renderuje zamontowany ekran poza act().
       cleanup();
-      useShellStore.setState({ advancementMode: poprzedni });
+      useShellStore.setState({ szczegolyAudytowe: poprzedni });
     }
   });
 

@@ -70,7 +70,6 @@ export function KreatorPrzypisaniaKatalogu() {
     const binding = normalizeCatalogBinding(catalogItemId.trim(), catalogNamespace, catalogItemId.trim(), wersja.trim() || undefined);
     const payload: Record<string, unknown> = {
       element_ref: elementRef,
-      source_mode: 'KATALOG',
     };
     if (binding) {
       payload.catalog_binding = binding;

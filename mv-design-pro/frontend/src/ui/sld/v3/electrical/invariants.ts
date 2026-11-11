@@ -16,7 +16,7 @@ import type {
   UnresolvedReferenceOwnerKind,
 } from './terminalGraph';
 import { nonTransformerComponents } from './terminalGraph';
-import { powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
+import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 import { opisElementu } from '../../core/opisElementu';
 
 export type InvariantCode =
@@ -157,14 +157,16 @@ function transformerVoltageBoundaryViolations(graph: TerminalGraph): InvariantVi
 //     napięcia 0/ujemny/NaN nie da się dyskretyzować na sensowną domenę i
 //     cicho psułby inwarianty 1/2/6 dalej w łańcuchu).
 // (b) Napięcie ZNAMIONOWE uzwojenia transformatora dotykającego tej szyny
-//     (`Transformer.uhv_kv`/`ulv_kv`) MUSI być spójne z napięciem szyny w
-//     granicach tolerancji inżynierskiej (±10% — pokrywa typowe różnice
-//     nominał sieci vs tabliczka znamionowa, np. 15 kV / 15,75 kV, łapiąc
-//     wciąż grube pomyłki, np. transformator 15/0,4 kV podłączony `lv_bus_ref`
-//     do szyny 15 kV).
+//     (`Transformer.uhv_kv`/`ulv_kv`) MUSI leżeć w TYM SAMYM paśmie napięć
+//     (nN/SN/WN) co szyna — lustro walidatora backendu E023 (`enm/validator.py`,
+//     BLOKER gotowości), jedno źródło granic pasm (`pasma_napieciowe` ↔
+//     `ui2/model/pasmaNapieciowe`). Porównanie PASMEM, nie progiem procentowym:
+//     napięcie znamionowe uzwojenia różni się od napięcia sieci w obrębie pasma
+//     (15,75 kV na szynie 15 kV, 0,42 kV na 0,4 kV), a grube pomyłki (uzwojenie
+//     15 kV na szynie 0,4 kV, transformator SN/nN wpięty w szynę 110 kV) zmieniają
+//     pasmo. Dawny własny próg ±10 % był drugą prawdą: SLD meldował naruszenie,
+//     którego gotowość backendu nie zgłaszała, i odwrotnie.
 // ---------------------------------------------------------------------------
-const BUS_TRANSFORMER_RATED_TOLERANCE = 0.1;
-
 function busVoltageConsistencyViolations(graph: TerminalGraph): InvariantViolation[] {
   const violations: InvariantViolation[] = [];
   for (const node of graph.nodes.values()) {
@@ -181,18 +183,18 @@ function busVoltageConsistencyViolations(graph: TerminalGraph): InvariantViolati
       terminal: { readonly busRef: string; readonly voltageKv: number; readonly ratedKv: number },
       side: 'HV' | 'LV',
     ): void => {
-      if (!Number.isFinite(terminal.ratedKv) || terminal.ratedKv <= 0) return; // brak danych — poza zakresem tego inwariantu.
-      const deviation = Math.abs(terminal.voltageKv - terminal.ratedKv) / terminal.ratedKv;
-      if (deviation > BUS_TRANSFORMER_RATED_TOLERANCE) {
-        violations.push({
-          code: 'BUS_VOLTAGE_INCONSISTENT',
-          messagePl:
-            `${opisElementu('Transformator', tr.name)}: napięcie znamionowe uzwojenia ${side} ` +
-            `(${terminal.ratedKv} kV) odbiega o ${(deviation * 100).toFixed(1)}% od napięcia ` +
-            `${opisSzyny(graph, terminal.busRef, 'szyny')} (${terminal.voltageKv} kV) — powyżej tolerancji ${BUS_TRANSFORMER_RATED_TOLERANCE * 100}%.`,
-          elementRefs: [tr.ref, terminal.busRef],
-        });
-      }
+      // Brak danych i napięcia niefizyczne zgłaszają inne kontrole (jak E023).
+      const pasmoUzwojenia = pasmoNapieciowe(terminal.ratedKv);
+      const pasmoSzyny = pasmoNapieciowe(terminal.voltageKv);
+      if (pasmoUzwojenia === null || pasmoSzyny === null || pasmoUzwojenia === pasmoSzyny) return;
+      violations.push({
+        code: 'BUS_VOLTAGE_INCONSISTENT',
+        messagePl:
+          `${opisElementu('Transformator', tr.name)}: napięcie znamionowe uzwojenia ${side} ` +
+          `(${terminal.ratedKv} kV, pasmo ${pasmoUzwojenia}) nie pasuje do ` +
+          `${opisSzyny(graph, terminal.busRef, 'szyny')} (${terminal.voltageKv} kV, pasmo ${pasmoSzyny}).`,
+        elementRefs: [tr.ref, terminal.busRef],
+      });
     };
     checkTerminal(tr.hvTerminal, 'HV');
     checkTerminal(tr.lvTerminal, 'LV');

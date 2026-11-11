@@ -37,7 +37,6 @@ export const KOMPENSATOR_STRINGS = {
   podgladZrodloWartosc: 'Obliczenie po stronie serwera z pierwszych zasad (solver podglądu baterii)',
   podgladBrak: 'Wybierz typ baterii, aby zobaczyć susceptancję i prąd.',
   podgladBlad: 'Nie udało się wyznaczyć podglądu baterii.',
-  ostrzezenieNapiecie: 'Napięcie typu nie pasuje do napięcia szyny — dobierz typ dla właściwego napięcia.',
 
   // Downstream — „co to uruchamia".
   downstreamTytul: 'Co to uruchamia',

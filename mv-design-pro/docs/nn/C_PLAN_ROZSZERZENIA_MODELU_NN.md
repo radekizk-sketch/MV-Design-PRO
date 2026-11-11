@@ -101,7 +101,7 @@ ENM-specyficznych); (8) archiwum ZIP (po N-D1); (9) testy.
 | `merge_nn_segments` | scalenie dwóch odcinków tego samego typu przez szynę pośrednią bez innych przyłączy |
 | `add_nn_section_coupler` | sekcja szyn + sprzęgło w rozdzielnicy (`NnSection`) |
 | `set_nn_cable_laying_conditions` | warunki ułożenia + współczynniki korekcyjne (meta odcinka, wzorzec DER `cable_laying_conditions`) |
-| `remove_nn_element` / `copy_nn_feeder` | usuwanie/kopiowanie poddrzewa odpływu (§4 zlecenia: dodaj/usuń/kopiuj/rozdziel/połącz) |
+| `delete_element` (dawna `remove_nn_element` skasowana jako dubel 2026-10-22) / `copy_nn_feeder` | usuwanie/kopiowanie poddrzewa odpływu (§4 zlecenia: dodaj/usuń/kopiuj/rozdziel/połącz) |
 
 Wszystkie operacje: catalog-binding obowiązkowy (Rule 10), `_response(...)` + walidacja
 semantyczna post-hook, rejestracja w `CANONICAL_OPERATIONS` **i** w handlerach (guard N-D8

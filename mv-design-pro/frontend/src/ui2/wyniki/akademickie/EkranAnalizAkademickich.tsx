@@ -30,24 +30,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import './akademickie.css';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { opisSwiezosci } from '../../freshness';
 import {
   InformacjeAudytowe,
+  KartaWerdyktu,
   PrzyciskAkcjiStanu,
   formatZnacznikaCzasu,
   useAkcjaPrzejdzDoPrzypadkow,
 } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import type { RekordWerdyktu } from '../wzorzec/werdykt';
 import {
   OcenaNiewykonana,
   SekcjaAudytowa,
   type RekordOcenyNiewykonanej,
 } from '../wzorzec/OcenaNiewykonana';
 import { MathBlock, MathInline } from '../../../ui/proof';
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   pobierzDowod,
   pobierzGotowosc,
@@ -70,6 +72,7 @@ import {
 } from './api';
 import {
   POLITYKI_EKSPORTU_RAPORTU,
+  danePrzyjeteWyniku,
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
   liczbaKrokowSladuRaportu,
@@ -91,7 +94,7 @@ import {
 } from './prezentacja';
 import { rodzajPrezentowany, type RodzajPrezentowany } from './nieprezentowane';
 import { wierszeOdniesien, type WierszOdniesienia } from './odniesienia';
-import { maParametry, zbudujParametry, type StanPol, type WierszListy } from './parametry';
+import { maParametry, zbudujParametry, type StanPol, type WierszeList } from './parametry';
 import { FormularzParametrow } from './FormularzParametrow';
 import { useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
 import {
@@ -316,11 +319,11 @@ function KartaAnalizy({
       <h4 className="mvd-akad-karta-tytul">{karta.nazwa_pl}</h4>
       <div className="mvd-akad-karta-pole">
         <span className="mvd-akad-karta-etyk">{S.kartaPytanie}</span>
-        <p className="mvd-akad-karta-tresc">{karta.pytanie_pl}</p>
+        <p className="mvd-akad-karta-tresc"><TekstZWzorami tekst={karta.pytanie_pl} /></p>
       </div>
       <div className="mvd-akad-karta-pole">
         <span className="mvd-akad-karta-etyk">{S.kartaZakres}</span>
-        <p className="mvd-akad-karta-tresc">{karta.zakres_pl}</p>
+        <p className="mvd-akad-karta-tresc"><TekstZWzorami tekst={karta.zakres_pl} /></p>
       </div>
       {karta.wielkosci_glowne.length > 0 && (
         <div className="mvd-akad-karta-pole">
@@ -331,7 +334,7 @@ function KartaAnalizy({
                 <span className="mvd-num">
                   <MathInline latex={wielkosc.symbol_latex} />
                 </span>{' '}
-                — {wielkosc.nazwa_pl}
+                — <TekstZWzorami tekst={wielkosc.nazwa_pl} />
                 {wielkosc.jednostka !== '-' && wielkosc.jednostka !== '' && ` [${wielkosc.jednostka}]`}
               </li>
             ))}
@@ -363,7 +366,7 @@ function KartaAnalizy({
             ))}
           </ul>
         ) : (
-          <p className="mvd-akad-karta-tresc">{karta.bez_podstawy_pl}</p>
+          <p className="mvd-akad-karta-tresc"><TekstZWzorami tekst={karta.bez_podstawy_pl} /></p>
         )}
       </div>
       <div className="mvd-akad-karta-stopka">
@@ -410,12 +413,12 @@ function SekcjaPrzedmiot({
   przedmiot,
   modelHash,
   nazwaObiektu,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   przedmiot: PrzedmiotAnalizy | null;
   modelHash: string | null;
   nazwaObiektu: (ref: string) => string;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const activeCaseName = useAppStateStore((s) => s.activeCaseName);
@@ -496,7 +499,7 @@ function SekcjaPrzedmiot({
       </div>
       {/* Karta V12.7 §0.3: odcisk modelu — poza pierwszym planem. */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-akad-przedmiot-informacje-audytowe"
         wiersze={modelHash ? [{ etykieta: S.przedmiotOdcisk, wartosc: modelHash }] : []}
       />
@@ -511,10 +514,10 @@ function SekcjaPytanie({ karta }: { karta: KartaKatalogu }) {
         <span className="mvd-akad-krok">B</span>
         <h3 className="mvd-akad-sekcja-tytul">{S.pytanieTytul}</h3>
       </div>
-      <p className="mvd-akad-cel-tresc">{karta.pytanie_pl}</p>
+      <p className="mvd-akad-cel-tresc"><TekstZWzorami tekst={karta.pytanie_pl} /></p>
       <p className="mvd-akad-opis">
         <b>{S.zakresBadanyTytul}: </b>
-        {karta.zakres_pl}
+        <TekstZWzorami tekst={karta.zakres_pl} />
       </p>
     </section>
   );
@@ -595,8 +598,8 @@ function SekcjaDane({
           <ul className="mvd-akad-dane-lista">
             {dane.dane_z_modelu.map((pozycja) => (
               <li className="mvd-akad-dane-pozycja" key={pozycja.nazwa_pl}>
-                <span className="mvd-akad-dane-nazwa">{pozycja.nazwa_pl}</span>
-                <span className="mvd-akad-dane-wartosc mvd-num">{pozycja.wartosc_pl}</span>
+                <span className="mvd-akad-dane-nazwa"><TekstZWzorami tekst={pozycja.nazwa_pl} /></span>
+                <span className="mvd-akad-dane-wartosc mvd-num"><TekstZWzorami tekst={pozycja.wartosc_pl} /></span>
                 {pozycja.elementy.length > 0 && (
                   <span className="mvd-akad-dane-uwaga">
                     {nazwyElementow(pozycja.elementy, nazwaObiektu)}
@@ -609,8 +612,8 @@ function SekcjaDane({
           <ul className="mvd-akad-dane-lista">
             {karta.dane.z_modelu.map((pozycja) => (
               <li className="mvd-akad-dane-pozycja" key={pozycja.nazwa_pl}>
-                <span className="mvd-akad-dane-nazwa">{pozycja.nazwa_pl}</span>
-                <span className="mvd-akad-dane-uwaga">{pozycja.elementy_pl}</span>
+                <span className="mvd-akad-dane-nazwa"><TekstZWzorami tekst={pozycja.nazwa_pl} /></span>
+                <span className="mvd-akad-dane-uwaga"><TekstZWzorami tekst={pozycja.elementy_pl} /></span>
               </li>
             ))}
           </ul>
@@ -640,8 +643,14 @@ function SekcjaDane({
             {karta.dane.od_uzytkownika.map((parametr) => (
               <li className="mvd-akad-dane-pozycja" key={parametr.klucz}>
                 <span className="mvd-akad-dane-nazwa">
-                  {parametr.nazwa_pl}
-                  {parametr.jednostka !== '-' && parametr.jednostka !== '' && ` [${parametr.jednostka}]`}
+                  <TekstZWzorami tekst={parametr.nazwa_pl} />
+                  {parametr.jednostka !== '-' && parametr.jednostka !== '' && (
+                    <>
+                      {' ['}
+                      <TekstZWzorami tekst={parametr.jednostka} />
+                      {']'}
+                    </>
+                  )}
                   <span
                     className={
                       parametr.wymagane
@@ -652,7 +661,11 @@ function SekcjaDane({
                     {parametr.wymagane ? S.daneWymagane : S.daneOpcjonalne}
                   </span>
                 </span>
-                {parametr.opis_pl !== '' && <span className="mvd-akad-dane-uwaga">{parametr.opis_pl}</span>}
+                {parametr.opis_pl !== '' && (
+                  <span className="mvd-akad-dane-uwaga">
+                    <TekstZWzorami tekst={parametr.opis_pl} />
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -665,7 +678,7 @@ function SekcjaDane({
               {proponowane.map(([klucz, propozycja]) => (
                 <li className="mvd-akad-dane-pozycja" key={klucz}>
                   <span className="mvd-akad-dane-nazwa">
-                    {karta.dane.od_uzytkownika.find((p) => p.klucz === klucz)?.nazwa_pl ?? klucz}
+                    <TekstZWzorami tekst={karta.dane.od_uzytkownika.find((p) => p.klucz === klucz)?.nazwa_pl ?? klucz} />
                   </span>
                   <span className="mvd-akad-dane-wartosc mvd-num">
                     {typeof propozycja.wartosc === 'string' && NAZWY_WARTOSCI[propozycja.wartosc] !== undefined
@@ -673,7 +686,7 @@ function SekcjaDane({
                       : fmtWartosc(propozycja.wartosc)}
                   </span>
                   <span className="mvd-akad-dane-uwaga">
-                    {S.propozycjaZrodlo}: {propozycja.zrodlo_pl}
+                    {S.propozycjaZrodlo}: <TekstZWzorami tekst={propozycja.zrodlo_pl} />
                   </span>
                 </li>
               ))}
@@ -690,12 +703,16 @@ function SekcjaDane({
           <ul className="mvd-akad-dane-lista">
             {karta.dane.domyslne_solvera.map((domyslna) => (
               <li className="mvd-akad-dane-pozycja" key={domyslna.klucz}>
-                <span className="mvd-akad-dane-nazwa">{domyslna.nazwa_pl}</span>
+                <span className="mvd-akad-dane-nazwa"><TekstZWzorami tekst={domyslna.nazwa_pl} /></span>
                 <span className="mvd-akad-dane-wartosc mvd-num">
-                  {fmtGranica(domyslna.wartosc)}
+                  {typeof domyslna.wartosc === 'string' ? (
+                    <TekstZWzorami tekst={domyslna.wartosc} />
+                  ) : (
+                    fmtGranica(domyslna.wartosc)
+                  )}
                   {domyslna.jednostka !== '-' && domyslna.jednostka !== '' && ` ${domyslna.jednostka}`}
                 </span>
-                <span className="mvd-akad-dane-uwaga">{domyslna.uzasadnienie_pl}</span>
+                <span className="mvd-akad-dane-uwaga"><TekstZWzorami tekst={domyslna.uzasadnienie_pl} /></span>
               </li>
             ))}
           </ul>
@@ -763,7 +780,7 @@ function SekcjaGotowosc({
       )}
       {dane && dane.gotowosc === 'WYCOFANA' && dane.powod_wycofania_pl && (
         <p className="mvd-akad-opis" data-testid="mvd-akad-gotowosc-wycofana">
-          {dane.powod_wycofania_pl}
+          <TekstZWzorami tekst={dane.powod_wycofania_pl} />
         </p>
       )}
       {dane && dane.gotowosc !== 'WYCOFANA' && (
@@ -813,7 +830,7 @@ function SekcjaKryteria({ karta }: { karta: KartaKatalogu }) {
       {karta.podstawa_oceny.length === 0 ? (
         <p className="mvd-akad-kryteria-brak" data-testid="mvd-akad-kryteria-brak">
           <span className="mvd-akad-kryteria-brak-tytul">{S.kryteriaBrakTytul}</span>
-          {karta.bez_podstawy_pl}
+          <TekstZWzorami tekst={karta.bez_podstawy_pl} />
         </p>
       ) : (
         <div className="mvd-akad-tabela-otoczka">
@@ -839,7 +856,9 @@ function SekcjaKryteria({ karta }: { karta: KartaKatalogu }) {
                     <span className="mvd-num">
                       <MathInline latex={podstawa.warunek_latex} />
                     </span>
-                    <p className="mvd-akad-dane-uwaga">{podstawa.warunek_pl}</p>
+                    <p className="mvd-akad-dane-uwaga">
+                      <TekstZWzorami tekst={podstawa.warunek_pl} />
+                    </p>
                   </td>
                   <td className="mvd-num">
                     {typeof podstawa.wartosc_graniczna === 'number' ? (
@@ -848,7 +867,9 @@ function SekcjaKryteria({ karta }: { karta: KartaKatalogu }) {
                       <>
                         <MathBlock latex={podstawa.wzor_latex} />
                         {podstawa.wzor_opis_pl !== '' && (
-                          <p className="mvd-akad-dane-uwaga">{podstawa.wzor_opis_pl}</p>
+                          <p className="mvd-akad-dane-uwaga">
+                            <TekstZWzorami tekst={podstawa.wzor_opis_pl} />
+                          </p>
                         )}
                       </>
                     )}
@@ -872,12 +893,14 @@ function SekcjaZakres({ karta }: { karta: KartaKatalogu }) {
         <span className="mvd-akad-krok">F</span>
         <h3 className="mvd-akad-sekcja-tytul">{S.zakresTytul}</h3>
       </div>
-      <p className="mvd-akad-cel-tresc">{karta.zakres_pl}</p>
+      <p className="mvd-akad-cel-tresc"><TekstZWzorami tekst={karta.zakres_pl} /></p>
       {karta.uwagi_metody_pl.length > 0 && (
         <Podsekcja tytul={S.zakresUwagi} testid="mvd-akad-zakres-uwagi">
           <ul className="mvd-akad-karta-lista">
             {karta.uwagi_metody_pl.map((uwaga) => (
-              <li key={uwaga}>{uwaga}</li>
+              <li key={uwaga}>
+                <TekstZWzorami tekst={uwaga} />
+              </li>
             ))}
           </ul>
         </Podsekcja>
@@ -910,10 +933,32 @@ function czyRekordOceny(wartosc: unknown): wartosc is RekordOcenyNiewykonanej {
 }
 
 /**
- * Wynik oceny analizy — CYTAT pola statusu z odpowiedzi solvera. Zero ocen w UI:
- * dla oceny zbiorczej okno zlicza wystąpienia wartości statusu (jak licznik
- * wierszy tabeli), a nie porównuje liczb z progiem. Podstawa oceny pochodzi
- * z karty katalogu (jedno źródło prawdy o kryterium).
+ * Czy wartość z odpowiedzi jest rekordem werdyktu wyjaśnialnego (poziom K albo W) — po
+ * KSZTAŁCIE: identyfikator kryterium albo wymagania, status maszynowy, etykieta i wyjaśnienie
+ * ze zdaniem. Okno nie czyta tu wartości oceny; rekord niepełny nie trafia do karty.
+ */
+function czyRekordWerdyktu(wartosc: unknown): wartosc is RekordWerdyktu {
+  if (typeof wartosc !== 'object' || wartosc === null) return false;
+  const rekord = wartosc as {
+    kryterium_id?: unknown;
+    wymaganie_id?: unknown;
+    status_maszynowy?: unknown;
+    etykieta?: { etykieta_pl?: unknown } | null;
+    wyjasnienie?: { zdanie_pl?: unknown } | null;
+  };
+  return (
+    (typeof rekord.kryterium_id === 'string' || typeof rekord.wymaganie_id === 'string')
+    && typeof rekord.status_maszynowy === 'string'
+    && typeof rekord.etykieta?.etykieta_pl === 'string'
+    && typeof rekord.wyjasnienie?.zdanie_pl === 'string'
+  );
+}
+
+/**
+ * Wynik oceny analizy. Rodzaje z kryteriami: KAŻDY rekord werdyktu wyjaśnialnego z odpowiedzi
+ * kartą `KartaWerdyktu` (kryterium, wynik, limit z podstawą, margines, wyjaśnienie, dowód) —
+ * zero ocen w UI, zero mapy „status → tekst". Rodzaje bez oceny: rekord `NIE_OCENIONO`.
+ * Pozostałe: cytat pola stanu albo wielkość bez progu, z podstawą z karty katalogu.
  */
 function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: unknown; karta: KartaKatalogu }) {
   const projekt = PREZENTACJA[rodzaj as RodzajPrezentowany];
@@ -937,6 +982,30 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
     );
   }
 
+  // Rekordy werdyktu wyjaśnialnego — każdy rekord pełną kartą (agregat nie zastępuje
+  // składowych: rekord wymagania niesie oceny składowe w swojej karcie).
+  if (w.rodzaj === 'rekordy') {
+    const tablica = odczytaj(payload, w.sciezka);
+    const rekordy = Array.isArray(tablica) ? tablica.filter(czyRekordWerdyktu) : [];
+    return (
+      <section className="mvd-akad-sekcja mvd-akad-werdykt" data-testid="mvd-akad-werdykt">
+        <h3 className="mvd-akad-sekcja-tytul">{S.werdyktTytul}</h3>
+        {rekordy.length > 0 ? (
+          <div className="mvd-akad-oceny" data-testid="mvd-akad-ocena">
+            {rekordy.map((rekord) => (
+              <KartaWerdyktu
+                key={'wymaganie_id' in rekord ? rekord.wymaganie_id : rekord.kryterium_id}
+                rekord={rekord}
+              />
+            ))}
+          </div>
+        ) : (
+          <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
+        )}
+      </section>
+    );
+  }
+
   let tresc: React.ReactNode;
   if (w.rodzaj === 'pojedynczy') {
     const surowa = w.sciezki
@@ -948,23 +1017,6 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
     ) : (
       <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
     );
-  } else if (w.rodzaj === 'zbiorczy') {
-    const tablica = odczytaj(payload, w.sciezkaTablicy);
-    const elementy = Array.isArray(tablica) ? tablica : [];
-    const spelnione = elementy.filter(
-      (element) => String(odczytaj(element, w.kluczStatusu)) === w.wartoscSpelniona,
-    ).length;
-    const wszystkieSpelnione = elementy.length > 0 && spelnione === elementy.length;
-    tresc =
-      elementy.length === 0 ? (
-        <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
-      ) : (
-        <Chip
-          tekst={S.werdyktZbiorczy(spelnione, elementy.length, w.obiektyDopelniacz)}
-          istotnosc={wszystkieSpelnione ? 'ok' : 'err'}
-          testid="mvd-akad-werdykt-chip"
-        />
-      );
   } else {
     const wartosc = odczytaj(payload, w.sciezka);
     tresc =
@@ -1009,7 +1061,8 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
           <div className="mvd-akad-wiersz">
             <span className="mvd-akad-wiersz-etyk">{S.podstawaEtykieta}</span>
             <span className="mvd-akad-wiersz-wartosc">
-              {`${S.kryteriaBrakTytul}: ${karta.bez_podstawy_pl}`}
+              {`${S.kryteriaBrakTytul}: `}
+              <TekstZWzorami tekst={karta.bez_podstawy_pl} />
             </span>
           </div>
         )}
@@ -1047,18 +1100,24 @@ function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown 
               : odczytaj(payload, pole.odniesienieSciezka);
           return (
             <div className="mvd-akad-wiersz" key={pole.sciezka}>
-              <span className="mvd-akad-wiersz-etyk">{pole.etykieta}</span>
-              <span className="mvd-akad-wiersz-wartosc mvd-num">
-                {fmtPole(wartosc)}
-                {pole.jednostka !== undefined && ` ${pole.jednostka}`}
-                {odniesienie !== undefined && odniesienie !== null && (
-                  <span className="mvd-akad-odniesienie">
-                    {` (${pole.odniesienieEtykieta ?? S.odniesienieDomyslne}: ${fmtWartosc(odniesienie)}`}
-                    {pole.jednostka !== undefined && ` ${pole.jednostka}`}
-                    {')'}
-                  </span>
-                )}
-              </span>
+              <span className="mvd-akad-wiersz-etyk"><TekstZWzorami tekst={pole.etykieta} /></span>
+              {pole.postac === 'tekst' ? (
+                <span className="mvd-akad-wiersz-wartosc">
+                  <TekstZWzorami tekst={String(wartosc)} />
+                </span>
+              ) : (
+                <span className="mvd-akad-wiersz-wartosc mvd-num">
+                  {fmtPole(wartosc)}
+                  {pole.jednostka !== undefined && <> <TekstZWzorami tekst={pole.jednostka} /></>}
+                  {odniesienie !== undefined && odniesienie !== null && (
+                    <span className="mvd-akad-odniesienie">
+                      {` (${pole.odniesienieEtykieta ?? S.odniesienieDomyslne}: ${fmtWartosc(odniesienie)}`}
+                      {pole.jednostka !== undefined && <> <TekstZWzorami tekst={pole.jednostka} /></>}
+                      {')'}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
           );
         })}
@@ -1104,6 +1163,7 @@ function PanelObiektow({
   };
   const surowa = odczytaj(payload, tabela.sciezka);
   const wiersze = Array.isArray(surowa) ? surowa : [];
+  if (tabela.tylkoGdyObecna && !Array.isArray(surowa)) return null;
   return (
     <section className="mvd-akad-sekcja" data-testid={`mvd-akad-obiekty-${tabela.sciezka}`}>
       <div className="mvd-akad-sekcja-naglowek">
@@ -1120,8 +1180,14 @@ function PanelObiektow({
                 <th>{tabela.etykietaRef}</th>
                 {tabela.kolumny.map((kolumna) => (
                   <th key={kolumna.klucz}>
-                    {kolumna.etykieta}
-                    {kolumna.jednostka !== undefined && ` [${kolumna.jednostka}]`}
+                    <TekstZWzorami tekst={kolumna.etykieta} />
+                    {kolumna.jednostka !== undefined && (
+                      <>
+                        {' ['}
+                        <TekstZWzorami tekst={kolumna.jednostka} />
+                        {']'}
+                      </>
+                    )}
                   </th>
                 ))}
               </tr>
@@ -1142,6 +1208,19 @@ function PanelObiektow({
                               <Chip tekst={wpis.tekst} istotnosc={wpis.istotnosc} />
                             ) : (
                               S.kreska
+                            )}
+                          </td>
+                        );
+                      }
+                      if (kolumna.postac !== undefined) {
+                        return (
+                          <td key={kolumna.klucz}>
+                            {typeof wartosc !== 'string' || wartosc === '' ? (
+                              S.kreska
+                            ) : kolumna.postac === 'latex' ? (
+                              <MathInline latex={wartosc} />
+                            ) : (
+                              <TekstZWzorami tekst={wartosc} />
                             )}
                           </td>
                         );
@@ -1179,10 +1258,39 @@ function PanelBrakow({ payload }: { payload: unknown }) {
           <p className="mvd-akad-opis">{S.brakiLista}</p>
           <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-braki-lista">
             {listaBrakow.map((pole) => (
-              <li key={pole}>{NAZWY_BRAKUJACYCH_POL[pole] ?? pole}</li>
+              <li key={pole}><TekstZWzorami tekst={NAZWY_BRAKUJACYCH_POL[pole] ?? pole} /></li>
             ))}
           </ul>
         </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Dane przyjęte wyniku (zasada nr 4): wartości robocze ESTIMATED, na których solver policzył
+ * wynik — dyskretnie, z powodem w podpowiedzi; nota o dowodzie niepełnym z `kompletnosc_dowodu`.
+ */
+function PanelDanychPrzyjetych({ payload }: { payload: unknown }) {
+  const dane = danePrzyjeteWyniku(payload);
+  const niepelny = odczytaj(payload, 'kompletnosc_dowodu') === 'NIEPELNY';
+  if (dane.length === 0 && !niepelny) return null;
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-dane-przyjete">
+      <h3 className="mvd-akad-sekcja-tytul">{S.danePrzyjeteTytul}</h3>
+      {niepelny && (
+        <p className="mvd-akad-opis" data-testid="mvd-akad-dane-przyjete-niepelny">
+          {S.danePrzyjeteNiepelny}
+        </p>
+      )}
+      {dane.length > 0 && (
+        <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-dane-przyjete-lista">
+          {dane.map((dana) => (
+            <li key={`${dana.nazwa}::${dana.wartosc ?? ''}`} title={dana.powod}>
+              {dana.wartosc ? `${dana.nazwa}: ${dana.wartosc}` : dana.nazwa}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -1458,10 +1566,10 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
  */
 function PanelRaportu({
   raport,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   raport: RaportAnalizy;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   return (
     <section className="mvd-akad-sekcja" data-testid="mvd-akad-raport">
@@ -1474,7 +1582,7 @@ function PanelRaportu({
       </p>
       <InformacjeAudytowe
         wiersze={wierszeAudytoweRaportu(raport)}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-akad-raport-informacje-audytowe"
       />
     </section>
@@ -1539,7 +1647,7 @@ function PanelOdniesien({ namespace }: { namespace: string }) {
             <div className="mvd-akad-wiersze" data-testid="mvd-akad-katalog-wiersze">
               {stan.pozycje.map((pozycja, indeks) => (
                 <div className="mvd-akad-wiersz" key={`${indeks}-${pozycja.etykieta}`}>
-                  <span className="mvd-akad-wiersz-etyk">{pozycja.etykieta}</span>
+                  <span className="mvd-akad-wiersz-etyk"><TekstZWzorami tekst={pozycja.etykieta} /></span>
                   <span className="mvd-akad-wiersz-wartosc">{pozycja.wartosc}</span>
                 </div>
               ))}
@@ -1578,7 +1686,7 @@ const OPOZNIENIE_GOTOWOSCI_MS = 250;
 // ---------------------------------------------------------------------------
 
 export interface EkranAnalizAkademickichProps {
-  readonly trybZaawansowania: AdvancementMode;
+  readonly szczegolyAudytowe: boolean;
   /**
    * Analiza otwarta z góry (wejście z ekranu trasowego E-40…E-50) — okno startuje
    * w widoku tej analizy; przycisk „Katalog analiz" wraca do kart. Typ zawężony do
@@ -1588,13 +1696,12 @@ export interface EkranAnalizAkademickichProps {
 }
 
 export function EkranAnalizAkademickich({
-  trybZaawansowania,
+  szczegolyAudytowe,
   rodzajPoczatkowy,
 }: EkranAnalizAkademickichProps) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu ?? 0);
   const nazwaObiektu = useNazwaObiektu();
 
@@ -1608,7 +1715,7 @@ export function EkranAnalizAkademickich({
   const [pola, setPola] = useState<StanPol>({});
   const [uziom, setUziom] = useState<StanPol>({});
   const [metody, setMetody] = useState<readonly string[]>([]);
-  const [wiersze, setWiersze] = useState<readonly WierszListy[]>([]);
+  const [wiersze, setWiersze] = useState<WierszeList>({});
 
   // Katalog kart i gotowość wszystkich analiz (dla „stanu danych" kart) — dwa
   // niezależne wołania, każde z własnym uczciwym stanem błędu.
@@ -1643,10 +1750,10 @@ export function EkranAnalizAkademickich({
 
   // Bez aktywnego przypadku i poza bramą trybu okno NIE pyta backendu.
   useEffect(() => {
-    if (activeCaseId === null || !trybEkspercki) return;
+    if (activeCaseId === null || !szczegolyAudytowe) return;
     wczytajKatalog();
     wczytajGotowoscKart(activeCaseId);
-  }, [activeCaseId, trybEkspercki, wczytajKatalog, wczytajGotowoscKart]);
+  }, [activeCaseId, szczegolyAudytowe, wczytajKatalog, wczytajGotowoscKart]);
 
   // Parametry biegu = to, co pójdzie do POST; gotowość sprawdzana DOKŁADNIE dla nich.
   const parametry = useMemo(
@@ -1656,7 +1763,7 @@ export function EkranAnalizAkademickich({
   const parametryJson = JSON.stringify(parametry);
 
   useEffect(() => {
-    if (activeCaseId === null || !trybEkspercki || wybrany === '') return;
+    if (activeCaseId === null || !szczegolyAudytowe || wybrany === '') return;
     let aktualne = true;
     setGotowoscWybranej((poprzedni) => ({ rodzaj: 'ladowanie', dane: poprzedni.dane }));
     const uchwyt = window.setTimeout(() => {
@@ -1689,7 +1796,7 @@ export function EkranAnalizAkademickich({
       aktualne = false;
       window.clearTimeout(uchwyt);
     };
-  }, [activeCaseId, trybEkspercki, wybrany, parametryJson, licznikSprawdzen]);
+  }, [activeCaseId, szczegolyAudytowe, wybrany, parametryJson, licznikSprawdzen]);
 
   // Zmiana analizy zeruje wynik i formularz — parametry jednej analizy nie mogą
   // wyciec do żądania innej (klucze są rozłączne wg kontraktu solvera).
@@ -1700,7 +1807,7 @@ export function EkranAnalizAkademickich({
     setPola({});
     setUziom({});
     setMetody([]);
-    setWiersze([]);
+    setWiersze({});
   };
 
   const uruchom = () => {
@@ -1728,7 +1835,7 @@ export function EkranAnalizAkademickich({
 
   // Brama opracowania (V126-JEZYK): poza trybem eksperckim okno NIE renderuje
   // treści i NIE pyta backendu — wejść do zdolności są dwa (zakładka i trasa).
-  if (!trybEkspercki) {
+  if (!szczegolyAudytowe) {
     return (
       <div className="mvd-akad" data-testid="mvd-akad-ekran">
         <header className="mvd-akad-naglowek">
@@ -1806,7 +1913,11 @@ export function EkranAnalizAkademickich({
     return (
       <div className="mvd-akad" data-testid="mvd-akad-ekran">
         {naglowek}
-        <section className="mvd-akad-sekcja" data-testid="mvd-akad-katalog-kart">
+        <section
+          className="mvd-akad-sekcja"
+          data-testid="mvd-akad-katalog-kart"
+          aria-busy={katalog.rodzaj === 'ladowanie'}
+        >
           <h3 className="mvd-akad-sekcja-tytul">{S.katalogTytul}</h3>
           <p className="mvd-akad-opis">{S.katalogOpis}</p>
           {katalog.rodzaj === 'ladowanie' && <p className="mvd-akad-opis">{S.katalogLadowanie}</p>}
@@ -1878,7 +1989,7 @@ export function EkranAnalizAkademickich({
             przedmiot={przedmiot}
             modelHash={modelHash}
             nazwaObiektu={nazwaObiektu}
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
           />
           <SekcjaPytanie karta={karta} />
           {wybrany === 'ssci_impedance' && (
@@ -1916,13 +2027,23 @@ export function EkranAnalizAkademickich({
                       wlaczona ? [...lista, metoda] : lista.filter((pozycja) => pozycja !== metoda),
                     )
                   }
-                  onWiersz={(indeks, klucz, wartosc) =>
-                    setWiersze((lista) =>
-                      lista.map((wiersz, i) => (i === indeks ? { ...wiersz, [klucz]: wartosc } : wiersz)),
-                    )
+                  onWiersz={(lista, indeks, klucz, wartosc) =>
+                    setWiersze((stanList) => ({
+                      ...stanList,
+                      [lista]: (stanList[lista] ?? []).map((wiersz, i) =>
+                        i === indeks ? { ...wiersz, [klucz]: wartosc } : wiersz,
+                      ),
+                    }))
                   }
-                  onDodajWiersz={() => setWiersze((lista) => [...lista, {}])}
-                  onUsunWiersz={(indeks) => setWiersze((lista) => lista.filter((_, i) => i !== indeks))}
+                  onDodajWiersz={(lista) =>
+                    setWiersze((stanList) => ({ ...stanList, [lista]: [...(stanList[lista] ?? []), {}] }))
+                  }
+                  onUsunWiersz={(lista, indeks) =>
+                    setWiersze((stanList) => ({
+                      ...stanList,
+                      [lista]: (stanList[lista] ?? []).filter((_, i) => i !== indeks),
+                    }))
+                  }
                 />
               ) : null
             }
@@ -1996,7 +2117,7 @@ export function EkranAnalizAkademickich({
                     audytowe" (tryb ekspercki, zwinięte). Karta #145: tu także pełny
                     zapis techniczny odpowiedzi solvera (ścieżki pól kontraktu). */}
                 <InformacjeAudytowe
-                  trybEkspercki={trybEkspercki}
+                  szczegolyAudytowe={szczegolyAudytowe}
                   testid="mvd-akad-informacje-audytowe"
                   wiersze={[
                     { etykieta: S.odcisk, wartosc: stan.dane.przebieg.deterministic_hash ?? '' },
@@ -2022,6 +2143,7 @@ export function EkranAnalizAkademickich({
                 />
               ))}
               <PanelBrakow payload={stan.dane.wynik.result.result} />
+              <PanelDanychPrzyjetych payload={stan.dane.wynik.result.result} />
               <PanelWiarygodnosci payload={stan.dane.wynik.result.result} />
               <PanelRankinguNieprezentowanego
                 payload={stan.dane.wynik.result.result}
@@ -2038,7 +2160,7 @@ export function EkranAnalizAkademickich({
                   <>
                     <PanelSladu slad={stan.dane.slad} />
                     <PanelDowodu dowod={stan.dane.dowod} />
-                    <PanelRaportu raport={stan.dane.raport} trybEkspercki={trybEkspercki} />
+                    <PanelRaportu raport={stan.dane.raport} szczegolyAudytowe={szczegolyAudytowe} />
                   </>
                 );
                 const sekcjaAudytowa = PREZENTACJA[wybrany as RodzajPrezentowany]?.sekcjaAudytowa;

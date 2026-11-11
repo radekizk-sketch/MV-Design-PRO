@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy czystych pomocników okna archiwum: nazwa pobieranego pliku (musi być
  * deterministyczna — ta sama data i nazwa dają ten sam plik), rozpoznanie

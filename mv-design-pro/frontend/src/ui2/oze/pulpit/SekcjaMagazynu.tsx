@@ -6,6 +6,7 @@
  * „pozycja katalogowa nieodnaleziona" (bez zgadywania). Zero fizyki.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useEffect, useState } from 'react';
 
 import type { StationDerConnection } from '../../../ui/network-build/station-der';
@@ -22,7 +23,7 @@ import {
 export interface SekcjaMagazynuProps {
   readonly der: StationDerConnection;
   /** Tryb ekspercki odsłania identyfikatory katalogowe. */
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
 }
 
 type StanKatalogu =
@@ -36,7 +37,7 @@ function formatCosphi(min: number | null, max: number | null): string {
   return `${f(min)} … ${f(max)}`;
 }
 
-export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX.Element | null {
+export function SekcjaMagazynu({ der, szczegolyAudytowe }: SekcjaMagazynuProps): JSX.Element | null {
   const [stan, setStan] = useState<StanKatalogu>({ rodzaj: 'ladowanie' });
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX
             </span>
           </div>
           <div className="mvd-oze-metryka">
-            <span>{PULPIT_STRINGS.magazynMoc}</span>
+            <span><TekstZWzorami tekst={PULPIT_STRINGS.magazynMoc} /></span>
             <span className="mvd-oze-num">{formatMw(dopasowanie.rekord.pmax_mw)}</span>
           </div>
           <div className="mvd-oze-metryka">
@@ -114,7 +115,7 @@ export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX
           </div>
           {/* Karta #145: identyfikator rekordu katalogu wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-magazyn-ekspert"
             wiersze={[
               { etykieta: PULPIT_STRINGS.magazynModel, wartosc: dopasowanie.rekord.id },
@@ -132,7 +133,7 @@ export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX
             {PULPIT_STRINGS.magazynNieodnalezionaOpis}
           </p>
           <InformacjeAudytowe
-            trybEkspercki={trybEkspercki}
+            szczegolyAudytowe={szczegolyAudytowe}
             testid="mvd-oze-magazyn-bateria-audyt"
             wiersze={
               praca?.bateriaRef

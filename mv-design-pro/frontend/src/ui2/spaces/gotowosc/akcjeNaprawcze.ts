@@ -88,13 +88,19 @@ const POWOD_CZAS_TB =
   'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego obliczenia biorą najkrótszy ' +
   'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy Ib przy maszynach ' +
   'wirujących i składowa nieokresowa iDC (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
+const POWOD_WYPOSAZENIE_POLA_BKR =
+  'Aparaty pola baterii kondensatorów (przekładnik niezrównoważenia w połączeniu ' +
+  'międzygwiazdowym, dwa przekładniki napięciowe międzyfazowe do rozładowania) ustawia się na ' +
+  'karcie pola — zaznacz pole baterii kondensatorów na schemacie i uzupełnij wyposażenie.';
 const POWOD_DANE_ZABEZPIECZENIOWE =
   'Wymaganie wynika z funkcji zabezpieczeniowych pola — uzupełnia się je w nastawach na ekranie ' +
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (156 kodów, stan rejestru partii integracji 11). Brak wpisu dla
- * kodu z rejestru jest błędem wykrywanym testem klasy `akcjeNaprawcze.klasa.test.ts`.
+ * KOMPLETNA tabela kodów kanonu (184 kody, stan rejestru po scaleniu kart zespołu uziemiającego
+ * SN i UX-04/POLE-BKR-MODEL — pomiar `len(READINESS_CODES)` 2026-10-29). Brak wpisu dla kodu
+ * z rejestru jest błędem wykrywanym testem klasy
+ * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // --- Źródła zasilania -----------------------------------------------------
@@ -107,11 +113,40 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'W jednej wyspie może pracować jedno źródło sieciowe — usuń nadmiarowe źródło z menu ' +
       'kontekstowego elementu na schemacie.',
   ),
+  // E065 (karta GPZ-MODEL): emiter wskazuje otwarte sprzęgło sekcji — stan łącznika
+  // zmienia edycja parametrów elementu (pole `status`), ta sama co w inspektorze.
+  'source.gpz_section_unsupplied': EDYCJA,
+  // E066 (karta GPZ-MODEL): transformator 110/SN bez równoważnika po stronie 110 kV (model
+  // sprzed karty). Model nie jest migrowany, a żadna pojedyncza operacja nie przebudowuje
+  // GPZ na miejscu — klik prowadzi do transformatora na schemacie, powód mówi, co zrobić.
+  'source.gpz_transformer_hv_unsupplied': przestrzen(
+    'schemat',
+    'Transformator 110/SN istnieje w modelu wyłącznie przy równoważniku sieci po stronie ' +
+      '110 kV — zbuduj GPZ od nowa z równoważnikiem po stronie 110 kV albo z równoważnikiem ' +
+      'na szynach SN bez transformatorów 110/SN.',
+  ),
   'source.sk_min_missing': EDYCJA,
   'source.sk_min_inconsistent': EDYCJA,
   'source.u_set_pu_out_of_range': EDYCJA,
   'earthing.neutral_grounding_inconsistent': EDYCJA,
-  'earthing.electrode_data_missing': EDYCJA,
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: źródło SN z danymi uziemienia pominiętymi
+  // w obliczeniach — edycja parametrów źródła (kasacja opisu punktu neutralnego i Z0).
+  'source.sn_neutral_data_ignored': EDYCJA,
+  // Zespół uziemiający SN (walidator E-ZU-*, W-ZU-*): każdy kod wskazuje element zespołu,
+  // a jego dane (szyna, dławik, rezystor, SPZ, wyłączenie od transformatorów, odbiór potrzeb
+  // własnych, pozycja katalogu) zmienia edycja parametrów elementu — ta sama operacja, która
+  // zapisuje nastawę i dane producenta.
+  'earthing.zespol_bus_invalid': EDYCJA,
+  'earthing.zespol_neutral_undefined': EDYCJA,
+  'earthing.zespol_spz_without_resistor': EDYCJA,
+  'earthing.zespol_transformer_trip_missing': EDYCJA,
+  'earthing.zespol_auxiliary_load_missing': EDYCJA,
+  'earthing.network_grounding_warning': EDYCJA,
+  'earthing.zespol_direct_earthing': EDYCJA,
+  'earthing.zespol_voltage_mismatch': EDYCJA,
+  // Bocznik składowej zerowej zespołu z wartości roboczej (zasada nr 4): formularz
+  // parametrów zespołu — projektant wpisuje dane producenta albo nastawę dławika.
+  'zespol_uziemiajacy.wartosc_robocza': EDYCJA,
   // --- Magistrala i pierścień ---------------------------------------------------
   'trunk.terminal_missing': formularz('continue_trunk_segment_sn'),
   'trunk.segment_missing': formularz('continue_trunk_segment_sn'),
@@ -145,10 +180,22 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // --- Transformatory ---------------------------------------------------------------
   'transformer.catalog_missing': KATALOG,
   'transformer.bay_missing': formularz('add_sn_bay'),
+  // Karta UX-04/POLE-BKR-MODEL: pole i aparaty baterii kondensatorów (W045–W048) oraz
+  // założenia biegów z baterią (pominięcie w składowej zgodnej, parametry robocze baterii).
+  'station.bkr_bay_missing': formularz('add_sn_bay'),
+  // Wyposażenie pola edytuje wyłącznie karta pola (ekran E-11, `EdytorWyposazeniaPola`,
+  // jedyny dostawca `set_bay_equipment`) — nie ma formularza operacji, kartę otwiera
+  // zaznaczenie pola na schemacie.
+  'station.bkr_unbalance_ct_missing': przestrzen('schemat', POWOD_WYPOSAZENIE_POLA_BKR),
+  'station.bkr_discharge_vt_missing': przestrzen('schemat', POWOD_WYPOSAZENIE_POLA_BKR),
+  'station.bkr_transformer_trip_incomplete': EDYCJA,
+  'shunt.pominieta_w_skladowej_zgodnej': EDYCJA,
+  'shunt.parametry_robocze': EDYCJA,
   'transformer.connection_missing': TRANSFORMATOR,
   'transformer.loss_data_missing': KATALOG,
   'transformer.no_load_params_missing': KATALOG,
   'transformer.vector_group_missing': KATALOG,
+  'transformer.winding_voltage_off_nominal': KATALOG,
   'transformer.vector_group_invalid': EDYCJA,
   'transformer.neutral_grounding_not_accessible': EDYCJA,
   'transformer.lv_earthing_system_missing': EDYCJA,
@@ -297,7 +344,6 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'power_flow.unbalanced_no_zero_sequence_path': EDYCJA,
   'power_flow.unbalanced_shunt_admittance_omitted': EDYCJA,
   'power_flow.unbalanced_magnetising_branch_omitted': EDYCJA,
-  'power_flow.unbalanced_losses_self_impedance': EDYCJA,
   'power_flow.unbalanced_transformer_series_model': EDYCJA,
   'power_flow.unbalanced_zero_sequence_confined': EDYCJA,
   'power_flow.unbalanced_zero_sequence_via_source': EDYCJA,
@@ -386,6 +432,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'catalog.materialization_incomplete': KATALOG,
   'catalog.nameplate_mismatch': KATALOG,
   'catalog.gate_result_mismatch': KATALOG,
+  'catalog.transformer_voltage_mismatch': KATALOG,
 };
 
 // ---------------------------------------------------------------------------

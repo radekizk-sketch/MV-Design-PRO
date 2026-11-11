@@ -1,121 +1,113 @@
 /**
- * Strona nN — rozdzielnice, poziomy napięć i odbiory.
+ * Strona nN — rozdzielnice (sekcje) nN i odbiory domeny nN stacji.
  *
- * Zawiera:
- *  1. Listę rozdzielnic nN per poziom napięcia.
- *  2. Listę odbiorów nN (zgodnie ze spec sekcja 4 Karta 6 punkt 5
- *     "Odbiory nN") — pełna tabela P/Q/cos φ/kategoria.
- *
- * Odbiory nN są niezbędne do obliczeń rozpływu mocy (Power Flow) oraz
- * spadków napięcia (VDROP). Bez nich solver nie ma podstawowych danych
- * wejściowych. Stąd ta sekcja jest częścią Karty 6 — nie usuwana.
+ * Dane z atomowej projekcji domeny nN backendu (`stronaNnStacji.ts`): sekcje rozdzielnic,
+ * zasilania, sprzęgła i odpływy z rodzajem rozstrzygniętym przez backend z zawartości
+ * poddrzewa. Stan pobrania (brak przypadku, ładowanie, błąd, brak domeny) jest pokazywany
+ * wprost — pusta lista nie udaje rozdzielnicy bez odpływów.
  */
 
 import { StationConfigLoadsCard, type LoadRow } from './StationConfigLoadsCard';
+import type { StanDanychNn } from '../stronaNnStacji';
 
 export interface NnSwitchgearRow {
+  readonly sectionId: string;
   readonly designation: string;
-  readonly nnVoltageKv: number;
-  readonly sectionsCount: number;
+  readonly nnVoltageKv: number | null;
+  /** `main` — sekcja rozdzielnicy głównej stacji, `sub` — podrozdzielnica wchłonięta w domenę. */
+  readonly tier: 'main' | 'sub';
+  readonly incomersCount: number;
+  readonly couplersCount: number;
   readonly feedersCount: number;
-  readonly loadsCount: number;
-  readonly pvNnCount: number;
-  readonly bessNnCount: number;
-  readonly pBalanceMw?: number | null;
-  readonly qBalanceMvar?: number | null;
-  readonly statusPl: 'kompletne' | 'częściowe' | 'brak danych';
+  /** Odpływy z odbiorami w poddrzewie (rodzaj `load` albo `mixed` backendu). */
+  readonly loadFeedersCount: number;
+  /** Odpływy ze źródłami w poddrzewie (rodzaj `der` albo `mixed` backendu). */
+  readonly derFeedersCount: number;
+  readonly subBoardFeedersCount: number;
 }
 
 export interface StationConfigNnSwitchgearCardProps {
   readonly switchgears: readonly NnSwitchgearRow[];
-  /**
-   * Odbiory nN przypięte do rozdzielnic tej stacji. Wymagane dla Power Flow
-   * i VDROP — bez nich obliczenia rozpływu mocy nie mają sensu.
-   */
-  readonly loads?: readonly LoadRow[];
+  readonly loads: readonly LoadRow[];
+  readonly stanDanych: StanDanychNn;
 }
 
-const STATUS_CLASS: Record<NnSwitchgearRow['statusPl'], string> = {
-  kompletne: 'text-status-ok',
-  'częściowe': 'text-status-warn',
-  'brak danych': 'text-status-error',
+const RODZAJ_SEKCJI_PL: Record<NnSwitchgearRow['tier'], string> = {
+  main: 'rozdzielnica główna',
+  sub: 'podrozdzielnica',
 };
 
-const STATUS_LABEL: Record<NnSwitchgearRow['statusPl'], string> = {
-  kompletne: 'kompletne',
-  'częściowe': 'do konfiguracji',
-  'brak danych': 'do konfiguracji',
-};
-
-function formatPowerBalance(value: number | null | undefined, unit: 'MW' | 'Mvar'): string {
-  return value === null || value === undefined ? `brak ${unit}` : `${value.toFixed(3)} ${unit}`;
+function komunikatStanu(stan: StanDanychNn): string | null {
+  switch (stan.stan) {
+    case 'brak_przypadku':
+      return 'Brak aktywnego przypadku obliczeniowego — domena nN jest odczytywana z modelu przypadku.';
+    case 'ladowanie':
+      return 'Wczytywanie domeny nN stacji…';
+    case 'blad':
+    case 'brak_domeny':
+      return stan.komunikatPl;
+    case 'gotowe':
+      return null;
+  }
 }
 
 export function StationConfigNnSwitchgearCard(
   props: StationConfigNnSwitchgearCardProps,
 ): JSX.Element {
-  const { switchgears, loads = [] } = props;
+  const { switchgears, loads, stanDanych } = props;
+  const komunikat = komunikatStanu(stanDanych);
 
   return (
-    <div data-testid="station-config-nn-switchgear" className="flex flex-col gap-3 text-xs">
-      {/* Sekcja 1: rozdzielnice nN */}
+    <div
+      data-testid="station-config-nn-switchgear"
+      data-stan={stanDanych.stan}
+      className="flex flex-col gap-3 text-xs"
+    >
       <div className="flex flex-col gap-2">
         <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
           Rozdzielnice nN ({switchgears.length})
         </div>
-        {switchgears.length === 0 ? (
+        {komunikat !== null ? (
+          <div data-testid="nn-switchgear-stan" className="italic text-scada-muted">{komunikat}</div>
+        ) : switchgears.length === 0 ? (
           <div className="italic text-scada-muted">
-            Rozdzielnice nN dodaje się z wariantu stacji albo z karty strony nN.
+            Stacja nie ma szyn nN — rozdzielnicę nN tworzy transformator stacji albo kreator stacji.
           </div>
         ) : (
           switchgears.map((sw) => (
             <div
-              key={sw.designation}
-              data-testid={`nn-switchgear-${sw.designation}`}
+              key={sw.sectionId}
+              data-testid={`nn-switchgear-${sw.sectionId}`}
               className="rounded border border-scada-border bg-scada-bg p-2"
             >
               <div className="flex items-baseline justify-between">
                 <span className="font-medium text-scada-text">{sw.designation}</span>
-                <span className="font-mono text-scada-text">{sw.nnVoltageKv} kV</span>
+                <span className="font-mono text-scada-text">
+                  {sw.nnVoltageKv !== null ? `${sw.nnVoltageKv} kV` : 'napięcie nieustalone'}
+                </span>
               </div>
               <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
-                <div><span className="text-scada-muted">Sekcje: </span>{sw.sectionsCount}</div>
+                <div><span className="text-scada-muted">Rodzaj: </span>{RODZAJ_SEKCJI_PL[sw.tier]}</div>
+                <div><span className="text-scada-muted">Zasilania: </span>{sw.incomersCount}</div>
+                <div><span className="text-scada-muted">Sprzęgła: </span>{sw.couplersCount}</div>
                 <div><span className="text-scada-muted">Odpływy: </span>{sw.feedersCount}</div>
-                <div><span className="text-scada-muted">Odbiory: </span>{sw.loadsCount}</div>
-                <div><span className="text-scada-muted">PV po nN: </span>{sw.pvNnCount}</div>
-                <div><span className="text-scada-muted">BESS po nN: </span>{sw.bessNnCount}</div>
-                <div>
-                  <span className="text-scada-muted">Konfiguracja: </span>
-                  <span className={STATUS_CLASS[sw.statusPl]}>{STATUS_LABEL[sw.statusPl]}</span>
-                </div>
-                {sw.pBalanceMw !== null && sw.pBalanceMw !== undefined && (
-                  <div className="col-span-2">
-                    <span className="text-scada-muted">Bilans P/Q: </span>
-                    <span className="font-mono">
-                      {formatPowerBalance(sw.pBalanceMw, 'MW')} / {formatPowerBalance(sw.qBalanceMvar, 'Mvar')}
-                    </span>
-                  </div>
-                )}
+                <div><span className="text-scada-muted">z odbiorami: </span>{sw.loadFeedersCount}</div>
+                <div><span className="text-scada-muted">ze źródłami: </span>{sw.derFeedersCount}</div>
+                <div><span className="text-scada-muted">do podrozdzielnic: </span>{sw.subBoardFeedersCount}</div>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Sekcja 2: odbiory nN — wymagane dla rozpływu mocy + VDROP */}
       <div
         data-testid="station-config-nn-loads-section"
         className="rounded border border-scada-border bg-scada-surface p-2"
       >
-        <div className="mb-2 flex items-baseline justify-between">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-            Odbiory nN — dane wejściowe rozpływu mocy
-          </div>
-          <div className="text-[10px] text-scada-muted">
-            Wymagane dla Power Flow + VDROP (P/Q per odbiór)
-          </div>
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-scada-muted">
+          Odbiory nN — dane wejściowe rozpływu mocy
         </div>
-        <StationConfigLoadsCard loads={loads} />
+        <StationConfigLoadsCard loads={loads} komunikatBrakuPl={komunikat ?? undefined} />
       </div>
     </div>
   );

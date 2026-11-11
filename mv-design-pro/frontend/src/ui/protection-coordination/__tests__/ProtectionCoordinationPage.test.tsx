@@ -64,7 +64,7 @@ const SCENARIUSZ: Record<string, 'MAX' | 'MIN' | null> = {
 beforeEach(() => {
   vi.clearAllMocks();
   useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: 'case-1' } as never);
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null } as never);
+  useExecutionRunsStore.setState({ runs: []} as never);
   useNetworkBuildStore.setState({ openRouteSurface } as never);
   fetchSC.mockImplementation(async (id: string) => {
     if (id === 'run-nieodczytany') throw new Error('HTTP 404');

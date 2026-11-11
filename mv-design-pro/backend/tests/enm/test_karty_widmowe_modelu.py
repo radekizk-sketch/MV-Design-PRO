@@ -70,8 +70,6 @@ def _siec(napiecie_nn_kv: float, trafo: str) -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": h.REF_ZRODLO,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snapshot = h._wykonaj(
@@ -676,6 +674,7 @@ def _model_z_wszystkimi_elementami() -> dict[str, Any]:
         ("add_converter_source", _payload_turbiny_der_sn),
         ("add_converter_source", h._payload_konwerter_der_sn),
         ("add_shunt_compensator_sn", h._payload_kompensator),
+        ("add_zespol_uziemiajacy_sn", h._payload_zespol_uziemiajacy),
         ("add_load_sn", h._payload_odbior_sn),
         ("add_generator_sn", h._payload_generator_sn),
         ("add_nn_cable_segment", h._payload_kabel_nn),
@@ -694,8 +693,6 @@ def _model_z_linia() -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": h.REF_ZRODLO,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     return h._wykonaj(
@@ -710,6 +707,18 @@ PRZESTRZENIE_BEZ_ELEMENTU = {
     "BATERIA_BESS": (
         "pakiet baterii wiązany z generatorem BESS kluczem `battery_catalog_ref` — nie ma "
         "własnego elementu ENM"
+    ),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: dławik i rezystor są urządzeniami PUNKTU
+    # NEUTRALNEGO zespołu — rekordem zagnieżdżonym w `ZespolUziemiajacy` (bez własnego
+    # identyfikatora i bez własnego przyłączenia do szyny). Ich parametry (pochodzenie,
+    # wartość robocza) wyjaśnia `enm.uziemienie_sekcji` — element ENM to zespół (TU).
+    "DLAWIK_GASZACY": (
+        "dławik gaszący jest urządzeniem punktu neutralnego zespołu uziemiającego — rekord "
+        "zagnieżdżony w zespole, bez własnego elementu ENM"
+    ),
+    "REZYSTOR_UZIEMIAJACY": (
+        "rezystor uziemiający jest urządzeniem punktu neutralnego zespołu uziemiającego — "
+        "rekord zagnieżdżony w zespole, bez własnego elementu ENM"
     ),
 }
 
@@ -731,6 +740,7 @@ def test_parytet_sekcji_typ_i_element_dla_kazdej_przestrzeni() -> None:
             "branches",
             "loads",
             "shunt_capacitors",
+            "zespoly_uziemiajace",
         ):
             for element in migawka.get(kolekcja, []):
                 przestrzen = element.get("catalog_namespace")

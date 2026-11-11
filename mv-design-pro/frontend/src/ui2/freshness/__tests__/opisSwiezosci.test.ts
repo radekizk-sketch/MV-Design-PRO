@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy czystej funkcji opisSwiezosci (E15.2).
  * Kryteria: docs/uiux/karty/U1_E15_2_SWIEZOSC.md §3.2 — etykiety PL dokładnie jak w §2,

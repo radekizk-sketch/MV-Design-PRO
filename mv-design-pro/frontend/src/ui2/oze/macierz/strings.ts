@@ -9,7 +9,7 @@
  */
 
 import type { FormatDokumentu } from '../ncrfg/api';
-import type { PochodzenieDanej, PoleZdolnosci, PowodBlokady } from './macierzModel';
+import type { OczekiwanieWejsc, PochodzenieDanej, PoleZdolnosci, PowodBlokady } from './macierzModel';
 
 export const MACIERZ_STRINGS = {
   // Nagłówek
@@ -45,6 +45,9 @@ export const MACIERZ_STRINGS = {
     'Użyj przycisku „Przeprowadź bieg „co-jeśli"", aby wypełnić macierz rekordami oceny testów.',
   bladBiegu: 'Nie udało się przeprowadzić biegu',
   bladKatalogu: 'Nie udało się pobrać katalogu wymogów procedury',
+  katalogTestowWczytywanie: 'Odczyt katalogu testów procedury…',
+  katalogTestowBlad:
+    'Katalog testów procedury nie został odczytany (komunikat serwera nad macierzą) — wiersze testów pojawią się po udanym odczycie.',
 
   // Macierz
   naglowekTestu: 'Test procedury',
@@ -155,9 +158,17 @@ export const MACIERZ_STRINGS = {
   brakMocy:
     'Brak danych: moc znamionowa. Wybierz urządzenie z katalogu — moduł nie zostanie objęty biegiem bez tej danej.',
   brakWejsciaModelu:
-    'Brak danych modułu z zatwierdzonego modelu przypadku (przypadek i operator niewybrane, odczyt ' +
-    'w toku albo nieudany, albo model przypadku nie obejmuje tego źródła) — formularz biegu ' +
-    'startuje wyłącznie z danych modelu.',
+    'Brak danych modułu z zatwierdzonego modelu przypadku (przypadek albo operator niewybrane, ' +
+    'albo model przypadku nie obejmuje tego źródła) — formularz biegu startuje wyłącznie z ' +
+    'danych modelu.',
+  komorkaWczytywanie: 'odczyt danych modułu…',
+  komorkaBladOdczytu: 'odczyt nieudany',
+  panelWczytywanie:
+    'Trwa odczyt danych modułu z zatwierdzonego modelu przypadku — formularz biegu pojawi się ' +
+    'po odczycie.',
+  panelBladOdczytu:
+    'Odczyt danych modułu z zatwierdzonego modelu przypadku nie powiódł się (komunikat serwera ' +
+    'nad macierzą) — to nie jest brak danych modułu.',
 } as const;
 
 /** Etykiety flag zdolności (nazwy pól kontraktu → opis PL; klucze nie są statusem). */
@@ -184,6 +195,18 @@ export const ETYKIETY_ZDOLNOSCI: Readonly<Record<PoleZdolnosci, string>> = {
 export const ETYKIETY_POCHODZENIA: Readonly<Record<PochodzenieDanej, string>> = {
   model: 'z modelu',
   deklarowane: 'dane deklarowane',
+};
+
+/** Etykiety komórki czekającej na odczyt wejść — neutralne, bez statusu werdyktu. */
+export const ETYKIETY_OCZEKIWANIA: Readonly<Record<OczekiwanieWejsc, string>> = {
+  wczytywanie_wejsc: MACIERZ_STRINGS.komorkaWczytywanie,
+  blad_odczytu_wejsc: MACIERZ_STRINGS.komorkaBladOdczytu,
+};
+
+/** Opis oczekiwania w panelu modułu i w szczególe komórki. */
+export const OPISY_OCZEKIWANIA: Readonly<Record<OczekiwanieWejsc, string>> = {
+  wczytywanie_wejsc: MACIERZ_STRINGS.panelWczytywanie,
+  blad_odczytu_wejsc: MACIERZ_STRINGS.panelBladOdczytu,
 };
 
 /** Etykiety powodu blokady modułu (jawny stan braku danych, bez zgadywania). */

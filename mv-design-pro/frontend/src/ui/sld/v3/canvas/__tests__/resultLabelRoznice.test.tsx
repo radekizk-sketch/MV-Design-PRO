@@ -41,6 +41,7 @@ import {
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import { useSldDeltaOverlayStore } from '../../../../sld-overlay/sldDeltaOverlayStore';
 import type { NakladkaRoznic } from '../../../../sld-overlay/sldDeltaOverlay.api';
+import { wyczyscRejestrBiegow, zasiejBiegiNieaktualne } from '../../../../../test/biegNieaktualny';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -133,6 +134,7 @@ beforeEach(() => {
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   useSnapshotStore.getState().reset();
+  wyczyscRejestrBiegow();
   useSelectionStore.getState().clearSelection();
   useRawResultOverlayStore.getState().clear();
   useOverlayStore.getState().clearOverlay();
@@ -315,7 +317,8 @@ describe('Kanwa w trybie różnic A/B', () => {
     // Ta sama reguła świeżości co dla wyniku pojedynczego przebiegu — różnica
     // policzona na modelu sprzed edycji jest tak samo nieaktualna.
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaJednaLinia() });
-    useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
+    // Karta K8: model zmieniony po biegu B — rewizja biegu ≠ rewizja modelu (jeden predykat).
+    zasiejBiegiNieaktualne([{ id: 'sc-run-b', analysisType: 'SC_3F' }]);
 
     const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
 

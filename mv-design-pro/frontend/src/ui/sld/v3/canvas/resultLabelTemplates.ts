@@ -9,7 +9,7 @@
  * (bez spekulacji).
  *
  * §0 ZERO fizyki w UI: każdy `code` mapuje 1:1 na istniejącą metrykę backendu
- * (`domain/result_builder_v1.py::_extract_element_metrics` `_METRIC_MAP` —
+ * (`domain/result_builder_v1.py::METRYKI_ELEMENTOW_WYNIKU` —
  * U_kV/V_PU/ANGLE_DEG/P_MW/Q_Mvar/S_MVA/LOADING_PCT/I_A/LOSSES_P_MW/COS_PHI/
  * DELTA_U_KV/DELTA_U_PCT/IK_3F_A/IP_A/ITH_A). Funkcje `format*` WYŁĄCZNIE
  * formatują (polski przecinek dziesiętny, jednostki, znak kierunku) — ŻADNEJ
@@ -223,7 +223,7 @@ const LF_BRANCH: readonly ResultLabelLineSpec[] = [
  *  cieplny Ith oraz moc zwarciowa Sk (R4 — domknięcie slotu W4 realnymi
  *  wielkościami zwarciowymi węzła, które payload backendu NIESIE:
  *  `short_circuit_to_resultset_v1.py` element „bus" → ikss_a/ip_a/ith_a/sk_mva,
- *  `result_builder_v1._METRIC_MAP` → IK_3F_A/IP_A/ITH_A/SK_MVA). Kolejność =
+ *  `result_builder_v1.METRYKI_ELEMENTOW_WYNIKU` → IK_3F_A/IP_A/ITH_A/SK_MVA). Kolejność =
  *  priorytet: na kanwie top-3 wg LOD (Ik″/ip/Ith), Sk w pełnym zestawie
  *  (agregat/inspektor) — wzorzec LF (branch 6 linii, cap 3). Rozkład wkładu
  *  system/DER/total (IK_3F_SYSTEM_A/IK_3F_DER_A/IK_3F_TOTAL_A) jest w payloadzie,

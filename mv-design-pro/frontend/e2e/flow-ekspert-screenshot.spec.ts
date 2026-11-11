@@ -9,7 +9,7 @@
  *               CYTUJE je zamiast powtarzać — limit OSD i suma mocy znamionowej
  *               generatorów liczone z fixtury, nie wpisane w asercji,
  * - uwaga     — rejestr „Co wymaga uwagi" (A1) z akcjami z rejestru akcji (K1),
- * - swiezosc  — pasek aktywnego przypadku ze znacznikiem „wyniki nieaktualne" (K4).
+ * - swiezosc  — pasek projektu ze znacznikiem „wyniki nieaktualne" (K4, K1 POWLOKA).
  * Oba motywy. Zrzut = jedyny dowód (strona oceny właściciela).
  */
 import { test, expect } from '@playwright/test';
@@ -245,8 +245,8 @@ test.describe('flow-ekspert:screenshot', () => {
           await expect(page.getByTestId('mvd-cwu-lista')).toBeVisible();
           expect(await page.getByTestId('mvd-cwu-pozycja').count()).toBeGreaterThan(0);
         } else if (scena === 'swiezosc') {
-          await expect(page.getByTestId('mvd-casebar')).toBeVisible();
-          await expect(page.getByTestId('mvd-casebar-results')).toContainText('nieaktualne');
+          await expect(page.getByTestId('active-case-bar')).toBeVisible();
+          await expect(page.getByTestId('mvd-projekt-wyniki')).toContainText('nieaktualne');
         } else if (scena === 'walidacja') {
           // R2-A: wybor pozycji z wywodem (klik wiersza tabeli po etykiecie
           // rodzaju kontroli) -> rozwiniety slad WHITE BOX. `.first()`

@@ -22,7 +22,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { BayPrimaryDevice, BaySwitchState, EnergyNetworkModel } from '../../../../../../types/enm';
+import type { Bay, BayPrimaryDevice, BaySwitchState, EnergyNetworkModel } from '../../../../../../types/enm';
+import { polaSnStacji } from '../../../../../shared/polaStacji';
 import { buildSceneV3 } from '../../buildScene';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -204,18 +205,9 @@ export interface W1cMatrixFixture {
   readonly targets: readonly W1cInjectionTarget[];
 }
 
-interface RawFieldSpec {
-  field_ref?: string;
-  bay_role?: string;
-  meta?: { field_role?: string } & Record<string, unknown>;
-  primary_devices?: unknown;
-  config_id?: unknown;
-  [key: string]: unknown;
-}
 interface RawSubstation {
   ref_id: string;
   station_type?: string;
-  meta?: { field_specs?: RawFieldSpec[] } & Record<string, unknown>;
 }
 
 function loadBaseEnm(): EnergyNetworkModel {
@@ -236,7 +228,7 @@ function loadBaseEnm(): EnergyNetworkModel {
  * WYŁĄCZNIE od szyny, nie ma kabla odpływowego).
  *
  * Detekcja deterministyczna z BAZOWEJ sceny: pole jest bezpieczne, gdy w jego
- * KOLUMNIE (x zejścia `${field_ref}#descent`) nie kończy się żaden segment
+ * KOLUMNIE (x zejścia `${ref_id pola}#descent`) nie kończy się żaden segment
  * międzystacyjny (`ownerRef` z prefiksem `seg/`) w pobliżu dna zejścia.
  */
 function connectionSafeFieldRefs(baseEnm: EnergyNetworkModel): Set<string> {
@@ -275,7 +267,7 @@ function connectionSafeFieldRefs(baseEnm: EnergyNetworkModel): Set<string> {
 /**
  * Buduje fixturę macierzy generatywnej: klon `sldSubstrate52s` + wstrzyknięcie
  * KAŻDEGO przypadku katalogu do OSOBNEGO pola-hosta (pola deterministycznie
- * posortowane po ref_id stacji + field_ref). Render podąża za DANYMI, więc rola
+ * posortowane po ref_id stacji + ref_id pola). Render podąża za DANYMI, więc rola
  * hosta nie musi pasować do konfiguracji — to ISTOTA dowodu W1c (prymat danych
  * nad rolą, uwaga 10). Zwraca też KLON BAZOWY do asercji kotwic stacji.
  */
@@ -284,7 +276,7 @@ export function buildW1cMatrixFixture(): W1cMatrixFixture {
   const baseEnm = loadBaseEnm();
   const cases = buildW1cCases();
 
-  const hostFields: { station: RawSubstation; spec: RawFieldSpec }[] = [];
+  const hostFields: { station: RawSubstation; spec: Bay }[] = [];
   const stations = (enm.substations as unknown as RawSubstation[])
     // Tylko stacje rysowane ścieżką mini-bloku (branch/inline/terminal) — GPZ
     // ma osobny potok (canonical GPZ adapter), pola GPZ nie spływają na snBays.
@@ -292,12 +284,9 @@ export function buildW1cMatrixFixture(): W1cMatrixFixture {
     .slice()
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
   for (const station of stations) {
-    const specs = (station.meta?.field_specs ?? [])
-      .slice()
-      .sort((a, b) => String(a.field_ref ?? '').localeCompare(String(b.field_ref ?? '')));
-    for (const spec of specs) {
-      if (spec.field_ref) hostFields.push({ station, spec });
-    }
+    // Karta W5-B: pola-hosty = rekordy `bays` pól SN stacji.
+    const specs = [...polaSnStacji(enm, station.ref_id)].sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+    for (const spec of specs) hostFields.push({ station, spec });
   }
 
   if (hostFields.length < cases.length) {
@@ -310,7 +299,7 @@ export function buildW1cMatrixFixture(): W1cMatrixFixture {
   // międzystacyjnego (brak odpływu kablowego — jak realna celka uziemiania szyn).
   // Celki torowe (main_path) mają port dolny i kotwiczą się na dowolnym hoście.
   const safeRefs = connectionSafeFieldRefs(baseEnm);
-  const isSafe = (host: { spec: RawFieldSpec }): boolean => safeRefs.has(host.spec.field_ref ?? '');
+  const isSafe = (host: { spec: Bay }): boolean => safeRefs.has(host.spec.ref_id);
   const safeHosts = hostFields.filter(isSafe);
   const pathlessCases = cases.filter((c) => !c.mainPath);
   const mainPathCases = cases.filter((c) => c.mainPath);
@@ -324,7 +313,7 @@ export function buildW1cMatrixFixture(): W1cMatrixFixture {
 
   // Deterministyczne przypisanie: celki beztorowe → pierwsze bezpieczne hosty;
   // celki torowe → pozostałe hosty (nadmiar bezpiecznych + pozostałe), w
-  // kolejności hostFields (stabilnej po ref_id stacji + field_ref).
+  // kolejności hostFields (stabilnej po ref_id stacji + ref_id pola).
   const pathlessHosts = safeHosts.slice(0, pathlessCases.length);
   const usedPathless = new Set(pathlessHosts);
   const mainPathHosts = hostFields.filter((h) => !usedPathless.has(h));
@@ -332,16 +321,16 @@ export function buildW1cMatrixFixture(): W1cMatrixFixture {
   const targets: W1cInjectionTarget[] = [];
   const assign = (
     assignedCases: readonly W1cCase[],
-    hosts: readonly { station: RawSubstation; spec: RawFieldSpec }[],
+    hosts: readonly { station: RawSubstation; spec: Bay }[],
   ): void => {
     assignedCases.forEach((testCase, index) => {
       const host = hosts[index];
-      host.spec.primary_devices = testCase.devices.map((d) => ({ ...d }));
+      host.spec.primary_devices = testCase.devices.map((d) => ({ ...d })) as Bay['primary_devices'];
       host.spec.config_id = testCase.configId;
       targets.push({
         case: testCase,
         stationRef: host.station.ref_id,
-        fieldRef: host.spec.field_ref ?? '',
+        fieldRef: host.spec.ref_id,
       });
     });
   };

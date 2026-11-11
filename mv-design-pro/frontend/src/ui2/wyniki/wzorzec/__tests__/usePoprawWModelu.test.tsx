@@ -14,7 +14,7 @@ import { usePoprawWModelu } from '../usePoprawWModelu';
 describe('usePoprawWModelu — od wyniku do decyzji', () => {
   beforeEach(() => {
     useSelectionStore.getState().clearSelection?.();
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   });
 
@@ -24,7 +24,7 @@ describe('usePoprawWModelu — od wyniku do decyzji', () => {
 
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toEqual({ id: 'szyna-1', type: 'Bus', name: 'Szyna GPZ' });
-    expect(sel.sldCenterOnElement).toBe('szyna-1');
+    expect(sel.sldWskazanie?.ref).toBe('szyna-1');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
@@ -41,7 +41,7 @@ describe('usePoprawWModelu — od wyniku do decyzji', () => {
 
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toEqual({ id: 'szyna-1', type: 'Bus', name: 'Szyna GPZ' });
-    expect(sel.sldCenterOnElement).toBe('szyna-1');
+    expect(sel.sldWskazanie?.ref).toBe('szyna-1');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
     expect(useShellStore.getState().wynikiTab).toBeNull();
     expect(useShellStore.getState().wynikiTabElement).toBeNull();
@@ -54,7 +54,7 @@ describe('usePoprawWModelu — od wyniku do decyzji', () => {
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toEqual({ id: 'slack', type: 'Bus', name: 'Szyna bilansująca' });
     // Schemat nie jest celem — odroczony zoom SLD byłby zaskoczeniem.
-    expect(sel.sldCenterOnElement).toBeNull();
+    expect(sel.sldWskazanie).toBeNull();
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(useShellStore.getState().wynikiTab).toBe('kompensacja');
     // R2-B: deep-link niesie ref węzła przekroczenia → pre-selekcja w oknie

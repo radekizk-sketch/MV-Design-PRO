@@ -494,7 +494,10 @@ def build_golden_network() -> EnergyNetworkModel:
                 "cab_s18_s19",
                 "cab_t3_s14",
             ],
-            no_point_ref="cab_t3_s14",
+            # W5-C: bez punktu podziału — pierścień M2 nie ma łącznika, a punkt podziału
+            # jest pozycją normalną ŁĄCZNIKA (`SwitchBranch.normal_state`). Dawne
+            # `no_point_ref="cab_t3_s14"` wskazywało KABEL (fikcja: kabel nie ma pozycji
+            # normalnej, pole było ignorowane przez model, pierścień i tak zamknięty).
         )
     )
 

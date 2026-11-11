@@ -96,14 +96,15 @@ test('L-3 + L-4 + L-5 + L-2: własna nazwa, odświeżenie, zmiana projektu i usu
       timeout: 30000,
     })
     .toBe(true);
-  // Powłoka przeszła do kontekstu nowego projektu (pasek przypadku go zna).
+  // Powłoka przeszła do kontekstu nowego projektu (pasek projektu go zna).
   await expect(page.getByTestId('active-case-bar')).toContainText(nazwaNowego, { timeout: 30000 });
 
   // --- L-5: „Otwórz projekt" działa TAKŻE przy otwartym projekcie -----------
   const drugi = await utworzProjekt(request, nazwaDrugiego);
 
-  // Przy OTWARTYM projekcie wejściem jest klikalny chip nazwy projektu.
-  await page.getByTestId('mvd-casebar-project').click();
+  // Przy OTWARTYM projekcie wejściem jest menu nazwy projektu → „Zmień projekt…".
+  await page.getByTestId('mvd-projekt-nazwa').click();
+  await page.getByTestId('mvd-projekt-zmien').click();
   await expect(page.getByRole('heading', { name: 'Nowy projekt / otwórz projekt' })).toBeVisible();
 
   // --- L-4: odświeżenie listy pokazuje projekt utworzony poza ekranem -------
@@ -121,7 +122,8 @@ test('L-3 + L-4 + L-5 + L-2: własna nazwa, odświeżenie, zmiana projektu i usu
   // Kontrakt backendu (`DELETE /api/projects/{id}`): projekt Z ZALEZNOSCIAMI
   // (warianty/przypadki/obliczenia) daje 409 Conflict. Sprawdzamy OBIE sciezki —
   // UI ma pokazac uczciwy komunikat serwera, a nie udawac usuniecie.
-  await page.getByTestId('mvd-casebar-project').click();
+  await page.getByTestId('mvd-projekt-nazwa').click();
+  await page.getByTestId('mvd-projekt-zmien').click();
   await page.getByTestId('mvd-projekty-odswiez').click();
 
   // (a) projekt z wariantem bazowym (utworzony w tym tescie przez ekran) —

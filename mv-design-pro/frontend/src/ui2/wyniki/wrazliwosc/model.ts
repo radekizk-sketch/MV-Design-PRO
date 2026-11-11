@@ -2,8 +2,8 @@
  * Model okna „Wrażliwość" — czyste projekcje do wspólnego wzorca ekranu
  * analizy (`ui2/wyniki/wzorzec`): kolumny deklaratywne, wiersze `WartoscKomorki`,
  * założenia. ZERO fizyki — wartości i progi wprost z backendu.
- * Wybór przebiegu rozpływu — reużycie `przebiegRozplywu` z modelu okna
- * „Jakość wyników" (jedno źródło prawdy doboru przebiegu LOAD_FLOW/DONE).
+ * Przebieg rozpływu nie jest wybierany tutaj: ekran czyta aktywny bieg rodziny
+ * „rozpływ" z magazynu kontekstu wyniku (`ui2/wyniki/kontekst`, karta K8).
  */
 
 import type {
@@ -22,7 +22,6 @@ import {
   fmtPp,
 } from './strings';
 
-export { przebiegRozplywu } from '../jakosc/jakoscModel';
 
 /** Nazwa szyny dla identyfikatora węzła grafu (fallback: identyfikator). */
 export function nazwaWezla(

@@ -32,10 +32,7 @@ import type {
   BayPrimaryDeviceKind,
   BayDeviceState,
 } from '../../../../types/enm';
-import type {
-  EarthingSwitchState,
-  GpzApparatusSwitchState,
-} from '../renderer/GpzSwitchgearTypes';
+import type { EarthingSwitchState, GpzApparatusSwitchState } from '../model/gpzSwitchgearTypes';
 import type { AbbCellType } from './abbFieldLibrary';
 import type { SldShortCircuitCompanion } from './companions/shortCircuitTypes';
 import type { SldVoltageFlowCompanion } from './companions/voltageFlowTypes';
@@ -109,7 +106,7 @@ export const FIELD_ROLE_SHORT_TAG: Readonly<Record<StationFieldRole, string>> = 
  * schematic, drawer, context panel, bay-template catalog, exports, results). Mirrored by the
  * backend canon `backend/src/enm/rola_pola_sn.py::NAZWA_ROLI_POLA_SN_PL` (parity pinned by
  * `backend/tests/enm/test_nazwy_pol_bez_kodow.py`). Every other role vocabulary (model
- * `Bay.bay_role` IN/OUT/FEEDER/TR/COUPLER/MEASUREMENT/OZE, catalog `BayKind`, SLD roles) maps
+ * `Bay.bay_role` IN/OUT/FEEDER/TR/COUPLER/MEASUREMENT/OZE/BKR, catalog `BayKind`, SLD roles) maps
  * to a canonical role FIRST and takes its label from here — no second list of Polish role
  * labels anywhere else (guard: `backend/tests/ci/test_etykiety_rol_pol_sn.py`).
  */
@@ -123,6 +120,8 @@ export const FIELD_ROLE_LABEL_PL: Readonly<Record<BayCanonicalRole, string>> = {
   PV_SN: 'Pole źródłowe PV',
   BESS_SN: 'Pole źródłowe BESS',
   FW_SN: 'Pole źródłowe FW',
+  ZESPOL_UZIEMIAJACY: 'Pole zespołu uziemiającego',
+  BATERIA_KONDENSATOROW: 'Pole baterii kondensatorów',
 };
 
 /** Source field whose technology is not known (model role `OZE`). */
@@ -132,7 +131,7 @@ export const FIELD_SOURCE_LABEL_PL = 'Pole źródłowe SN';
 export const FIELD_GENERIC_LABEL_PL = 'Pole SN';
 
 /**
- * Model field role (`Bay.bay_role`, `field_specs[].bay_role`) → canonical role. Mirror of the
+ * Model field role (`Bay.bay_role`) → canonical role. Mirror of the
  * backend alias map `ROLA_POLA_SN_Z_ALIASU` (parity pinned by the same backend test). The model
  * source role `OZE` has NO canonical role: its technology is known only from the generator.
  */
@@ -143,6 +142,8 @@ export const MODEL_BAY_ROLE_TO_CANONICAL: Readonly<Record<string, BayCanonicalRo
   TR: 'TRANSFORMATOROWE',
   COUPLER: 'SPRZEGLO',
   MEASUREMENT: 'POMIAROWE',
+  ZU: 'ZESPOL_UZIEMIAJACY',
+  BKR: 'BATERIA_KONDENSATOROW',
 };
 
 const MODEL_SOURCE_ROLE = 'OZE';
@@ -322,8 +323,8 @@ export interface StationFieldDescriptor {
  * The nN-side block of a transformer station (STEP 2). It is a SECOND voltage
  * level: an nN busbar fed by the SN/nN transformer through the nN main breaker,
  * with outgoing feeders (ODPLYW_NN) carrying load and an optional PV field
- * (ZRODLO_NN_PV) that backfeeds the bus. Mirrors the ENM `NNBlockSpec` /
- * `NNFeederSpec` taxonomy (domain_ops_models.py).
+ * (ZRODLO_NN_PV) that backfeeds the bus. Mirrors the `nn_block` of the station
+ * operations (`outgoing_feeders_nn[].feeder_role`, `domain/canonical_operations.py`).
  *
  * Per the ZERO-SECOND-TRUTH rule, NO power values live here — the renderer reads
  * each feeder's / PV's active power and direction from the frozen-solver
@@ -332,7 +333,7 @@ export interface StationFieldDescriptor {
 export interface StationNNFeeder {
   /** Stable id (click target). */
   readonly feederId: string;
-  /** nN feeder role (ENM `NNFeederSpec.feeder_role`). */
+  /** nN feeder role (`nn_block.outgoing_feeders_nn[].feeder_role`). */
   readonly role: 'ODPLYW_NN' | 'ODPLYW_REZERWOWY' | 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS';
   /** Short feeder name. */
   readonly feederName?: string;
@@ -350,7 +351,7 @@ export interface StationTransformer {
   readonly vectorGroup: string;
   /** Rated power label (e.g. "630 kVA"). */
   readonly ratingLabel?: string;
-  /** Whether an on-load tap changer is present (ENM `TransformerSpec.tap_changer_present`). */
+  /** Whether a tap changer is present (ENM `Transformer.tap_changer`, `enm/models.py`). */
   readonly tapChanger?: boolean;
 }
 

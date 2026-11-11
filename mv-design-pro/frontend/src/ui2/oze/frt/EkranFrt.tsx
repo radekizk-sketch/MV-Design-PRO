@@ -18,8 +18,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './frt.css';
-import type { AdvancementMode } from '../../shell/modeModel';
-import { isModeAtLeast } from '../../shell/modeModel';
 import { InformacjeAudytowe, SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
 import { OcenaNiewykonana, SekcjaAudytowa } from '../../wyniki/wzorzec/OcenaNiewykonana';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
@@ -98,14 +96,13 @@ function StanPanel({
 
 function WynikTrajektorii({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokTrajektoriiFrt;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
   const obwiednia = useMemo(() => punktyObwiedniFrt(dane), [dane]);
   const kolumny = useMemo(() => kolumnyTabeliFrt(), []);
@@ -172,7 +169,7 @@ function WynikTrajektorii({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       {dane.sekcja_audytowa_pl && (
@@ -187,7 +184,7 @@ function WynikTrajektorii({
             kolumny={kolumnyAudytu}
             wiersze={wierszeAudytu}
             onOtworzDowod={onOtworzDowod}
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
           />
         </SekcjaAudytowa>
       )}
@@ -204,7 +201,7 @@ function WynikTrajektorii({
 
       <InformacjeAudytowe
         wiersze={informacjeAudytowe}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-frt-informacje-audytowe"
       />
     </div>
@@ -216,14 +213,14 @@ function WynikTrajektorii({
 // ---------------------------------------------------------------------------
 
 export interface EkranFrtProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (wzorzec wspólny,
    * `ui2/wyniki/wzorzec`). Realny dostawca z rodzica (`WynikiWarsztat`), nie
    * zaślepka — wpięty też do zagnieżdżonej `SekcjaSekwencjiZapadow`. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranFrt({ trybZaawansowania, onOtworzDowod }: EkranFrtProps) {
+export function EkranFrt({ szczegolyAudytowe, onOtworzDowod }: EkranFrtProps) {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const moduly = useMemo<OpcjaModuluFrt[]>(() => opcjeModulowFrt(ders), [ders]);
   // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
@@ -447,7 +444,7 @@ export function EkranFrt({ trybZaawansowania, onOtworzDowod }: EkranFrtProps) {
             <>
               <WynikTrajektorii
                 dane={stan.dane}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 onOtworzDowod={onOtworzDowod}
               />
               {/* K5-B (H-3 pkt 4): pętla ocena → zgodność. Klucz = id modułu
@@ -481,7 +478,7 @@ export function EkranFrt({ trybZaawansowania, onOtworzDowod }: EkranFrtProps) {
           <SekcjaSekwencjiZapadow
             derRef={derRef}
             operatorId={wybranyOperator}
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             onOtworzDowod={onOtworzDowod}
           />
         </>

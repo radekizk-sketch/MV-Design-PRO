@@ -23,8 +23,9 @@
  * ZERO fizyki (§0): most nie czyta ani jednej wielkości wyniku — operuje na
  * refach i deklaracjach modelu.
  */
-import type { Bus, EnergyNetworkModel, Substation } from '../../../../types/enm';
-import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
+import type { Bus, EnergyNetworkModel } from '../../../../types/enm';
+import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../../shared/stationBusResolution';
+import { polaSnStacji } from '../../../shared/polaStacji';
 import {
   kontekstTransformatorowStacji,
   selectStationDistributionTransformers,
@@ -54,42 +55,6 @@ function busIndex(snapshot: EnergyNetworkModel): ReadonlyMap<string, Bus> {
   return new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
 }
 
-/** Rekordy `field_specs` stacji (ENM `Substation.meta.field_specs`) — źródło
- *  roli pola. Ten sam kanał, z którego adapter v2 czyta pola stacji. */
-interface FieldSpecLike {
-  readonly field_ref?: string;
-  readonly bay_role?: string;
-  readonly bus_ref?: string;
-}
-
-/**
- * Szyna, do której RYSUNEK przyczepia pola stacji — jedyna szyna wskazywana
- * przez `field_specs[].bus_ref` wszystkich pól SN stacji. To NIE jest to samo
- * pytanie, co „szyna o najwyższym napięciu" (`pickStationBus`): kompozycja
- * stacji rysuje odcinek `#sn-bus` OD PIERWSZEGO DO OSTATNIEGO ZACZEPU POLA
- * (`compose/station.ts`), więc narysowana szyna to dokładnie szyna pól — i to
- * ona ma dostać etykietę. Dla GPZ reguła „najwyższe napięcie" wskazałaby szynę
- * 110 kV, a blok GPZ na poziomie przeglądu reprezentuje rozdzielnię SN.
- *
- * Pola wskazujące RÓŻNE szyny (stacja dwusekcyjna) ⇒ `null`: rysunek ma jeden
- * odcinek `#sn-bus`, więc przypisanie byłoby zgadywaniem, którą sekcję pokazuje.
- */
-function stationFieldBusRef(substation: Substation): string | null {
-  let found: string | null = null;
-  for (const spec of fieldSpecsOf(substation)) {
-    const busRef = spec.bus_ref;
-    if (!busRef) continue;
-    if (found === null) found = busRef;
-    else if (found !== busRef) return null;
-  }
-  return found;
-}
-
-function fieldSpecsOf(substation: Substation): readonly FieldSpecLike[] {
-  const meta = substation.meta as { field_specs?: readonly FieldSpecLike[] } | undefined;
-  const specs = meta?.field_specs;
-  return Array.isArray(specs) ? specs : [];
-}
 
 /**
  * Zbuduj most dla całej migawki. Pokrycie (rodzina → reguła wyprowadzenia,
@@ -97,13 +62,12 @@ function fieldSpecsOf(substation: Substation): readonly FieldSpecLike[] {
  *
  * | element rysunku                 | punkt wyniku                  | reguła |
  * |---------------------------------|-------------------------------|--------|
- * | `${stationRef}#sn-bus`          | szyna pól SN stacji           | `stationFieldBusRef` (szyna, z której rysunek buduje odcinek) |
- * | `${stationRef}` (blok L0)       | szyna pól SN stacji           | jw. — wartość STACYJNA na poziomie przeglądu |
+ * | `${busRef}#sn-bus`              | szyna sekcji SN stacji        | `stationSnSectionBusRefs` (sekcja = odcinek rysunku) |
+ * | `${stationRef}` (blok L0)       | jedyna sekcja SN stacji       | jw. — WYŁĄCZNIE stacja jednosekcyjna; GPZ: jedyna szyna `gpz_sections` |
  * | `${stationRef}#lv-bus`          | szyna nN stacji               | `pickStationBus(…,'nn')` |
  * | ref pola o roli `TR`            | transformator stacji          | `Substation.transformer_refs` — WYŁĄCZNIE gdy dokładnie jeden |
  *
- * Odmowy (zamiast zgadywania): stacja, której pola wskazują różne szyny
- * (dwusekcyjna), stacja z dwiema szynami nN tego samego napięcia
+ * Odmowy (zamiast zgadywania): blok L0 stacji wielosekcyjnej, stacja z dwiema szynami nN tego samego napięcia
  * (`StationBusPick.ambiguous`) i stacja z wieloma transformatorami — rysunek
  * ma po jednym odcinku szyny / symbolu na pole, więc przypisanie byłoby
  * zgadywaniem. Punkt trafia wtedy do licznika „bez elementu rysunku".
@@ -116,16 +80,33 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
   const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
   for (const substation of snapshot.substations ?? []) {
     const stationRef = substation.ref_id;
-    const snBusRef = stationFieldBusRef(substation);
     const nn = pickStationBus(substation, buses, 'nn');
-    if (snBusRef && buses.has(snBusRef)) {
-      bridge.set(`${stationRef}${STATION_SN_BUS_SUFFIX}`, { resultRef: snBusRef, kind: 'bus' });
+    // GEOMETRIA-STACJI (Z-03): KAŻDA sekcja szyn SN ma własny odcinek rysunku
+    // `${busRef}#sn-bus` (`compose/station.ts`), więc każda dostaje WŁASNY punkt wyniku —
+    // ta sama reguła sekcji co rysunek (`stationSnSectionBusRefs`). Stacja wielosekcyjna
+    // nie jest już odmową, a wynik jednej sekcji nie trafia na drugą.
+    // GPZ rysuje szyny sekcji własną kompozycją (odcinki niosą `busResultRef`, K5-A), nie
+    // odcinkiem `${busRef}#sn-bus`; jego sekcje SN to rekordy `gpz_sections` (szyna WN
+    // rozdzielni leży powyżej pasma nN, więc reguła sekcji stacji SN wzięłaby ją za sekcję
+    // i blok GPZ straciłby wiązanie).
+    const gpz = substation.station_type === 'gpz';
+    const sekcje = gpz
+      ? [...new Set((substation.gpz_sections ?? []).map((sec) => sec.bus_ref).filter((ref) => !!ref && buses.has(ref)))]
+      : stationSnSectionBusRefs(substation, buses);
+    if (!gpz) {
+      for (const busRef of sekcje) {
+        bridge.set(`${busRef}${STATION_SN_BUS_SUFFIX}`, { resultRef: busRef, kind: 'bus' });
+      }
+    }
+    if (sekcje.length === 1) {
       // Blok stacji na poziomie przeglądu (L0) niesie wartość STACYJNĄ —
       // wielkość szyny SN stacji (dla zwarć: Ik″ punktu stacji; dla rozpływu:
       // napięcie szyny). Ten sam punkt wyniku, inna kotwica — dlatego most
       // wskazuje go z DWÓCH refów rysunku, a warstwa etykiet deduplikuje po
-      // `resultRef` (jedna etykieta na punkt w obrębie jednej sceny).
-      bridge.set(stationRef, { resultRef: snBusRef, kind: 'bus' });
+      // `resultRef` (jedna etykieta na punkt w obrębie jednej sceny). Blok L0 stacji
+      // WIELOSEKCYJNEJ jest jednym symbolem dla kilku szyn — wskazanie jednej z nich
+      // byłoby wyborem z domysłu; wartości sekcji niosą odcinki szyn od L1.
+      bridge.set(stationRef, { resultRef: sekcje[0], kind: 'bus' });
     }
     if (nn.ref) {
       bridge.set(`${stationRef}${STATION_LV_BUS_SUFFIX}`, { resultRef: nn.ref, kind: 'bus' });
@@ -134,9 +115,9 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
     // reguły (transformator blokowy źródła DER stoi w polu źródłowym, nie w polu TR).
     const transformerRefs = selectStationDistributionTransformers(snapshot, substation, kontekstTransformatorow).map((tr) => tr.ref_id);
     if (transformerRefs.length === 1) {
-      for (const spec of fieldSpecsOf(substation)) {
-        if (!spec.field_ref || String(spec.bay_role ?? '').toUpperCase() !== 'TR') continue;
-        bridge.set(spec.field_ref, { resultRef: transformerRefs[0], kind: 'transformer' });
+      for (const bay of polaSnStacji(snapshot, substation.ref_id)) {
+        if (bay.bay_role !== 'TR') continue;
+        bridge.set(bay.ref_id, { resultRef: transformerRefs[0], kind: 'transformer' });
       }
     }
   }
@@ -175,17 +156,16 @@ export function resultPointsHiddenByModel(snapshot: EnergyNetworkModel | null): 
  *  i pól źródeł. Należą do rozdzielnicy nN stacji, a nie do schematu SN — kanwa SN pokazuje
  *  stację jednym symbolem z szyną nN i agregatem odbioru. Zbiór z JEDNEGO złożenia reguł
  *  (SZYNY-STACJI-LUSTRO): strona nN szyn stacji (`stationSideBusRefs`, ta sama reguła co
- *  agregat odbioru i szuflada) minus `Substation.bus_refs`. Zaciski pól SN leżą po stronie
+ *  agregat odbioru i inspektor) minus `Substation.bus_refs`. Zaciski pól SN leżą po stronie
  *  SN, więc tu nie trafiają. Punkt wyniku na takiej szynie nie jest „zgubiony" — ma
  *  nazwany powód braku etykiety na schemacie SN. */
 export function resultPointsInStationNnBoard(snapshot: EnergyNetworkModel | null): ReadonlySet<string> {
   const refs = new Set<string>();
   if (!snapshot) return refs;
-  const branches = snapshot.branches ?? [];
   const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
   for (const station of snapshot.substations ?? []) {
     const own = new Set(station.bus_refs ?? []);
-    for (const ref of stationSideBusRefs(station, branches, busByRef, 'nn')) {
+    for (const ref of stationSideBusRefs(snapshot, station, busByRef, 'nn')) {
       if (!own.has(ref)) refs.add(ref);
     }
   }
@@ -200,6 +180,10 @@ export interface ResultPointCoverage {
   readonly labelled: number;
   /** Punkty, których model JAWNIE nie rysuje (`meta.render_on_sld === false`). */
   readonly hiddenByModel: number;
+  /** GPZ-PARYTET: punkty pokazane w tabeli „Pola GPZ" i w belce nagłówka GPZ
+   *  (wiersze `Bay` i `Substation` z `results/v1`) — opisane na schemacie, ale nie
+   *  etykietą przy elemencie, tylko w bloku GPZ. */
+  readonly inGpzTable: number;
   /** Punkty bez szablonu treści dla tej rodziny analizy (np. gałąź w wyniku
    *  zwarciowym — rodzina `short_circuit` ma szablon wyłącznie dla szyn). */
   readonly withoutTemplate: number;

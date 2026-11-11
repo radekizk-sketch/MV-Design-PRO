@@ -122,7 +122,7 @@ export function KreatorMagistralaSn() {
     const rawElementRef = trimmed(rawContext?.element_ref);
     const rawElementType = trimmed(rawContext?.element_type ?? rawContext?.elementType);
     // KARTA S95-START: „czy jest start" pyta JEDEN predykat (`maStartOperacjiCiagu`) —
-    // ten sam, który bramkuje pozycje menu kanwy, szuflady i konfiguratora stacji.
+    // ten sam, który bramkuje pozycje menu kanwy, paska działań inspektora i konfiguratora stacji.
     const hasExplicitStart = maStartOperacjiCiagu(rawContext);
     if (hasExplicitStart) return rawContext;
 

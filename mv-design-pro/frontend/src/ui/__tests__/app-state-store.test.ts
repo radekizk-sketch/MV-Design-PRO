@@ -17,12 +17,17 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStateStore } from '../app-state/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { makeCalculationReadySnapshot } from '../../test/enmCalculationSnapshot';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../test/kontekstBiegu';
+import { useExecutionRunsStore } from '../study-cases/runStore';
+import { runIdOgladanyTeraz, useKontekstWynikuStore } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 
 describe('App State Store', () => {
   beforeEach(() => {
     // Reset store to initial state before each test
     useAppStateStore.getState().reset();
     useSnapshotStore.getState().reset();
+    useExecutionRunsStore.getState().reset();
+    wyczyscKontekstWyniku();
   });
 
   describe('Project Management', () => {
@@ -113,11 +118,12 @@ describe('App State Store', () => {
       const store = useAppStateStore.getState();
 
       store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'FRESH');
-      store.setActiveRun('run-123');
-      expect(useAppStateStore.getState().activeRunId).toBe('run-123');
+      ustawBiegOgladany('run-123');
+      expect(runIdOgladanyTeraz()).toBe('run-123');
 
       store.setActiveCase('case-2', 'PF-001', 'PowerFlowCase', 'NONE');
-      expect(useAppStateStore.getState().activeRunId).toBeNull();
+      expect(runIdOgladanyTeraz()).toBeNull();
+      expect(useKontekstWynikuStore.getState().oczekujacy).toBeNull();
     });
   });
 
@@ -140,25 +146,17 @@ describe('App State Store', () => {
       expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
     });
 
-    it('should clear run when exiting RESULT_VIEW', () => {
+    // Karta K8 (kanon zmieniony): tryb nie jest źródłem wyboru biegu — wyjście
+    // z RESULT_VIEW nie gasi oglądanego biegu (schemat i ekran wyników pokazują ten sam).
+    it('should keep the viewed run when exiting and re-entering RESULT_VIEW', () => {
       const store = useAppStateStore.getState();
 
       store.setActiveMode('RESULT_VIEW');
-      store.setActiveRun('run-123');
-      expect(useAppStateStore.getState().activeRunId).toBe('run-123');
-
+      ustawBiegOgladany('run-123');
       store.setActiveMode('MODEL_EDIT');
-      expect(useAppStateStore.getState().activeRunId).toBeNull();
-    });
-
-    it('should not clear run when staying in RESULT_VIEW', () => {
-      const store = useAppStateStore.getState();
-
+      expect(runIdOgladanyTeraz()).toBe('run-123');
       store.setActiveMode('RESULT_VIEW');
-      store.setActiveRun('run-123');
-
-      store.setActiveMode('RESULT_VIEW');
-      expect(useAppStateStore.getState().activeRunId).toBe('run-123');
+      expect(runIdOgladanyTeraz()).toBe('run-123');
     });
   });
 
@@ -298,7 +296,6 @@ describe('App State Store', () => {
       store.setActiveProject('project-1', 'Projekt 1');
       store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'FRESH');
       store.setActiveMode('RESULT_VIEW');
-      store.setActiveRun('run-123');
 
       store.reset();
 
@@ -306,7 +303,6 @@ describe('App State Store', () => {
       expect(state.activeProjectId).toBeNull();
       expect(state.activeCaseId).toBeNull();
       expect(state.activeMode).toBe('MODEL_EDIT');
-      expect(state.activeRunId).toBeNull();
     });
   });
 });

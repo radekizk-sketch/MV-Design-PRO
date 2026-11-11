@@ -20,6 +20,7 @@ import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/net
 import { useSelectionStore } from '../../../ui/selection';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
+  KontrolaPrzedZapisem,
   KreatorGotowosc,
   KreatorInfo,
   KreatorNastepnyKrok,
@@ -32,7 +33,10 @@ import {
   PanelTeorii,
   PoleWyboru,
   RzadWartosci,
+  komunikatProby,
+  useProbaOperacji,
   useSelekcjaPoOperacji,
+  wierszProby,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -44,7 +48,6 @@ import {
   fmtMvar,
   fmtSiemens,
   maSzyne,
-  napiecieNiezgodne,
   parametryZKatalogu,
   walidujFormularz,
   zbudujPayload,
@@ -180,7 +183,16 @@ export function KreatorKompensatoraSn() {
   }, []);
 
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
-  const napBlad = napiecieNiezgodne(params, kontekst);
+  // Zgodność napięcia typu z szyną (i każda inna reguła operacji) rozstrzyga WYŁĄCZNIE backend:
+  // próba TEJ SAMEJ operacji co zapis, gdy formularz jest lokalnie kompletny. Front nie ma
+  // własnego progu napięcia (dawna kopia |U_r − U_n| > 0,5 kV — wpis D67 inwentarza werdyktu).
+  const ladunekProby = useMemo(
+    () =>
+      hasSzyna && walidujFormularz(dane).length === 0 ? zbudujPayload(dane, kontekst) : null,
+    [dane, hasSzyna, kontekst],
+  );
+  const proba = useProbaOperacji(activeCaseId, 'add_shunt_compensator_sn', ladunekProby);
+  const odmowaProby = proba?.stan === 'odrzucona' || proba?.stan === 'nieustalona';
 
   const onZapisz = useCallback(async () => {
     if (!hasSzyna) {
@@ -234,16 +246,17 @@ export function KreatorKompensatoraSn() {
     },
     {
       etykieta: T.wierszNapiecie,
-      stan: napBlad ? 'ostrzezenie' : 'kompletne',
-      wartosc: napBlad ? 'Niezgodne' : fmtKv(params?.rated_kv),
+      stan: params ? 'kompletne' : 'brak',
+      wartosc: fmtKv(params?.rated_kv),
     },
+    wierszProby(proba),
   ];
 
   const aside = (
     <>
       <KreatorPodsumowanie
         tytul={T.podgladTytul}
-        komunikat={napBlad ? T.ostrzezenieNapiecie : bladPodgladu}
+        komunikat={odmowaProby ? komunikatProby(proba) : bladPodgladu}
         komunikatTon="warn"
         testid="mvd-kreator-kompensator-podsumowanie"
       >
@@ -362,6 +375,7 @@ export function KreatorKompensatoraSn() {
             />
           </KreatorSiatka>
           {paramReadout}
+          <KontrolaPrzedZapisem proba={proba} testid="mvd-kreator-kompensator-proba" />
           <PanelTeorii
             tytul={T.teoriaTytul}
             opis={T.teoriaOpis}

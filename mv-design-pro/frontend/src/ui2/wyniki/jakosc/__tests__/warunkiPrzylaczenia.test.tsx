@@ -41,7 +41,7 @@ function odpowiedz(ocena: Partial<OcenaWarunkow>): WarunkiPrzylaczeniaResponse {
 function props(over = {}) {
   return {
     przebieg: przebiegTestowy('pf-1', 'LOAD_FLOW'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };

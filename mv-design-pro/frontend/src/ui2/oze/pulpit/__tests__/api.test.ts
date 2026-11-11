@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy cienkiego klienta `ui2/oze/api` (P47a): poprawne URL-e końcówek D1 +
  * katalogu konwerterów oraz jawny błąd przy odpowiedzi != 2xx. `fetch` mockowany.
@@ -12,7 +13,7 @@ import {
 } from '../../api';
 import { adekwatnoscQFixture, konwerteryBessFixture, silaSieciFixture } from './analizyFixtures';
 
-function mockFetchOk(payload: unknown): ReturnType<typeof vi.fn> {
+function mockFetchOk(payload: unknown) {
   const fn = vi.fn(() =>
     Promise.resolve({ ok: true, status: 200, statusText: 'OK', json: () => Promise.resolve(payload) }),
   );

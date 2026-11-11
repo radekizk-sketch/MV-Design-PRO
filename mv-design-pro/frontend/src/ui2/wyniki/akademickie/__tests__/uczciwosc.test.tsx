@@ -63,7 +63,6 @@ const WYNIK_E40 = {
         flicker_pst: null,
         flicker_plt: null,
         voltage_unbalance_u2_u1: 0.0,
-        compatibility_status: 'NIE_OCENIONO',
       },
     ],
     sanity: { status: 'w paśmie wiarygodności', checks_total: 3, checks_passed: 3, violations: [] },
@@ -100,7 +99,7 @@ afterEach(() => {
 describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w audycie', () => {
   it('panel oceny: rekord z backendu, bez chipu „kryterium spełnione dla N z M węzłów"', async () => {
     ustawFetchV126({ potwierdzone: ['power_quality_harmonics'], wynik: WYNIK_E40 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('power_quality_harmonics');
     const ocena = screen.getByTestId('mvd-akad-ocena');
     expect(ocena).toHaveAttribute('data-status', 'NIE_OCENIONO');
@@ -117,7 +116,7 @@ describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w au
 
   it('ŻADNA liczba E-40 (THD, TDD, K, U_h, „rezonanse") poza sekcją audytową', async () => {
     ustawFetchV126({ potwierdzone: ['power_quality_harmonics'], wynik: WYNIK_E40 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('power_quality_harmonics');
     expect(screen.queryByTestId('mvd-akad-obiekty-nodes')).not.toBeInTheDocument();
     const pierwszyPlan = tekstPozaAudytem();
@@ -130,7 +129,7 @@ describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w au
 
   it('sekcja audytowa: nagłówek z backendu, zwinięta; po rozwinięciu tabela węzłów i powody', async () => {
     ustawFetchV126({ potwierdzone: ['power_quality_harmonics'], wynik: WYNIK_E40 });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('power_quality_harmonics');
     const audyt = screen.getByTestId('mvd-akad-audyt');
     expect(audyt).toHaveTextContent(NAGLOWEK_AUDYTU);
@@ -139,9 +138,11 @@ describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w au
     const tabela = within(audyt).getByTestId('mvd-akad-obiekty-wynik_audytowy.nodes');
     expect(tabela).toHaveTextContent('3049,1234');
     expect(within(audyt).getByTestId('mvd-akad-audyt-powody')).toHaveTextContent('Brak przekładni');
-    // Status węzła w audycie to etykieta oceny, nie „spełnione".
-    expect(tabela).toHaveTextContent('Ocena niewykonana');
-    expect(tabela).not.toHaveTextContent('spełnione');
+    // Intencja zachowana: węzeł w audycie nie niesie werdyktu „spełnione". Zmiana kanonu
+    // (odcinek 3 karty ZU, §3.18): backend zdjął `compatibility_status` węzłów — jedyną oceną
+    // jest rekord NIE_OCENIONO w panelu werdyktu, więc tabela audytu nie ma kolumny statusu.
+    expect(tabela).not.toHaveTextContent('Ocena niewykonana');
+    expect(tabela.textContent ?? '').not.toMatch(/spełnione|niespełnione|zgodny/);
   });
 });
 
@@ -155,7 +156,7 @@ describe('SSCI na oknie analiz specjalistycznych — ocena niewykonana', () => {
         ocena: OCENA_SSCI,
       },
     });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzIUruchom('ssci_impedance');
     expect(
       screen.getByTestId(`mvd-werdykt-${OCENA_SSCI.kryterium_id}-zdanie`),

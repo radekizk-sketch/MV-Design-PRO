@@ -323,6 +323,13 @@ export interface CameraState {
   readonly lod: SceneLod;
   readonly viewportSize: { readonly width: number; readonly height: number };
   readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
+  /** K2: ostatni KADR (akcja `'kadruj'`), dopóki projektant nie ruszy kamery.
+   *  Zmiana rozmiaru kanwy ponawia wtedy kadr na nowym viewporcie zamiast
+   *  zachowywać skalę — cel kadru (stacja, pole, tor) zostaje w całości
+   *  w kadrze także po pierwszym pomiarze kontenera albo otwarciu panelu.
+   *  Każda inna akcja (zoom, pan, centrowanie, refit, kotwica, przywrócenie)
+   *  zdejmuje kadr. Brak = zachowanie sprzed karty. */
+  readonly kadr?: AkcjaKadru;
 }
 
 export type CameraAction =
@@ -334,8 +341,20 @@ export type CameraAction =
    *  zmienia poziomu szczegółu ani rysunku (patrz `applyCenter`). */
   | { readonly type: 'center'; readonly worldPoint: { readonly x: number; readonly y: number } }
   /** k3: zmiana width/height PO MOUNCIE — zachowuje centrum świata i skalę,
-   *  dostosowuje WYŁĄCZNIE viewport (patrz `applyResize`). */
-  | { readonly type: 'resize'; readonly viewportSize: { readonly width: number; readonly height: number } }
+   *  dostosowuje WYŁĄCZNIE viewport (patrz `applyResize`). K2: także zmiana
+   *  ZASŁON prostokąta bezpiecznego (`safeInsets` — portal nN, mini-ścieżka,
+   *  komunikat kadru): trwający kadr jest ponawiany na nowym
+   *  obszarze, żeby cel nie znikał pod panelem otwartym nad kanwą. */
+  | {
+      readonly type: 'resize';
+      readonly viewportSize: { readonly width: number; readonly height: number };
+      readonly safeInsets?: SafeInsets;
+      /** K2: prostokąt obiektu, którego zasłona dotyczy (stacja portalu
+       *  nN), na każdym poziomie — poza kadrem
+       *  kamera przesuwa rysunek o najmniejszy wektor, żeby obiekt nie
+       *  schował się pod zasłoną (`odslonietyStan`). */
+      readonly odslon?: Readonly<Record<SceneLod, BoundingBox | null>>;
+    }
   /** k3: zmiana snapshot (i k4.1: zmiana `lodOverride`, bo zmienia CEL fitu)
    *  — nowa sieć/nowy cel fitu = nowy świat kamery ⇒ pełny refit (pan/zoom
    *  użytkownika NIE jest zachowywany, w przeciwieństwie do 'resize'). */
@@ -367,7 +386,73 @@ export type CameraAction =
        *  w geometrię TEGO świata i nie wolno jej przełączać poziomu. Brak =
        *  poziom wynika z kamery (ścieżka produkcyjna bez wymuszenia). */
       readonly wymuszonyLod?: SceneLod;
+    }
+  /** K2 (UI-04): KADR podzbioru rysunku — stacji, sekcji szyn, pola, magistrali,
+   *  toru zasilania albo zaznaczenia. W odróżnieniu od `'kotwicz'` kadr MOŻE
+   *  przybliżać: to polecenie projektanta „pokaż mi to", nie skutek uboczny
+   *  edycji. Patrz `applyKadr`. */
+  | AkcjaKadru
+  /** K2 (historia kadrów, „Poprzedni widok"): przywrócenie zapamiętanego stanu
+   *  kamery — transformu i poziomu szczegółu sprzed polecenia kadrowania.
+   *  Viewport i światy LOD zostają bieżące. */
+  | {
+      readonly type: 'przywroc';
+      readonly transform: ViewportTransform;
+      readonly lod: SceneLod;
     };
+
+/** K2: akcja kadru (osobny typ, bo `CameraState.kadr` ją pamięta). */
+export interface AkcjaKadru {
+  readonly type: 'kadruj';
+  /** Prostokąt celu w ŚWIECIE KAMERY, osobno na każdym poziomie szczegółu.
+   *  `null` = cel nie jest narysowany na tym poziomie (np. pole na L0, gdzie
+   *  stacja jest jednym zwiniętym blokiem) — kamera tego poziomu nie wybierze. */
+  readonly anchorByLod: Readonly<Record<SceneLod, BoundingBox | null>>;
+  /** Najniższy dopuszczalny poziom szczegółu kadru (np. 1 dla stacji: kadr
+   *  stacji ma pokazać jej WNĘTRZE — pola i aparaty — a nie zwinięty blok L0). */
+  readonly minLod?: SceneLod;
+  /** Prostokąty obiektów SĄSIEDNICH (świat kamery, per poziom), których kadr
+   *  unika WYŁĄCZNIE przesunięciem środka w granicach luzu (`srodekKadru`) —
+   *  np. sąsiednie stacje przy kadrze stacji. Sąsiad nigdy nie zmienia skali ani
+   *  poziomu szczegółu kadru (K2b §0.1); to, co z niego wpadło w okno,
+   *  przyciemnia kurtyna kadru kanwy. */
+  readonly przeszkodyByLod?: Readonly<Record<SceneLod, readonly BoundingBox[]>>;
+  readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
+  readonly viewportSize: { readonly width: number; readonly height: number };
+  readonly safeInsets?: SafeInsets;
+  /** k4.1: poziom WYMUSZONY przez wołającego (`lodOverride`) — kadr celuje
+   *  w świat tego poziomu i nie przełącza poziomu (jak `'kotwicz'`). */
+  readonly wymuszonyLod?: SceneLod;
+  /** K2: tusz etykiet celu i przeszkód przy danej skali (świat kamery). Etykiety
+   *  tożsamości poniżej progu czytelności rysują się pismem powiększonym, więc
+   *  ich zasięg zależy od skali — kamera dokłada go do prostokątów przed
+   *  ułożeniem kadru (`zTuszemEtykiet`). Brak = same prostokąty z `anchorByLod`. */
+  readonly tuszEtykiet?: (lod: SceneLod, scale: number) => TuszEtykietKadru;
+}
+
+/** Zasięg narysowanych etykiet celu i przeszkód (kolejność jak `przeszkodyByLod[lod]`). */
+export interface TuszEtykietKadru {
+  readonly cel: BoundingBox | null;
+  readonly przeszkody: readonly (BoundingBox | null)[];
+}
+
+/**
+ * K2 — GÓRNA granica skali kadru: dwukrotność progu WEJŚCIA na L2
+ * (`l1Max·(1+margin) = 1,38`, przy którym etykieta t2 ma 15,2 px ekranu —
+ * „komfortowy rozmiar czytania", patrz `DEFAULT_LOD_THRESHOLDS`). Kadr pola
+ * (kilkadziesiąt jednostek świata) bez tej granicy dobiłby do `MAX_SCALE = 8`
+ * i pokazał trzy symbole wielkości połowy ekranu, z napisami po ~90 px —
+ * powiększenie bez informacji. Przy 2,76 napis t2 ma ~30 px: pole wypełnia
+ * kadr, a jego opisy pozostają tekstem, nie plakatem. Wartość wyprowadzona
+ * z tej samej tabeli progów co histereza — brak drugiego systemu skal.
+ */
+export const KADR_MAX_SCALE =
+  2 * DEFAULT_LOD_THRESHOLDS.l1Max * (1 + LOD_HYSTERESIS_MARGIN);
+
+/** Margines kadru od krawędzi prostokąta bezpiecznego [px] — ten sam, którego
+ *  używa `fitToView` (domyślny padding refitu), więc kadr i „Dopasuj widok"
+ *  zostawiają identyczny oddech. */
+const KADR_PADDING_PX = 40;
 
 /**
  * k4.2 — mapowanie skali przy przejściu LOD_a→LOD_b Z KAMERY (ścieżka
@@ -429,6 +514,44 @@ function applyResize(
     translateY: newCenter.y - worldCenter.y * state.transform.scale,
   };
   return { ...state, transform, viewportSize: nextViewportSize };
+}
+
+/**
+ * K2 — ODSŁONIĘCIE obiektu po otwarciu zasłony. Panel portalu nN otwiera się NAD
+ * prawym pasem kanwy — także nad stacją, której dotyczy. Pomiar e2e K2 (okno
+ * 1440×900, widok sieci) na dawnym panelu szczegółów nad kanwą (skasowany w UI-02b):
+ * napis stacji przelotowej w x = 679 px, panel od 666 px — panel zasłaniał własny
+ * obiekt.
+ *
+ * Reguła: obiekt, którego dotyczy zasłona, ląduje w prostokącie bezpiecznym
+ * (z oddechem kadru) przy NAJMNIEJSZYM przesunięciu; skala i poziom zostają
+ * (to nie jest kadr, tylko odsłonięcie). Obiekt już widoczny — kadr bez
+ * zmian. Obiekt szerszy/wyższy niż prostokąt — wyrównanie do lewej/górnej
+ * krawędzi (początek obiektu widoczny).
+ */
+function odslonietyStan(state: CameraState, box: BoundingBox, safeInsets: SafeInsets | undefined): CameraState {
+  const insets = safeInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const { scale, translateX, translateY } = state.transform;
+  const przesuniecie = (min: number, max: number, lo: number, hi: number): number => {
+    if (max - min > hi - lo) return lo - min;
+    if (min < lo) return lo - min;
+    if (max > hi) return hi - max;
+    return 0;
+  };
+  const dx = przesuniecie(
+    box.minX * scale + translateX,
+    box.maxX * scale + translateX,
+    insets.left + KADR_PADDING_PX,
+    state.viewportSize.width - insets.right - KADR_PADDING_PX,
+  );
+  const dy = przesuniecie(
+    box.minY * scale + translateY,
+    box.maxY * scale + translateY,
+    insets.top + KADR_PADDING_PX,
+    state.viewportSize.height - insets.bottom - KADR_PADDING_PX,
+  );
+  if (dx === 0 && dy === 0) return state;
+  return { ...state, transform: { scale, translateX: translateX + dx, translateY: translateY + dy } };
 }
 
 /**
@@ -538,15 +661,305 @@ function applyAnchor(
   };
 }
 
+/** Skala, przy której CAŁY prostokąt mieści się w prostokącie bezpiecznym
+ *  (z paddingiem fitu), ograniczona `KADR_MAX_SCALE` i zakresem kamery. */
+function skalaKadru(
+  box: BoundingBox,
+  viewportSize: { readonly width: number; readonly height: number },
+  safeInsets: SafeInsets | undefined,
+  padding: number = KADR_PADDING_PX,
+): number {
+  const mieszczaca = fitToView(box, viewportSize, padding, safeInsets).scale;
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(KADR_MAX_SCALE, mieszczaca)));
+}
+
+function przecinaja(a: BoundingBox, b: BoundingBox): boolean {
+  return a.maxX > b.minX && a.minX < b.maxX && a.maxY > b.minY && a.minY < b.maxY;
+}
+
+/** Widoczny obszar świata (cała kanwa, także pasy pod dokami — sąsiad pod
+ *  dokiem nadal jest widoczny jako ucięty fragment) dla środka `c` prostokąta
+ *  bezpiecznego przy skali `scale`. */
+function widocznyObszar(
+  c: { readonly x: number; readonly y: number },
+  scale: number,
+  viewportSize: { readonly width: number; readonly height: number },
+  safeInsets: SafeInsets | undefined,
+): BoundingBox {
+  const insets = safeInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const szerokoscBezp = Math.max(viewportSize.width - insets.left - insets.right, 1);
+  const wysokoscBezp = Math.max(viewportSize.height - insets.top - insets.bottom, 1);
+  return {
+    minX: c.x - (szerokoscBezp / 2 + insets.left) / scale,
+    maxX: c.x + (szerokoscBezp / 2 + insets.right) / scale,
+    minY: c.y - (wysokoscBezp / 2 + insets.top) / scale,
+    maxY: c.y + (wysokoscBezp / 2 + insets.bottom) / scale,
+  };
+}
+
+/**
+ * K2 (W5-UI-15, karta K2b §0.1) — ŚRODEK KADRU: domyślnie środek celu. Gdy przy
+ * skali celu w widocznym obszarze kanwy leży fragment obiektu SĄSIEDNIEGO
+ * (`przeszkody`), kadr przesuwa się w granicach LUZU — położeń, w których cel
+ * nadal mieści się CAŁY w prostokącie bezpiecznym z oddechem — i wybiera
+ * pierwsze położenie wolne od sąsiadów. Skala NIE zmienia się (przesunięcie nie
+ * poszerza kadru). Kandydaci w stałej kolejności (środek, potem skrajne
+ * położenia na każdej osi), więc wynik jest deterministyczny (P7). Gdy żadne
+ * położenie nie usuwa sąsiadów z okna, zwraca `null` — wtedy kadr zostaje na
+ * środku celu, a to, co z sąsiadów wpadło w okno, przyciemnia kurtyna kadru
+ * kanwy (`SldCanvasV3`, `refyKadru`).
+ */
+function srodekKadru(
+  box: BoundingBox,
+  przeszkody: readonly BoundingBox[],
+  scale: number,
+  viewportSize: { readonly width: number; readonly height: number },
+  safeInsets: SafeInsets | undefined,
+  padding: number = KADR_PADDING_PX,
+): { readonly x: number; readonly y: number } | null {
+  const srodek = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
+  const istotne = przeszkody;
+  if (istotne.length === 0) return srodek;
+  const insets = safeInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const szerokoscBezp = Math.max(viewportSize.width - insets.left - insets.right, 1);
+  const wysokoscBezp = Math.max(viewportSize.height - insets.top - insets.bottom, 1);
+  const widoczny = (c: { readonly x: number; readonly y: number }): BoundingBox =>
+    widocznyObszar(c, scale, viewportSize, safeInsets);
+  const luzX = (szerokoscBezp / 2 - padding) / scale;
+  const luzY = (wysokoscBezp / 2 - padding) / scale;
+  const zakresOsi = (min: number, max: number, luz: number, c: number): number[] => {
+    const lo = max - luz;
+    const hi = min + luz;
+    if (!(hi > lo)) return [c];
+    // Środek zawsze pierwszy; skrajne położenia w kolejności rosnącej.
+    return [c, lo, hi].filter((v, i, arr) => arr.indexOf(v) === i);
+  };
+  const kandydaciX = zakresOsi(box.minX, box.maxX, luzX, srodek.x);
+  const kandydaciY = zakresOsi(box.minY, box.maxY, luzY, srodek.y);
+  for (const y of kandydaciY) {
+    for (const x of kandydaciX) {
+      const okno = widoczny({ x, y });
+      if (istotne.every((p) => !przecinaja(p, okno))) return { x, y };
+    }
+  }
+  return null;
+}
+
+function zawiera(zewn: BoundingBox, wewn: BoundingBox): boolean {
+  return wewn.minX >= zewn.minX && wewn.maxX <= zewn.maxX && wewn.minY >= zewn.minY && wewn.maxY <= zewn.maxY;
+}
+
+function suma(a: BoundingBox, b: BoundingBox): BoundingBox {
+  return {
+    minX: Math.min(a.minX, b.minX),
+    minY: Math.min(a.minY, b.minY),
+    maxX: Math.max(a.maxX, b.maxX),
+    maxY: Math.max(a.maxY, b.maxY),
+  };
+}
+
+/** Limit dołożeń tuszu etykiet do prostokąta celu (punkt stały skala ↔ pismo). */
+const KADR_LIMIT_TUSZU = 4;
+
+/**
+ * K2 — PROSTOKĄTY Z TUSZEM ETYKIET. Etykieta tożsamości poniżej progu
+ * czytelności rysuje się pismem powiększonym (`enlargedFontSizeWithinProportion`),
+ * więc im mniejsza skala, tym dalej wystaje poza slot sceny. Prostokąt celu
+ * rośnie o tusz etykiet przy skali kadru, skala jest liczona od nowa, i tak do
+ * punktu stałego (pismo rośnie, gdy skala maleje — ciąg prostokątów jest
+ * rosnący, ciąg skal malejący), najwyżej `KADR_LIMIT_TUSZU` razy. Przeszkody
+ * dostają tusz przy skali końcowej celu. Czysta arytmetyka w stałej kolejności
+ * — determinizm P7.
+ */
+function zTuszemEtykiet(action: AkcjaKadru): {
+  readonly anchorByLod: Readonly<Record<SceneLod, BoundingBox | null>>;
+  readonly przeszkodyByLod: Readonly<Record<SceneLod, readonly BoundingBox[]>>;
+} {
+  const { tuszEtykiet, anchorByLod, viewportSize, safeInsets } = action;
+  const bazowePrzeszkody = (lod: SceneLod): readonly BoundingBox[] => action.przeszkodyByLod?.[lod] ?? [];
+  if (!tuszEtykiet) {
+    return { anchorByLod, przeszkodyByLod: { 0: bazowePrzeszkody(0), 1: bazowePrzeszkody(1), 2: bazowePrzeszkody(2) } };
+  }
+  // Poziomy, których kamera nie wybierze (poniżej `minLod` albo inne niż poziom
+  // wymuszony), zostają bez tuszu — plan etykiet sceny nie jest darmowy.
+  const potrzebny = (lod: SceneLod): boolean =>
+    action.wymuszonyLod !== undefined ? lod === action.wymuszonyLod : lod >= (action.minLod ?? 0);
+  const poziom = (lod: SceneLod): { cel: BoundingBox | null; przeszkody: readonly BoundingBox[] } => {
+    let cel = anchorByLod[lod];
+    if (!cel || !potrzebny(lod)) return { cel, przeszkody: bazowePrzeszkody(lod) };
+    let tusz = tuszEtykiet(lod, skalaKadru(cel, viewportSize, safeInsets));
+    for (let krok = 0; krok < KADR_LIMIT_TUSZU && tusz.cel && !zawiera(cel, tusz.cel); krok += 1) {
+      cel = suma(cel, tusz.cel);
+      tusz = tuszEtykiet(lod, skalaKadru(cel, viewportSize, safeInsets));
+    }
+    const przeszkody = bazowePrzeszkody(lod).map((p, i) => {
+      const t = tusz.przeszkody[i];
+      return t ? suma(p, t) : p;
+    });
+    return { cel, przeszkody };
+  };
+  const p0 = poziom(0);
+  const p1 = poziom(1);
+  const p2 = poziom(2);
+  return {
+    anchorByLod: { 0: p0.cel, 1: p1.cel, 2: p2.cel },
+    przeszkodyByLod: { 0: p0.przeszkody, 1: p1.przeszkody, 2: p2.przeszkody },
+  };
+}
+
+/**
+ * K2b — UŁOŻENIE KADRU: skala i środek. Skala = największa, przy której CAŁY cel
+ * mieści się w prostokącie bezpiecznym z oddechem (`skalaKadru`); środek = środek
+ * celu albo położenie przesunięte w granicach luzu, wolne od sąsiadów
+ * (`srodekKadru`). Sąsiad NIGDY nie zmienia skali ani poziomu szczegółu kadru —
+ * dawne wchłanianie sąsiada (kadr sumy prostokątów celu i najbliższego sąsiada,
+ * zejście na niższy poziom szczegółu i zmniejszony oddech „dla sąsiada") zostało
+ * skasowane: kadr dwóch sąsiednich stacji kadrował tę samą sumę, więc oba kadry
+ * były identyczne co do piksela (analiza odrzucenia UI-04, wada Z-02).
+ * Przeszkody nachodzące na cel są pomijane (nie da się ich rozdzielić kadrem).
+ */
+function ulozenieKadru(
+  box: BoundingBox,
+  przeszkody: readonly BoundingBox[],
+  viewportSize: { readonly width: number; readonly height: number },
+  safeInsets: SafeInsets | undefined,
+): { readonly scale: number; readonly srodek: { readonly x: number; readonly y: number } } {
+  const istotne = przeszkody.filter((p) => !przecinaja(p, box));
+  const scale = skalaKadru(box, viewportSize, safeInsets);
+  const srodekCelu = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
+  return { scale, srodek: srodekKadru(box, istotne, scale, viewportSize, safeInsets) ?? srodekCelu };
+}
+
+/**
+ * K2 (UI-04, W5-UI-14/15) i K2b (Z-02) — 'kadruj': kadr WSKAZANEGO celu i tylko jego.
+ *
+ * KRYTERIA KADRU (karta K2b §0.2 — odporne na proporcje celu i kanwy, zamiast
+ * stałego udziału procentowego; każde przypięte testem `__tests__/camera.kadr.test.ts`
+ * na iloczynie cel × sąsiedztwo × proporcje × okno oraz testem e2e
+ * `e2e/k2-kadrowanie-nawigacja.spec.ts` na realnym backendzie):
+ *  (a) KOMPLETNOŚĆ — każdy `ownerRef` celu (stacja: szyny, sekcje, pola, aparaty,
+ *      transformator, strona nN; pole; sekcja; magistrala; tor) leży W CAŁOŚCI
+ *      w obszarze widocznym kanwy (prostokąt bezpieczny z oddechem). Kryterium
+ *      nadrzędne: skala jest największą, przy której cały cel się mieści.
+ *  (b) CZYTELNOŚĆ — opisy celu (nazwy pól, oznaczenia aparatów, nazwa stacji) nie
+ *      są ukryte przez plan etykiet i mają na ekranie ≥ 13 px. Kamera dostarcza
+ *      skalę z (a); rozmiar pisma celu podnosi do 13 px plan etykiet kanwy
+ *      (`planSceneLabels`, podłoga celu `MIN_OPIS_CELU_KADRU_PX`), a tusz tak
+ *      powiększonych opisów wraca do prostokąta celu (`zTuszemEtykiet`). Gdy cel
+ *      jest tak rozległy, że (a) i (b) naraz są niewykonalne (długa magistrala,
+ *      cała sieć), pierwszeństwo ma (a) — widok struktury — a kanwa mówi to
+ *      jawnie komunikatem „opisy szczegółowe po przybliżeniu"
+ *      (`sld-v3-hidden-labels-hint`, liczba ukrytych opisów celu w `data-opisy-celu`).
+ *  (c) IZOLACJA — żaden element innej stacji nie jest w kadrze bez
+ *      przyciemnienia: sąsiad, który wpadł w okno, przyciemnia kurtyna kadru
+ *      kanwy. Kadr nie poszerza się o sąsiada; przesuwa się co najwyżej w
+ *      granicach luzu (`srodekKadru`), skala zostaje skalą celu. Sąsiad wchodzi
+ *      do zakresu celu wyłącznie z listy przypadków elektrycznie wymaganych
+ *      (`SASIEDZI_ELEKTRYCZNIE_WYMAGANI`, `zakresKadru.ts`).
+ *  (d) ROZRÓŻNIALNOŚĆ — różne cele dają różne kadry i różne zbiory widocznych
+ *      `ownerRef`: kadr zależy WYŁĄCZNIE od prostokąta celu, więc dwa cele
+ *      o różnych prostokątach nie mogą dostać tej samej sumy prostokątów.
+ *
+ * MECHANIKA:
+ *  1. **Kadr może przybliżać.** Skala z (a), ograniczona `KADR_MAX_SCALE`. Tym
+ *     kadr różni się od `'kotwicz'` (skutek uboczny edycji — „skala nigdy nie
+ *     rośnie" zostaje tam bez zmian).
+ *  2. **Prostokąt bezpieczny** — `safeInsets` jak w refit/kotwicy: cel nie chowa
+ *     się pod dokami.
+ *  3. **Poziom szczegółu wynika ze skali** — ta sama histereza co zoom
+ *     (`lodFromScaleWithHysteresis` na `refScale`), z dolną granicą `minLod`
+ *     (kadr stacji pokazuje wnętrze). Prostokąt celu brany jest z poziomu, na
+ *     którym kamera kończy (stąd `anchorByLod`); poziom bez rysunku celu (`null`)
+ *     jest pomijany. Pętla ma limit trzech obrotów, a gdy histereza zawraca na
+ *     poziom już odwiedzony, wybierany jest NIŻSZY z dwóch — czysta arytmetyka,
+ *     determinizm P7. Żadnego zejścia poziomu „dla zmieszczenia sąsiada".
+ *  4. **Kadr podąża za rozmiarem kanwy** — stan pamięta akcję (`kadr`), a
+ *     'resize' ponawia ją na nowym viewporcie i na nowych zasłonach (portal nN,
+ *     mini-ścieżka, komunikat kadru), dopóki projektant nie ruszy kamery.
+ *  5. **Kadr obejmuje NARYSOWANE etykiety** — tusz pisma powiększonego przy
+ *     skali kadru (`zTuszemEtykiet`), także u przeszkód.
+ */
+function applyKadr(state: CameraState, action: AkcjaKadru): CameraState {
+  const { viewportSize, lodBboxes, safeInsets } = action;
+  const { anchorByLod, przeszkodyByLod } = zTuszemEtykiet(action);
+
+  if (action.wymuszonyLod !== undefined) {
+    const box = anchorByLod[action.wymuszonyLod];
+    if (!box) return state;
+    // Poziom wymuszony: histereza nie przełącza poziomu.
+    const { scale, srodek } = ulozenieKadru(box, przeszkodyByLod[action.wymuszonyLod], viewportSize, safeInsets);
+    return {
+      transform: centerOnPoint(srodek, viewportSize, scale, safeInsets),
+      lod: state.lod,
+      viewportSize,
+      lodBboxes,
+      kadr: action,
+    };
+  }
+
+  const minLod = action.minLod ?? 0;
+  const dostepne = ([0, 1, 2] as const).filter((l) => l >= minLod && anchorByLod[l] !== null);
+  if (dostepne.length === 0) return state;
+  /** Najbliższy dostępny poziom, preferując kierunek `ku` (w górę albo w dół). */
+  const przyciagnij = (lod: SceneLod, ku: 'gora' | 'dol'): SceneLod => {
+    if (dostepne.includes(lod as 0 | 1 | 2)) return lod;
+    const wyzsze = dostepne.filter((l) => l > lod);
+    const nizsze = dostepne.filter((l) => l < lod);
+    if (ku === 'gora') return (wyzsze[0] ?? nizsze[nizsze.length - 1]) as SceneLod;
+    return (nizsze[nizsze.length - 1] ?? wyzsze[0]) as SceneLod;
+  };
+
+  let lod: SceneLod = przyciagnij(state.lod, 'gora');
+  const odwiedzone = new Set<SceneLod>();
+  for (let obrot = 0; obrot < 3; obrot += 1) {
+    odwiedzone.add(lod);
+    const scale = skalaKadru(anchorByLod[lod]!, viewportSize, safeInsets);
+    const surowy = lodFromScaleWithHysteresis(refScaleFor(scale, lod, lodBboxes), lod);
+    const nastepny = przyciagnij(surowy, surowy > lod ? 'gora' : 'dol');
+    if (nastepny === lod) break;
+    if (odwiedzone.has(nastepny)) {
+      lod = Math.min(lod, nastepny) as SceneLod;
+      break;
+    }
+    lod = nastepny;
+  }
+
+  const { scale, srodek } = ulozenieKadru(anchorByLod[lod]!, przeszkodyByLod[lod], viewportSize, safeInsets);
+  return {
+    transform: centerOnPoint(srodek, viewportSize, scale, safeInsets),
+    lod,
+    viewportSize,
+    lodBboxes,
+    kadr: action,
+  };
+}
+
 export function cameraReducer(state: CameraState, action: CameraAction): CameraState {
   if (action.type === 'resize') {
-    return applyResize(state, action.viewportSize);
+    // K2: trwający kadr (projektant nie ruszył kamery) jest ponawiany na nowym
+    // viewporcie i na nowych zasłonach — cel zostaje w całości w kadrze.
+    if (state.kadr) {
+      return applyKadr(state, {
+        ...state.kadr,
+        viewportSize: action.viewportSize,
+        safeInsets: action.safeInsets ?? state.kadr.safeInsets,
+      });
+    }
+    const poResize = applyResize(state, action.viewportSize);
+    const odslaniany = action.odslon?.[poResize.lod];
+    return odslaniany ? odslonietyStan(poResize, odslaniany, action.safeInsets) : poResize;
+  }
+  if (action.type === 'kadruj') {
+    return applyKadr(state, action);
+  }
+  if (action.type === 'przywroc') {
+    return { transform: action.transform, lod: action.lod, viewportSize: state.viewportSize, lodBboxes: state.lodBboxes };
   }
   if (action.type === 'center') {
-    return applyCenter(state, action.worldPoint);
+    return withoutKadr(applyCenter(state, action.worldPoint));
   }
   if (action.type === 'kotwicz') {
-    return applyAnchor(state, action);
+    return withoutKadr(applyAnchor(state, action));
   }
   if (action.type === 'refit') {
     // F12-C (E15): refit honoruje `focusPoint` tak samo jak stan początkowy
@@ -579,7 +992,7 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
   const refScale = refScaleFor(transform.scale, state.lod, state.lodBboxes);
   const nextLod = lodFromScaleWithHysteresis(refScale, state.lod);
   if (nextLod === state.lod) {
-    return { ...state, transform };
+    return withoutKadr({ ...state, transform });
   }
   const mappedTransform = applyLodScaleMapping(
     transform,
@@ -587,7 +1000,13 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
     state.lodBboxes[nextLod],
     state.viewportSize,
   );
-  return { ...state, transform: mappedTransform, lod: nextLod };
+  return withoutKadr({ ...state, transform: mappedTransform, lod: nextLod });
+}
+
+/** K2: zdejmuje pamięć kadru — gest projektanta kończy „trwający kadr". */
+function withoutKadr(state: CameraState): CameraState {
+  if (state.kadr === undefined) return state;
+  return { transform: state.transform, lod: state.lod, viewportSize: state.viewportSize, lodBboxes: state.lodBboxes };
 }
 
 /** F12-C (E15 parytet, spec §10 „kamera mobilna (portrait focus na GPZ)"):

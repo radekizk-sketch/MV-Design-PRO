@@ -920,7 +920,7 @@ w `frontend/src` poza testami i fiksturami): 31 z 321 ścieżek (341 operacji). 
 - eksporty DOCX/PDF: świadectwo zgodności i wniosek OSD dla OZE, raport łuku elektrycznego;
 - `/api/solver-capabilities` (+ `/{capability}`);
 - katalogi: `karty-widmowe`, `lv-breaker-mcb-types`, `lv-fuse-link-types`, `sekcje-modelu`,
-  `slowniki-uziemienia`, `auto-populate`;
+  `slowniki-uziemienia`, `auto-populate` (skasowana 2026-10-28 — zero konsumentów produkcyjnych);
 - trasy przypadku ENM: `fault-loop-feeders`, `fault-loop-point`, `nn-circuit-sheet`,
   `nn-device-selection`, `lv-domain/{station_ref}/upstream-equivalent`,
   `elementy/{ref}/sekcje-modelu`, `analysis/solver-input/{analysis_type}`;

@@ -37,7 +37,7 @@ const TYP_ZWARCIA_NA_ANALYSIS_TYPE: Record<string, ExecutionAnalysisType> = {
   '3F': 'SC_3F',
   '1F': 'SC_1F',
   '2F': 'SC_2F',
-  '2F+Z': 'SC_2F_G',
+  '2F+G': 'SC_2F_G',
 };
 
 /** Mapuje typ zwarcia kotwicy (`typ_zwarcia_kotwicy`) na rodzaj biegu —

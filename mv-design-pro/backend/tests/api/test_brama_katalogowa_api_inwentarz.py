@@ -57,7 +57,7 @@ from api.domain_ops_policy import (
 from api.main import app
 from enm import domain_operations, domain_operations_v2
 from enm.domain_operations import execute_domain_operation
-from enm.domain_operations_v2 import V2_CATALOG_GATE_INVENTORY
+from enm.domain_operations_v2 import ALL_V2_HANDLERS, V2_CATALOG_GATE_INVENTORY
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.katalog_projektu import kontekst_katalogu
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -172,12 +172,6 @@ def _payload_zrodla(**nadpisania: Any) -> dict[str, Any]:
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "catalog_ref": REF_ZRODLO,
-        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary hv_voltage_kv
-        # + transformer_sn_mva (albo transformer_catalog_ref) — nadpisania
-        # (np. transformer_catalog_ref=REF_TRAFO_WN_SN w iniekcji bramy) i tak
-        # wygrywaja przez `payload.update(nadpisania)` ponizej.
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
     }
     payload.update(nadpisania)
     return payload
@@ -210,10 +204,15 @@ def _payload_pola_sn() -> dict[str, Any]:
     }
 
 
-def _payload_stacji() -> dict[str, Any]:
+def _payload_stacji(operacja: str = "insert_station_on_segment_sn") -> dict[str, Any]:
+    # Miejsce stacji — klucze, które czyta DANA operacja (odcinek albo koniec ciągu).
+    miejsce: dict[str, Any] = (
+        {"endpoint_bus_ref": "bus-1"}
+        if operacja == "append_station_on_endpoint"
+        else {"segment_id": "seg-1", "insert_at": {"mode": "RATIO", "value": 0.5}}
+    )
     return {
-        "segment_id": "seg-1",
-        "insert_at": {"mode": "RATIO", "value": 0.5},
+        **miejsce,
         "station": {"name_pl": "ST", "station_type": "STACJA_SN_NN", "sn_voltage_kv": 15.0},
         "transformer": {
             "transformer_catalog_ref": REF_TRAFO,
@@ -285,59 +284,63 @@ def _iniekcje_stacji(operacja: str) -> tuple[IniekcjaBramy, ...]:
     `append_station_on_endpoint` — brama jest lustrem tej różnicy, a nie fikcją
     parytetu (patrz komentarz przy inwentarzu).
     """
+
+    def zbuduj() -> dict[str, Any]:
+        return _payload_stacji(operacja)
+
     return (
         IniekcjaBramy(
             operacja,
             "transformer.transformer_catalog_ref",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "transformer", "transformer_catalog_ref"),
         ),
         IniekcjaBramy(
             operacja,
             "transformer.transformer_tap_changer_catalog_ref",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "transformer", "transformer_tap_changer_catalog_ref"),
         ),
         IniekcjaBramy(
             operacja,
             "sn_fields[].apparatus_catalog_ref",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "sn_fields", 0, "apparatus_catalog_ref"),  # type: ignore[arg-type]
         ),
         IniekcjaBramy(
             operacja,
             "field_apparatus_catalog_ref",
-            lambda: {**_payload_stacji(), "sn_fields": []},
+            lambda: {**zbuduj(), "sn_fields": []},
             lambda p: _zepsuj_klucz(p, "field_apparatus_catalog_ref"),
         ),
         IniekcjaBramy(
             operacja,
             "sn_fields[].equipment.ct",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "sn_fields", 0, "equipment", "ct", "catalog_ref"),  # type: ignore[arg-type]
         ),
         IniekcjaBramy(
             operacja,
             "sn_fields[].equipment.vt",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "sn_fields", 0, "equipment", "vt", "catalog_ref"),  # type: ignore[arg-type]
         ),
         IniekcjaBramy(
             operacja,
             "sn_fields[].equipment.relay",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "sn_fields", 0, "equipment", "relay", "catalog_ref"),  # type: ignore[arg-type]
         ),
         IniekcjaBramy(
             operacja,
             "nn_block.source_converter_catalog_ref",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "nn_block", "source_converter_catalog_ref"),
         ),
         IniekcjaBramy(
             operacja,
             "nn_block.source_protection.device_catalog_ref",
-            _payload_stacji,
+            zbuduj,
             lambda p: _zepsuj_klucz(p, "nn_block", "source_protection", "device_catalog_ref"),
         ),
     )
@@ -432,33 +435,27 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "insert_section_switch_sn",
         "catalog_ref",
-        lambda: {"bus_ref": "bus-1", "catalog_ref": REF_APARAT_SN},
+        lambda: {"segment_id": "seg-1", "catalog_ref": REF_APARAT_SN},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
         "insert_section_switch_sn",
         "catalog_binding",
-        lambda: {"bus_ref": "bus-1", "catalog_binding": _wiazanie("APARAT_SN", REF_APARAT_SN)},
+        lambda: {"segment_id": "seg-1", "catalog_binding": _wiazanie("APARAT_SN", REF_APARAT_SN)},
         lambda p: _zepsuj_wiazanie(p),
     ),
     # --- Transformator SN/nN wolnostojący ------------------------------------
     IniekcjaBramy(
         "add_transformer_sn_nn",
         "transformer_catalog_ref",
-        lambda: {"bus_sn_ref": "bus-1", "transformer_catalog_ref": REF_TRAFO},
+        lambda: {"hv_bus_ref": "bus-1", "transformer_catalog_ref": REF_TRAFO},
         lambda p: _zepsuj_klucz(p, "transformer_catalog_ref"),
-    ),
-    IniekcjaBramy(
-        "add_transformer_sn_nn",
-        "catalog_ref",
-        lambda: {"bus_sn_ref": "bus-1", "catalog_ref": REF_TRAFO},
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
         "add_transformer_sn_nn",
         "transformer_tap_changer_catalog_ref",
         lambda: {
-            "bus_sn_ref": "bus-1",
+            "hv_bus_ref": "bus-1",
             "transformer_catalog_ref": REF_TRAFO,
             "transformer_regulation_type": "OLTC",
             "transformer_tap_changer_catalog_ref": REF_ZACZEPY,
@@ -471,7 +468,10 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "append_station_on_endpoint",
         "transformer.catalog_ref",
-        lambda: {**_payload_stacji(), "transformer": {"catalog_ref": REF_TRAFO}},
+        lambda: {
+            **_payload_stacji("append_station_on_endpoint"),
+            "transformer": {"catalog_ref": REF_TRAFO},
+        },
         lambda p: _zepsuj_klucz(p, "transformer", "catalog_ref"),
     ),
     # --- Wyposażenie pól i odbiory ------------------------------------------
@@ -517,8 +517,10 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {"bus_ref": "bus-1", "catalog_binding": _wiazanie("APARAT_SN", REF_APARAT_SN)},
         lambda p: _zepsuj_wiazanie(p),
     ),
+    # Ta sama pozycja bramy na planie pola z KATALOGU rozdzielnic (wybór katalogowy
+    # przełącza operację na plan katalogowy — brama musi trzymać obie drogi).
     IniekcjaBramy(
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         "catalog_binding",
         lambda: {
             "bus_ref": "bus-1",
@@ -533,11 +535,26 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {"feeder_ref": "nn-1", "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR)},
         lambda p: _zepsuj_wiazanie(p),
     ),
-    # `add_nn_outgoing_field` NIE MA tu iniekcji — karta NAPRAWA-B, znalezisko #2:
-    # usunięta z `API_CATALOG_GATE_INVENTORY` (operacja nie czyta `catalog_ref`
-    # w żadnej gałęzi; dawna pozycja bramkowała referencję, której materializacja
-    # nigdzie nie trafiała). Parytet pinuje
-    # `test_add_nn_outgoing_field_bez_catalog_ref_przechodzi_brame` niżej.
+    # Aparat pola nN (karta W5-B): operacja CZYTA wskazanie (wiązanie na polu dla promocji
+    # aparatów nN), więc brama sprawdza ISTNIENIE pozycji — wskazanie jest opcjonalne
+    # (kreator pola nN go nie wysyła, szablon stacji tak).
+    IniekcjaBramy(
+        "add_nn_outgoing_field",
+        "catalog_ref",
+        lambda: {"station_ref": "st-1", "bus_nn_ref": "nn-bus-1", "catalog_ref": "cb_nn_630a"},
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_outgoing_field",
+        "catalog_binding",
+        lambda: {
+            "station_ref": "st-1",
+            "bus_nn_ref": "nn-bus-1",
+            "field_role": "SOURCE",
+            "catalog_binding": _wiazanie("APARAT_NN", "cb_nn_630a"),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN -----------------------
     IniekcjaBramy(
         "add_converter_source",
@@ -617,6 +634,147 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             "catalog_binding": _wiazanie("KOMPENSATOR_SN", REF_KOMPENSATOR),
         },
         lambda p: _zepsuj_wiazanie(p),
+    ),
+    # --- Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN ------------
+    # Iloczyn {transformator uziemiający, dławik, rezystor} × {referencja, wiązanie}.
+    # Ten sam iloczyn w zespołach sekcji GPZ (`add_grid_source_sn.zespoly_uziemiajace[]`).
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_ref",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[{"sekcja": 1, "catalog_ref": "TU_ZNYN11_15KV_PW160"}]
+        ),
+        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_binding",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_binding": _wiazanie(
+                        "TRANSFORMATOR_UZIEMIAJACY", "TU_ZNYN11_15KV_PW160"
+                    ),
+                }
+            ]
+        ),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].dlawik.catalog_ref",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
+                }
+            ]
+        ),
+        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "dlawik", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].dlawik.catalog_binding",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "dlawik": {
+                        "catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")
+                    },
+                }
+            ]
+        ),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0, "dlawik"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_ref",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+                }
+            ]
+        ),
+        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "rezystor", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_binding",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "rezystor": {
+                        "catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")
+                    },
+                }
+            ]
+        ),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0, "rezystor"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "catalog_ref",
+        lambda: {"bus_ref": "bus-1", "catalog_ref": "TU_ZNYN11_15KV_PW160"},
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_binding": _wiazanie("TRANSFORMATOR_UZIEMIAJACY", "TU_ZNYN11_15KV_PW160"),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "dlawik.catalog_ref",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
+        },
+        lambda p: _zepsuj_klucz(p, "dlawik", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "dlawik.catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "dlawik": {"catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")},
+        },
+        lambda p: _zepsuj_wiazanie(p, "dlawik"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "rezystor.catalog_ref",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+        },
+        lambda p: _zepsuj_klucz(p, "rezystor", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "rezystor.catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "rezystor": {"catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")},
+        },
+        lambda p: _zepsuj_wiazanie(p, "rezystor"),
     ),
     # --- CV-4.3 K1: odbior i generator synchroniczny WPROST na szynie SN --------
     IniekcjaBramy(
@@ -749,6 +907,44 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             "catalog_binding": _wiazanie("APARAT_NN", REF_APARAT_NN),
         },
         lambda p: _zepsuj_wiazanie(p),
+    ),
+    # Zasilenie rozdzielnicy nN (`supply`) — ta sama para dróg co odcinek kabla nN.
+    IniekcjaBramy(
+        "add_nn_distribution_board",
+        "supply.catalog_ref",
+        lambda: {
+            "voltage_kv": 0.4,
+            "supply": {"from_bus_ref": "bus-nn-1", "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        },
+        lambda p: _zepsuj_klucz(p, "supply", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_distribution_board",
+        "supply.catalog_binding",
+        lambda: {
+            "voltage_kv": 0.4,
+            "supply": {
+                "from_bus_ref": "bus-nn-1",
+                "length_m": 20.0,
+                "catalog_binding": _wiazanie("KABEL_NN", REF_KABEL_NN),
+            },
+        },
+        lambda p: _zepsuj_wiazanie(p, "supply"),
+    ),
+    # W5-C: wyposażenie pola SN — iloczyn przestrzeni (APARAT_SN, CT, VT, OGRANICZNIK_SN)
+    # pilnuje `tests/enm/test_wyposazenie_pola.py`; tu zepsuty OSTATNI aparat listy.
+    IniekcjaBramy(
+        "set_bay_equipment",
+        "devices[].catalog_ref",
+        lambda: {
+            "bay_ref": "pole-sn-1",
+            "mode": "katalog",
+            "devices": [
+                {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": REF_APARAT_SN},
+                {"kind": "VT", "placement": "OFF_PATH", "catalog_ref": REF_VT},
+            ],
+        },
+        lambda p: _zepsuj_klucz(p, "devices", 1, "catalog_ref"),
     ),
 )
 
@@ -940,8 +1136,6 @@ def test_produkcyjna_droga_zapisu_konczy_zle_referencje_kodem_422(
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": REF_ZRODLO,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         snapshot = _operacja_api(
@@ -1053,7 +1247,7 @@ def test_zbiory_kluczy_pochodza_z_inwentarza() -> None:
 def test_skan_obu_modulow_nie_znajduje_klucza_spoza_inwentarza() -> None:
     """Skan klasy: żaden klucz katalogowy operacji domenowych nie omija inwentarza API.
 
-    Skanujemy DRZEWA SKŁADNIOWE obu modułów operacji (V1 i V2). Każdy literał
+    Skanujemy DRZEWA SKŁADNIOWE modułów operacji (V1, V2 i moduły handlerów V2). Każdy literał
     kończący się na `catalog_ref` jest kluczem payloadu albo polem zapisywanym do
     migawki; każdy literał o kształcie wiązania jest DRUGĄ drogą wskazania pozycji.
     Operacja, która zacznie czytać NOWĄ referencję, zapali ten test, zanim
@@ -1062,8 +1256,16 @@ def test_skan_obu_modulow_nie_znajduje_klucza_spoza_inwentarza() -> None:
     referencje: set[str] = set()
     wiazania: set[str] = set()
     liczba_funkcji = 0
-    for modul in (domain_operations, domain_operations_v2):
-        zrodlo = Path(inspect.getfile(modul)).read_text(encoding="utf-8")
+    # Moduły V1 i V2 oraz KAŻDY moduł, w którym zdefiniowano handler rejestru V2 (W5-C:
+    # operacje łączników, wyposażenie pola) — handler spoza dwóch plików nie może
+    # czytać referencji poza wzrokiem skanu.
+    pliki = sorted(
+        {Path(inspect.getfile(m)).as_posix() for m in (domain_operations, domain_operations_v2)}
+        | {Path(inspect.getsourcefile(h) or "").as_posix() for h in ALL_V2_HANDLERS.values()}
+    )
+    assert len(pliki) >= 4, pliki
+    for plik in pliki:
+        zrodlo = Path(plik).read_text(encoding="utf-8")
         drzewo = ast.parse(zrodlo)
         funkcje = [w for w in ast.walk(drzewo) if isinstance(w, ast.FunctionDef)]
         liczba_funkcji += len(funkcje)
@@ -1146,18 +1348,16 @@ def test_predykat_wiazan_der_jest_ten_sam_co_w_warstwie_domenowej() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Karta NAPRAWA-B, znalezisko #2 — rozjazd kontraktu catalog_ref
-# `add_nn_outgoing_field`. Pomiar: operacja domenowa nie czyta
-# `catalog_ref`/`catalog_binding` z payloadu w ŻADNEJ gałęzi (FEEDER ani
-# SOURCE) — usunięta z `CATALOG_REQUIRED_OPERATIONS` i z
-# `API_CATALOG_GATE_INVENTORY`. Testy niżej pinują naprawę I pilnują, żeby
-# WHOLE rejestr (`CATALOG_REQUIRED_OPERATIONS` × frontendowy odpowiednik
-# `catalogFirstRules.ts`) nie rozjechał się po cichu w przyszłości.
+# Kontrakt katalogowy `add_nn_outgoing_field` (karta NAPRAWA-B #2, przepisany w W5-B).
+# NAPRAWA-B: brama nie może WYMAGAĆ referencji (kreator pola nN jej nie wysyła). W5-B:
+# operacja CZYTA wskazaną pozycję (wiązanie na polu dla promocji aparatów nN — koniec
+# cichego gubienia `catalog_ref` szablonu stacji, W061), więc wskazanie NIEISTNIEJĄCE jest
+# odrzucane, a brak wskazania przechodzi. Iloczyn: rola pola × {brak, poprawne, błędne}.
 # ---------------------------------------------------------------------------
 
 
 def test_add_nn_outgoing_field_poza_wymaganymi_operacjami_katalogowymi() -> None:
-    """Pin rejestru: operacja, która nie konsumuje catalog_ref, nie może go wymagać."""
+    """Pin rejestru: wskazanie aparatu pola nN jest opcjonalne — operacja go nie wymaga."""
     assert "add_nn_outgoing_field" not in CATALOG_REQUIRED_OPERATIONS
 
 
@@ -1186,22 +1386,23 @@ def test_add_nn_outgoing_field_poza_wymaganymi_operacjami_katalogowymi() -> None
     ],
 )
 def test_add_nn_outgoing_field_bez_catalog_ref_przechodzi_brame(payload: dict[str, Any]) -> None:
-    """Dokładny payload PRODUKCYJNEGO kreatora (`KreatorPolaNn.tsx`) — bez `catalog_ref`,
-    bo formularz świadomie go nie pokazuje. Przed naprawą: `422 catalog.ref_required`
-    na KAŻDE żądanie (dla obu ról, FEEDER i SOURCE). Iloczyn cech: rola pola ×
-    obecność/brak `catalog_ref` — nie tylko przykład z karty.
-    """
+    """Dokładny payload PRODUKCYJNEGO kreatora (`KreatorPolaNn.tsx`) — bez `catalog_ref`:
+    brama przepuszcza. Wskazanie POPRAWNE też przechodzi; wskazanie NIEISTNIEJĄCE —
+    odmowa `catalog.item_not_found` (operacja zapisuje wiązanie na polu, więc brama nie może
+    przepuścić martwej referencji)."""
     blad, pola = validate_and_materialize_catalog_binding("add_nn_outgoing_field", payload)
     assert blad is None, f"Kreator 'Pole odpływowe nN' zostałby odrzucony bramą: {blad}"
     assert pola == {}
 
-    # Payload z JAWNIE podanym (niepoprawnym) catalog_ref też przechodzi bramę —
-    # operacja go i tak nie czyta, więc bramkowanie byłoby fikcją kontroli.
+    z_poprawna = {**payload, "catalog_ref": "cb_nn_630a"}
+    blad_ok, _ = validate_and_materialize_catalog_binding("add_nn_outgoing_field", z_poprawna)
+    assert blad_ok is None, blad_ok
+
     z_bledna_referencja = {**payload, "catalog_ref": "nie-istnieje-w-katalogu"}
     blad2, _ = validate_and_materialize_catalog_binding(
         "add_nn_outgoing_field", z_bledna_referencja
     )
-    assert blad2 is None, f"Nieużywana referencja nie powinna nic bramkować: {blad2}"
+    assert blad2 is not None and blad2.code == "catalog.item_not_found", blad2
 
 
 def _frontend_catalog_first_operations() -> set[str]:
@@ -1296,9 +1497,9 @@ def test_bramka_i_frontend_zgadzaja_sie_co_do_wymogu_katalogu() -> None:
         f"{sorted(frontend_bez_backendu)}"
     )
 
-    # `add_nn_outgoing_field`: NIE MA w żadnym z dwóch zbiorów (naprawa #2) — pin
-    # jawny, żeby regresja (przywrócenie do CATALOG_REQUIRED_OPERATIONS bez
-    # równoczesnej naprawy operacji/frontu) zapaliła ten test od razu.
+    # `add_nn_outgoing_field`: NIE MA w żadnym z dwóch zbiorów (wskazanie opcjonalne,
+    # naprawa NAPRAWA-B #2) — pin jawny, żeby przywrócenie wymogu bez naprawy kreatora
+    # zapaliło ten test od razu.
     assert "add_nn_outgoing_field" not in CATALOG_REQUIRED_OPERATIONS
     assert "add_nn_outgoing_field" not in frontend
 
@@ -1322,7 +1523,7 @@ def _enm_z_odplywem_nn() -> tuple[dict[str, Any], str]:
 
     Zwraca (migawka, feeder_ref) — `feeder_ref` pochodzi z `selection_hint`
     operacji, TAK SAMO jak w `_enm_with_feeder`, bo miejsce przechowania pola
-    w migawce (`bays` czy `substations[].meta.nn_field_specs`) jest szczegółem
+    w migawce (rekord `bays`) jest szczegółem
     implementacyjnym `_field_ref_exists`, nie kontraktem tego testu.
     """
     enm: dict[str, Any] = {
@@ -1334,7 +1535,6 @@ def _enm_z_odplywem_nn() -> tuple[dict[str, Any], str]:
                 "name": "ST-1",
                 "station_type": "mv_lv",
                 "bus_refs": ["bus-nn"],
-                "field_specs": [],
             }
         ],
     }
@@ -1499,3 +1699,65 @@ def test_add_nn_load_bez_deklaracji_i_bez_katalogu_daje_422(klient: TestClient) 
     szczegol = odpowiedz.json()["detail"]
     assert szczegol["code"] == "catalog.ref_required", szczegol
     assert klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"] == hash_przed
+
+
+def test_ladunki_iniekcji_niosa_wylacznie_pola_operacji() -> None:
+    """Ładunek iniekcji = ładunek, który handler czyta (``CANONICAL_OPERATIONS``).
+
+    Pomiar 2026-10-22: iniekcje ``add_transformer_sn_nn`` niosły ``bus_sn_ref``, a
+    ``insert_section_switch_sn`` — ``bus_ref``; handler żadnego z nich nie czyta, więc
+    brama była ćwiczona na ładunku, którego użytkownik nie wyśle.
+    """
+    from domain.canonical_operations import CANONICAL_OPERATIONS, REQUIRED_FIELD_ALIASES
+
+    fantomy = []
+    for iniekcja in INIEKCJE:
+        spec = CANONICAL_OPERATIONS[iniekcja.operacja]
+        zastepcze = {
+            k for v in REQUIRED_FIELD_ALIASES.get(iniekcja.operacja, {}).values() for k in v
+        }
+        dozwolone = set(spec.required_fields) | set(spec.optional_fields) | zastepcze
+        fantomy += [
+            f"{iniekcja.operacja}|{iniekcja.sciezka}:{klucz}"
+            for klucz in sorted(iniekcja.zbuduj())
+            if klucz not in dozwolone
+        ]
+    assert fantomy == []
+
+
+def _pozycje_bramy_spoza_odczytow(inwentarz: tuple[Any, ...]) -> list[str]:
+    from domain.canonical_operations import CANONICAL_OPERATIONS, REQUIRED_FIELD_ALIASES
+
+    wynik = []
+    for pozycja in inwentarz:
+        spec = CANONICAL_OPERATIONS[pozycja.operacja]
+        zastepcze = {
+            k for v in REQUIRED_FIELD_ALIASES.get(pozycja.operacja, {}).values() for k in v
+        }
+        dozwolone = set(spec.required_fields) | set(spec.optional_fields) | zastepcze
+        klucz = pozycja.sciezka.split(".")[0].split("[")[0]
+        if klucz not in dozwolone:
+            wynik.append(f"{pozycja.operacja}|{pozycja.sciezka}")
+    return wynik
+
+
+def test_pozycja_bramy_to_klucz_czytany_przez_handler() -> None:
+    """Brama API sprawdza wyłącznie klucze, które handler czyta (pomiar 2026-10-22).
+
+    Pozycje ``add_transformer_sn_nn|catalog_ref`` i ``update_element_parameters|catalog_binding``
+    opisywały klucze, których handler nie czyta: referencja przechodziła bramę, a operacja ją
+    pomijała (``catalog.ref_required``) — dwie prawdy o tym samym ładunku.
+    """
+    from api.domain_ops_policy import API_CATALOG_GATE_INVENTORY
+
+    assert _pozycje_bramy_spoza_odczytow(API_CATALOG_GATE_INVENTORY) == []
+
+
+def test_iniekcja_pozycja_bramy_na_kluczu_nieczytanym_wykryta() -> None:
+    from api.domain_ops_policy import API_CATALOG_GATE_INVENTORY, PozycjaBramyApi
+
+    zatruty = (
+        *API_CATALOG_GATE_INVENTORY,
+        PozycjaBramyApi("add_transformer_sn_nn", "catalog_ref", "TRAFO_SN_NN", True),
+    )
+    assert _pozycje_bramy_spoza_odczytow(zatruty) == ["add_transformer_sn_nn|catalog_ref"]

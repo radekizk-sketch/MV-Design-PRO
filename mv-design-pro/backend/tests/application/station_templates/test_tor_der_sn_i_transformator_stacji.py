@@ -139,7 +139,9 @@ def test_pozycja_15kv_wskazana_przez_projektanta_to_odmowa_doboru_tr() -> None:
         ("tpl_zksn_8pole_2x1000kva_coupler", 1000),
         ("tpl_przemyslowa_1mva_4odplywy", 1000),
         ("tpl_przemyslowa_2mva_silnik", 2000),
-        ("tpl_gpz_110_15_2x16mva_h5", 16000),
+        # GPZ z równoważnikiem na szynach SN: transformatory 110/SN poza modelem
+        # (karta GPZ-MODEL) — identyfikator nie koduje mocy transformatora.
+        ("tpl_gpz_sn_15_2s_4p", None),
         ("tpl_slupowa_50kva", 63),
         ("tpl_kompensacja_0v6mvar_15kv", None),
         # Token mocy DER (MW) w identyfikatorze nie jest mocą transformatora stacji.

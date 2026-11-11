@@ -11,7 +11,6 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useAppStateStore } from '../../../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../../shell/useShellStore';
 import { GeneratorRaportu } from '../GeneratorRaportu';
@@ -20,6 +19,7 @@ import {
   etykietaPrzebiegu,
   przebiegiDoRaportu,
 } from '../model';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../../test/kontekstBiegu';
 
 type Run = ReturnType<typeof useExecutionRunsStore.getState>['runs'][number];
 
@@ -36,14 +36,31 @@ function przebieg(id: string, analysisType: string, finishedAt: string, status =
   } as unknown as Run;
 }
 
+/** Odpowiedź bramy eksportu wywodu (`…/export/proof/dostepnosc`) — wszystkie formaty dostępne. */
+function odpowiedzBramyWywodu(url: string, niedostepne: Record<string, string> = {}): Response {
+  const runId = decodeURIComponent(url.split('/analysis-runs/')[1]?.split('/')[0] ?? '');
+  return new Response(
+    JSON.stringify({
+      run_id: runId,
+      formaty: ['json', 'latex', 'pdf'].map((format) => ({
+        format,
+        dostepny: !(format in niedostepne),
+        powod_pl: niedostepne[format] ?? null,
+      })),
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
+}
+
 /** Zbiera URL-e żądań eksportu (fetch) — dowód, co backend dostaje. */
-function przechwycFetch(): string[] {
+function przechwycFetch(niedostepne: Record<string, string> = {}): string[] {
   const urls: string[] = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       urls.push(url);
+      if (url.includes('/export/proof/dostepnosc')) return odpowiedzBramyWywodu(url, niedostepne);
       if (url.includes('/results/index')) {
         return new Response(
           JSON.stringify({ tables: [{ table_id: 'short_circuit', label_pl: 'Zwarcia', row_count: 7 }] }),
@@ -58,12 +75,15 @@ function przechwycFetch(): string[] {
 
 describe('GeneratorRaportu — okno składania raportu (ui2)', () => {
   beforeEach(() => {
-    useAppStateStore.setState({ activeRunId: null });
+    wyczyscKontekstWyniku();
     useExecutionRunsStore.setState({ runs: [] });
     useShellStore.setState({ activeSpace: 'dokumentacja' });
     // jsdom nie ma createObjectURL — pobranie pliku jest efektem ubocznym klienta.
     Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
     Object.defineProperty(window.URL, 'revokeObjectURL', { value: () => undefined, writable: true });
+    // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+    // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -152,7 +172,7 @@ describe('GeneratorRaportu — okno składania raportu (ui2)', () => {
   it('WYBÓR PRZEBIEGU: eksport idzie do wskazanego biegu, nie do aktywnego', async () => {
     const user = userEvent.setup();
     const urls = przechwycFetch();
-    useAppStateStore.setState({ activeRunId: 'run-nowszy' });
+    ustawBiegOgladany('run-nowszy');
     useExecutionRunsStore.setState({
       runs: [
         przebieg('run-nowszy', 'SC_3F', '2026-07-30T12:00:00Z'),
@@ -214,6 +234,7 @@ describe('GeneratorRaportu — brama dokumentacji wykonawczej', () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         urls.push(url);
+        if (url.includes('/export/proof/dostepnosc')) return odpowiedzBramyWywodu(url);
         if (url.includes('/gotowosc-dokumentacji-wykonawczej')) {
           return new Response(
             JSON.stringify({
@@ -247,11 +268,14 @@ describe('GeneratorRaportu — brama dokumentacji wykonawczej', () => {
   }
 
   beforeEach(() => {
-    useAppStateStore.setState({ activeRunId: null });
+    wyczyscKontekstWyniku();
     useExecutionRunsStore.setState({ runs: [] });
     useShellStore.setState({ activeSpace: 'dokumentacja' });
     Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
     Object.defineProperty(window.URL, 'revokeObjectURL', { value: () => undefined, writable: true });
+    // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+    // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -316,9 +340,103 @@ describe('GeneratorRaportu — brama dokumentacji wykonawczej', () => {
     await user.selectOptions(screen.getByTestId('mvd-generator-profil'), 'wykonawczy');
     await screen.findByTestId('mvd-generator-brama-pw');
 
+    await waitFor(() =>
+      expect((screen.getByTestId('mvd-generator-dowod-json') as HTMLButtonElement).disabled).toBe(false),
+    );
     await user.click(screen.getByTestId('mvd-generator-dowod-json'));
     await waitFor(() => {
       expect(urls.some((u) => u.includes('/export/proof/json'))).toBe(true);
     });
+  });
+});
+
+/**
+ * Karta UI-02 PANEL-DOLNY — brama eksportu wywodu. Dostępność formatu (i przyczynę
+ * braku) podaje serwer funkcją, którą buduje eksport; ekran nie liczy własnego
+ * predykatu. Iloczyn: format niedostępny × format dostępny × błąd bramy — skutek
+ * (czy żądanie eksportu poszło), nie tylko napis.
+ */
+describe('GeneratorRaportu — brama eksportu wywodu', () => {
+  beforeEach(() => {
+    wyczyscKontekstWyniku();
+    useExecutionRunsStore.setState({ runs: [] });
+    useShellStore.setState({ activeSpace: 'dokumentacja' });
+    Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
+    Object.defineProperty(window.URL, 'revokeObjectURL', { value: () => undefined, writable: true });
+    // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+    // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('format niedostępny jest nieaktywny z przyczyną serwera; dostępny działa', async () => {
+    const user = userEvent.setup();
+    const powod = 'Eksport PDF wymaga biblioteki reportlab, której nie ma na serwerze.';
+    const urls = przechwycFetch({ pdf: powod });
+    useExecutionRunsStore.setState({ runs: [przebieg('run-g1', 'SC_3F', '2026-08-02T10:00:00Z')] });
+
+    render(<GeneratorRaportu />);
+    await waitFor(() =>
+      expect((screen.getByTestId('mvd-generator-dowod-json') as HTMLButtonElement).disabled).toBe(false),
+    );
+    const pdf = screen.getByTestId('mvd-generator-dowod-pdf') as HTMLButtonElement;
+    expect(pdf.disabled).toBe(true);
+    expect(pdf.title).toBe(powod);
+    expect(screen.getByTestId('mvd-generator-dowod-powod').textContent).toContain(powod);
+    expect(urls.some((u) => u.includes('/analysis-runs/run-g1/export/proof/dostepnosc'))).toBe(true);
+
+    await user.click(pdf);
+    expect(urls.some((u) => u.includes('/export/proof/pdf'))).toBe(false);
+
+    await user.click(screen.getByTestId('mvd-generator-dowod-json'));
+    await waitFor(() => expect(urls.some((u) => u.includes('/export/proof/json'))).toBe(true));
+  });
+
+  it('wszystkie formaty niedostępne (bieg bez śladu) → wszystkie nieaktywne, jedna przyczyna', async () => {
+    const powod = 'Przebieg nie ma śladu obliczeń — wywodu nie da się zbudować.';
+    przechwycFetch({ json: powod, latex: powod, pdf: powod });
+    useExecutionRunsStore.setState({ runs: [przebieg('run-g2', 'PHASE_STATE_SN', '2026-08-02T11:00:00Z')] });
+
+    render(<GeneratorRaportu />);
+    await waitFor(() => expect(screen.getByTestId('mvd-generator-dowod-powod')).toBeTruthy());
+    for (const format of ['pdf', 'latex', 'json']) {
+      const przycisk = screen.getByTestId(`mvd-generator-dowod-${format}`) as HTMLButtonElement;
+      expect(przycisk.disabled).toBe(true);
+      expect(przycisk.title).toBe(powod);
+    }
+    expect(screen.getByTestId('mvd-generator-dowod-powod').textContent).toBe(
+      `Eksport wywodu niedostępny: ${powod}`,
+    );
+  });
+
+  it('błąd bramy → polecenia nieaktywne z przyczyną (serwer niczego nie potwierdził)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/export/proof/dostepnosc')) {
+          return new Response(JSON.stringify({ detail: 'Przebieg nie istnieje.' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ tables: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }),
+    );
+    useExecutionRunsStore.setState({ runs: [przebieg('run-g3', 'LOAD_FLOW', '2026-08-02T12:00:00Z')] });
+
+    render(<GeneratorRaportu />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-generator-dowod-powod').textContent).toContain('Przebieg nie istnieje.'),
+    );
+    expect((screen.getByTestId('mvd-generator-dowod-latex') as HTMLButtonElement).disabled).toBe(true);
   });
 });

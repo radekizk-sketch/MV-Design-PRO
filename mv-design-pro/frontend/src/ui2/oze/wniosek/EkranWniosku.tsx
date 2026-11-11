@@ -21,6 +21,7 @@
  * status → tekst i zero liczników.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -28,7 +29,6 @@ import { selectAllDers, useStationDerStore } from '../../../ui/network-build/sta
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { etykietaPrzebieguWyniku } from '../../wyniki/wzorzec/strings';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import {
@@ -47,10 +47,7 @@ import type { BrakiWniosku, WidokWniosku, ZadanieWniosku } from '../ncrfg/typy';
 import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
 import {
-  domyslnyPrzebieg,
   powodBlokadyWniosku,
-  przebiegiRozplywu,
-  przebiegiZwarciowe,
   zbudujZadanieWniosku,
 } from './model';
 import {
@@ -61,6 +58,7 @@ import {
 } from './strings';
 
 import './wniosek.css';
+import { biegiRodziny, useAktywnyRunId, useWybierzBieg } from '../../wyniki/kontekst/kontekstWyniku';
 
 /** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
 function zapiszBlob(blob: Blob, nazwa: string): void {
@@ -76,19 +74,24 @@ function zapiszBlob(blob: Blob, nazwa: string): void {
 
 export interface EkranWnioskuProps {
   /** Tryb zaawansowania — odciski sekcji widoczne w trybie eksperckim. */
-  readonly trybZaawansowania: AdvancementMode;
+  readonly szczegolyAudytowe: boolean;
 }
 
-export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Element {
+export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Element {
   const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const rozplywy = useMemo(() => przebiegiRozplywu(runs), [runs]);
-  const zwarcia = useMemo(() => przebiegiZwarciowe(runs), [runs]);
+  // Karta K8: przebiegi rozpływu i zwarcia wniosku to AKTYWNE biegi tych rodzin z magazynu
+  // kontekstu wyniku — wybór w formularzu zmienia bieg rodziny w całej aplikacji.
+  const rozplywy = useMemo(() => biegiRodziny(runs, 'rozplyw'), [runs]);
+  const zwarcia = useMemo(() => biegiRodziny(runs, 'zwarcie'), [runs]);
+  const pfRunId = useAktywnyRunId('rozplyw');
+  const scRunId = useAktywnyRunId('zwarcie');
+  const wybierzBieg = useWybierzBieg();
 
   // Operator (profil wymagań NC RfG) — z modelu albo jawny wybór (wspólny store z macierzą).
   const ders = useStationDerStore((state) => selectAllDers(state));
   const zModelu = useMemo(() => operatorZModelu(ders), [ders]);
   const katalog = useNcRfgStore((s) => s.katalog);
+  const bladKatalogu = useNcRfgStore((s) => s.bladKatalogu);
   const operatorWybor = useNcRfgStore((s) => s.operatorWybor);
   const ustawOperator = useNcRfgStore((s) => s.ustawOperator);
   const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
@@ -104,8 +107,6 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
   // dobór co kompensacja mocy biernej) — projektant nie wpisuje referencji.
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeSzyn = useMemo(() => selectBusOptions(snapshot), [snapshot]);
-  const [pfRunId, setPfRunId] = useState<string | null>(null);
-  const [scRunId, setScRunId] = useState<string | null>(null);
   const [busRef, setBusRef] = useState('');
   const [nazwaProjektu, setNazwaProjektu] = useState(() => nazwaProjektuBazowa ?? '');
   const [nazwaPrzypadku, setNazwaPrzypadku] = useState(() => nazwaPrzypadkuBazowa ?? '');
@@ -121,22 +122,6 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
   useEffect(() => {
     void zaladujKatalog();
   }, [zaladujKatalog]);
-
-  // Domyślny wybór przebiegów (preferuje aktywny, inaczej ostatni z listy).
-  useEffect(() => {
-    setPfRunId((biezacy) =>
-      biezacy && rozplywy.some((r) => r.id === biezacy)
-        ? biezacy
-        : domyslnyPrzebieg(rozplywy, activeRunId),
-    );
-  }, [rozplywy, activeRunId]);
-  useEffect(() => {
-    setScRunId((biezacy) =>
-      biezacy && zwarcia.some((r) => r.id === biezacy)
-        ? biezacy
-        : domyslnyPrzebieg(zwarcia, activeRunId),
-    );
-  }, [zwarcia, activeRunId]);
 
   const powodBlokady = powodBlokadyWniosku({
     caseId: aktywnyPrzypadek,
@@ -208,7 +193,6 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
     }
   };
 
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
   return (
     <div className="mvd-wniosek" data-testid="mvd-wniosek-ekran">
@@ -226,7 +210,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
               <select
                 value={pfRunId ?? ''}
                 onChange={(e) => {
-                  setPfRunId(e.target.value || null);
+                  if (e.target.value) wybierzBieg(e.target.value, 'ekran');
                   unewaznij();
                 }}
                 disabled={rozplywy.length === 0}
@@ -248,7 +232,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
               <select
                 value={scRunId ?? ''}
                 onChange={(e) => {
-                  setScRunId(e.target.value || null);
+                  if (e.target.value) wybierzBieg(e.target.value, 'ekran');
                   unewaznij();
                 }}
                 disabled={zwarcia.length === 0}
@@ -358,6 +342,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
           <WyborOperatora
             zModelu={zModelu}
             operatorzy={katalog?.operators ?? null}
+            bladKatalogu={bladKatalogu}
             wybor={operatorWybor}
             onWybor={(wybor) => {
               ustawOperator(wybor);
@@ -411,7 +396,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
       {widok ? (
         <WynikWniosku
           widok={widok}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           onPobierz={(format) => void pobierzPlik(format)}
           plikLadowanie={plikLadowanie}
         />
@@ -422,14 +407,14 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
 
 interface WynikWnioskuProps {
   readonly widok: WidokWniosku;
-  readonly trybEkspercki: boolean;
+  readonly szczegolyAudytowe: boolean;
   readonly onPobierz: (format: FormatDokumentu) => void;
   readonly plikLadowanie: FormatDokumentu | null;
 }
 
 function WynikWniosku({
   widok,
-  trybEkspercki,
+  szczegolyAudytowe,
   onPobierz,
   plikLadowanie,
 }: WynikWnioskuProps): JSX.Element {
@@ -531,19 +516,19 @@ function WynikWniosku({
               <td>{zwarcia.nazwa_wezla}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaIkss}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaIkss} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.ik_ss_ka, T.jednKA)}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaSk}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaSk} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.sk_mva, T.jednMVA)}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaIp}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaIp} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.ip_ka, T.jednKA)}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaIth}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaIth} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.ith_ka, T.jednKA)}</td>
             </tr>
             <tr>
@@ -589,7 +574,7 @@ function WynikWniosku({
       </div>
 
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-wniosek-odciski"
         wiersze={[
           { etykieta: T.odciskWejscia, wartosc: widok.input_hash },

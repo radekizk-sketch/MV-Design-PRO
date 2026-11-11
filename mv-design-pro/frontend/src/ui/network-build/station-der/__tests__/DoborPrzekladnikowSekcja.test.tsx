@@ -12,6 +12,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { wyczyscRejestrGotowosci } from '../../../../ui2/kryteria';
+import { zdanieKodowBezRejestru } from '../../../../ui2/kryteria/rejestrGotowosci';
 import { DoborPrzekladnikowSekcja } from '../DoborPrzekladnikowSekcja';
 
 const ODPOWIEDZ = {
@@ -256,9 +257,12 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
     expect(screen.queryByTestId('kryterium-kody-gotowosci-ct.przekladnia')).toBeNull();
   });
 
-  it('kod bez rejestru (zapytanie o rejestr nieudane) nie wywraca sekcji doboru', async () => {
-    // Rejestr może nie odpowiedzieć — dobór musi zostać czytelny bez czipów,
-    // nie zniknąć razem z resztą ekranu (ta sama zasada co błąd doboru).
+  it('kod bez rejestru (zapytanie o rejestr nieudane) nie wywraca sekcji doboru i nie znika bez śladu', async () => {
+    // Rejestr może nie odpowiedzieć — dobór musi zostać czytelny, nie zniknąć razem
+    // z resztą ekranu (ta sama zasada co błąd doboru). Kanon NCRFG-LADOWANIE
+    // (`komunikatyKodow`): nieodczytany rejestr przy niepustych kodach to zdanie
+    // o nierozwiązanych ograniczeniach gotowości, nie pusta lista (cisza udawałaby
+    // wynik bez ograniczeń) — i nadal bez surowego identyfikatora kodu.
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/readiness/registry')) {
@@ -270,7 +274,9 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
     const wiersz = await screen.findByTestId('kryterium-ct.alf');
     expect(wiersz.textContent).toContain('brak danej');
-    expect(screen.queryByTestId('kryterium-kody-gotowosci-ct.alf')).toBeNull();
+    const czipy = await screen.findByTestId('kryterium-kody-gotowosci-ct.alf');
+    expect(czipy.textContent).toBe(zdanieKodowBezRejestru(1));
+    expect(czipy.textContent).not.toContain('ct.secondary_circuit_missing');
   });
 
   it('ślad WHITE BOX jest rozwijalny i pokazuje kroki z jądra', async () => {

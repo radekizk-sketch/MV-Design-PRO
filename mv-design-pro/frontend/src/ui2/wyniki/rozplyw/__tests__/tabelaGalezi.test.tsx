@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 
 // R3-A: klient walidacji energetycznej mockowany na granicy modułu (reuse
@@ -15,6 +15,9 @@ import { fetchWalidacjaEnergetyczna } from '../../jakosc/api';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { identyfikatorGrafu } from '../../../../ui/topology/identyfikatorGrafu';
+import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
   branchResultFixture,
   powerFlowResultFixture,
@@ -27,7 +30,7 @@ const mockedWalidacja = vi.mocked(fetchWalidacjaEnergetyczna);
 
 function props(over: Partial<Parameters<typeof TabelaGalezi>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -36,7 +39,7 @@ function props(over: Partial<Parameters<typeof TabelaGalezi>[0]> = {}) {
 beforeEach(() => {
   usePowerFlowResultsStore.getState().reset();
   // Realne store'y pętli decyzji (jak `wzorzec/__tests__/usePoprawWModelu.test.tsx`).
-  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
   useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   // Domyślnie: walidacja NIEDOSTĘPNA (odrzucenie) — tabela działa jak przed
   // kartą R3-A; testy werdyktu nadpisują na odpowiedź z fixtury.
@@ -115,9 +118,9 @@ describe('TabelaGalezi — konkretyzacja wzorca na realnym kształcie danych', (
   });
 
   it('identyfikator przebiegu tylko w trybie eksperckim (§2.7)', () => {
-    const { rerender } = render(<TabelaGalezi {...props({ trybZaawansowania: 'basic' })} />);
+    const { rerender } = render(<TabelaGalezi {...props({ szczegolyAudytowe: false })} />);
     expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
-    rerender(<TabelaGalezi {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<TabelaGalezi {...props({ szczegolyAudytowe: true })} />);
     // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
     fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
     expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('pf-run-1');
@@ -178,14 +181,36 @@ describe('TabelaGalezi — werdykt obciążalności z walidacji energetycznej (R
     expect(within(wiersze[0]).getByText('L-2')).toBeInTheDocument(); // 65,0 < 92,0
   });
 
-  it('brak odpowiedzi walidacji → komórki „—", bez werdyktu i bez przycisku decyzji', async () => {
+  it('błąd odczytu walidacji → komórki „odczyt nieudany" + nota (błąd ≠ brak pozycji), bez werdyktu i decyzji', async () => {
     // Domyślny mock z beforeEach: odrzucenie (walidacja niedostępna).
     render(<TabelaGalezi {...props()} />);
     await waitFor(() => expect(mockedWalidacja).toHaveBeenCalledTimes(1));
-    // Obie gałęzie: kreska w kolumnie obciążenia (uczciwie, bez zgadywania).
-    expect(screen.getAllByText(ROZPLYW_STRINGS.kreska)).toHaveLength(2);
+    expect(await screen.findAllByText(ROZPLYW_STRINGS.obciazenieBladOdczytu)).toHaveLength(2);
+    expect(screen.queryByText(ROZPLYW_STRINGS.kreska)).not.toBeInTheDocument();
+    const nota = screen.getByTestId('mvd-rozplyw-obciazenia-odczyt');
+    expect(nota).toHaveAttribute('data-odczyt', 'blad');
+    expect(nota).toHaveTextContent(ROZPLYW_STRINGS.obciazeniaBladNota);
     expect(screen.queryByTestId('mvd-wyn-popraw')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-tag-ostrzezenie')).not.toBeInTheDocument();
+  });
+
+  it('odczyt walidacji w toku → komórki „odczyt…" + nota (odczyt ≠ brak pozycji); po odpowiedzi werdykt', async () => {
+    let zwolnij: (v: Awaited<ReturnType<typeof walidacjaResponseFixture>>) => void = () => undefined;
+    mockedWalidacja.mockReturnValue(
+      new Promise((r) => {
+        zwolnij = r;
+      }) as never,
+    );
+    render(<TabelaGalezi {...props()} />);
+    expect(screen.getAllByText(ROZPLYW_STRINGS.obciazenieWczytywanie)).toHaveLength(2);
+    expect(screen.queryByText(ROZPLYW_STRINGS.kreska)).not.toBeInTheDocument();
+    const nota = screen.getByTestId('mvd-rozplyw-obciazenia-odczyt');
+    expect(nota).toHaveAttribute('data-odczyt', 'wczytywanie');
+    expect(nota).toHaveAttribute('aria-busy', 'true');
+    zwolnij(walidacjaResponseFixture());
+    expect(await screen.findByText('92,0')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-rozplyw-obciazenia-odczyt')).not.toBeInTheDocument();
+    expect(screen.queryByText(ROZPLYW_STRINGS.obciazenieWczytywanie)).not.toBeInTheDocument();
   });
 
   it('klik „Popraw w modelu" na przeciążonej gałęzi → selekcja LineBranch + przestrzeń „Schemat" (realne store\'y)', async () => {
@@ -273,5 +298,37 @@ describe('TabelaGalezi — typElementuWiersza: klik NATYWNY na wierszu (karta TO
     fireEvent.click(screen.getByText('L-1'));
 
     expect(useSelectionStore.getState().selectedElement).toBeNull();
+  });
+});
+
+describe('TabelaGalezi — wiersz rozpływu z identyfikatorem GRAFU zaznacza element po ref modelu (karta K8)', () => {
+  // Realny kształt wyniku rozpływu: `branch_id` = `uuid5(NAMESPACE_DNS, ref_id)` (graf
+  // obliczeniowy), a schemat, nakładka i panel dolny znają element po `ref_id`.
+  const REF = 'seg/372f90192b1b61aa04e5347876a377f3/segment';
+  const UUID = identyfikatorGrafu(REF);
+
+  beforeEach(() => {
+    useSnapshotStore.setState({
+      snapshot: { branches: [{ ref_id: REF, id: 'galaz-1', name: 'Odcinek 1' }] } as unknown as EnergyNetworkModel,
+    } as never);
+    ustawWynik({ branch_results: [branchResultFixture({ branch_id: UUID })] });
+    mockedWalidacja.mockResolvedValue(
+      walidacjaResponseFixture([walidacjaItemFixture({ target_id: UUID, target_name: 'Odcinek 1' })]),
+    );
+  });
+
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null } as never);
+  });
+
+  it('klik natywny wiersza: zaznaczenie i wskazanie schematu niosą ref modelu, nie UUID grafu', async () => {
+    render(<TabelaGalezi {...props({ onWybierzWiersz: vi.fn() })} />);
+    await screen.findByText('92,0');
+
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+
+    const stan = useSelectionStore.getState();
+    expect(stan.selectedElement).toMatchObject({ id: REF, type: 'LineBranch', name: 'Odcinek 1' });
+    expect(stan.sldWskazanie?.ref).toBe(REF);
   });
 });

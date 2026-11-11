@@ -87,12 +87,14 @@ async function buildProject() {
     transformer: { create: true, catalog_binding: bind('TRAFO_SN_NN', TRAFO_ID) },
   });
   const station = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
-  const branchField = station?.meta?.field_specs?.find((f) =>
-    String(f.field_role ?? f.bay_role ?? '').toUpperCase().includes('ODG') ||
-    String(f.bay_role ?? '').toUpperCase() === 'FEEDER');
-  if (branchField?.field_ref) {
+  // Karta W5-B: pola stacji to rekordy `bays` migawki.
+  const branchField = (op.snapshot?.bays ?? []).find((f) =>
+    f.substation_ref === station?.ref_id && (
+      String(f.field_role ?? f.bay_role ?? '').toUpperCase().includes('ODG') ||
+      String(f.bay_role ?? '').toUpperCase() === 'FEEDER'));
+  if (branchField?.ref_id) {
     op = await domainOp(caseId, 'start_branch_segment_sn', {
-      from_ref: `${branchField.field_ref}.BRANCH`,
+      from_ref: `${branchField.ref_id}.BRANCH`,
       segment: { rodzaj: 'KABEL', dlugosc_m: 180, catalog_binding: bind('KABEL_SN', CABLE_ID) },
     });
   }

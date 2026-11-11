@@ -71,7 +71,7 @@ const AF_FIXTURE: ArcFlashResponse = {
 function props(over = {}) {
   return {
     przebieg: przebiegTestowy('sc-1', 'SC_3F'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -197,7 +197,7 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     unmount();
 
     mockedArcFlash.mockResolvedValue(AF_FIXTURE);
-    render(<SekcjaArcFlash {...props({ trybZaawansowania: 'expert' })} />);
+    render(<SekcjaArcFlash {...props({ szczegolyAudytowe: true })} />);
     fireEvent.click(screen.getByTestId('mvd-jakosc-af-licz'));
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-arcflash')).toBeTruthy());
     fireEvent.click(screen.getByText('Szyna SN stacji S01').closest('tr')!);
@@ -207,5 +207,7 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     const wzory = within(slad).getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThan(0);
     expect(wzory[0].getAttribute('data-latex')).toContain('E = 1.2');
+    // Etykieta kroku to „Wzór” — identyfikator `symbol` backendu nie jest dopisywany prozą.
+    expect(slad.textContent).not.toContain('(E)');
   });
 });

@@ -92,7 +92,6 @@ async function zimneWejscie(page: Page, kontekst: Kontekst, hash: string): Promi
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,

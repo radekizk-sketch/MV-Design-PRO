@@ -44,13 +44,18 @@ def _migawka(*, role_pol: list[str]) -> dict[str, Any]:
                 "station_type": "mv_lv",
                 "bus_refs": ["bus-sn", "bus-nn"],
                 "transformer_refs": ["tr-1"],
-                "meta": {
-                    "field_specs": [
-                        {"field_ref": f"pole-{i}", "bay_role": rola, "bus_ref": "bus-sn"}
-                        for i, rola in enumerate(role_pol)
-                    ]
-                },
             }
+        ],
+        # Karta W5-B: pola stacji są rekordami `bays` (jedyny nośnik pól).
+        "bays": [
+            {
+                "ref_id": f"pole-{i}",
+                "name": f"Pole {rola}",
+                "bay_role": rola,
+                "substation_ref": "stn-1",
+                "bus_ref": "bus-sn",
+            }
+            for i, rola in enumerate(role_pol)
         ],
     }
 

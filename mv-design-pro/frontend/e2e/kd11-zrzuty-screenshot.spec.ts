@@ -110,8 +110,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [400, 350, 300, 250].entries()) {
@@ -162,7 +160,6 @@ async function otworzSchemat(page: Page, scena: Scena, motyw: string): Promise<v
             activeCaseResultStatus: 'NONE',
             activeSnapshotId: null,
             activeMode: 'MODEL_EDIT',
-            activeRunId: null,
             activeAnalysisType: 'SHORT_CIRCUIT',
             caseManagerOpen: false,
             issuePanelOpen: false,
@@ -237,7 +234,15 @@ test.describe('kd11:zrzuty', () => {
       await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
       await page.waitForTimeout(1200);
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
+      // Zdjęcie selekcji realną ścieżką (K11-A): jeden Escape zdejmuje selekcję
+      // (UI-02b: klik nie otwiera już panelu szczegółów nad kanwą). Selekcja musi
+      // zniknąć — od karty K2 „Dopasuj widok" kadruje zakres pracy (zaznaczenie),
+      // więc niezdjęta selekcja zmieniałaby kadr, który ten spec mierzy.
       await page.keyboard.press('Escape');
+      // Dowód zdjęcia selekcji: adres bez parametru zaznaczenia (`sel`). Panel
+      // prawy NIE jest tu sygnałem — stacja ma własną powierzchnię konfiguratora,
+      // która zostaje otwarta po odznaczeniu (inaczej niż karta selekcji transformatora).
+      await expect(page).not.toHaveURL(/[?&]sel=/, { timeout: 10000 });
       await page.waitForTimeout(800);
 
       // (3) KADR ROZWINIĘCIA — DOKŁADNIE ten sam kadr, co zrzuty odbioru KD-8

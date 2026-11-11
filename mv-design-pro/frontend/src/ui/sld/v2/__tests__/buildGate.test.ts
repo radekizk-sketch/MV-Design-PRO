@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V2 — Phase -1 Build Gate smoke test.
  *
@@ -38,7 +39,6 @@ describe('SLD V2 build gate — public API surface', () => {
     expect(Array.isArray(Ports.ALL_PORT_KINDS)).toBe(true);
     expect(Ports.ALL_PORT_KINDS.length).toBe(15);
     expect(typeof Ports.canConnectPorts).toBe('function');
-    expect(typeof Ports.validatePortVoltages).toBe('function');
   });
 
   it('routing.ts publiczne API L-routingu', () => {
@@ -75,12 +75,15 @@ describe('SLD V2 build gate — public API surface', () => {
 
   it('enmToSldAdapter zwraca stabilną pustkę dla null', () => {
     expect(typeof Adapter.buildSldDataFromSnapshot).toBe('function');
-    const empty = Adapter.buildSldDataFromSnapshot(null, []);
+    const empty = Adapter.buildSldDataFromSnapshot(null, null);
     expect(empty.gpzs).toEqual([]);
     expect(empty.stations).toEqual([]);
     expect(empty.cableRuns).toEqual([]);
-    expect(empty.ders).toEqual([]);
-    expect(empty.sections).toEqual([]);
+    expect(empty.topologyRuns).toEqual([]);
+    expect(empty.sources).toEqual([]);
+    // GPZ-PARYTET cz. 3: model widoku niesie wyłącznie pola z czytelnikiem produkcyjnym
+    // (sekcje, punkty rozgałęzienia, wytwórcy v2 i geometria skasowane razem z rendererami).
+    expect(Object.keys(empty).sort()).toEqual(['cableRuns', 'gpzs', 'powerFlow', 'sources', 'stations', 'supplyPath', 'topologyRuns']);
   });
 
   it('SldCommandService eksportuje COMMAND_FEEDBACK_PL + toastBus', () => {
@@ -121,8 +124,9 @@ describe('SLD V2 build gate — invariant pustki adaptera', () => {
     expect(result.gpzs).toBeDefined();
     expect(result.stations).toBeDefined();
     expect(result.cableRuns).toBeDefined();
-    expect(result.ders).toBeDefined();
-    expect(result.sections).toBeDefined();
+    expect(result.topologyRuns).toBeDefined();
+    expect(result.sources).toBeDefined();
+    expect(Object.keys(result).sort()).toEqual(['cableRuns', 'gpzs', 'powerFlow', 'sources', 'stations', 'supplyPath', 'topologyRuns']);
   });
 
   it('inferBuildPhase z pustej sekwencji daje NO_SOURCE', () => {

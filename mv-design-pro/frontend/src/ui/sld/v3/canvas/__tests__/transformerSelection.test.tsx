@@ -3,9 +3,9 @@
  * kanwie v3 (fixtura `openTrunkChain.enm.json` — realny backend: GPZ +
  * 2 segmenty + stacja) ustawia selekcję globalną na REALNY ref
  * transformatora (`resolveTransformerRefForOwnerRef` — ta sama
- * rozdzielczość co drawer), typ 'TransformerBranch' — fundament
+ * rozdzielczość co panel elementu inspektora), typ 'TransformerBranch' — fundament
  * `InspectorEngineeringView` (panel selekcji w CanonicalLayoutV3).
- * Wzorzec harnessu identyczny jak `detailDrawer.test.tsx`.
+ * Wzorzec harnessu identyczny jak `klikElementuInspektor.test.tsx`.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 
 afterEach(() => {
@@ -36,8 +37,13 @@ beforeEach(() => {
 });
 
 describe('SldCanvasV3Workspace — selekcja transformatora stacji (adaptacja flex)', () => {
-  it('klik w symbol transformatora STACJI ustawia selectedElements[0] = realny ref transformatora + otwiera drawer', () => {
-    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
+  it('klik w symbol transformatora STACJI ustawia selectedElements[0] = realny ref transformatora + inspektor pokazuje transformator', () => {
+    const { container } = render(
+      <>
+        <SldCanvasV3Workspace width={1600} height={1000} />
+        <InspektorKanwyTestowy />
+      </>,
+    );
     const group = container.querySelector(
       '[data-testid="sld-v3-symbols"] g[data-element-kind="transformer"][data-owner-ref^="stn/"]',
     );
@@ -58,6 +64,7 @@ describe('SldCanvasV3Workspace — selekcja transformatora stacji (adaptacja fle
     const expectedRef = (enm.transformers ?? []).find((t) => t.ref_id?.startsWith('stn/'))?.ref_id;
     expect(expectedRef).toBeTruthy();
     expect(selected!.id).toBe(expectedRef);
-    expect(screen.getByTestId('sld-v2-detail-drawer-label')).toBeTruthy();
+    expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-rodzaj', 'transformer');
+    expect(screen.getByTestId('inspektor-element-etykieta').textContent).toBeTruthy();
   });
 });

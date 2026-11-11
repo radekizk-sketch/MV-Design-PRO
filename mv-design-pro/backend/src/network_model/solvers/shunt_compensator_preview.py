@@ -3,7 +3,7 @@
 Standalone, deterministic preview of a fixed shunt capacitor bank from its rated
 values alone (rated reactive power and rated voltage). NO network context is used
 here — the actual voltage-rise / reactive coverage in the model comes from the
-full power-flow run (see canonical_analysis `_build_shunt_specs_from_snapshot`,
+full power-flow run (see `enm/assembler.py::zloz_wejscie_rozplywu`,
 which maps this element onto the solver shunt mechanism as +jB).
 
 First principles (three-phase bank rated Q at line voltage U):

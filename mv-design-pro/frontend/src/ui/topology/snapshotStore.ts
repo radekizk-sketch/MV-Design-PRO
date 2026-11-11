@@ -42,6 +42,16 @@ import { getOperationSuccessMessage } from './operationSuccessMessages';
 // State
 // ---------------------------------------------------------------------------
 
+/**
+ * Opcje wywołania operacji domenowej. `komunikatSukcesuPl` zastępuje komunikat centralny
+ * (`operationSuccessMessages`) zdaniem, które wie więcej o skutku (np. nazwa przypisanego
+ * typu). Toast sukcesu jest JEDEN i pochodzi wyłącznie z magazynu — wywołujący nie
+ * zgłaszają sukcesu sami (dawniej: dwa toasty po każdej takiej akcji).
+ */
+export interface OpcjeOperacjiDomenowej {
+  readonly komunikatSukcesuPl?: string;
+}
+
 export interface SnapshotState {
   /** Case currently owning the in-memory ENM snapshot. */
   caseId: string | null;
@@ -94,6 +104,7 @@ export interface SnapshotState {
     caseId: string,
     opName: string,
     payload: Record<string, unknown>,
+    opcje?: OpcjeOperacjiDomenowej,
   ) => Promise<DomainOpResponseV1 | null>;
   /** Refresh snapshot from backend without mutation (calls refresh_snapshot op). */
   refreshFromBackend: (caseId: string) => Promise<DomainOpResponseV1 | null>;
@@ -201,18 +212,11 @@ export function selectElementName(
   return resolveElementName(snapshot, elementRef);
 }
 
-/**
- * Indeks identyfikator → nazwa per migawka (liczony raz na obiekt migawki — migawka
- * jest niemutowalna, każda operacja domenowa przynosi nowy obiekt). Kolejność
- * kandydatów i zasada „pierwszy pasujący wygrywa" jak w dawnym przeszukiwaniu
- * liniowym, więc wynik dla `ref_id`/`id` jest identyczny z dotychczasowym.
- */
-const indeksyNazw = new WeakMap<EnergyNetworkModel, ReadonlyMap<string, string | null>>();
-
-function indeksNazw(snapshot: EnergyNetworkModel): ReadonlyMap<string, string | null> {
-  const gotowy = indeksyNazw.get(snapshot);
-  if (gotowy) return gotowy;
-  const candidates = [
+/** Elementy migawki rozpoznawane po identyfikatorze — jedna lista dla indeksu nazw i refów. */
+function kandydaciIndeksu(
+  snapshot: EnergyNetworkModel,
+): ReadonlyArray<{ id?: string | null; ref_id?: string | null; name?: string | null }> {
+  return [
     ...(snapshot.buses ?? []),
     ...(snapshot.branches ?? []),
     ...(snapshot.transformers ?? []),
@@ -227,6 +231,20 @@ function indeksNazw(snapshot: EnergyNetworkModel): ReadonlyMap<string, string | 
     ...(snapshot.measurements ?? []),
     ...(snapshot.protection_assignments ?? []),
   ];
+}
+
+/**
+ * Indeks identyfikator → nazwa per migawka (liczony raz na obiekt migawki — migawka
+ * jest niemutowalna, każda operacja domenowa przynosi nowy obiekt). Kolejność
+ * kandydatów i zasada „pierwszy pasujący wygrywa" jak w dawnym przeszukiwaniu
+ * liniowym, więc wynik dla `ref_id`/`id` jest identyczny z dotychczasowym.
+ */
+const indeksyNazw = new WeakMap<EnergyNetworkModel, ReadonlyMap<string, string | null>>();
+
+function indeksNazw(snapshot: EnergyNetworkModel): ReadonlyMap<string, string | null> {
+  const gotowy = indeksyNazw.get(snapshot);
+  if (gotowy) return gotowy;
+  const candidates = kandydaciIndeksu(snapshot);
   const indeks = new Map<string, string | null>();
   const dopisz = (klucz: string | null | undefined, nazwa: string | null): void => {
     if (klucz && !indeks.has(klucz)) indeks.set(klucz, nazwa);
@@ -239,6 +257,46 @@ function indeksNazw(snapshot: EnergyNetworkModel): ReadonlyMap<string, string | 
   });
   indeksyNazw.set(snapshot, indeks);
   return indeks;
+}
+
+/**
+ * Indeks identyfikator → `ref_id` modelu per migawka (karta K8, synchronizacja
+ * wynik ↔ schemat). Wyniki rozpływu i zwarć niosą identyfikator GRAFU
+ * obliczeniowego (`uuid5(NAMESPACE_DNS, ref_id)`) albo `id` elementu migawki, a
+ * schemat, nakładka wyników i panel dolny zaznaczają element po `ref_id`. Te same
+ * trzy klucze co indeks nazw — jedno źródło rozpoznania identyfikatora.
+ */
+const indeksyRefow = new WeakMap<EnergyNetworkModel, ReadonlyMap<string, string>>();
+
+function indeksRefow(snapshot: EnergyNetworkModel): ReadonlyMap<string, string> {
+  const gotowy = indeksyRefow.get(snapshot);
+  if (gotowy) return gotowy;
+  const indeks = new Map<string, string>();
+  const dopisz = (klucz: string | null | undefined, ref: string): void => {
+    if (klucz && !indeks.has(klucz)) indeks.set(klucz, ref);
+  };
+  kandydaciIndeksu(snapshot).forEach((item) => {
+    if (!item.ref_id) return;
+    dopisz(item.ref_id, item.ref_id);
+    dopisz(item.id, item.ref_id);
+    dopisz(identyfikatorGrafu(item.ref_id), item.ref_id);
+  });
+  indeksyRefow.set(snapshot, indeks);
+  return indeks;
+}
+
+/**
+ * `ref_id` elementu modelu dla identyfikatora z wyniku (`ref_id`, `id` migawki albo
+ * identyfikator grafu obliczeniowego). `null`, gdy migawki nie ma albo element nie
+ * występuje w niej pod tym identyfikatorem — wywołujący zostaje przy identyfikatorze
+ * z wyniku (uczciwy brak, bez zgadywania).
+ */
+export function refModeluElementu(
+  snapshot: EnergyNetworkModel | null,
+  identyfikator: string | null,
+): string | null {
+  if (!snapshot || !identyfikator) return null;
+  return indeksRefow(snapshot).get(identyfikator) ?? null;
 }
 
 function resolveElementName(
@@ -352,7 +410,8 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   executeDomainOperation: async (
     caseId: string,
     opName: string,
-      payload: Record<string, unknown>,
+    payload: Record<string, unknown>,
+    opcje?: OpcjeOperacjiDomenowej,
   ) => {
     set({ caseId, loading: true, error: null, errorCode: null });
     try {
@@ -399,7 +458,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       // Centralny toast sukcesu — jeden punkt dla WSZYSTKICH operacji domenowych
       // (kryt. #2: każda akcja ma feedback sukcesu). Operacje ciche (refresh/undo)
       // pomijane przez getOperationSuccessMessage.
-      const successMessage = getOperationSuccessMessage(opName);
+      const successMessage = opcje?.komunikatSukcesuPl ?? getOperationSuccessMessage(opName);
       if (successMessage) {
         notify(successMessage, 'success');
       }

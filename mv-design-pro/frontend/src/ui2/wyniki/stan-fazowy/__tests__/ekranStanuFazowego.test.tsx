@@ -23,6 +23,13 @@ import type {
   WynikiRozplywuNiesymetrycznego,
   WynikiStanuFazowego,
 } from '../api';
+import {
+  STAN_WYBORU_PUSTY,
+  aktywnyBiegRodziny,
+  poWyborze,
+  rodzinaAnalizy,
+  useKontekstWynikuStore,
+} from '../../kontekst/kontekstWyniku';
 import { EkranStanuFazowego } from '../EkranStanuFazowego';
 import {
   naPodsumowanieNiesymetrii,
@@ -30,7 +37,6 @@ import {
   naWierszeGaleziNiesymetrycznych,
   naWierszeSzynNiesymetrycznych,
   RODZAJE_PRZEBIEGOW_FAZOWYCH,
-  wybierzPrzebiegFazowy,
   zrodloPrzebiegu,
 } from '../stanFazowyModel';
 import { STAN_FAZOWY_STRINGS as T } from '../strings';
@@ -114,6 +120,8 @@ function wynikiRnFixture(
         faza_b: { u_pu: 0.998, u_kv: 0.230478, angle_deg: -120.1 },
         faza_c: { u_pu: 0.997, u_kv: 0.230247, angle_deg: 119.9 },
         voltage_unbalance_factor_pct: 1.6234,
+        // Pole addytywne wyłącznie szyn nN (potencjał przewodu N względem punktu gwiazdowego).
+        u_n_pe_v: 4.237,
       },
       {
         bus_id: 'b_wyspa',
@@ -270,6 +278,7 @@ function ustawKompletnyKontekst() {
 beforeEach(() => {
   useAppStateStore.getState().reset();
   useExecutionRunsStore.getState().reset();
+  useKontekstWynikuStore.setState({ ...STAN_WYBORU_PUSTY, wyniki: {} });
   useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
   useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
 });
@@ -486,7 +495,7 @@ describe('EkranStanuFazowego — pętla decyzji (F-K4, znalezisko Z4)', () => {
 
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toEqual({ id: 'BUS-SN-01', type: 'Bus', name: 'BUS-SN-01' });
-    expect(sel.sldCenterOnElement).toBe('BUS-SN-01');
+    expect(sel.sldWskazanie?.ref).toBe('BUS-SN-01');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
@@ -584,8 +593,67 @@ describe('EkranStanuFazowego — drugie źródło: rozpływ niesymetryczny (W5-D
     expect(within(wiersze[0]).getByText('275')).toBeInTheDocument(); // I_n z katalogu
     expect(within(wiersze[0]).getByText('0,019')).toBeInTheDocument(); // straty 0,000019 MW → kW
     expect(within(wiersze[1]).getByText('229,6')).toBeInTheDocument();
-    expect(within(wiersze[1]).getAllByText(T.kreska).length).toBe(1); // I_n = null → kreska, nie „0"
+    // I_r = null i I_N poza nN (transformator) → dwie kreski, nigdy „0".
+    expect(within(wiersze[1]).getAllByText(T.kreska).length).toBe(2);
+    expect(within(wiersze[1]).getByTestId('mvd-fazowy-rn-i-przewodu-n')).toHaveTextContent(T.kreska);
+    expect(within(wiersze[0]).getByTestId('mvd-fazowy-rn-i-przewodu-n')).toHaveTextContent(T.kreska);
     expect(within(wiersze[1]).getByText('0,544')).toBeInTheDocument();
+  });
+
+  it('przewód N sieci nN: U_N–PE szyny nN, I_N gałęzi nN i ich maksima z podsumowania solvera; poza nN kreska', async () => {
+    ustawKontekstRn();
+    const baza = wynikiRnFixture();
+    mockFetchRozplywuNiesymetrycznego(
+      wynikiRnFixture({
+        branches: [
+          ...baza.branches,
+          {
+            branch_id: 'kab_nn',
+            element_id: 'kab_nn',
+            name: 'Obwód nN 1',
+            element_type: 'BRANCH',
+            from_bus_id: 'b_nn',
+            to_bus_id: 'b_odb',
+            faza_a: { p_mw: 0.04, q_mvar: 0.01, i_a: 187.4 },
+            faza_b: { p_mw: 0.0, q_mvar: 0.0, i_a: 0.0 },
+            faza_c: { p_mw: 0.0, q_mvar: 0.0, i_a: 0.0 },
+            losses_p_mw: 0.0021,
+            losses_q_mvar: 0.0004,
+            rated_current_a: 240.0,
+            prad_n_a: 187.4,
+          },
+        ],
+        summary: {
+          ...baza.summary!,
+          max_u_n_pe_v: 4.237,
+          max_u_n_pe_bus_id: 'b_nn',
+          max_prad_n_a: 187.4,
+          max_prad_n_branch_id: 'kab_nn',
+        },
+      }),
+    );
+    render(<EkranStanuFazowego />);
+
+    const szyny = await screen.findByTestId('mvd-fazowy-rn-szyny');
+    const wierszeSzyn = within(szyny).getAllByTestId('mvd-fazowy-rn-szyna');
+    expect(within(wierszeSzyn[1]).getByTestId('mvd-fazowy-rn-u-n-pe')).toHaveTextContent('4,2');
+    // Szyna SN: solver nie liczy U_N–PE → kreska, nie „0 V".
+    expect(within(wierszeSzyn[0]).getByTestId('mvd-fazowy-rn-u-n-pe')).toHaveTextContent(T.kreska);
+    // Szyna nierozwiązana: jeden opis braku na całą szerokość kolumn faz, VUF i U_N–PE.
+    expect(within(wierszeSzyn[2]).getByText(T.rnNierozwiazana)).toHaveAttribute('colspan', '5');
+
+    const galezie = screen.getByTestId('mvd-fazowy-rn-galezie');
+    const wierszeGalezi = within(galezie).getAllByTestId('mvd-fazowy-rn-galaz');
+    expect(within(wierszeGalezi[2]).getByTestId('mvd-fazowy-rn-i-przewodu-n')).toHaveTextContent(
+      '187,4',
+    );
+
+    const podsumowanie = screen.getByTestId('mvd-fazowy-rn-podsumowanie');
+    expect(within(podsumowanie).getByText(T.rnMaxUNPe)).toBeInTheDocument();
+    expect(within(podsumowanie).getByText('4,2')).toBeInTheDocument();
+    expect(within(podsumowanie).getByText(T.rnMaxPradN)).toBeInTheDocument();
+    expect(within(podsumowanie).getByText('187,4')).toBeInTheDocument();
+    expect(within(podsumowanie).getByText('Obwód nN 1')).toBeInTheDocument();
   });
 
   it('podsumowanie i założenia biegu nazwane kodami kanonu z elementami', async () => {
@@ -635,7 +703,9 @@ describe('EkranStanuFazowego — drugie źródło: rozpływ niesymetryczny (W5-D
 
   it('aktywny przebieg stanu fazowego wygrywa z nowszym rozpływem niesymetrycznym (wybór jawny operatora)', async () => {
     ustawKontekstRn();
-    useAppStateStore.getState().setActiveRun('run-ps-1');
+    // Karta K8: jawny wybór biegu rodziny „Stan fazowy" (pasek stanu, panel, ekran) —
+    // magazyn kontekstu wyniku; bez wyboru wygrywa najnowszy bieg rodziny (rozpływ niesym.).
+    useKontekstWynikuStore.getState().wybierzBieg('run-ps-1', 'pasek');
     mockFetchStanuFazowego({ run_id: 'run-ps-1', rows: [wierszFixture()] });
     render(<EkranStanuFazowego />);
     const blok = await screen.findByTestId('mvd-fazowy-stan-fazowy');
@@ -657,15 +727,7 @@ describe('EkranStanuFazowego — drugie źródło: rozpływ niesymetryczny (W5-D
 });
 
 describe('stanFazowyModel — czyste projekcje kontraktu', () => {
-  it('wybierzPrzebiegFazowy preferuje aktywny zakończony stan fazowy, inaczej najnowszy', () => {
-    const starszy = przebieg({ ...RUN_PS, id: 'run-ps-0', finished_at: '2026-07-19T11:00:00Z' });
-    expect(wybierzPrzebiegFazowy([RUN_LF], null)).toBeNull();
-    expect(wybierzPrzebiegFazowy([starszy, RUN_PS], null)?.id).toBe('run-ps-1');
-    expect(wybierzPrzebiegFazowy([starszy, RUN_PS], 'run-ps-0')?.id).toBe('run-ps-0');
-    expect(wybierzPrzebiegFazowy([starszy, RUN_PS], 'run-lf-1')?.id).toBe('run-ps-1');
-  });
-
-  it('W5-D: oba rodzaje przebiegów fazowych są źródłem; najnowszy z OBU wygrywa bez aktywnego', () => {
+  it('W5-D: oba rodzaje przebiegów fazowych są JEDNĄ rodziną magazynu kontekstu (najnowszy z OBU wygrywa bez wyboru)', () => {
     expect(RODZAJE_PRZEBIEGOW_FAZOWYCH).toEqual({
       stan_fazowy: 'PHASE_STATE_SN',
       rozplyw_niesymetryczny: 'PF_UNBALANCED',
@@ -673,11 +735,18 @@ describe('stanFazowyModel — czyste projekcje kontraktu', () => {
     expect(zrodloPrzebiegu(RUN_PS)).toBe('stan_fazowy');
     expect(zrodloPrzebiegu(RUN_RN)).toBe('rozplyw_niesymetryczny');
     expect(zrodloPrzebiegu(RUN_LF)).toBeNull();
-    expect(wybierzPrzebiegFazowy([RUN_PS, RUN_RN, RUN_LF], null)?.id).toBe('run-rn-1');
-    expect(wybierzPrzebiegFazowy([RUN_PS, RUN_RN, RUN_LF], 'run-ps-1')?.id).toBe('run-ps-1');
-    expect(wybierzPrzebiegFazowy([RUN_RN], null)?.id).toBe('run-rn-1');
+    // Słownik rodzajów ekranu i rodzina magazynu to ten sam zbiór (predykaty parami).
+    for (const rodzaj of Object.values(RODZAJE_PRZEBIEGOW_FAZOWYCH)) {
+      expect(rodzinaAnalizy(rodzaj)).toBe('fazowy');
+    }
+    expect(rodzinaAnalizy('LOAD_FLOW')).not.toBe('fazowy');
+    const stan = STAN_WYBORU_PUSTY;
+    expect(aktywnyBiegRodziny([RUN_PS, RUN_RN, RUN_LF], stan, 'fazowy')?.id).toBe('run-rn-1');
+    const wybrany = poWyborze(stan, [RUN_PS, RUN_RN, RUN_LF], 'run-ps-1', 'ekran');
+    expect(aktywnyBiegRodziny([RUN_PS, RUN_RN, RUN_LF], wybrany, 'fazowy')?.id).toBe('run-ps-1');
+    expect(aktywnyBiegRodziny([RUN_RN], stan, 'fazowy')?.id).toBe('run-rn-1');
     const niezakonczony = przebieg({ ...RUN_RN, id: 'run-rn-2', status: 'FAILED' });
-    expect(wybierzPrzebiegFazowy([niezakonczony], null)).toBeNull();
+    expect(aktywnyBiegRodziny([niezakonczony], stan, 'fazowy')).toBeNull();
   });
 
   it('projekcje rozpływu niesymetrycznego: kreska za brak, nigdy zgadywanie', () => {
@@ -701,6 +770,15 @@ describe('stanFazowyModel — czyste projekcje kontraktu', () => {
     );
     expect(bezMax.find((p) => p.etykieta === T.rnMaxVuf)?.wartosc).toBe(T.kreska);
     expect(bezMax.find((p) => p.etykieta === T.rnMaxVufSzyna)?.wartosc).toBe(T.kreska);
+    // Wynik bez szyn i gałęzi nN (brak pól addytywnych przewodu N) → żadnej pozycji przewodu N:
+    // sieć bez nN nie dostaje „0 V" ani „0 A".
+    const etykiety = naPodsumowanieNiesymetrii(wynikiRnFixture()).map((p) => p.etykieta);
+    expect(etykiety).not.toContain(T.rnMaxUNPe);
+    expect(etykiety).not.toContain(T.rnMaxPradN);
+    // Pole szyny nN obecne → wartość; pole nieobecne (SN) → kreska.
+    expect(szyny[1].fazy?.uNPe).toBe('4,2');
+    expect(szyny[0].fazy?.uNPe).toBe(T.kreska);
+    expect(galezie[0].iPrzewoduN).toBe(T.kreska);
   });
 
   it('naPozycjeAsymetrii: wartość bez flagi → „brak"; flaga true → „przekroczenie"', () => {

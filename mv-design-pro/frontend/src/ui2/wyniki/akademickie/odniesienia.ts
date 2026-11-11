@@ -41,17 +41,14 @@ const LIMITY_HARMONICZNYCH: Readonly<Record<KluczLimituHarmonicznych, string>> =
   tdd_ieee519_default_percent: S.odnTddIeee519,
 };
 
-type ElementNiezawodnosci =
-  | 'linia_napowietrzna_sn'
-  | 'kabel_sn'
-  | 'transformator_sn_nn'
-  | 'pole_sn';
+/** Rodzaje elementów rejestru wartości roboczych niezawodności backendu
+ *  (`PROPOZYCJE_NIEZAWODNOSCI`) — wiersz transformatora, którego most nie czytał, skasowany. */
+type ElementNiezawodnosci = 'linia_napowietrzna_sn' | 'kabel_sn' | 'aparat_sn';
 
 const ELEMENTY_NIEZAWODNOSCI: Readonly<Record<ElementNiezawodnosci, string>> = {
   linia_napowietrzna_sn: S.odnElementLinia,
   kabel_sn: S.odnElementKabel,
-  transformator_sn_nn: S.odnElementTransformator,
-  pole_sn: S.odnElementPole,
+  aparat_sn: S.odnElementAparat,
 };
 
 type TrybPrzeksztaltnika = 'GFL' | 'GFM_droop' | 'VSM' | 'Grid_Supporting';

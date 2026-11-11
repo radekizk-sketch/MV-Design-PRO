@@ -16,12 +16,14 @@
  *
  * PROWENIENCJA (karta FAB-L, 2026-09-05) — usunięto DRUGĄ KOPIĘ danych
  * katalogowych backendu i JEDNĄ klasę fizyki liczonej w UI:
- *   * `MV_NEUTRAL_GROUNDING_CATALOG` / `BESS_OPERATION_MODE_CATALOG` /
- *     `TAP_CHANGER_CATALOG` — czytane teraz WYŁĄCZNIE ze snapshotu audytu 2
- *     (`useAudit2CatalogSnapshot`, `audit2-api.ts::MvNeutralGroundingItem` /
- *     `BessOperationModeItem` / `TapChangerItem`), który backend już wystawia
- *     (`/api/v1/catalog/audit2/snapshot`). Selektory (`getMvNeutralGrounding`,
- *     `selectBessModesForPcs`, `selectTapChangersForTransformer`,
+ *   * `BESS_OPERATION_MODE_CATALOG` / `TAP_CHANGER_CATALOG` — czytane teraz
+ *     WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`,
+ *     `audit2-api.ts::BessOperationModeItem` / `TapChangerItem`), który backend
+ *     już wystawia (`/api/v1/catalog/audit2/snapshot`). Dawny katalog wariantów
+ *     uziemienia SN nie wrócił nawet do snapshotu: sposób
+ *     uziemienia punktu neutralnego SN niesie zespół uziemiający sekcji w modelu
+ *     (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Selektory
+ *     (`selectBessModesForPcs`, `selectTapChangersForTransformer`,
  *     `getTapChanger`) zostają jako funkcje CZYSTE, ale przyjmują katalog jako
  *     PARAMETR zamiast czytać statyk modułowy — wywołujący dostarcza snapshot.
  *   * `DER_FAULT_CURRENT_DATA_CATALOG` (R₁/X₁/R₂/X₂/R₀/X₀/Z₀·Z₁⁻¹/κ per
@@ -90,7 +92,12 @@ import type {
   BlockTransformerItem,
   TapChangerItem,
 } from './audit2-api';
-import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import {
+  napiecieNajwyzszeSieciKv,
+  powyzejPasmaNn,
+  toSamoNapiecieZnamionowe,
+  wPasmieNn,
+} from '../../../ui2/model/pasmaNapieciowe';
 
 /**
  * Wersja katalogów = DATA PRZEGLĄDU PROWENIENCJI (ISO-8601), nie wymyślony numer.
@@ -241,8 +248,12 @@ export function selectBlockTransformersForDer(
 ): readonly BlockTransformerItem[] {
   return blockTransformers.filter((btr) => {
     if (!btr.applicable_der_kinds.includes(args.derKind)) return false;
-    if (args.hvKv !== undefined && Math.abs(btr.hv_kv - args.hvKv) > 0.5) return false;
-    if (args.lvKv !== undefined && Math.abs(btr.lv_kv - args.lvKv) > 0.05) return false;
+    // Równość DANYCH (napięcie znamionowe strony transformatora = napięcie szyny/urządzenia),
+    // ta sama co backend przy materializacji transformatora dedykowanego
+    // (`_resolve_sn_connection_bus`). Dawne pasma ±0,5 kV / ±0,05 kV nie miały podstawy
+    // i były luźniejsze od reguły backendu, który taki dobór odrzuca.
+    if (args.hvKv !== undefined && !toSamoNapiecieZnamionowe(btr.hv_kv, args.hvKv)) return false;
+    if (args.lvKv !== undefined && !toSamoNapiecieZnamionowe(btr.lv_kv, args.lvKv)) return false;
     if (args.requiresGalvanicIsolation === true && !btr.galvanic_isolation) return false;
     return true;
   });
@@ -324,8 +335,15 @@ export function klasaTransformatoraPrzelacznika(
   lvKv: number | null | undefined,
 ): KlasaTransformatoraPrzelacznika | null {
   if (typeof hvKv !== 'number' || typeof lvKv !== 'number') return null;
-  if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 15) < 1) return 'transformer_110_15';
-  if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 20) < 1) return 'transformer_110_20';
+  // Klasa strony = napięcie najwyższe sieci U_s jej napięcia znamionowego (JEDNA tabela
+  // IEC 60038, lustro `napiecieNajwyzszeSieciKv`): 115/16,5 kV i 110/21 kV to klasy 110/15
+  // i 110/20 — dawne pasma ręczne (100–130 kV, ±1 kV) odmawiały im klasy.
+  const klasaGorna = napiecieNajwyzszeSieciKv(hvKv);
+  const klasaDolna = napiecieNajwyzszeSieciKv(lvKv);
+  if (klasaGorna !== null && klasaGorna === napiecieNajwyzszeSieciKv(110)) {
+    if (klasaDolna !== null && klasaDolna === napiecieNajwyzszeSieciKv(15)) return 'transformer_110_15';
+    if (klasaDolna !== null && klasaDolna === napiecieNajwyzszeSieciKv(20)) return 'transformer_110_20';
+  }
   if (powyzejPasmaNn(hvKv) && wPasmieNn(lvKv)) return 'transformer_15_04';
   return null;
 }

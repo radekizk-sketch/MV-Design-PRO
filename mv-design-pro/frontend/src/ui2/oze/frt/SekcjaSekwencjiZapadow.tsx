@@ -20,8 +20,6 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import type { AdvancementMode } from '../../shell/modeModel';
-import { isModeAtLeast } from '../../shell/modeModel';
 import {
   InformacjeAudytowe,
   TabelaWynikow,
@@ -90,14 +88,13 @@ function StanPanel({
 
 function WynikSekwencji({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: WidokSekwencjiFrt;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const nazwaObiektu = useNazwaObiektu();
   // Ślad WHITE BOX kontekstu siły sieci — NA ŻĄDANIE (domyślnie zwinięty).
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -119,7 +116,7 @@ function WynikSekwencji({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       {dane.sekcja_audytowa_pl && (
@@ -128,7 +125,7 @@ function WynikSekwencji({
             kolumny={kolumnyAudytu}
             wiersze={wierszeAudytu}
             onOtworzDowod={onOtworzDowod}
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
           />
         </SekcjaAudytowa>
       )}
@@ -207,7 +204,7 @@ function WynikSekwencji({
         wiersze={
           dane.input_hash ? [{ etykieta: FRT_STRINGS.sekwEkspHash, wartosc: dane.input_hash }] : []
         }
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-frt-sekw-informacje-audytowe"
       />
     </div>
@@ -223,7 +220,7 @@ export interface SekcjaSekwencjiZapadowProps {
   derRef: string | null;
   /** Operator OSD (z górnego doboru) — pusty łańcuch blokuje bieg. */
   operatorId: string;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z `EkranFrt`, nie zaślepka). */
   onOtworzDowod: (ref: string) => void;
@@ -232,7 +229,7 @@ export interface SekcjaSekwencjiZapadowProps {
 export function SekcjaSekwencjiZapadow({
   derRef,
   operatorId,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: SekcjaSekwencjiZapadowProps) {
   const [zapady, setZapady] = useState<ParaZapaduFrt[]>([ZAPAD_DOMYSLNY]);
@@ -490,7 +487,7 @@ export function SekcjaSekwencjiZapadow({
           ) : (
             <WynikSekwencji
               dane={stan.dane}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               onOtworzDowod={onOtworzDowod}
             />
           )}

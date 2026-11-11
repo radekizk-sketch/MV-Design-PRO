@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Hash Triad — testy integracji z workflow Phase 0B + 0C.
  *

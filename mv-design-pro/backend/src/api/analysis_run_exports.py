@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import io
 import json
 import textwrap
@@ -32,7 +33,7 @@ from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException, status
 from fastapi.responses import Response
 from network_model.catalog.wartosci_robocze import zdanie_parametru_maszyny_pl
-from network_model.nazwy import nazwa_nadana
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
@@ -580,6 +581,45 @@ def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]
     return trace_payload
 
 
+#: Formaty eksportu wywodu (uzasadnienia inżynierskiego) przebiegu — kolejność stała,
+#: zgodna z trasami ``/analysis-runs/{run_id}/export/proof/{json|latex|pdf}``.
+FORMATY_EKSPORTU_WYWODU: tuple[str, ...] = ("json", "latex", "pdf")
+
+_POWOD_BRAK_REPORTLAB = "Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab"
+
+
+def powod_braku_pdf_wywodu() -> str | None:
+    """Powód, dla którego serwer NIE złoży PDF wywodu (brak biblioteki), albo ``None``.
+
+    Jedno źródło warunku dla bramy dostępności i dla samego eksportu PDF
+    (``export_run_trace_pdf_response``) — predykaty parami.
+    """
+    return None if importlib.util.find_spec("reportlab") is not None else _POWOD_BRAK_REPORTLAB
+
+
+def dostepnosc_eksportu_wywodu(run: CanonicalRun) -> dict[str, Any]:
+    """Które formaty eksportu wywodu TEN przebieg rzeczywiście da się pobrać — i dlaczego nie.
+
+    Warunek danych sprawdza TA SAMA funkcja, której używają trzy eksporty
+    (``build_analysis_run_trace_export_payload``), a nie osobna lista warunków: brama
+    nie może obiecać eksportu, który skończy się odmową, ani odmówić eksportu, który
+    by się udał (reguła predykatów parami). PDF wymaga dodatkowo biblioteki składu
+    (``powod_braku_pdf_wywodu`` — ten sam warunek co eksport PDF).
+    """
+    try:
+        build_analysis_run_trace_export_payload(run)
+        powod_danych: str | None = None
+    except OdmowaDanychError as exc:
+        powod_danych = str(exc)
+    formaty: list[dict[str, Any]] = []
+    for format_eksportu in FORMATY_EKSPORTU_WYWODU:
+        powod = powod_danych
+        if powod is None and format_eksportu == "pdf":
+            powod = powod_braku_pdf_wywodu()
+        formaty.append({"format": format_eksportu, "dostepny": powod is None, "powod_pl": powod})
+    return {"run_id": str(run.id), "formaty": formaty}
+
+
 def _amps_to_ka(value: Any) -> float | None:
     if value is None:
         return None
@@ -755,7 +795,65 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
                 if isinstance(wpis, dict)
             ),
         )
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (werdykt wyjaśnialny): ograniczenie raportowe
+    # punktu jako zdanie z backendu (`reporting_limitations_pl`) — wiersz bez liczb niesie
+    # DLACZEGO (np. nazwana przyczyna braku wyniku zerowego), nie same kreski; wiersz bez
+    # ograniczeń — raport bez zmian.
+    ograniczenia = row_data.get("reporting_limitations_pl")
+    if isinstance(ograniczenia, list):
+        linie = (*linie, *(f"Ograniczenie wyniku: {zdanie}" for zdanie in ograniczenia if zdanie))
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (warunek odbioru 2026-10-29): doziemienie sieci SN wg
+    # sposobu pracy punktu neutralnego — prąd i jego charakter, składowe, napięcia faz zdrowych,
+    # podstawa, zastrzeżenia, brak i dane przyjęte (werdykt wyjaśnialny); wiersz bez doziemienia
+    # sieci (punkt poza SN, zwarcie wielofazowe) — raport bez zmian.
+    doziemienie = row_data.get("doziemienie_sieci")
+    if isinstance(doziemienie, dict):
+        linie = (*linie, *_linie_doziemienia(doziemienie))
     return linie
+
+
+def _linie_doziemienia(doziemienie: dict[str, Any]) -> tuple[str, ...]:
+    """Linie raportu doziemienia sieci SN (``enm.doziemienie_sieci``) — deterministyczne."""
+    linie = [
+        f"Doziemienie sieci ({doziemienie.get('tryb_pl')}): "
+        f"{doziemienie.get('charakter_pl')} = {_fmt_liczba(doziemienie.get('prad_a'))} A"
+        f" | I_C={_fmt_liczba(doziemienie.get('i_c_a'))} A"
+        f" | I_L={_fmt_liczba(doziemienie.get('i_l_a'))} A"
+        f" | I_w={_fmt_liczba(doziemienie.get('i_w_a'))} A"
+        + (
+            f" | v={_fmt_liczba(doziemienie.get('rozstrojenie'))}"
+            if doziemienie.get("rozstrojenie") is not None
+            else ""
+        ),
+        f"Napięcia przy doziemieniu: U0={_fmt_liczba(doziemienie.get('u0_v'))} V"
+        f" | U_b={_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
+        f" | U_c={_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
+        f" | k={_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
+        f"Podstawa doziemienia: {doziemienie.get('podstawa_pl')}",
+        # Ślad WHITE BOX trybu (model nazwany krokami: I_C, I_N, prąd trybu, napięcia).
+        *(
+            f"Ślad doziemienia — {krok.get('title')}: {krok.get('substitution')}"
+            for krok in doziemienie.get("slad") or ()
+            if isinstance(krok, dict) and krok.get("substitution")
+        ),
+    ]
+    if doziemienie.get("brak_pl"):
+        linie.append(f"Brak wyniku doziemienia: {doziemienie['brak_pl']}")
+    linie.extend(
+        f"Zastrzeżenie doziemienia: {zdanie}"
+        for zdanie in doziemienie.get("zastrzezenia_pl") or ()
+        if zdanie
+    )
+    if doziemienie.get("podwojne_doziemienie_pl"):
+        linie.append(f"Zastrzeżenie doziemienia: {doziemienie['podwojne_doziemienie_pl']}")
+    dane = [
+        d["nazwa_pl"].strip()
+        for d in doziemienie.get("dane_przyjete") or ()
+        if isinstance(d, dict) and jest_nazwa(d.get("nazwa_pl"))
+    ]
+    if dane:
+        linie.append("Dane przyjęte doziemienia (wartości robocze): " + "; ".join(dane))
+    return tuple(linie)
 
 
 def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | None:
@@ -1221,17 +1319,16 @@ def export_run_trace_pdf_response(
     *,
     filename_stem: str,
 ) -> Response:
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
-        ) from exc
-
+    # Kolejność warunków = kolejność bramy `dostepnosc_eksportu_wywodu`: najpierw dane
+    # (przyczyna pierwotna), potem biblioteka składu PDF.
     trace_payload = build_analysis_run_trace_export_payload(run)
+    powod_braku_pdf = powod_braku_pdf_wywodu()
+    if powod_braku_pdf is not None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=powod_braku_pdf)
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+
     summary = build_trace_summary(trace_payload.get("white_box_trace") or [])
     buffer = io.BytesIO()
     zarejestruj_czcionki()

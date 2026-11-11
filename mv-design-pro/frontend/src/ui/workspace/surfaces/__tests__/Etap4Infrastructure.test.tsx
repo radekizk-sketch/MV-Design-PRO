@@ -157,6 +157,32 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     expect(screen.getAllByText(/AFL-6 50 mm²/).length).toBeGreaterThan(0);
   });
 
+  // V12K-352: pozycje menu odcinka obiecują KONKRETNĄ kartę (deep-link `payload.defaultCard`,
+  // `ACTION_DEFAULT_CARD` wykonawcy, pasek inspektora „Otwórz konfigurację odcinka (trasa)").
+  // Dotąd konfigurator ignorował payload i zawsze otwierał „Identyfikację".
+  it.each([
+    ['catalog', 'segment-content-catalog'],
+    ['route', 'segment-content-route'],
+    ['rating', 'segment-content-rating'],
+  ] as const)('SnSegmentSurface otwiera kartę z deep-linku defaultCard=%s', (karta, testId) => {
+    render(
+      <SnSegmentSurface
+        surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: karta } } }}
+      />,
+    );
+    expect(screen.getByTestId(testId)).toBeInTheDocument();
+    expect(screen.getByTestId(`segment-tab-${karta}`)).toHaveAttribute('data-active', 'true');
+  });
+
+  it('SnSegmentSurface: klucz karty spoza listy otwiera kartę domyślną „Identyfikacja"', () => {
+    render(
+      <SnSegmentSurface
+        surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'trasa' } } }}
+      />,
+    );
+    expect(screen.getByTestId('segment-tab-identification')).toHaveAttribute('data-active', 'true');
+  });
+
   it('SnSegmentSurface otwiera zakończenie stacją tylko dla wolnego zacisku końcowego', () => {
     useSnapshotStore.getState().setSnapshot({ snapshot: buildSnapshot(false) } as never);
 
@@ -315,14 +341,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
           BRANCH: ['bus-zksn-branch-1', 'bus-zksn-branch-2'],
         },
         branch_occupied: {},
-        switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-            { code: 'ODG2', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -400,13 +419,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
           BRANCH: ['bus-zksn-branch-1'],
         },
         branch_occupied: {},
-        switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -462,12 +475,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
           BRANCH: [],
         },
         branch_occupied: {},
-        switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -521,13 +529,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
           BRANCH: ['bus-zksn-branch'],
         },
         branch_occupied: { BRANCH: 'seg-zksn-branch' },
-        switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -585,13 +587,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
           BRANCH: ['bus-zksn-branch'],
         },
         branch_occupied: {},
-        switch_state: 'closed',
         materialized_params: {
-          switchgear_field_specs: [
-            { code: 'WE', bay_role: 'INCOMING' },
-            { code: 'WY', bay_role: 'OUTGOING' },
-            { code: 'ODG1', bay_role: 'FEEDER' },
-          ],
         },
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
@@ -647,7 +643,6 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
           BRANCH: ['bus-bp-branch'],
         },
         branch_occupied: {},
-        switch_state: 'closed',
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
           main_segment_refs: ['seg-1_L_branch_pole'],
@@ -721,7 +716,6 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
           BRANCH: ['bus-bp-branch'],
         },
         branch_occupied: { BRANCH: 'seg-branch-line' },
-        switch_state: 'closed',
         runtime_inputs: {
           operation_semantics: 'insert_point_in_run',
           main_segment_refs: ['seg-1_L_branch_pole'],
@@ -747,12 +741,57 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     expect(screen.getByText('Status')).toBeInTheDocument();
   });
 
-  it('NopSurface (E-17) renderuje konfigurator NOP z 3 checkboxami', () => {
-    render(<NopSurface surface={minimalSurface} />);
+  /**
+   * Karta W5-C: dawny ekran E-17 był fantomem — trzy pola wyboru („Stan normalny: otwarty",
+   * „przełączanie pod obciążeniem", „SCADA") bez operacji backendu. Ekran czyta punkty
+   * podziału z MODELU (`normal_state` gałęzi łącznika) i prowadzi do `set_normal_open_point`.
+   * Iloczyn: wskazanie {brak, łącznik zwykły, łącznik będący punktem, nie-łącznik} × model
+   * {z punktem podziału, bez punktu}.
+   */
+  function modelNop(zPunktem: boolean): EnergyNetworkModel {
+    return {
+      header: { revision: 1 },
+      buses: [], transformers: [], sources: [], loads: [], generators: [], substations: [], bays: [],
+      branches: [
+        { id: 'sw-a', ref_id: 'sw-a', name: 'Łącznik A', type: 'switch', from_bus_ref: 'b1', to_bus_ref: 'b2',
+          status: zPunktem ? 'open' : 'closed', normal_state: zPunktem ? 'open' : 'closed' },
+        { id: 'sw-b', ref_id: 'sw-b', name: 'Łącznik B', type: 'breaker', from_bus_ref: 'b2', to_bus_ref: 'b3',
+          status: 'closed', normal_state: null },
+        { id: 'kab', ref_id: 'kab', name: 'Kabel', type: 'cable', from_bus_ref: 'b3', to_bus_ref: 'b4' },
+      ],
+    } as unknown as EnergyNetworkModel;
+  }
+
+  it.each([
+    [null, true, 'Wskaż łącznik nowego punktu podziału', false, {}],
+    [null, false, 'Wskaż łącznik nowego punktu podziału', false, {}],
+    ['sw-b', true, 'Ustaw ten łącznik jako punkt normalnie otwarty', false, { switch_ref: 'sw-b' }],
+    ['sw-b', false, 'Ustaw ten łącznik jako punkt normalnie otwarty', false, { switch_ref: 'sw-b' }],
+    ['sw-a', true, 'Łącznik jest punktem normalnie otwartym', true, null],
+    ['kab', true, 'Wskaż łącznik nowego punktu podziału', false, {}],
+  ])('NopSurface (E-17): wskazanie %s × model z punktem=%s', (ref, zPunktem, etykieta, zablokowany, kontekst) => {
+    useSnapshotStore.getState().setSnapshot({ snapshot: modelNop(zPunktem) } as never);
+    render(<NopSurface surface={{ ...minimalSurface, screenCode: 'E-17', entityRef: ref }} />);
     expect(screen.getByTestId('nop-surface')).toBeInTheDocument();
-    expect(screen.getByText(/Punkt normalnie otwarty/)).toBeInTheDocument();
-    expect(screen.getByText(/Stan normalny: otwarty/)).toBeInTheDocument();
-    expect(screen.getByText(/Możliwość przełączania pod obciążeniem/)).toBeInTheDocument();
-    expect(screen.getByText(/Sterowanie zdalne \(SCADA\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/SCADA/)).not.toBeInTheDocument();
+    if (zPunktem) {
+      expect(screen.getByTestId('nop-surface-punkt-sw-a')).toHaveTextContent('bieżące położenie: otwarty');
+    } else {
+      expect(screen.queryByTestId('nop-surface-punkt-sw-a')).toBeNull();
+      expect(screen.getByTestId('nop-surface-lista')).toHaveTextContent('nie ma zadeklarowanego punktu');
+    }
+    // Łącznik bez deklaracji pozycji normalnej nigdy nie jest punktem podziału.
+    expect(screen.queryByTestId('nop-surface-punkt-sw-b')).toBeNull();
+    if (ref === 'sw-b') {
+      expect(screen.getByTestId('nop-surface-lacznik')).toHaveTextContent('Niezadeklarowana');
+    }
+    const przycisk = screen.getByTestId('nop-surface-ustaw');
+    expect(przycisk).toHaveTextContent(etykieta);
+    if (zablokowany) {
+      expect(przycisk).toBeDisabled();
+      return;
+    }
+    fireEvent.click(przycisk);
+    expect(openOperationFormMock).toHaveBeenCalledWith('set_normal_open_point', kontekst);
   });
 });

@@ -41,60 +41,48 @@ def test_dialog_completeness_zielony_na_repo() -> None:
     assert dialog_completeness_guard.main() == 0
 
 
-def test_dialog_completeness_kazda_operacja_ma_zywego_dostawce_z_literalem() -> None:
-    kreatory = dialog_completeness_guard.find_creator_files()
-    assert (
-        dialog_completeness_guard.operation_violations(
-            dialog_completeness_guard.OPERATION_TO_MODAL, kreatory
-        )
-        == []
-    )
-    for dostawcy in dialog_completeness_guard.OPERATION_TO_MODAL.values():
-        for dostawca in dostawcy:
-            if dostawca in kreatory:
-                assert "topology" not in kreatory[dostawca].parts
+def test_dialog_completeness_kazde_okno_ma_zywy_modul_z_literalem_poza_topologia() -> None:
+    """Każde okno rejestru formularzy rozwiązuje się do żywego modułu, który wysyła operację,
+    i żaden nie leży w skasowanym katalogu modali warstwy topologii (scalenie 2026-10-28:
+    wymóg literału programu przeniesiony do klasy OKNO strażnika z gałęzi UI/UX)."""
+    g = dialog_completeness_guard
+    wpisy, importy = g.rejestr_formularzy(g.FORM_REGISTRY_FILE)
+    okna = {op: k for op, k in wpisy.items() if k != "null"}
+    assert okna
+    for op, komponent in sorted(okna.items()):
+        plik = g._rozwiaz_import(g.FORM_REGISTRY_FILE, importy[komponent])
+        assert plik is not None, (op, komponent)
+        assert "topology" not in plik.relative_to(g.FRONTEND_SRC).parts, (op, plik)
+        assert g.modul_wysyla_operacje(plik, op), (op, plik)
 
 
 def test_dialog_completeness_dostawca_bez_literalu_operacji_jest_naruszeniem(
     tmp_path: Path,
 ) -> None:
-    _kreator(tmp_path / "pomiar", "KreatorPomiaru", "export function KreatorPomiaru() {}\n")
-    kreatory = dialog_completeness_guard.find_creator_files(tmp_path)
+    plik = _kreator(tmp_path / "pomiar", "KreatorPomiaru", "export function KreatorPomiaru() {}\n")
 
-    naruszenia = dialog_completeness_guard.operation_violations(
-        {"add_ct": ["KreatorPomiaru"]}, kreatory
-    )
-
-    assert len(naruszenia) == 1 and "add_ct" in naruszenia[0]
+    assert not dialog_completeness_guard.modul_wysyla_operacje(plik, "add_ct")
 
 
 def test_dialog_completeness_literal_tylko_w_tescie_nie_zalicza(tmp_path: Path) -> None:
-    _kreator(tmp_path / "pomiar", "KreatorPomiaru", "export function KreatorPomiaru() {}\n")
+    plik = _kreator(tmp_path / "pomiar", "KreatorPomiaru", "export function KreatorPomiaru() {}\n")
     _kreator(tmp_path / "pomiar" / "__tests__", "KreatorPomiaru.test", "op('add_ct');\n")
-    kreatory = dialog_completeness_guard.find_creator_files(tmp_path)
 
-    assert dialog_completeness_guard.operation_violations({"add_ct": ["KreatorPomiaru"]}, kreatory)
+    assert not dialog_completeness_guard.modul_wysyla_operacje(plik, "add_ct")
 
 
 def test_dialog_completeness_literal_w_modelu_kreatora_zalicza(tmp_path: Path) -> None:
-    _kreator(tmp_path / "pomiar", "KreatorPomiaru", "export function KreatorPomiaru() {}\n")
+    plik = _kreator(tmp_path / "pomiar", "KreatorPomiaru", "export function KreatorPomiaru() {}\n")
     (tmp_path / "pomiar" / "pomiarModel.ts").write_text("const OP = 'add_ct';\n", "utf-8")
-    kreatory = dialog_completeness_guard.find_creator_files(tmp_path)
 
-    assert (
-        dialog_completeness_guard.operation_violations({"add_ct": ["KreatorPomiaru"]}, kreatory)
-        == []
-    )
+    assert dialog_completeness_guard.modul_wysyla_operacje(plik, "add_ct")
 
 
-def test_dialog_completeness_nieistniejacy_dostawca_jest_naruszeniem() -> None:
-    kreatory = dialog_completeness_guard.find_creator_files()
+def test_dialog_completeness_nieistniejacy_dostawca_jest_naruszeniem(tmp_path: Path) -> None:
+    rejestr = tmp_path / "operationFormRegistry.tsx"
+    rejestr.write_text("", "utf-8")
 
-    naruszenia = dialog_completeness_guard.operation_violations(
-        {"add_ct": ["MeasurementModal"]}, kreatory
-    )
-
-    assert len(naruszenia) == 1
+    assert dialog_completeness_guard._rozwiaz_import(rejestr, "./modals/MeasurementModal") is None
 
 
 # --- dead_click_guard ----------------------------------------------------------------------

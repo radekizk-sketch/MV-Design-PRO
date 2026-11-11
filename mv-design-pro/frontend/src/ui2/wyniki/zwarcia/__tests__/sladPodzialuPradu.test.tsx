@@ -21,7 +21,7 @@ import { branchFlowTraceFixture, shortCircuitResultsFixture, shortCircuitRowFixt
 
 function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
   return {
-    trybZaawansowania: 'expert' as const,
+    szczegolyAudytowe: true as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -48,9 +48,8 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={trace}
-        blad={false}
-        ladowanie={false}
-        trybZaawansowania="expert"
+        odczyt="gotowe"
+        szczegolyAudytowe
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
@@ -99,9 +98,8 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={realnyTrace()}
-        blad={false}
-        ladowanie={false}
-        trybZaawansowania="basic"
+        odczyt="gotowe"
+        szczegolyAudytowe={false}
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
@@ -119,9 +117,8 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
-        blad={false}
-        ladowanie={false}
-        trybZaawansowania="basic"
+        odczyt="gotowe"
+        szczegolyAudytowe={false}
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
@@ -136,7 +133,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
 
   it('trace === [] (policzono, brak wkładu Thevenina) → stan uczciwy ODRĘBNY od null', () => {
     render(
-      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} blad={false} ladowanie={false} trybZaawansowania="basic" />,
+      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} odczyt="gotowe" szczegolyAudytowe={false} />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
     expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-pusty')).toBeInTheDocument();
@@ -144,14 +141,13 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
     expect(within(sekcja).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
   });
 
-  it('(W4d) blad === true → komunikat błędu, NIE cisza i NIE stan „niedostępny" starszego wyniku', () => {
+  it('(W4d) odczyt „blad" → komunikat błędu, NIE cisza i NIE stan „niedostępny" starszego wyniku', () => {
     render(
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
-        blad
-        ladowanie={false}
-        trybZaawansowania="basic"
+        odczyt="blad"
+        szczegolyAudytowe={false}
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
@@ -160,19 +156,18 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
     expect(within(sekcja).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
   });
 
-  it('ladowanie === true → komunikat pobierania, NIE stan „niedostępny" starszego wyniku', () => {
+  it('odczyt „wczytywanie" → komunikat odczytu, NIE stan „niedostępny" starszego wyniku', () => {
     render(
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
-        blad={false}
-        ladowanie
-        trybZaawansowania="basic"
+        odczyt="wczytywanie"
+        szczegolyAudytowe={false}
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
-    expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-ladowanie')).toHaveTextContent(
-      ZWARCIA_STRINGS.sladRozplywuLadowanie,
+    expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-wczytywanie')).toHaveTextContent(
+      ZWARCIA_STRINGS.sladRozplywuWczytywanie,
     );
     expect(within(sekcja).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
   });
@@ -261,7 +256,7 @@ describe('EkranZwarc — integracja sekcji śladu podziału (karta WB-ROZPLYW)',
     expect(within(rozplyw).queryByTestId('mvd-zwarcia-rozplyw-brak')).not.toBeInTheDocument();
   });
 
-  it('pobieranie w toku → obie sekcje odpowiedzi mówią „pobieranie", nie „starszy wynik"', async () => {
+  it('odczyt w toku → obie sekcje odpowiedzi mówią „odczyt", nie „starszy wynik"', async () => {
     const wynik = shortCircuitResultsFixture();
     wynik.rows[0] = shortCircuitRowFixture({
       branch_contributions: null,
@@ -272,12 +267,12 @@ describe('EkranZwarc — integracja sekcji śladu podziału (karta WB-ROZPLYW)',
     fetchMock.mockReturnValue(new Promise<Response>(() => {}));
     render(<EkranZwarc {...props()} />);
     const rozplyw = screen.getByTestId('mvd-zwarcia-rozplyw');
-    expect(within(rozplyw).getByTestId('mvd-zwarcia-rozplyw-ladowanie')).toHaveTextContent(
-      ZWARCIA_STRINGS.rozplywLadowanie,
+    expect(within(rozplyw).getByTestId('mvd-zwarcia-rozplyw-wczytywanie')).toHaveTextContent(
+      ZWARCIA_STRINGS.rozplywWczytywanie,
     );
     expect(within(rozplyw).queryByTestId('mvd-zwarcia-rozplyw-brak')).not.toBeInTheDocument();
     const slad = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
-    expect(within(slad).getByTestId('mvd-zwarcia-slad-rozplywu-ladowanie')).toBeInTheDocument();
+    expect(within(slad).getByTestId('mvd-zwarcia-slad-rozplywu-wczytywanie')).toBeInTheDocument();
     expect(within(slad).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
   });
 });

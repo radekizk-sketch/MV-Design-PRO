@@ -175,14 +175,30 @@ def test_tor_zwarciowy_oznacza_wiersz_niefizyczny_dla_kazdego_rodzaju_i_miejsca(
     raw = run.raw_result
     assert sciezki_niefinitowe(raw) == []
     assert sciezki_niefinitowe(run.white_box_trace) == []
-    chore = [w for w in raw["results"] if w.get("non_physical_fields")]
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: węzły nN za kablami bez R′0/X′0 nie mają wyniku
+    # zwarcia doziemnego (nazwana przyczyna ``brak_danych`` — dawniej kotwica numeryczna dawała
+    # im fikcyjny prąd); nie przechodzą przez solver, więc iniekcja ich nie dotyczy. Każdy taki
+    # wiersz niesie przyczynę, a niefizyczny BEZ przyczyny jest dokładnie jeden — wstrzyknięty.
+    bez_zerowej = [w for w in raw["results"] if w.get("brak_wyniku_zerowego")]
+    assert all(w["non_physical_reason"].startswith("fault.zero_sequence_") for w in bez_zerowej)
+    if rodzaj in ("3F", "2F"):
+        assert bez_zerowej == []
+    else:
+        assert bez_zerowej, "sieć nN z kablami bez R′0/X′0 — oczekiwane wiersze z przyczyną"
+    chore = [
+        w
+        for w in raw["results"]
+        if w.get("non_physical_fields") and not w.get("brak_wyniku_zerowego")
+    ]
     assert len(chore) == 1, "dokładnie pierwszy wiersz (wstrzyknięty) jest niefizyczny"
     wiersz = chore[0]
     assert wiersz["reporting_status"] == "not_reportable"
     assert OGRANICZENIE_WYNIK_NIEFIZYCZNY in wiersz["reporting_limitations"]
     if miejsce == "wiersz":
         assert "$.ikss_a" in wiersz["non_physical_fields"]
-    assert raw["non_reportable_fault_node_ids"] == [str(wiersz["fault_node_id"])]
+    assert raw["non_reportable_fault_node_ids"] == sorted(
+        str(w["fault_node_id"]) for w in [wiersz, *bez_zerowej]
+    )
     zdrowe = [w for w in raw["results"] if not w.get("non_physical_fields")]
     assert all(w["reporting_status"] == "reportable" for w in zdrowe)
 

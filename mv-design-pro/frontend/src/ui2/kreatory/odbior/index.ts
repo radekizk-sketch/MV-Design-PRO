@@ -1,2 +1,2 @@
-/** Barrel kreatora „Dodaj odbiór nN" (G-NN). */
-export { KreatorOdbioruNn } from './KreatorOdbioruNn';
+/** Barrel kreatorów „Dodaj odbiór nN" (G-NN) i „Dodaj odbiór SN" — jedna formatka. */
+export { KreatorOdbioruNn, KreatorOdbioruSn } from './KreatorOdbioruNn';

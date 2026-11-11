@@ -19,7 +19,7 @@
  * rewizji (`pasmoModel.ts`) to prezentacja, nie obliczenie.
  */
 
-import type { AdvancementMode } from '../../shell/modeModel';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { FreshnessBadge } from '../../inspector';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import {
@@ -39,13 +39,14 @@ import {
   swiezoscParyPasma,
   typZwarciaNaAnalysisType,
 } from './pasmoModel';
+import { SladSieciZerowej } from './SladSieciZerowej';
 import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { ZWARCIA_STRINGS } from './strings';
 
 export interface PasmoMinMaxProps {
   /** Identyfikator biegu KOTWICY (dowolny scenariusz) — `null` = sekcja się nie montuje. */
   runId: string | null;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
@@ -56,7 +57,7 @@ function BlokStronyPasma({
   brakujacyScenariusz,
   powodNiedostepnosciPl,
   akcjaUruchom,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   scenariusz: 'MAX' | 'MIN';
@@ -66,17 +67,17 @@ function BlokStronyPasma({
   brakujacyScenariusz: 'MAX' | 'MIN' | null;
   powodNiedostepnosciPl: string | null;
   akcjaUruchom: AkcjaStanuZerowego | undefined;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const etykietaScenariusza = scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)';
+  const etykietaScenariusza = scenariusz === 'MAX' ? 'MAX ($c_{\\max}$)' : 'MIN ($c_{\\min}$)';
   if (!strona) {
     return (
       <div
         className="mvd-zwarcia-pasmo-strona mvd-zwarcia-pasmo-strona--brak"
         data-testid={`mvd-zwarcia-pasmo-brak-${scenariusz.toLowerCase()}`}
       >
-        <h4 className="mvd-zwarcia-pasmo-strona-tytul">{etykietaScenariusza}</h4>
+        <h4 className="mvd-zwarcia-pasmo-strona-tytul"><TekstZWzorami tekst={etykietaScenariusza} /></h4>
         <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.pasmoBrakScenariusz(scenariusz)}</p>
         {powodNiedostepnosciPl && (
           <p className="mvd-zwarcia-wklady-brak-desc">{powodNiedostepnosciPl}</p>
@@ -93,7 +94,7 @@ function BlokStronyPasma({
   const rewizja = strona.analysis_case_context.rewizja_modelu ?? null;
   return (
     <div className="mvd-zwarcia-pasmo-strona" data-testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}`}>
-      <h4 className="mvd-zwarcia-pasmo-strona-tytul">{etykietaScenariusza}</h4>
+      <h4 className="mvd-zwarcia-pasmo-strona-tytul"><TekstZWzorami tekst={etykietaScenariusza} /></h4>
       <p className="mvd-zwarcia-pasmo-prowenencja">
         {strona.zrodlo === 'biegu_zapisanego'
           ? ZWARCIA_STRINGS.pasmoProwenencjaZapisany
@@ -103,7 +104,7 @@ function BlokStronyPasma({
       </p>
       {/* Karta #145: identyfikatory biegów wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybZaawansowania === 'expert'}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}-informacje-audytowe`}
         wiersze={
           strona.zrodlo === 'biegu_zapisanego'
@@ -123,8 +124,15 @@ function BlokStronyPasma({
       />
       <SladZrodelSieciowych
         zrodlaSieciowe={strona.wynik.zrodla_sieciowe}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
+      />
+      {/* Z0 źródła (Z0/Z1)·Z_Q zależy od scenariusza — każda strona pasma ma własny ślad Y0. */}
+      <SladSieciZerowej
+        siecZerowa={strona.wynik.siec_zerowa}
+        rodzajZwarcia={strona.wynik.rows[0]?.fault_type ?? null}
+        szczegolyAudytowe={szczegolyAudytowe}
+        testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}-siec-zerowa`}
       />
     </div>
   );
@@ -132,11 +140,11 @@ function BlokStronyPasma({
 
 function TrescGotowa({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: {
   dane: PasmoZwarciaOdpowiedz;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
   const { uruchom, wToku } = useUruchomObliczenie();
@@ -164,7 +172,7 @@ function TrescGotowa({
 
   return (
     <>
-      <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.pasmoOpis}</p>
+      <p className="mvd-zwarcia-wklad-szczegol-opis"><TekstZWzorami tekst={ZWARCIA_STRINGS.pasmoOpis} /></p>
 
       {swiezosc && !swiezosc.zgodne && (
         <div className="mvd-zwarcia-pasmo-swiezosc" data-testid="mvd-zwarcia-pasmo-swiezosc">
@@ -183,7 +191,7 @@ function TrescGotowa({
           kolumny={KOLUMNY_PASMO}
           wiersze={naWierszePasma(pary)}
           onOtworzDowod={onOtworzDowod}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           kluczWiersza={KLUCZ_PASMO}
         />
       )}
@@ -195,7 +203,7 @@ function TrescGotowa({
           brakujacyScenariusz={brakujacy}
           powodNiedostepnosciPl={dane.powod_niedostepnosci_pl}
           akcjaUruchom={akcjaUruchomBrakujacy}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           onOtworzDowod={onOtworzDowod}
         />
         <BlokStronyPasma
@@ -204,7 +212,7 @@ function TrescGotowa({
           brakujacyScenariusz={brakujacy}
           powodNiedostepnosciPl={dane.powod_niedostepnosci_pl}
           akcjaUruchom={akcjaUruchomBrakujacy}
-          trybZaawansowania={trybZaawansowania}
+          szczegolyAudytowe={szczegolyAudytowe}
           onOtworzDowod={onOtworzDowod}
         />
       </div>
@@ -212,7 +220,7 @@ function TrescGotowa({
   );
 }
 
-export function PasmoMinMax({ runId, trybZaawansowania, onOtworzDowod }: PasmoMinMaxProps) {
+export function PasmoMinMax({ runId, szczegolyAudytowe, onOtworzDowod }: PasmoMinMaxProps) {
   const stan = usePasmoZwarcia(runId);
   if (stan.rodzaj === 'brak-biegu') return null;
 
@@ -238,7 +246,7 @@ export function PasmoMinMax({ runId, trybZaawansowania, onOtworzDowod }: PasmoMi
       )}
 
       {stan.rodzaj === 'gotowe' && (
-        <TrescGotowa dane={stan.dane} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
+        <TrescGotowa dane={stan.dane} szczegolyAudytowe={szczegolyAudytowe} onOtworzDowod={onOtworzDowod} />
       )}
     </section>
   );

@@ -71,7 +71,7 @@ bez własnej operacji: `KreatorRama` `kreatory/rama/KreatorRama.tsx:48`, `Kreato
 | Dodaj odbiór nN | `kreatory/odbior/KreatorOdbioruNn.tsx:78` | `add_nn_load` | `OdbiorFormData` | TAK — `odbior/odbiorModel.ts:47` |
 | Dodaj baterię kondensatorów SN | `kreatory/kompensator/KreatorKompensatoraSn.tsx:84` | `add_shunt_compensator_sn` (uwaga: brak w backendowym rejestrze `canonical_operations.py` — patrz C.2) | `KompensatorFormData` | TAK — `kompensator/kompensatorModel.ts:34` |
 | Dodaj ogranicznik przepięć SN | `kreatory/ogranicznik/KreatorOgranicznikaSn.tsx:84` | `add_surge_arrester_sn` (jw. — brak w rejestrze backendu, patrz C.2) | `OgranicznikFormData` | TAK — `ogranicznik/ogranicznikModel.ts:28` |
-| Dodaj źródło PV/BESS/FW z katalogu | `kreatory/zrodlo-oze/KreatorZrodlaOze.tsx:116` | `add_converter_source` | `DerSnFormData` | TAK — `zrodlo-oze/zrodloOzeModel.ts:202` `walidujFormularz`, `:494` `walidujDerSn` |
+| Dodaj źródło PV/BESS/FW z katalogu | `kreatory/zrodlo-oze/KreatorZrodlaOze.tsx:116` | `add_converter_source` | `DerSnFormData` | TAK — `zrodlo-oze/zrodloOzeModel.ts:202` `walidujFormularz`, spójność toru DER-SN (napięcia, katalogi, sposób przyłączenia) wyłącznie w operacji — `enm/der_sn_validation.py` (dawna kopia frontowa `walidujDerSn` skasowana 2026-10-28) |
 | Dodaj zabezpieczenie | `kreatory/przekaznik/KreatorPrzekaznika.tsx:59` | `add_relay` | brak osobnego `Model.ts` | walidacja inline |
 | Przypisz katalog do elementu | `kreatory/przypisanie-katalogu/KreatorPrzypisaniaKatalogu.tsx:37` | `assign_catalog_to_element` | brak osobnego `Model.ts` | walidacja inline (CatalogPicker) |
 | Zmień parametry elementu | `kreatory/edycja-parametrow/KreatorEdycjiParametrow.tsx:53` | `update_element_parameters` | brak osobnego `Model.ts` | walidacja inline |
@@ -135,7 +135,7 @@ drogą:**
 
 `update_relay_settings`, `link_relay_to_field`, `calculate_tcc_curve`, `validate_selectivity`,
 `set_source_operating_mode`, `set_dynamic_profile`, `rename_element`,
-`set_label` (8 operacji; `set_connection_conditions` opisana osobno w C.3 — TA operacja
+`set_label` (8 operacji; [korekta 2026-10-22, karta MENU-KANON, V12K-352: `set_dynamic_profile`, `rename_element`, `set_label`, `remove_nn_element`, `add_sn_bay_from_catalog` skasowane jako duble — nazwa/etykieta przez `update_element_parameters`, usuwanie przez `delete_element`, profil dynamiki przez `set_der_catalog_bindings`, `dry_run` pola w `add_sn_bay`] `set_connection_conditions` opisana osobno w C.3 — TA operacja
 MA realnego wywołującego, mimo tej samej blokady).
 
 Cztery z pierwotnej listy 17 miały funkcjonalność pod inną, nie-kanoniczną ścieżką REST

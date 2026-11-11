@@ -236,7 +236,7 @@ class TestPayloadValidation:
             "add_grid_source_sn",
             {
                 "source_name": "GPZ Główny",
-                "sn_voltage_kv": 15.0,
+                "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
             },
         )
@@ -249,8 +249,26 @@ class TestPayloadValidation:
                 "source_name": "GPZ",
             },
         )
-        assert len(errors) > 0
-        assert any("sn_voltage_kv" in e for e in errors)
+        assert errors == ["Brak wymaganego pola: voltage_kv"]
+
+    def test_phantom_alias_sn_voltage_kv_does_not_satisfy_voltage(self):
+        # Handler GPZ nie czyta `sn_voltage_kv` z poziomu ładunku — dawny „alias
+        # kompatybilności" przepuszczał ładunek, który handler odrzuca (source.missing_voltage).
+        errors = validate_operation_payload(
+            "add_grid_source_sn", {"source_name": "GPZ", "sn_voltage_kv": 15.0}
+        )
+        assert errors == ["Brak wymaganego pola: voltage_kv"]
+
+    def test_substitute_key_satisfies_required_field(self):
+        # `set_source_operating_mode` czyta `source_ref or element_ref` — klucz zastępczy.
+        assert (
+            validate_operation_payload(
+                "set_source_operating_mode", {"element_ref": "gen/1", "mode": "gotowosc"}
+            )
+            == []
+        )
+        errors = validate_operation_payload("set_source_operating_mode", {"mode": "gotowosc"})
+        assert errors == ["Brak wymaganego pola: source_ref (albo klucza zastępczego: element_ref)"]
 
     def test_unknown_operation(self):
         errors = validate_operation_payload("nonexistent", {})

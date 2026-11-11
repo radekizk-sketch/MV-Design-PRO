@@ -8,9 +8,9 @@ przyszly rozjazd — i wlasnie tak powstal dlug, ktory zamykaly karty K-O i K-Q:
 front wyczyszczono z fabrykacji, a backend niosl je dalej i serwowal przez API.
 
 Karta FAB-L usunela OSTATNI powod takiego mirrora dla trzech z czterech katalogow
-(`MV_NEUTRAL_GROUNDING_CATALOG`, `BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG`):
+(katalog wariantow uziemienia SN, `BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG`):
 front juz nie ma WLASNEJ kopii tych list w `catalogs.ts` (selektory
-`getMvNeutralGrounding`/`selectBessModesForPcs`/`selectTapChangersForTransformer`/
+`selectBessModesForPcs`/`selectTapChangersForTransformer`/
 `getTapChanger` przyjmuja katalog jako PARAMETR — kreator czyta go WYLACZNIE ze
 snapshotu `useAudit2CatalogSnapshot`). Rozjazd frontu z backendem jest wiec
 STRUKTURALNIE niemozliwy dla tych trzech (jedno zrodlo danych), a nie tylko
@@ -40,7 +40,7 @@ porownywal 1:1. Ten mirror zostal USUNIETY (front czyta katalog WYLACZNIE ze
 snapshotu audytu 2, `useAudit2CatalogSnapshot`), wiec test zmienia ksztalt z
 "te same pozycje po obu stronach" na "front NIE MA juz bloku mirrora" —
 pozytywne potwierdzenie nieobecnosci, wzorem `test_trzy_katalogi_nie_maja_juz_
-bloku_mirrora_w_froncie` (karta FAB-L, `MV_NEUTRAL_GROUNDING_CATALOG`/
+bloku_mirrora_w_froncie` (karta FAB-L, katalog uziemienia SN/
 `BESS_OPERATION_MODE_CATALOG`/`TAP_CHANGER_CATALOG` w `catalogs.ts` — inny
 plik frontu, poza zakresem tej karty, NIETKNIETE tutaj). Nowy test dolozony
 przez FAB-M pilnuje KLASY inaczej: identyfikatory bezpiecznikow uzyte w
@@ -58,7 +58,6 @@ import pytest
 from network_model.catalog.audit2_catalogs import (
     BESS_OPERATION_MODE_CATALOG,
     HV_FUSE_CATALOG,
-    MV_NEUTRAL_GROUNDING_CATALOG,
     TAP_CHANGER_CATALOG,
 )
 
@@ -119,7 +118,7 @@ POLA_BEZ_PROWENIENCJI_ZAKAZANE = (
 
 #: Nazwy, ktorych nie wolno doklejac do wlasnych liczb (cudza tozsamosc).
 #: `PGE`/`PSE` dopisane karta FAB-L (2026-09-05) — migracja pinu z usunietego
-#: frontendowego testu `MV_NEUTRAL_GROUNDING_CATALOG` (katalog uziemienia SN
+#: frontendowego testu katalogu wariantow uziemienia SN (katalog uziemienia SN
 #: nie mial tu wczesniej ODPOWIADAJACEGO backendowego pinu operatorow).
 IMIONA_ZAKAZANE_W_KATALOGACH_AUDYTU2 = (
     "Schneider",
@@ -133,20 +132,21 @@ IMIONA_ZAKAZANE_W_KATALOGACH_AUDYTU2 = (
 
 
 def test_trzy_katalogi_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
-    """Karta FAB-L: `MV_NEUTRAL_GROUNDING_CATALOG`/`BESS_OPERATION_MODE_CATALOG`/
-    `TAP_CHANGER_CATALOG` — jak wcześniej `BLOCK_TRANSFORMER_CATALOG`/`PF_CURVE_CATALOG`
+    """Karta FAB-L: `BESS_OPERATION_MODE_CATALOG`/`TAP_CHANGER_CATALOG` — jak wcześniej `BLOCK_TRANSFORMER_CATALOG`/`PF_CURVE_CATALOG`
     (karta FAB-J) — USUNIĘTE z `catalogs.ts` jako bloki `export const`, nie dlatego,
     że przestały istnieć, tylko dlatego, że przestały mieć DRUGĄ KOPIĘ do porównania.
     Kreator czyta je dziś WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`),
-    a selektory (`getMvNeutralGrounding`/`selectBessModesForPcs`/
+    a selektory (`selectBessModesForPcs`/
     `selectTapChangersForTransformer`/`getTapChanger`) przyjmują katalog jako PARAMETR.
     Test potwierdza NIEOBECNOŚĆ wprost — sam brak wyjątku przy parsowaniu (stary
     kształt testu) nie odróżniał „katalog usunięty celowo" od „test się zepsuł".
-    `HV_FUSE_CATALOG` (wkładki SN) NADAL ma mirror — patrz test poniżej.
+    `HV_FUSE_CATALOG` (wkładki SN) NADAL ma mirror — patrz test poniżej. Trzeci katalog
+    karty FAB-L (warianty uziemienia punktu neutralnego SN) skasowano na amen kartą
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA w obu warstwach — wskrzeszeniu pilnuje
+    `scripts/grep_zero_guard.py` (grupa `zu_`).
     """
     front = _front_source(_FRONT_CATALOGS_TS)
     for const_name in (
-        "MV_NEUTRAL_GROUNDING_CATALOG",
         "BESS_OPERATION_MODE_CATALOG",
         "TAP_CHANGER_CATALOG",
     ):
@@ -158,7 +158,6 @@ def test_trzy_katalogi_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
     # Katalogi wciąż realne w backendzie (autorytet, serwowany przez snapshot) —
     # samo ich USUNIĘCIE stąd byłoby fałszywym alarmem: importy niżej dowodzą, że
     # backend nadal je niesie, tylko front przestał je duplikować.
-    assert len(MV_NEUTRAL_GROUNDING_CATALOG) > 0
     assert len(BESS_OPERATION_MODE_CATALOG) > 0
     assert len(TAP_CHANGER_CATALOG) > 0
 
@@ -285,20 +284,3 @@ def test_zadna_pozycja_nie_deklaruje_producenta() -> None:
     """
     for opis, item in _wszystkie_pozycje_backendu():
         assert "manufacturer" not in item, opis
-
-
-#: Migracja pinu z usunietego testu frontowego (`MV_NEUTRAL_GROUNDING_CATALOG`,
-#: karta K-O → FAB-L, 2026-09-05): opis wariantu uziemienia SN nie moze podawac
-#: liczbowego I_k1 — ta liczba nie ma tu zrodla, a prad zwarcia doziemnego
-#: konkretnej sieci wylicza solver SC1F (IEC 60909) z impedancji Z0 modelu, nie
-#: katalog wariantow uziemienia.
-_WZORZEC_IK1_W_TEKSCIE = re.compile(r"I\s*k?1?\s*[≈~=]\s*\d|Ik1\s*[≈~=]?\s*\d", re.IGNORECASE)
-
-
-def test_zadna_pozycja_uziemienia_sn_nie_podaje_liczbowego_ik1_w_etykiecie_ani_opisie() -> None:
-    for wariant in MV_NEUTRAL_GROUNDING_CATALOG:
-        tekst = f"{wariant.label_pl} {wariant.description_pl}"
-        assert not _WZORZEC_IK1_W_TEKSCIE.search(tekst), (
-            f"Wariant {wariant.id} podaje liczbowy I_k1 w tekscie: {tekst!r}. "
-            "Prad zwarcia doziemnego tej sieci wylicza solver SC1F."
-        )

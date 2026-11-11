@@ -25,12 +25,12 @@ from network_model.pochodne import (
 )
 from network_model.solvers.power_flow_unbalanced import _ohm_to_pu
 
-from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
+from tests.golden.parytet_assemblera.harness import kopie_sieci_enm_rejestru
 
 
 def _pary_z0_z1_z_rejestru() -> list[tuple[complex, complex]]:
     pary: set[tuple[complex, complex]] = set()
-    for _, enm in sieci_enm_rejestru():
+    for _, enm in kopie_sieci_enm_rejestru():
         for galaz in enm.branches:
             if not isinstance(galaz, Cable | OverheadLine):
                 continue

@@ -38,6 +38,7 @@ from application.analyses.protection import ocena_nadpradowa
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from application.analyses.wytrzymalosc_aparatury_pol import widok_wytrzymalosci_z_biegu
 from enm.models import (
+    Bay,
     Bus,
     EnergyNetworkModel,
     ENMDefaults,
@@ -100,7 +101,7 @@ def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
     galezie: list[SwitchBranch] = []
     przekladniki: list[Measurement] = []
     przypisania: list[ProtectionAssignment] = []
-    pola: list[dict[str, Any]] = []
+    pola: list[Bay] = []
     for nr, (pole, (szyna, *_)) in enumerate(sorted(POLA.items()), start=1):
         galezie.append(
             SwitchBranch(
@@ -140,7 +141,9 @@ def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
                 settings=[_nastawa(krzywa)],
             )
         )
-        pola.append({"field_ref": pole, "name": f"P-0{nr}", "bay_role": "OUT", "bus_ref": szyna})
+        pola.append(
+            Bay(ref_id=pole, name=f"P-0{nr}", bay_role="OUT", substation_ref="stn", bus_ref=szyna)
+        )
     return EnergyNetworkModel(
         header=ENMHeader(name="t", defaults=ENMDefaults(sn_nominal_kv=15.0)),
         buses=[
@@ -156,9 +159,11 @@ def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
                 name="Stacja Sady",
                 station_type="mv_lv",
                 bus_refs=["sn1", "sn2"],
-                meta={"field_specs": pola},
             )
         ],
+        # Karta W5-B: pola stacji są rekordami `bays` (jedyny nośnik pól; dawny słownik pól
+        # w `meta` stacji skasowany).
+        bays=pola,
     )
 
 

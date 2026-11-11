@@ -20,6 +20,7 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { wykonajBiegDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { wlaczSzczegolyAudytowe } from './powloka';
 import { transformatoryStacjiSnNn } from './transformatoryStacji';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
@@ -124,8 +125,6 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   let op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -228,7 +227,6 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -337,7 +335,7 @@ test.describe('Pasmo MIN/MAX zwarcia — karta W3-G3', () => {
 
     // Kotwica MAX przez REALNY klik „Oblicz" (ten sam tor co pierwszy test —
     // populuje `useResultsInspectorStore` przez most S9-2, którego samo
-    // seedowanie `activeRunId` w localStorage NIE wyzwala).
+    // samo wskazanie biegu w kontekście wyniku NIE wyzwala).
     await kliknijOblicz(page);
 
     // DRUGI, NIEZALEŻNY bieg (scenariusz MIN) tego samego przypadku — wprost
@@ -364,16 +362,11 @@ test.describe('Pasmo MIN/MAX zwarcia — karta W3-G3', () => {
     await expect(blokMin).toContainText('Bieg zapisany');
     await expect(blokMin).not.toContainText('Policzone na żądanie');
     // Karta #145: identyfikator biegu nie stoi w pierwszym planie — tylko w „Informacjach
-    // audytowych” strony pasma, widocznych w trybie eksperckim (przełącznik powłoki,
-    // realny klik). Intencja bez zmian: strona MIN to WŁASNY zapisany bieg MIN
+    // audytowych” strony pasma, widocznych przy „Szczegółach audytowych" (menu „Widok"
+    // powłoki, realny klik). Intencja bez zmian: strona MIN to WŁASNY zapisany bieg MIN
     // (`biegMin.id`), inny niż bieg kotwicy po stronie MAX.
     await expect(blokMin).not.toContainText(biegMin.id);
-    const przyciskEkspercki = page.locator('[data-mvd-mode="expert"]');
-    await expect(przyciskEkspercki).toBeVisible({ timeout: 15000 });
-    if ((await przyciskEkspercki.getAttribute('aria-pressed')) !== 'true') {
-      await przyciskEkspercki.click();
-      await expect(przyciskEkspercki).toHaveAttribute('aria-pressed', 'true');
-    }
+    await wlaczSzczegolyAudytowe(page);
     await blokMin.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-przelacz').click();
     const audytMin = blokMin.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-lista');
     await expect(audytMin).toContainText(biegMin.id);

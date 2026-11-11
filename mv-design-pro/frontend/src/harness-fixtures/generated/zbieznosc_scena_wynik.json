@@ -9,7 +9,7 @@
     {
       "bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "v_pu": 1.02614051687,
-      "angle_deg": 30.19420147,
+      "angle_deg": 30.1942014701,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
       "status": "solved"
@@ -18,8 +18,8 @@
       "bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "v_pu": 1.0,
       "angle_deg": 0.0,
-      "p_injected_mw": -0.746797186462,
-      "q_injected_mvar": -0.0756580800728,
+      "p_injected_mw": -0.746797186514,
+      "q_injected_mvar": -0.0756580801119,
       "status": "solved"
     },
     {
@@ -33,7 +33,7 @@
     {
       "bus_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "v_pu": 1.02614086751,
-      "angle_deg": 30.1942180062,
+      "angle_deg": 30.1942180063,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
       "status": "solved"
@@ -52,28 +52,28 @@
       "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
       "p_from_mw": 0.0503973646599,
       "q_from_mvar": 0.151686953045,
-      "p_to_mw": -0.0500000000008,
+      "p_to_mw": -0.0500000000009,
       "q_to_mvar": -0.15,
-      "losses_p_mw": 0.000397364659094,
+      "losses_p_mw": 0.000397364659095,
       "losses_q_mvar": 0.00168695304432
     },
     {
       "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
-      "p_from_mw": -0.000227964841426,
+      "p_from_mw": -0.000227964841575,
       "q_from_mvar": -0.0153239342357,
-      "p_to_mw": 0.000227964927488,
-      "q_to_mvar": -0.0153805169482,
-      "losses_p_mw": 8.60621483475e-11,
+      "p_to_mw": 0.000227964927638,
+      "q_to_mvar": -0.0153805169481,
+      "losses_p_mw": 8.60621469922e-11,
       "losses_q_mvar": -0.0307044511839
     },
     {
       "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "p_from_mw": -0.746797186461,
-      "q_from_mvar": -0.0756580800728,
-      "p_to_mw": 0.746900023738,
-      "q_to_mvar": 0.0782269544279,
-      "losses_p_mw": 0.00010283727697,
-      "losses_q_mvar": 0.00256887435508
+      "p_from_mw": -0.746797186514,
+      "q_from_mvar": -0.0756580801119,
+      "p_to_mw": 0.746900023791,
+      "q_to_mvar": 0.0782269544674,
+      "losses_p_mw": 0.000102837276993,
+      "losses_q_mvar": 0.00256887435552
     },
     {
       "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
@@ -81,17 +81,17 @@
       "q_from_mvar": -0.199209693204,
       "p_to_mw": 0.800000000048,
       "q_to_mvar": 0.199999999981,
-      "losses_p_mw": 0.00270237463283,
-      "losses_q_mvar": 0.000790306776468
+      "losses_p_mw": 0.00270237463282,
+      "losses_q_mvar": 0.000790306776466
     }
   ],
   "summary": {
-    "total_losses_p_mw": 0.00320257665495,
-    "total_losses_q_mvar": -0.025658317008,
+    "total_losses_p_mw": 0.00320257665498,
+    "total_losses_q_mvar": -0.0256583170076,
     "min_v_pu": 1.0,
     "max_v_pu": 1.03032490243,
-    "slack_p_mw": -0.746797186462,
-    "slack_q_mvar": -0.0756580800728
+    "slack_p_mw": -0.746797186514,
+    "slack_q_mvar": -0.0756580801119
   },
   "unsolved_node_ids": [],
   "kryteria_napiecia": {

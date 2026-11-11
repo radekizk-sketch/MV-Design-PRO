@@ -33,7 +33,12 @@ from network_model.catalog.wartosci_robocze import (
     RODZINA_MASZYNA_SYNCHRONICZNA,
     RODZINA_MASZYNY_WG_GEN_TYPE,
 )
-from network_model.core.topologia import przeglad_wszerz, scal_wezly, skladowe_spojne
+from network_model.core.topologia import (
+    krawedzie_kazdej_drogi,
+    przeglad_wszerz,
+    scal_wezly,
+    skladowe_spojne,
+)
 
 from .models import (
     Cable,
@@ -41,6 +46,8 @@ from .models import (
     Junction,
     OverheadLine,
 )
+from .pola import poziom_pol
+from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
 from .tor_pola import szyny_stacji
 
 #: Typy gałęzi ENM będące łącznikami: zamknięty łącznik SCALA szyny w jeden węzeł
@@ -104,7 +111,7 @@ class Wyspa:
     @property
     def ma_odniesienie(self) -> bool:
         """Impedancja do odniesienia w zwarciu: źródło sieciowe albo maszyna
-        (``canonical_analysis._wezly_bez_impedancji_do_odniesienia``, CI-PARYTET-5)."""
+        (``NetworkGraph.wezly_bez_impedancji_do_odniesienia``, CI-PARYTET-5)."""
         return bool(self.zrodla_sieciowe or self.maszyny)
 
 
@@ -146,18 +153,40 @@ def _uporzadkuj(skladowe: Iterable[tuple[str, ...]]) -> tuple[tuple[str, ...], .
     return tuple(sorted(skladowe, key=lambda s: (-len(s), s[0])))
 
 
-def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
-    """Wyprowadź ``TopologyView`` z migawki (``EnergyNetworkModel`` albo słownik ENM).
+@dataclass(frozen=True)
+class KrawedzTopologii:
+    """Element łączący dwie szyny migawki w ruchu (zamknięta gałąź albo transformator)."""
 
-    Czysta funkcja: ten sam model → identyczny widok, niezależnie od kolejności
-    elementów w kolekcjach (szyny sortowane po ``ref_id``).
+    ref_id: str
+    szyna_a: str
+    szyna_b: str
+    #: ``galaz`` (linia, kabel), ``lacznik`` (``TYPY_LACZNIKOW_ENM``) albo ``transformator``.
+    rodzaj: str
+
+
+@dataclass(frozen=True)
+class PodzialKrawedzi:
+    """Podział elementów łączących migawki wg semantyki „w ruchu" — JEDNO źródło dla
+    ``derive`` i dla każdego konsumenta, który przegląda graf szyn (tor zasilania,
+    ``application/topologia_zasilenia.py``). Kolejność: gałęzie po ``ref_id``, potem
+    transformatory po ``ref_id``."""
+
+    szyny: tuple[str, ...]
+    w_ruchu: tuple[KrawedzTopologii, ...]
+    laczniki_otwarte: tuple[str, ...]
+    galezie_otwarte: tuple[str, ...]
+    krawedzie_pominiete: tuple[str, ...]
+
+
+def podziel_krawedzie(snapshot: EnergyNetworkModel | Mapping[str, object]) -> PodzialKrawedzi:
+    """Sklasyfikuj gałęzie i transformatory migawki: w ruchu / otwarte / pominięte.
+
+    Gałąź łączy szyny wtedy i tylko wtedy, gdy ``status == "closed"``; transformator łączy
+    zawsze; element z końcem poza szynami migawki jest pominięty (nie gubiony cicho).
     """
     szyny = tuple(sorted(str(_pole(b, "ref_id")) for b in _kolekcja(snapshot, "buses")))
     znane = set(szyny)
-
-    krawedzie_wysp: list[tuple[str, str]] = []
-    krawedzie_sekcji: list[tuple[str, str]] = []
-    pary_laczen: list[tuple[str, str]] = []
+    w_ruchu: list[KrawedzTopologii] = []
     laczniki_otwarte: list[str] = []
     galezie_otwarte: list[str] = []
     pominiete: list[str] = []
@@ -173,18 +202,68 @@ def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
         if _pole(galaz, "status", "closed") != "closed":
             (laczniki_otwarte if lacznik else galezie_otwarte).append(ref)
             continue
-        krawedzie_wysp.append((a, b))
-        krawedzie_sekcji.append((a, b))
-        if lacznik:
-            pary_laczen.append((a, b))
+        w_ruchu.append(KrawedzTopologii(ref, a, b, "lacznik" if lacznik else "galaz"))
 
     for trafo in sorted(_kolekcja(snapshot, "transformers"), key=lambda t: str(_pole(t, "ref_id"))):
+        ref = str(_pole(trafo, "ref_id"))
         hv = str(_pole(trafo, "hv_bus_ref"))
         lv = str(_pole(trafo, "lv_bus_ref"))
         if hv not in znane or lv not in znane:
-            pominiete.append(str(_pole(trafo, "ref_id")))
+            pominiete.append(ref)
             continue
-        krawedzie_wysp.append((hv, lv))
+        w_ruchu.append(KrawedzTopologii(ref, hv, lv, "transformator"))
+
+    return PodzialKrawedzi(
+        szyny=szyny,
+        w_ruchu=tuple(w_ruchu),
+        laczniki_otwarte=tuple(laczniki_otwarte),
+        galezie_otwarte=tuple(galezie_otwarte),
+        krawedzie_pominiete=tuple(pominiete),
+    )
+
+
+def szyny_sekcji_gpz(snapshot: EnergyNetworkModel | Mapping[str, object]) -> frozenset[str]:
+    """Szyny sekcji SN GPZ — z jawnego rejestru `gpz_sections` stacji `station_type == "gpz"`."""
+    return frozenset(
+        str(_pole(sekcja, "bus_ref"))
+        for stacja in _kolekcja(snapshot, "substations")
+        if _pole(stacja, "station_type") == "gpz"
+        for sekcja in _kolekcja(stacja, "gpz_sections")
+        if _pole(sekcja, "bus_ref")
+    )
+
+
+def transformatory_zasilajace_gpz(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+) -> frozenset[str]:
+    """`ref_id` transformatorów WN/SN zasilających GPZ — strona dolna na szynie sekcji SN GPZ.
+
+    Karta GPZ-MODEL: JEDNO źródło predykatu dla walidatora (E066 — transformator GPZ bez
+    zasilania od strony 110 kV) i dla operacji, które szukają transformatora „stacji"
+    (transformator blokowy źródła przekształtnikowego): transformator zasilający GPZ jest
+    granicą zasilania sieci SN, nigdy transformatorem blokowym ani stacyjnym SN/nN."""
+    sekcje = szyny_sekcji_gpz(snapshot)
+    return frozenset(
+        str(_pole(t, "ref_id"))
+        for t in _kolekcja(snapshot, "transformers")
+        if str(_pole(t, "lv_bus_ref")) in sekcje
+    )
+
+
+def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
+    """Wyprowadź ``TopologyView`` z migawki (``EnergyNetworkModel`` albo słownik ENM).
+
+    Czysta funkcja: ten sam model → identyczny widok, niezależnie od kolejności
+    elementów w kolekcjach (szyny sortowane po ``ref_id``).
+    """
+    podzial = podziel_krawedzie(snapshot)
+    szyny = podzial.szyny
+    znane = set(szyny)
+    krawedzie_wysp = [(k.szyna_a, k.szyna_b) for k in podzial.w_ruchu]
+    krawedzie_sekcji = [
+        (k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.rodzaj != "transformator"
+    ]
+    pary_laczen = [(k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.rodzaj == "lacznik"]
 
     zrodla_szyny: dict[str, list[str]] = {}
     for zrodlo in _kolekcja(snapshot, "sources"):
@@ -217,10 +296,133 @@ def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
         wezel_topologiczny=scal_wezly(szyny, pary_laczen),
         wyspy=wyspy,
         sekcje=_uporzadkuj(skladowe_spojne(szyny, krawedzie_sekcji)),
-        laczniki_otwarte=tuple(laczniki_otwarte),
-        galezie_otwarte=tuple(galezie_otwarte),
-        krawedzie_pominiete=tuple(pominiete),
+        laczniki_otwarte=podzial.laczniki_otwarte,
+        galezie_otwarte=podzial.galezie_otwarte,
+        krawedzie_pominiete=podzial.krawedzie_pominiete,
     )
+
+
+# ---------------------------------------------------------------------------
+# W5-C: punkty podziału — WYPROWADZANE z pozycji normalnej łączników
+# ---------------------------------------------------------------------------
+
+
+def punkty_podzialu(snapshot: EnergyNetworkModel | Mapping[str, object]) -> tuple[str, ...]:
+    """Punkty normalnie otwarte sieci: łączniki z ``normal_state == "open"`` (po ``ref_id``).
+
+    JEDYNE źródło punktów podziału (W5-C): pozycja normalna łącznika
+    (``SwitchBranch.normal_state``). Dawna kopia przy magistrali
+    (``Corridor.no_point_ref``) jest skasowana — konsumenci (walidator I005, widok
+    korytarzy, tor zasilania, widoki logiczne) czytają ten akcesor.
+    """
+    return tuple(
+        sorted(
+            str(_pole(g, "ref_id"))
+            for g in _kolekcja(snapshot, "branches")
+            if _pole(g, "type") in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+            and _pole(g, "normal_state") == "open"
+        )
+    )
+
+
+def _graf_konfiguracji_normalnej(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+    *,
+    wymuszony_zamkniety: str | None = None,
+) -> tuple[tuple[str, ...], list[tuple[str, str, str]], dict[str, tuple[str, str]]]:
+    """Graf szyn sieci w KONFIGURACJI NORMALNEJ, z otwartymi punktami podziału.
+
+    Łącznik z zadeklarowaną pozycją normalną łączy wg ``normal_state`` (punkt
+    normalnie otwarty — nigdy, nawet chwilowo zamknięty); każda inna gałąź wg
+    ``status`` (jak ``podziel_krawedzie``); transformator łączy zawsze.
+    ``wymuszony_zamkniety`` — łącznik traktowany jako zamknięty (kandydat na nowy
+    punkt podziału). Zwraca (szyny, krawędzie (ref, a, b), końce punktów podziału).
+    """
+    szyny = tuple(sorted(str(_pole(b, "ref_id")) for b in _kolekcja(snapshot, "buses")))
+    znane = set(szyny)
+    krawedzie: list[tuple[str, str, str]] = []
+    konce_punktow: dict[str, tuple[str, str]] = {}
+    for galaz in sorted(_kolekcja(snapshot, "branches"), key=lambda g: str(_pole(g, "ref_id"))):
+        ref = str(_pole(galaz, "ref_id"))
+        a = str(_pole(galaz, "from_bus_ref"))
+        b = str(_pole(galaz, "to_bus_ref"))
+        if a not in znane or b not in znane:
+            continue
+        stan_normalny = (
+            _pole(galaz, "normal_state")
+            if _pole(galaz, "type") in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+            else None
+        )
+        if ref == wymuszony_zamkniety:
+            krawedzie.append((ref, a, b))
+            continue
+        if stan_normalny == "open":
+            konce_punktow[ref] = (a, b)
+            continue
+        stan = stan_normalny if stan_normalny is not None else _pole(galaz, "status", "closed")
+        if stan == "closed":
+            krawedzie.append((ref, a, b))
+    for trafo in sorted(_kolekcja(snapshot, "transformers"), key=lambda t: str(_pole(t, "ref_id"))):
+        hv = str(_pole(trafo, "hv_bus_ref"))
+        lv = str(_pole(trafo, "lv_bus_ref"))
+        if hv in znane and lv in znane:
+            krawedzie.append((str(_pole(trafo, "ref_id")), hv, lv))
+    return szyny, krawedzie, konce_punktow
+
+
+def poprzednie_punkty_podzialu(
+    snapshot: EnergyNetworkModel | Mapping[str, object], lacznik_ref: str
+) -> tuple[str, ...]:
+    """Punkty podziału TEGO SAMEGO pierścienia, co łącznik ``lacznik_ref`` (po ``ref_id``).
+
+    Punkt podziału P należy do pierścienia łącznika L, gdy w konfiguracji normalnej
+    z L zamkniętym (``_graf_konfiguracji_normalnej``) zamknięcie P utworzyłoby pętlę,
+    której KAŻDA droga prowadzi przez L — czyli przeniesienie punktu podziału z P na
+    L zachowuje układ promieniowy i zasilenie wszystkich odbiorów pętli. Definicja
+    strukturalna, bez domysłu: rozstrzyga ``krawedzie_kazdej_drogi`` jądra topologii.
+    Więcej niż jeden wynik = pierścień o kilku punktach podziału zależnych od L
+    (topologia „theta") — wybór należy do projektanta, nie do operacji.
+    """
+    szyny, krawedzie, konce = _graf_konfiguracji_normalnej(
+        snapshot, wymuszony_zamkniety=lacznik_ref
+    )
+    wynik: list[str] = []
+    for ref, (a, b) in sorted(konce.items()):
+        if ref == lacznik_ref:
+            continue
+        mosty = krawedzie_kazdej_drogi(szyny, krawedzie, a, b)
+        if mosty is not None and lacznik_ref in mosty:
+            wynik.append(ref)
+    return tuple(wynik)
+
+
+def punkty_podzialu_korytarza(
+    snapshot: EnergyNetworkModel | Mapping[str, object], segment_refs: Iterable[str]
+) -> tuple[str, ...]:
+    """Punkty podziału magistrali o odcinkach ``segment_refs`` (po ``ref_id``).
+
+    Punkt podziału należy do magistrali, gdy jest jej odcinkiem (łącznik wstawiony w
+    ciąg) albo gdy jego zamknięcie w konfiguracji normalnej utworzyłoby pętlę, której
+    każda droga prowadzi przez odcinek magistrali (pierścień zamykany tym punktem
+    obejmuje magistralę). Zastępuje skasowane ``Corridor.no_point_ref``.
+    """
+    odcinki = set(segment_refs)
+    punkty = punkty_podzialu(snapshot)
+    if not punkty:
+        return ()
+    szyny, krawedzie, konce = _graf_konfiguracji_normalnej(snapshot)
+    wynik: list[str] = []
+    for ref in punkty:
+        if ref in odcinki:
+            wynik.append(ref)
+            continue
+        if ref not in konce:
+            continue
+        a, b = konce[ref]
+        mosty = krawedzie_kazdej_drogi(szyny, krawedzie, a, b)
+        if mosty and odcinki.intersection(mosty):
+            wynik.append(ref)
+    return tuple(wynik)
 
 
 @dataclass(frozen=True)
@@ -323,16 +525,14 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
     """
     # Zbierz referencje
     source_bus_refs = sorted({s.bus_ref for s in enm.sources})
-    {b.ref_id: b for b in enm.buses}
     branch_map = {b.ref_id: b for b in enm.branches}
-    {s.ref_id: s for s in enm.substations}
-    {j.ref_id: j for j in enm.junctions}
 
     # Bus → substation mapping
     bus_to_sub: dict[str, str] = {}
+    poziom = poziom_pol(enm)
     for sub in enm.substations:
         # POLA-W-TORZE: zaciski pól SN i szyny za aparatami pól nN należą do stacji.
-        for br in sorted(szyny_stacji(sub, enm.branches)):
+        for br in sorted(szyny_stacji(enm, sub, poziom)):
             bus_to_sub.setdefault(br, sub.ref_id)
 
     # Bus → junction mapping
@@ -403,7 +603,7 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
                 corridor_type=corr.corridor_type,
                 segment_count=len(corr.ordered_segment_refs),
                 total_length_km=round(total_len, 3),
-                has_no_point=corr.no_point_ref is not None,
+                has_no_point=bool(punkty_podzialu_korytarza(enm, corr.ordered_segment_refs)),
             )
         )
 

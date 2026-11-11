@@ -30,7 +30,7 @@ const RUNS = [
 
 function props(over: Partial<Parameters<typeof PrzebiegiPanel>[0]> = {}) {
   return {
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onPokazWyniki: vi.fn(),
     ...over,
   };
@@ -41,7 +41,6 @@ beforeEach(() => {
   vi.mocked(api.listRuns).mockResolvedValue({ runs: RUNS, count: RUNS.length });
   useExecutionRunsStore.setState({
     activeStudyCaseId: 'K1',
-    activeRunId: null,
     runStatus: null,
     runs: RUNS,
     isLoadingRuns: false,
@@ -206,7 +205,7 @@ describe('PrzebiegiPanel — identyfikatory tylko w trybie eksperckim (§2.7)', 
     fireEvent.click(screen.getByTestId('mvd-przebieg-wiersz-run-1'));
     expect(screen.queryByTestId('mvd-przebieg-techniczne')).not.toBeInTheDocument();
 
-    rerender(<PrzebiegiPanel {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<PrzebiegiPanel {...props({ szczegolyAudytowe: true })} />);
     fireEvent.click(screen.getByTestId('mvd-przebieg-wiersz-run-1'));
     expect(screen.getByTestId('mvd-przebieg-techniczne')).toHaveTextContent('run-1');
   });

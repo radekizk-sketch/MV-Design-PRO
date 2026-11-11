@@ -34,6 +34,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_sn_stacji
 from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 from network_model.solvers.power_flow_types import (
@@ -60,10 +61,10 @@ def _empty_enm() -> dict[str, Any]:
 
 def _branch_field_ref(enm: dict[str, Any], station_name: str) -> str:
     station = next(s for s in enm.get("substations", []) if s.get("name") == station_name)
-    for spec in station.get("meta", {}).get("field_specs", []):
+    for spec in pola_sn_stacji(enm, station["ref_id"]):
         role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
         if role in {"LINIA_ODG", "FEEDER"}:
-            return f"{spec['field_ref']}.BRANCH"
+            return f"{spec['ref_id']}.BRANCH"
     raise AssertionError(f"Brak pola odgałęźnego w stacji {station_name}")
 
 
@@ -118,8 +119,6 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert r.get("error") is None, f"KROK 1 (GPZ): {r.get('error')}"
@@ -285,7 +284,6 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
         enm,
         "add_nn_load",
         {
-            "station_ref": station_ref_1,
             "bus_nn_ref": nn_bus_st1,
             "feeder_ref": feeder_ref_st1,
             # API: handler oczekuje kW (active_power_kw / reactive_power_kvar),
@@ -309,7 +307,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "source_technology": "BESS",
             "connection_variant": "nn_side",
             "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
-            "name": "BESS-S1",
+            "source_name": "BESS-S1",
             "power_setpoint_mw": 0.05,
         },
     )
@@ -342,7 +340,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "source_technology": "PV",
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
-            "name": "PV-S2",
+            "source_name": "PV-S2",
             "power_setpoint_mw": 0.05,
         },
     )
@@ -362,7 +360,6 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             # 2,2 MVA). Dawny „conv-fw-1.0mw-15kv" nie istniał, a payload deklarował
             # dla niego 0,4 kV — czyli tabliczkę sprzeczną z własnym identyfikatorem.
             "catalog_ref": "conv-wind-nn-2mw-0p4kv",
-            "name": "FW-S2",
             "source_name": "FW-S2",
             "power_setpoint_mw": 0.05,
         },
@@ -544,8 +541,6 @@ def test_converter_source_requires_explicit_connection_variant(technology: str) 
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert r.get("error") is None, f"GPZ: {r.get('error')}"

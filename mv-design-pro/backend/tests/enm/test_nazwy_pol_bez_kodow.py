@@ -53,6 +53,9 @@ _ALIASY_MODELU = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: pole zespołu uziemiającego (ENEA Zeszyt 1 §16).
+    "ZU": "ZESPOL_UZIEMIAJACY",
+    "BKR": "BATERIA_KONDENSATOROW",
 }
 
 
@@ -164,17 +167,12 @@ def test_nazwa_pola_zrodlowego_bez_znanej_technologii_nie_zgaduje(technologia: o
 
 
 def _pola_stacji(migawka: dict[str, Any], przed: dict[str, Any]) -> list[dict[str, Any]]:
-    """Pola stacji utworzonych operacją, w obu nośnikach modelu: element `bays` i specyfikacja
-    pola w meta stacji (pola stacji istniejących wcześniej, np. GPZ, nie należą do przypadku)."""
+    """Pola stacji utworzonych operacją — rekordy `bays` (jedyny nośnik pól od W5-B; pola
+    stacji istniejących wcześniej, np. GPZ, nie należą do przypadku)."""
     stare = {s["ref_id"] for s in przed.get("substations", [])}
-    nowe = [s for s in migawka.get("substations", []) if s["ref_id"] not in stare]
-    refy = {s["ref_id"] for s in nowe}
+    refy = {s["ref_id"] for s in migawka.get("substations", []) if s["ref_id"] not in stare}
     pola = [dict(b) for b in migawka.get("bays", []) if b.get("substation_ref") in refy]
-    for stacja in nowe:
-        for spec in (stacja.get("meta") or {}).get("field_specs") or []:
-            # Specyfikacja bez nazwy (droga stacji dołączanej) — nazwę niesie element `bays`.
-            if spec.get("name") is not None:
-                pola.append({"name": spec.get("name"), "bay_role": spec.get("bay_role")})
+    assert pola, "operacja nie utworzyła żadnego pola stacji — test nie miałby czego sprawdzić"
     return pola
 
 
@@ -323,9 +321,9 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
     """Nazwa `TR1 …/… kV` z napięcia górnego typu katalogowego, nie ze stałej 110 kV."""
     from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
-    for katalog, napiecie_sn, oczekiwana in (
-        ("bench_ieee14bus_br15", 14.0, "TR1 135/14 kV"),
-        ("tr-wn-sn-110-15-25mva-yd11", 15.0, "TR1 110/15 kV"),
+    for katalog, napiecie_wn, napiecie_sn, oczekiwana in (
+        ("bench_ieee14bus_br15", 135.0, 14.0, "TR1 135/14 kV"),
+        ("tr-wn-sn-110-15-25mva-yd11", 110.0, 15.0, "TR1 110/15 kV"),
     ):
         enm = EnergyNetworkModel(
             header=ENMHeader(name="gpz", defaults=ENMDefaults(sn_nominal_kv=napiecie_sn))
@@ -335,8 +333,15 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
             "add_grid_source_sn",
             {
                 "voltage_kv": napiecie_sn,
-                "sk3_mva": 250.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                # Karta GPZ-MODEL: transformator WN/SN jest elementem modelu wyłącznie
+                # przy równoważniku sieci po stronie WN (na jego szynie).
+                "manual_equivalent": {
+                    "short_circuit_input_side": "HV_110",
+                    "hv_voltage_kv": napiecie_wn,
+                    "sk3_hv_mva": 3000.0,
+                    "rx_ratio": 0.1,
+                },
+                "transformer_count": 1,
                 "transformer_catalog_ref": katalog,
             },
         )

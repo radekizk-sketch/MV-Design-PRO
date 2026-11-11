@@ -419,6 +419,31 @@ interface OdciskiLod {
  * to scenę i etykiety L1/L2; L0 bez zmian.
  * Dawniej budowniczy dokładał magazyn mimo przekroczenia mocy transformatora.
  *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-PARYTET cz. 3, 2026-10-21) — przeliczone odciski; z 54 wpisów
+ * tablicy zmienione wszystkie 54. Pomiar (archiwa `git archive` przebiegane tym testem w trybie
+ * budżetów): ostatni zielony punkt `6c940d2e8^`, PIERWSZY czerwony `6c940d2e8` (GPZ-PARYTET
+ * „14 odroczonych kluczy parytetu GPZ zamkniętych zachowaniem albo kontraktem negatywnym";
+ * 54 z 54 wpisów inne), czerwień przeniesiona przez cz. 2 (`2df442be0`: uzwojenia, stan
+ * łączników z modelu) bez przeliczenia, bo test biegnie wyłącznie w kroku budżetów, którego
+ * tamte karty nie uruchomiły. Wkład tej karty, zmierzony porównaniem pełnych scen drzewa bazowego
+ * `2df442be0` i drzewa karty (JSON scen L0/L1/L2 obu sieci): WYŁĄCZNIE `state` dwóch
+ * przekładników prądowych toru transformatora GPZ bez pola modelu (pole WN TR i pole TR) —
+ * „nieznany" → brak stanu, bo przekładnik nie jest łącznikiem (ta sama reguła co dla toru
+ * z polem modelu, `compose/gpz.ts` `stanAparatuPolaGpz`, przypięte w
+ * `buildScene.gpzPoleTr.test.ts`). Zmienia to scenę L1/L2 obu sieci; L0, declutter i 21
+ * planów na sieć identyczne z bazą `2df442be0`.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GEOMETRIA-STACJI, 2026-10-22) — przeliczone odciski; z 54 wpisów
+ * tablicy zmienione wszystkie 54. Pomiar: ten test w trybie budżetów na drzewie HEAD karty
+ * (archiwum `git archive`) — 8 z 8 zielonych, czyli czerwień wnosi wyłącznie kod tej karty.
+ * Przyczyny (każda zmienia scenę i etykiety na KAŻDYM LOD obu sieci): (1) aparaty pola
+ * wyłącznie z rekordów modelu — stos konwencji roli zniknął, pole bez rekordów ma jedną
+ * sylwetkę „brak danych wyposażenia pola" (§0 pkt 4); na L0 pole GPZ dostaje aparat ciągłości
+ * z rekordu albo tę sylwetkę zamiast wyłącznika z konwencji; (2) odcinek szyny SN stacji
+ * niesie ref sekcji `${busRef}#sn-bus` zamiast `${stationRef}#sn-bus` (§0 pkt 1), więc
+ * zmienia się tożsamość segmentów i etykiet szyn; (3) niższe stosy pól przesuwają kotwice
+ * etykiet, a za nimi plan etykiet przy każdej skali gestu.
+ *
  * AKTUALIZACJA ŚWIADOMA (partia integracji 12, 2026-10-21) — trzy odciski SCENY sieci
  * podwojonej (L0/L1/L2); declutter i plany bez zmian, sieć referencyjna bez zmian. Przyczyna
  * WYŁĄCZNIE w treści komunikatów niezmienników elektrycznych (`electrical/invariants.ts`,
@@ -431,87 +456,196 @@ interface OdciskiLod {
  * `canvas/labelLegibility.ts` (`najlepszeDopasowanie`): plan próbuje pełnego tekstu po każdej
  * stronie kotwicy, zanim skróci napis — dawniej skracał po stronie zadeklarowanej („TV1” →
  * „T…”, czytane jak transformator). Sonda: ten plik sprzed karty → 8 z 8 testów zielone.
+ *
+ * AKTUALIZACJA ŚWIADOMA (styk K2b×K3, 2026-10-22) — przeliczone odciski; z 54 wpisów tablicy
+ * zmienione 38. Pomiar (archiwum `git archive 8fe7fe9c4`, ten test w trybie budżetów): drzewo
+ * scalenia K2b+K3 `8fe7fe9c4` było CZERWONE (38 z 54 wpisów innych niż pin karty K3 — pin
+ * liczony na drzewie samego K3, scalenie z K2b dołożyło punkt NO korytarza na każdym poziomie
+ * i podpisy „NO", a krok budżetów po scaleniu nie biegł). Wkład tej karty względem drzewa
+ * scalenia, zmierzony odciskami liczonymi z pominięciem nowego pola `obrysKotwicy` etykiet:
+ * sceny L0/L1/L2, declutter i plany identyczne poza planem L2 przy skali 0,4 obu sieci —
+ * tam 1 (referencyjna) i 2 (podwojona) podpisy „PV 500 kW", dotąd PORZUCONE przez plan
+ * (`droppedIdentity` 1 → 0 i 2 → 0), stoją pełnym tekstem przy symbolu źródła (drugie
+ * przejście stron przy obrysie, `canvas/labelLegibility.ts`). Pozostałe różnice odcisków
+ * scen/declutteru/planów L1/L2 to samo pole `obrysKotwicy` podpisów DER, „NO", oznaczeń
+ * sprzęgieł, uziemnika lateralu, przekładnika szyny GPZ i łącznika toru (geometria `rect`
+ * bez zmian; para obrys↔symbol sceny przypięta w `canvas/__tests__/stronyPrzySymbolu.test.ts`).
+ *
+ * AKTUALIZACJA ŚWIADOMA (scalenie gałęzi programu, partie 9–13, z gałęzią UI/UX + naprawa
+ * styku K2b×K3, 2026-10-22) — przeliczone odciski; z 54 wpisów tablicy zmienione 9 względem
+ * pinu naprawy styku K2b×K3 (`73ef5e665`). Sonda na drzewie scalonym (ten test w trybie
+ * budżetów): (A) `electrical/invariants.ts` i `electrical/terminalGraph.ts` z `73ef5e665`
+ * (komunikaty niezmienników sprzed partii 10) → różnią się WYŁĄCZNIE 6 odcisków planu
+ * (L1 @4, L2 @3, L2 @4 obu sieci); (B) dodatkowo `canvas/labelLegibility.ts` z `73ef5e665`
+ * (bez reguły W2C-PLAN-ETYKIET „pełny tekst po każdej stronie przed skrótem") → 0 różnic
+ * z pinem `73ef5e665`. Wkład scalenia = dokładnie te dwie przyczyny programu: 3 odciski
+ * SCENY sieci podwojonej (treść komunikatów niezmienników, partia 10) i 6 odcisków PLANU
+ * (reguła W2C, złożona z drugim przejściem stron przy obrysie symbolu — pełny tekst po każdej
+ * stronie przed skrótem obowiązuje w obu przejściach). Declutter bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-MODEL, 2026-10-22, na bazie GEOMETRIA-STACJI i W5-C) —
+ * przeliczone odciski; z 54 wpisów tablicy zmienione wszystkie 54. Pomiar (ten test
+ * w trybie budżetów, archiwa `git archive` drzew):
+ *  · PINY BAZY były nieaktualne już przed kartą: na drzewie GEOMETRIA-STACJI `8fe7fe9c4`
+ *    i na bazie karty `f7235700e` ten test jest czerwony (6 z 8 przypadków); na bazie
+ *    38 z 54 wpisów różni się od odcisków liczonych kodem bazy na fiksturze bazy (zgodne
+ *    tylko declutter i plany L0 obu sieci). Czerwień nie wyszła wcześniej, bo test biegnie
+ *    wyłącznie w kroku budżetów.
+ *  · KOD karty na fiksturze bazy: wobec kodu bazy na tej samej fiksturze różnią się
+ *    WYŁĄCZNIE sceny L1/L2 obu sieci (4 z 54; declutter i 21 planów na sieć identyczne),
+ *    a jedyna różnica sceny to prawy koniec szyny WN GPZ 160 → 200 — szyna WN mieści własny
+ *    podpis „Szyna WN · 110 kV" (`compose/gpz.ts`; bez tego glif źródła nad szyną WN
+ *    zasłaniał podpis).
+ *  · DANE: substrat ma GPZ z równoważnikiem sieci 110 kV i transformatorem WN/SN (tryb A)
+ *    zamiast fikcji „równoważnik na szynach SN + TR obok" (`sld_substrate_52s.py`): źródło
+ *    nad szyną WN, ziarno GPZ (ładunek operacji) daje nowe ref-y całej sieci — stąd 54 z 54
+ *    wpisów innych na nowej fiksturze (także treść fikstury bazy z samymi nowymi
+ *    identyfikatorami: 0 z 54 zgodnych z kodem karty na fiksturze bazy, kolejność remisu
+ *    `id.localeCompare`).
+ *  · KOD karty, drugi krok (po scaleniu z GEOMETRIA-STACJI, sonda trzech wariantów kodu na
+ *    tej samej fiksturze): (1) podpis kabla GPZ→S0 odsuwany także od TUSZU etykiet GPZ
+ *    (`buildScene.ts` `odsunPodpisOdElementowGpz`) zmienia WYŁĄCZNIE L2 obu sieci — scenę,
+ *    declutter i 7 planów (18 z 54 wpisów): etykiet sceny 913 → 914 i 1815 → 1816, bo
+ *    podpis kabla, dotąd stawiany na etykiecie GPZ i zdejmowany declutterem, zostaje;
+ *    (2) reguła (f) planu etykiet (`labelLegibility.ts` `ustapSasiadow`) zmienia WYŁĄCZNIE
+ *    plan L2 przy skali 0,4 obu sieci (2 z tych 18): tożsamości porzucone od kolizji 1 → 0
+ *    i 2 → 0. Pozostałe 36 wpisów (L0, L1) bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (scalenie GPZ-MODEL `73e56f4ad` z drzewem scalonym programu, partie
+ * 9–13 + styk K2b×K3, 2026-10-22) — przeliczone odciski; z 54 wpisów tablicy zmienione
+ * wszystkie 54 względem pinu programu (`182d7df30`) i 37 względem pinu GPZ-MODEL. Pomiar
+ * sondą odcisków (te same funkcje co ten test, archiwa `git archive` obu stron, fikstura
+ * podana jawnie):
+ *  · KOD GPZ-MODEL na fiksturze programu (kod scalony vs kod `182d7df30`, fikstura
+ *    `182d7df30`): różnią się WYŁĄCZNIE sceny L1/L2 obu sieci (4 z 54) — prawy koniec szyny
+ *    WN GPZ 160 → 200 (`compose/gpz.ts`); reguły podpisu kabla GPZ i ustąpienia sąsiada nie
+ *    działają na fiksturze bez szyny 110 kV GPZ.
+ *  · FIKSTURA: substrat scalony = substrat GPZ-MODEL (GPZ z równoważnikiem 110 kV i
+ *    transformatorem WN/SN, nowe ref-y całej sieci) + pola addytywne programu
+ *    (`loads[].earth_electrode_r_ohm`, `transformers[].lv_voltage_tolerance`,
+ *    `sources[].c_max/c_min/lv_voltage_tolerance`, skrót nagłówka) — kod scalony daje na obu
+ *    fiksturach odciski identyczne (0 z 54 różnic), więc pola programu nie zmieniają rysunku;
+ *    zmiana fikstury tłumaczy pozostałe 50 z 54 różnic względem pinu programu.
+ *  · KOD PROGRAMU na fiksturze GPZ-MODEL (kod scalony vs kod `73e56f4ad`): 37 z 54 —
+ *    (A) `electrical/invariants.ts` i `electrical/terminalGraph.ts` w wersji `73e56f4ad`
+ *    (komunikaty niezmienników sprzed partii 10) → różnią się od pinu scalonego WYŁĄCZNIE
+ *    3 sceny sieci podwojonej (L0/L1/L2); (B) wszystkie pliki źródłowe `src/` (poza testami
+ *    i fiksturami) w wersji `73e56f4ad` → 0 z 54 różnic z pinem GPZ-MODEL, więc całą
+ *    różnicę niesie kod źródłowy programu. Pozostałe 34 (sceny, declutter i plany L1/L2 obu
+ *    sieci) leżą w L1/L2, gdzie działają zmiany programu opisane we wpisach wyżej (pole
+ *    `obrysKotwicy` i drugie przejście stron przy obrysie symbolu ze styku K2b×K3, reguła
+ *    W2C planu); dalej sondą ich nie rozkładano. Etykiet sceny jak w GPZ-MODEL: 55/520/914
+ *    (referencyjna) i 108/1030/1816 (podwojona), czyli bez etykiet zgubionych ani dodanych.
+ *
+ * AKTUALIZACJA ŚWIADOMA (MENU-KANON commit 5, 2026-10-22) — przeliczone odciski; z 54 wpisów
+ * tablicy 38 zmienionych, 16 bez zmian (L0: declutter i 7 z 7 planów w obu sieciach). Pomiar
+ * (archiwa `git archive` przebiegane zrzutem pełnych scen L0/L1/L2 obu sieci w trybie budżetów):
+ * ostatni zielony punkt `f6eb035ad^`, PIERWSZY czerwony `f6eb035ad` (UIUX-K2b „kadr wyłącznie
+ * celu…"; czerwień przeniesiona scaleniem `650565274` bez przeliczenia, bo test biegnie wyłącznie
+ * w kroku budżetów). Dwa wkłady, zmierzone porównaniem pełnych scen:
+ *  · K2b (`buildScene.ts`, kod SLD): 8 odcinków napowietrznych sieci referencyjnej dostaje
+ *    w `meta` `lineType: 'overhead'` (współrzędne bez zmian; na L1/L2 11 odcinków razem
+ *    z odgałęzieniami „#tee"), a łącznik sekcyjny NO poza stacją („Łącznik sekcyjny NO
+ *    (rezerwa)") jest rysowany symbolem `noPoint` na L0/L1/L2 z etykietą „NO" na L1/L2
+ *    (przypięte w `nopINapowietrzne.k2b.test.ts`); w sieci podwojonej po dwie kopie. Zmienia
+ *    scenę L0/L1/L2 i declutter L1/L2.
+ *  · Ta karta (DANE, kod SLD nietknięty): ciągi liniowe fikstury odwołują się do połówek
+ *    podzielonych odcinków zamiast do skasowanego odcinka (spójność `line_runs` po podziale
+ *    odcinka). Sieć referencyjna — sceny bajtowo identyczne z bazą `650565274`; sieć podwojona —
+ *    wyłącznie `meta`: kopia ciągu z odwołaniem wiszącym dawała naruszenie grafu
+ *    `DEVICE_TERMINAL_UNRESOLVED` i notatkę STOP, teraz `electricalGraphStatus` `SLD_VALID`
+ *    i jedna notatka (łamanie arkusza). Geometria, etykiety, declutter i plany bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (scalenie karty MENU-KANON `5bff32b4b` z gałęzią UI/UX `7f0fbfa86`,
+ * 2026-10-22) — wartości tablicy z gałęzi UI/UX (GPZ-MODEL), zmienione wyłącznie 3 odciski
+ * SCENY sieci podwojonej (L0/L1/L2); declutter, plany i cała sieć referencyjna bez zmian
+ * (zielone w kroku budżetów). Pomiar: pełne sceny podwojonej sieci L0/L1/L2 zrzucone z kodu
+ * gałęzi UI/UX (`git archive`) i z drzewa scalonego, porównane liść po liściu — różnią się
+ * WYŁĄCZNIE `meta`, 7 liści na każdym LOD: `electricalGraphStatus` SLD_INVALID → SLD_VALID,
+ * znika naruszenie `DEVICE_TERMINAL_UNRESOLVED` („Magistrala 1" wskazywała skasowany odcinek)
+ * i jego notatka STOP, zostaje notatka łamania arkusza. To dokładnie wkład danych karty
+ * MENU-KANON opisany wyżej, nałożony na scenę GPZ-MODEL.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '001d8e6a8f798131bc13479430cc6221',
-      declutter: '7b3f5739b2b54790f4ec28cb4df70cd0',
+      scena: '4e6dbcc8571e568de22a96dab483d012',
+      declutter: 'd07fba87b2f56a1eef4c600fe0709a17',
       plany: [
-        'e75f905bdb8cdcd336de41517bafb8d0',
-        'ab5d3ecd6aff7fa745be87346277a28f',
-        '52d9edbdb5f37d51e4db84b3654bbaab',
-        '3724c877d3aa82984dd02abe720aeed5',
-        '705da8f691981e8aa4d96c3762b0a0ab',
-        '362503944508f558874b1e412d402f34',
-        '362503944508f558874b1e412d402f34',
+        '3073b65d61f123c6da6d042c95f705b4',
+        '6b10640883aa9a473b7279618649d1e1',
+        '172728286ead7bb23cd923432968a504',
+        '1d40ebb9aa22cf4b7d406cfd7a7dea89',
+        'f77dcd8f91618667280fff097f9fd7ee',
+        '11e9a49e4ea8cebb2745065ce73382a7',
+        '11e9a49e4ea8cebb2745065ce73382a7',
       ],
     },
     {
-      scena: 'a8696d92c937c1d547c597d8eebdb059',
-      declutter: 'de32421abfe56d2498bb3b88cf30a786',
+      scena: '957d297d0fe9fcee6052eb9de9cf9c80',
+      declutter: '40b7251b852fc542752fe1ba1f29338e',
       plany: [
-        'f57e9e8ca945efcc488705983df7d2d1',
-        '4b483d0146f0f9b872601ff9d8aeeafb',
-        'b31c6fee256b9287e5275778739a4aaa',
-        '229116bf9fc98b146a690e52328de0c5',
-        'f4e407fb21825d19ae8d6013ef4f7f48',
-        'f7506f785ea58af34c3b24802cc68366',
-        'f7506f785ea58af34c3b24802cc68366',
+        '06752775d45bbab5bd2330a0c33ea6b7',
+        '836e830b596dac4681f9e6855b8d5903',
+        'd14fde551e5c185fd96bf7f31f0a9569',
+        'a91c398d4eda4d56bf74eab60e87ca70',
+        '8aa76b130cababf582150067129767ec',
+        'e76685ef2a5da4093d1e774aa61fcce4',
+        'e76685ef2a5da4093d1e774aa61fcce4',
       ],
     },
     {
-      scena: 'c09afdae41dbaf72f184ff0b6ad80b30',
-      declutter: '8032ff0a9dd3688eeb0b3e0b76e094c8',
+      scena: '83203575489a3a901a5628b7c7e66235',
+      declutter: '3ac69d221753e008d7ac680e0531d8d4',
       plany: [
-        '1b22b96d963d9765391b05963553d043',
-        'e2f437ab7267999592214294b9ce8a56',
-        'c772b7e3936f9f4c331b76674d43f327',
-        '0bc867586c16d00285ac148ecbbd19c5',
-        '7594523bba620130dc02f980fdeabf2d',
-        '76af8b8bacf05059ac61b3b19ce85d9e',
-        '76af8b8bacf05059ac61b3b19ce85d9e',
+        '67205bf8127c4c224ade425c47dd2246',
+        'bb6dfa40a0e49fcb070c10f0d0117059',
+        '793ee94663dae1ab0252c6bdd070b7eb',
+        '26d8e421568e2395a3ece2e59dd1ac2e',
+        '311a1b1aefbffa019832b301a7605eed',
+        '09e6fcc06fd2a007070d9abd4eb4f083',
+        '09e6fcc06fd2a007070d9abd4eb4f083',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '4303d8c421380f1784fc13d179729982',
-      declutter: '4f488776de89329b8735c9fd2989656a',
+      scena: '8417ad34b7f98bff9a043d8fa5156142',
+      declutter: 'fcaad8f6069e583ea05a5a8de5e14a11',
       plany: [
-        '06b04c6ddf7dcf58f8433e9ea72ff59c',
-        '816dcab274b4c36af0b2264b87fca542',
-        '5faec5858458cf42d55ebb5a69d8194f',
-        '70e68abcd4b7e7306502b0dc9cbd34cd',
-        'be7b774628b9a60f91eb95ebd3907f24',
-        'c22b0771b57969780944dfbe92c5c429',
-        'c22b0771b57969780944dfbe92c5c429',
+        'b8eea41ccf515f1acc228cd82b6436dd',
+        'bda4c229ea6367eb4a824f3a0511e4e6',
+        'eda8d972ac0062b74c5d1d3a1fb6b219',
+        '1c1f71a06b7b72d607069a888618b9af',
+        '799392b7e737ef4a3f90280596f220d8',
+        '5a8106565c8335db1702e7284d38d537',
+        '5a8106565c8335db1702e7284d38d537',
       ],
     },
     {
-      scena: '12d96c448dbbf96d16d8e70b6d2095da',
-      declutter: 'b2ccb3ef57c6b6e7b0575297b0770e53',
+      scena: '90661362a6f0ab5e8a1be3bb3ff396a9',
+      declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
       plany: [
-        'e791a2f4fed507b51ed9572ec838b435',
-        '0a8d9a2a41c93eacb09808d21c057340',
-        'cf746819d46976764e97a7d45273cff1',
-        'b1104d367bda5c9e70095d6235d9a504',
-        'eb062aa48deead19d927d32680fd0f13',
-        '5532accf58fcd34c16619d9a80d27ca0',
-        '5532accf58fcd34c16619d9a80d27ca0',
+        'bb96bce423fc0946291bdd36d49ed8c2',
+        '7823922d2b8bfa2a847f1e655be156d0',
+        'ddbc1230a5bccb4fa4daa6b6427de3ca',
+        '7b072d4ef954c286798124c8c0fa6c77',
+        '66fb0c6845420ad9f48030a9ae8b0866',
+        '1af119c9668b67927bf66a4c995e7195',
+        '1af119c9668b67927bf66a4c995e7195',
       ],
     },
     {
-      scena: 'edd857f0ed5c650afb44fceb64f315aa',
-      declutter: 'ffa61e5df7ad3f6b47efbcc195a31a3a',
+      scena: '60589317c4b2576b7bea5a668ec3ed59',
+      declutter: 'fd2ac4acf96701c6273059192dddd93f',
       plany: [
-        '91cd1c0d8ea2e0ffd92c39524b6332a7',
-        '9a76d195b471e0b591e7c7a99eaa1f14',
-        '5077fad1fada2faebff555feca0d63ee',
-        'c933e347ab5abe8bb49c7db2acde559c',
-        '6688be48987f1d370978971d383bf11c',
-        '4b322b94556377c0a5cd125234dafbba',
-        '4b322b94556377c0a5cd125234dafbba',
+        '28965374c394c62b1d414eddfdd5e98a',
+        '831a2768e8325c241b3574cb8e460e52',
+        '6beb6ca8596df41241a64a39286e58ef',
+        'ad8cd0a9b733288867caf0ec67712d1b',
+        'dd7706bb913891b95bf649e9e0b5a4e2',
+        '4d60be0ead8e5bc02800c365e32d2ad9',
+        '4d60be0ead8e5bc02800c365e32d2ad9',
       ],
     },
   ],

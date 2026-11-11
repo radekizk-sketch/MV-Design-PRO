@@ -77,6 +77,10 @@ const PROT_FEEDER_OPTIONS = [
 
 interface SzablonPelnyOverrides {
   id?: string;
+  /** Szablon GPZ (karta GPZ-MODEL): transformatory 110/SN poza modelem, równoważnik sieci SN. */
+  transformer_options?: StationTemplateFull['schema']['transformer_options'];
+  transformer_count?: StationTemplateFull['schema']['transformer_count'];
+  grid_source_options?: StationTemplateFull['schema']['grid_source_options'];
   name_pl?: string;
   category?: string;
   description_pl?: string;
@@ -100,6 +104,9 @@ interface SzablonPelnyOverrides {
   voltage_lv_kv?: number | null;
   sn_voltage_kv?: number | null;
   bay_role_categories?: readonly string[];
+  /** Kontrakt `structural_fields` backendu (`schema.py::template_wchodzi_w_segment`):
+   *  kategoria inna niż korzeń modelu (GPZ) wstawia się w odcinek magistrali. */
+  wchodzi_w_segment?: boolean;
 }
 
 /** Fabryka pełnego szablonu (`StationTemplateFull`, `to_dict`, schema.py:171-269). */
@@ -119,9 +126,11 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
     voltage_lv_kv: over.voltage_lv_kv === undefined ? 0.4 : over.voltage_lv_kv,
     sn_voltage_kv: over.sn_voltage_kv === undefined ? 15 : over.sn_voltage_kv,
     bay_role_categories: over.bay_role_categories ?? ['IN', 'OUT', 'TR'],
+    wchodzi_w_segment: over.wchodzi_w_segment ?? true,
     schema: {
-      transformer_options: TR_OPTIONS_MEDIUM,
-      transformer_count: { default: 1, min_value: 1, max_value: 2, step: 1, label_pl: 'Liczba transformatorów' },
+      transformer_options: over.transformer_options ?? TR_OPTIONS_MEDIUM,
+      transformer_count: over.transformer_count
+        ?? { default: 1, min_value: 1, max_value: 2, step: 1, label_pl: 'Liczba transformatorów' },
       sn_switchgear_manufacturers: ['ZPUE_WLOSZCZOWA', 'ELEKTROMETAL', 'ABB', 'SIEMENS', 'SCHNEIDER'],
       sn_switchgear_default: 'ZPUE_WLOSZCZOWA',
       sn_bays_count: {
@@ -150,6 +159,7 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
       vt_options: VT_OPTIONS,
       energy_meter_options: [],
       manufacturer_profile_default: 'ZPUE_WLOSZCZOWA',
+      grid_source_options: over.grid_source_options ?? [],
     },
   };
 }

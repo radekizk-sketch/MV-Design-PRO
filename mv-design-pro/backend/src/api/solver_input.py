@@ -184,7 +184,6 @@ def get_solver_input(
             if cfg is not None:
                 audit2_payload = {
                     "station_id": cfg.station_id,
-                    "mv_neutral_grounding_ref": cfg.mv_neutral_grounding_ref,
                     "tap_changer_refs": list(cfg.tap_changer_refs or []),
                     "der_specs": list(cfg.der_specs or []),
                     # Phase 22: per-transformer mapping dla apply_audit2_to_network_model.

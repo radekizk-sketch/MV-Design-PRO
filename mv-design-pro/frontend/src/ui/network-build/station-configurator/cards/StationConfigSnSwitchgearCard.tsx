@@ -6,7 +6,8 @@ export type BusbarLayout = 'single_busbar' | 'sectioned_busbar' | 'simplified' |
 
 export interface StationConfigSnSwitchgearCardProps {
   readonly layout: BusbarLayout;
-  readonly nominalVoltageKv: number;
+  /** Napięcie szyny SN stacji z modelu; `null` — model go nie podaje (bez domysłu). */
+  readonly nominalVoltageKv: number | null;
   readonly nominalCurrentA?: number | null;
   readonly nominalShortCircuitKa?: number | null;
   readonly sectionsCount: number;
@@ -59,7 +60,7 @@ export function StationConfigSnSwitchgearCard(
       <div className="grid grid-cols-2 gap-2">
         <div>
           <div className="text-scada-muted">Napięcie znamionowe</div>
-          <div className="font-mono text-scada-text">{nominalVoltageKv} kV</div>
+          <div className="font-mono text-scada-text">{nominalVoltageKv !== null ? `${nominalVoltageKv} kV` : 'brak danych'}</div>
         </div>
         <div>
           <div className="text-scada-muted">Prąd znamionowy</div>

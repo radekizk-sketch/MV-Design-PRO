@@ -19,6 +19,8 @@
     { "kind": "TRANSFORMER_DEVICE", "symbol_name_pl": "Transformator dwuuzwojeniowy", "frontend_symbol_id": "transformer2W" },
     { "kind": "FUSE", "symbol_name_pl": "Rozłącznik z bezpiecznikami", "frontend_symbol_id": "fuseSwitch" },
     { "kind": "SURGE_ARRESTER", "symbol_name_pl": "Ogranicznik przepięć", "frontend_symbol_id": "surgeArrester" },
+    { "kind": "UNBALANCE_CT", "symbol_name_pl": "Przekładnik prądowy niezrównoważenia baterii kondensatorów (rysowany w połączeniu międzygwiazdowym glifu baterii, nie w torze pola)", "frontend_symbol_id": null },
+    { "kind": "PHASE_TO_PHASE_VT", "symbol_name_pl": "Przekładnik napięciowy międzyfazowy", "frontend_symbol_id": "voltageTransformer" },
     { "kind": "GENERATOR_PV", "symbol_name_pl": "Źródło fotowoltaiczne (rysowane jako źródło, nie aparat pola)", "frontend_symbol_id": null },
     { "kind": "GENERATOR_BESS", "symbol_name_pl": "Magazyn energii (rysowany jako źródło, nie aparat pola)", "frontend_symbol_id": null },
     { "kind": "GENERATOR_FW", "symbol_name_pl": "Generator wiatrowy (rysowany jako źródło, nie aparat pola)", "frontend_symbol_id": null },

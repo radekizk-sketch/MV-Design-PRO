@@ -61,15 +61,19 @@ async function build() {
 
   const PV_ID = 'conv-pv-sma-1p5mw-15kv';
   const BESS_ID = 'bess_pcs_abb_500';
+  // Karta W5-B: pola stacji to rekordy `bays` migawki — stacja niesie swoje pola z tej samej
+  // odpowiedzi operacji (`pola`), żeby wybór pola odgałęźnego nie czytał innej migawki.
   const newestStation = (o) => {
     const subs = (o.snapshot?.substations ?? []).filter((s) => s.ref_id.includes('/station'));
-    return subs[subs.length - 1];
+    const station = subs[subs.length - 1];
+    if (!station) return station;
+    return { ...station, pola: (o.snapshot?.bays ?? []).filter((b) => b.substation_ref === station.ref_id) };
   };
   const feederRef = (station) => {
-    const f = (station?.meta?.field_specs ?? []).find(
+    const f = (station?.pola ?? []).find(
       (x) => String(x.bay_role ?? '').toUpperCase() === 'FEEDER' || String(x.field_role ?? '').toUpperCase().includes('ODG'),
     );
-    return f?.field_ref ? `${f.field_ref}.BRANCH` : null;
+    return f?.ref_id ? `${f.ref_id}.BRANCH` : null;
   };
   const insertStation = async (segmentId, pos = 0.5) => {
     const o = await op(caseId, 'insert_station_on_segment_sn', {
@@ -90,7 +94,9 @@ async function build() {
     // source_technology steruje renderem (PV/BESS/FW), nie binding.
     const r = await op(caseId, 'add_converter_source', {
       source_technology: tech, connection_variant: variant, station_ref: station.ref_id,
-      p_install_mw: 1.5, catalog_binding: bind('FALOWNIK', 'inv-pv-1500'),
+      // Moc zainstalowana 1,5 MW z pozycji katalogu (dawny klucz `p_install_mw` był
+      // spoza kontraktu operacji — handler go nie czytał).
+      catalog_binding: bind('FALOWNIK', 'inv-pv-1500'),
     });
     if (!r.error) counts.der++;
     else counts.derFail = (counts.derFail ?? 0) + 1;

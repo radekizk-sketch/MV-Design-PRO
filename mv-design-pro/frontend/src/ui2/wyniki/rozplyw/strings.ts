@@ -79,6 +79,13 @@ export const ROZPLYW_STRINGS = {
   // Uczciwy brak danych (R3-A): brak pozycji walidacji dla gałęzi lub brak
   // odpowiedzi walidacji → komórka bez wartości i bez werdyktu.
   kreska: '—',
+  // Stan ODCZYTU walidacji obciążalności (odczyt w toku / nieudany ≠ brak pozycji).
+  obciazenieWczytywanie: 'odczyt…',
+  obciazenieBladOdczytu: 'odczyt nieudany',
+  obciazeniaWczytywanieNota:
+    'Kolumna „Obciążenie": trwa odczyt walidacji obciążalności przebiegu — werdykty pojawią się po odczycie.',
+  obciazeniaBladNota:
+    'Kolumna „Obciążenie": nie udało się odczytać walidacji obciążalności przebiegu — to nie jest brak obciążenia gałęzi; odśwież przebieg.',
 
   // Podzakładka „Regulacja Q OZE" (karta W3-H, badanie śladu WHITE BOX —
   // wariant B, zero fabrykacji, mapa aneks J5 / domena 5 #1 / domena 3 #10).

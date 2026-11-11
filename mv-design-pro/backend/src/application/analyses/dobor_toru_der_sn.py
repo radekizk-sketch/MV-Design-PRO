@@ -26,17 +26,14 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from domain.generator_validation import BEZ_REDUKCJI
-from enm.der_sn_validation import (
-    NN_VOLTAGE_TOLERANCE_KV,
-    SN_VOLTAGE_TOLERANCE_KV,
-    rated_current_a,
-)
+from enm.der_sn_validation import rated_current_a
 from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from network_model.solvers.cable_ampacity_derating import wspolczynniki_z_opisu
 from network_model.solvers.der_selection_preview import (
     BlockTransformerCandidate,
@@ -159,7 +156,13 @@ def kandydaci_kabli_sn() -> tuple[CableCandidate, ...]:
 
 
 def kandydaci_aparatow_pola_sn() -> tuple[FieldApparatusCandidate, ...]:
-    """Aparatura SN katalogu z rodzajem, napięciem i prądem znamionowym."""
+    """Aparatura SN katalogu z rodzajem, napięciem i prądem znamionowym.
+
+    Pozycje spoza pasma SN (łączniki topologii zasilania 110 kV, U_m 123 kV) nie są
+    kandydatami aparatu pola SN: napięciowo „wystarczają”, ale aparat WN w polu SN nie
+    jest propozycją doboru, tylko pomyłką klasy napięcia. ``ik_ka = None`` to brak danej
+    z karty i tak przechodzi do propozycji (nigdy 0.0 — bramka KAT-T-050).
+    """
     candidates: list[FieldApparatusCandidate] = []
     for record in get_all_switch_equipment_types():
         params = record.get("params") or {}
@@ -167,6 +170,8 @@ def kandydaci_aparatow_pola_sn() -> tuple[FieldApparatusCandidate, ...]:
         un_kv = params.get("un_kv")
         in_a = params.get("in_a")
         if kind is None or un_kv is None or in_a is None:
+            continue
+        if pasmo_napieciowe(float(un_kv)) != "SN":
             continue
         candidates.append(
             FieldApparatusCandidate(
@@ -190,7 +195,7 @@ def dobierz_transformator_blokowy(
     przeciazalnosc_pu: float = BEZ_REDUKCJI,
     rezerwa_pu: float = 0.0,
 ) -> BlockTransformerSelectionResult:
-    """Dobór TR blokowego z katalogu przy tolerancjach napięć D1 — jedna funkcja dla
+    """Dobór TR blokowego z katalogu (równość napięć znamionowych D1) — jedna funkcja dla
     kaskady i dla odstępstw dokumentu DER-SN. `OdmowaDanychError` — wejście poza dziedziną."""
     return propose_block_transformer(
         BlockTransformerSelectionInput(
@@ -201,8 +206,6 @@ def dobierz_transformator_blokowy(
             simultaneity_factor=wspolczynnik_jednoczesnosci,
             reserve_pu=rezerwa_pu,
             loadability_pu=przeciazalnosc_pu,
-            sn_tolerance_kv=SN_VOLTAGE_TOLERANCE_KV,
-            nn_tolerance_kv=NN_VOLTAGE_TOLERANCE_KV,
         )
     )
 

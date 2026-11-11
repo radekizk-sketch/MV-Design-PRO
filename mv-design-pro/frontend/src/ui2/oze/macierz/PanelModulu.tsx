@@ -8,6 +8,7 @@
  * Komponent w pełni sterowany propsami.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   ETYKIETY_POL_NASTAW,
   ETYKIETY_POL_WEJSCIA,
@@ -20,6 +21,7 @@ import { POLA_NASTAW } from '../ncrfg/typy';
 import {
   POLA_ZDOLNOSCI,
   jestZdolnosciaTrojstanowa,
+  modulGotowy,
   type BledyFormularza,
   type FormularzModulu,
   type OpisModulu,
@@ -31,6 +33,7 @@ import {
   ETYKIETY_POCHODZENIA,
   ETYKIETY_ZDOLNOSCI,
   MACIERZ_STRINGS,
+  OPISY_OCZEKIWANIA,
   formatMoc,
   formatNapiecie,
 } from './strings';
@@ -43,7 +46,7 @@ function BladPola({ komunikat, testid }: { komunikat?: string; testid: string })
   if (!komunikat) return null;
   return (
     <span className="mvd-oze-pole-blad" role="alert" data-testid={testid}>
-      {komunikat}
+      <TekstZWzorami tekst={komunikat} />
     </span>
   );
 }
@@ -89,13 +92,23 @@ export function PanelModulu({
         </div>
       </div>
 
+      {opis.oczekiwanie ? (
+        <p
+          className="mvd-oze-panel-etyk"
+          data-testid="mvd-oze-panel-oczekiwanie"
+          data-oczekiwanie={opis.oczekiwanie}
+          aria-busy={opis.oczekiwanie === 'wczytywanie_wejsc'}
+        >
+          {OPISY_OCZEKIWANIA[opis.oczekiwanie]}
+        </p>
+      ) : null}
       {opis.powodBlokady ? (
         <div className="mvd-oze-blokada" data-testid="mvd-oze-panel-blokada">
           {OPIS_BLOKADY[opis.powodBlokady]}
           <div style={{ marginTop: 4, fontWeight: 600 }}>{ETYKIETY_BLOKADY[opis.powodBlokady]}</div>
         </div>
       ) : null}
-      {opis.powodBlokady === null ? (
+      {modulGotowy(opis) ? (
         <FormularzPanelu f={f} bledy={bledy} onZmienFormularz={onZmienFormularz} />
       ) : null}
     </section>
@@ -185,7 +198,7 @@ function FormularzPanelu({
           {POLA_LICZBOWE_WEJSCIA.map((pole) => (
             <label key={pole} className="mvd-oze-field">
               <span>
-                {ETYKIETY_POL_WEJSCIA[pole]}
+                <TekstZWzorami tekst={ETYKIETY_POL_WEJSCIA[pole]} />
                 <ZnacznikPochodzenia pochodzenie={f.pochodzenieLiczb[pole]} />
               </span>
               <input
@@ -262,7 +275,7 @@ function FormularzPanelu({
         {POLA_NASTAW.map((pole) => (
           <label key={pole} className="mvd-oze-field">
             <span>
-              {ETYKIETY_POL_NASTAW[pole]}
+              <TekstZWzorami tekst={ETYKIETY_POL_NASTAW[pole]} />
               <ZnacznikPochodzenia pochodzenie={f.pochodzenieNastaw} />
             </span>
             <input

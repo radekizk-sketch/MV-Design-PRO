@@ -28,12 +28,13 @@ RECON WIĄŻĄCY (plik:linia):
   "rated_kv", "loss_kw", ...}}``). Kandydaci WYŁĄCZNIE z tego katalogu, sortowani
   rosnąco po mocy znamionowej (``rated_mvar``, tie-break ``id``).
 - Mapowanie shunt → solver: ENM ``ShuntCapacitor`` (``enm/models.py:304``) trafia do
-  snapshotu w kolekcji ``shunt_capacitors`` (``enm/models.py:1236``) i jest
-  materializowana do ``ShuntSpec(b_pu = Q_rated / S_base)`` w
-  ``enm/canonical_analysis.py:1119-1166`` (``_build_shunt_specs_from_snapshot``);
-  wymagane pola rekordu snapshotu: ``bus_ref``, ``rated_mvar``, ``rated_kv``,
-  ``status`` (``closed``). Dopisujemy próbną baterię do KOPII snapshotu — solver i
-  warstwa enm pozostają nietknięte.
+  snapshotu w kolekcji ``shunt_capacitors`` i jest materializowana do ``ShuntSpec``
+  w ``enm/assembler.py::zloz_wejscie_rozplywu`` z admitancji
+  ``enm.bateria_kondensatorow.admitancja_baterii`` (b = Q_n·u/S_b·(U_b/U_n)², stopnie,
+  straty, dławik — karta UX-04/POLE-BKR-MODEL). Próbna bateria (``SondaKondensatora``)
+  niesie tabliczkę typu przez ten sam zapisywacz co element utworzony operacją
+  (``zapisz_tabliczke_baterii``) i trafia do KOPII snapshotu — solver i model bazowy
+  pozostają nietknięte.
 - Skąd P/Q punktu: wypadkowy PRZEPŁYW GAŁĘZI zasilających punkt z ``branch_results``
   solvera (``p_from_mw``/``q_from_mvar``/``p_to_mw``/``q_to_mvar``,
   ``network_model/solvers/power_flow_result.py:74-80``, WHITE BOX), odczytany na
@@ -49,7 +50,7 @@ RECON „dwa cosφ" (V12K-040, opcja B; rekalibracja K3 po naprawie F9.8 pipelin
   Po F9.8 (commit ``6508c12f``) przepływ gałęzi POPRAWNIE odzwierciedla efekt
   baterii (dawna „anomalia znaku shuntu" była objawem odwróconego znaku pipeline
   — patrz nota historyczna w docstringu ``konwencja_mocy``). Solver księguje
-  shunt jako ``rated·V²`` odejmowane od zapotrzebowania punktu, więc kanoniczny
+  shunt jako ``b·|U|²·S_b`` odejmowane od zapotrzebowania punktu, więc kanoniczny
   przepływ ``Q_przekroju = Q_load − Q_cap_eff``. Rozdzielamy dwie wielkości
   (Wymóg 2 właściciela — pojęciowo różne, mimo że w punkcie zasilanym jedną
   gałęzią liczbowo się pokrywają):
@@ -57,9 +58,9 @@ RECON „dwa cosφ" (V12K-040, opcja B; rekalibracja K3 po naprawie F9.8 pipelin
         kanoniczny przepływ gałęzi (zawiera efekt zainstalowanej baterii) —
         wielkość PRZEKROJOWA sieci,
     (2) ``cosfi_punktu``    = |P| / √(P² + Q_netto²), gdzie
-        ``Q_cap_eff = (Σ znamionowych Mvar baterii w punkcie) · V²`` (model
-        kondensatora z katalogu — dana znamionowa skalowana napięciem, NIE fizyka
-        pola), ``Q_load = Q_przekroju + Q_cap_eff`` (odzysk zapotrzebowania odbioru
+        ``Q_cap_eff`` = moc bierna baterii w punkcie z WYNIKU rozpływu (wpisy
+        ``baterie_kondensatorow`` biegu: Q = b·|U|²·S_b solvera, zero fizyki tutaj),
+        ``Q_load = Q_przekroju + Q_cap_eff`` (odzysk zapotrzebowania odbioru
         z przepływu zawierającego efekt baterii), ``Q_netto = Q_load − Q_cap_eff``
         — wielkość STEROWNIKA doboru z lokalnego bilansu odbioru i baterii.
         Dodanie kondensatora do odbioru INDUKCYJNEGO obniża ``|Q_netto|`` →
@@ -86,7 +87,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import math
 from typing import Any
 
@@ -96,6 +96,7 @@ from application.analyses.konwencja_mocy import (
     q_netto_po_kompensacji,
 )
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from enm.bateria_kondensatorow import tabliczka_baterii_z_rekordu
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
@@ -111,8 +112,6 @@ from network_model.catalog.mv_shunt_capacitor_catalog import get_all_shunt_capac
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 _KV_TOLERANCE = 0.001
-
-logger = logging.getLogger(__name__)
 
 
 def _round6(value: float | None) -> float | None:
@@ -162,6 +161,7 @@ def _scenariusz_probki(
                 catalog_ref=type_id,
                 catalog_namespace="KOMPENSATOR_SN",
                 id_seed=f"compensation-probe:{bus_ref}:{type_id}",
+                tabliczka=tabliczka_baterii_z_rekordu(params),
             ),
         )
     return OperatingScenario(
@@ -237,33 +237,19 @@ def _v_pu_punktu(result_v1: dict[str, Any], point_node: str) -> float | None:
     return None
 
 
-def _q_kompensacji_znamionowa_mvar(snapshot: dict[str, Any], bus_ref: str) -> float:
-    """Suma ZNAMIONOWYCH mocy biernych baterii kondensatorów (closed) w punkcie [Mvar].
+def _q_kompensacji_z_rozplywu_mvar(raw_result: dict[str, Any], bus_ref: str) -> float:
+    """Moc bierna oddawana przez baterie kondensatorów w punkcie [Mvar] — WYNIK rozpływu.
 
-    Dana KATALOGOWA (nameplate) ze snapshotu scenariusza — NIE wielkość liczona
-    fizyką. Skalowana napięciem (``·V²``) w ``_point_cos_phi`` do mocy efektywnej.
-    """
-    total = 0.0
-    for cap in snapshot.get("shunt_capacitors") or []:
-        if str(cap.get("bus_ref") or "") != bus_ref:
-            continue
-        if str(cap.get("status") or "closed") == "open":
-            continue
-        rated_mvar = cap.get("rated_mvar")
-        if rated_mvar is None:
-            # FAB-E (E1): rated_mvar jest polem WYMAGANYM na modelu
-            # ShuntCapacitor (enm/models.py) — brak w snapshotcie oznacza
-            # uszkodzony wpis, nie baterie o zerowej mocy znamionowej.
-            # Pomijamy TEN wpis (nie liczymy jako 0 Mvar), zeby nie zanizyc
-            # sumy dostepnej kompensacji.
-            logger.warning(
-                "Pomijam baterie kondensatorów bez pola rated_mvar "
-                "(bus_ref=%r) — uszkodzony wpis, nie 0 Mvar.",
-                bus_ref,
-            )
-            continue
-        total += float(rated_mvar)
-    return total
+    Suma ``q_mvar`` wpisów ``baterie_kondensatorow`` biegu (``enm.canonical_analysis``:
+    Q = b·|U|²·S_b z admitancji, którą solver stemplował — stopnie załączone, napięcie bazy
+    szyny wobec U_n, dławik; karta UX-04/POLE-BKR-MODEL). Dawniej Σ Q_n·V² liczone tutaj
+    (fizyka poza solverem, bez stopni i bez przeliczenia U_b/U_n). Bateria wyłączona nie
+    wchodzi do rozpływu, więc nie ma wpisu."""
+    return sum(
+        float(wpis["q_mvar"])
+        for wpis in raw_result.get("baterie_kondensatorow") or []
+        if wpis.get("bus_ref") == bus_ref and wpis.get("q_mvar") is not None
+    )
 
 
 def _point_cos_phi(
@@ -289,8 +275,8 @@ def _point_cos_phi(
     (1) ``cosfi_przekroju`` — cosφ przepływu w przekroju sieciowym (z ``Q_przekroju``,
         zawiera efekt dopisanej baterii; opisuje przekrój sieci),
     (2) ``cosfi_punktu`` — cosφ punktu kompensowanego z ``Q_netto = Q_load − Q_cap_eff``,
-        gdzie ``Q_cap_eff = (Σ znamionowych Mvar baterii w punkcie) · V²`` (model
-        kondensatora z katalogu) i ``Q_load = Q_przekroju + Q_cap_eff`` (odzysk
+        gdzie ``Q_cap_eff`` to moc bierna baterii w punkcie z wyniku rozpływu
+        (``baterie_kondensatorow``) i ``Q_load = Q_przekroju + Q_cap_eff`` (odzysk
         zapotrzebowania odbioru z przepływu zawierającego efekt baterii — po F9.8
         solver księguje shunt w przepływie, K3). To (2) jest podstawą doboru.
 
@@ -322,11 +308,9 @@ def _point_cos_phi(
     p_point = kanon["p_mw"]
     q_przekroju = kanon["q_mvar"]  # przepływ gałęzi (kanoniczny) — wielkość przekrojowa (1)
 
-    # Model kondensatora z katalogu: Q_cap_eff = Σ(rated_mvar) · V² (nameplate·V²,
-    # NIE fizyka pola). V — napięcie punktu zwrócone przez solver dla scenariusza.
+    # Q_cap_eff — moc bierna baterii w punkcie z WYNIKU rozpływu (Q = b·|U|²·S_b solvera).
     v_pu = _v_pu_punktu(result_v1, point_node)
-    q_kompensacji = _q_kompensacji_znamionowa_mvar(snapshot, bus_ref)
-    q_cap_eff = q_kompensacji * (v_pu**2) if v_pu is not None else 0.0
+    q_cap_eff = _q_kompensacji_z_rozplywu_mvar(run.raw_result or {}, bus_ref)
     # Q_load = zapotrzebowanie bierne odbioru (przepływ po F9.8 zawiera efekt baterii,
     # więc odzysk wymaga DODANIA Q_cap_eff — rekalibracja K3).
     q_load = q_przekroju + q_cap_eff

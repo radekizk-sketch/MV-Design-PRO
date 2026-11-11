@@ -1,11 +1,11 @@
 import type { ElementType } from '../types';
 import type { EnergyNetworkModel, LogicalViewsV1 } from '../../types/enm';
 import type { NetworkBuildOperationName } from './networkBuildStore';
+import { czyLacznikZPozycjaNormalna } from '../shared/stanLacznika';
 import {
   resolveBranchStartOperationContext,
   resolveContinueTrunkOperationContext,
   resolveElementNetworkContext,
-  resolveNopCandidates,
   resolveRingOperationContext,
   resolveTransformerOperationContext,
 } from './operationContextResolvers';
@@ -113,12 +113,17 @@ export function buildOperationContext({
       context.terminalB_id = ringContext.terminalBId;
       context.terminal_b_id = ringContext.terminalBId;
       context.terminalB_label = ringContext.terminalBId || 'Wybierz drugi terminal';
-      context.nop_candidates = ringContext.nopCandidates;
       break;
     }
     case 'set_normal_open_point':
-      context.switch_ref = elementId;
-      context.nop_candidates = resolveNopCandidates(snapshot, logicalViews);
+      // W5-C: łącznik nowego punktu podziału — wskazany element, gdy jest łącznikiem z
+      // pozycją normalną; kandydatów kreator czyta z BIEŻĄCEJ migawki
+      // (`kandydaciNaPunktPodzialu`), nie z listy zamrożonej przy otwarciu formularza.
+      context.switch_ref = czyLacznikZPozycjaNormalna(
+        snapshot?.branches?.find((branch) => branch.ref_id === elementId) ?? null,
+      )
+        ? elementId
+        : null;
       break;
     case 'add_sn_bay':
       context.bus_ref = elementType === 'Bus' ? elementId : context.bus_ref ?? null;
@@ -126,7 +131,9 @@ export function buildOperationContext({
         context.station_ref = elementContext.stationRef;
       }
       break;
-    case 'add_shunt_compensator_sn': {
+    case 'add_shunt_compensator_sn':
+    case 'add_load_sn':
+    case 'add_generator_sn': {
       if (elementType === 'Bus') {
         context.bus_ref = elementId;
         const bus = snapshot?.buses?.find(
@@ -138,6 +145,20 @@ export function buildOperationContext({
             context.bus_voltage_kv = bus.voltage_kv;
           }
         }
+      }
+      break;
+    }
+    case 'add_zespol_uziemiajacy_sn': {
+      // Karta UX-04/POLE-ZU: zespół w polu ZU (bay_ref) albo wprost na szynie SN (bus_ref);
+      // rolę pola i pasmo szyny ocenia operacja. Zero fabrykacji — refy z selekcji.
+      if (elementType === 'BaySN') {
+        context.bay_ref = elementId;
+      } else if (elementType === 'Bus') {
+        context.bus_ref = elementId;
+        const bus = snapshot?.buses?.find(
+          (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
+        );
+        if (bus) context.bus_name = bus.name ?? undefined;
       }
       break;
     }
@@ -192,6 +213,11 @@ export function buildOperationContext({
       context.transformer_block_reason = transformerContext.blockReason;
       break;
     }
+    // Edycja istniejącego odcinka kabla nN (menu kabla na schemacie nN stacji).
+    case 'set_nn_cable_laying_conditions':
+    case 'split_nn_segment':
+      context.segment_ref = elementId;
+      break;
     case 'add_genset_nn':
       context.source_field_kind = 'AGREGAT';
       break;

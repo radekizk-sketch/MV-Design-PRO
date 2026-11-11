@@ -11,6 +11,7 @@
 
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../../../../ui/study-cases/types';
+import { biegiZakonczone } from '../../../wyniki/kontekst/rodzinyBiegow';
 import { POZIOM_PL, PROFILE_PL, SEKCJA_PL, ZAKRES_PL } from './strings';
 
 export type ProfilRaportu = keyof typeof PROFILE_PL;
@@ -38,23 +39,13 @@ export const DOMYSLNY_PROFIL: ProfilRaportu = 'osd';
 export const DOMYSLNY_POZIOM: PoziomSzczegolowosci = 'standardowy';
 export const DOMYSLNY_ZAKRES: ZakresRaportu = 'whole_run';
 
-const STATUS_ZAKONCZONY = 'DONE';
-
 /**
- * Przebiegi, z ktorych DA SIE zlozyc raport: wylacznie zakonczone. Kolejnosc
- * deterministyczna — najnowszy pierwszy (data zakonczenia, w razie remisu
- * identyfikator), zeby lista nie skakala miedzy renderami.
+ * Przebiegi, z ktorych DA SIE zlozyc raport: wylacznie zakonczone, w JEDNYM
+ * porzadku biegow magazynu kontekstu wyniku (`uporzadkujBiegi`, karta K8) —
+ * najnowszy pierwszy, ta sama kolejnosc co na pasku stanu i w panelu dolnym.
  */
 export function przebiegiDoRaportu(runs: readonly ExecutionRun[]): readonly ExecutionRun[] {
-  return runs
-    .filter((r) => r.status === STATUS_ZAKONCZONY)
-    .slice()
-    .sort((a, b) => {
-      const da = String(a.finished_at ?? a.started_at ?? '');
-      const db = String(b.finished_at ?? b.started_at ?? '');
-      if (da !== db) return db.localeCompare(da);
-      return a.id.localeCompare(b.id);
-    });
+  return biegiZakonczone(runs);
 }
 
 /** Etykieta przebiegu w liscie wyboru: rodzaj analizy + data zakonczenia. */
@@ -67,13 +58,14 @@ export function etykietaPrzebiegu(run: ExecutionRun): string {
 }
 
 /**
- * Wybrany przebieg: preferuj aktywny (jesli zakonczony), inaczej pierwszy z
- * listy. `null` = brak zakonczonego obliczenia (uczciwy stan zerowy z akcja).
+ * Wybrany przebieg: preferuj bieg ogladany z magazynu kontekstu wyniku (karta K8),
+ * jesli jest na liscie zakonczonych, inaczej pierwszy z listy. `null` = brak
+ * zakonczonego obliczenia (uczciwy stan zerowy z akcja).
  */
 export function domyslnyPrzebieg(
   dostepne: readonly ExecutionRun[],
-  aktywnyRunId: string | null,
+  runIdOgladany: string | null,
 ): string | null {
-  if (aktywnyRunId && dostepne.some((r) => r.id === aktywnyRunId)) return aktywnyRunId;
+  if (runIdOgladany && dostepne.some((r) => r.id === runIdOgladany)) return runIdOgladany;
   return dostepne[0]?.id ?? null;
 }

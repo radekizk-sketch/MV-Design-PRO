@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W3-KABLE-ETYKIETY §17 (kotwiczenie etykiet do właściciela) + §7 (etykiety
  * techniczne linii) — dowody sceny na fixturze referencyjnej (53 stacje).

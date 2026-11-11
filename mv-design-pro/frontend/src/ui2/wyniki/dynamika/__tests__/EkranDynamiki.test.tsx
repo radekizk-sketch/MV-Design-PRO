@@ -29,6 +29,8 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { EkranDynamiki } from '../EkranDynamiki';
+import { DYNAMIKA_STRINGS as T } from '../strings';
+import { domainOpsEndpoint } from '../../../../ui/topology/domainApi';
 
 // Kontrakt przebiegu (rewizja modelu, na której policzono bieg) — ta sama atrapa haka co na
 // ekranach rozpływu, zbieżności i zwarć; domyślnie kontrakt bez rewizji (brak znacznika).
@@ -64,6 +66,8 @@ interface StanAtrapy {
   gotowoscPoPv: unknown;
   odmowaWiazaniaOdbioru: string | null;
   scenariusze: unknown;
+  /** Nadpisanie odczytu listy scenariuszy: wstrzymany odczyt albo błąd serwera. */
+  odczytScenariuszy: 'zwykly' | 'wstrzymany' | 'blad';
   biegi: unknown[];
   stanyBiegu: string[];
   odmowaWiazania: string | null;
@@ -97,7 +101,7 @@ function ustawFetch(): void {
         atrapa.gotowosc = atrapa.gotowoscPoPv;
         return odpowiedz({ snapshot: migawka, error: null, readiness: null, fix_actions: [] });
       }
-      if (adres.endsWith(`/api/cases/${CASE}/enm/domain-ops`)) {
+      if (adres.endsWith(domainOpsEndpoint(CASE))) {
         // Kanoniczny kanał operacji domenowych (magazyn migawki) — wiązanie odbioru.
         if (atrapa.odmowaWiazaniaOdbioru) {
           return odpowiedz({
@@ -125,17 +129,20 @@ function ustawFetch(): void {
       if (adres.endsWith(`/api/dynamika/study-cases/${CASE}/gotowosc`)) return odpowiedz(atrapa.gotowosc);
       if (adres.endsWith(`/api/dynamika/study-cases/${CASE}/scenariusze`)) {
         if (metoda === 'POST') {
-          return odpowiedz(
-            {
-              scenario_id: 'scen-nowy',
-              name: cialo.name,
-              revision: 1,
-              hash: 'h',
-              dynamika: cialo.dynamika,
-            },
-            201,
-          );
+          const zapisany = {
+            scenario_id: 'scen-nowy',
+            name: cialo.name,
+            revision: 1,
+            hash: 'h',
+            dynamika: cialo.dynamika,
+          };
+          // Serwer utrwala scenariusz — kolejny odczyt listy go zawiera (jak końcówka).
+          const lista = (atrapa.scenariusze as { scenariusze: unknown[] }).scenariusze;
+          atrapa.scenariusze = { scenariusze: [...lista, zapisany], count: lista.length + 1 };
+          return odpowiedz(zapisany, 201);
         }
+        if (atrapa.odczytScenariuszy === 'wstrzymany') return new Promise<Response>(() => undefined);
+        if (atrapa.odczytScenariuszy === 'blad') return odpowiedz({ detail: 'awaria' }, 500);
         return odpowiedz(atrapa.scenariusze);
       }
       if (adres.endsWith(`/api/execution/study-cases/${CASE}/runs`)) {
@@ -203,6 +210,7 @@ beforeEach(() => {
     gotowoscPoPv: gotowoscPo,
     odmowaWiazaniaOdbioru: null,
     scenariusze,
+    odczytScenariuszy: 'zwykly',
     biegi: [],
     stanyBiegu: [],
     odmowaWiazania: null,
@@ -215,7 +223,7 @@ beforeEach(() => {
   useAppStateStore.setState({ activeCaseId: CASE, activeProjectId: PROJEKT });
   useSnapshotStore.setState({ snapshot: migawka } as never);
   useExecutionRunsStore.setState({ runs: [] } as never);
-  useSelectionStore.setState({ selectedElements: [], sldCenterOnElement: null } as never);
+  useSelectionStore.setState({ selectedElements: [], sldWskazanie: null } as never);
 });
 
 afterEach(() => {
@@ -314,7 +322,7 @@ describe('EkranDynamiki — model dynamiczny odbioru (karta modeli odbiorów)', 
     await waitFor(() =>
       expect(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}`)).toHaveAttribute('data-stan', 'z_katalogu'),
     );
-    const operacja = atrapa.zadania.find((z) => z.url.endsWith(`/api/cases/${CASE}/enm/domain-ops`));
+    const operacja = atrapa.zadania.find((z) => z.url.endsWith(domainOpsEndpoint(CASE)));
     expect((operacja?.cialo as { operation: { name: string; payload: unknown } }).operation).toMatchObject({
       name: 'set_load_dynamic_binding',
       payload: { load_ref: ODBIOR, dynamic_model_ref: PROFIL_ODBIORU },
@@ -457,6 +465,37 @@ describe('EkranDynamiki — edytor z kontraktu i bieg', () => {
     expect(atrapa.zadania.some((z) => z.url.endsWith('/api/execution/runs/run-nowy') && z.metoda === 'GET')).toBe(true);
   });
 
+  it.each(['wstrzymany', 'blad'] as const)(
+    'odczyt listy scenariuszy %s → stan odczytu przy wyborze, NIE „brak zapisanych scenariuszy"',
+    async (odczyt) => {
+      atrapa.odczytScenariuszy = odczyt;
+      render(<EkranDynamiki />);
+      const wybor = await screen.findByTestId('mvd-dynamika-scenariusz-wybor');
+      expect(wybor).toBeDisabled();
+      // Jedyna opcja to „nowy scenariusz" — bez udawania listy, której nie odczytano.
+      expect(wybor.querySelectorAll('option')).toHaveLength(1);
+      if (odczyt === 'wstrzymany') {
+        expect(screen.getByTestId('mvd-dynamika-scenariusze-wczytywanie')).toHaveTextContent(
+          T.scenariuszeWczytywanie,
+        );
+        expect(wybor).toHaveAttribute('aria-busy', 'true');
+        expect(screen.queryByTestId('mvd-dynamika-scenariusze-blad')).not.toBeInTheDocument();
+      } else {
+        expect(await screen.findByTestId('mvd-dynamika-scenariusze-blad')).toHaveTextContent(T.scenariuszeBlad);
+        expect(screen.queryByTestId('mvd-dynamika-scenariusze-wczytywanie')).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  it('odczyt listy scenariuszy gotowy → wybór aktywny z opcjami listy, bez stanów odczytu', async () => {
+    render(<EkranDynamiki />);
+    const wybor = await screen.findByTestId('mvd-dynamika-scenariusz-wybor');
+    await waitFor(() => expect(wybor).toBeEnabled());
+    expect(wybor.querySelectorAll('option').length).toBeGreaterThan(1);
+    expect(screen.queryByTestId('mvd-dynamika-scenariusze-wczytywanie')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-dynamika-scenariusze-blad')).not.toBeInTheDocument();
+  });
+
   it('zapis scenariusza z edytora: ładunek z kontraktu, nowy scenariusz staje się wybranym', async () => {
     atrapa.scenariusze = { scenariusze: [], count: 0 };
     render(<EkranDynamiki />);
@@ -533,7 +572,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
   });
 
   it('założenia: jedna lista zdań z nazwami (bez zapisu technicznego rdzenia i identyfikatorów)', async () => {
-    render(<EkranDynamiki trybZaawansowania="expert" />);
+    render(<EkranDynamiki szczegolyAudytowe />);
     const sekcja = await screen.findByTestId('mvd-dynamika-zalozenia');
     const zdania = (wynik as { opis_wyniku: { zalozenia_modelu: string[] } }).opis_wyniku.zalozenia_modelu;
     expect(zdania.length).toBeGreaterThan(5);
@@ -547,7 +586,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
   });
 
   it('oceny „nie oceniono" z backendu, poziom dowodowy nazwany, zero werdyktu', async () => {
-    render(<EkranDynamiki trybZaawansowania="expert" />);
+    render(<EkranDynamiki szczegolyAudytowe />);
     const oceny = await screen.findByTestId('mvd-dynamika-oceny');
     const rekordy = within(oceny).getAllByTestId(/^mvd-dynamika-ocena-/);
     expect(rekordy).toHaveLength(2);
@@ -576,7 +615,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
         isLoading: false,
         error: null,
       }));
-      render(<EkranDynamiki trybZaawansowania="expert" />);
+      render(<EkranDynamiki szczegolyAudytowe />);
       await screen.findByTestId('mvd-dynamika-oceny');
       expect(kontraktMock).toHaveBeenCalledWith(RUN);
       const obszar = screen.queryByTestId('mvd-dynamika-swiezosc');
@@ -658,7 +697,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
       type: 'LineBranch',
       name: NAZWA_ODCINKA,
     });
-    expect(useSelectionStore.getState().sldCenterOnElement).toBe(ODCINEK);
+    expect(useSelectionStore.getState().sldWskazanie?.ref).toBe(ODCINEK);
     expect(useShellStore.getState().activeSpace).toBe('schemat');
 
     act(() => {

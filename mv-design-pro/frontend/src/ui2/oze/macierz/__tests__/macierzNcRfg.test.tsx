@@ -50,17 +50,31 @@ function wejsciaDlaOperatora(wejscia: WejsciaPrzypadkuNcRfg, operatorId: string)
 
 function trasy(
   certyfikat: OdpowiedzCertyfikatu = 'widok',
-  wejscia: WejsciaPrzypadkuNcRfg | 'blad' = wejsciaFixture(),
+  wejscia: WejsciaPrzypadkuNcRfg | 'blad' | Promise<WejsciaPrzypadkuNcRfg | 'blad'> = wejsciaFixture(),
+  katalog: 'ok' | 'blad' | 'wstrzymany' = 'ok',
 ) {
   return atrapaSieci([
-    { metoda: 'GET', sciezka: '/api/ncrfg-tests/catalog', odpowiedz: () => odpowiedzJson(200, katalogFixture()) },
+    {
+      metoda: 'GET',
+      sciezka: '/api/ncrfg-tests/catalog',
+      // Katalog wstrzymany = odczyt W TOKU; „blad" = odczyt nieudany (≠ brak biegu).
+      odpowiedz: () =>
+        katalog === 'wstrzymany'
+          ? new Promise<Response>(() => {})
+          : katalog === 'blad'
+            ? odpowiedzJson(500, { detail: 'Katalog niedostępny' })
+            : odpowiedzJson(200, katalogFixture()),
+    },
     {
       metoda: 'GET',
       sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/wejscia$/,
-      odpowiedz: (w) =>
-        wejscia === 'blad'
+      odpowiedz: async (w) => {
+        // Odpowiedź wstrzymana obietnicą = odczyt wejść W TOKU (stan „wczytywanie").
+        const gotowe = await wejscia;
+        return gotowe === 'blad'
           ? odpowiedzJson(404, { detail: 'Przypadek nie ma dokumentu ENM.' })
-          : odpowiedzJson(200, wejsciaDlaOperatora(wejscia, w.zapytanie.get('operator_id') ?? '')),
+          : odpowiedzJson(200, wejsciaDlaOperatora(gotowe, w.zapytanie.get('operator_id') ?? ''));
+      },
     },
     { metoda: 'POST', sciezka: '/api/ncrfg-tests/run', odpowiedz: () => odpowiedzJson(200, biegFixture()) },
     {
@@ -107,6 +121,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   useStationDerStore.setState({ ders: {} });
   useNcRfgStore.getState().reset();
 });
@@ -121,13 +136,20 @@ async function przeprowadzBieg(uzytkownik: ReturnType<typeof userEvent.setup>): 
 describe('macierz przed biegiem — wiersze z katalogu, operator z modelu, procedura jako dokument', () => {
   it('wiersze = testy katalogu (podstawa, rodzaj twierdzenia), kolumny = moduły modelu', async () => {
     trasy();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     await waitFor(() => expect(screen.getAllByTestId('mvd-oze-wiersz')).toHaveLength(katalogFixture().tests.length));
     for (const der of deryScenyMacierz()) expect(screen.getByTestId(`mvd-oze-modul-${der.id}`)).toBeInTheDocument();
     const pierwszy = screen.getAllByTestId('mvd-oze-wiersz')[0];
     expect(pierwszy).toHaveTextContent(katalogFixture().tests[0].procedure_basis_pl);
     expect(pierwszy).toHaveTextContent(MACIERZ_STRINGS.rodzajTwierdzenia);
-    expect(screen.getAllByTestId('mvd-oze-komorka-brak-biegu').length).toBeGreaterThan(0);
+    // Komórki „brak biegu" dopiero po wczytaniu wejść modelu przypadku (`zbudujModuly`:
+    // przed odpowiedzią wejść moduł jest zablokowany „brak wejścia modelu"). Dawne
+    // natychmiastowe sprawdzenie zależało od kolejności odpowiedzi katalogu i wejść —
+    // pod obciążeniem puli procesów odpowiedź katalogu przychodziła pierwsza (test
+    // migający, zmierzony w bramce vitest karty UI-02b).
+    await waitFor(() =>
+      expect(screen.getAllByTestId('mvd-oze-komorka-brak-biegu').length).toBeGreaterThan(0),
+    );
     expect(screen.getByTestId('mvd-oze-operator')).toHaveAttribute('data-zrodlo', 'model');
     expect(screen.getByTestId('mvd-oze-operator-wartosc')).toHaveTextContent('Enea');
     expect(screen.getByTestId('mvd-oze-wersja-procedury')).toHaveTextContent(katalogFixture().procedure_version.tytul);
@@ -137,8 +159,36 @@ describe('macierz przed biegiem — wiersze z katalogu, operator z modelu, proce
   it('brak modułów → uczciwy stan pusty z akcją dodania źródła', async () => {
     trasy();
     zasiejModuly([]);
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-pusty')).toHaveTextContent(MACIERZ_STRINGS.brakModulow);
+  });
+});
+
+/**
+ * Iloczyn: stan odczytu katalogu testów {wstrzymany, blad, ok} × ciało macierzy przed biegiem.
+ * Odczyt w toku / nieudany to nie „brak biegu" (KONTRAKT_WERDYKTU_WYJASNIALNEGO).
+ */
+describe('ciało macierzy — stan odczytu katalogu testów ≠ brak biegu', () => {
+  it.each([
+    { katalog: 'wstrzymany', stan: 'wczytywanie_katalogu', tekst: MACIERZ_STRINGS.katalogTestowWczytywanie },
+    { katalog: 'blad', stan: 'blad_katalogu', tekst: MACIERZ_STRINGS.katalogTestowBlad },
+  ] as const)('katalog $katalog → komórka „$stan", nie „brak biegu"', async ({ katalog, stan, tekst }) => {
+    trasy('widok', wejsciaFixture(), katalog);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-oze-macierz-pusta')).toHaveAttribute('data-stan', stan),
+    );
+    const komorka = screen.getByTestId('mvd-oze-macierz-pusta');
+    expect(komorka).toHaveTextContent(tekst);
+    expect(komorka).not.toHaveTextContent(MACIERZ_STRINGS.brakBieguOpis);
+    expect(komorka).toHaveAttribute('aria-busy', String(katalog === 'wstrzymany'));
+  });
+
+  it('katalog wczytany → wiersze testów, bez komórki stanu odczytu', async () => {
+    trasy();
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
+    expect((await screen.findAllByTestId('mvd-oze-wiersz')).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('mvd-oze-macierz-pusta')).toBeNull();
   });
 });
 
@@ -146,7 +196,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   it('żądanie = ciało fixtury sceny (tylko moduły; bez wersji procedury i pola certyfikatu)', async () => {
     const wywolania = trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     await przeprowadzBieg(uzytkownik);
     const [bieg] = wywolaniaPost(wywolania, '/api/ncrfg-tests/run');
     expect(bieg.cialo).toEqual(zadanieBieguFixture());
@@ -155,7 +205,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   it('komórka = plakietka etykiety z rekordu `ocena` (tekst, status, semantyka z backendu)', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     await przeprowadzBieg(uzytkownik);
     const bieg = biegFixture();
     const oceny = bieg.modules.flatMap((m) => m.tests.map((t) => t.ocena));
@@ -172,7 +222,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   it('klik komórki → pełna karta rekordu, definicja testu i ślad (natywny klik)', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     await przeprowadzBieg(uzytkownik);
     const bieg = biegFixture();
     const test = bieg.modules[1].tests[0];
@@ -190,14 +240,14 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   });
 
   it.each([
-    ['basic', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ] as const)(
     'tryb %s: identyfikator zdolności dowodowej w wierszu tabeli i w panelu szczegółu — jeden predykat (widoczny: %s)',
     async (tryb, widoczny) => {
       trasy();
       const uzytkownik = userEvent.setup();
-      render(<MacierzNcRfg trybZaawansowania={tryb} />);
+      render(<MacierzNcRfg szczegolyAudytowe={tryb} />);
       await przeprowadzBieg(uzytkownik);
       const bieg = biegFixture();
       const test = bieg.modules[1].tests[0];
@@ -214,7 +264,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   it('nagłówek kolumny i panel wyniku modułu: klasyfikacja backendu, dowód = jawny brak, rekordy W', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     await przeprowadzBieg(uzytkownik);
     const bieg = biegFixture();
     const pv = bieg.modules[1];
@@ -230,7 +280,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   it('filtr komórek po etykiecie z rekordu zawęża wiersze (nawigacja, bez liczników)', async () => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     await przeprowadzBieg(uzytkownik);
     const bieg = biegFixture();
     const etykieta = bieg.modules[1].tests[0].ocena.etykieta.etykieta_pl;
@@ -246,7 +296,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   it('błąd pola formularza (natywne wpisanie) → brak żądania, pole z nazwanym błędem', async () => {
     const wywolania = trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const pv = deryScenyMacierz()[1];
     await uzytkownik.click(await screen.findByTestId(`mvd-oze-modul-${pv.id}`));
     await uzytkownik.type(await screen.findByTestId('mvd-oze-param-cos_phi_min'), '1,5');
@@ -259,7 +309,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
   it('pola art. 4 i T12 z formularza trafiają do żądania biegu', async () => {
     const wywolania = trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const pv = deryScenyMacierz()[1];
     await uzytkownik.click(await screen.findByTestId(`mvd-oze-modul-${pv.id}`));
     await uzytkownik.selectOptions(await screen.findByTestId('mvd-oze-param-modul_istniejacy'), 'nie');
@@ -277,7 +327,7 @@ describe('formularz wstępny z wejść modelu (`GET …/wejscia`) — luka §5.3
   it('zapytanie: przypadek w ścieżce, operator z modelu; pola liczone przez most z pochodzeniem „z modelu"', async () => {
     const wywolania = trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const pv = wejsciaFixture().modules.find((m) => m.der_kind === 'PV')!;
     await uzytkownik.click(await screen.findByTestId(`mvd-oze-modul-${pv.der_ref}`));
     expect(await screen.findByTestId('mvd-oze-param-droop_percent')).toHaveValue(String(pv.droop_percent));
@@ -298,7 +348,7 @@ describe('formularz wstępny z wejść modelu (`GET …/wejscia`) — luka §5.3
     const wywolania = trasy();
     useAppStateStore.setState({ activeCaseId: null } as never);
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const przycisk = await screen.findByTestId('mvd-oze-przeprowadz');
     expect(przycisk).toBeDisabled();
     expect(przycisk).toHaveAttribute('title', MACIERZ_STRINGS.brakPrzypadkuWejsc);
@@ -310,7 +360,7 @@ describe('formularz wstępny z wejść modelu (`GET …/wejscia`) — luka §5.3
 
   it('błąd odczytu wejść → alert z treścią backendu, bieg zablokowany, zero żądania biegu', async () => {
     const wywolania = trasy('widok', 'blad');
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-blad-wejsc')).toHaveTextContent('Przypadek nie ma dokumentu ENM.');
     const przycisk = screen.getByTestId('mvd-oze-przeprowadz');
     expect(przycisk).toBeDisabled();
@@ -325,7 +375,7 @@ describe('operator — z modelu albo jawny wybór, nigdy domyślny', () => {
     const [bess, pv] = deryScenyMacierz();
     zasiejModuly([bess, { ...pv, profiles: { ...pv.profiles, nc_rfg_profile_ref: 'pse' } }]);
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const wybor = (await screen.findByTestId('mvd-oze-operator-wybor')) as HTMLSelectElement;
     await waitFor(() => expect(wybor).toBeEnabled());
     expect(wybor.value).toBe('');
@@ -355,7 +405,7 @@ describe('moduł bez danych modelu', () => {
     });
     zasiejModuly([...deryScenyMacierz(), bezNapiecia]);
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     await przeprowadzBieg(uzytkownik);
     const brak = screen.getAllByTestId('mvd-oze-komorka-brak-danych');
     expect(brak).toHaveLength(biegFixture().test_catalog.length);
@@ -368,25 +418,25 @@ describe('moduł bez danych modelu', () => {
 
 describe('metadane biegu — tylko w informacjach audytowych trybu eksperckiego', () => {
   it.each([
-    ['basic', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ] as const)('tryb %s → odciski widoczne: %s', async (tryb, widoczne) => {
     trasy();
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania={tryb} />);
+    render(<MacierzNcRfg szczegolyAudytowe={tryb} />);
     await przeprowadzBieg(uzytkownik);
     expect(screen.queryByTestId('mvd-oze-odcisk') !== null).toBe(widoczne);
   });
 
   it.each([
-    ['basic', false],
-    ['expert', true],
+    [false, false],
+    [true, true],
   ] as const)(
     'tryb %s → identyfikator zdolności dowodowej w wierszu testu I w ocenie komórki: %s (jeden predykat, oba miejsca)',
     async (tryb, widoczny) => {
       trasy();
       const uzytkownik = userEvent.setup();
-      render(<MacierzNcRfg trybZaawansowania={tryb} />);
+      render(<MacierzNcRfg szczegolyAudytowe={tryb} />);
       await przeprowadzBieg(uzytkownik);
       const [wiersz] = screen.getAllByTestId('mvd-oze-wiersz');
       const definicja = biegFixture().test_catalog.find((d) =>
@@ -404,7 +454,7 @@ describe('zgodność przypadku (zatwierdzony model) obok macierzy', () => {
   it('z przypadkiem i operatorem z modelu: zapytanie z operator_id, dowód PV z wykazu (numer, WiPWC)', async () => {
     const wywolania = trasy();
     useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const pv = zgodnoscFixture().bieg!.modules.find((m) => m.dowod_certyfikatu !== null)!;
     const dowod = await screen.findByTestId(`mvd-oze-zgodnosc-przekrojowa-naglowek-${pv.der_ref}-dowod`);
     expect(dowod).toHaveAttribute('data-stan', 'dowod');
@@ -420,7 +470,7 @@ describe('certyfikat zgodności — z zatwierdzonego modelu przypadku', () => {
   it('bez aktywnego przypadku przycisk nieaktywny z tytułem wyjaśniającym', async () => {
     trasy();
     useAppStateStore.setState({ activeCaseId: null } as never);
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const przycisk = await screen.findByTestId('mvd-oze-certyfikat-przycisk');
     expect(przycisk).toBeDisabled();
     expect(przycisk).toHaveAttribute('title', MACIERZ_STRINGS.certyfikatTytulNieaktywny);
@@ -430,7 +480,7 @@ describe('certyfikat zgodności — z zatwierdzonego modelu przypadku', () => {
     const wywolania = trasy('widok');
     useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="expert" />);
+    render(<MacierzNcRfg szczegolyAudytowe />);
     const przycisk = await screen.findByTestId('mvd-oze-certyfikat-przycisk');
     await waitFor(() => expect(przycisk).toBeEnabled());
     await uzytkownik.click(przycisk);
@@ -449,7 +499,7 @@ describe('certyfikat zgodności — z zatwierdzonego modelu przypadku', () => {
     trasy('braki');
     useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const przycisk = await screen.findByTestId('mvd-oze-certyfikat-przycisk');
     await waitFor(() => expect(przycisk).toBeEnabled());
     await uzytkownik.click(przycisk);
@@ -472,7 +522,7 @@ describe('certyfikat zgodności — z zatwierdzonego modelu przypadku', () => {
     trasy('blad');
     useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const przycisk = await screen.findByTestId('mvd-oze-certyfikat-przycisk');
     await waitFor(() => expect(przycisk).toBeEnabled());
     await uzytkownik.click(przycisk);
@@ -482,16 +532,21 @@ describe('certyfikat zgodności — z zatwierdzonego modelu przypadku', () => {
   it.each(['docx', 'pdf'] as const)('pobranie %s → plik z tego samego żądania (case_id, ciało)', async (format) => {
     const wywolania = trasy('widok');
     useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
-    const utworz = vi.fn(() => 'blob:certyfikat');
-    const zwolnij = vi.fn();
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: utworz, revokeObjectURL: zwolnij }));
+    // jsdom nie ma URL.createObjectURL ani nawigacji kotwicy: szpiedzy na granicy przeglądarki
+    // (przywracani w afterEach), klik kotwicy pobrania policzony zamiast nawigacji.
+    if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
+    if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
+    const utworz = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:certyfikat');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const klikPobrania = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     const uzytkownik = userEvent.setup();
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const przycisk = await screen.findByTestId('mvd-oze-certyfikat-przycisk');
     await waitFor(() => expect(przycisk).toBeEnabled());
     await uzytkownik.click(przycisk);
     await uzytkownik.click(await screen.findByTestId(`mvd-oze-cert-pobierz-${format}`));
     await waitFor(() => expect(utworz).toHaveBeenCalledTimes(1));
+    expect(klikPobrania).toHaveBeenCalledTimes(1);
     const [plik] = wywolaniaPost(wywolania, `/api/oze-analysis/compliance-certificate.${format}`);
     expect(plik.zapytanie.get('case_id')).toBe('case-demo');
     expect(plik.cialo).toEqual(certyfikatScenaZadanie);
@@ -508,7 +563,7 @@ describe('stan oceny FRT z okna falownika (zapis w store)', () => {
       istotnosc: 'ostrzegawcza',
       operatorId: 'enea',
     });
-    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const frt = await screen.findByTestId(`mvd-oze-frt-lvrt-${pv.id}`);
     expect(frt).toHaveTextContent('Ocena niewykonana');
     expect(screen.getByTestId(`mvd-oze-frt-lvrt-tekst-${pv.id}`)).toHaveTextContent(
@@ -518,5 +573,36 @@ describe('stan oceny FRT z okna falownika (zapis w store)', () => {
     expect(frt.querySelector('[data-semantyka]')).toBeNull();
     // Moduł bez zapisanego stanu nie dostaje wiersza FRT (zero atrapy).
     expect(screen.queryByTestId(`mvd-oze-frt-hvrt-${pv.id}`)).not.toBeInTheDocument();
+  });
+});
+
+describe('odczyt wejść w toku ≠ brak danych modułu (KONTRAKT_WERDYKTU_WYJASNIALNEGO)', () => {
+  // Iloczyn: odczyt {wczytywanie, błąd odczytu, wartość} × moduły sceny macierzy (każda kolumna).
+  it.each([
+    ['wartość', 'mvd-oze-komorka-brak-biegu'],
+    ['błąd odczytu', 'mvd-oze-komorka-blad-odczytu'],
+  ] as const)('wczytywanie → %s: komórki neutralne, bez „brak danych" i bez etykiety werdyktu', async (koniec, testIdKonca) => {
+    let zwolnij: (w: WejsciaPrzypadkuNcRfg | 'blad') => void = () => undefined;
+    trasy('widok', new Promise((r) => { zwolnij = r; }));
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
+    await waitFor(() => expect(screen.getAllByTestId('mvd-oze-wiersz')).toHaveLength(katalogFixture().tests.length));
+    const kolumny = deryScenyMacierz().length;
+    const komorek = katalogFixture().tests.length * kolumny;
+    // W toku: KAŻDA komórka każdego modułu czeka neutralnie; żadna nie twierdzi braku danych.
+    await waitFor(() => expect(screen.getAllByTestId('mvd-oze-komorka-wczytywanie')).toHaveLength(komorek));
+    expect(screen.queryAllByTestId('mvd-oze-komorka-brak-danych')).toHaveLength(0);
+    expect(screen.queryAllByTestId('mvd-oze-komorka-wynik')).toHaveLength(0);
+    for (const k of screen.getAllByTestId('mvd-oze-komorka-wczytywanie')) {
+      expect(k).toHaveTextContent(MACIERZ_STRINGS.komorkaWczytywanie);
+      expect(k).toHaveAttribute('aria-busy', 'true');
+    }
+    expect(screen.getByTestId('mvd-oze-przeprowadz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-oze-przeprowadz')).toHaveAttribute('title', MACIERZ_STRINGS.wczytywanieWejsc);
+    expect(document.body).not.toHaveTextContent(MACIERZ_STRINGS.brakWyniku);
+
+    zwolnij(koniec === 'wartość' ? wejsciaFixture() : 'blad');
+    await waitFor(() => expect(screen.getAllByTestId(testIdKonca)).toHaveLength(komorek));
+    expect(screen.queryAllByTestId('mvd-oze-komorka-wczytywanie')).toHaveLength(0);
+    expect(screen.queryAllByTestId('mvd-oze-komorka-brak-danych')).toHaveLength(0);
   });
 });

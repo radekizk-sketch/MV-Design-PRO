@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PORTAL DOMENY nN — poziom SCENY (`buildSceneV3`), architektura LV Domain
  * Projection po B-02 (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`).
@@ -27,7 +28,8 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Generator, Transformer } from '../../../../../types/enm';
 import { lvPortalOwnerRef } from '../../compose/station';
 import { buildStacjaBFixture, STACJA_B_REFS } from '../../electrical/__tests__/fixtures/stacjaB';
-import { buildSceneV3, sourceCoverageGaps, type PreviewSymbol, type SceneLod, type SceneV3 } from '../buildScene';
+import type { PreviewSymbol } from '../../compose/preview';
+import { buildSceneV3, sourceCoverageGaps, type SceneLod, type SceneV3 } from '../buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -198,15 +200,13 @@ describe('PORTAL nN — Stacja B (model z PEŁNĄ rozdzielnicą nN): wnętrze nN
     // bezPolaTr`) i dokładamy drugą jednostkę o tych samych terminalach.
     const out = JSON.parse(JSON.stringify(stacjaB)) as EnergyNetworkModel;
     const station = (out.substations ?? []).find((s) => s.ref_id === stationRef)!;
-    const specs = ((station.meta as Record<string, unknown>).field_specs ?? []) as Record<string, unknown>[];
-    const trSpec = specs.find((sp) => sp.bay_role === 'TR');
+    const trSpec = (out.bays ?? []).find((b) => b.substation_ref === station.ref_id && b.bay_role === 'TR');
     expect(trSpec, 'fixtura Stacja B ma pole roli TR').toBeDefined();
     const removed = new Set<string>(
-      (trSpec!.equipment_refs as string[]).filter((ref) => !ref.endsWith('/transformer')),
+      trSpec!.equipment_refs.filter((ref) => !ref.endsWith('/transformer')),
     );
-    (station.meta as Record<string, unknown>).field_specs = specs.filter((sp) => sp.bay_role !== 'TR');
     (out as { branches: unknown[] }).branches = (out.branches ?? []).filter((b) => !removed.has(b.ref_id));
-    (out as { bays: unknown[] }).bays = (out.bays ?? []).filter((b) => !removed.has(b.ref_id));
+    (out as { bays: unknown[] }).bays = (out.bays ?? []).filter((b) => b.ref_id !== trSpec!.ref_id && !removed.has(b.ref_id));
     const base = (out.transformers ?? []).find((t) => t.ref_id === STACJA_B_REFS.transformerRef)!;
     expect(base).toBeDefined();
     const secondRef = `${STACJA_B_REFS.transformerRef}2`;

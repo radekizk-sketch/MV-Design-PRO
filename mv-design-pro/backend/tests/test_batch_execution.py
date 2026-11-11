@@ -121,8 +121,12 @@ def _reset_services():
     _wyczysc()
 
 
-def _seed_valid_enm(case_id: str) -> None:
+def _seed_valid_enm(case_id: str, *, r_kabla_ohm_per_km: float = 0.253) -> None:
     """Minimalna, poprawna sieć SN (GPZ + kabel + szyna odpływu).
+
+    ``r_kabla_ohm_per_km = 0`` — kabel bez R′0/X′0 i bez podstawy wartości roboczej (zasada
+    nr 4: kabel z dodatnimi R′1, X′1 liczy się z R′0 = 3·R′1, X′0 = 3·X′1), czyli model,
+    którego zwarcie doziemne brama biegu blokuje (W001).
 
     CV-2-W: zasiew idzie pod KLUCZ PROJEKTU (`_klucz_modelu`), bo tam mieszka
     model. Wcześniejszy zasiew surowym `case_id` działał tylko dopóki żadna
@@ -182,7 +186,7 @@ def _seed_valid_enm(case_id: str) -> None:
                         "catalog_ref": "KABEL_SN_TEST",
                         "parameter_source": "CATALOG",
                         "length_km": 0.2,
-                        "r_ohm_per_km": 0.253,
+                        "r_ohm_per_km": r_kabla_ohm_per_km,
                         "x_ohm_per_km": 0.073,
                         "b_siemens_per_km": 2.6e-07,
                     }
@@ -520,12 +524,14 @@ class TestExecuteBatch:
             assert run.options["location"]["element_ref"] == scenariusz_elementu[scenario_id]
 
     def test_brama_uprawnien_jak_pojedynczy_bieg(self):
-        """SC_1F bez składowej zerowej Z0 w modelu → seria FAILED (jedyna pozycja)
-        z polskim komunikatem blokady — ta sama brama (`ocen_model_biegu`), co pojedynczy
-        bieg. Partia integracji 10 skasowała fantomową blokadę „SC_2F bez Z2" (Z2 = Z1
-        z modelu), więc nośnikiem cechy „brama blokuje” jest zwarcie doziemne bez Z0."""
+        """SC_1F bez składowej zerowej Z0 w modelu i bez podstawy wartości roboczej → seria
+        FAILED (jedyna pozycja) z polskim komunikatem blokady — ta sama brama
+        (`ocen_model_biegu`), co pojedynczy bieg. Partia integracji 10 skasowała fantomową
+        blokadę „SC_2F bez Z2" (Z2 = Z1 z modelu), więc nośnikiem cechy „brama blokuje” jest
+        zwarcie doziemne bez Z0; od zasady nr 4 kabel z dodatnimi R′1, X′1 dostaje wartość
+        roboczą, więc blokadę niesie kabel z R′1 = 0 (``enm.skladowa_zerowa_galezi``)."""
         case_id = _nowy_przypadek()
-        _seed_valid_enm(case_id)
+        _seed_valid_enm(case_id, r_kabla_ohm_per_km=0.0)
         s1f = _create_scenario(case_id, name="1F", fault_type="SC_1F")
 
         batch = client.post(
@@ -621,9 +627,10 @@ class TestExecuteBatch:
     def test_wszystkie_pozycje_failed_status_failed_nie_partial(self):
         """Iloczyn: N>1 pozycji × WSZYSTKIE zawodzą → FAILED (nie PARTIAL —
         PARTIAL wymaga MIESZANKI, nie samych awarii; odróżnia od poprzedniego
-        testu, gdzie jedna pozycja się powiodła)."""
+        testu, gdzie jedna pozycja się powiodła). Awarię niesie brama zwarcia doziemnego:
+        kabel bez Z0 i bez podstawy wartości roboczej (R′1 = 0)."""
         case_id = _nowy_przypadek()
-        _seed_valid_enm(case_id)
+        _seed_valid_enm(case_id, r_kabla_ohm_per_km=0.0)
         s1 = _create_scenario(case_id, name="A", fault_type="SC_1F", element_ref="bus-main")
         s2 = _create_scenario(case_id, name="B", fault_type="SC_1F", element_ref="bus-1")
 

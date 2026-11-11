@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy czystych adapterów ekranu „Składowe symetryczne i sieć zerowa"
  * (E-29, karta P-3). Fixture 1:1 z realnym kontraktem: wiersze kanoniczne
@@ -19,7 +20,7 @@ import {
   uziemieniaSieci,
   uziemieniePunktu,
   werdyktPL,
-  wybierzPrzebiegNiesymetryczny,
+  wyborPrzebieguSkladowych,
 } from '../model';
 import { SKLADOWE_STRINGS } from '../strings';
 
@@ -82,8 +83,10 @@ const SNAPSHOT = {
       phase_system: '3ph',
     },
     { id: 'b2', ref_id: 'bus/st1/sn', name: 'Szyna ST-1', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+    { id: 'b3', ref_id: 'bus/gpz/wn', name: 'Szyna 110 kV', tags: [], meta: {}, voltage_kv: 110, phase_system: '3ph' },
   ],
-  // W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO na szynie (nie szyna).
+  // Karta UX-04/POLE-ZU: opis punktu neutralnego niesie źródło WYŁĄCZNIE dla sieci 110 kV za
+  // granicą modelu; uziemienie sieci SN — zespół uziemiający na szynie SN.
   sources: [
     {
       id: 's1',
@@ -91,9 +94,20 @@ const SNAPSHOT = {
       name: 'GPZ',
       tags: [],
       meta: {},
-      bus_ref: 'bus/gpz/sn',
+      bus_ref: 'bus/gpz/wn',
       model: 'short_circuit_power',
-      neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
+      neutral_grounding: { type: 'directly_grounded' },
+    },
+  ],
+  zespoly_uziemiajace: [
+    {
+      id: 'z1',
+      ref_id: 'zu/gpz/1',
+      name: 'ZU sekcji 1',
+      tags: [],
+      meta: {},
+      bus_ref: 'bus/gpz/sn',
+      dlawik: { i_min_a: 40, i_max_a: 400, awsc: { i_wymuszany_a: 30 } },
     },
   ],
   transformers: [
@@ -109,26 +123,34 @@ const SNAPSHOT = {
   ],
 } as unknown as EnergyNetworkModel;
 
-describe('wybierzPrzebiegNiesymetryczny — wybór przebiegu 1F/2F/2F+Z', () => {
-  const przebiegi = [
-    { id: 'r3f', analysis_type: 'SC_3F', status: 'DONE', finished_at: '2026-07-20T10:00:00Z' },
-    { id: 'r1f', analysis_type: 'SC_1F', status: 'DONE', finished_at: '2026-07-19T10:00:00Z' },
-    { id: 'r2fg', analysis_type: 'SC_2F_G', status: 'DONE', finished_at: '2026-07-21T10:00:00Z' },
-    { id: 'rlf', analysis_type: 'LOAD_FLOW', status: 'DONE', finished_at: '2026-07-22T10:00:00Z' },
-    { id: 'r2f-run', analysis_type: 'SC_2F', status: 'RUNNING', finished_at: null },
-  ];
+describe('wyborPrzebieguSkladowych — aktywny bieg zwarcia × rodzaj × kandydat (karta K8)', () => {
+  // Biegi rodziny „zwarcie" od najnowszego (tak podaje je magazyn: `biegiRodziny`).
+  const r2fg = { id: 'r2fg', analysis_type: 'SC_2F_G' };
+  const r3f = { id: 'r3f', analysis_type: 'SC_3F' };
+  const r1f = { id: 'r1f', analysis_type: 'SC_1F' };
+  const r2f = { id: 'r2f', analysis_type: 'SC_2F' };
+  const biegi = [r2fg, r3f, r1f, r2f];
 
-  it('preferuje aktywny przebieg, gdy jest zakończonym zwarciem niesymetrycznym', () => {
-    expect(wybierzPrzebiegNiesymetryczny(przebiegi, 'r1f')?.id).toBe('r1f');
+  for (const aktywny of [r1f, r2f, r2fg]) {
+    it(`aktywny ${aktywny.analysis_type} (niesymetryczny) jest przebiegiem ekranu — bez cichej podmiany`, () => {
+      expect(wyborPrzebieguSkladowych(aktywny, biegi)).toEqual({ rodzaj: 'aktywny', przebieg: aktywny });
+    });
+  }
+
+  it('aktywny 3F: ekran NIE podmienia biegu — zwraca najnowszego kandydata do jawnego przełączenia', () => {
+    expect(wyborPrzebieguSkladowych(r3f, biegi)).toEqual({
+      rodzaj: 'aktywnySymetryczny',
+      aktywny: r3f,
+      kandydat: r2fg,
+    });
   });
 
-  it('aktywny 3F nie spełnia — wybiera najnowszy zakończony niesymetryczny', () => {
-    expect(wybierzPrzebiegNiesymetryczny(przebiegi, 'r3f')?.id).toBe('r2fg');
+  it('aktywny 3F bez żadnego biegu niesymetrycznego → brak (stan zerowy)', () => {
+    expect(wyborPrzebieguSkladowych(r3f, [r3f])).toEqual({ rodzaj: 'brak' });
   });
 
-  it('przebieg w toku i rozpływ nie liczą się; brak niesymetrycznych → null', () => {
-    const tylkoSym = przebiegi.filter((r) => r.id === 'r3f' || r.id === 'rlf' || r.id === 'r2f-run');
-    expect(wybierzPrzebiegNiesymetryczny(tylkoSym, null)).toBeNull();
+  it('brak aktywnego biegu zwarcia → brak', () => {
+    expect(wyborPrzebieguSkladowych(null, [])).toEqual({ rodzaj: 'brak' });
   });
 });
 
@@ -222,25 +244,53 @@ describe('fmtZespolona — format prezentacji R ± jX (przecinek PL)', () => {
 });
 
 describe('uziemienie punktu neutralnego — z zamrożonej wersji układu', () => {
-  it('uziemieniePunktu znajduje źródło na szynie punktu (po ref_id szyny) i mapuje typ na PL', () => {
+  it('uziemieniePunktu na szynie SN wypisuje zespół uziemiający z zainstalowanych elementów', () => {
     const wpis = uziemieniePunktu(SNAPSHOT, 'bus/gpz/sn');
-    expect(wpis?.element).toBe('GPZ');
-    expect(wpis?.strona).toBe('punkt neutralny sieci SN (źródło)');
-    expect(wpis?.opis).toContain('Petersena');
-    expect(wpis?.xOhm).toBe(120);
+    expect(wpis?.element).toBe('ZU sekcji 1');
+    expect(wpis?.strona).toBe('zespół uziemiający sieci SN');
+    expect(wpis?.opis).toBe('dławik gaszący z rezystorem wymuszającym AWSC');
+    expect(wpis?.rOhm).toBeNull();
   });
 
-  it('szyna bez źródła z neutral_grounding → null (uczciwy brak)', () => {
+  it('uziemieniePunktu na szynie 110 kV wypisuje punkt neutralny sieci za granicą modelu', () => {
+    const wpis = uziemieniePunktu(SNAPSHOT, 'bus/gpz/wn');
+    expect(wpis?.element).toBe('GPZ');
+    expect(wpis?.strona).toBe('punkt neutralny sieci 110 kV za granicą modelu (źródło)');
+    expect(wpis?.opis).toContain('bezpośrednio');
+  });
+
+  it('szyna bez zespołu i bez źródła z opisem punktu neutralnego → null (uczciwy brak)', () => {
     expect(uziemieniePunktu(SNAPSHOT, 'bus/st1/sn')).toBeNull();
   });
 
-  it('uziemieniaSieci zbiera źródła i obie strony transformatora', () => {
+  // Iloczyn cech: element zespołu × opis (dane modelu, bez wyprowadzania wariantu pracy).
+  const ZESPOLY: ReadonlyArray<readonly [string, Record<string, unknown>, string, number | null]> = [
+    ['dławik', { dlawik: { i_min_a: 40, i_max_a: 400 } }, 'dławik gaszący', null],
+    ['dławik + AWSC', { dlawik: { awsc: { i_wymuszany_a: 30 } } }, 'dławik gaszący z rezystorem wymuszającym AWSC', null],
+    ['rezystor', { rezystor: { r_ohm: 43.3 } }, 'rezystor uziemiający', 43.3],
+    ['dławik ‖ rezystor', { dlawik: {}, rezystor: { r_ohm: 50 } }, 'dławik gaszący ‖ rezystor uziemiający', 50],
+    ['bezpośrednie', { uziemienie_bezposrednie: true }, 'uziemienie bezpośrednie', null],
+    ['bez elementu', {}, 'bez elementu w punkcie neutralnym (brak modelu)', null],
+  ];
+  for (const [nazwa, elementy, opis, rOhm] of ZESPOLY) {
+    it(`zespół „${nazwa}" → opis z elementów i R rezystora z modelu`, () => {
+      const snapshot = {
+        ...SNAPSHOT,
+        zespoly_uziemiajace: [{ ref_id: 'zu/x', name: 'ZU X', bus_ref: 'bus/st1/sn', ...elementy }],
+      } as unknown as EnergyNetworkModel;
+      const wpis = uziemieniePunktu(snapshot, 'bus/st1/sn');
+      expect(wpis?.opis).toBe(opis);
+      expect(wpis?.rOhm).toBe(rOhm);
+      expect(uziemieniaSieci(snapshot).filter((w) => w.strona === 'zespół uziemiający sieci SN')).toHaveLength(1);
+    });
+  }
+
+  it('uziemieniaSieci zbiera źródło 110 kV, zespoły uziemiające i obie strony transformatora', () => {
     const wpisy = uziemieniaSieci(SNAPSHOT);
-    expect(wpisy).toHaveLength(3);
-    expect(wpisy.map((w) => w.element)).toEqual(['GPZ', 'TR-1 GPZ', 'TR-1 GPZ']);
-    expect(wpisy[1].strona).toBe('strona GN');
-    expect(wpisy[1].rOhm).toBe(30);
-    expect(wpisy[2].opis).toContain('izolowany');
+    expect(wpisy.map((w) => w.element)).toEqual(['GPZ', 'ZU sekcji 1', 'TR-1 GPZ', 'TR-1 GPZ']);
+    expect(wpisy[2].strona).toBe('strona GN');
+    expect(wpisy[2].rOhm).toBe(30);
+    expect(wpisy[3].opis).toContain('izolowany');
   });
 
   it('brak snapshotu → pusta lista', () => {

@@ -18,6 +18,7 @@
  */
 import type { ReactNode } from 'react';
 
+import { OVERHEAD_LINE_DASHARRAY } from '../compose/preview';
 import { GRID } from '../core/grid';
 import { LABEL_TYPOGRAPHY, labelLineHeight, screenFixedFontSize, screenFixedLength } from '../core/text';
 import {
@@ -204,6 +205,10 @@ export interface SheetFrameProps {
   readonly titleBlockOrigin?: { readonly x: number; readonly y: number };
   /** Legenda — domyślnie ≥6 glifów symboli + 2 typy linii (spec §2). */
   readonly legend?: readonly SheetLegendEntry[];
+  /** K2b §0.4: tryb widoku kanwy. `'roboczy'` (ekran, domyślnie w przestrzeni
+   *  roboczej) — sama treść, bez ramy, stref, podpisów, legendy i tabliczki;
+   *  `'arkusz'` (domyślnie, zawsze w eksporcie) — pełny arkusz. */
+  readonly tryb?: 'arkusz' | 'roboczy';
   /**
    * S9-7 (audyt C-4): SKALA KAMERY [px ekranu na jednostkę świata]. Napisy
    * APARATU ARKUSZA (znaczniki stref, podziałka, poziom szczegółu, legenda)
@@ -271,7 +276,7 @@ export function computeLegendRowLayout(entries: readonly SheetLegendEntry[]): re
 
 function LegendLineSample(props: { readonly id: string; readonly centerY: number }): JSX.Element {
   const palette = useSldPalette();
-  const dash = props.id === 'overhead' ? '6 3 1 3' : undefined;
+  const dash = props.id === 'overhead' ? OVERHEAD_LINE_DASHARRAY : undefined;
   if (props.id === 'openTerminal' || props.id === 'tieMarker') {
     // Recenzja NO-GO 2026-07-17 pkt 11: próbka „koniec otwarty" = odcinek
     // toru zakończony PROSTOPADŁYM słupkiem (ta sama geometria co
@@ -518,6 +523,12 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
   const captionOffset = screenFixedLength(SHEET_CAPTION_OFFSET_SCREEN_PX, cameraScale);
   const captionFontSize = screenFixedFontSize('t2', cameraScale);
 
+  // K2b §0.4 — TRYB ROBOCZY: ten sam układ współrzędnych (zagnieżdżony `<svg>`
+  // i przesunięcie `FRAME_MARGIN` zostają — kamera i eksport liczą kadr od
+  // nich), ale bez ramy, pól odniesienia, podpisów skali/poziomu, legendy
+  // i tabliczki. Na ekranie projektant pracuje na sieci, a nie na arkuszu;
+  // eksport zawsze rysuje arkusz (`export/**` nie podaje `tryb`).
+  const roboczy = props.tryb === 'roboczy';
   return (
     <svg
       data-testid="sld-sheet-frame"
@@ -528,8 +539,11 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
       height={svgHeight}
       viewBox={`${-frameOverflow} ${-frameOverflow} ${svgWidth} ${svgHeight}`}
       style={{ background: palette.canvasBackground }}
+      data-tryb-widoku={roboczy ? 'roboczy' : 'arkusz'}
     >
       <g data-testid="sld-sheet-drawing-area" data-parity-key="sheet-drawing-area" transform={`translate(${FRAME_MARGIN}, ${FRAME_MARGIN})`}>
+        {roboczy ? null : (
+        <>
         <rect
           data-testid="sld-sheet-border"
           data-parity-key="sheet-border"
@@ -579,10 +593,12 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
          *  wyżej, oraz WŁASNE testy `SheetFrame` bez propa `legend` — fallback
          *  `buildDefaultLegend()`) dostają grupę jak dotąd. */}
         {legend.length > 0 && <SheetLegend entries={legend} sheetHeight={height} cameraScale={cameraScale} />}
+        </>
+        )}
         <g data-testid="sld-sheet-content" data-parity-key="sheet-content">
           {children}
         </g>
-        {titleBlock ? (
+        {titleBlock && !roboczy ? (
           <g
             data-testid="sld-sheet-title-block-slot"
             data-parity-key="sheet-title-block-slot"

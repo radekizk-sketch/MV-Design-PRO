@@ -185,7 +185,11 @@ asyncio_mode = "auto"
 # `importmode = "importlib"` w tej sekcji jest CICHO IGNOROWANY (pytest zglasza
 # tylko `PytestConfigWarning: Unknown config option`), dlatego wchodzi przez
 # `addopts` — inaczej caly ten zapis bylby dekoracja bez skutku.
-addopts = "--import-mode=importlib"
+# `--no-loadscope-reorder` (karta SZYBKIE-TESTY-2): xdist pod `--dist loadfile` zachowuje
+# kolejnosc plikow ustawiona przez `tests/conftest.py::pytest_collection_modifyitems`
+# (malejaco po zmierzonym czasie, `tests/kolejnosc_plikow.py`) zamiast kolejkowac pliki wg
+# liczby testow — najciezsze pliki o malej liczbie testow nie wydluzaja ogona biegu.
+addopts = "--import-mode=importlib --no-loadscope-reorder"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
@@ -194,5 +198,6 @@ markers = [
     "integration: tests requiring database/persistence (P13b governance)",
     "determinism: tests verifying deterministic output (same input = same output)",
     "pandapower: walidacja krzyzowa z pandapower - wymaga izolowanego srodowiska z scipy<1.17",
+    "ladunek_spoza_kontraktu: test celowo wysyla klucz ladunku operacji spoza jej kontraktu (czujnik w tests/conftest.py nie zamienia wpisu dziennika w blad testu)",
     "andes: wyrocznia zewnetrzna dynamiki ANDES - wymaga izolowanego srodowiska, ANDES nie wchodzi do zaleznosci produkcyjnych (karta W6-2)",
 ]

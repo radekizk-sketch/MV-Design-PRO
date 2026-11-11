@@ -18,8 +18,20 @@ from application.twin_key import klucz_twin_dla_przypadku
 from domain.models import Project
 from domain.study_case import StudyCase
 from enm.canonical_analysis import reset_canonical_runs
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_FIELD_SPECS as KLUCZ_SN,
+)
+from enm.migrations.field_specs_promocja import (
+    KLUCZ_NN_FIELD_SPECS as KLUCZ_NN,
+)
 from enm.models import EnergyNetworkModel
-from enm.store import get_enm, reset_enm_store, set_enm
+from enm.store import (
+    LegacyFieldSpecsError,
+    get_enm,
+    przygotuj_model_po_odczycie,
+    reset_enm_store,
+    set_enm,
+)
 
 from tests.catalog_test_helpers import gpz_source_record
 from tests.utils.biegi import run_short_circuit_now
@@ -228,7 +240,7 @@ def _enm_with_field_specs_only() -> dict:
     payload = _enm_with_bay()
     bay = payload["bays"].pop(0)
     payload["substations"][0]["meta"] = {
-        "field_specs": [
+        KLUCZ_SN: [
             {
                 "field_ref": bay["ref_id"],
                 "name": bay["name"],
@@ -246,8 +258,8 @@ def _enm_with_field_specs_only() -> dict:
 
 def _enm_with_nn_field_specs_only() -> dict:
     payload = _enm_with_field_specs_only()
-    spec = payload["substations"][0]["meta"].pop("field_specs")[0]
-    payload["substations"][0]["meta"]["nn_field_specs"] = [spec]
+    spec = payload["substations"][0]["meta"].pop(KLUCZ_SN)[0]
+    payload["substations"][0]["meta"][KLUCZ_NN] = [spec]
     return payload
 
 
@@ -364,9 +376,31 @@ def test_get_field_view_returns_canonical_bay_contract(uow_factory):
     assert "verification" not in results
 
 
-def test_get_field_view_synthesizes_fields_from_substation_meta(uow_factory):
+def _seed_z_archiwum(case_id: str, payload: dict, uow_factory) -> None:
+    """Model z archiwum niesie dawne wpisy pól w `meta` stacji — magazyn przyjmuje go
+    WYŁĄCZNIE po migracji wejścia (`przygotuj_model_po_odczycie`, karta W5-B)."""
+    model, zmieniono = przygotuj_model_po_odczycie(EnergyNetworkModel.model_validate(payload))
+    assert zmieniono
+    set_enm(_klucz(case_id, uow_factory), model)
+
+
+def test_zapis_modelu_z_dawnymi_wpisami_pol_to_nazwana_odmowa(uow_factory):
+    """Karta W5-B: magazyn nie przyjmuje dawnych wpisów pól (nie ma trybu zgodności)."""
     case_id = _nowy_przypadek(uow_factory)
-    _seed_enm(case_id, _enm_with_field_specs_only(), uow_factory)
+    for payload in (_enm_with_field_specs_only(), _enm_with_nn_field_specs_only()):
+        with pytest.raises(LegacyFieldSpecsError):
+            _seed_enm(case_id, payload, uow_factory)
+
+
+# Intencja zachowana (karta W5-B): pole opisane dawnym wpisem stacji (dawny słownik pól SN albo
+# dawny słownik pól nN) jest w read-modelu pola — teraz przez migrację wejścia do rekordu `bays`,
+# a nie przez drugą projekcję wpisu w read-modelu.
+@pytest.mark.parametrize(
+    "payload", [_enm_with_field_specs_only, _enm_with_nn_field_specs_only], ids=["sn", "nn"]
+)
+def test_get_field_view_czyta_pola_zmigrowane_z_archiwum(uow_factory, payload):
+    case_id = _nowy_przypadek(uow_factory)
+    _seed_z_archiwum(case_id, payload(), uow_factory)
 
     data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
 
@@ -379,17 +413,67 @@ def test_get_field_view_synthesizes_fields_from_substation_meta(uow_factory):
     assert item["canonical_model"]["base_model"]["protection_config"]["unit_ref"] == "prot_oc_1"
 
 
-def test_get_field_view_reads_nn_field_specs_from_substation_meta(uow_factory):
+def test_get_field_view_nie_syntetyzuje_pol_gpz_z_sekcji(uow_factory):
+    """Karta W5-B: pole GPZ bez rekordu `bays` = brak pola (dawna synteza pól z
+    `gpz_sections` w read-modelu skasowana — pole bez rekordu nazywa gotowość, nie widok)."""
     case_id = _nowy_przypadek(uow_factory)
-    _seed_enm(case_id, _enm_with_nn_field_specs_only(), uow_factory)
+    payload = _enm_with_bay()
+    payload["bays"] = []
+    payload["substations"][0]["gpz_sections"] = [
+        {"section_id": "S1", "order": 0, "bus_ref": "bus_sn_b", "line_field_name": "Pole 1"}
+    ]
+    _seed_enm(case_id, payload, uow_factory)
 
     data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
 
-    assert data["summary"]["total_fields"] == 1
-    item = data["fields"][0]
-    assert item["bay_ref"] == "bay_in_1"
-    assert item["canonical_model"]["base_model"]["bay_role"] == "LINIA_IN"
-    assert item["canonical_model"]["base_model"]["measurement_chain"]["ct_refs"] == ["ct_in_1"]
+    assert data["summary"]["total_fields"] == 0
+    assert data["fields"] == []
+
+
+def test_get_field_view_czyta_pola_typowane_rekordu(uow_factory):
+    """Rodzina rozdzielnicy i ograniczniki przepięć pola z pól typowanych `Bay` (nie z
+    `Bay.meta`); zacisk pola z `Bay.terminal_bus_ref`; pole ZKSN (bez stacji) poza
+    read-modelem stacji. Iloczyn: {rodzina: jest, brak} × {ograniczniki: są, brak}."""
+    case_id = _nowy_przypadek(uow_factory)
+    payload = _enm_with_bay()
+    pole = payload["bays"][0]
+    pole["switchgear_family_ref"] = "rodzina-testowa"
+    pole["surge_arresters"] = [{"device_ref": "ogr-1", "catalog_ref": "ogr_kat"}]
+    payload["bays"].append(
+        {
+            "ref_id": "bay_bez_rodziny",
+            "name": "Pole OUT",
+            "bay_role": "OUT",
+            "substation_ref": pole["substation_ref"],
+            "bus_ref": pole["bus_ref"],
+        }
+    )
+    payload["bays"].append(
+        {
+            "ref_id": "zksn-1/pole/MAIN_IN",
+            "name": "WE",
+            "bay_role": "IN",
+            "field_role": "LINIA_IN",
+            "branch_point_ref": "zksn-1",
+            "branch_point_port_id": "MAIN_IN",
+            "bus_ref": "bus_sn_a",
+        }
+    )
+    _seed_enm(case_id, payload, uow_factory)
+
+    data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
+
+    pozycje = {item["bay_ref"]: item["canonical_model"]["base_model"] for item in data["fields"]}
+    assert set(pozycje) == {"bay_in_1", "bay_bez_rodziny"}
+    assert pozycje["bay_in_1"]["switchgear_family_ref"] == "rodzina-testowa"
+    assert pozycje["bay_bez_rodziny"]["switchgear_family_ref"] is None
+    ograniczniki = [
+        d for d in pozycje["bay_in_1"]["primary_devices"] if d["kind"] == "SURGE_ARRESTER"
+    ]
+    assert [(d["device_ref"], d["catalog_ref"]) for d in ograniczniki] == [("ogr-1", "ogr_kat")]
+    assert not [
+        d for d in pozycje["bay_bez_rodziny"]["primary_devices"] if d["kind"] == "SURGE_ARRESTER"
+    ]
 
 
 def test_get_field_view_returns_fw_source_field(uow_factory):

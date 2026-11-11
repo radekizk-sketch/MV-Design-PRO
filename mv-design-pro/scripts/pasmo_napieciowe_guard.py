@@ -185,6 +185,19 @@ _POROWNANIE_TS = re.compile(
     rf"(?P<a>{_OPERAND_TS})\s*{_OP_TS}\s*(?P<la>{_LITERAL_TS})"
     rf"|(?<![\w.])(?P<lb>{_LITERAL_TS})\s*{_OP_TS}\s*(?P<b>{_OPERAND_TS})"
 )
+#: Operand w nawiasie z wartością domyślną (`(bus?.voltage_kv ?? 0) >= 1`) — łańcuch
+#: z wywołaniami w środku (`ix.szyny.get(b)?.voltage_kv`). Forma umknęła skanowi do karty
+#: K2 (pięć predykatów pasma w `ui/sld/v3/canvas/zakresKadru.ts`, pomiar 2026-10-21):
+#: operand przed operatorem kończy się nawiasem, więc `_OPERAND_TS` go nie obejmował.
+#: Domyślne zero przy braku danej to przy okazji cichy domysł strony „nN".
+#: Postać bez zagnieżdżonych kwantyfikatorów (`(X+ Y?)+` cofa się wykładniczo na długich
+#: liniach): pierwszy człon, potem wywołania `(…)`, każde z opcjonalnym ogonem łańcucha.
+_LANCUCH_TS = r"[\w$.?!\[\]'\"]+(?:\([^()]*\)[\w$.?!\[\]'\"]*)*"
+_DOMYSLNA_TS = rf"\(\s*(?P<{{n}}>{_LANCUCH_TS})\s*(?:\?\?|\|\|)\s*-?\d+(?:\.\d+)?\s*\)"
+_POROWNANIE_DOMYSLNE_TS = re.compile(
+    rf"{_DOMYSLNA_TS.format(n='a')}\s*{_OP_TS}\s*{_LITERAL_TS}"
+    rf"|(?<![\w.]){_LITERAL_TS}\s*{_OP_TS}\s*{_DOMYSLNA_TS.format(n='b')}"
+)
 _STALA_STRONY_TS = re.compile(
     r"\bconst\s+(?P<nazwa>[A-Za-z_$][\w$]*)\s*(?::\s*number\s*)?=\s*\d+(?:\.\d+)?\s*;"
 )
@@ -282,6 +295,9 @@ def skanuj_ts(kod: str) -> list[tuple[int, str]]:
         for dop in _POROWNANIE_TS.finditer(linia):
             operand = dop.group("a") or dop.group("b") or ""
             if _operand_napiecia(operand):
+                trafione = True
+        for dop in _POROWNANIE_DOMYSLNE_TS.finditer(linia):
+            if _operand_napiecia(dop.group("a") or dop.group("b") or ""):
                 trafione = True
         if _STALA_STRONY_RE.search(linia) and not _STALA_STRONY_TS.search(linia):
             if re.search(_OP_TS, linia.replace("=>", "")):

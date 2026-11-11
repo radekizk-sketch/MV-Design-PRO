@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8/§16) — testy budowniczego CZYSTEGO
  * warstwy liczbowych etykiet wynikowych (`resultLabels.ts`). Fixtura REALNA

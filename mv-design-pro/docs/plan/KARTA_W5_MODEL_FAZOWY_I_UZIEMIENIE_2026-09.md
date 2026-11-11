@@ -80,6 +80,19 @@ Status: karta architekta (projekt kontraktów i kolejności), 2026-09-16. Nadrz�
    (kolekcja `bays` w odcisku) — golden przeliczone z dowodem klasy zmian per sieć (tylko `bays`/`meta`, zero zmian w
    fizyce). Sub-karta `SZABLONY-NN` (wiązanie wyłącznika głównego nN, pole TR `W041`, pole nN tylko przy odpływach — wariant
    B+A; adaptacja `domain/dobor_aparatu_pola.py` z wątku badawczego) wchodzi PO W5-B na typowanych szablonach.
+   **STAN (2026-10-15): W5-B wykonana przez wykonawcę na gałęzi `claude/mv-design-pro-twin-audit-u4lhy0-karta-w5b-typowany-bay`, odbiór architekta (CLAIMED DONE →
+   VERIFICATION GATE).** Odstępstwa od tekstu punktu, rozstrzygnięte z pomiaru: (a) migracja to NOWY moduł
+   `enm/migrations/field_specs_promocja.py` (3 kolekcje → `bays`), a dawna promocja nN zmieniła nazwę na
+   `promocja_aparatow_nn.py` i czyta rekordy `bays` (aparat i zacisk zapisywane na rekordzie pola nN) — dwa
+   mechanizmy, bo to dwa pojęcia (nośnik danych vs. materializacja aparatu); (b) `wybor_bloku`/`metadane_pochodzenia`
+   typowane strukturami (`WyborBlokuPola`, `MetadanePochodzeniaPola`), `surge_arresters` typowane
+   (`OgranicznikPrzepiecPola`), dodatkowo `config_id`, `apparatus_catalog_ref`, `switchgear_family_ref`,
+   `manufacturer_ref`; (c) poziom pola SN/nN nie jest polem rekordu — predykat `enm.pola.czy_pole_nn` z pasma
+   napięcia szyny (pole GPZ nigdy nN); (d) pole ZKSN: `bay_role` OUT + `field_role` LINIA_ODG (bez nowego literału
+   `BRANCH`), `branch_point_port_id`; (e) stacja końca ciągu: jeden rekord pola `field/{seed}/{n}` (dawny dubel
+   `bay/…` + wpis scalany przez migrację, odwołania przepisane); (f) sygnatura sceny SLD v3: 26/27 fikstur bit w
+   bit, `gpzProtectionDataPath` — inna kolejność pól GPZ na szynie (dowody `docs/audit/visual/w5b/`, werdykt B-02).
+   Meldunek: `MELDUNEK_W5B.md` (katalog główny gałęzi).
 6. **Stan łączeniowy — jedna prawda (W5-C; C2/C4/C8).** `BranchBase.status` zostaje JEDYNYM stanem czytanym przez
    fizykę. NOWE: `SwitchBranch.normal_state: Literal["closed", "open"] | None` (pozycja normalna z projektu; `None` =
    niezadeklarowana, nie domysł). Operacje kanoniczne `open_switch` / `close_switch` (polityka, dziennik, świeżość jak

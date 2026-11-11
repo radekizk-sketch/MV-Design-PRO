@@ -11,84 +11,115 @@ export const SHELL_STRINGS = {
   appNameLead: 'MV·DESIGN·',
   appNameAccent: 'PRO',
 
-  projectPrefix: 'Projekt',
   emptyValue: '—',
 
   spacesHeading: 'Przestrzenie',
 
-  activeCase: 'Zakres obliczeń',
+  // --- pasek projektu (karta K1 POWLOKA: trzy pasy zamiast pięciu) ---
+  projectMenuHint: 'Projekt: zmiana projektu i metadane',
+  changeProject: 'Zmień projekt…',
+  projectMetadata: 'Metadane projektu…',
+  openProject: 'Otwórz projekt',
+  noProject: 'Brak otwartego projektu',
+  /** Etykieta zakresu obliczeń (kontrakt e2e: tekst „Zakres" w pasku projektu). */
+  caseLabel: 'Zakres',
+  caseOpenHint: 'Otwórz stan wariantów i przebiegów zakresu obliczeń',
   /* K6 / H-6 R4: pasek stanu pokazuje odcisk SHA-256 MIGAWKI MODELU (realne
      źródło), więc etykieta nazywa rzecz po imieniu — „Wersja modelu". */
   wersjaModelu: 'Wersja modelu',
 
-  modeGroup: 'Tryb',
-  modeBasic: 'Podstawowy',
-  modeExtended: 'Rozszerzony',
-  modeExpert: 'Ekspercki',
-
-  save: 'Zapisz',
   calculate: 'Oblicz',
+  calculating: 'Obliczanie…',
+  calculateHint: 'Uruchom obliczenie aktywnego zakresu',
   reconnect: 'Połącz ponownie',
-  openProject: 'Otwórz projekt',
-  /** Podpowiedź chipu nazwy projektu przy otwartym projekcie (KD-1 / L-5). */
-  changeProjectHint: 'Zmień otwarty projekt',
-  resetLayout: 'Przywróć układ domyślny',
-  viewMenu: 'Widok',
 
-  toggleLeft: 'Nawigacja',
-  toggleRight: 'Zwiń lub rozwiń panel inspektora',
-  themeGroup: 'Motyw',
-  themeToggleHint: 'Przełącz motyw ekranu: ciemny (dyspozytorski) / jasny (techniczny)',
+  // --- menu Widok ---
+  viewMenu: 'Widok',
+  themeItem: 'Motyw ekranu',
+  viewModeItem: 'Widok schematu',
+  viewModeHint: 'Roboczy: sama sieć do pracy. Arkusz: rama, pola odniesienia i tabliczka jak w eksporcie.',
+  viewModeWorking: 'roboczy',
+  viewModeSheet: 'arkusz',
+  auditDetails: 'Szczegóły audytowe',
+  auditDetailsHint:
+    'Pokaż identyfikatory techniczne, odciski danych, ślady obliczeń i zakładki analiz akademickich',
+  toggleLeft: 'Panel nawigacji',
+  toggleRight: 'Inspektor',
+  inspectorWide: 'Tryb szeroki inspektora',
+  inspectorWideButton: 'Tryb szeroki',
+  inspectorWideHint:
+    'Inspektor 560 px — pełne tabele karty technicznej. Ponowne polecenie przywraca szerokość 340–420 px.',
+  toggleBottom: 'Panel dolny',
+  resetLayout: 'Przywróć układ domyślny',
+
+  // --- pasek narzędzi bieżącej przestrzeni ---
+  toolbarLabel: 'Narzędzia przestrzeni',
+  search: 'Szukaj',
+  searchHint: 'Szukaj poleceń, obiektów modelu i okien (Ctrl+K)',
+  catalog: 'Katalog',
+  catalogHint: 'Katalog techniczny typów urządzeń',
+  review: 'Przegląd zbiorczy',
+  reviewHint: 'Przegląd zbiorczy: katalogi, transformatory, łączniki, źródła OZE, gotowość, stacje',
+  history: 'Historia',
+  historyHint: 'Historia wersji układu i audyt',
+  modelCounts: 'Liczniki modelu',
+  modelCountsHint: 'Liczniki elementów modelu sieci',
 
   inspectorHeading: 'Inspektor',
   inspectorEmpty: 'Zaznacz obiekt, aby zobaczyć szczegóły',
 
+  // --- pasek stanu ---
   backendConnected: 'Serwer: połączono',
   backendError: 'Serwer: brak połączenia',
   backendConnecting: 'Serwer: łączenie…',
-
-  modelValidated: 'Model: zwalidowany',
-  modelPending: 'Model: w budowie',
+  readinessHint: 'Przejdź do przestrzeni Gotowość',
+  revisionHint: 'Otwórz dziennik operacji modelu',
+  runHint: 'Otwórz rejestr przebiegów',
 
   // Statusy wyników — spójne ze STATUS_WYNIKOW_LABEL (brak/aktualne/nieaktualne;
   // karta K4/D1). Spójność pilnowana testem znacznikSwiezosci.test.ts.
   resultsFresh: 'Wyniki: aktualne',
   resultsOutdated: 'Wyniki: nieaktualne',
   resultsNone: 'Wyniki: brak',
-  /* CV-2-W: stan „nieustalone" ZNIKNĄŁ. Istniał, bo chrom liczył świeżość sam z
-     pary rewizji i przy nieznanej rewizji nie miał werdyktu. Status wyników
-     przypadku jest teraz WYPROWADZANY przez backend (z biegów i koperty rewizji),
-     więc werdykt jest zawsze jeden z trzech słownikowych, a jego PRZYCZYNĘ
-     (`result_status_reason_pl`) chip pokazuje zdaniem z serwera. */
+  /* CV-2-W: status wyników przypadku jest WYPROWADZANY przez backend (z biegów
+     i koperty rewizji), więc werdykt jest zawsze jeden z trzech słownikowych,
+     a jego PRZYCZYNĘ (`result_status_reason_pl`) chip pokazuje zdaniem z serwera. */
   resultsOutdatedHint: 'Przejdź do przestrzeni Obliczenia, aby przeliczyć wyniki',
+  resultsFreshHint: 'Otwórz wyniki aktywnego zakresu',
 
   searchPlaceholder: 'Szukaj poleceń, obiektów, okien…',
-  searchHint: 'Wyszukiwarka poleceń — pełna wersja w kolejnym kroku (W-105).',
 
+  // --- panel dolny ---
+  bottomPanelLabel: 'Panel dolny',
   bottomProblemy: 'Problemy',
   bottomPrzebiegi: 'Przebiegi',
   bottomDziennik: 'Dziennik operacji',
-  bottomHint: 'Panel dolny — zawartość w kolejnym kroku (E1.4).',
+  bottomWyniki: 'Wyniki',
+  bottomDowody: 'Dowody',
+  bottomResizeHint: 'Zmień wysokość panelu dolnego',
   closeBottom: 'Zamknij panel dolny',
 
   loadingShell: 'Wczytywanie powłoki…',
   workspaceLabel: 'Warsztat',
-  workspaceHint: 'Warsztat — zawartość przestrzeni w kolejnych kartach.',
 } as const;
-
-/** „Przypadków: {n}". */
-export function caseCountLabel(count: number | null): string {
-  return `Przypadków: ${count == null ? SHELL_STRINGS.emptyValue : count}`;
-}
 
 /** „Model: rew. {n}". */
 export function modelRevisionLabel(revision: number | null): string {
   return `Model: rew. ${revision == null ? SHELL_STRINGS.emptyValue : revision}`;
 }
 
-/** „Przebieg: {czas}". */
-export function runLabel(when: string | null): string {
-  return `Przebieg: ${when == null ? SHELL_STRINGS.emptyValue : when}`;
+/**
+ * Wejście do rejestru przebiegów na pasku stanu: „Przebiegi" albo „Przebieg: —" (brak
+ * zakończonego biegu). Który bieg każdej rodziny jest aktywny, mówią obok kontrolki
+ * kontekstu wyniku (karta K8), nie ta etykieta.
+ */
+export function runLabel(saZakonczone: boolean): string {
+  return saZakonczone ? 'Przebiegi' : `Przebieg: ${SHELL_STRINGS.emptyValue}`;
+}
+
+/** „Obliczanie: {analiza} · {stan}" — trwający bieg (§9: stan obliczeń widoczny globalnie). */
+export function runInProgressLabel(analiza: string | null, stan: string | null): string {
+  return ['Obliczanie', [analiza, stan].filter(Boolean).join(' · ')].filter(Boolean).join(': ');
 }
 
 /**
@@ -96,8 +127,7 @@ export function runLabel(when: string | null): string {
  *
  * `ustalona === false` (gotowości NIKT nie policzył — `podsumujGotowosc().ustalona`)
  * daje umowną kreskę braku danej, tę samą, którą ten moduł stosuje dla nieznanej
- * liczby przypadków, rewizji i przebiegu (`caseCountLabel`, `modelRevisionLabel`,
- * `runLabel`). Bez tego rozróżnienia chip mówił „Gotowość: brak uwag" dokładnie
+ * rewizji i przebiegu (`modelRevisionLabel`, `runLabel`). Bez tego rozróżnienia chip mówił „Gotowość: brak uwag" dokładnie
  * wtedy, gdy odczyt gotowości padł — ta sama klasa defektu co V12K-309 poz. 1.
  * Docelowe nazewnictwo stanu nieustalonego w chromie pozostaje decyzją właściciela
  * (AUDYT_SZCZYTU_2026-08-01 §4 pkt 3); kreska jest brakiem danej, nie nową nazwą.

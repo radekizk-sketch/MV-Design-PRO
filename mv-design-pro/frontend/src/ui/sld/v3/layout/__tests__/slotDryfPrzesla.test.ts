@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLOT-DRYF-PRZĘSŁA — WYROCZNIE KARTY.
  *
@@ -63,7 +64,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
 import { composeStation } from '../../compose/station';
 import { computeBands, type StationBandHeights } from '../bands';
@@ -141,8 +142,8 @@ describe('SLOT-DRYF-PRZĘSŁA §1 — `bayStackCenterX` jest tą samą osią, w 
       nazwa: 'przelotowa ze źródłem DER na nN',
       stacja: stacjaPrzelotowa('s-5', 1, {
         derSources: [
-          { ref: 'src/1', kind: 'pv', ratedKw: 400, connectionSide: 'nn', operationalState: 'in_service' },
-        ] as StationMeasureInput['derSources'],
+          { id: 'src/1', kind: 'pv', ratedPower: 0.4, connectionSide: 'nn', operationalState: 'energized' },
+        ],
       }),
     },
   ];

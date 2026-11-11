@@ -6,7 +6,7 @@ właściwym kodem) przypadku. LV-INV-08 (otwarty łącznik przerywa ścieżkę) 
 
 from __future__ import annotations
 
-from enm.migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
+from enm.migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from enm.models import (
     Bus,
     Cable,

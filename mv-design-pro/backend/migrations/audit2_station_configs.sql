@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS station_audit2_configs (
     id VARCHAR(36) PRIMARY KEY,
     project_id VARCHAR(36) NOT NULL,
     station_id VARCHAR(255) NOT NULL,
-    mv_neutral_grounding_ref VARCHAR(64),
     tap_changer_refs TEXT NOT NULL DEFAULT '[]',
     der_specs TEXT NOT NULL DEFAULT '[]',
     -- Phase 8: per-element JSONB mappings.

@@ -125,8 +125,8 @@ def test_catalog_optional_language_is_absent_in_active_modals() -> None:
         / "magistrala"
         / "KreatorMagistralaSn.tsx",
         REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "magistrala" / "strings.ts",
-        # Łącznik sekcyjny SN: kanoniczny kreator ui2 (`SectionSwitchModal.tsx` bez montażu,
-        # skasowany 2026-10-22 jako martwy kod razem z modalami topologii — karta PODSTAWA-Q).
+        # Łącznik sekcyjny: kanoniczny kreator ui2 (`SectionSwitchModal.tsx` skasowany kartą
+        # W5-C jako martwy moduł bez konsumenta — ten test czytał ścieżkę, której nie ma).
         REPO_ROOT
         / "frontend"
         / "src"

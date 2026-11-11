@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F3 — wyrocznie routingu (SLD_CAD_SPEC_V3 §5.4, §11.2–§11.4, §16).
  * Wszystkie testy na SYNTETYKACH jawnych — zero losowości (P7).

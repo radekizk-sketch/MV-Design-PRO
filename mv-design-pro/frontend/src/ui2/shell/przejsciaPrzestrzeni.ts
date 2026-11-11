@@ -23,6 +23,7 @@ import {
   navigateToNetworkBuild,
 } from '../../ui/navigation';
 import { przestrzenDlaTrasy } from '../legacy/mostObszarow';
+import { runIdOgladanyTeraz } from '../wyniki/kontekst/kontekstWyniku';
 import type { SpaceId } from './spaces';
 import { useShellStore } from './useShellStore';
 
@@ -52,7 +53,8 @@ export function mostTrasyPrzestrzeni(space: SpaceId): void {
       navigateToCaseConfig({ caseId: stan.activeCaseId });
       return;
     case 'wyniki':
-      navigateToAnalysis({ runId: stan.activeRunId });
+      // Karta K8: przestrzeń „Wyniki” otwiera bieg oglądany z magazynu kontekstu wyniku.
+      navigateToAnalysis({ runId: runIdOgladanyTeraz() });
       return;
     case 'model':
     case 'dokumentacja':

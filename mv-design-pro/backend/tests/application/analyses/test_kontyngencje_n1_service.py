@@ -22,7 +22,9 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -868,6 +870,20 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacja
     # wstawiona w odcinek nie niesie już cienia deklaracji `meta.station_type_sn` /
     # `meta.station_type_semantic` (deklaracja ma jedno miejsce — `station_type`). gn03 bez zmian.
+    # 2026-10-16 (scalenie karty W5-B z integracją PR477-481): gn01 → 1d65e0b8…, gn03 = pin
+    # karty W5-B (5c5ded2b…). Pełne widoki z kodu obu rodziców scalenia i po scaleniu
+    # porównane liść po liściu: względem rodzica W5-B różnią się WYŁĄCZNIE gn01
+    # `context.snapshot_hash` i `input_hash`, względem rodzica integracji WYŁĄCZNIE te dwa
+    # liście w gn01 i gn03. Różnica modelu wejściowego: pola rozdzielnic w kolekcji `bays`
+    # (W5-B) złożone z usunięciem cienia deklaracji rodzaju stacji z `meta` (integracja).
+    # Wynik kontyngencji identyczny.
+    # 2026-10-21 (karta W5-C, jedna prawda stanu łączeniowego): gn01 bez zmiany, gn03
+    # 5c5ded2b… → 5ac3a589…. Pełne widoki z kodu bazy `d98bdad3e` i po karcie porównane
+    # liść po liściu: IDENTYCZNY zbiór kluczy, różnią się WYŁĄCZNIE `context.snapshot_hash`
+    # i `input_hash`. Jedyna różnica modelu wejściowego: punkt podziału pierścienia żyje
+    # na łączniku (`normal_state="open"`), magistrala nie niesie kopii `no_point_ref`
+    # (haszowanej dotąd wartością, teraz jak `null`), ciąg nie niesie `nop_station_ref`.
+    # Położenie łącznika (`status="open"`), enumeracja, dotkliwości i ranking bez zmian.
     # 2026-10-16 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): gn01 5306b64d… → 99081f49…, gn03
     # 2cacc16c… → e77ef288…. Pełne widoki z kodu bazy `bd3a87f4` (odtwarzają dokładnie
     # poprzednie piny) i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
@@ -878,6 +894,49 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # Referencyjna" deklaruje tolerancję kanałem operacji (`nn_earthing.lv_voltage_tolerance`
     # = PLUS_6); widok z budowniczym bez tej deklaracji odtwarza 99081f49…, a porównanie
     # liść po liściu daje WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # 2026-10-22 (scalenie gałęzi programu, partie 9–13, z gałęzią UI/UX — W5-B, W5-C):
+    # gn01 → 35f9706f…, gn03 → 81a508db…. Pełne widoki z kodu obu rodziców scalenia
+    # (odtwarzają dokładnie swoje piny: UI/UX 1d65e0b8…/5ac3a589…, program 881afd52…/e77ef288…)
+    # i z drzewa scalonego porównane liść po liściu: IDENTYCZNY zbiór kluczy, względem KAŻDEGO
+    # rodzica różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash` w obu sieciach.
+    # Różnica modelu wejściowego: złożenie pól w `bays` i stanu normalnego łącznika
+    # (`normal_state`, UI/UX) z tolerancją napięcia sieci nN stacji (program). Enumeracja,
+    # dotkliwości i ranking identyczne.
+    # 2026-10-21 (karta GPZ-MODEL, na bazie W5-C): gn01 1d65e0b8… → e8fb5ebe…, gn03
+    # 5ac3a589… → fc0f32f2…. Pełne widoki z kodu bazy karty (`f7235700e`) i po karcie
+    # porównane liść po liściu. Przyczyna: obie sieci podają równoważnik sieci NA SZYNACH SN
+    # (katalog źródła 15 kV), a dawny ładunek dokładał do niego wiszący transformator
+    # 110/15 kV z szyną 110 kV BEZ zasilania po stronie 110 kV; karta zakazuje tego
+    # połączenia (transformatory 110/SN są poza modelem w tym trybie). Skutek w widoku: znika
+    # kontyngencja fikcyjna „TR1 110/15 kV" (podsumowanie 6 → 5 kontyngencji, wszystkie
+    # rozstrzygnięte), a w śladzie pozostałych `transformatory_baza`/`transformatory_wariant`
+    # i `szyny_zasilane` maleją o ten transformator i jego szynę 110 kV (gn01 „Odcinek 1":
+    # `iteracje` NR 1 → 0, bo wyspa bilansująca to sama szyna SN). Dotkliwości,
+    # przeciążenia, naruszenia napięcia, odbiory bez zasilania, przypadek bazowy i ranking
+    # pozostałych kontyngencji — identyczne.
+    # 2026-10-22 (nałożenie GPZ-MODEL `73e56f4ad` na drzewo scalone programu): gn01 →
+    # a4b8be67…, gn03 → 959e81d3…. Pełne widoki z kodu czterech drzew (baza `f7235700e`,
+    # program `182d7df30`, GPZ-MODEL `73e56f4ad`, drzewo scalone; każde z trzech pierwszych
+    # odtwarza dokładnie swój pin) porównane liść po liściu: w gn01 403 liście zmienione
+    # przez GPZ-MODEL mają na drzewie scalonym wartość GPZ-MODEL, 159 bez zmian; w gn03
+    # odpowiednio 213 i 199. Jedyne liście różne od obu stron to `context.snapshot_hash`
+    # i `input_hash` (model wejściowy składa topologię GPZ-MODEL z polami addytywnymi
+    # programu). Wynik kontyngencji = wynik GPZ-MODEL.
+    # 2026-10-22 (karta MENU-KANON, commit 5 — ciągi liniowe spójne z odcinkami): gn01
+    # 1d65e0b8… → d9cbc723…, gn03 5ac3a589… → a9d5cf5d…. Pełne widoki z kodu HEAD
+    # `ca1c32017` (odtwarzają dokładnie poprzednie piny) i po karcie porównane liść po liściu:
+    # różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu
+    # wejściowego: `line_runs[0].segments` — odcinek podzielony wstawieniem stacji jest w ciągu
+    # zastąpiony połówkami `…_L`/`…_R` z przenumerowanym `order` (dotąd ciąg wskazywał
+    # usunięty odcinek). Enumeracja, dotkliwości, odbiory bez zasilania i ranking identyczne.
+    # 2026-10-22 (scalenie karty MENU-KANON `5bff32b4b` z gałęzią UI/UX `7f0fbfa86` po
+    # GPZ-MODEL): gn01 → 1494a965…, gn03 → 6918a4db…. Pełne widoki z kodu trzech drzew
+    # (UI/UX, MENU-KANON, scalone; dwa pierwsze odtwarzają dokładnie swoje piny a4b8be67…/
+    # 959e81d3… i d9cbc723…/a9d5cf5d…) porównane liść po liściu: drzewo scalone różni się od
+    # UI/UX WYŁĄCZNIE `context.snapshot_hash` i `input_hash` (ciąg liniowy z połówkami
+    # `…_L`/`…_R` karty MENU-KANON), od MENU-KANON — tym samym zbiorem liści co GPZ-MODEL
+    # (gn01 405, gn03 215: kontyngencja fikcyjna „TR1 110/15 kV" znika). Wynik
+    # kontyngencji = wynik UI/UX (GPZ-MODEL).
     # 2026-10-22 (karta LINIA-110, pkt 2): gn01 881afd52… → f87c9268…, gn03 e77ef288… →
     # 8c3b0f7e…. Pełne widoki z kodu bazy `04760140e` (odtwarzają dokładnie poprzednie piny)
     # i po karcie porównane liść po liściu: w widoku różnią się WYŁĄCZNIE
@@ -885,8 +944,16 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # z katalogu niosą w `materialized_params` mapę `wartosci_robocze` (R′0, X′0, żyła
     # powrotna — założenia inżynierskie katalogu): 4 gałęzie gn01, 3 gałęzie gn03. Enumeracja
     # kontyngencji, dotkliwości i ranking identyczne.
-    "gn01_promieniowa": "f87c9268d4e98c2e028b9418bb7097f5cad80d4887ddfccf0ea1f7b2b44b50c9",
-    "gn03_pierscien": "8c3b0f7edb9d23b2d67736015074c87e5f2a2444e273e63b0996bd322f824702",
+    # 2026-10-28 (scalenie gałęzi UI/UX `fa129e7d` z programem `7887272f`, baza `8f20bdd3c`):
+    # gn01 → 63af4b10…, gn03 → d05d5914…. Pełne widoki z kodu obu rodziców (odtwarzają
+    # dokładnie swoje piny: UI/UX 1494a965…/6918a4db…, program f87c9268…/8c3b0f7e…) i z drzewa
+    # scalonego porównane liść po liściu: zbiór kluczy identyczny z UI/UX, a względem UI/UX
+    # różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash` w obu sieciach (model
+    # wejściowy składa topologię GPZ-MODEL z mapą `wartosci_robocze` kabli SN karty
+    # LINIA-110). Jedyne liście różne od obu stron to te dwa odciski. Wynik kontyngencji =
+    # wynik UI/UX (GPZ-MODEL).
+    "gn01_promieniowa": "63af4b10b849707308af6ac179b091097cdc245dddc887ef732a152e8b9f2826",
+    "gn03_pierscien": "d05d59143f677beab95dfd3e7a1f0b8fe971ac59d946b550349e2cafe06817c8",
 }
 
 
@@ -1145,3 +1212,65 @@ def test_jedna_budowa_grafu_na_kontyngencje(monkeypatch) -> None:
     assert liczba_kontyngencji >= 3
     assert len(budowy) == liczba_kontyngencji + 1, "graf budowany raz na kontyngencję + raz na bazę"
     assert all(graf is not None for graf in grafy_rozplywu), "rozpływ dostaje gotowy graf"
+
+
+_FIKSTURA_EKRANU = (
+    Path(__file__).resolve().parents[4]
+    / "frontend"
+    / "src"
+    / "ui2"
+    / "wyniki"
+    / "kontyngencje"
+    / "__tests__"
+    / "fixtures.ts"
+)
+
+
+def _literaly_fikstury_ekranu() -> str:
+    """Treść fikstury ekranu ze sklejonymi literałami (`'a ' + 'b'` → `'a b'`) i bez
+    podwojenia ukośnika TypeScriptu — tekst porównywalny z odpowiedzią backendu."""
+    tekst = _FIKSTURA_EKRANU.read_text(encoding="utf-8")
+    tekst = re.sub(r"'\s*\n\s*\+\s*'", "", tekst)
+    return tekst.replace("\\\\", "\\")
+
+
+def test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu() -> None:
+    """Nagłówek fikstury okna „Kontyngencje N-1” deklaruje teksty PRZEPISANE z odpowiedzi
+    backendu. Deklaracja bez testu dryfowała: fikstura niosła „Obciazenie 134.74 % przekracza
+    limit 100.0 %.” i „Brak pradu galezi w wynikach PF.”, choć builder od dawna pisał liczby
+    po polsku z diakrytykami — test ekranu sprawdzał zdanie, którego projektant nie zobaczy.
+    Każdy tekst kryteriów, zdanie przekroczenia i ślad WHITE BOX pozycji `PRZECIAZENIE`
+    (pierścień, wyłączenie `ln_src_a`) oraz powód pominięcia kryterium prądowego mają stać
+    w fikstur ze znakiem w znak."""
+    fikstura = _literaly_fikstury_ekranu()
+    widok = build_kontyngencje_n1_view(_bieg(_pierscien()))
+    kryteria = widok["parameters"]["kryteria"]
+    teksty = [
+        kryteria["obciazenie"]["zrodlo_progu_pl"],
+        kryteria["obciazenie"]["zrodlo_obciazalnosci_pl"],
+        kryteria["napiecie"]["zrodlo_progu_pl"],
+        kryteria["napiecie"]["zrodlo_napiecia_pl"],
+        kryteria["zasilanie"]["zrodlo_pl"],
+        kryteria["poza_zakresem_pl"],
+        kryteria["ranking"]["definicja_pl"],
+        widok["przypadek_bazowy"]["powod_pl"],
+    ]
+    pozycja = next(
+        p for p in _po_ref(widok, "ln_src_a")["przeciazenia"] if p["element_ref"] == "ln_src_b"
+    )
+    teksty.append(pozycja["powod_pl"])
+    for krok in pozycja["slad_kryterium"]:
+        teksty.append(krok["tekst"])
+        if krok["latex"] is not None:
+            teksty.append(krok["latex"])
+    promien = build_kontyngencje_n1_view(_bieg(_promien_z_transformatorem()))
+    teksty += sorted(
+        {
+            p["powod_pl"]
+            for p in promien["przypadek_bazowy"]["kryteria_pominiete"]
+            if p["check_type"] == "BRANCH_LOADING"
+        }
+    )
+    teksty += [k["powod_pl"] for k in promien["kontyngencje"] if k["status"] == "wykluczony"]
+    brakujace = [t for t in teksty if f"'{t}'" not in fikstura]
+    assert brakujace == []

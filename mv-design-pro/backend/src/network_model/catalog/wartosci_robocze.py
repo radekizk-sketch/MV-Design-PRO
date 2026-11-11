@@ -29,7 +29,10 @@ RODZINY:
     zachowawcza w OBU kierunkach (największy I″k,max i najmniejszy I″k,min);
   * maszyna wirująca (``MASZYNA_SYNCHRONICZNA`` / ``MASZYNA_ASYNCHRONICZNA``) — parametry
     zwarciowe IEC 60909-0:2016 pkt 6.3 i 6.7 (x″d, cos φ_r, I_LR/I_rM, η_r, liczba par biegunów p),
-    nośnik wartości projektanta: ``Generator.overrides``.
+    nośnik wartości projektanta: ``Generator.overrides``;
+  * bateria kondensatorów równoległych SN (karta UX-04/POLE-BKR-MODEL) — układ połączeń, liczba
+    stopni, tolerancja pojemności, dławik ograniczający i rezystory rozładowcze; nośnik wartości
+    projektanta: pola elementu ``ShuntCapacitor``, nośnik danych typu: ``materialized_params``.
 """
 
 from __future__ import annotations
@@ -39,6 +42,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Final, Literal, Protocol
 
+from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
+from network_model.core.bateria_kondensatorow import NAZWY_UKLADOW_POLACZEN_BATERII_PL
 from network_model.core.voltage_factor import (
     ETYKIETA_TOLERANCJI_NN,
     TOLERANCJE_NAPIECIA_NN,
@@ -110,9 +115,15 @@ class OpisParametru:
     parametr: str
     nazwa_pl: str
     symbol: str
+    #: Ten sam symbol jako LaTeX — postać ekranowa (`MathInline`/`$…$`); `symbol` zostaje
+    #: identyfikatorem prozy śladu i raportu (`ui_math_guard`, karta UX-04/POLE-ZU).
+    symbol_latex: str
     jednostka: str
     dopuszczalne_od: float
     dopuszczalne_do: float
+    #: Jednostka jako LaTeX, gdy niesie symbole (`p.u.` na bazie `S_rG`, `U_rG`); pusta, gdy
+    #: jednostka jest zwykłym tekstem (`MVA`, `s`) — ekran pokazuje wtedy `jednostka`.
+    jednostka_latex: str = ""
     #: Parametr przyjmuje wyłącznie wartości całkowite (liczba par biegunów maszyny).
     calkowita: bool = False
 
@@ -124,6 +135,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_CZAS_WLASNY,
         nazwa_pl="czas własny wyłączania wyłącznika",
         symbol="t_b",
+        symbol_latex=r"t_b",
         jednostka="s",
         dopuszczalne_od=0.005,
         dopuszczalne_do=0.3,
@@ -132,6 +144,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_TH,
         nazwa_pl="prąd krótkotrwały wytrzymywany",
         symbol="I_k",
+        symbol_latex=r"I_k",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=100.0,
@@ -140,6 +153,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_T_TH,
         nazwa_pl="znamionowy czas trwania zwarcia",
         symbol="t_k",
+        symbol_latex=r"t_k",
         jednostka="s",
         dopuszczalne_od=0.1,
         dopuszczalne_do=5.0,
@@ -148,6 +162,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_DYN,
         nazwa_pl="prąd szczytowy wytrzymywany",
         symbol="I_p",
+        symbol_latex=r"I_p",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=250.0,
@@ -368,6 +383,14 @@ def _propozycja_czasu_wlasnego(
 
 
 def _propozycja_i_th(karta: KartaAparatuSN) -> tuple[PropozycjaWartosci | None, str | None]:
+    if not wielkosc_zwarciowa_aparatu_sn_dotyczy(karta.device_kind.strip().upper(), "i_th_ka"):
+        # „Nie dotyczy” (rodzaj), nie „brak danych”: wkładka bezpiecznikowa przepala się,
+        # PN-EN 60282-1 nie definiuje prądu krótkotrwałego wytrzymywanego (KAT-T-050).
+        return None, (
+            "prąd krótkotrwały wytrzymywany nie dotyczy tego rodzaju aparatu — w rozłączniku "
+            "bezpiecznikowym zwarcie przerywa wkładka, która przepala się, a nie przewodzi "
+            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje I_cw)"
+        )
     icu = karta.breaking_capacity_ka
     if karta.device_kind.strip().upper() == RODZAJ_WYLACZNIK and icu is not None and icu > 0:
         return (
@@ -1235,6 +1258,195 @@ POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
     ("x0_ohm_per_km", "X′0"),
 )
 
+# Odcinek MODELU bez składowej zerowej (zasada nr 4): linia albo kabel, którego R′0/X′0 nie ma
+# ani w modelu, ani z pozycji katalogu (odcinek z importu, z parametrów ręcznych). Brak danej
+# urządzenia nie blokuje zwarć doziemnych ani rozpływu niesymetrycznego — obliczenie przyjmuje
+# wartość roboczą tą samą regułą wyprowadzenia co pozycje katalogu, z opisem źródła odcinka.
+ZALOZENIE_ODCINKA_R0_TRZY_R1 = (
+    "R′0 = 3·R′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_ODCINKA_X0_TRZY_X1 = (
+    "X′0 = 3·X′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + R′ żyły powrotnej — wartość robocza odcinka bez składowej zerowej w modelu "
+    "(założenie inżynierskie: prąd składowej zerowej wraca wyłącznie żyłą powrotną, ekranem, "
+    "bez udziału ziemi)"
+)
+
+# Kabel nN bez składowej zerowej: żyła powrotna PE/PEN jest WSPÓLNA dla trzech faz (kabel
+# wielożyłowy), więc niesie prąd 3·I0 — w odróżnieniu od ekranów kabla SN (każda żyła fazowa ma
+# własny ekran, ekrany równolegle, każdy niesie I0). Ta sama impedancja pętli co analiza pętli
+# zwarcia nN (IEC 60364-4-41, ``fault_loop``): Z_pętli = Z_L + Z_PE ⇔ (2·Z1 + Z0)/3 przy
+# Z1 = Z_L, stąd Z0 = Z_L + 3·Z_PE. Reguła 3·R′1 dla kabla nN zaniżałaby R′0 (kabel 4-żyłowy
+# o równym przekroju: R′0 = 4·R′1) i zawyżała prąd zwarcia doziemnego — niebezpiecznie dla
+# sprawdzenia samoczynnego wyłączenia, więc bez danych żyły powrotnej wartości roboczej nie ma.
+ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + 3·R′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
+    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
+)
+ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA = (
+    "X′0 = X′1 + 3·X′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
+    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
+)
+
+# Susceptancja ZEROWA (pojemność doziemna) odcinka SN bez B′0 w modelu. Katalog kabli niesie
+# pojemność roboczą C′1 (materializacja: B′1 = 2πf·C′1 przy częstotliwości studium), katalog
+# linii — susceptancję B′1; pojemności doziemnej nie podaje żadna pozycja. Bez B′0 prąd
+# pojemnościowy sieci (I_C), rozstrojenie dławika, projekt uziemienia i bocznik pojemności
+# w sieci zerowej zwarć są nieoznaczalne — zasada nr 4: wartość robocza z relacji pierwszych
+# zasad, dana przyjęta ESTIMATED.
+#
+# Kabel SN: każda żyła ma własny ekran nad izolacją (pole promieniowe — budowa kabli SN wg
+# IEC 60502-2), więc jedyną pojemnością żyły jest pojemność żyła–ekran (ekran uziemiony):
+# macierz pojemności faz jest diagonalna, C′0 = C′1, stąd B′0 = B′1 (ta sama częstotliwość).
+# Linia SN bez przewodu odgromowego: metoda odbić zwierciadlanych daje
+# C′0/C′1 = ln(D/r) / (ln(D/r) + 3·ln(2h/D)); dla typowej geometrii słupów SN (wysokość
+# zawieszenia 8–11 m, odstęp faz 0,6–1,4 m, przewody 6–15 mm) solver parametrów linii tego
+# repozytorium (``network_model.solvers.parametry_linii_napowietrznej``) daje 0,34–0,45 —
+# wartość robocza B′0 = 0,4·B′1 (rozrzut ±15 % wobec geometrii rzeczywistej, jawnie w założeniu).
+#: Stosunek C′0/C′1 linii SN bez przewodu odgromowego (wartość robocza, uzasadnienie wyżej).
+STOSUNEK_B0_B1_LINII_SN: Final[float] = 0.4
+
+ZALOZENIE_ODCINKA_B0_KABEL_SN = (
+    "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; "
+    "jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1)"
+)
+ZALOZENIE_ODCINKA_B0_LINIA_SN = (
+    "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych "
+    "C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; "
+    "rozrzut ±15 % wobec geometrii rzeczywistej)"
+)
+
+#: Założenia wartości roboczej odcinka MODELU — dana przyjęta nazywa je „wartością roboczą”,
+#: nie „wartością z katalogu” (``dana_przyjeta_z0``).
+ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
+    {
+        ZALOZENIE_ODCINKA_R0_TRZY_R1,
+        ZALOZENIE_ODCINKA_X0_TRZY_X1,
+        ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_B0_KABEL_SN,
+        ZALOZENIE_ODCINKA_B0_LINIA_SN,
+    }
+)
+
+#: Pole susceptancji zerowej gałęzi i jego etykieta (dana przyjęta, ślad, komunikaty).
+POLE_B0: Final[str] = "b0_siemens_per_km"
+ETYKIETA_B0: Final[str] = "B′0"
+
+#: Jednostka pola składowej zerowej w danej przyjętej.
+JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ: Mapping[str, str] = {
+    "r0_ohm_per_km": "Ω/km",
+    "x0_ohm_per_km": "Ω/km",
+    POLE_B0: "S/km",
+}
+
+
+def wyprowadz_susceptancje_zerowa_sn(
+    *, kabel: bool, b1: float | None
+) -> tuple[tuple[str, float, str], ...]:
+    """B′0 odcinka SN do przyjęcia wartością roboczą: krotka (pole, wartość [S/km], założenie).
+
+    JEDNA reguła dla każdego konsumenta pojemności doziemnej (sieć zerowa zwarć, prąd
+    pojemnościowy sieci, projekt uziemienia V12.6, gotowość V12.6): kabel SN B′0 = B′1, linia
+    SN B′0 = 0,4·B′1. Pusta krotka, gdy B′1 nieznane albo niedodatnie — pojemności doziemnej
+    nie da się oprzeć na pojemności roboczej, której nie ma. Wołający stosuje regułę
+    WYŁĄCZNIE do odcinków pasma SN (nN i WN — odmowa nazwana u wołającego).
+    """
+    if b1 is None or b1 <= 0:
+        return ()
+    if kabel:
+        return ((POLE_B0, b1, ZALOZENIE_ODCINKA_B0_KABEL_SN),)
+    return ((POLE_B0, round(STOSUNEK_B0_B1_LINII_SN * b1, 15), ZALOZENIE_ODCINKA_B0_LINIA_SN),)
+
+
+def wyprowadz_skladowa_zerowa_kabla_nn(
+    *,
+    r1: float | None,
+    x1: float | None,
+    r_zyly_powrotnej: float | None,
+    x_zyly_powrotnej: float | None,
+    brak_r0: bool,
+    brak_x0: bool,
+) -> tuple[tuple[str, float, str], ...]:
+    """Pola R′0/X′0 kabla nN do przyjęcia wartością roboczą: R′0 = R′1 + 3·R′PE,
+    X′0 = X′1 + 3·X′PE (wyłącznie pola, których brak). Pusta krotka, gdy R′1 albo X′1
+    nieznane albo niedodatnie albo żyła powrotna bez rezystancji (dodatniej) i reaktancji
+    (nieujemnej) — reguły 3·R′1 dla kabla nN nie ma (zaniżone R′0, zawyżony prąd doziemny)."""
+    if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
+        return ()
+    if r_zyly_powrotnej is None or r_zyly_powrotnej <= 0:
+        return ()
+    if x_zyly_powrotnej is None or x_zyly_powrotnej < 0:
+        return ()
+    wynik: list[tuple[str, float, str]] = []
+    if brak_r0:
+        wynik.append(
+            (
+                "r0_ohm_per_km",
+                round(r1 + 3.0 * r_zyly_powrotnej, 6),
+                ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
+            )
+        )
+    if brak_x0:
+        wynik.append(
+            (
+                "x0_ohm_per_km",
+                round(x1 + 3.0 * x_zyly_powrotnej, 6),
+                ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+            )
+        )
+    return tuple(wynik)
+
+
+def wyprowadz_skladowa_zerowa(
+    *,
+    kabel: bool,
+    r1: float | None,
+    x1: float | None,
+    r_zyly_powrotnej: float | None,
+    brak_r0: bool,
+    brak_x0: bool,
+    z_katalogu: bool,
+) -> tuple[tuple[str, float, str], ...]:
+    """Pola R′0/X′0 do przyjęcia wartością roboczą: krotki (pole, wartość [Ω/km], założenie).
+
+    JEDNA reguła wyprowadzenia dla pozycji katalogu (``mv_cable_line_catalog``) i dla odcinka
+    modelu bez składowej zerowej (``enm.skladowa_zerowa_odcinka``): R′0 = 3·R′1 (kabel ze
+    znaną żyłą powrotną: R′0 = R′1 + R′ żyły powrotnej), X′0 = 3·X′1 — wyłącznie pola, których
+    brak (``brak_r0`` / ``brak_x0``). ``z_katalogu`` wybiera opis źródła założenia. Pusta krotka, gdy R′1 albo
+    X′1 nieznane albo niedodatnie — wartości roboczej nie da się przyjąć (stosunek typowy
+    dotyczy przewodu o niezerowej impedancji zgodnej).
+    """
+    if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
+        return ()
+    trzy_r1, trzy_x1, zyla = (
+        (ZALOZENIE_R0_TRZY_R1, ZALOZENIE_X0_TRZY_X1, ZALOZENIE_R0_ZYLA_POWROTNA)
+        if z_katalogu
+        else (
+            ZALOZENIE_ODCINKA_R0_TRZY_R1,
+            ZALOZENIE_ODCINKA_X0_TRZY_X1,
+            ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
+        )
+    )
+    wynik: list[tuple[str, float, str]] = []
+    if brak_r0:
+        if kabel and r_zyly_powrotnej is not None and r_zyly_powrotnej > 0:
+            wynik.append(("r0_ohm_per_km", round(r1 + r_zyly_powrotnej, 6), zyla))
+        else:
+            wynik.append(("r0_ohm_per_km", round(3.0 * r1, 6), trzy_r1))
+    if brak_x0:
+        wynik.append(("x0_ohm_per_km", round(3.0 * x1, 6), trzy_x1))
+    return tuple(wynik)
+
 
 def wartosc_projektanta(wartosc: Any, tabliczkowa: Any) -> bool:
     """Pole elementu niesie wartość PROJEKTANTA: tabliczka zna to pole, a element ma INNĄ wartość.
@@ -1287,12 +1499,15 @@ def pola_z0_robocze(
 
 
 def dana_przyjeta_z0(
-    *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
+    *, pole: str, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
 ) -> DanaPrzyjeta:
-    """Wartość robocza składowej zerowej z katalogu jako dana przyjęta werdyktu (§3c pkt 4)."""
+    """Wartość robocza składowej zerowej (z katalogu albo odcinka modelu bez składowej
+    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4); jednostka
+    z pola (``JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ``: R′0/X′0 w Ω/km, B′0 w S/km)."""
+    zrodlo_pl = "wartość robocza" if zalozenie in ZALOZENIA_Z0_ODCINKA else "z katalogu"
     return DanaPrzyjeta(
-        nazwa_pl=f"{etykieta} z katalogu ({miejsce_pl})",
-        wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
+        nazwa_pl=f"{etykieta} {zrodlo_pl} ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=wartosc, jednostka=JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ[pole]),
         powod_pl=(
             f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
             "albo pomiar)."
@@ -1374,6 +1589,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_POZORNA_MASZYNY,
         nazwa_pl="moc pozorna znamionowa jednej maszyny",
         symbol="S_rG",
+        symbol_latex=r"S_{rG}",
         jednostka="MVA",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_POZORNA_MASZYNY_MAX_MVA,
@@ -1382,6 +1598,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
         nazwa_pl="moc znamionowa (mechaniczna) jednej maszyny",
         symbol="P_rM",
+        symbol_latex=r"P_{rM}",
         jednostka="MW",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_ZNAMIONOWA_MASZYNY_MAX_MW,
@@ -1390,7 +1607,9 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_XD,
         nazwa_pl="reaktancja podprzejściowa nasycona",
         symbol="x″d",
+        symbol_latex=r"x''_{d}",
         jednostka="p.u. (S_rG, U_rG)",
+        jednostka_latex=r"\mathrm{p.u.}\ (S_{rG},\ U_{rG})",
         dopuszczalne_od=0.05,
         dopuszczalne_do=0.5,
     ),
@@ -1398,6 +1617,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_COS_PHI_MASZYNY,
         nazwa_pl="znamionowy współczynnik mocy",
         symbol="cos φ_r",
+        symbol_latex=r"\cos\varphi_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1406,6 +1626,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_PARY_BIEGUNOW,
         nazwa_pl="liczba par biegunów",
         symbol="p",
+        symbol_latex=r"p",
         jednostka="1",
         dopuszczalne_od=1.0,
         dopuszczalne_do=float(PARY_BIEGUNOW_MAX),
@@ -1415,6 +1636,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_KROTNOSC_I_LR,
         nazwa_pl="krotność prądu zablokowanego wirnika",
         symbol="I_LR/I_rM",
+        symbol_latex=r"I_{LR}/I_{rM}",
         jednostka="1",
         dopuszczalne_od=2.0,
         dopuszczalne_do=10.0,
@@ -1423,6 +1645,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_SPRAWNOSC,
         nazwa_pl="sprawność znamionowa",
         symbol="η_r",
+        symbol_latex=r"\eta_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1619,6 +1842,8 @@ def rejestr_maszyn_do_formularza() -> dict[str, Any]:
                     "parametr": parametr,
                     "nazwa_pl": OPISY_PARAMETROW_MASZYNY[parametr].nazwa_pl,
                     "symbol": OPISY_PARAMETROW_MASZYNY[parametr].symbol,
+                    "symbol_latex": OPISY_PARAMETROW_MASZYNY[parametr].symbol_latex,
+                    "jednostka_latex": OPISY_PARAMETROW_MASZYNY[parametr].jednostka_latex,
                     "jednostka": OPISY_PARAMETROW_MASZYNY[parametr].jednostka,
                     "dopuszczalne_od": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_od,
                     "dopuszczalne_do": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_do,
@@ -2000,3 +2225,383 @@ def zalozenia_parametrow_maszyn(
             }
         )
     return tuple(zalozenia)
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: bateria kondensatorów równoległych SN (karta UX-04/POLE-BKR-MODEL)
+# ---------------------------------------------------------------------------
+#
+# Pozycja referencyjna katalogu baterii podaje Q_n, U_n, straty i układ połączeń (Zeszyt 1
+# §17); tolerancji pojemności, dławika ograniczającego i rezystorów rozładowczych nie podaje
+# (dane karty producenta). Brak danej nie blokuje obliczeń: rozstrzygnięcie daje wartość
+# projektanta na elemencie (dana projektu, nie dana przyjęta — jak geometria linii 110 kV),
+# potem parametr typu (``materialized_params`` elementu), a na końcu propozycję tego rejestru —
+# wyłącznie ona jest daną przyjętą ``ESTIMATED`` w każdym wyniku, do którego wchodzi.
+
+PARAMETR_BATERII_UKLAD = "uklad_polaczen"
+PARAMETR_BATERII_LICZBA_STOPNI = "liczba_stopni"
+PARAMETR_BATERII_TOLERANCJA_MIN = "tolerancja_pojemnosci_min_proc"
+PARAMETR_BATERII_TOLERANCJA_MAX = "tolerancja_pojemnosci_max_proc"
+PARAMETR_BATERII_DLAWIK = "dlawik_ograniczajacy"
+PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA = "dlawik_indukcyjnosc_mh"
+PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE = "rezystory_rozladowcze_wewnetrzne"
+#: Kolejność stała (determinizm odpowiedzi i danych przyjętych); równa liście pól typu
+#: ``catalog.types.POLA_BATERII_KONDENSATOROW_TYPU`` (przypięte testem modelu baterii).
+PARAMETRY_BATERII_KONDENSATOROW: tuple[str, ...] = (
+    PARAMETR_BATERII_UKLAD,
+    PARAMETR_BATERII_LICZBA_STOPNI,
+    PARAMETR_BATERII_TOLERANCJA_MIN,
+    PARAMETR_BATERII_TOLERANCJA_MAX,
+    PARAMETR_BATERII_DLAWIK,
+    PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA,
+    PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE,
+)
+
+_ODNIESIENIE_ZESZYTU_1_BKR = (
+    "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, §17 s. 32 i Zał. 16"
+)
+_ODNIESIENIE_TOLERANCJI_POJEMNOSCI = (
+    "IEC 60871-1 (kondensatory równoległe do sieci powyżej 1000 V) — tolerancja pojemności "
+    "jednostki −5 %…+10 % wartości znamionowej (parafraza; numer punktu nie został "
+    "zweryfikowany ze źródłem)"
+)
+
+
+@dataclass(frozen=True)
+class PropozycjaDanejBaterii:
+    """Propozycja wartości roboczej parametru baterii kondensatorów (liczba, wybór, tak/nie)."""
+
+    parametr: str
+    nazwa_pl: str
+    wartosc: str | int | float | bool
+    jednostka: str | None
+    rodzaj_zrodla: RodzajZrodla
+    odniesienie: str
+    uzasadnienie_pl: str
+    wplyw_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parametr": self.parametr,
+            "nazwa_pl": self.nazwa_pl,
+            "wartosc": self.wartosc,
+            "jednostka": self.jednostka,
+            "rodzaj_zrodla": self.rodzaj_zrodla,
+            "odniesienie": self.odniesienie,
+            "uzasadnienie_pl": self.uzasadnienie_pl,
+            "wplyw_pl": self.wplyw_pl,
+        }
+
+
+#: Propozycje rodziny baterii — jedno źródło (determinizm brzmienia). Indukcyjność dławika
+#: jest propozycją WYŁĄCZNIE dla baterii z dławikiem (bez dławika parametr nie dotyczy).
+PROPOZYCJE_BATERII_KONDENSATOROW: Mapping[str, PropozycjaDanejBaterii] = {
+    PARAMETR_BATERII_UKLAD: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_UKLAD,
+        nazwa_pl="układ połączeń baterii",
+        wartosc="PODWOJNA_GWIAZDA_IZOLOWANA",
+        jednostka=None,
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl=(
+            "Ani element, ani typ nie podaje układu połączeń — przyjęto podwójną gwiazdę "
+            "z izolowanymi punktami gwiazd, wymaganą dla baterii rozdzielni SN GPZ"
+        ),
+        wplyw_pl=(
+            "układ rozstrzyga o składowej zerowej: gwiazda izolowana i trójkąt nie dają drogi "
+            "zerowej ani prądu pojemnościowego przy zwarciu doziemnym, gwiazda uziemiona daje "
+            "Y0 = Y1 i zwiększa prąd pojemnościowy sieci; rozpływ symetryczny nie zależy od "
+            "układu"
+        ),
+    ),
+    PARAMETR_BATERII_LICZBA_STOPNI: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_LICZBA_STOPNI,
+        nazwa_pl="liczba stopni baterii",
+        wartosc=1,
+        jednostka="1",
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl="Ani element, ani typ nie podaje liczby stopni — przyjęto jeden stopień",
+        wplyw_pl=(
+            "przy jednym stopniu moc baterii jest w całości załączona albo wyłączona razem "
+            "z polem; podział na stopnie zmienia moc wyłącznie przy wyłączonych stopniach"
+        ),
+    ),
+    PARAMETR_BATERII_TOLERANCJA_MIN: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_TOLERANCJA_MIN,
+        nazwa_pl="dolna tolerancja pojemności",
+        wartosc=-5.0,
+        jednostka="%",
+        rodzaj_zrodla="NORMA",
+        odniesienie=_ODNIESIENIE_TOLERANCJI_POJEMNOSCI,
+        uzasadnienie_pl="Typ nie podaje tolerancji pojemności — przyjęto granicę normy",
+        wplyw_pl=(
+            "tolerancja wyznacza zakres mocy biernej baterii w śladzie rozpływu; wartość "
+            "nominalna rozpływu liczona jest z pojemności znamionowej"
+        ),
+    ),
+    PARAMETR_BATERII_TOLERANCJA_MAX: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_TOLERANCJA_MAX,
+        nazwa_pl="górna tolerancja pojemności",
+        wartosc=10.0,
+        jednostka="%",
+        rodzaj_zrodla="NORMA",
+        odniesienie=_ODNIESIENIE_TOLERANCJI_POJEMNOSCI,
+        uzasadnienie_pl="Typ nie podaje tolerancji pojemności — przyjęto granicę normy",
+        wplyw_pl=(
+            "tolerancja wyznacza zakres mocy biernej baterii w śladzie rozpływu; wartość "
+            "nominalna rozpływu liczona jest z pojemności znamionowej"
+        ),
+    ),
+    PARAMETR_BATERII_DLAWIK: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_DLAWIK,
+        nazwa_pl="dławik ograniczający prąd załączania",
+        wartosc=False,
+        jednostka=None,
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl=(
+            "Ani element, ani typ nie podaje dławika — przyjęto baterię bez dławika, jak na "
+            "schemacie pola baterii (Zał. 16 nie przedstawia dławika)"
+        ),
+        wplyw_pl=(
+            "dławik szeregowy zwiększa admitancję baterii o czynnik 1/(1 − ω²LC); dla dławików "
+            "ograniczających prąd załączania zmiana mocy biernej jest rzędu setnych części "
+            "procenta"
+        ),
+    ),
+    PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA,
+        nazwa_pl="indukcyjność dławika ograniczającego",
+        wartosc=0.1,
+        jednostka="mH",
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=(
+            "założenie inżynierskie MV-DESIGN-PRO: rząd wielkości dławików ograniczających "
+            "prąd załączania baterii SN (dziesiąte części milihenra); bez źródła normowego"
+        ),
+        uzasadnienie_pl=(
+            "Bateria ma dławik, ale ani element, ani typ nie podaje jego indukcyjności — "
+            "przyjęto 0,1 mH"
+        ),
+        wplyw_pl=(
+            "przy 50 Hz reaktancja 0,1 mH to ok. 0,031 Ω wobec reaktancji baterii rzędu "
+            "dziesiątek do setek omów — zmiana mocy biernej poniżej 0,1 %; indukcyjność "
+            "decyduje o prądzie załączania, którego dziś żaden dobór aparatu nie czyta"
+        ),
+    ),
+    PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE,
+        nazwa_pl="wewnętrzne rezystory rozładowcze jednostek",
+        wartosc=False,
+        jednostka=None,
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl=(
+            "Typ nie potwierdza wewnętrznych rezystorów rozładowczych — przyjęto ich brak "
+            "(założenie zachowawcze)"
+        ),
+        wplyw_pl=(
+            "przy braku rezystorów wewnętrznych pole baterii wymaga dwóch przekładników "
+            "napięciowych międzyfazowych do rozładowania (reguła walidatora W047); wartość "
+            "nie wchodzi do rozpływu ani do zwarć"
+        ),
+    ),
+}
+
+PochodzenieDanejBaterii = Literal["PROJEKTANT", "KATALOG", "PROPOZYCJA"]
+
+
+@dataclass(frozen=True)
+class DanaBateriiRozstrzygnieta:
+    """Rozstrzygnięty parametr baterii: wartość, pochodzenie i (dla propozycji) jej treść."""
+
+    parametr: str
+    wartosc: Any
+    pochodzenie: PochodzenieDanejBaterii | None
+    propozycja: PropozycjaDanejBaterii | None = None
+
+    @property
+    def robocza(self) -> bool:
+        return self.pochodzenie == "PROPOZYCJA"
+
+    def opis_zrodla_pl(self) -> str:
+        if self.pochodzenie == "PROPOZYCJA" and self.propozycja is not None:
+            p = self.propozycja
+            return (
+                f"wartość robocza ({_RODZAJ_ZRODLA_PL[p.rodzaj_zrodla]}): "
+                f"{_zdanie(p.odniesienie)} {_zdanie(p.uzasadnienie_pl)} "
+                f"Wpływ: {_zdanie(p.wplyw_pl)}"
+            )
+        if self.pochodzenie == "PROJEKTANT":
+            return "dana projektu nadana na elemencie modelu"
+        if self.pochodzenie == "KATALOG":
+            return "dana typu katalogowego baterii"
+        return "parametr nie dotyczy tej baterii"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parametr": self.parametr,
+            "wartosc": self.wartosc,
+            "pochodzenie": self.pochodzenie,
+            "wartosc_robocza": self.robocza,
+            "propozycja": self.propozycja.to_dict() if self.propozycja is not None else None,
+            "opis_zrodla_pl": self.opis_zrodla_pl(),
+        }
+
+
+def rozstrzygnij_dane_baterii(
+    element: Mapping[str, Any], typ: Mapping[str, Any] | None
+) -> dict[str, DanaBateriiRozstrzygnieta]:
+    """Pierwszeństwo: wartość elementu (projektant) > parametr typu > propozycja rejestru.
+
+    ``element`` — pola baterii z elementu modelu (``None`` = nienadane); ``typ`` —
+    ``materialized_params`` elementu (kopia typu katalogowego) albo ``None``. Indukcyjność
+    dławika dla baterii bez dławika nie dotyczy (``pochodzenie is None``, wartość ``None``).
+    Wynik w kolejności ``PARAMETRY_BATERII_KONDENSATOROW``.
+    """
+    karta = typ or {}
+    wynik: dict[str, DanaBateriiRozstrzygnieta] = {}
+    for parametr in PARAMETRY_BATERII_KONDENSATOROW:
+        if (
+            parametr == PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA
+            and not wynik[PARAMETR_BATERII_DLAWIK].wartosc
+        ):
+            wynik[parametr] = DanaBateriiRozstrzygnieta(parametr, None, None)
+            continue
+        if element.get(parametr) is not None:
+            wynik[parametr] = DanaBateriiRozstrzygnieta(parametr, element[parametr], "PROJEKTANT")
+        elif karta.get(parametr) is not None:
+            wynik[parametr] = DanaBateriiRozstrzygnieta(parametr, karta[parametr], "KATALOG")
+        else:
+            propozycja = PROPOZYCJE_BATERII_KONDENSATOROW[parametr]
+            wynik[parametr] = DanaBateriiRozstrzygnieta(
+                parametr, propozycja.wartosc, "PROPOZYCJA", propozycja
+            )
+    return wynik
+
+
+def dane_przyjete_baterii(
+    dane: Mapping[str, DanaBateriiRozstrzygnieta],
+    *,
+    miejsce_pl: str,
+    parametry: Iterable[str] | None = None,
+) -> tuple[DanaPrzyjeta, ...]:
+    """Wartości robocze baterii jako dane przyjęte werdyktu (``ESTIMATED``, §3c pkt 4).
+
+    ``parametry`` zawęża zbiór do parametrów, które REALNIE weszły do wyniku (np. zwarcie
+    doziemne czyta wyłącznie układ połączeń); ``None`` = wszystkie. Wartość projektanta
+    i parametr typu nie są danymi przyjętymi.
+    """
+    zakres = None if parametry is None else set(parametry)
+    wynik: list[DanaPrzyjeta] = []
+    for parametr in PARAMETRY_BATERII_KONDENSATOROW:
+        dana = dane.get(parametr)
+        if dana is None or not dana.robocza or (zakres is not None and parametr not in zakres):
+            continue
+        assert dana.propozycja is not None
+        wartosc: Wielkosc | None = None
+        opis = dana.opis_zrodla_pl()
+        if dana.propozycja.jednostka is not None and not isinstance(dana.wartosc, bool):
+            wartosc = Wielkosc(wartosc=float(dana.wartosc), jednostka=dana.propozycja.jednostka)
+        else:
+            opis = f"{opis} Przyjęto: {_wartosc_baterii_pl(parametr, dana.wartosc)}."
+        wynik.append(
+            DanaPrzyjeta(
+                nazwa_pl=f"{dana.propozycja.nazwa_pl} ({miejsce_pl})",
+                wartosc=wartosc,
+                powod_pl=opis,
+                jakosc=FieldQuality.ESTIMATED,
+            )
+        )
+    return tuple(wynik)
+
+
+def _wartosc_baterii_pl(parametr: str, wartosc: Any) -> str:
+    if parametr == PARAMETR_BATERII_UKLAD:
+        return NAZWY_UKLADOW_POLACZEN_BATERII_PL[str(wartosc)]
+    if isinstance(wartosc, bool):
+        return "tak" if wartosc else "nie"
+    return str(wartosc)
+
+
+# ---------------------------------------------------------------------------
+# Niezawodność elementów sieci SN (analiza niezawodności V12.6, karta UX-04/
+# POLE-ZU-SKLADOWA-ZEROWA odcinek 3). Model ENM nie niesie danych niezawodnościowych
+# elementów; intensywność uszkodzeń i czas odnowy są założeniem inżynierskim (bez numeru
+# normy — IEEE Std 1366 definiuje WYŁĄCZNIE sposób liczenia wskaźników, nie dane elementów),
+# jawnym jako dana przyjęta ESTIMATED. Projektant zastępuje każdą wartość parametrem
+# ``reliability_data`` analizy (zasada nr 4 pkt 3). Dawny katalog „reliability-defaults”
+# API niósł dodatkowy wiersz transformatora SN/nN (0,008/rok, 48 h), którego most nigdy nie
+# czytał — fantom usunięty; katalog czyta odtąd TEN rejestr.
+# ---------------------------------------------------------------------------
+
+ElementNiezawodnosci = Literal["linia_napowietrzna_sn", "kabel_sn", "aparat_sn"]
+
+
+@dataclass(frozen=True)
+class PropozycjaNiezawodnosci:
+    """Wartość robocza niezawodności jednego rodzaju elementu (λ i czas odnowy)."""
+
+    element: ElementNiezawodnosci
+    nazwa_pl: str
+    #: Intensywność uszkodzeń: na km i rok (linia, kabel) albo na rok (aparat).
+    intensywnosc_uszkodzen: float
+    jednostka_intensywnosci: str
+    na_km: bool
+    czas_odnowy_h: float
+    odniesienie: str
+
+
+_ODNIESIENIE_NIEZAWODNOSCI = (
+    "założenie inżynierskie: wartość typowa praktyki eksploatacji sieci SN (rząd wielkości "
+    "spotykany w statystykach awaryjności operatorów), bez wartości normowej — IEEE Std 1366 "
+    "definiuje sposób liczenia wskaźników SAIDI/SAIFI/CAIDI/MAIFI, nie dane elementów"
+)
+
+PROPOZYCJE_NIEZAWODNOSCI: Mapping[ElementNiezawodnosci, PropozycjaNiezawodnosci] = {
+    "linia_napowietrzna_sn": PropozycjaNiezawodnosci(
+        element="linia_napowietrzna_sn",
+        nazwa_pl="linia napowietrzna SN",
+        intensywnosc_uszkodzen=0.08,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=3.5,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "kabel_sn": PropozycjaNiezawodnosci(
+        element="kabel_sn",
+        nazwa_pl="linia kablowa SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=12.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "aparat_sn": PropozycjaNiezawodnosci(
+        element="aparat_sn",
+        nazwa_pl="aparat łączeniowy SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/rok",
+        na_km=False,
+        czas_odnowy_h=4.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+}
+
+#: Udział przerw krótkich (MAIFI) w liczbie przerw długich (SAIFI) — założenie inżynierskie
+#: (sieć bez danych o samoczynnym ponownym załączaniu); MAIFI = 0,12·SAIFI jest daną przyjętą.
+UDZIAL_MAIFI_DO_SAIFI = 0.12
+ODNIESIENIE_MAIFI = (
+    "założenie inżynierskie: przerwy krótkie jako stały udział 0,12 przerw długich — model nie "
+    "niesie danych o samoczynnym ponownym załączaniu ani rejestru przerw krótkich"
+)
+
+
+def element_niezawodnosci(rodzaj_galezi: str) -> ElementNiezawodnosci:
+    """Rodzaj elementu rejestru niezawodności dla rodzaju gałęzi ENM (jedno odwzorowanie)."""
+    if rodzaj_galezi == "line_overhead":
+        return "linia_napowietrzna_sn"
+    if rodzaj_galezi == "cable":
+        return "kabel_sn"
+    return "aparat_sn"

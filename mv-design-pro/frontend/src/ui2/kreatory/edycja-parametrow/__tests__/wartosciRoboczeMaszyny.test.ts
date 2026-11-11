@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta PODSTAWA-Q (zasada nr 4): dobór parametrów maszyny wirującej generatora z rejestru
  * backendu i podpowiedź „co obliczenie przyjmie bez wartości projektanta".

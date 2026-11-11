@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P11c — Results Comparison Tests (Minimal)
  *

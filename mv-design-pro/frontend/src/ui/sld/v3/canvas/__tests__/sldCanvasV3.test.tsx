@@ -49,7 +49,9 @@ import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArro
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
 import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
+import { LABEL_ROLE_BY_OWNER_KIND } from '../../layout/labels';
 import { HIGHLIGHT_COLOR, STATE_COLOR, VOLTAGE_COLOR } from '../../theme/colorTokens';
+import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
 
 afterEach(() => cleanup());
 
@@ -551,6 +553,7 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
     const blockerLabel = {
       ownerRef: 'r1-blocker',
       ownerKind: 'segment-span' as const,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
       labelClass: 't2' as const,
       text: 'r1-blocker',
       slotIndex: 1 as const,
@@ -1190,16 +1193,14 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony 
   it('symbol noPoint dostaje STATE_COLOR.nop — RÓŻNY od bazy/napięcia — na L1/L2 (GS-1: L0 = marker sylwetki)', () => {
     // Fixtura bazowa nie niesie żadnego NOP (patrz `buildScene.test.ts`
     // `enmWithSyntheticNop` — ten sam GAP udokumentowany tam). Syntetyzujemy
-    // lokalnie: `nop_station_ref` ciągu głównego = ref pierwszej stacji ciągu.
+    // lokalnie: punkt podziału w pierwszej stacji ciągu głównego — pozycja normalna
+    // łącznika pola (karta W5-C; dawna kopia `LineRun.nop_station_ref` skasowana).
     // GS-1 (V12K-137, GAP §10.4): symbol `noPoint` (kolorowany wg tabeli stanów)
     // to reprezentacja L1/L2; na L0 NOP niesie marker `noOpen` sylwetki mini-RMU
     // (bez osobnego symbolu — patrz `buildScene.test.ts`).
     const scene2 = buildSceneV3(enm, 2);
     const targetStationRef = scene2.meta.mainTrunkStationIds[0];
-    const enmWithNop = structuredClone(enm);
-    const mainRun = enmWithNop.line_runs?.find((r) => r.run_kind === 'main_trunk');
-    expect(mainRun).toBeTruthy();
-    (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
+    const enmWithNop = zPunktemPodzialuWStacji(enm, targetStationRef);
 
     for (const lod of [1, 2] as const) {
       const scene = buildSceneV3(enmWithNop, lod);

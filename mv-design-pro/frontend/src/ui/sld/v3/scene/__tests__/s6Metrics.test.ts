@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SCHEMAT-10 S6 (V12K-137) — testy KOMPLETU 18 metryk layoutu
  * (`layoutMetricsReport` i składowe), WARUNKI_ODBIORU_S6 §3/§6/§11.
@@ -66,12 +67,20 @@ function makeScene(partial: {
       sections: [],
       transformers: [],
       mainTrunkStationIds: [],
+      sheetRows: [],
+      sheetRowBands: [],
       lateralRunIds: [],
+      drawnStationIds: [],
+      stacjaSzynySekcji: {},
+      stationTraversalOrder: [],
+      drawnBranchPointRefs: [],
       stopNotes: [],
       sources: [],
       gpzZone: null,
+      electricalGraphStatus: 'SLD_VALID',
+      electricalGraphViolations: [],
     },
-  } as SceneV3;
+  };
 }
 
 describe('S6 — poprawność metryk funkcji kosztu (§3)', () => {

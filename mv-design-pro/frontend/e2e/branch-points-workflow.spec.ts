@@ -123,7 +123,6 @@ async function bootstrapActiveCase(page: Page, request: APIRequestContext): Prom
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -185,8 +184,6 @@ test.describe('Branch points workflow', () => {
       sk3_mva: 250.0,
       rx_ratio: 0.1,
       catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-      hv_voltage_kv: 110.0,
-      transformer_sn_mva: 25.0,
     });
 
     const op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -204,11 +201,19 @@ test.describe('Branch points workflow', () => {
     await reloadEditorPage(page);
     await selectSegmentInInspector(page, OVERHEAD_SEGMENT_NAME);
 
+    // UI-02b JEDEN-INSPEKTOR: działanie występuje w inspektorze RAZ — w pasku działań z
+    // rejestru menu kanwy (`inspektor-akcja-<id>`); karta techniczna nie dubluje pozycji paska.
+    // Linia napowietrzna: słup rozgałęźny jest, ZK SN (rodzina kablowa) — nie.
     const inspector = page.getByTestId('inspector-engineering');
-    await expect(inspector.getByRole('button', { name: /rozga/i })).toBeVisible();
-    await expect(inspector.getByRole('button', { name: /Wstaw ZKSN/i })).toHaveCount(0);
+    // K6: działania są na końcu inspektora, zwinięte — rozwinięcie jednym klikiem.
+    await inspector.getByTestId('inspektor-dzialania-rozwin').click();
+    await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).toBeVisible();
+    await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(inspector.getByRole('button', { name: /rozga/i })).toHaveCount(1);
+    await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).toHaveCount(0);
+    await expect(inspector.getByRole('button', { name: /ZKSN|ZK SN/i })).toHaveCount(0);
 
-    await inspector.getByRole('button', { name: /rozga/i }).click();
+    await inspector.getByTestId('inspektor-akcja-insert-pole').click();
 
     // Przepisane na bieżący flow (karta K1/C, 2026-07-29): akcja otwiera dziś
     // kreator ui2 `KreatorSlupaOdgaleznego` (operationFormRegistry:
@@ -233,8 +238,6 @@ test.describe('Branch points workflow', () => {
       sk3_mva: 250.0,
       rx_ratio: 0.1,
       catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-      hv_voltage_kv: 110.0,
-      transformer_sn_mva: 25.0,
     });
 
     const op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -252,11 +255,18 @@ test.describe('Branch points workflow', () => {
     await reloadEditorPage(page);
     await selectSegmentInInspector(page, CABLE_SEGMENT_NAME);
 
+    // UI-02b: jedno działanie „ZK SN" — pozycja paska z rejestru menu kanwy; kabel nie ma
+    // słupa rozgałęźnego (rodzina linii napowietrznej).
     const inspector = page.getByTestId('inspector-engineering');
-    await expect(inspector.getByRole('button', { name: /Wstaw ZKSN/i })).toBeVisible();
+    // K6: działania są na końcu inspektora, zwinięte — rozwinięcie jednym klikiem.
+    await inspector.getByTestId('inspektor-dzialania-rozwin').click();
+    await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).toBeVisible();
+    await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(inspector.getByRole('button', { name: /ZKSN|ZK SN/i })).toHaveCount(1);
+    await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).toHaveCount(0);
     await expect(inspector.getByRole('button', { name: /rozga/i })).toHaveCount(0);
 
-    await inspector.getByRole('button', { name: /Wstaw ZKSN/i }).click();
+    await inspector.getByTestId('inspektor-akcja-insert-zksn').click();
 
     // Przepisane na bieżący flow (karta K1/C, 2026-07-29): akcja otwiera dziś
     // kreator ui2 `KreatorZksn` (operationFormRegistry:

@@ -1,22 +1,22 @@
 /**
  * Performance Tests — Phase 7 (operator-grade SLD plan v2).
  *
- * Pure function performance assertions — label declutter + hash triad. NIE
+ * Pure function performance assertions — hash triad. NIE
  * pomiar render commit (osobna warstwa, wymagała by faktycznego DOM).
  *
  * Performance Targets (Plan v2):
- *   - Label declutter: ≤ 100 ms dla network_80 (100 etykiet).
  *   - Hash triad compute: ≤ 50 ms (100 obiektów).
  *   - Topology hash: ≤ 200 ms (1000 obiektów).
  *
  * (Perf pomiarów martwego silnika layoutu builder/{Corridor,Hierarchical,
- * ComplexityScore} usunięto wraz z tym silnikiem — 2026-07 konsolidacja.)
+ * ComplexityScore} usunięto wraz z tym silnikiem — 2026-07 konsolidacja; perf
+ * `declutterLabels` usunięto wraz z modułem `LabelDeclutter`, którego jedynym
+ * odbiorcą były martwe pola widoku adaptera `labelSpecs`/`readabilityReport`.)
  *
  * @see SLD_TEST_MATRIX.md
  */
 import { describe, expect, it } from 'vitest';
 
-import { type LabelInput, declutterLabels } from '../canvas/LabelDeclutter';
 import {
   type LayoutSnapshot,
   type TopologySnapshot,
@@ -33,38 +33,6 @@ function measure<T>(fn: () => T): { result: T; durationMs: number } {
   const { wynik, ms } = zmierzCzasProcesora(fn);
   return { result: wynik, durationMs: ms };
 }
-
-/* ---------------------------------------------------------------------------
-   Label declutter performance
-   --------------------------------------------------------------------------- */
-
-describe('Performance — declutterLabels', () => {
-  it('100 etykiet: ≤ 100 ms (Plan v2 target dla network_80)', () => {
-    const labels: LabelInput[] = Array.from({ length: 100 }, (_, i) => ({
-      id: `label-${i}`,
-      text: `Label ${i}`,
-      priority: 500 as never,
-      anchorPoint: { x: (i % 10) * 100, y: Math.floor(i / 10) * 50 },
-      width: 50,
-      height: 16,
-    }));
-    const { durationMs } = measure(() => declutterLabels(labels));
-    expect(durationMs).toBeLessThan(100);
-  });
-
-  it('200 etykiet: ≤ 200 ms (worst-case)', () => {
-    const labels: LabelInput[] = Array.from({ length: 200 }, (_, i) => ({
-      id: `label-${i}`,
-      text: `Label ${i}`,
-      priority: 500 as never,
-      anchorPoint: { x: (i % 20) * 80, y: Math.floor(i / 20) * 40 },
-      width: 50,
-      height: 16,
-    }));
-    const { durationMs } = measure(() => declutterLabels(labels));
-    expect(durationMs).toBeLessThan(200);
-  });
-});
 
 /* ---------------------------------------------------------------------------
    Hash triad performance

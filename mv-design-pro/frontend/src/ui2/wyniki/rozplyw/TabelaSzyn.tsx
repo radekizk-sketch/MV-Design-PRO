@@ -8,7 +8,6 @@
  */
 
 import './rozplyw.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import {
   EkranAnalizy,
   PrzyciskAkcjiStanu,
@@ -29,7 +28,7 @@ import {
 } from './adapters/rozplywAdapter';
 
 export interface TabelaSzynProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
   /** Preselekcja wiersza (karta D-2, deep-link SLD „Pokaż wyniki"): `bus_id`
@@ -40,7 +39,7 @@ export interface TabelaSzynProps {
 }
 
 export function TabelaSzyn({
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
   onEksport,
   wybranyWiersz,
@@ -82,7 +81,7 @@ export function TabelaSzyn({
         }
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_ID_SZYNY}
         wybranyWiersz={wybranyWiersz}
         onWybierzWiersz={onWybierzWiersz}

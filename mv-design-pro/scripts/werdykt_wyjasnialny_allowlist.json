@@ -703,20 +703,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/GpzOperatorHeader.tsx:TRANSMISSION_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E73 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/GpzOperatorHeader.tsx:TRANSMISSION_LABELS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E73 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui/types.ts:ELIGIBILITY_STATUS_LABELS",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz E28: 28. `ui/types.ts:470,537-540` eligibility labels; router uses `eligible` boolean (`WorkspaceSurfaceRouter.tsx:1905-1924`). **ENUM_WEWNETRZNY.**",
@@ -735,41 +721,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D64 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "D64"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:PREZENTACJA.earth_fault_detection.werdykt.mapa",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:PREZENTACJA.earthing_safety.werdykt.mapa",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:PREZENTACJA.transient_trv.werdykt.mapa",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:SPELNIONY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:ZGODNY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
@@ -857,13 +808,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/StationOnRunRenderer.tsx:classifyVoltageDeviationText",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/autolayout/StationAutoRenderer.tsx:StationAutoRenderer.uOk",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
@@ -934,13 +878,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/kreatory/kompensator/kompensatorModel.ts:napiecieNiezgodne",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D67 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D67"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui2/kreatory/pomiar/KreatorPomiaru.tsx:KreatorPomiaru.przekladniaOk",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Plan AB §8 F19: kompletność danych budowy sieci / walidacja pola kreatora (liczność elementów > 0, przekładnia > 0, etapy zapisu), nie ocena wobec kryterium inżynierskiego — klasa tonu z porównania z zerem opisuje stan danych.",
@@ -959,13 +896,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz D75: 75. `spaces/gotowosc/adapters/gotowoscAdapter.ts:275-316` `statusGotowosci` OK/WARN/FAIL (documented \"null→OK\" debt). **ENUM_WEWNETRZNY.**",
    "wiersz_inwentarza": "D75"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/EkranAnalizAkademickich.tsx:PanelWerdyktu.wszystkieSpelnione",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
   },
   {
    "sprawdzenie": "3b_frontend_prog",
@@ -1311,55 +1241,6 @@
    "wiersz_inwentarza": "A5"
   },
   {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._benchmark_validation.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A25 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A25"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._earth_fault_detection.relay_support_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A27 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A27"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._earthing.safety_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A23 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A23"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._insulation.verification_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A20 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A20"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._ner_design.thermal.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A25 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A25"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._power_quality.bus_results.compatibility_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A21 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A21"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._transient.trv_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A28 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A28"
-  },
-  {
    "sprawdzenie": "6b_tekst_werdyktu",
    "tozsamosc": "analysis.reporting.audit2_report:render_audit2_report_latex:OK",
    "klasa": "MIGRACJA",
@@ -1666,6 +1547,13 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E75 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "E75"
+  },
+  {
+   "sprawdzenie": "6c_mapa_statusu",
+   "tozsamosc": "frontend/src/ui/workspace/surfaces/StationConfiguratorSurface.tsx:StationConfiguratorSurface",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Scalenie gałęzi UI/UX z programem (2026-10-28): `graph.status` projekcji domeny nN (`LvDomainProjectionV1`, wartości `OK` | `brak danych`) to DOSTĘPNOŚĆ danych modelu — czy stacja ma domenę nN w modelu — a nie ocena kryterium. Trójdzielna mapa przekłada ją na stan ładowania karty nN (`gotowe` / `brak_domeny`); tekst dla człowieka pochodzi wyłącznie z `graph.reason_pl` backendu albo z komunikatu błędu pobrania, żaden werdykt ani ton oceny nie powstaje.",
+   "wiersz_inwentarza": null
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

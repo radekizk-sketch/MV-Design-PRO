@@ -203,7 +203,7 @@ describe('KreatorEdycjiParametrow — linia napowietrzna 110 kV', () => {
           catalog_namespace: 'PRZEWOD_LINII_WN',
           catalog_item_id: AFL6_185,
         }),
-        source_mode: 'KATALOG',
+        // Bez `source_mode`: pochodzenie ustala operacja (toEqual — klucz nadmiarowy = czerwień).
       },
     ]);
   });

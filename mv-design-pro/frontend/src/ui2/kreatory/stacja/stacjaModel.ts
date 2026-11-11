@@ -34,7 +34,6 @@ import {
   sourceFeederRole,
   sourceProtectionIntent,
   templateOptionsForRole,
-  voltageMatches,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type {
   NnConfiguration,
@@ -52,7 +51,7 @@ import type {
 } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { TransformerType } from '../../../ui/catalog/types';
-import { OPIS_PASMA_NN, wPasmieNn } from '../../model/pasmaNapieciowe';
+import { OPIS_PASMA_NN, toSamoNapiecieZnamionowe, wPasmieNn } from '../../model/pasmaNapieciowe';
 import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 
@@ -77,10 +76,6 @@ export type { NnConfiguration } from '../../../ui/network-build/forms/InsertStat
 
 /** Tryb umiejscowienia stacji względem topologii magistrali. */
 export type TrybUmiejscowienia = 'ENDPOINT_APPEND' | 'SPLIT';
-
-/** Tolerancje zgodności napięć katalogowych (kV) — parytet z legacy. */
-const SN_VOLTAGE_TOLERANCE_KV = 0.01;
-const NN_VOLTAGE_TOLERANCE_KV = 0.001;
 
 /** Standardowe napięcia nN odbioru [kV] (wariant LOAD_NN). */
 export const NAPIECIA_NN_KV = [0.4, 0.69] as const;
@@ -437,8 +432,8 @@ export function walidujFormularz(
       field: 'neutral_impedance_ohm',
       message:
         data.neutral_point === 'petersen_coil'
-          ? 'Cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω].'
-          : 'Uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω].',
+          ? 'Cewka Petersena wymaga dodatniej reaktancji dławika $X_N$ [Ω].'
+          : 'Uziemienie przez rezystor wymaga dodatniej rezystancji $R_N$ [Ω].',
     });
   }
   // W5-E-TTIT: układ TT bez rezystancji uziomu stacji R_B = pętla doziemna niepoliczalna
@@ -450,7 +445,7 @@ export function walidujFormularz(
   ) {
     errors.push({
       field: 'neutral_impedance_ohm',
-      message: 'Układ TT wymaga dodatniej rezystancji uziomu stacji R_B [Ω] (punkt neutralny uziemiony bezpośrednio).',
+      message: 'Układ TT wymaga dodatniej rezystancji uziomu stacji $R_B$ [Ω] (punkt neutralny uziemiony bezpośrednio).',
     });
   }
   if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {
@@ -483,7 +478,8 @@ export function walidujFormularz(
 
 /**
  * Dobór transformatorów zgodnych z napięciem SN szyny i wymaganym napięciem
- * strony nN. Wyłącznie porównanie napięć katalogowych — ZERO fizyki. Gdy podano
+ * strony nN. Wyłącznie równość napięć znamionowych (ta sama co operacja wstawienia
+ * stacji w backendzie, `station.insert.transformer_voltage_mismatch`) — ZERO fizyki. Gdy podano
  * moc źródła nN (PV), sort preferuje typy o wystarczającej mocy (parytet legacy,
  * reużycie `compareTransformersForSourcePower`); w przeciwnym razie sort rosnąco
  * po mocy znamionowej (stabilny, deterministyczny porządek doboru).
@@ -496,8 +492,8 @@ export function doborTransformatorow(
 ): TransformerType[] {
   const zgodne = typy.filter(
     (t) =>
-      voltageMatches(t.voltage_hv_kv, snVoltageKv, SN_VOLTAGE_TOLERANCE_KV)
-      && voltageMatches(t.voltage_lv_kv, nnVoltageKv, NN_VOLTAGE_TOLERANCE_KV),
+      toSamoNapiecieZnamionowe(t.voltage_hv_kv, snVoltageKv)
+      && toSamoNapiecieZnamionowe(t.voltage_lv_kv, nnVoltageKv),
   );
   if (sourcePowerMva != null) {
     return zgodne.sort(compareTransformersForSourcePower(sourcePowerMva));
@@ -918,7 +914,7 @@ export function zbudujWyposazeniePolaDoPayloadu(
  *
  * BLOK FABRYCZNY RMU jedzie POLAMI PIERWSZEJ KLASY payloadu
  * (`factory_configuration_ref` + `factory_unit_index`) — dokładnie tymi samymi
- * nazwami, których używa kontrakt operacji `add_sn_bay_from_catalog`. Dawna
+ * nazwami, których używa operacja `add_sn_bay` (pole z katalogu rozdzielnic). Dawna
  * droga (metadana `catalog_bindings.factory_configuration`) została usunięta:
  * była drugim nazewnictwem tej samej prawdy, którego żadna operacja stacyjna
  * nie czytała, więc rodzina blokowa kończyła zapis twardym błędem katalogowym.
@@ -1169,8 +1165,6 @@ export function zbudujPayload(
   }
 
   const nnBlock: Record<string, unknown> = {
-    create_nn_bus: true,
-    main_breaker_nn: true,
     nn_configuration: data.nn_configuration,
     outgoing_feeders_nn_count: feeders.length,
     outgoing_feeders_nn: feeders,
@@ -1179,37 +1173,32 @@ export function zbudujPayload(
     nnBlock.source_converter_catalog_ref = konwerter.id;
     nnBlock.source_converter_name = konwerter.name;
     nnBlock.source_converter_kind = konwerter.kind;
-    nnBlock.source_converter_un_kv = konwerter.un_kv;
-    nnBlock.source_converter_sn_mva = konwerter.sn_mva;
-    nnBlock.source_converter_pmax_mw = konwerter.pmax_mw;
     if (protection) nnBlock.source_protection = protection;
   }
 
   const nnEarthing = blokUziemienia(data);
   const auxiliary = blokPotrzebWlasnych(data);
 
+  // Klucze = kontrakt obu operacji (`harness-fixtures/generated/kontrakt_ladunkow_operacji.json`,
+  // test `ladunkiKreatorowWKontrakcie`). Nazwa stacji idzie w `station.name` — jedynym
+  // kluczu nazwy czytanym przez OBIE operacje; dawne `name` (poziom ładunku) i
+  // `station.station_name` czytało wyłącznie wcięcie, więc stacja dokładana na końcu ciągu
+  // gubiła nazwę wpisaną przez projektanta. Parametry falownika (Un, Sn, Pmax) i flagi
+  // szyny/wyłącznika nN wynikają z katalogu i z operacji — nie są daną ładunku.
   const commonPayload: Record<string, unknown> = {
-    ...(nazwa ? { name: nazwa } : {}),
     station_type: data.station_type,
     ...(nnEarthing ? { nn_earthing: nnEarthing } : {}),
     ...(auxiliary ? { station_auxiliary: auxiliary } : {}),
     station: {
       station_type: data.station_type,
-      station_role: 'STACJA_SN_NN',
-      ...(nazwa ? { station_name: nazwa } : {}),
+      ...(nazwa ? { name: nazwa } : {}),
       // B-4/B-5: pola tożsamości stacji — addytywne, tylko gdy wypełnione.
       ...(data.designation.trim() ? { designation: data.designation.trim() } : {}),
       ...(data.construction_type ? { construction_type: data.construction_type } : {}),
-      // Napięcie SN tylko gdy znane z rzeczywistej szyny (>0). Nieznane →
-      // pomijamy, backend ustala z szyny odcinka/terminala (jedno źródło prawdy,
-      // zero fabrykacji — P2/P3).
-      ...(kontekst.snVoltageKv > 0 ? { sn_voltage_kv: kontekst.snVoltageKv } : {}),
       nn_voltage_kv: nnVoltage,
       switchgear: {
         manufacturer_ref: rozdzielnica.manufacturerRef,
-        manufacturer_name: rozdzielnica.manufacturerName,
         switchgear_family_ref: rozdzielnica.familyRef,
-        switchgear_family_name: rozdzielnica.familyName,
       },
     },
     sn_fields: rozdzielnica.snFields,
@@ -1217,7 +1206,6 @@ export function zbudujPayload(
       create: true,
       transformer_catalog_ref: catalogItemId,
       ...(transformerBinding ? { catalog_binding: transformerBinding } : {}),
-      model_type: 'DWU_UZWOJENIOWY',
       // Praca równoległa: n_parallel tylko dla ≥2 (pojedynczy → pominięte, G-STK-6).
       ...(data.transformer_units > 1 ? { n_parallel: data.transformer_units } : {}),
       // B-2: zaczepy TYLKO gdy projektant włączył regulację — brak bloku odtwarza
@@ -1238,8 +1226,22 @@ export function zbudujPayload(
   // udział z kontekstu wskazania. Przeliczenie metr↔udział należy do BACKENDU
   // (tryb `ODLEGLOSC_OD_POCZATKU_M` operacji) — UI niczego nie liczy.
   const metry = liczbaDodatniaPL(data.insert_at_m);
+  const stacja = commonPayload.station as Record<string, unknown>;
   return {
     ...commonPayload,
+    // Napięcie SN czyta wyłącznie wcięcie (koniec ciągu bierze je z szyny końca) — i tylko
+    // gdy znane z rzeczywistej szyny (>0); nieznane → backend ustala z szyny odcinka
+    // (jedno źródło prawdy, zero fabrykacji — P2/P3).
+    station: kontekst.snVoltageKv > 0 ? { ...stacja, sn_voltage_kv: kontekst.snVoltageKv } : stacja,
+    // Powiązania katalogowe wpisu pola (`catalog_bindings`) przenosi WYŁĄCZNIE koniec ciągu —
+    // wcięcie ich nie czyta (jedno miejsce zapisu drugiej kopii prawdy pierwszej klasy,
+    // `POLE_POWIAZAN_KATALOGOWYCH` w `enm/domain_operations.py`); szablon pola idzie
+    // polem pierwszej klasy `bay_template_ref`.
+    sn_fields: rozdzielnica.snFields.map((pole) => {
+      const wpis: Record<string, unknown> = { ...pole };
+      delete wpis.catalog_bindings;
+      return wpis;
+    }),
     segment_id: kontekst.segmentId,
     insert_at:
       metry !== null

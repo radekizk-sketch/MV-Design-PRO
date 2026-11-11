@@ -179,8 +179,8 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
   });
 
   it('tryb ekspercki → wersja zapisu i pełny odcisk paczki w informacjach audytowych', async () => {
-    const poprzedni = useShellStore.getState().advancementMode;
-    useShellStore.setState({ advancementMode: 'expert' });
+    const poprzedni = useShellStore.getState().szczegolyAudytowe;
+    useShellStore.setState({ szczegolyAudytowe: true });
     try {
       const user = userEvent.setup();
       vi.stubGlobal(
@@ -209,7 +209,7 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
       // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
       // re-renderuje zamontowany ekran poza act().
       cleanup();
-      useShellStore.setState({ advancementMode: poprzedni });
+      useShellStore.setState({ szczegolyAudytowe: poprzedni });
     }
   });
 
@@ -248,8 +248,8 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
   });
 
   it('tryb ekspercki → wersja zapisu źródłowego w informacjach audytowych raportu', async () => {
-    const poprzedni = useShellStore.getState().advancementMode;
-    useShellStore.setState({ advancementMode: 'expert' });
+    const poprzedni = useShellStore.getState().szczegolyAudytowe;
+    useShellStore.setState({ szczegolyAudytowe: true });
     try {
       const user = userEvent.setup();
       vi.stubGlobal(
@@ -267,7 +267,7 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
       // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
       // re-renderuje zamontowany ekran poza act().
       cleanup();
-      useShellStore.setState({ advancementMode: poprzedni });
+      useShellStore.setState({ szczegolyAudytowe: poprzedni });
     }
   });
 

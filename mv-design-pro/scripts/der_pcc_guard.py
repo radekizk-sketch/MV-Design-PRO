@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """CI guard: DER must expose PCC and connection variant contracts.
 
-This is a structural guard for SLD V2 and ENM integration. It verifies that
-the backend model/validator and frontend SLD renderers keep the same contract:
+This is a structural guard for the ENM integration. It verifies that the
+backend model/validator and the frontend electrical-graph test keep the same contract
+(the dead SLD v2 DER renderers it also pinned were deleted — card GPZ-PARYTET part 2):
 PV/BESS/FW has a station context or explicit PCC plus connection_variant, and
 missing data is represented as a blocker instead of a normal result.
 """
@@ -37,31 +38,6 @@ CHECKS: tuple[tuple[Path, tuple[str, ...]], ...] = (
             "station_ref",
             "block_transformer",
             "nn_side",
-        ),
-    ),
-    (
-        REPO_ROOT / "frontend/src/ui/sld/v2/renderer/DerRenderer.tsx",
-        (
-            "missingPcc",
-            "data-missing-pcc",
-            "sld-v2-der-${id}-missing-pcc",
-        ),
-    ),
-    (
-        REPO_ROOT / "frontend/src/ui/sld/v2/renderer/DerConnectionTreeRenderer.tsx",
-        (
-            "connection_variant",
-            "pccLabel",
-            "data-missing-pcc",
-            "BLOKADA PCC",
-        ),
-    ),
-    (
-        REPO_ROOT / "frontend/src/ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx",
-        (
-            'data-element-kind="pcc"',
-            "sld-v2-mini-rmu-pv-pcc",
-            "connectionSide",
         ),
     ),
     (

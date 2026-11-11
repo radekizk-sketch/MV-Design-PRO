@@ -3,7 +3,8 @@
  * (SPEC_UKLAD_PANELI §1.5: „zapis układu nie jest danymi modelu"). To nie jest
  * shadow-state: aktywny przypadek/gotowość/rewizja są czytane z istniejących
  * store'ów przez adapter (shellStatus.ts). Tutaj żyją tylko: aktywna przestrzeń,
- * tryb zaawansowania, szerokości/zwinięcia paneli (per przestrzeń) oraz panel dolny.
+ * „Szczegóły audytowe" (jeden przełącznik, karta K1 POWLOKA — zastępuje dawne trzy
+ * tryby zaawansowania), szerokości/zwinięcia paneli (per przestrzeń) oraz panel dolny.
  *
  * Trwałość: magazyn ustawień powłoki (localStorage) per przestrzeń, pod stałym
  * kluczem `'mvd-shell-ui-local'`. Klucz NIE ma wymiaru „per użytkownik" — backend
@@ -19,17 +20,34 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { DEFAULT_SPACE, type SpaceId } from './spaces';
-import type { AdvancementMode } from './modeModel';
 
-export const LEFT_MIN = 200;
-export const LEFT_MAX = 320;
+/*
+ * Granice paneli (kontrakt UIUX przemysłowy, UI-02, karty K1 POWLOKA i K6 INSPEKTOR):
+ * lewy panel 220–260 px (domyślnie 240), inspektor 340–420 px (domyślnie 360) —
+ * przeciąganie i klawiatura NIGDY nie wychodzą poza 420 px. Szerokość 560 px (tabele
+ * karty technicznej z pełnym nagłówkiem kolumn) daje WYŁĄCZNIE jawne polecenie „Tryb
+ * szeroki" (przycisk w nagłówku inspektora i pozycja menu Widok), odwracalne tym samym
+ * poleceniem i zapisywane per przestrzeń. Szerokość nie zmienia się samoczynnie: selekcja
+ * obiektu nie czyta ani nie pisze żadnego z tych pól. Panel dolny: regulowana wysokość.
+ */
+export const LEFT_MIN = 220;
+export const LEFT_MAX = 260;
 export const LEFT_DEFAULT = 240;
-export const RIGHT_MIN = 280;
-export const RIGHT_MAX = 560;
-export const RIGHT_DEFAULT = 320;
+export const RIGHT_MIN = 340;
+export const RIGHT_MAX = 420;
+export const RIGHT_DEFAULT = 360;
+export const RIGHT_WIDE = 560;
 export const RAIL_WIDTH = 48;
+export const BOTTOM_MIN = 140;
+export const BOTTOM_MAX = 480;
+export const BOTTOM_DEFAULT = 220;
 
-export type BottomPanelTab = 'problemy' | 'przebiegi' | 'dziennik';
+/**
+ * Identyfikator zakładki panelu dolnego. Rejestr zakładek jest ROZSZERZALNY
+ * (`panelDolny/rejestrZakladek.ts`) — kolejne karty dopisują zakładki bez zmiany
+ * powłoki, więc typ jest napisem, a nie zamkniętą unią.
+ */
+export type BottomPanelTab = string;
 
 /**
  * REZERWA (Reference Engine V1, HANDOFF pkt 2.6): punkt ustawień widoku
@@ -47,6 +65,8 @@ export interface PanelLayoutState {
   rightWidth: number;
   leftCollapsed: boolean;
   rightCollapsed: boolean;
+  /** K6: tryb szeroki inspektora (560 px) — wyłącznie z jawnego polecenia. */
+  rightWide: boolean;
 }
 
 export const DEFAULT_LAYOUT: PanelLayoutState = {
@@ -57,21 +77,47 @@ export const DEFAULT_LAYOUT: PanelLayoutState = {
   // zabiera przestrzeni roboczej — otwiera go selekcja albo powierzchnia
   // panelowa (useInspektorZaZawartoscia), nie sam montaż powłoki.
   rightCollapsed: true,
+  rightWide: false,
 };
 
+function przytnij(min: number, max: number, wartosc: number, domyslna: number): number {
+  if (!Number.isFinite(wartosc)) return domyslna;
+  return Math.min(max, Math.max(min, Math.round(wartosc)));
+}
+
 export function clampLeftWidth(width: number): number {
-  return Math.min(LEFT_MAX, Math.max(LEFT_MIN, Math.round(width)));
+  return przytnij(LEFT_MIN, LEFT_MAX, width, LEFT_DEFAULT);
 }
 
 export function clampRightWidth(width: number): number {
-  return Math.min(RIGHT_MAX, Math.max(RIGHT_MIN, Math.round(width)));
+  return przytnij(RIGHT_MIN, RIGHT_MAX, width, RIGHT_DEFAULT);
 }
+
+/**
+ * Szerokość kolumny inspektora: tryb szeroki = {@link RIGHT_WIDE}, poza nim szerokość
+ * z przeciągania przycięta do pasma 340–420 px. Jedna reguła dla powłoki i testów.
+ */
+export function efektywnaSzerokoscInspektora(layout: Pick<PanelLayoutState, 'rightWidth' | 'rightWide'>): number {
+  return layout.rightWide ? RIGHT_WIDE : clampRightWidth(layout.rightWidth);
+}
+
+export function clampBottomHeight(height: number): number {
+  return przytnij(BOTTOM_MIN, BOTTOM_MAX, height, BOTTOM_DEFAULT);
+}
+
+export type TrybWidokuSchematu = 'roboczy' | 'arkusz';
 
 interface ShellState {
   activeSpace: SpaceId;
-  advancementMode: AdvancementMode;
+  /**
+   * „Szczegóły audytowe" — JEDYNY przełącznik głębokości prezentacji (zastąpił
+   * tryby Podstawowy/Rozszerzony/Ekspercki). `true` odsłania dane audytowe:
+   * zakładki akademickie, ślady obliczeń, identyfikatory techniczne.
+   */
+  szczegolyAudytowe: boolean;
   bottomPanelOpen: boolean;
   bottomPanelTab: BottomPanelTab;
+  bottomPanelHeight: number;
   layoutBySpace: Partial<Record<SpaceId, PanelLayoutState>>;
   /**
    * Jednorazowe żądanie otwarcia konkretnej zakładki przestrzeni „Wyniki"
@@ -130,15 +176,25 @@ interface ShellState {
    * Rozdzielone: adres wyznacza przestrzeń, ten stan wyznacza panel.
    */
   panelSchematu: 'schemat' | 'model';
+  /**
+   * K2b §0.4 — tryb widoku kanwy schematu: `'roboczy'` (domyślny — sama sieć,
+   * bez ramy arkusza, pól odniesienia i tabliczki) albo `'arkusz'` (rysunek
+   * arkuszowy jak w eksporcie). Ustawienie WIDOKU, persystowane jak reszta
+   * preferencji; eksport zawsze rysuje arkusz.
+   */
+  trybWidokuSchematu: TrybWidokuSchematu;
 
   setActiveSpace: (space: SpaceId) => void;
-  setAdvancementMode: (mode: AdvancementMode) => void;
+  setSzczegolyAudytowe: (wlaczone: boolean) => void;
+  toggleSzczegolyAudytowe: () => void;
   setWynikiTab: (tab: string | null, element?: string | null) => void;
   setZadanieNowyPrzypadek: (zadanie: boolean) => void;
   setZadanieArchiwumProjektu: (zadanie: boolean) => void;
   setZadanieImportuArkusza: (zadanie: boolean) => void;
   setPodgladSchematu: (podglad: boolean) => void;
   setPanelSchematu: (panel: 'schemat' | 'model') => void;
+  setTrybWidokuSchematu: (tryb: TrybWidokuSchematu) => void;
+  przelaczTrybWidokuSchematu: () => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
@@ -147,14 +203,31 @@ interface ShellState {
   toggleRightCollapsed: (space: SpaceId) => void;
   /** K11-A: jawne ustawienie zwinięcia inspektora (automat za zawartością). */
   setRightCollapsed: (space: SpaceId, collapsed: boolean) => void;
+  /** K6: przełącza tryb szeroki inspektora; włączenie otwiera zwinięty inspektor. */
+  toggleRightWide: (space: SpaceId) => void;
   resetLayout: (space: SpaceId) => void;
 
   openBottomPanel: (tab: BottomPanelTab) => void;
   closeBottomPanel: () => void;
+  toggleBottomPanel: () => void;
+  setBottomPanelHeight: (height: number) => void;
 }
 
+/**
+ * Układ przestrzeni z PRZYCIĘCIEM przy odczycie: zapis z magazynu przeglądarki
+ * mógł powstać przy dawnych granicach (lewy 200–320, inspektor 280–560). Jedno
+ * miejsce odczytu = jedna reguła granic; brak migracji magazynu.
+ */
 function layoutFor(state: ShellState, space: SpaceId): PanelLayoutState {
-  return state.layoutBySpace[space] ?? DEFAULT_LAYOUT;
+  const zapisany = state.layoutBySpace[space];
+  if (!zapisany) return DEFAULT_LAYOUT;
+  return {
+    leftWidth: clampLeftWidth(zapisany.leftWidth),
+    rightWidth: clampRightWidth(zapisany.rightWidth),
+    leftCollapsed: Boolean(zapisany.leftCollapsed),
+    rightCollapsed: Boolean(zapisany.rightCollapsed),
+    rightWide: zapisany.rightWide === true,
+  };
 }
 
 function patchLayout(
@@ -172,9 +245,10 @@ export const useShellStore = create<ShellState>()(
   persist(
     (set, get) => ({
       activeSpace: DEFAULT_SPACE,
-      advancementMode: 'basic',
+      szczegolyAudytowe: false,
       bottomPanelOpen: false,
       bottomPanelTab: 'problemy',
+      bottomPanelHeight: BOTTOM_DEFAULT,
       layoutBySpace: {},
       wynikiTab: null,
       wynikiTabElement: null,
@@ -183,9 +257,12 @@ export const useShellStore = create<ShellState>()(
       zadanieImportuArkusza: false,
       podgladSchematu: false,
       panelSchematu: 'schemat' as const,
+      trybWidokuSchematu: 'roboczy' as TrybWidokuSchematu,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
-      setAdvancementMode: (mode) => set({ advancementMode: mode }),
+      setSzczegolyAudytowe: (wlaczone) => set({ szczegolyAudytowe: wlaczone }),
+      toggleSzczegolyAudytowe: () =>
+        set((state) => ({ szczegolyAudytowe: !state.szczegolyAudytowe })),
       // Kontekst elementu żyje i gaśnie razem z żądaniem zakładki (element
       // domyślnie null — istniejące wywołania `setWynikiTab(tab)` działają 1:1).
       setWynikiTab: (tab, element = null) => set({ wynikiTab: tab, wynikiTabElement: element }),
@@ -194,6 +271,9 @@ export const useShellStore = create<ShellState>()(
       setZadanieImportuArkusza: (zadanie) => set({ zadanieImportuArkusza: zadanie }),
       setPodgladSchematu: (podglad) => set({ podgladSchematu: podglad }),
       setPanelSchematu: (panel) => set({ panelSchematu: panel }),
+      setTrybWidokuSchematu: (tryb) => set({ trybWidokuSchematu: tryb }),
+      przelaczTrybWidokuSchematu: () =>
+        set((state) => ({ trybWidokuSchematu: state.trybWidokuSchematu === 'roboczy' ? 'arkusz' : 'roboczy' })),
 
       getLayout: (space) => layoutFor(get(), space),
 
@@ -204,7 +284,9 @@ export const useShellStore = create<ShellState>()(
 
       setRightWidth: (space, width) =>
         set((state) => ({
-          layoutBySpace: patchLayout(state, space, { rightWidth: clampRightWidth(width) }),
+          // Przeciąganie i klawiatura działają w paśmie 340–420 px: zmiana szerokości
+          // z uchwytu kończy tryb szeroki (jedna szerokość inspektora naraz).
+          layoutBySpace: patchLayout(state, space, { rightWidth: clampRightWidth(width), rightWide: false }),
         })),
 
       toggleLeftCollapsed: (space) =>
@@ -227,6 +309,18 @@ export const useShellStore = create<ShellState>()(
           return { layoutBySpace: patchLayout(state, space, { rightCollapsed: collapsed }) };
         }),
 
+      toggleRightWide: (space) =>
+        set((state) => {
+          const biezacy = layoutFor(state, space);
+          const szeroki = !biezacy.rightWide;
+          return {
+            layoutBySpace: patchLayout(state, space, {
+              rightWide: szeroki,
+              ...(szeroki ? { rightCollapsed: false } : {}),
+            }),
+          };
+        }),
+
       resetLayout: (space) =>
         set((state) => {
           const next = { ...state.layoutBySpace };
@@ -236,15 +330,26 @@ export const useShellStore = create<ShellState>()(
 
       openBottomPanel: (tab) => set({ bottomPanelOpen: true, bottomPanelTab: tab }),
       closeBottomPanel: () => set({ bottomPanelOpen: false }),
+      toggleBottomPanel: () => set((state) => ({ bottomPanelOpen: !state.bottomPanelOpen })),
+      setBottomPanelHeight: (height) => set({ bottomPanelHeight: clampBottomHeight(height) }),
     }),
     {
       name: 'mvd-shell-ui-local',
       storage: createJSONStorage(() => localStorage),
+      // Scalanie jak domyślne w zustand (płytkie), z jedną walidacją: tryb widoku
+      // schematu spoza dwóch wartości (zapis uszkodzony albo z innej wersji) wraca do
+      // domyślnego 'roboczy' — kanwa nie może dostać trybu, którego nie zna.
+      merge: (zapisany, biezacy) => {
+        const z = (zapisany ?? {}) as Partial<ShellState>;
+        return { ...biezacy, ...z, trybWidokuSchematu: z.trybWidokuSchematu === 'arkusz' ? 'arkusz' : 'roboczy' };
+      },
       partialize: (state) => ({
         activeSpace: state.activeSpace,
-        advancementMode: state.advancementMode,
+        szczegolyAudytowe: state.szczegolyAudytowe,
         layoutBySpace: state.layoutBySpace,
+        bottomPanelHeight: state.bottomPanelHeight,
         podgladSchematu: state.podgladSchematu,
+        trybWidokuSchematu: state.trybWidokuSchematu,
       }),
     },
   ),

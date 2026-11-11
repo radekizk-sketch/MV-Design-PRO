@@ -13,8 +13,8 @@
  * Zero fizyki, zero mutacji, zero wołań API z tego pliku.
  */
 
+import { TekstZWzorami, tekstBezWzorow } from '../../kreatory/rama';
 import type { ZrodloSiecioweSlad } from '../../../ui/results-inspector/types';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
 import { KLUCZ_ZRODLA_SIECIOWE, KOLUMNY_ZRODEL_SIECIOWYCH, naWierszeZrodelSieciowych } from './zwarciaModel';
@@ -22,13 +22,13 @@ import { KLUCZ_ZRODLA_SIECIOWE, KOLUMNY_ZRODEL_SIECIOWYCH, naWierszeZrodelSiecio
 export interface SladZrodelSieciowychProps {
   /** Ślad źródeł sieciowych biegu; `undefined` = starszy wynik / bieg bez źródła sieciowego. */
   zrodlaSieciowe: readonly ZrodloSiecioweSlad[] | undefined;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
 
 export function SladZrodelSieciowych({
   zrodlaSieciowe,
-  trybZaawansowania,
+  szczegolyAudytowe,
   onOtworzDowod,
 }: SladZrodelSieciowychProps) {
   const wiersze = zrodlaSieciowe ?? [];
@@ -38,9 +38,9 @@ export function SladZrodelSieciowych({
     <section
       className="mvd-zwarcia-zrodla"
       data-testid="mvd-zwarcia-zrodla"
-      aria-label={ZWARCIA_STRINGS.zrodlaTytul}
+      aria-label={tekstBezWzorow(ZWARCIA_STRINGS.zrodlaTytul)}
     >
-      <h3 className="mvd-zwarcia-wklady-tytul">{ZWARCIA_STRINGS.zrodlaTytul}</h3>
+      <h3 className="mvd-zwarcia-wklady-tytul"><TekstZWzorami tekst={ZWARCIA_STRINGS.zrodlaTytul} /></h3>
       {wiersze.length === 0 ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-zrodla-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.zrodlaNiedostepne}</p>
@@ -53,7 +53,7 @@ export function SladZrodelSieciowych({
             kolumny={KOLUMNY_ZRODEL_SIECIOWYCH}
             wiersze={naWierszeZrodelSieciowych(wiersze, (ref) => nazwaObiektu(ref))}
             onOtworzDowod={onOtworzDowod}
-            trybZaawansowania={trybZaawansowania}
+            szczegolyAudytowe={szczegolyAudytowe}
             kluczWiersza={KLUCZ_ZRODLA_SIECIOWE}
           />
         </>

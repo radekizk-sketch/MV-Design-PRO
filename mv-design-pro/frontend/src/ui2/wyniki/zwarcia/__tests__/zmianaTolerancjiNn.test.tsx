@@ -174,7 +174,7 @@ describe('EkranZwarc — „Zmień wartość” tolerancji sieci nN (natywny kli
         }),
         selectedRunId: 'sc-run-1',
       });
-      await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+      await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
       const sekcja = screen.getByTestId('mvd-wyn-zalozenia');
       // Znacznik tylko przy założeniu tolerancji — jeden, nie przy założeniu źródła SN.
       expect(within(sekcja).getAllByTestId('mvd-wyn-zalozenie-znacznik')).toHaveLength(1);

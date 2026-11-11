@@ -8,8 +8,21 @@ impedancja wchodzi do tego prądu. Dwie rodziny założeń biegu, jeden mechaniz
   i Z′0 policzonymi z wartością roboczą geometrii; wpływa na KAŻDY rodzaj zwarcia w wyspie
   obliczeniowej węzła (składowa spójna grafu po gałęziach, transformatorach i łącznikach);
 * ``branch.z0_wartosc_robocza`` (ten moduł) — linia albo kabel SN z R′0/X′0 z założenia
-  katalogu (``wartosci_robocze`` pozycji); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
-  w składowej spójnej SIECI ZEROWEJ węzła (``enm.mapping.skladowe_sieci_zerowej``).
+  katalogu (``wartosci_robocze`` pozycji) albo z wartości roboczej odcinka bez składowej
+  zerowej w modelu (``enm.skladowa_zerowa_galezi``, zasada nr 4), a także B′0 z wartości roboczej
+  odcinka, którego pojemność weszła do Y0 (warunek IEC 60909-0 pkt 5.2 f), karta
+  ZEROWA-POJEMNOSCI); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
+  w składowej spójnej SIECI ZEROWEJ węzła (``enm.mapping.skladowe_sieci_zerowej``);
+* ``zespol_uziemiajacy.wartosc_robocza`` (ten moduł) — zespół uziemiający sieci SN, którego
+  bocznik składowej zerowej Z_0,TU + 3·Z_N stoi na wartości roboczej (pozycja typowa katalogu,
+  zakres §16, AWSC; karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4); wpływa WYŁĄCZNIE na zwarcia
+  doziemne w składowej sieci zerowej szyny zespołu — ten sam predykat co gałąź z Z0 roboczym.
+* ``shunt.parametry_robocze`` (``enm.bateria_kondensatorow``, karta UX-04/POLE-BKR-MODEL) —
+  element poprzeczny, nie gałąź, ale ten sam mechanizm danych przyjętych: bateria kondensatorów
+  z układem połączeń (albo liczbą stopni gwiazdy uziemionej) z wartości roboczej; w biegu
+  zwarciowym wpływa WYŁĄCZNIE na zwarcia doziemne w składowej sieci zerowej szyny baterii
+  (układ rozstrzyga, czy bateria wnosi admitancję zerową), w biegu rozpływu — na cały bieg
+  (admitancja baterii z dławikiem albo liczbą stopni z wartości roboczej).
 
 Wiersz biegu zwarciowego niesie ``KLUCZ_WIERSZA_DANE_GALEZI`` addytywnie, WYŁĄCZNIE gdy lista
 jest niepusta; konsumenci tłumaczą go przez ``dane_przyjete_galezi_wiersza``.
@@ -20,15 +33,23 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from network_model.catalog.wartosci_robocze import dana_przyjeta_z0, pola_z0_robocze
+from network_model.catalog.wartosci_robocze import ZALOZENIA_Z0_ODCINKA, dana_przyjeta_z0
 from network_model.core.graph import NetworkGraph
+from network_model.core.uziemienie import StanAwsc
 from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import DanaPrzyjeta
 
-from .mapping import map_enm_to_network_graph, ref_to_graph_id, skladowe_sieci_zerowej
+from .bateria_kondensatorow import KOD_BATERIA_PARAMETRY_ROBOCZE
+from .mapping import (
+    map_enm_to_network_graph,
+    ref_to_graph_id,
+    skladowe_i_b0_sieci_zerowej,
+)
 from .models import Cable, EnergyNetworkModel, OverheadLine
 from .nazwy_elementow import nazwa_elementu
 from .parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
+from .skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
+from .uziemienie_sekcji import uziemienie_sieci
 
 #: Klucz wiersza wyniku zwarciowego: dane przyjęte gałęzi, których impedancja wchodzi do prądu
 #: TEGO punktu. Addytywnie, WYŁĄCZNIE gdy lista niepusta — wiersz bez takich gałęzi bit w bit
@@ -38,29 +59,44 @@ KLUCZ_WIERSZA_DANE_GALEZI = "dane_przyjete_galezi"
 #: Kod założenia biegu i rejestru gotowości: składowa zerowa gałęzi z wartości roboczej katalogu.
 KOD_Z0_ROBOCZE = "branch.z0_wartosc_robocza"
 
+#: Kod założenia biegu i rejestru gotowości: bocznik składowej zerowej zespołu uziemiającego
+#: z wartości roboczej parametrów urządzeń punktu neutralnego (zasada nr 4).
+KOD_ZU_ROBOCZE = "zespol_uziemiajacy.wartosc_robocza"
+
 #: Klucz założenia Z0: składniki danej przyjętej (pole, etykieta, założenie, wartość, gałąź) —
 #: wiersz składa z nich jedną daną na (pole, założenie, wartość), nie jedną na gałąź.
 _KLUCZ_SKLADNIKOW_Z0 = "skladniki_z0"
 
-_POLA_Z0 = {"r0_ohm_per_km", "x0_ohm_per_km"}
-
 
 def galezie_z0_robocze(
     enm: EnergyNetworkModel,
+    *,
+    b0_galezi: Mapping[str, tuple[tuple[str, str, str, float], ...]] | None = None,
 ) -> list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]]:
-    """Załączone linie i kable, których R′0/X′0 są wartością roboczą katalogu (kolejność ref_id).
+    """Załączone linie i kable, których R′0/X′0 albo B′0 w sieci zerowej biegu są wartością
+    roboczą (kolejność ref_id).
+
+    B′0 z wartości roboczej wchodzi do zbioru WYŁĄCZNIE z ``b0_galezi`` — gałęzie, których
+    pojemność weszła do macierzy Y0 zwarć (warunek IEC 60909-0 pkt 5.2 f) spełniony w ich sieci
+    zerowej: ``enm.mapping.WynikSieciZerowej.b0_robocze`` — predykat wejścia i danej przyjętej
+    z jednego złożenia). ``None`` — bieg bez pojemności w składowej zerowej (rozpływ
+    niesymetryczny pomija pojemności odcinków). Dane przyjęte B′0 prądu pojemnościowego sieci
+    niesie konsument pojemności doziemnej (``enm.uziemienie_sekcji``).
 
     JEDNO źródło zbioru dla założeń biegów (zwarcie doziemne, rozpływ niesymetryczny) i dla
-    wierszy wyniku. Predykat pola: ``pola_z0_robocze`` (rejestr ``wartosci_robocze``) — pozycja
-    katalogu oznaczyła pole, a projektant go nie zmienił. Gałąź otwarta nie wchodzi do sieci
+    wierszy wyniku. Predykat pola: ``enm.skladowa_zerowa_galezi`` — ten sam, z którego sieć
+    zerowa zwarć i rozpływ niesymetryczny biorą R′0/X′0: wartość robocza katalogu (pozycja
+    oznaczyła pole w ``wartosci_robocze``, projektant go nie zmienił) albo wartość robocza
+    odcinka bez składowej zerowej w modelu (zasada nr 4). Gałąź otwarta nie wchodzi do sieci
     zerowej (``_assemble_zero_sequence_y0``), więc nie daje założenia.
     """
     wynik: list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]] = []
+    napiecia = napiecia_szyn_kv(enm)
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
-        pola = pola_z0_robocze(
-            galaz.materialized_params, galaz.model_dump(mode="json", include=_POLA_Z0)
+        pola = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).robocze + (
+            (b0_galezi or {}).get(galaz.ref_id, ())
         )
         if pola:
             wynik.append((galaz, pola))
@@ -68,32 +104,51 @@ def galezie_z0_robocze(
 
 
 def zalozenia_z0_galezi(
-    enm: EnergyNetworkModel, scenario: str | None, *, galezie: Iterable[str] | None = None
+    enm: EnergyNetworkModel,
+    scenario: str | None,
+    *,
+    galezie: Iterable[str] | None = None,
+    b0_galezi: Mapping[str, tuple[tuple[str, str, str, float], ...]] | None = None,
 ) -> tuple[dict[str, Any], ...]:
-    """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 z wartości roboczej katalogu.
+    """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 (albo B′0 w macierzy Y0 —
+    ``b0_galezi``, ``galezie_z0_robocze``) z wartości roboczej.
 
     ``galezie`` zawęża zbiór (rozpływ niesymetryczny: wyłącznie gałęzie z realnym prądem I0);
     ``None`` = wszystkie (zwarcie doziemne — sieć zerowa całego modelu).
     """
     dozwolone = None if galezie is None else set(galezie)
     zalozenia: list[dict[str, Any]] = []
-    for galaz, pola in galezie_z0_robocze(enm):
+    for galaz, pola in galezie_z0_robocze(enm, b0_galezi=b0_galezi):
         if dozwolone is not None and galaz.ref_id not in dozwolone:
             continue
         nazwa = nazwa_elementu(galaz, "branches")
         przyjete = [
             dana_przyjeta_z0(
-                etykieta=etykieta, zalozenie=zalozenie, wartosc=wartosc, miejsce_pl=nazwa
+                pole=pole,
+                etykieta=etykieta,
+                zalozenie=zalozenie,
+                wartosc=wartosc,
+                miejsce_pl=nazwa,
             )
-            for _, etykieta, zalozenie, wartosc in pola
+            for pole, etykieta, zalozenie, wartosc in pola
         ]
         etykiety = " i ".join(etykieta for _, etykieta, _, _ in pola)
+        z_odcinka = {zalozenie in ZALOZENIA_Z0_ODCINKA for _, _, zalozenie, _ in pola}
+        zrodlo = (
+            "katalogu"
+            if z_odcinka == {False}
+            else (
+                "(odcinek bez składowej zerowej w modelu)"
+                if z_odcinka == {True}
+                else "(katalog i odcinek bez składowej zerowej w modelu)"
+            )
+        )
         zalozenia.append(
             {
                 "code": KOD_Z0_ROBOCZE,
                 "element_ref": galaz.ref_id,
                 "message_pl": (
-                    f"{nazwa}: {etykiety} z wartości roboczej katalogu — "
+                    f"{nazwa}: {etykiety} z wartości roboczej {zrodlo} — "
                     + "; ".join(f"{zalozenie}" for _, _, zalozenie, _ in pola)
                     + f". Zmień wartość: {etykiety} w parametrach odcinka."
                 ),
@@ -112,6 +167,45 @@ def zalozenia_z0_galezi(
                 ],
             }
         )
+    return tuple(zalozenia)
+
+
+def zalozenia_zespolow_uziemiajacych(
+    enm: EnergyNetworkModel, scenario: str | None, stan_awsc: StanAwsc
+) -> tuple[dict[str, Any], ...]:
+    """Założenia biegu zwarcia doziemnego: jedno na KAŻDY zespół uziemiający w ruchu, którego
+    bocznik składowej zerowej w stanie AWSC przypadku stoi na wartości roboczej.
+
+    JEDNO źródło: ``uziemienie_sieci`` (ta sama prawda co mapowanie Y0) i
+    ``PunktUziemienia.dane_przyjete_bocznika`` (wyłącznie parametry, które kształtują bocznik
+    w tym stanie). ``bus_ref`` — szyna zespołu; składowa sieci zerowej szyny wyznacza punkty
+    zwarcia, do których prądu wchodzi ten bocznik (``dane_przyjete_galezi_punktow``).
+    """
+    if not enm.zespoly_uziemiajace:
+        return ()
+    zalozenia: list[dict[str, Any]] = []
+    for sekcja in uziemienie_sieci(enm):
+        for punkt in sekcja.punkty_w_ruchu:
+            if punkt.rodzaj != "zespol_uziemiajacy":
+                continue
+            dane = punkt.dane_przyjete_bocznika(stan_awsc)
+            if not dane:
+                continue
+            zalozenia.append(
+                {
+                    "code": KOD_ZU_ROBOCZE,
+                    "element_ref": punkt.element_ref,
+                    "bus_ref": punkt.bus_ref,
+                    "message_pl": (
+                        f"{punkt.nazwa_pl}: bocznik składowej zerowej z wartości roboczej — "
+                        + "; ".join(d.nazwa_pl.removesuffix(f" ({punkt.nazwa_pl})") for d in dane)
+                        + ". Zmień wartości w parametrach zespołu uziemiającego (dane "
+                        "producenta albo nastawa)."
+                    ),
+                    **({"scenariusz": scenario} if scenario is not None else {}),
+                    "dane_przyjete": [d.model_dump(mode="json") for d in dane],
+                }
+            )
     return tuple(zalozenia)
 
 
@@ -142,12 +236,13 @@ def _dane_z0_skladowej(zalozenia_z0: list[Mapping[str, Any]]) -> list[dict[str, 
             grupy.setdefault(klucz, []).append(str(skladnik["nazwa"]))
     return [
         dana_przyjeta_z0(
+            pole=pole,
             etykieta=etykieta,
             zalozenie=zalozenie,
             wartosc=wartosc,
             miejsce_pl=", ".join(sorted(nazwy)),
         ).model_dump(mode="json")
-        for (_, etykieta, zalozenie, wartosc), nazwy in sorted(grupy.items())
+        for (pole, etykieta, zalozenie, wartosc), nazwy in sorted(grupy.items())
     ]
 
 
@@ -170,9 +265,11 @@ def dane_przyjete_galezi_punktow(
     zapisy = [z for z in zalozenia if isinstance(z, Mapping)]
     linie = [z for z in zapisy if z.get("code") == KOD_GEOMETRIA_ROBOCZA]
     z0 = [z for z in zapisy if z.get("code") == KOD_Z0_ROBOCZE]
-    if not linie and not z0:
+    zespoly = [z for z in zapisy if z.get("code") == KOD_ZU_ROBOCZE]
+    baterie = [z for z in zapisy if z.get("code") == KOD_BATERIA_PARAMETRY_ROBOCZE]
+    if not linie and not z0 and not zespoly and not baterie:
         return {}
-    if z0 and skladowe_zerowe is None:
+    if (z0 or zespoly or baterie) and skladowe_zerowe is None:
         raise AssertionError(
             "Założenia składowej zerowej bez składowych sieci zerowej biegu — wołający podaje "
             "`skladowe_sieci_zerowej` z tej samej macierzy Y0 co Z0-bus."
@@ -194,6 +291,22 @@ def dane_przyjete_galezi_punktow(
         if skladowa is not None:
             z0_skladowej.setdefault(skladowa, []).append(zalozenie)
     dane_z0 = {numer: _dane_z0_skladowej(zapisy_z0) for numer, zapisy_z0 in z0_skladowej.items()}
+    # Zespół uziemiający: bocznik na szynie zespołu — ta sama składowa sieci zerowej.
+    for zalozenie in zespoly:
+        skladowa = (skladowe_zerowe or {}).get(ref_to_graph_id(str(zalozenie.get("bus_ref"))))
+        if skladowa is not None:
+            dane_z0.setdefault(skladowa, []).extend(
+                dict(d) for d in zalozenie.get("dane_przyjete") or ()
+            )
+    # Bateria z układem z wartości roboczej: składowa sieci zerowej SZYNY baterii (zapis
+    # założenia niesie ``bus_ref``) — ta sama składowa, do której bateria wniosłaby Y0.
+    for zalozenie in baterie:
+        skladowa = (skladowe_zerowe or {}).get(ref_to_graph_id(str(zalozenie.get("bus_ref"))))
+        if skladowa is not None:
+            dane_z0.setdefault(skladowa, [])
+            for dana in zalozenie.get("dane_przyjete") or ():
+                if dict(dana) not in dane_z0[skladowa]:
+                    dane_z0[skladowa].append(dict(dana))
     wynik: dict[str, list[dict[str, Any]]] = {}
     for wezel in wezly:
         dane = [
@@ -232,18 +345,37 @@ def dane_przyjete_wezla(
     Ten sam zbiór gałęzi i te same predykaty (wyspa, składowa zerowa) co wiersze biegu
     zwarciowego (``dane_przyjete_galezi_punktow``). Model bez takich gałęzi nie buduje grafu.
     """
-    zalozenia = zalozenia_linii_wn(enm, None) + (
-        zalozenia_z0_galezi(enm, None) if ze_skladowa_zerowa else ()
+    # Zespół uziemiający: Z0 sieci liczone wprost z modelu (``build_zero_sequence_zbus``) stoi
+    # na stanie normalnym AWSC (spoczynek) — ten sam stan dla danych przyjętych bocznika.
+    napiecia = napiecia_szyn_kv(enm)
+    b0_mozliwe = ze_skladowa_zerowa and any(
+        skladowa_zerowa_galezi(g, napiecia.get(g.from_bus_ref)).robocze_b0
+        for g in enm.branches
+        if isinstance(g, Cable | OverheadLine) and g.status == "closed"
     )
-    if not zalozenia:
+    zalozenia = zalozenia_linii_wn(enm, None) + (
+        zalozenia_z0_galezi(enm, None) + zalozenia_zespolow_uziemiajacych(enm, None, "spoczynek")
+        if ze_skladowa_zerowa
+        else ()
+    )
+    if not zalozenia and not b0_mozliwe:
         return ()
     try:
         graph = map_enm_to_network_graph(enm)
-        skladowe = (
-            skladowe_sieci_zerowej(enm, graph)
-            if any(z.get("code") == KOD_Z0_ROBOCZE for z in zalozenia)
-            else None
-        )
+        skladowe = None
+        if b0_mozliwe or any(z.get("code") in (KOD_Z0_ROBOCZE, KOD_ZU_ROBOCZE) for z in zalozenia):
+            # B′0 roboczy wchodzi do Z0 liczonego wprost z modelu (``build_zero_sequence_zbus``:
+            # scenariusz MAX, AWSC w spoczynku) tylko pod warunkiem pkt 5.2 f) — gałęzie
+            # i składowe z TEGO SAMEGO złożenia Y0.
+            skladowe, b0_galezi = skladowe_i_b0_sieci_zerowej(enm, graph)
+            if b0_galezi:
+                zalozenia = (
+                    zalozenia_linii_wn(enm, None)
+                    + zalozenia_z0_galezi(enm, None, b0_galezi=b0_galezi)
+                    + zalozenia_zespolow_uziemiajacych(enm, None, "spoczynek")
+                )
+            if not zalozenia:
+                return ()
     except OdmowaDanychError:
         # Model, którego nie da się odwzorować, nie ma impedancji sieci zasilającej — wołający
         # zgłasza ten brak sam (`compute_upstream_hv_thevenin`); gałęzie nie wchodzą do wyniku.
@@ -273,7 +405,12 @@ def dane_przyjete_galezi_wiersza(wiersz: Mapping[str, Any] | None) -> tuple[Dana
 
 #: Kody założeń biegu, których rekordy niosą dane przyjęte gałęzi (jedno źródło dla widoków
 #: liczonych z CAŁEGO biegu — rozpływ, wielkości sieci w węźle przyłączenia).
-_KODY_DANYCH_GALEZI = (KOD_GEOMETRIA_ROBOCZA, KOD_Z0_ROBOCZE)
+_KODY_DANYCH_GALEZI = (
+    KOD_GEOMETRIA_ROBOCZA,
+    KOD_Z0_ROBOCZE,
+    KOD_ZU_ROBOCZE,
+    KOD_BATERIA_PARAMETRY_ROBOCZE,
+)
 
 
 def dane_przyjete_biegu(raw_result: Mapping[str, Any] | None) -> tuple[DanaPrzyjeta, ...]:

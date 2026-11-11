@@ -125,6 +125,10 @@ class TestThroughStationContinuity:
                     ref_id="bay_in_lv",
                     name="Pole zasilajace na nN",
                     bay_role="IN",
+                    # Karta W5-B: poziom pola wynika z szyny; pole liniowe SN na szynie nN
+                    # rozpoznaje JAWNA rola kanoniczna liniowa SN (bez niej pole IN na
+                    # szynie nN jest wyłącznikiem głównym nN — test niżej).
+                    field_role="LINIA_IN",
                     substation_ref="sub_bad",
                     bus_ref="bus_nn",  # NIELEGALNE — ciaglosc SN przez nN
                 ),
@@ -142,6 +146,34 @@ class TestThroughStationContinuity:
         assert len(e021) == 1
         assert e021[0].severity == "BLOCKER"
         assert "sub_bad" in e021[0].element_refs
+
+    def test_wylacznik_glowny_nn_roli_in_nie_jest_polem_liniowym_sn(self) -> None:
+        """Karta W5-B (iloczyn cech): {pole IN na szynie nN bez roli liniowej SN — wyłącznik
+        główny nN, pole IN na szynie nN z rolą LINIA_IN — błąd} × stacja przelotowa SN.
+        Pola nN stacji leżą w tej samej kolekcji `bays` — nie wolno ich brać za pola liniowe
+        SN (fałszywa blokada każdej stacji z blokiem nN)."""
+        szyny = [
+            Bus(ref_id="bus_sn", name="SN", voltage_kv=15.0),
+            Bus(ref_id="bus_nn", name="nN", voltage_kv=0.4),
+        ]
+        pola = [
+            Bay(ref_id="sn_in", name="WE", bay_role="IN", substation_ref="s", bus_ref="bus_sn"),
+            Bay(ref_id="sn_out", name="WY", bay_role="OUT", substation_ref="s", bus_ref="bus_sn"),
+            Bay(
+                ref_id="nn_in",
+                name="Wyłącznik główny nN",
+                bay_role="IN",
+                substation_ref="s",
+                bus_ref="bus_nn",
+            ),
+        ]
+        stacja = Substation(
+            ref_id="s", name="S", station_type="inline", bus_refs=["bus_sn", "bus_nn"]
+        )
+        enm = _enm(
+            buses=szyny, sources=[_source(bus_ref="bus_sn")], substations=[stacja], bays=pola
+        )
+        assert not [i for i in ENMValidator().validate(enm).issues if i.code == "E021"]
 
     def test_through_station_in_out_on_different_mv_buses_is_blocker(self) -> None:
         """IN i OUT na roznych szynach SN — brak ciaglosci wspolnej magistrali."""

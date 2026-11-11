@@ -97,6 +97,7 @@ const MOCK_TEMPLATE_FULL = {
     vt_options: [],
     energy_meter_options: [],
     manufacturer_profile_default: 'ZPUE_WLOSZCZOWA',
+    grid_source_options: [],
   },
 };
 

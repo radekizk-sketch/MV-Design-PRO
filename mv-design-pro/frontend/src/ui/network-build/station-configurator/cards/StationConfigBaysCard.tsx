@@ -18,7 +18,7 @@ export interface StationConfigBayRow {
   readonly bayId: string;
   readonly designation: string;
   /**
-   * Rola pola w modelu (`Bay.bay_role` albo `field_specs[].bay_role`: IN/OUT/FEEDER/TR/
+   * Rola pola w modelu (`Bay.bay_role` rekordu pola: IN/OUT/FEEDER/TR/
    * COUPLER/MEASUREMENT/OZE). Nazwę roli wyświetla kanon słownictwa ról pól (karta #141),
    * a logika (sprzęgło, pole transformatorowe, pole źródłowe) czyta rolę — nigdy tekst etykiety.
    */

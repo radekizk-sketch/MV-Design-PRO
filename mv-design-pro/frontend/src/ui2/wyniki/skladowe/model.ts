@@ -13,8 +13,12 @@
  *   dostępny przez `GET /analysis-runs/{id}/results/trace` (`ExtendedTrace`).
  *   Kontrakt to_dict solvera NIE niesie z1/z2/z0 poza śladem (GAP — patrz raport P-3).
  * - Uziemienie punktu neutralnego: ZAMROŻONA wersja układu przebiegu
- *   (`GET /analysis-runs/{id}/snapshot` → EnergyNetworkModel): `Bus.grounding`
- *   oraz `Transformer.hv_neutral`/`lv_neutral` (types/enm.ts:117,232-233).
+ *   (`GET /analysis-runs/{id}/snapshot` → EnergyNetworkModel): zespoły uziemiające sieci SN
+ *   (`zespoly_uziemiajace`, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — jedyny nośnik uziemienia
+ *   sieci SN obok uzwojenia transformatora), `Source.neutral_grounding` (wyłącznie sieć
+ *   110 kV za granicą modelu) oraz `Transformer.hv_neutral`/`lv_neutral`. Ekran WYPISUJE
+ *   zainstalowane aparaty; wariantu pracy sieci (stany odłączników, AWSC) ani Z_N nie liczy
+ *   — robi to backend (`enm.uziemienie_sekcji`, dane przyjęte wiersza i ślad White Box).
  *
  * ROZPOZNANIE LICZBY ZESPOLONEJ (karta WB-2, KLASA NIE INSTANCJA — czwarte
  * miejsce znalezione przy inwentarzu klasy): `naZespolona` woła WSPÓLNE
@@ -23,8 +27,9 @@
  * własnej, osobnej kopii sprawdzenia kształtu.
  */
 
-import type { EnergyNetworkModel, GroundingConfig } from '../../../types/enm';
+import type { EnergyNetworkModel, GroundingConfig, ZespolUziemiajacy } from '../../../types/enm';
 import type {
+  DoziemienieSieci,
   ExtendedTrace,
   ShortCircuitRow,
 } from '../../../ui/results-inspector/types';
@@ -34,10 +39,12 @@ import {
   fmtKA,
   fmtKappa,
   fmtOhm,
+  fmtLiczba,
   fmtWspolczynnik,
   rodzajZwarciaPL,
 } from '../zwarcia/strings';
 import { rozpakujWartoscSladu } from '../../../ui/results-inspector/traceValue';
+import { wielkoscPl } from '../wzorzec/KartaWerdyktu';
 import { SKLADOWE_STRINGS as T, uziemieniePL } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -47,37 +54,34 @@ import { SKLADOWE_STRINGS as T, uziemieniePL } from './strings';
 /** Typy przebiegów zwarć NIESYMETRYCZNYCH (kontrakt ExecutionAnalysisType). */
 export const TYPY_NIESYMETRYCZNE = new Set<string>(['SC_1F', 'SC_2F', 'SC_2F_G']);
 
-const STATUS_ZAKONCZONY = 'DONE';
-
 export interface PrzebiegDoWyboru {
   readonly id: string;
   readonly analysis_type: string;
-  readonly status: string;
-  readonly finished_at?: string | null;
-  readonly started_at?: string | null;
 }
 
 /**
- * Wybiera przebieg do interpretacji składowych: aktywny przebieg, jeśli jest
- * zakończonym zwarciem niesymetrycznym; inaczej najnowszy zakończony przebieg
- * niesymetryczny (sort deterministyczny po finished_at/started_at malejąco);
- * brak → null (uczciwy stan zerowy ekranu).
+ * Przebieg ekranu składowych (karta K8): AKTYWNY bieg rodziny „zwarcie" z magazynu
+ * kontekstu wyniku — ten sam, który jest na schemacie, pasku stanu i w panelu dolnym.
+ * Składowe interpretują wyłącznie zwarcie niesymetryczne, więc gdy aktywny bieg zwarcia
+ * jest symetryczny (3F), ekran NIE wybiera po cichu innego biegu: zwraca kandydata
+ * (najnowszy zakończony bieg niesymetryczny — `biegiZwarcia` są od najnowszego) do
+ * JAWNEGO przełączenia kontekstu. Brak biegu niesymetrycznego → `brak` (stan zerowy).
  */
-export function wybierzPrzebiegNiesymetryczny<T extends PrzebiegDoWyboru>(
-  przebiegi: readonly T[],
-  activeRunId: string | null,
-): T | null {
-  const niesymetryczne = przebiegi.filter(
-    (r) => r.status === STATUS_ZAKONCZONY && TYPY_NIESYMETRYCZNE.has(r.analysis_type),
-  );
-  if (niesymetryczne.length === 0) return null;
-  const aktywny = activeRunId ? niesymetryczne.find((r) => r.id === activeRunId) : undefined;
-  if (aktywny) return aktywny;
-  return [...niesymetryczne].sort((a, b) =>
-    String(b.finished_at ?? b.started_at ?? '').localeCompare(
-      String(a.finished_at ?? a.started_at ?? ''),
-    ),
-  )[0];
+export type WyborPrzebieguSkladowych<T extends PrzebiegDoWyboru> =
+  | { readonly rodzaj: 'aktywny'; readonly przebieg: T }
+  | { readonly rodzaj: 'aktywnySymetryczny'; readonly aktywny: T; readonly kandydat: T }
+  | { readonly rodzaj: 'brak' };
+
+export function wyborPrzebieguSkladowych<T extends PrzebiegDoWyboru>(
+  aktywnyZwarcia: T | null,
+  biegiZwarcia: readonly T[],
+): WyborPrzebieguSkladowych<T> {
+  if (aktywnyZwarcia && TYPY_NIESYMETRYCZNE.has(aktywnyZwarcia.analysis_type)) {
+    return { rodzaj: 'aktywny', przebieg: aktywnyZwarcia };
+  }
+  const kandydat = biegiZwarcia.find((r) => TYPY_NIESYMETRYCZNE.has(r.analysis_type));
+  if (aktywnyZwarcia && kandydat) return { rodzaj: 'aktywnySymetryczny', aktywny: aktywnyZwarcia, kandydat };
+  return { rodzaj: 'brak' };
 }
 
 // ---------------------------------------------------------------------------
@@ -295,9 +299,38 @@ function wpisUziemienia(
 }
 
 /**
- * Uziemienie punktu neutralnego sieci SN zasilanej ze ŹRÓDŁA stojącego na szynie
- * wybranego punktu (W5-A: `Source.neutral_grounding` — `Bus.grounding` skasowane;
- * dopasowanie po ref_id/element_id szyny).
+ * Opis zespołu uziemiającego z ZAINSTALOWANYCH elementów punktu neutralnego (dane modelu,
+ * bez wyprowadzania wariantu pracy): uziemienie bezpośrednie, dławik gaszący (z rezystorem
+ * wymuszającym AWSC), rezystor uziemiający; zespół bez elementu — nazwany brak.
+ */
+function opisZespolu(zespol: ZespolUziemiajacy): string {
+  const elementy: string[] = [];
+  if (zespol.uziemienie_bezposrednie) elementy.push(T.zespolBezposrednie);
+  if (zespol.dlawik) elementy.push(zespol.dlawik.awsc ? T.zespolDlawikAwsc : T.zespolDlawik);
+  if (zespol.rezystor) elementy.push(T.zespolRezystor);
+  return elementy.length > 0 ? elementy.join(' ‖ ') : T.zespolBezElementu;
+}
+
+function wpisZespolu(zespol: ZespolUziemiajacy): UziemienieWpis {
+  return {
+    element: zespol.name || zespol.ref_id,
+    strona: T.uziemienieZespol,
+    opis: opisZespolu(zespol),
+    rOhm: zespol.rezystor?.r_ohm ?? null,
+    xOhm: null,
+  };
+}
+
+function zespolySieci(snapshot: EnergyNetworkModel): ZespolUziemiajacy[] {
+  return [...(snapshot.zespoly_uziemiajace ?? [])].sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+}
+
+/**
+ * Uziemienie punktu neutralnego NA SZYNIE wybranego punktu (dopasowanie po ref_id/element_id
+ * szyny): zespół uziemiający na tej szynie (sieć SN, karta UX-04/POLE-ZU), a bez niego
+ * opis punktu neutralnego sieci 110 kV za granicą modelu (`Source.neutral_grounding` źródła
+ * na tej szynie). Uziemienie sieci SN z innej szyny tej samej sieci (sekcje sprzęgnięte)
+ * pokazuje lista sieci niżej i dane przyjęte wiersza zwarcia z backendu.
  */
 export function uziemieniePunktu(
   snapshot: EnergyNetworkModel | null,
@@ -306,15 +339,18 @@ export function uziemieniePunktu(
   if (!snapshot || !elementId) return null;
   const szyna = snapshot.buses.find((bus) => bus.ref_id === elementId || bus.id === elementId);
   if (!szyna) return null;
+  const zespol = zespolySieci(snapshot).find((z) => z.bus_ref === szyna.ref_id);
+  if (zespol) return wpisZespolu(zespol);
   const zrodlo = snapshot.sources.find((s) => s.bus_ref === szyna.ref_id && s.neutral_grounding);
   if (!zrodlo?.neutral_grounding) return null;
   return wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding);
 }
 
 /**
- * Wszystkie jawne konfiguracje punktu neutralnego w zamrożonej wersji układu:
- * źródła z `neutral_grounding` oraz strony GN/DN transformatorów. Pusta lista =
- * model bez jawnego uziemienia (uczciwy komunikat z akcją naprawczą).
+ * Wszystkie jawne konfiguracje punktu neutralnego w zamrożonej wersji układu: źródła
+ * z `neutral_grounding` (sieć 110 kV za granicą modelu), zespoły uziemiające sieci SN oraz
+ * strony GN/DN transformatorów. Pusta lista = model bez jawnego uziemienia (uczciwy
+ * komunikat z akcją naprawczą).
  */
 export function uziemieniaSieci(snapshot: EnergyNetworkModel | null): UziemienieWpis[] {
   if (!snapshot) return [];
@@ -324,6 +360,7 @@ export function uziemieniaSieci(snapshot: EnergyNetworkModel | null): Uziemienie
       wpisy.push(wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding));
     }
   }
+  for (const zespol of zespolySieci(snapshot)) wpisy.push(wpisZespolu(zespol));
   for (const trafo of snapshot.transformers) {
     if (trafo.hv_neutral) {
       wpisy.push(wpisUziemienia(trafo.name || trafo.ref_id, T.uziemienieStronaGN, trafo.hv_neutral));
@@ -341,4 +378,96 @@ export function fmtImpedancjaUziemienia(wpis: UziemienieWpis): string | null {
   if (wpis.rOhm != null) czesci.push(`${T.uziemienieRezystancja} = ${fmtOhm(wpis.rOhm)} ${T.jednOhm}`);
   if (wpis.xOhm != null) czesci.push(`${T.uziemienieReaktancja} = ${fmtOhm(wpis.xOhm)} ${T.jednOhm}`);
   return czesci.length > 0 ? czesci.join(' · ') : null;
+}
+
+// ---------------------------------------------------------------------------
+// Doziemienie sieci SN wg sposobu pracy punktu neutralnego (karta UX-04, warunek
+// odbioru 2026-10-29) — WYŁĄCZNIE formatowanie liczb backendu (solver
+// `doziemienie_sn`); żadnej wielkości UI nie wylicza.
+// ---------------------------------------------------------------------------
+
+export interface WartoscDoziemienia {
+  readonly klucz: string;
+  readonly etykieta: string;
+  readonly wartosc: string;
+}
+
+export interface WidokDoziemienia {
+  readonly naglowek: string;
+  readonly wartosci: readonly WartoscDoziemienia[];
+  readonly wzorLatex: string;
+  readonly opisUziemienia: string | null;
+  readonly podstawa: string;
+  readonly zastrzezenia: readonly string[];
+  readonly brak: string | null;
+  readonly podwojne: string | null;
+  readonly danePrzyjete: readonly { nazwa: string; wartosc: string | null; powod: string }[];
+  readonly niepelny: boolean;
+  /** Ślad WHITE BOX solvera doziemienia — kroki nazywają zastosowany model sposobu pracy. */
+  readonly kroki: readonly KrokDoziemienia[];
+}
+
+export interface KrokDoziemienia {
+  readonly klucz: string;
+  readonly tytul: string;
+  readonly wzorLatex: string;
+  /** Podstawienie WYŁĄCZNIE z `substitution_latex` backendu (proza nie idzie do KaTeX-a). */
+  readonly podstawienieLatex: string | null;
+}
+
+function fmtA(n: number | null): string | null {
+  return n == null ? null : `${fmtLiczba(n, 2)} ${T.jednA}`;
+}
+
+function fmtV(n: number | null): string | null {
+  return n == null ? null : `${fmtLiczba(n, 0)} ${T.jednV}`;
+}
+
+/** Wiersz zwarcia jednofazowego (token backendu „1F"; dopuszczalny prefiks „SC_"). */
+export function jestZwarciemJednofazowym(row: ShortCircuitRow | null): boolean {
+  return (row?.fault_type ?? '').trim().toUpperCase().replace(/^SC_/, '') === '1F';
+}
+
+/** Widok doziemienia sieci SN wiersza; `null`, gdy wiersz go nie niesie (nie 1F / nie SN). */
+export function doziemienieWiersza(row: ShortCircuitRow | null): WidokDoziemienia | null {
+  const d: DoziemienieSieci | null | undefined = row?.doziemienie_sieci;
+  if (!d) return null;
+  const kandydaci: [string, string, string | null][] = [
+    ['prad', `${T.doziemieniePrad} (${d.charakter_pl})`, fmtA(d.prad_a)],
+    ['i_c', T.doziemienieIC, fmtA(d.i_c_a)],
+    ['i_l', T.doziemienieIL, fmtA(d.i_l_a)],
+    ['i_w', T.doziemienieIW, fmtA(d.i_w_a)],
+    ['v', T.doziemienieV, d.rozstrojenie == null ? null : fmtLiczba(d.rozstrojenie, 4)],
+    ['u_f', T.doziemienieUF, fmtV(d.u_f_v)],
+    ['u0', T.doziemienieU0, fmtV(d.u0_v)],
+    ['u_b', T.doziemienieUB, fmtV(d.u_faza_b_v)],
+    ['u_c', T.doziemienieUC, fmtV(d.u_faza_c_v)],
+    ['k', T.doziemienieK, d.wspolczynnik_k == null ? null : fmtKappa(d.wspolczynnik_k)],
+    ['z_f', T.doziemienieZF, d.z_f_ohm ? `${fmtZespolona(d.z_f_ohm)} ${T.jednOhm}` : null],
+  ];
+  return {
+    naglowek: `${d.tryb_pl} — ${d.charakter_pl}`,
+    wartosci: kandydaci
+      .filter((k): k is [string, string, string] => k[2] !== null)
+      .map(([klucz, etykieta, wartosc]) => ({ klucz, etykieta, wartosc })),
+    wzorLatex: d.wzor_latex,
+    opisUziemienia: d.opis_uziemienia_pl ?? null,
+    podstawa: d.podstawa_pl,
+    zastrzezenia: d.zastrzezenia_pl,
+    brak: d.brak_pl,
+    podwojne: d.podwojne_doziemienie_pl,
+    danePrzyjete: (d.dane_przyjete ?? []).map((dana) => ({
+      nazwa: dana.nazwa_pl,
+      // Ten sam zapis liczb co karta werdyktu (pl-PL, 4 cyfry znaczące) — nie surowy zapis JS.
+      wartosc: dana.wartosc ? wielkoscPl(dana.wartosc) : null,
+      powod: dana.powod_pl,
+    })),
+    niepelny: d.kompletnosc_dowodu === 'NIEPELNY',
+    kroki: (d.slad ?? []).map((krok) => ({
+      klucz: krok.key,
+      tytul: krok.title,
+      wzorLatex: krok.formula_latex,
+      podstawienieLatex: krok.substitution_latex ?? null,
+    })),
+  };
 }

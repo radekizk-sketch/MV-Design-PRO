@@ -11,15 +11,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-import {
-  etykietaPrzebiegu,
-  ostatniZakonczonyPrzebieg,
-  ostatniZakonczonyPrzebiegPrzypadku,
-  useShellCaseInfo,
-  useShellStatusInfo,
-} from '../shellStatus';
+import { useShellStatusInfo } from '../shellStatus';
+import { STAN_WYBORU_PUSTY, etykietaBiegu, kontekstyRodzin } from '../../wyniki/kontekst/kontekstWyniku';
 import { SHELL_STRINGS, readinessLabel } from '../strings';
-import { podsumujGotowosc } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
+import {
+  podsumujGotowosc,
+  usePodsumowanieGotowosci,
+} from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
@@ -92,16 +90,18 @@ describe('podsumujGotowosc — projekcja gotowości dla chromu (R1)', () => {
   });
 });
 
-describe('chip „Gotowość" nie ogłasza braku uwag, gdy gotowości nikt nie policzył', () => {
+describe('pozycja „Gotowość" paska stanu nie ogłasza braku uwag, gdy gotowości nikt nie policzył', () => {
+  // Po karcie K1 POWLOKA gotowość ma w chromie JEDNO miejsce: pasek stanu, zasilany
+  // `usePodsumowanieGotowosci` (ta sama projekcja co przestrzeń „Gotowość"). Dawny
+  // chip „Model: zwalidowany / w budowie" skasowano jako powtórzenie gotowości.
   it('gotowość NIEUSTALONA → etykieta kreski braku danej, nie „brak uwag"', () => {
-    const { result } = renderHook(() => useShellCaseInfo());
+    const { result } = renderHook(() => usePodsumowanieGotowosci());
 
-    expect(result.current.readinessGotowoscUstalona).toBe(false);
-    expect(readinessLabel(
-      result.current.readinessWarnings,
-      result.current.readinessBlockers,
-      result.current.readinessGotowoscUstalona,
-    )).toBe(`Gotowość: ${SHELL_STRINGS.emptyValue}`);
+    expect(result.current.ustalona).toBe(false);
+    expect(result.current.ready).toBe(false);
+    expect(readinessLabel(result.current.ostrzezenia, result.current.blokady, result.current.ustalona)).toBe(
+      `Gotowość: ${SHELL_STRINGS.emptyValue}`,
+    );
   });
 
   it('gotowość policzona bez uwag → „Gotowość: brak uwag" (werdykt ma pokrycie)', () => {
@@ -109,42 +109,23 @@ describe('chip „Gotowość" nie ogłasza braku uwag, gdy gotowości nikt nie p
       readiness: readinessFixture({ ready: true, blockers: [], warnings: [] }),
     } as never);
 
-    const { result } = renderHook(() => useShellCaseInfo());
+    const { result } = renderHook(() => usePodsumowanieGotowosci());
 
-    expect(result.current.readinessGotowoscUstalona).toBe(true);
-    expect(readinessLabel(
-      result.current.readinessWarnings,
-      result.current.readinessBlockers,
-      result.current.readinessGotowoscUstalona,
-    )).toBe('Gotowość: brak uwag');
+    expect(result.current.ustalona).toBe(true);
+    expect(readinessLabel(result.current.ostrzezenia, result.current.blokady, result.current.ustalona)).toBe(
+      'Gotowość: brak uwag',
+    );
   });
-});
 
-describe('useShellCaseInfo — chrom czyta migawkę, nie martwy store gotowości (R1)', () => {
-  it('blokady w migawce → „Model: w budowie" i liczniki chromu = liczniki migawki', () => {
+  it('blokady w migawce → liczby chromu = liczby migawki, nigdy „brak uwag" (R1)', () => {
     useSnapshotStore.setState({ readiness: readinessFixture() } as never);
 
-    const { result } = renderHook(() => useShellCaseInfo());
+    const { result } = renderHook(() => usePodsumowanieGotowosci());
 
-    expect(result.current.modelValidated).toBe(false);
-    expect(result.current.readinessBlockers).toBe(1);
-    expect(result.current.readinessWarnings).toBe(2);
-  });
-
-  it('gotowość bez uwag → model zwalidowany (projekt obecny)', () => {
-    useSnapshotStore.setState({
-      readiness: readinessFixture({ ready: true, blockers: [], warnings: [] }),
-    } as never);
-
-    const { result } = renderHook(() => useShellCaseInfo());
-
-    expect(result.current.modelValidated).toBe(true);
-    expect(result.current.readinessBlockers).toBe(0);
-  });
-
-  it('brak migawki → model NIE jest ogłaszany jako zwalidowany (defekt R1)', () => {
-    const { result } = renderHook(() => useShellCaseInfo());
-    expect(result.current.modelValidated).toBe(false);
+    expect(result.current).toEqual({ ready: false, ustalona: true, blokady: 1, ostrzezenia: 2 });
+    expect(readinessLabel(result.current.ostrzezenia, result.current.blokady, result.current.ustalona)).toBe(
+      'Gotowość: 1 blokada',
+    );
   });
 });
 
@@ -175,64 +156,47 @@ describe('useShellStatusInfo — wersja modelu i rewizja (R4 + R5)', () => {
   });
 });
 
-describe('etykieta ostatniego przebiegu (R3)', () => {
-  it('brak zakończonych przebiegów → brak etykiety', () => {
-    expect(ostatniZakonczonyPrzebieg([])).toBeNull();
-    expect(ostatniZakonczonyPrzebieg([runFixture({ status: 'RUNNING' })])).toBeNull();
-    expect(etykietaPrzebiegu(null)).toBeNull();
+describe('etykieta biegu na pasku stanu (R3 → karta K8: aktywny bieg RODZINY, nie „ostatni zakończony")', () => {
+  // Karta K8: pasek stanu pokazuje aktywny bieg każdej rodziny z magazynu kontekstu
+  // wyniku (`kontekstyRodzin`); bez wyboru — najnowszy zakończony bieg rodziny. Intencja
+  // R3 zostaje: polska etykieta rodzaju i czasu, determinizm przy remisie znaczników.
+  it('brak zakończonych przebiegów → brak wpisów rodzin (bieg w toku nie jest wynikiem)', () => {
+    expect(kontekstyRodzin([], STAN_WYBORU_PUSTY, null, null)).toEqual([]);
+    expect(kontekstyRodzin([runFixture({ status: 'RUNNING' })], STAN_WYBORU_PUSTY, null, null)).toEqual([]);
   });
 
-  it('wybiera najpóźniej zakończony przebieg (deterministycznie)', () => {
-    const wybrany = ostatniZakonczonyPrzebieg([
-      runFixture({ id: 'run-a', finished_at: '2026-07-30T10:00:00Z' }),
-      runFixture({ id: 'run-b', finished_at: '2026-07-30T12:30:00Z', analysis_type: 'LOAD_FLOW' }),
-      runFixture({ id: 'run-c', status: 'FAILED', finished_at: '2026-07-30T23:00:00Z' }),
-    ]);
-    expect(wybrany?.id).toBe('run-b');
-    expect(etykietaPrzebiegu(wybrany)).toBe('Rozpływ mocy · 2026-07-30 12:30');
+  it('bez wyboru: najpóźniej zakończony bieg rodziny (nieudany pomijany), etykieta po polsku', () => {
+    const wpisy = kontekstyRodzin(
+      [
+        runFixture({ id: 'run-a', finished_at: '2026-07-30T10:00:00Z', analysis_type: 'LOAD_FLOW' }),
+        runFixture({ id: 'run-b', finished_at: '2026-07-30T12:30:00Z', analysis_type: 'LOAD_FLOW' }),
+        runFixture({ id: 'run-c', status: 'FAILED', finished_at: '2026-07-30T23:00:00Z', analysis_type: 'LOAD_FLOW' }),
+      ],
+      STAN_WYBORU_PUSTY,
+      null,
+      null,
+    );
+    expect(wpisy.map((w) => [w.rodzina, w.bieg.id])).toEqual([['rozplyw', 'run-b']]);
+    expect(etykietaBiegu(wpisy[0].bieg)).toBe('Rozpływ mocy · 2026-07-30 12:30');
   });
 
   it('bieg oceny zabezpieczeń (PROTECTION z listingu biegów przypadku) ma polską nazwę, nie „undefined"', () => {
     // Karta BIEG-ZABEZPIECZEN-Z-MODELU: ekran koordynacji tworzy bieg `protection_sn`, który
     // listing biegów przypadku zwraca jako `PROTECTION` — pasek stanu pokazywał „Przebieg:
     // undefined · …" (zmierzone na żywym e2e).
-    const etykieta = etykietaPrzebiegu(
+    const etykieta = etykietaBiegu(
       runFixture({ analysis_type: 'PROTECTION', finished_at: '2026-07-30T12:30:00Z' }),
     );
     expect(etykieta).toBe('Ocena zabezpieczeń nadprądowych · 2026-07-30 12:30');
     expect(etykieta).not.toContain('undefined');
   });
 
-  it('remis znaczników rozstrzyga identyfikator (ta sama lista → ta sama etykieta)', () => {
+  it('remis znaczników rozstrzyga identyfikator (ta sama lista → ten sam bieg, w obu kolejnościach)', () => {
     const lista = [
       runFixture({ id: 'run-a', finished_at: '2026-07-30T10:00:00Z' }),
       runFixture({ id: 'run-z', finished_at: '2026-07-30T10:00:00Z' }),
     ];
-    expect(ostatniZakonczonyPrzebieg(lista)?.id).toBe('run-z');
-    expect(ostatniZakonczonyPrzebieg([...lista].reverse())?.id).toBe('run-z');
-  });
-});
-
-describe('rewizja wyniku bierze się z przebiegu WŁAŚCIWEGO przypadku (V12K-309 poz. 2)', () => {
-  it('przebieg innego zakresu jest pomijany — cudza rewizja nie opisuje tego wyniku', () => {
-    const lista = [
-      runFixture({ id: 'run-obcy', study_case_id: 'case-INNY', finished_at: '2026-07-30T23:00:00Z' }),
-      runFixture({ id: 'run-moj', study_case_id: 'case-1', finished_at: '2026-07-30T10:00:00Z' }),
-    ];
-    // Przebieg obcego zakresu jest PÓŹNIEJSZY — bez filtru wygrałby ranking.
-    expect(ostatniZakonczonyPrzebieg(lista)?.id).toBe('run-obcy');
-    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, 'case-1')?.id).toBe('run-moj');
-  });
-
-  it('brak przypadku albo brak jego przebiegów → brak rewizji wyniku (bez zgadywania)', () => {
-    const lista = [runFixture({ id: 'run-obcy', study_case_id: 'case-INNY' })];
-    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, null)).toBeNull();
-    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, 'case-1')).toBeNull();
-    expect(ostatniZakonczonyPrzebiegPrzypadku([], 'case-1')).toBeNull();
-  });
-
-  it('niezakończony przebieg przypadku nie daje rewizji (wynik jeszcze nie istnieje)', () => {
-    const lista = [runFixture({ id: 'run-w-toku', study_case_id: 'case-1', status: 'RUNNING' })];
-    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, 'case-1')).toBeNull();
+    expect(kontekstyRodzin(lista, STAN_WYBORU_PUSTY, null, null)[0].bieg.id).toBe('run-z');
+    expect(kontekstyRodzin([...lista].reverse(), STAN_WYBORU_PUSTY, null, null)[0].bieg.id).toBe('run-z');
   });
 });

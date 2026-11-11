@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import Any
 
 from enm.domain_operations import execute_domain_operation
-from enm.migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA, migruj
+from enm.migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA, migruj
 from enm.models import EnergyNetworkModel
 from enm.validator import ENMValidator
 
@@ -44,7 +44,7 @@ def _stacja_z_transformatorem() -> dict[str, Any]:
     """Stacja SN/nN z transformatorem PO odczycie ze składu modelu.
 
     `enm/store.py::get_enm` promuje specyfikacje pól nN do realnych gałęzi
-    (`nn_field_specs_promocja.migruj`) — ta sama migracja jest tu wywołana
+    (`promocja_aparatow_nn.migruj`) — ta sama migracja jest tu wywołana
     jawnie, bo to ona tworzy aparat nN bez wiązania, który widzi projektant.
     """
     snap, _ = _build_gpz_with_endpoint()

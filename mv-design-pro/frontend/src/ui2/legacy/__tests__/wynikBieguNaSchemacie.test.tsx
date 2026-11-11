@@ -24,6 +24,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useLegacyOrchestrator } from '../useLegacyOrchestrator';
+import { wyczyscKontekstWyniku } from '../../../test/kontekstBiegu';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { SpaceNav } from '../../shell/SpaceNav';
 import { useShellStore } from '../../shell/useShellStore';
@@ -106,6 +107,9 @@ beforeEach(() => {
   useRawResultOverlayStore.getState().clear();
   useOverlayStore.getState().clearOverlay();
   useAppStateStore.getState().reset();
+  // Karta K8: magazyn kontekstu wyniku trzyma wybór biegu i pamięć wyników per bieg —
+  // izolacja testów tego samego `RUN_ID` wymaga czystego kontekstu.
+  wyczyscKontekstWyniku();
   useShellStore.setState({ activeSpace: 'wyniki' });
   useSnapshotStore.setState({ snapshot: enm });
   // Stan PO BIEGU: projektant jest na wynikach wskazanego przebiegu.
@@ -144,12 +148,13 @@ describe('S9-2 — łańcuch od klika: bieg → schemat → wyniki na rysunku', 
     await waitFor(() =>
       expect(useRawResultOverlayStore.getState().payload?.run_id).toBe(RUN_ID),
     );
-    // 9 punktów biegu zwarciowego fikstury (3 szyny schematu SN + 6 szyn odpływów nN
+    // 10 punktów biegu zwarciowego fikstury (3 szyny schematu SN + szyna WN GPZ — karta
+    // GPZ-MODEL, równoważnik 110 kV z transformatorem WN/SN — + 6 szyn odpływów nN
     // stacji — promocja pól nN do modelu; fikstura regenerowana z API).
     expect(Object.keys(useRawResultOverlayStore.getState().payload?.elements ?? {}).sort()).toEqual(
       Object.keys(zwarcie.elements).sort(),
     );
-    expect(Object.keys(zwarcie.elements)).toHaveLength(9);
+    expect(Object.keys(zwarcie.elements)).toHaveLength(10);
 
     // 4. OSTATNI KLIK ŁAŃCUCHA: rysunek pokazuje wartości biegu.
     await waitFor(() => {

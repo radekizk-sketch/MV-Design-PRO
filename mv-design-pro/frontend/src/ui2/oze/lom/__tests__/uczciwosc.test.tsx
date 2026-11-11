@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe('EkranLom — pole bez sprawdzeń', () => {
   it('wiersz tabeli: etykieta z rekordu „Ocena niewykonana", nie „Poprawna" ani kod statusu', async () => {
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     const tabela = await screen.findByTestId('mvd-wyn-tabela');
     const wiersz = within(tabela).getByText('Pole OZE X').closest('tr') as HTMLElement;
     expect(wiersz).toHaveTextContent('Ocena niewykonana');
@@ -48,7 +48,7 @@ describe('EkranLom — pole bez sprawdzeń', () => {
   });
 
   it('szczegół pola: rekord kontraktu z backendu w karcie werdyktu (zdanie, czego brakuje)', async () => {
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     const tabela = await screen.findByTestId('mvd-wyn-tabela');
     fireEvent.click(within(tabela).getByText('Pole OZE X'));
     const szczegol = screen.getByTestId('mvd-lom-szczegol');
@@ -69,7 +69,7 @@ describe('EkranLom — pole bez sprawdzeń', () => {
   });
 
   it('porównanie w oknie: etykieta i semantyka z rekordu porównania, nie „Poprawna"', async () => {
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     const tabela = await screen.findByTestId('mvd-wyn-tabela');
     fireEvent.click(within(tabela).getByText('Pole FW C'));
     const rekord = poleWidoku(widokPoleBezSprawdzenFixture(), 'Pole FW C').checks[0].ocena;
@@ -82,7 +82,7 @@ describe('EkranLom — pole bez sprawdzeń', () => {
   });
 
   it('chipy podsumowania z listy `statusy` backendu — w tym „Ocena niewykonana"', async () => {
-    render(<EkranLom trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<EkranLom szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     const podsumowanie = await screen.findByTestId('mvd-lom-podsumowanie');
     const chipy = within(podsumowanie).getAllByTestId('mvd-lom-chip');
     // Fixtura: pole bez porównań i pole FW (porównanie 81U + koordynacja SPZ bez danych) —

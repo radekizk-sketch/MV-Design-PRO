@@ -71,17 +71,27 @@ def _academic_input() -> V126AcademicInput:
             )
         ],
         parameters={
+            # Komplet danych uziomu i silnika — pola wymagane kontraktu (dawne wartości
+            # domyślne kontraktu liczyły uziom i silnik, których nikt nie opisał).
             "earthing": {
-                "gpz_ref": "GPZ",
-                "fault_current_ka": 8.0,
+                "bus_ref": "B1",
+                "rho1_ohm_m": 100.0,
                 "length_m": 60.0,
                 "width_m": 40.0,
+                "mesh_spacing_m": 6.0,
+                "buried_depth_m": 0.6,
+                "rods_total_length_m": 40.0,
+                "split_factor": 0.65,
+                "fault_current_ka": 8.0,
+                "fault_clearing_time_s": 0.5,
+                "surface_layer_rho_ohm_m": 2500.0,
+                "surface_layer_derating": 0.74,
             },
             "insulation": [
                 {
                     "location_bus_ref": "B2",
                     "u_m_kv": 17.5,
-                    "network_neutral": "isolated",
+                    "network_neutral": "izolowany",
                     "arrester_residual_10ka_kv": 70.0,
                 }
             ],
@@ -91,6 +101,13 @@ def _academic_input() -> V126AcademicInput:
                     "bus_ref": "B2",
                     "rated_kw": 630.0,
                     "rated_voltage_kv": 6.0,
+                    "locked_rotor_multiplier": 6.0,
+                    "start_power_factor": 0.22,
+                    "start_time_s": 8.0,
+                    "allowable_locked_rotor_time_s": 20.0,
+                    "max_torque_pu": 2.0,
+                    "critical_slip": 0.2,
+                    "load_start_torque_pu": 0.6,
                 }
             ],
             "hosting_monte_carlo_n": 64,
@@ -159,8 +176,28 @@ def test_reliability_indices_are_reportable() -> None:
 
 def test_earthing_uses_ieee80_contract() -> None:
     result = V126AcademicSolver().run(V126AnalysisType.EARTHING_SAFETY, _academic_input())
-    assert result["result"]["r_g_ohm"] > 0
-    assert result["result"]["safety_status"] in {"bezpieczny", "wymaga_ochrony", "niezgodny"}
+    """Solver liczy wielkości uziomu (IEEE Std 80), ocenę wystawiają rekordy werdyktu
+    wyjaśnialnego na granicy wyniku — kryterium dotykowe i krokowe z wynikiem, limitem
+    i marginesem w woltach (dawny status ``safety_status`` był werdyktem bez wyjaśnienia)."""
+    from application.analyses.v126_oceny import oceny_wyniku_v126
+
+    wynik = result["result"]
+    assert wynik["r_g_ohm"] > 0
+    assert "safety_status" not in wynik
+    (wymaganie,) = oceny_wyniku_v126(
+        "earthing_safety", wynik, wersja_silnika=None, odcisk=None, nazwy={}
+    )
+    skladowe = {o["kryterium_id"]: o for o in wymaganie["oceny_skladowe"]}
+    dotyk = skladowe["v126.uziom.napiecie_dotykowe"]
+    krok = skladowe["v126.uziom.napiecie_krokowe"]
+    assert dotyk["wynik"]["wartosc"] == {"wartosc": wynik["u_touch_calculated_v"], "jednostka": "V"}
+    assert dotyk["limit"]["wartosc"] == {"wartosc": wynik["u_touch_allowable_v"], "jednostka": "V"}
+    assert krok["wynik"]["wartosc"]["wartosc"] == wynik["u_step_calculated_v"]
+    # 2381 V > 838 V — kryterium dotykowe naruszone, krokowe spełnione; agregat NIE_SPELNIA.
+    assert dotyk["status_maszynowy"] == "NIE_SPELNIA"
+    assert krok["status_maszynowy"] == "SPELNIA"
+    assert wymaganie["status_maszynowy"] == "NIE_SPELNIA"
+    assert wymaganie["wyjasnienie"]["zdanie_pl"]
 
 
 def test_v126_api_run_result_and_trace() -> None:

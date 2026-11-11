@@ -39,6 +39,7 @@ from enm.kompilator_grafu import (
     rozpocznij_z_pola,
 )
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_stacji
 
 CATALOG_LINE = "line-base-al-st-70"
 
@@ -70,7 +71,7 @@ def _gpz_pole(enm: dict[str, Any], index: int) -> dict[str, Any]:
     substation = next(s for s in enm["substations"] if str(s["ref_id"]).startswith("gpz/"))
     fields = [
         spec
-        for spec in substation["meta"]["field_specs"]
+        for spec in pola_stacji(enm, substation["ref_id"])
         if "gpz_line_field" in (spec.get("tags") or [])
     ]
     fields.sort(key=lambda f: f["meta"]["gpz_line_field_index"])
@@ -86,7 +87,7 @@ def test_continue_trunk_bez_bus_name_zachowuje_domyslny_scaffold() -> None:
     enm, _bus_gpz = _siec_z_gpz(line_fields_count=1)
     pole = _gpz_pole(enm, 0)
     enm, downstream_ref = kontynuuj_z_pola(
-        enm, field_ref=pole["field_ref"], catalog_ref=CATALOG_LINE, dlugosc_m=500.0, name="L1"
+        enm, field_ref=pole["ref_id"], catalog_ref=CATALOG_LINE, dlugosc_m=500.0, name="L1"
     )
     bus = _bus(enm, downstream_ref)
     assert sorted(bus["tags"]) == ["helper_bus", "topology_terminal"]
@@ -100,7 +101,7 @@ def test_continue_trunk_z_bus_name_promuje_szyne() -> None:
     pole = _gpz_pole(enm, 0)
     enm, downstream_ref = kontynuuj_z_pola(
         enm,
-        field_ref=pole["field_ref"],
+        field_ref=pole["ref_id"],
         catalog_ref=CATALOG_LINE,
         dlugosc_m=500.0,
         name="L1",
@@ -123,7 +124,7 @@ def test_start_branch_bez_bus_name_zachowuje_domyslny_scaffold() -> None:
     enm, _bus_gpz = _siec_z_gpz(line_fields_count=1)
     pole = _gpz_pole(enm, 0)
     enm, branch_end_ref = rozpocznij_z_pola(
-        enm, field_ref=pole["field_ref"], catalog_ref=CATALOG_LINE, dlugosc_m=300.0, name="BR1"
+        enm, field_ref=pole["ref_id"], catalog_ref=CATALOG_LINE, dlugosc_m=300.0, name="BR1"
     )
     bus = _bus(enm, branch_end_ref)
     assert sorted(bus["tags"]) == ["helper_bus", "topology_terminal"]
@@ -137,7 +138,7 @@ def test_start_branch_z_bus_name_promuje_szyne() -> None:
     pole = _gpz_pole(enm, 0)
     enm, branch_end_ref = rozpocznij_z_pola(
         enm,
-        field_ref=pole["field_ref"],
+        field_ref=pole["ref_id"],
         catalog_ref=CATALOG_LINE,
         dlugosc_m=300.0,
         name="BR1",
@@ -164,12 +165,12 @@ def test_bus_name_czyni_szyne_raportowalna_dla_zwarcia_w_torze_kanonicznym() -> 
     enm, _bus_gpz = _siec_z_gpz(line_fields_count=2)
     pole0 = _gpz_pole(enm, 0)
     enm, anonimowa_ref = kontynuuj_z_pola(
-        enm, field_ref=pole0["field_ref"], catalog_ref=CATALOG_LINE, dlugosc_m=500.0, name="L1"
+        enm, field_ref=pole0["ref_id"], catalog_ref=CATALOG_LINE, dlugosc_m=500.0, name="L1"
     )
     pole1 = _gpz_pole(enm, 1)
     enm, nazwana_ref = rozpocznij_z_pola(
         enm,
-        field_ref=pole1["field_ref"],
+        field_ref=pole1["ref_id"],
         catalog_ref=CATALOG_LINE,
         dlugosc_m=400.0,
         name="L2",
@@ -198,7 +199,7 @@ def test_bus_name_z_kontynuuj_z_szyny_tez_promuje() -> None:
     pole = _gpz_pole(enm, 0)
     enm, bus2_ref = kontynuuj_z_pola(
         enm,
-        field_ref=pole["field_ref"],
+        field_ref=pole["ref_id"],
         catalog_ref=CATALOG_LINE,
         dlugosc_m=500.0,
         name="L1",
@@ -226,7 +227,7 @@ def test_bus_name_rozne_wywolania_z_tej_samej_szyny_bez_kolizji() -> None:
     enm, _bus_gpz = _siec_z_gpz(line_fields_count=1)
     pole = _gpz_pole(enm, 0)
     enm, bus2_ref = kontynuuj_z_pola(
-        enm, field_ref=pole["field_ref"], catalog_ref=CATALOG_LINE, dlugosc_m=500.0, name="L1"
+        enm, field_ref=pole["ref_id"], catalog_ref=CATALOG_LINE, dlugosc_m=500.0, name="L1"
     )
     result_a = execute_domain_operation(
         enm_dict=enm,

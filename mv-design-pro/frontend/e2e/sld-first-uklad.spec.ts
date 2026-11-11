@@ -98,8 +98,6 @@ async function utworzProjektISiec(request: APIRequestContext): Promise<{
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   for (const [idx, length] of [300, 250, 200].entries()) {
     op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -148,7 +146,6 @@ async function otworzSchemat(page: Page, request: APIRequestContext): Promise<vo
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -329,9 +326,8 @@ test('inspektor za zawartością: selekcja rozwija, Escape zdejmuje i zwija (bra
   const skalaPoSelekcji = await skalaKamery();
   expect(Math.abs(skalaPoSelekcji - skalaPrzedSelekcja)).toBeLessThan(1e-6);
 
-  // Zdjęcie selekcji: Escape (K11-A — kanoniczny gest; pierwszy zamyka
-  // szufladę szczegółów otwartą klikiem, drugi zdejmuje selekcję i URL).
-  await page.keyboard.press('Escape');
+  // Zdjęcie selekcji: JEDEN Escape (K11-A — kanoniczny gest; UI-02b: klik nie
+  // otwiera już panelu szczegółów nad kanwą, więc nie ma czego zamykać najpierw).
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('mvd-inspector')).toHaveAttribute('hidden', '', {
     timeout: 10000,

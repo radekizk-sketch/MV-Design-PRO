@@ -62,6 +62,7 @@ from enm.domain_operations_v2 import (
     _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO,
     _normalize_source_technology,
 )
+from enm.pola import pola, pola_nn
 from network_model.catalog.types import CatalogNamespace
 
 from tests.enm.test_brama_katalogowa_operacji_v2 import (
@@ -85,6 +86,7 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
     _pole_sn_ref,
     _siec_ze_stacja,
     _stacja_ref,
+    _szyna_nn_ref,
     _szyna_sn_ref,
     _wykonaj,
 )
@@ -142,7 +144,7 @@ def _payload_sn_bay_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
-        "bay_role": "LINIA_OUT",
+        "bay_role": "OUT",  # rola modelu; kanoniczna `LINIA_OUT` → sn.bay_role_unknown
         "apparatus_kind": "BREAKER",
         "catalog_binding": _wiazanie(REF_APARAT_SN),
     }
@@ -157,6 +159,16 @@ def _payload_nn_load_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
         # nie moc bierną.
         "cos_phi": 0.9,
         "catalog_binding": _wiazanie(REF_ODBIOR),
+    }
+
+
+def _payload_pole_nn_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Odpływ nN z aparatem wskazanym wiązaniem pod CUDZĄ kategorią (karta W5-B)."""
+    return {
+        "station_ref": _stacja_ref(snapshot),
+        "bus_nn_ref": _szyna_nn_ref(snapshot),
+        "field_role": "OUTGOING",
+        "catalog_binding": _wiazanie(REF_APARAT_NN),
     }
 
 
@@ -189,9 +201,18 @@ def _payload_der_sn_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def _payload_kompensator_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
-        "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
         "catalog_binding": _wiazanie(REF_KOMPENSATOR),
+    }
+
+
+def _payload_zespol_uziemiajacy_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Zespół Z.14 (dławik ‖ rezystor) — każda z trzech pozycji pod CUDZĄ kategorią."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "catalog_binding": _wiazanie("TU_ZNYN11_15KV_PW160"),
+        "dlawik": {"catalog_binding": _wiazanie("DL_40_400A_15KV_CIAGLY")},
+        "rezystor": {"catalog_binding": _wiazanie("REZ_200A_15KV")},
     }
 
 
@@ -298,10 +319,9 @@ def _znaczniki_odbioru(snapshot: dict[str, Any]) -> dict[str, str | None]:
 
 
 def _pole_nn_zrodlowe(snapshot: dict[str, Any]) -> dict[str, Any]:
-    for stacja in snapshot.get("substations") or []:
-        for spec in (stacja.get("meta") or {}).get("nn_field_specs") or []:
-            if "nn_source_field" in (spec.get("tags") or []):
-                return spec
+    for spec in pola_nn(snapshot):
+        if "nn_source_field" in (spec.get("tags") or []):
+            return spec
     raise AssertionError("Brak pola źródłowego nN w migawce")
 
 
@@ -314,6 +334,16 @@ def _znaczniki_konwertera(snapshot: dict[str, Any]) -> dict[str, str | None]:
             "catalog_namespace"
         ),
     }
+
+
+def _znaczniki_pola_nn(snapshot: dict[str, Any]) -> dict[str, str | None]:
+    odplywy = [
+        p
+        for p in pola_nn(snapshot)
+        if p.get("bay_role") == "FEEDER" and (p.get("meta") or {}).get("catalog_binding")
+    ]
+    pole = _jedyny(odplywy, "pole odpływowe nN z wiązaniem aparatu")
+    return {"pole_nn.meta.catalog_binding": pole["meta"]["catalog_binding"]["catalog_namespace"]}
 
 
 def _znaczniki_der_sn(snapshot: dict[str, Any]) -> dict[str, str | None]:
@@ -342,11 +372,22 @@ def _znaczniki_kompensatora(snapshot: dict[str, Any]) -> dict[str, str | None]:
     }
 
 
+def _znaczniki_zespolu_uziemiajacego(snapshot: dict[str, Any]) -> dict[str, str | None]:
+    zespol = _jedyny(snapshot.get("zespoly_uziemiajace") or [], "zespol_uziemiajacy")
+    return {
+        "element": _znacznik(zespol),
+        "meta.catalog_binding": (zespol.get("meta") or {})
+        .get("catalog_binding", {})
+        .get("catalog_namespace"),
+        "dlawik": (zespol.get("dlawik") or {}).get("catalog_namespace"),
+        "rezystor": (zespol.get("rezystor") or {}).get("catalog_namespace"),
+    }
+
+
 def _znaczniki_ogranicznika(snapshot: dict[str, Any]) -> dict[str, str | None]:
-    for stacja in snapshot.get("substations") or []:
-        for spec in (stacja.get("meta") or {}).get("field_specs") or []:
-            for ogranicznik in spec.get("surge_arresters") or []:
-                return {"element": ogranicznik.get("catalog_namespace")}
+    for spec in pola(snapshot):
+        for ogranicznik in spec.get("surge_arresters") or []:
+            return {"element": ogranicznik.get("catalog_namespace")}
     raise AssertionError("Brak ogranicznika przepięć w migawce")
 
 
@@ -419,7 +460,8 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
     ZnacznikPochodzenia(
         "add_sn_bay",
         "add_sn_bay",
-        ("add_sn_bay",),
+        # Pisarz pola SN obu planów operacji `add_sn_bay` (deklaracja i katalog).
+        ("_zapisz_pole_sn",),
         _payload_sn_bay_obca,
         _znaczniki_aparatu_pola_sn,
         {"element": "APARAT_SN", "meta.catalog_binding": "APARAT_SN"},
@@ -431,6 +473,14 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
         _payload_nn_load_obca,
         _znaczniki_odbioru,
         {"element": "OBCIAZENIE", "meta.catalog_binding": "OBCIAZENIE"},
+    ),
+    ZnacznikPochodzenia(
+        "add_nn_outgoing_field",
+        "add_nn_outgoing_field",
+        ("_wiazanie_aparatu_pola_nn",),
+        _payload_pole_nn_obca,
+        _znaczniki_pola_nn,
+        {"pole_nn.meta.catalog_binding": "APARAT_NN"},
     ),
     ZnacznikPochodzenia(
         "add_converter_source|nn_side",
@@ -447,6 +497,9 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
             "_add_converter_source_der_sn",
             "_materialize_der_block_transformer",
             "_materialize_der_mv_cable",
+            # Tor pola źródłowego SN (zacisk + aparat) — wspólny z polem źródła
+            # przekształtnika na szynie SN (karta W5-B).
+            "_utworz_tor_pola_zrodlowego_sn",
         ),
         _payload_der_sn_obca,
         _znaczniki_der_sn,
@@ -465,6 +518,21 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
         _payload_kompensator_obca,
         _znaczniki_kompensatora,
         {"element": "KOMPENSATOR_SN", "meta.catalog_binding": "KOMPENSATOR_SN"},
+    ),
+    ZnacznikPochodzenia(
+        "add_zespol_uziemiajacy_sn",
+        "add_zespol_uziemiajacy_sn",
+        # Transformator uziemiający w operacji, dławik i rezystor w pisarzu urządzenia punktu
+        # neutralnego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+        ("add_zespol_uziemiajacy_sn", "_urzadzenie_punktu_neutralnego"),
+        _payload_zespol_uziemiajacy_obca,
+        _znaczniki_zespolu_uziemiajacego,
+        {
+            "element": "TRANSFORMATOR_UZIEMIAJACY",
+            "meta.catalog_binding": "TRANSFORMATOR_UZIEMIAJACY",
+            "dlawik": "DLAWIK_GASZACY",
+            "rezystor": "REZYSTOR_UZIEMIAJACY",
+        },
     ),
     ZnacznikPochodzenia(
         "add_surge_arrester_sn",
@@ -755,7 +823,7 @@ def test_pole_sn_bez_aparatu_nie_deklaruje_pochodzenia_katalogowego() -> None:
         {
             "station_ref": _stacja_ref(snapshot),
             "bus_ref": _szyna_sn_ref(snapshot),
-            "bay_role": "LINIA_OUT",
+            "bay_role": "OUT",  # rola modelu; kanoniczna `LINIA_OUT` → sn.bay_role_unknown
             "apparatus_kind": "BREAKER",
         },
     )

@@ -95,8 +95,6 @@ export async function zbudujSiecEtykietyStacji(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: wiazanie('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let wynik: OdpowiedzOperacji = {};
   for (const [indeks, dlugosc] of [400, 350, 300].entries()) {
@@ -142,19 +140,20 @@ export function stanAplikacji(siec: SiecEtykietyStacji, motyw: 'light' | 'dark')
         activeCaseResultStatus: 'NONE',
         activeSnapshotId: null,
         activeMode: 'MODEL_EDIT',
-        activeRunId: null,
         activeAnalysisType: 'SHORT_CIRCUIT',
         caseManagerOpen: false,
         issuePanelOpen: false,
       },
       version: 1,
     }),
-    // Panel „Schemat i topologia" w maksymalnej szerokości powłoki (`LEFT_MAX`), żeby drzewo
-    // pokazało nazwę stacji i jej rodzaj bez obcięcia.
+    // Panel „Schemat i topologia" w maksymalnej szerokości powłoki (`LEFT_MAX` = 260 px,
+    // karta K1 POWLOKA), żeby drzewo pokazało nazwę stacji i jej rodzaj bez obcięcia;
+    // inspektor w szerokości domyślnej (`RIGHT_DEFAULT` = 360 px). Wartości spoza granic
+    // powłoka i tak przycina przy odczycie — zasiew podaje je wprost, bez polegania na tym.
     'mvd-shell-ui-local': JSON.stringify({
       state: {
         layoutBySpace: {
-          schemat: { leftWidth: 320, rightWidth: 320, leftCollapsed: false, rightCollapsed: true },
+          schemat: { leftWidth: 260, rightWidth: 360, leftCollapsed: false, rightCollapsed: true },
         },
       },
       version: 0,

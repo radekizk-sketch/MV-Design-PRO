@@ -44,8 +44,6 @@ def _add_gpz(enm_dict: dict) -> dict:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("snapshot") is not None
@@ -587,7 +585,7 @@ class TestCatalogGateInsertBranchPole:
             op_name="insert_branch_pole_on_segment_sn",
             payload={
                 "segment_id": seg_ref,
-                "catalog_binding": {"namespace": "mv_branch_points"},  # brak item_id
+                "catalog_binding": {"catalog_namespace": "mv_branch_points"},  # brak item_id
             },
         )
 
@@ -641,7 +639,7 @@ class TestCatalogGateInsertZKSN:
                 "segment_id": seg_ref,
                 "catalog_ref": CATALOG_ZKSN,
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                "switch_state": "CLOSED",
+                "switch_state": "closed",
             },
         )
         assert result.get("snapshot") is not None, f"Błąd: {result.get('error')}"
@@ -758,7 +756,7 @@ class TestCatalogGateInsertSectionSwitch:
             op_name="insert_section_switch_sn",
             payload={
                 "segment_id": seg_ref,
-                "catalog_binding": {"namespace": "APARAT_SN"},  # brak item_id
+                "catalog_binding": {"catalog_namespace": "APARAT_SN"},  # brak item_id
             },
         )
 

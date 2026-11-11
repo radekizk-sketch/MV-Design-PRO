@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F5a — wyrocznia §9 nomenklatury kierunków (SLD_CAD_SPEC_V3 §9,
  * WIĄŻĄCA). Syntetyczny ciąg: GPZ → S01 → S02 → S03 → S04, z odgałęzieniem
@@ -7,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import type { LineRunV1 } from '../../../../../types/enm';
 import {
   bayDirectionCaption,

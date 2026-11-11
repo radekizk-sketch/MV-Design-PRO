@@ -7,14 +7,14 @@
  * rozpływ (`fetch` odpowiada fixturą) → sekcje rozpływu i śladu.
  *
  * Iloczyn cech: scena {sieć złota z deklaracją tolerancji nN, scena wartości roboczej} ×
- * punkt zwarcia (każdy wiersz wyniku) × tryb {podstawowy, ekspercki}. Na każdej
- * kombinacji:
+ * punkt zwarcia (każdy wiersz wyniku) × szczegóły audytowe {ukryte, pokazane} (przełącznik
+ * powłoki, który na gałęzi UI/UX zastąpił tryb podstawowy/ekspercki). Na każdej kombinacji:
  *  - wiersze tabeli rozpływu = `branch_contributions` (wkład pominięty nie jest wierszem),
  *  - kroki śladu = `branch_flow_trace`; kroki gałęziowe Thevenina = wpisy sieci zastępczej,
  *  - nota liczy DOKŁADNIE wpisy `wklady_pominiete`, a próg czyta z odpowiedzi — ten sam
  *    zapis co tytuł kroku śladu `wklady_pominiete` (frontend nie ma własnej stałej),
  *  - liczby kroku `wklady_pominiete` (per tor) sumują się do liczby wpisów zestawienia,
- *  - zestawienie (tryb ekspercki) nie pokazuje fałszywego zera „0,000",
+ *  - zestawienie (szczegóły audytowe pokazane) nie pokazuje fałszywego zera „0,000",
  *  - kąt fazora każdego wpisu zestawienia to „nie określono" (karta KAT-WKLADU-POMINIETEGO:
  *    rdzeń podaje `null`, bo poniżej progu kąt jest resztą arytmetyki), nigdy liczba.
  */
@@ -56,7 +56,7 @@ const SCENY = [
 
 const PRZYPADKI = SCENY.flatMap((scena) =>
   scena.wyniki.rows.flatMap((row) =>
-    (['basic', 'expert'] as const).map((tryb) => ({ scena, targetId: row.target_id, tryb })),
+    ([false, true] as const).map((szczegoly) => ({ scena, targetId: row.target_id, szczegoly })),
   ),
 );
 
@@ -103,15 +103,15 @@ describe('Wkłady pominięte — ten sam zbiór gałęzi w tabeli, śladzie i ze
   });
 
   it.each(PRZYPADKI)(
-    '$scena.nazwa × $targetId × tryb $tryb',
-    async ({ scena, targetId, tryb }) => {
+    '$scena.nazwa × $targetId × szczegóły audytowe $szczegoly',
+    async ({ scena, targetId, szczegoly }) => {
       atrapaFetchRozplywu(scena.rozplyw);
       useResultsInspectorStore.setState({
         shortCircuitResults: scena.wyniki,
         selectedRunId: scena.wyniki.run_id,
       });
       await renderEkranZwarc(
-        <EkranZwarc trybZaawansowania={tryb} onOtworzDowod={vi.fn()} wklady={{}} />,
+        <EkranZwarc szczegolyAudytowe={szczegoly} onOtworzDowod={vi.fn()} wklady={{}} />,
       );
       const odpowiedz = scena.rozplyw[targetId];
       const wiersz = scena.wyniki.rows.find((r) => r.target_id === targetId)!;
@@ -125,7 +125,7 @@ describe('Wkłady pominięte — ten sam zbiór gałęzi w tabeli, śladzie i ze
 
       const sekcja = screen.getByTestId('mvd-zwarcia-rozplyw');
       await waitFor(() =>
-        expect(within(sekcja).queryByTestId('mvd-zwarcia-rozplyw-ladowanie')).toBeNull(),
+        expect(within(sekcja).queryByTestId('mvd-zwarcia-rozplyw-wczytywanie')).toBeNull(),
       );
       expect(sekcja).toHaveTextContent(wiersz.target_name ?? '');
 
@@ -173,7 +173,7 @@ describe('Wkłady pominięte — ten sam zbiór gałęzi w tabeli, śladzie i ze
       expect(nota!.textContent).toContain(`(${progZTytulu}): ${pominiete.length}.`);
 
       const tabelaPominietych = within(sekcja).queryByTestId('mvd-zwarcia-rozplyw-pominiete-tabela');
-      if (tryb === 'basic') {
+      if (!szczegoly) {
         expect(tabelaPominietych).toBeNull();
         return;
       }

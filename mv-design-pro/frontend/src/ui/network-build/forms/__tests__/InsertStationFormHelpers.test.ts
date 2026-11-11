@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { FIELD_ROLE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
 import {
@@ -11,7 +12,6 @@ import {
   isUsableManufacturer,
   isStationNnSourceConverter,
   hasEnoughTransformerPower,
-  voltageMatches,
   clampOutgoingFeederCount,
   formatKv,
   formatMva,
@@ -148,20 +148,6 @@ describe('isStationNnSourceConverter', () => {
   it('un_kv invalid → false', () => {
     expect(isStationNnSourceConverter({ un_kv: 0 } as never)).toBe(false);
     expect(isStationNnSourceConverter({ un_kv: NaN } as never)).toBe(false);
-  });
-});
-
-describe('voltageMatches', () => {
-  it('tolerance default 0.5 kV', () => {
-    expect(voltageMatches(15, 15.3)).toBe(true);
-    expect(voltageMatches(15, 16)).toBe(false);
-  });
-  it('null → false', () => {
-    expect(voltageMatches(null, 15)).toBe(false);
-  });
-  it('explicit tolerance', () => {
-    expect(voltageMatches(15, 16, 1)).toBe(true);
-    expect(voltageMatches(15, 16, 0.5)).toBe(false);
   });
 });
 

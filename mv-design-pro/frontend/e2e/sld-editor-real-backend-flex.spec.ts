@@ -20,16 +20,9 @@ type DomainOpResponse = {
     branches?: Array<{ ref_id: string; from_bus_ref?: string; to_bus_ref?: string }>;
     buses?: Array<{ ref_id: string }>;
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    substations?: Array<{
-      ref_id: string;
-      meta?: {
-        field_specs?: Array<{
-          field_ref?: string;
-          bay_role?: string;
-          bus_ref?: string;
-        }>;
-      };
-    }>;
+    substations?: Array<{ ref_id: string }>;
+    // Karta W5-B: pola stacji to rekordy `bays`.
+    bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string; bus_ref?: string }>;
     transformers?: Array<{ ref_id: string; name?: string }>;
   };
   readiness?: { ready: boolean; status?: string; blockers?: Array<{ code: string; element_ref?: string | null }> };
@@ -131,7 +124,6 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -185,9 +177,10 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
 async function openSegmentInspector(page: Page, segmentRef: string): Promise<void> {
   // Adaptacja v3 (F12-C, 2026-07-17): odcinek to <path data-owner-ref=…>
   // (dawne data-connection-ref+polyline były kontraktem v2); ścieżka
-  // użytkownika: klik w odcinek → drawer odcinka → „Otwórz konfigurację" →
-  // powierzchnia E-12 (`sld-segment-inspector`). Klikalność odcinka i CTA
-  // konfiguracji przywrócone w tej adaptacji (parytet F8c/K30-91).
+  // użytkownika: klik w odcinek → prawy inspektor (UI-02b: kanwa nie otwiera
+  // własnego panelu) → „Otwórz konfigurację odcinka (trasa)" → powierzchnia E-12
+  // (`sld-segment-inspector`). Intencja bez zmian: z kliknięcia odcinka do jego
+  // konfiguratora prowadzi jedna, realna ścieżka.
   // Prefix-match: kawałki przęsła niosą sufiksy tras (`_L`, `_R_L`) —
   // klik dowolnego kawałka normalizuje się do refu kanonicznego w workspace.
   const hitbox = page.locator(`path[data-owner-ref^="${segmentRef}"]`).first();
@@ -208,8 +201,10 @@ async function openSegmentInspector(page: Page, segmentRef: string): Promise<voi
   });
   await hitbox.click({ position: clickPos, force: true });
 
-  await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
-  await page.getByTestId('sld-v2-detail-drawer-open-configuration').click();
+  const otworzKonfiguracje = page.getByTestId('inspektor-otworz-konfiguracje');
+  await expect(otworzKonfiguracje).toBeVisible();
+  await expect(otworzKonfiguracje).toHaveText('Otwórz konfigurację odcinka (trasa)');
+  await otworzKonfiguracje.click();
 
   await expect(page.getByTestId('sld-segment-inspector')).toBeVisible();
   await expect(page.getByTestId('sld-segment-inspector')).toHaveAttribute(
@@ -221,10 +216,10 @@ async function openSegmentInspector(page: Page, segmentRef: string): Promise<voi
 function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): string | null {
   const branchRoles = new Set(['OUT', 'FEEDER', 'LINE_OUT']);
   for (const substation of snapshot?.substations ?? []) {
-    for (const spec of substation.meta?.field_specs ?? []) {
-      const bayRole = String(spec.bay_role ?? '').toUpperCase();
-      if (spec.field_ref && branchRoles.has(bayRole)) {
-        return `${spec.field_ref}.BRANCH`;
+    for (const pole of (snapshot?.bays ?? []).filter((b) => b.substation_ref === substation.ref_id)) {
+      const bayRole = String(pole.bay_role ?? '').toUpperCase();
+      if (branchRoles.has(bayRole)) {
+        return `${pole.ref_id}.BRANCH`;
       }
     }
   }
@@ -262,6 +257,12 @@ async function openElementInspector(page: Page, elementRef: string): Promise<voi
   // rozwiązuje workspace kliku — `resolveTransformerRefForOwnerRef`).
   // Selektor: transformator w obrębie stacji (`stn/`), odróżniony od
   // transformatora GPZ (`gpz/`).
+  // Odświeżenie strony zachowuje selekcję z adresu (także przy zimnym starcie `/`), więc
+  // prawy inspektor może pokazywać obiekt z poprzedniego kroku i zasłaniać część kanwy.
+  // Escape to kanoniczny gest odznaczenia (`SldCanvasV3Workspace`): inspektor się zwija,
+  // kanwa wraca do pełnej szerokości i klik trafia w symbol, nie w panel.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('mvd-inspector')).toBeHidden();
   const isStationTransformer = /\/transformer$/.test(elementRef) && elementRef.startsWith('stn/');
   const symbol = isStationTransformer
     ? page.locator('g[data-element-kind="transformer"][data-owner-ref^="stn/"]').first()
@@ -278,19 +279,6 @@ async function openElementInspector(page: Page, elementRef: string): Promise<voi
   await expect(page.getByTestId('sld-engineering-inspector-wrapper')).toBeVisible();
 }
 
-async function activateEngineeringFieldEditor(page: Page, fieldKey: string): Promise<void> {
-  const fieldRow = page.getByTestId(`engineering-field-${fieldKey}`);
-  await expect(fieldRow).toHaveCount(1);
-
-  // REALNY klik Playwright w komórkę wartości (ta sama zasada co klik w
-  // elementy kanwy: test ćwiczy ścieżkę użytkownika, nie syntetyczny event).
-  const clickable = fieldRow.locator('div.cursor-pointer').first();
-  await expect(clickable, `Missing editable value cell for engineering-field-${fieldKey}`).toBeVisible();
-  await clickable.click();
-
-  await expect(fieldRow.locator('input')).toBeVisible();
-}
-
 test('real backend SLD editor flow: source -> trunk -> station -> branch -> update -> delete -> continue', async ({ page, request }, testInfo) => {
   const caseId = await createCaseFromUi(page, request);
 
@@ -299,8 +287,6 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   await capture(page, testInfo, '01-after-source');
 
@@ -370,14 +356,29 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
 
   await zoomUntilSelectorVisible(page, 'g[data-element-kind="transformer"][data-owner-ref^="stn/"]', -240);
   await openElementInspector(page, transformerRef!);
-  await expect(page.getByTestId('engineering-section-typ_i_katalog')).toContainText(TRAFO_ID);
+  // K6: transformator ma kartę techniczną (tabliczka z katalogu ze źródłem danej); zmiana
+  // nazwy idzie operacją domenową `update_element_parameters` przez kreator edycji
+  // parametrów, otwierany przyciskiem „Zmień" przy wierszu karty (realne kliki).
+  const kartaTr = page.getByTestId('inspektor-karta');
+  await expect(kartaTr).toHaveAttribute('data-rodzaj-karty', 'transformator');
+  await expect(kartaTr.getByTestId('inspektor-karta-pole-tr_typ')).toHaveAttribute('data-brak', 'false');
+  await expect(kartaTr.getByTestId('inspektor-karta-wartosc-tr_sn')).toContainText('MVA');
+  await expect(kartaTr.getByTestId('inspektor-karta-tabliczka-zrodlo')).toBeVisible();
   await capture(page, testInfo, '03a-transformer-inspector');
 
-  await activateEngineeringFieldEditor(page, 'name');
-  const nameEditor = page.getByTestId('engineering-field-name').locator('input');
-  await nameEditor.fill(UPDATED_TRANSFORMER_NAME);
-  await nameEditor.press('Tab');
-  await expect(page.getByTestId('engineering-field-name')).toContainText(UPDATED_TRANSFORMER_NAME);
+  await kartaTr.getByTestId('inspektor-karta-zmien-nazwa').click();
+  const kreatorEdycji = page.getByTestId('mvd-kreator-edycja');
+  await expect(kreatorEdycji).toBeVisible();
+  await expect(kreatorEdycji.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('name');
+  await kreatorEdycji.getByTestId('mvd-kreator-edycja-wartosc-0').fill(UPDATED_TRANSFORMER_NAME);
+  await kreatorEdycji.getByTestId('mvd-kreator-edycja-zapisz').click();
+  await expect(kreatorEdycji).toHaveCount(0);
+  // Po zapisie projektant patrzy na TEN SAM obiekt: selekcja i karta przeżywają przejście
+  // `navigateToSld()` także z adresu zimnego startu `/` (dawniej selekcja leżała wtedy
+  // w `location.search` i ginęła przy zmianie trasy — inspektor się zwijał).
+  await expect(page.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'transformator');
+  await expect(page.getByTestId('inspektor-karta-wartosc-nazwa')).toContainText(UPDATED_TRANSFORMER_NAME);
+  expect(new URL(page.url()).search).toBe('');
 
   const branchFromRef = findBranchCapableFieldPort(op.snapshot);
   expect(branchFromRef).toBeTruthy();
@@ -424,16 +425,17 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   // pełne przejęcie = karty U2"). Panel nie pojawiłby się także BEZ reloadu.
   // INTENCJA BEZ ZMIAN: po delete+continue+reloadzie powłoka pokazuje
   // strukturę układu odzwierciedlającą realny model (nie stan zerowy).
-  // Bieżący nośnik: pasek kontekstu przepływu pracy nad kanwą
-  // (`WorkflowContextStrip` — faza budowy + metryki Szyny/Odcinki SN/Stacje).
-  const strip = page.getByTestId('workflow-context-strip');
-  await expect(strip).toBeVisible();
-  await expect(page.getByTestId('workflow-build-phase')).toBeVisible();
-  // 'Kontrola:' renderuje się TYLKO przy niepustej topologii (hasTopologyElements)
-  // — dowodzi, że po reloadzie model został odtworzony z backendu.
-  await expect(strip).toContainText('Kontrola:');
-  await expect(strip).toContainText('Odcinki SN');
-  await expect(strip).toContainText('Stacje');
+  // Bieżący nośnik (karta K1 POWLOKA): liczniki modelu na żądanie w pasku
+  // narzędzi — dawny stały pasek metryk nad kanwą skasowano. Natywny klik
+  // otwiera panel; liczby NIEZEROWE dowodzą, że po reloadzie model został
+  // odtworzony z backendu (stan pusty miałby zera i akcję budowy GPZ).
+  await page.getByTestId('mvd-narzedzie-model').click();
+  const liczniki = page.getByTestId('mvd-liczniki-modelu');
+  await expect(liczniki).toBeVisible();
+  await expect(page.getByTestId('mvd-licznik-odcinki')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('mvd-licznik-odcinki')).toHaveText(/^[1-9]\d*$/);
+  await expect(page.getByTestId('mvd-licznik-szyny')).toHaveText(/^[1-9]\d*$/);
+  await expect(page.getByTestId('mvd-liczniki-zacznij')).toHaveCount(0);
 });
 
 test('real backend supports flexible operation order combinations', async ({ page, request }) => {
@@ -443,8 +445,6 @@ test('real backend supports flexible operation order combinations', async ({ pag
     voltage_kv: 15.0,
     sk3_mva: 250.0,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   snapshot = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {

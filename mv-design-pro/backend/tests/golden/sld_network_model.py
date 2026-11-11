@@ -51,7 +51,7 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
     # przynależności `enm.tor_pola.szyny_stacji`).
     bus_owner: dict[str, str] = {}
     for s in subs:
-        for r in sorted(szyny_stacji(s, enm.get("branches", []))):
+        for r in sorted(szyny_stacji(enm, s)):
             bus_owner.setdefault(r, s["ref_id"])
 
     # Undirected bus adjacency from cable/line/switch branches (structure ⇒ all, any status).

@@ -226,8 +226,8 @@ export function krokiSladuObszar(widok: WidokObszaruPQ): KrokSladuSily[] {
     symbol: OBSZAR_STRINGS.sladSymbolSiatka,
     formula_latex: OBSZAR_STRINGS.sladWzorSiatka,
     substitution_pl:
-      `step_p = ${fmtMWObszar(par.step_p_mw)} MW; step_q = ${fmtMvarObszar(par.step_q_mvar)} Mvar; `
-      + `max_steps_p = ${par.max_steps_p}; max_steps_q = ${par.max_steps_q}`,
+      `$\\Delta p$ = ${fmtMWObszar(par.step_p_mw)} MW; $\\Delta q$ = ${fmtMvarObszar(par.step_q_mvar)} Mvar; `
+      + `$n_{P}$ = ${par.max_steps_p}; $n_{Q}$ = ${par.max_steps_q}`,
     result_pl: `${widok.total_runs} / ${par.max_total_runs}`,
   };
   const krokiWierzcholkow: KrokSladuSily[] = widok.vertices.map((v) => {

@@ -16,6 +16,7 @@ import copy
 
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_sn_stacji
 
 CATALOG_LINE_35 = "line-base-al-st-35"
 CATALOG_LINE_70 = "line-base-al-st-70"
@@ -67,17 +68,6 @@ def op(snap: dict, name: str, payload: dict) -> dict:
             **payload,
             "catalog_ref": _source_catalog_ref(payload.get("sk3_mva")),
         }
-    if name == "add_grid_source_sn" and (
-        "transformer_catalog_ref" not in payload
-        and "transformer_catalog_binding" not in payload
-        and "hv_voltage_kv" not in payload
-        and "transformer_sn_mva" not in payload
-    ):
-        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary hv_voltage_kv
-        # + transformer_sn_mva (albo transformer_catalog_ref) — odtwarzamy jako
-        # dana fikstury zalozenie, ktore wczesniej wchodzilo domyslnie
-        # (25 MVA @ 110 kV).
-        payload = {**payload, "hv_voltage_kv": 110.0, "transformer_sn_mva": 25.0}
     result = execute_domain_operation(snap, name, payload)
     err = result.get("error")
     assert not err, f"Operacja '{name}' zwróciła błąd: {err} (code={result.get('error_code')})"
@@ -90,7 +80,6 @@ _STATION_CATALOG_PAYLOAD = {
     "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
     "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
     "station": {"nn_voltage_kv": 0.4},
-    "nn_voltage_kv": 0.4,
 }
 
 
@@ -364,7 +353,7 @@ class TestE2E2BranchFromStation:
         branch_bus = sub["bus_refs"][0]
         pole_odg = next(
             spec
-            for spec in sub["meta"]["field_specs"]
+            for spec in pola_sn_stacji(s, sub["ref_id"])
             if str(spec.get("bay_role")).upper() == "FEEDER"
         )
 
@@ -380,7 +369,7 @@ class TestE2E2BranchFromStation:
         odgalezienie = next(
             b for b in result["snapshot"]["branches"] if "branch_segment" in b["ref_id"]
         )
-        assert odgalezienie["from_bus_ref"] == pole_odg["meta"]["terminal_bus_ref"]
+        assert odgalezienie["from_bus_ref"] == pole_odg["terminal_bus_ref"]
 
         # Dwa WOLNE pola odgałęźne na szynie — bez jawnego portu odmowa (niejednoznaczność).
         s2 = op(
@@ -465,10 +454,10 @@ class TestE2E2BranchFromStation:
         s = _insert_station(s, seg_id, "Stacja B", "branch")
 
         sub = s.get("substations", [])[-1]
-        field_specs = sub.get("meta", {}).get("field_specs", [])
-        feeder = next(spec for spec in field_specs if spec.get("bay_role") == "FEEDER")
-        field_ref = feeder["field_ref"]
-        terminal_bus_ref = feeder["meta"]["terminal_bus_ref"]
+        pola_sn = pola_sn_stacji(s, sub["ref_id"])
+        feeder = next(spec for spec in pola_sn if spec.get("bay_role") == "FEEDER")
+        field_ref = feeder["ref_id"]
+        terminal_bus_ref = feeder["terminal_bus_ref"]
 
         result = execute_domain_operation(
             s,
@@ -878,13 +867,13 @@ class TestE2E5ReceivingStationsAndOzeBess:
             s,
             "add_transformer_sn_nn",
             {
-                "substation_ref": s.get("substations", [{}])[-1].get("ref_id", ""),
+                "station_ref": s.get("substations", [{}])[-1].get("ref_id", ""),
                 "sn_mva": 0.63,
                 "uk_percent": 4.0,
                 "pk_kw": 6.5,
                 "uhv_kv": 15.0,
                 "ulv_kv": 0.4,
-                "catalog_ref": CATALOG_TRAFO_630,
+                "transformer_catalog_ref": CATALOG_TRAFO_630,
             },
         )
         # Transformer add may fail due to missing station ref, but readiness is always present
@@ -968,9 +957,6 @@ class TestE2E5ReceivingStationsAndOzeBess:
                     "source_converter_catalog_ref": CATALOG_FALOWNIK_PV_NN,
                     "source_converter_name": "Falownik PV katalogowy",
                     "source_converter_kind": "PV",
-                    "source_converter_un_kv": 0.4,
-                    "source_converter_sn_mva": 1.0,
-                    "source_converter_pmax_mw": 1.0,
                     "outgoing_feeders_nn_count": 1,
                     "outgoing_feeders_nn": [
                         {"feeder_role": "ODPLYW_NN", "catalog_bindings": None},

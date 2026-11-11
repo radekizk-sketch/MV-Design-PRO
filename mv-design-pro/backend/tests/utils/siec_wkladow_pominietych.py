@@ -22,6 +22,7 @@ from typing import Any
 from enm.models import EnergyNetworkModel
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.zespol_uziemiajacy import zespol_zamiast_z0_rownowaznika
 
 NAZWA_GALEZI_REALNEJ_MALEJ = "Kabel odgałęzienia"
 NAZWA_GALEZI_BEZ_PRADU = "Kabel bez ładowania"
@@ -114,9 +115,15 @@ def siec_wkladow_pominietych() -> EnergyNetworkModel:
                         voltage_kv=15.0,
                         sk3_mva=250.0,
                         rx_ratio=0.10,
-                        extra={"z0_z1_ratio": 3.0},
                     ),
                 }
+            ],
+            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: drogę zerową sieci SN niesie zespół
+            # uziemiający szyny głównej (bocznik równy dawnemu Z0/Z1 = 3 równoważnika SN).
+            "zespoly_uziemiajace": [
+                zespol_zamiast_z0_rownowaznika(
+                    "zu-gpz", "bus-main", u_kv=15.0, sk3_mva=250.0, rx_ratio=0.10, z0_z1_ratio=3.0
+                )
             ],
             "loads": [],
             "transformers": [],

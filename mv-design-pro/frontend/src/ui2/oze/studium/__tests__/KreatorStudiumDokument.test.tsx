@@ -96,7 +96,6 @@ function atrapaNcRfg(url: string): Response {
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-    activeRunId: 'lf-run',
   });
   useSnapshotStore.setState({ snapshot: snapshotFixture() });
 }
@@ -131,7 +130,7 @@ afterEach(() => {
 /** Przeprowadź pełny bieg studium dla węzła bus-a i wejdź w przegląd (krok 4). */
 async function przeprowadzBieg() {
   ustawGotowyRozplyw();
-  render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+  render(<KreatorStudium szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
   fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
   await wybierzOperatoraJawnie();
   fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
@@ -147,7 +146,7 @@ async function przeprowadzBieg() {
 describe('KreatorStudium — dokument studium (przycisk i dostępność)', () => {
   it('przycisk nieaktywny bez zakończonego biegu, z tytułem PL', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    render(<KreatorStudium szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
     // Montaż kreatora pobiera katalogi (konwertery + operatorzy NC RfG) — realny
     // efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma reprezentacji
     // w UI kroku 4, więc nie ma na co czekać przez findBy*/waitFor. Puste
@@ -193,6 +192,11 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    // Pobranie pliku = klik w kotwicę z `download`; jsdom nie implementuje nawigacji, więc
+    // klik jest przechwycony i policzony (dowód, że oba pobrania doszły do zapisu pliku).
+    const klikPobrania = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
 
     await przeprowadzBieg();
     fireEvent.click(screen.getByTestId('mvd-studium-dok-przycisk'));
@@ -206,6 +210,7 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
     fireEvent.click(screen.getByTestId('mvd-studium-dok-pobierz-pdf'));
     await waitFor(() => expect(pobierzDokumentPdf).toHaveBeenCalledTimes(1));
     expect(pobierzDokumentPdf.mock.calls[0][1]).toBe('case-oze-1');
+    await waitFor(() => expect(klikPobrania).toHaveBeenCalledTimes(2));
   });
 
   it('brak nazwy projektu w aplikacji → nazwa_projektu ma polski zastępnik', async () => {

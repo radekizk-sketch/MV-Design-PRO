@@ -27,6 +27,7 @@ from typing import Any
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.pola import pola_stacji
 
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
@@ -61,8 +62,6 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_250,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snap = _op(
@@ -126,12 +125,8 @@ def _stacja(snapshot: dict[str, Any], nazwa: str) -> dict[str, Any]:
 
 
 def _pole_wg_roli(snapshot: dict[str, Any], nazwa_stacji: str, rola: str) -> str:
-    specs = _stacja(snapshot, nazwa_stacji)["meta"]["field_specs"]
-    return next(
-        s["field_ref"]
-        for s in specs
-        if (s.get("meta") or {}).get("field_role") == rola or s.get("field_role") == rola
-    )
+    specs = pola_stacji(snapshot, _stacja(snapshot, nazwa_stacji)["ref_id"])
+    return next(s["ref_id"] for s in specs if s.get("field_role") == rola)
 
 
 # ---------------------------------------------------------------------------
@@ -210,9 +205,9 @@ def test_relay_binds_breaker_and_measurements_of_the_same_field() -> None:
     )
     assert przypisanie["breaker_ref"] == breaker["ref_id"]
 
-    # Pole niesie referencję zabezpieczenia (spec pola w meta stacji).
-    specs = _stacja(snapshot, "Stacja B-3")["meta"]["field_specs"]
-    spec = next(s for s in specs if s.get("field_ref") == field_ref)
+    # Pole niesie referencję zabezpieczenia (rekord pola `bays`).
+    specs = pola_stacji(snapshot, _stacja(snapshot, "Stacja B-3")["ref_id"])
+    spec = next(s for s in specs if s.get("ref_id") == field_ref)
     assert spec["protection_ref"] == przypisanie["ref_id"]
 
 

@@ -9,6 +9,7 @@ Pokrywa:
 - Legalna topologia: zwraca pustą listę
 """
 
+import pytest
 from network_model.validation.semantic_rules import (
     SEMANTIC_RULES,
     rule_cable_cannot_start_from_pole,
@@ -43,8 +44,9 @@ def _make_bay(ref_id: str, role: str) -> dict:
     return {"ref_id": ref_id, "bay_role": role}
 
 
-def _make_generator(ref_id: str, gen_type: str, bay_ref: str) -> dict:
-    return {"ref_id": ref_id, "gen_type": gen_type, "bay_ref": bay_ref}
+def _make_generator(ref_id: str, gen_type: str, field_ref: str) -> dict:
+    # Relacja wytwórcy z polem: `Generator.meta.field_ref` (model nie ma pola `bay_ref`).
+    return {"ref_id": ref_id, "gen_type": gen_type, "meta": {"field_ref": field_ref}}
 
 
 class TestCableCannotStartFromPole:
@@ -98,10 +100,12 @@ class TestOverheadCannotHostZksn:
 
 
 class TestDerMustMatchBayType:
+    # Karta W5-B: role pól z kontraktu `Bay.bay_role` (OZE/FEEDER/TR…), nie słownik spoza
+    # kontraktu (`der`/`feeder`/`transformer`), którego rekord `bays` nigdy nie niesie.
     def test_pv_in_der_bay_passes(self):
         enm = {
             "generators": [_make_generator("GEN-1", "PV", "BAY-1")],
-            "bays": [_make_bay("BAY-1", "der")],
+            "bays": [_make_bay("BAY-1", "OZE")],
         }
         issues = rule_der_must_match_bay_type(enm)
         assert issues == []
@@ -109,7 +113,7 @@ class TestDerMustMatchBayType:
     def test_pv_in_feeder_bay_passes(self):
         enm = {
             "generators": [_make_generator("GEN-1", "PV", "BAY-1")],
-            "bays": [_make_bay("BAY-1", "feeder")],
+            "bays": [_make_bay("BAY-1", "FEEDER")],
         }
         issues = rule_der_must_match_bay_type(enm)
         assert issues == []
@@ -117,11 +121,31 @@ class TestDerMustMatchBayType:
     def test_pv_in_transformer_bay_blocks(self):
         enm = {
             "generators": [_make_generator("GEN-1", "PV", "BAY-1")],
-            "bays": [_make_bay("BAY-1", "transformer")],
+            "bays": [_make_bay("BAY-1", "TR")],
         }
         issues = rule_der_must_match_bay_type(enm)
         assert len(issues) == 1
         assert issues[0].code == "semantic.der_bay_type_mismatch"
+
+    @pytest.mark.parametrize("rola", ["IN", "OUT", "TR", "COUPLER", "MEASUREMENT"])
+    @pytest.mark.parametrize("gen_type", ["pv_inverter", "bess", "wind_inverter", "genset"])
+    def test_generator_w_polu_nie_zrodlowym_blokuje(self, rola, gen_type):
+        enm = {
+            "generators": [_make_generator("GEN-1", gen_type, "BAY-1")],
+            "bays": [_make_bay("BAY-1", rola)],
+        }
+        assert [i.code for i in rule_der_must_match_bay_type(enm)] == [
+            "semantic.der_bay_type_mismatch"
+        ]
+
+    @pytest.mark.parametrize("rola", ["OZE", "FEEDER"])
+    @pytest.mark.parametrize("gen_type", ["pv_inverter", "bess", "wind_inverter", "genset"])
+    def test_generator_w_polu_zrodlowym_przechodzi(self, rola, gen_type):
+        enm = {
+            "generators": [_make_generator("GEN-1", gen_type, "BAY-1")],
+            "bays": [_make_bay("BAY-1", rola)],
+        }
+        assert rule_der_must_match_bay_type(enm) == []
 
     def test_generator_without_bay_skipped(self):
         enm = {"generators": [_make_generator("GEN-1", "PV", "")], "bays": []}
@@ -141,7 +165,7 @@ class TestValidateSemantic:
                 _make_branch("SEG-2", "cable"),
             ],
             "generators": [_make_generator("GEN-1", "PV", "BAY-1")],
-            "bays": [_make_bay("BAY-1", "der")],
+            "bays": [_make_bay("BAY-1", "OZE")],
         }
         assert validate_semantic(enm) == []
         assert validate_semantic_as_dicts(enm) == []
@@ -157,7 +181,7 @@ class TestValidateSemantic:
                 _make_branch("SEG-OH", "line_overhead"),
             ],
             "generators": [_make_generator("GEN-1", "PV", "BAY-1")],
-            "bays": [_make_bay("BAY-1", "transformer")],  # naruszenie 3
+            "bays": [_make_bay("BAY-1", "TR")],  # naruszenie 3
         }
         issues = validate_semantic(enm)
         codes = {i.code for i in issues}

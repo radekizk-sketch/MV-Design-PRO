@@ -22,6 +22,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from network_model.pochodne.pasma_napieciowe import (
+    izolacja_pokrywa_siec,
+    to_samo_napiecie_znamionowe,
+)
+
 from .complete_mv_bay_template import (
     BayKind,
     CompleteMvBayTemplate,
@@ -126,13 +131,6 @@ def family_supports_apparatus(switchgear_family_ref: str, apparatus_kind: str) -
         )
 
 
-#: Tolerancja porównania napięć [kV]. Napięcia katalogowe i napięcia szyn są
-#: wartościami ZNAMIONOWYMI zapisanymi jako `float` (15.0, 17.5, 24.0), więc
-#: jedyne czego tu potrzeba, to odporność na reprezentację binarną — NIE jest
-#: to margines inżynierski i nie wolno go do tego użyć.
-_TOLERANCJA_NAPIECIA_KV = 1e-9
-
-
 def czy_rodzina_obsluguje_napiecie(family: SwitchgearFamily, voltage_kv: float) -> bool:
     """Czy rodzina pasuje do szyny o napięciu znamionowym `voltage_kv`.
 
@@ -152,10 +150,14 @@ def czy_rodzina_obsluguje_napiecie(family: SwitchgearFamily, voltage_kv: float) 
        izolacji. Rotoblok VCB deklarowany na sieć 20 kV nie wchodzi do sieci
        15 kV, choć jego izolacja by to wytrzymała — bo karta go tam nie oferuje.
     2. Gdy karta napięć sieci NIE podaje (lista pusta), rozstrzyga klasa
-       urządzenia: wystarczy JEDNA klasa `Um >= voltage_kv`. Podstawa normowa:
-       PN-EN 62271-1 definiuje napięcie znamionowe urządzenia jako GÓRNĄ
-       granicę najwyższego napięcia sieci, dla której urządzenie zaprojektowano
-       — więc aparat klasy 24 kV pracuje w sieci 15 i 20 kV, ale nie w 30 kV.
+       urządzenia: wystarczy JEDNA klasa `U_m ≥ U_s`, gdzie U_s to napięcie
+       najwyższe SIECI z tabeli IEC 60038 (`pasma_napieciowe.izolacja_pokrywa_siec`
+       — ten sam predykat, co odmowa poziomu izolacji aparatów pola i ogranicznika).
+       Podstawa normowa: PN-EN 62271-1 p. 5.2 definiuje napięcie znamionowe
+       urządzenia jako GÓRNĄ granicę najwyższego napięcia sieci, dla której
+       urządzenie zaprojektowano — więc aparat klasy 24 kV pracuje w sieci 15
+       (U_s 17,5 kV) i 20 kV (U_s 24 kV), ale nie w 30 kV, a klasa 15 kV nie
+       pokrywa sieci 15 kV (U_s 17,5 kV).
     3. Gdy karta nie podaje ŻADNEJ z dwóch wielkości, rodzina nie ma czym
        potwierdzić zgodności — odpowiedź brzmi „nie", a nie „może". Cicha zgoda
        przy braku danych to fabrykacja zgodności.
@@ -167,11 +169,11 @@ def czy_rodzina_obsluguje_napiecie(family: SwitchgearFamily, voltage_kv: float) 
         return False
     if family.network_voltages_kv:
         return any(
-            abs(napiecie_sieci - voltage_kv) <= _TOLERANCJA_NAPIECIA_KV
+            to_samo_napiecie_znamionowe(napiecie_sieci, voltage_kv)
             for napiecie_sieci in family.network_voltages_kv
         )
     return any(
-        klasa_um + _TOLERANCJA_NAPIECIA_KV >= voltage_kv for klasa_um in family.um_classes_kv
+        izolacja_pokrywa_siec(klasa_um, voltage_kv) is True for klasa_um in family.um_classes_kv
     )
 
 

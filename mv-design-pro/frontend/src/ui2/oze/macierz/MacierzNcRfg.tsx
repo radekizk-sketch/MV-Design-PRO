@@ -18,7 +18,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { EtykietaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec/PrzyciskAkcjiStanu';
@@ -34,7 +33,6 @@ import { ListaRekordowWymagan, NaglowekModuluNcRfg, OpisDokumentuWarstwy } from 
 import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
 import type {
   BrakiCertyfikatu,
-  WejsciaPrzypadkuNcRfg,
   WejscieModuluNcRfg,
   WidokCertyfikatu,
   ZadanieCertyfikatu,
@@ -48,6 +46,7 @@ import { SzczegolWerdyktu, nazwaRodzajuTwierdzenia } from './SzczegolWerdyktu';
 import {
   etykietyObecne,
   mapujMacierz,
+  modulGotowy,
   ocenaWymaganModulu,
   wynikModulu,
   zbudujModuly,
@@ -56,8 +55,10 @@ import {
   type BledyFormularza,
   type FormularzModulu,
   type OpisModulu,
+  type StanWejscModelu,
 } from './macierzModel';
 import {
+  ETYKIETY_OCZEKIWANIA,
   MACIERZ_STRINGS,
   formatMoc,
   formatNapiecie,
@@ -80,7 +81,7 @@ function zapiszBlob(blob: Blob, nazwa: string): void {
 
 export interface MacierzNcRfgProps {
   /** Tryb zaawansowania — odciski i identyfikatory w trybie eksperckim. */
-  readonly trybZaawansowania: AdvancementMode;
+  readonly szczegolyAudytowe: boolean;
   /**
    * Pre-selekcja modułu z deep-linku (akcja SLD „Pokaż zgodność przyłączeniową" niesie
    * kontekst DER). Dopasowanie po `derRef` ALBO po nazwie modułu. Nieznana wartość = brak
@@ -91,15 +92,8 @@ export interface MacierzNcRfgProps {
   readonly onPreselekcjaSkonsumowana?: () => void;
 }
 
-/** Stan odczytu wejść modułów z zatwierdzonego modelu przypadku (`GET …/wejscia`). */
-type StanWejscModelu =
-  | { readonly stan: 'brak' }
-  | { readonly stan: 'ladowanie' }
-  | { readonly stan: 'gotowe'; readonly wejscia: WejsciaPrzypadkuNcRfg }
-  | { readonly stan: 'blad'; readonly komunikat: string };
-
 export function MacierzNcRfg({
-  trybZaawansowania,
+  szczegolyAudytowe,
   preselekcjaModulu = null,
   onPreselekcjaSkonsumowana,
 }: MacierzNcRfgProps): JSX.Element {
@@ -130,8 +124,7 @@ export function MacierzNcRfg({
   // Formularz wstępny biegu „co-jeśli" = wejścia modułów złożone z ZATWIERDZONEGO modelu
   // przypadku przez most backendu (jeden odczyt; klient niczego z modelu nie wyprowadza sam).
   const [stanWejsc, setStanWejsc] = useState<StanWejscModelu>({ stan: 'brak' });
-  const wejsciaModelu = stanWejsc.stan === 'gotowe' ? stanWejsc.wejscia : null;
-  const opisyBazowe = useMemo(() => zbudujModuly(ders, wejsciaModelu), [ders, wejsciaModelu]);
+  const opisyBazowe = useMemo(() => zbudujModuly(ders, stanWejsc), [ders, stanWejsc]);
   const nazwyModulow = useMemo(
     () => Object.fromEntries(opisyBazowe.map((opis) => [opis.derRef, opis.nazwa])),
     [opisyBazowe],
@@ -164,7 +157,7 @@ export function MacierzNcRfg({
       return;
     }
     let aktualny = true;
-    setStanWejsc({ stan: 'ladowanie' });
+    setStanWejsc({ stan: 'wczytywanie' });
     pobierzWejsciaPrzypadkuNcRfg(aktywnyPrzypadek, operatorId).then(
       (wejscia) => {
         if (aktualny) setStanWejsc({ stan: 'gotowe', wejscia });
@@ -230,7 +223,7 @@ export function MacierzNcRfg({
       )
     : wiersze;
 
-  const gotoweDoBiegu = opisy.filter((o) => o.powodBlokady === null);
+  const gotoweDoBiegu = opisy.filter(modulGotowy);
   const powodBlokadyBiegu =
     opisy.length === 0
       ? MACIERZ_STRINGS.brakModulow
@@ -238,7 +231,7 @@ export function MacierzNcRfg({
         ? MACIERZ_STRINGS.brakPrzypadkuWejsc
         : operatorId === null
           ? MACIERZ_STRINGS.brakOperatora
-          : stanWejsc.stan === 'ladowanie'
+          : stanWejsc.stan === 'wczytywanie'
             ? MACIERZ_STRINGS.wczytywanieWejsc
             : stanWejsc.stan === 'blad'
               ? MACIERZ_STRINGS.bladWejsc
@@ -348,7 +341,6 @@ export function MacierzNcRfg({
   const nazwaModuluSzczegolu =
     opisy.find((o) => o.derRef === wybranaKomorka?.derRef)?.nazwa ?? null;
 
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const wynikWybranego = opisWybrany ? wynikModulu(wynik, opisWybrany.derRef) : null;
   const ocenaWybranego = opisWybrany ? ocenaWymaganModulu(wynik, opisWybrany.derRef) : null;
 
@@ -364,6 +356,7 @@ export function MacierzNcRfg({
             <WyborOperatora
               zModelu={zModelu}
               operatorzy={katalog?.operators ?? null}
+              bladKatalogu={bladKatalogu}
               wybor={operatorWybor}
               onWybor={ustawOperator}
               etykieta={MACIERZ_STRINGS.operator}
@@ -405,7 +398,7 @@ export function MacierzNcRfg({
           </button>
           {wynik ? (
             <InformacjeAudytowe
-              trybEkspercki={trybEkspercki}
+              szczegolyAudytowe={szczegolyAudytowe}
               testid="mvd-oze-odcisk"
               wiersze={[
                 { etykieta: MACIERZ_STRINGS.odciskBiegu, wartosc: wynik.deterministic_hash },
@@ -446,7 +439,7 @@ export function MacierzNcRfg({
         caseId={aktywnyPrzypadek}
         operatorId={operatorId}
         nazwyModulow={nazwyModulow}
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         onWybierzModul={(derRef) => {
           setWybranyModul(derRef);
           setWybranaKomorka(null);
@@ -460,7 +453,7 @@ export function MacierzNcRfg({
           blad={certBlad}
           ladowanie={certLadowanie}
           plikLadowanie={plikLadowanie}
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           onPobierz={(format) => void pobierzPlik(format)}
           onZamknij={zamknijCertyfikat}
         />
@@ -552,8 +545,26 @@ export function MacierzNcRfg({
               <tbody>
                 {wierszeWidoczne.length === 0 ? (
                   <tr>
-                    <td colSpan={opisy.length + 1} className="mvd-oze-komorka-pusta">
-                      {MACIERZ_STRINGS.brakBieguOpis}
+                    {/* Katalog testów jeszcze nieodczytany (albo odczyt nieudany): pusta
+                        lista definicji to stan ODCZYTU, nie „brak biegu" (odczyt ≠ brak). */}
+                    <td
+                      colSpan={opisy.length + 1}
+                      className="mvd-oze-komorka-pusta"
+                      data-testid="mvd-oze-macierz-pusta"
+                      data-stan={
+                        wynik === null && katalog === null
+                          ? bladKatalogu
+                            ? 'blad_katalogu'
+                            : 'wczytywanie_katalogu'
+                          : 'brak_biegu'
+                      }
+                      aria-busy={wynik === null && katalog === null && !bladKatalogu}
+                    >
+                      {wynik === null && katalog === null
+                        ? bladKatalogu
+                          ? MACIERZ_STRINGS.katalogTestowBlad
+                          : MACIERZ_STRINGS.katalogTestowWczytywanie
+                        : MACIERZ_STRINGS.brakBieguOpis}
                     </td>
                   </tr>
                 ) : (
@@ -603,6 +614,18 @@ export function MacierzNcRfg({
                                 />
                               </button>
                             )
+                          ) : komorka.stan === 'oczekiwanie_wejsc' ? (
+                            <span
+                              className="mvd-oze-komorka-pusta"
+                              data-testid={
+                                komorka.oczekiwanie === 'wczytywanie_wejsc'
+                                  ? 'mvd-oze-komorka-wczytywanie'
+                                  : 'mvd-oze-komorka-blad-odczytu'
+                              }
+                              aria-busy={komorka.oczekiwanie === 'wczytywanie_wejsc'}
+                            >
+                              {ETYKIETY_OCZEKIWANIA[komorka.oczekiwanie]}
+                            </span>
                           ) : komorka.stan === 'brak_danych_modul' ? (
                             <button
                               type="button"
@@ -640,7 +663,7 @@ export function MacierzNcRfg({
               definicja={definicjaSzczegolu}
               nazwaModulu={nazwaModuluSzczegolu}
               slad={wynik?.white_box_trace ?? []}
-              trybEkspercki={trybEkspercki}
+              szczegolyAudytowe={szczegolyAudytowe}
             />
             {opisWybrany ? (
               <>

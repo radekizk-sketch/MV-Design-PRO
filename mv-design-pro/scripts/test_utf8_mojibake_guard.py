@@ -27,6 +27,7 @@ import napraw_mojibake
 from utf8_mojibake_guard import (
     _PARAMETR_ZAPYTANIA,
     KORZEN,
+    SCIEZKI_POMIJANE,
     SEGMENTY_POMIJANE,
     SUSPICIOUS_FRAGMENTS,
     ZNAK_ZASTEPCZY_W_SLOWIE,
@@ -120,6 +121,12 @@ def test_zakres_obejmuje_pliki_korzenia_ktorych_nie_bylo_na_liscie() -> None:
         "mv-design-pro/STAN_REPO.md",
         "mv-design-pro/AGENTS.md",
         "CLAUDE.md",
+        # Karta CLAUDE-MD-ANTHROPIC: tresc CLAUDE.md przeszla do `.claude/rules/`;
+        # do 2026-11-11 caly segment `.claude` (z `agents/`) byl poza zakresem.
+        ".claude/rules/zero-dlug.md",
+        ".claude/rules/frontend.md",
+        ".claude/agents/worker.md",
+        ".claude/settings.json",
     ):
         assert plik in zakres, f"plik korzenia poza zakresem: {plik}"
 
@@ -151,8 +158,42 @@ def test_wykluczenia_dopasowane_do_segmentu_a_nie_do_podciagu_nazwy() -> None:
 def test_kazdy_pomijany_segment_ma_powod() -> None:
     """Lista pomijanych jest ODWROTNOŚCIĄ zakresu — wpis bez powodu byłby cichym
     wykluczeniem, którego nikt nie umie ocenić."""
-    for segment, powod in SEGMENTY_POMIJANE.items():
+    for segment, powod in {**SEGMENTY_POMIJANE, **SCIEZKI_POMIJANE}.items():
         assert powod and powod.strip(), f"segment bez powodu pominięcia: {segment}"
+
+
+def test_katalog_claude_pomija_tylko_kopie_repozytorium() -> None:
+    """ILOCZYN CECH: {`.claude/worktrees`, `.claude/rules`, `.claude/agents`, katalog
+    `worktrees` poza `.claude`} — pominięta jest WYŁĄCZNIE ścieżka kopii repozytorium.
+
+    Do 2026-11-11 pomijany był cały segment `.claude`, więc reguły, do których
+    przeszła treść CLAUDE.md, wypadłyby ze skanu kodowania razem z kopiami innych sesji.
+    """
+    assert czy_segment_pomijany("worktrees", ".claude/worktrees")
+    assert not czy_segment_pomijany(".claude", ".claude")
+    assert not czy_segment_pomijany("rules", ".claude/rules")
+    assert not czy_segment_pomijany("worktrees", "mv-design-pro/docs/worktrees")
+    with tempfile.TemporaryDirectory() as tmp:
+        korzen = Path(tmp)
+        for rel in (
+            ".claude/worktrees/sesja/CLAUDE.md",
+            ".claude/rules/regula.md",
+            ".claude/rules/pod/regula.md",
+            ".claude/agents/worker.md",
+            "docs/worktrees/notatka.md",
+        ):
+            (korzen / rel).parent.mkdir(parents=True, exist_ok=True)
+            (korzen / rel).write_text("x", encoding="utf-8")
+        widziane = {
+            str(p.relative_to(korzen)).replace("\\", "/") for p in iter_scannable_files(korzen)
+        }
+    assert ".claude/worktrees/sesja/CLAUDE.md" not in widziane
+    assert {
+        ".claude/rules/regula.md",
+        ".claude/rules/pod/regula.md",
+        ".claude/agents/worker.md",
+        "docs/worktrees/notatka.md",
+    } <= widziane
 
 
 def test_nowy_katalog_jest_objety_domyslnie_a_wyjscia_narzedzi_nie() -> None:
@@ -201,7 +242,10 @@ def test_zakres_nie_wciaga_artefaktow_ignorowanych_przez_gita() -> None:
         text=True,
     )
     # 0 = są ignorowane, 1 = żaden nie jest ignorowany, reszta = błąd wywołania
-    assert wynik.returncode in (0, 1), f"git check-ignore zawiódł: {wynik.stderr.strip()}"
+    assert wynik.returncode in (
+        0,
+        1,
+    ), f"git check-ignore zawiódł: {wynik.stderr.strip()}"
     ignorowane = sorted(filter(None, wynik.stdout.splitlines()))
     assert ignorowane == [], (
         "w zakresie strażnika są pliki ignorowane przez gita (stan uruchomieniowy "
@@ -322,7 +366,8 @@ def test_plik_nieczytelny_jako_utf8_czyni_straznika_czerwonym(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     """Plik w zakresie skanu, ktorego nie da sie zdekodowac jako UTF-8, to czerwien z nazwa
-    pliku (GUARD-BLAD-SKLADNI) — wczesniej `except Exception: continue` pomijal go po cichu."""
+    pliku (GUARD-BLAD-SKLADNI) — wczesniej `except Exception: continue` pomijal go po cichu.
+    """
     import utf8_mojibake_guard
 
     katalog = tmp_path / "mv-design-pro" / "backend" / "tests"

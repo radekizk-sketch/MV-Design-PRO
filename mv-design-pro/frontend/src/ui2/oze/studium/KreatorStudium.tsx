@@ -13,9 +13,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './studium.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
 import {
@@ -31,7 +29,6 @@ import {
   type WidokDokumentuStudium,
   type ZadanieDokumentuStudium,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
 import { pobierzKatalogNcRfg } from '../ncrfg/api';
 import { useKlasyfikacjeModulow, type ZapytanieKlasyfikacji } from '../ncrfg/klasyfikacja';
@@ -67,6 +64,9 @@ import { STUDIUM_STRINGS, nazwaPlikuDokumentuStudium } from './strings';
 
 const LICZBA_KROKOW = 4;
 
+/** Stan odczytu katalogu kreatora (konwertery, katalog NC RfG). */
+type OdczytKataloguStudium = 'wczytywanie' | 'blad' | 'gotowe';
+
 /** Braki twarde dokumentu studium (bramka 422 — uczciwa lista po polsku). */
 interface BrakiDokumentu {
   readonly komunikat: string;
@@ -74,6 +74,7 @@ interface BrakiDokumentu {
 }
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 /** Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza). */
 interface ParametryZakonczonegoBiegu {
@@ -237,10 +238,10 @@ function PostepWariantu({
 
 function SzczegolWariantu({
   wariant,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   wariant: WynikWariantuStudium;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
 }) {
   const widokZdolnosci = wariant.zdolnosc.dane;
   const widokObszaru = wariant.obszar.dane;
@@ -264,7 +265,7 @@ function SzczegolWariantu({
         <h3 className="mvd-studium-szczegol-tytul">{STUDIUM_STRINGS.szczegolTytul}</h3>
         {/* Karta #145: identyfikator węzła wariantu wyłącznie w „Informacjach audytowych". */}
         <InformacjeAudytowe
-          trybEkspercki={trybEkspercki}
+          szczegolyAudytowe={szczegolyAudytowe}
           testid="mvd-studium-szczegol-audyt"
           wiersze={[{ etykieta: STUDIUM_STRINGS.ekspIdentyfikatorWezla, wartosc: wariant.busRef }]}
         />
@@ -311,18 +312,16 @@ function SzczegolWariantu({
 // ---------------------------------------------------------------------------
 
 export interface KreatorStudiumProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z rodzica, `WynikiWarsztat`), nie zaślepka. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStudiumProps) {
-  const trybEkspercki = trybZaawansowania === 'expert';
+export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStudiumProps) {
 
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);
@@ -338,6 +337,9 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
   const [krok, setKrok] = useState(1);
   const [wybraneWezly, setWybraneWezly] = useState<readonly string[]>([]);
   const [rodzaj, setRodzaj] = useState<RodzajZrodlaStudium>('PV');
+  // Stan ODCZYTU katalogów (wczytywanie ≠ brak pozycji, błąd odczytu ≠ brak pozycji).
+  const [odczytRekordow, setOdczytRekordow] = useState<OdczytKataloguStudium>('wczytywanie');
+  const [odczytKatalogu, setOdczytKatalogu] = useState<OdczytKataloguStudium>('wczytywanie');
   const [rekordy, setRekordy] = useState<RekordKonwertera[]>([]);
   const [wybranyTyp, setWybranyTyp] = useState('');
   const [katalog, setKatalog] = useState<KatalogNcRfg | null>(null);
@@ -371,10 +373,14 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
     let anulowane = false;
     pobierzKonwertery()
       .then((dane) => {
-        if (!anulowane) setRekordy(dane);
+        if (anulowane) return;
+        setRekordy(dane);
+        setOdczytRekordow('gotowe');
       })
       .catch(() => {
-        if (!anulowane) setRekordy([]);
+        if (anulowane) return;
+        setRekordy([]);
+        setOdczytRekordow('blad');
       });
     pobierzKatalogNcRfg()
       .then((dane) => {
@@ -382,9 +388,12 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
         // Operator (profil wymagań NC RfG) NIGDY nie jest zgadywany — ani pierwszy z listy, ani
         // z modułów modelu (studium dotyczy źródła, którego w modelu jeszcze nie ma): jawny wybór.
         setKatalog(dane);
+        setOdczytKatalogu('gotowe');
       })
       .catch(() => {
-        /* Brak katalogu → brak operatorów (pokrycie pokaże „—"); kreator pozostaje sprawny. */
+        // Błąd odczytu katalogu NC RfG nazwany jawnie (≠ „brak operatorów w katalogu");
+        // kreator pozostaje sprawny, pokrycie pokaże „—".
+        if (!anulowane) setOdczytKatalogu('blad');
       });
     return () => {
       anulowane = true;
@@ -633,7 +642,18 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
 
           <div className="mvd-studium-pole">
             <label htmlFor="mvd-studium-typ">{STUDIUM_STRINGS.paramTyp}</label>
-            {rekordyRodzaju.length === 0 ? (
+            {odczytRekordow !== 'gotowe' ? (
+              <p
+                className="mvd-studium-pole-uwaga"
+                data-testid={`mvd-studium-typ-${odczytRekordow}`}
+                aria-busy={odczytRekordow === 'wczytywanie' ? true : undefined}
+                role={odczytRekordow === 'blad' ? 'alert' : undefined}
+              >
+                {odczytRekordow === 'wczytywanie'
+                  ? STUDIUM_STRINGS.paramTypWczytywanie
+                  : STUDIUM_STRINGS.paramTypBlad}
+              </p>
+            ) : rekordyRodzaju.length === 0 ? (
               <p className="mvd-studium-pole-uwaga" data-testid="mvd-studium-typ-brak">
                 {STUDIUM_STRINGS.paramTypBrak}
               </p>
@@ -673,7 +693,18 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
 
           <div className="mvd-studium-pole">
             <label htmlFor="mvd-studium-operator">{STUDIUM_STRINGS.paramOperator}</label>
-            {(katalog?.operators.length ?? 0) === 0 ? (
+            {odczytKatalogu !== 'gotowe' ? (
+              <p
+                className="mvd-studium-pole-uwaga"
+                data-testid={`mvd-studium-operator-${odczytKatalogu}`}
+                aria-busy={odczytKatalogu === 'wczytywanie' ? true : undefined}
+                role={odczytKatalogu === 'blad' ? 'alert' : undefined}
+              >
+                {odczytKatalogu === 'wczytywanie'
+                  ? STUDIUM_STRINGS.paramOperatorWczytywanie
+                  : STUDIUM_STRINGS.paramOperatorBlad}
+              </p>
+            ) : (katalog?.operators.length ?? 0) === 0 ? (
               <p className="mvd-studium-pole-uwaga" data-testid="mvd-studium-operator-brak">
                 {STUDIUM_STRINGS.paramOperatorBrak}
               </p>
@@ -761,7 +792,7 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
             <PrzegladStudium
               stan={stan}
               kontekst={kontekstWierszy}
-              trybZaawansowania={trybZaawansowania}
+              szczegolyAudytowe={szczegolyAudytowe}
               wybranyWariant={wybranyWariant}
               ustawWariant={setWybranyWariant}
               onOtworzDowod={onOtworzDowod}
@@ -832,7 +863,7 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
                   pdfLadowanie={pdfLadowanie}
                   onPobierzDocx={() => void pobierzDocx()}
                   onPobierzPdf={() => void pobierzPdf()}
-                  trybEkspercki={trybEkspercki}
+                  szczegolyAudytowe={szczegolyAudytowe}
                 />
               ) : null}
             </section>
@@ -871,21 +902,20 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
 function PrzegladStudium({
   stan,
   kontekst,
-  trybZaawansowania,
+  szczegolyAudytowe,
   wybranyWariant,
   ustawWariant,
   onOtworzDowod,
 }: {
   stan: StanStudium;
   kontekst: KontekstWierszaStudium;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   wybranyWariant: string | null;
   ustawWariant: (busRef: string | null) => void;
   onOtworzDowod: (ref: string) => void;
 }) {
   const kolumny = useMemo(() => kolumnyStudium(), []);
   const wiersze = useMemo(() => wierszeStudium(stan, kontekst), [stan, kontekst]);
-  const trybEkspercki = trybZaawansowania === 'expert';
 
   const wariant = wybranyWariant !== null ? stan.get(wybranyWariant) ?? null : null;
   const ktorykolwiekWToku = [...stan.values()].some(wariantWToku);
@@ -896,7 +926,7 @@ function PrzegladStudium({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
         kluczWiersza={KLUCZ_WIERSZA_STUDIUM}
         onWybierzWiersz={ustawWariant}
         wybranyWiersz={wybranyWariant}
@@ -909,7 +939,7 @@ function PrzegladStudium({
       )}
 
       {wariant !== null ? (
-        <SzczegolWariantu wariant={wariant} trybEkspercki={trybEkspercki} />
+        <SzczegolWariantu wariant={wariant} szczegolyAudytowe={szczegolyAudytowe} />
       ) : (
         <StanPanel
           komunikat={STUDIUM_STRINGS.szczegolBrakWyboru}
@@ -936,10 +966,10 @@ function SekcjaPodgladuDokumentu({
   pdfLadowanie,
   onPobierzDocx,
   onPobierzPdf,
-  trybEkspercki,
+  szczegolyAudytowe,
 }: {
   dokument: WidokDokumentuStudium;
-  trybEkspercki: boolean;
+  szczegolyAudytowe: boolean;
   docxLadowanie: boolean;
   pdfLadowanie: boolean;
   onPobierzDocx: () => void;
@@ -987,7 +1017,7 @@ function SekcjaPodgladuDokumentu({
 
       {/* Karta #145: przebieg bazowy studium to metadana — „Informacje audytowe". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-studium-dok-audyt"
         wiersze={[
           { etykieta: STUDIUM_STRINGS.dokPrzebieg, wartosc: dokument.zalozenia.przebieg_bazowy.run_id },

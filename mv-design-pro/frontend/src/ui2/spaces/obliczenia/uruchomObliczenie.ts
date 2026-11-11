@@ -20,8 +20,8 @@
  *
  * S9-11 (W-4, naprawa u źródła; zaostrzenie S9-3/W-3): bieg NIE nawiguje WCALE.
  * Projektant zostaje tam, gdzie jest — na schemacie nakładka wynikowa odświeża
- * się sama (most refów S9-2: `setActiveRun` → orkiestrator pobiera
- * `results/v1`), a komunikat końcowy mówi, gdzie wynik czeka. Wejście na wyniki
+ * się sama (karta K8: zakończony bieg staje się aktywnym biegiem swojej rodziny
+ * w magazynie kontekstu wyniku → orkiestrator pobiera `results/v1`), a komunikat końcowy mówi, gdzie wynik czeka. Wejście na wyniki
  * pozostaje OSIĄGALNE wyłącznie jawnym klikiem (nawigacja przestrzeni, pas
  * „następny krok", deep-linki K3 `#analysis?run=…`). Poprzedni kompromis S9-3
  * („skok tylko z niezmienionego miejsca pracy") nadal wyrywał projektanta ze
@@ -38,6 +38,7 @@ import { useCallback, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { useKontekstWynikuStore } from '../../wyniki/kontekst/kontekstWyniku';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionAnalysisType, ExecutionRun } from '../../../ui/study-cases/types';
 import { czyStanKoncowyBiegu } from '../../../ui/study-cases/types';
@@ -49,6 +50,7 @@ import {
 import { useFaultScenariosStore } from '../../../ui/fault-scenarios/store';
 import { notify } from '../../../ui/notifications/store';
 import { sanitizePublicReadinessMessage } from '../../../ui/shared/publicReadinessMessage';
+import type { ReadinessInfo } from '../../../types/enm';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -142,9 +144,52 @@ export async function waitForExecutionRunTerminalState(
   return current;
 }
 
+/** Przyczyna, dla której obliczenia nie mogą wystartować (rodzaj + zdanie dla projektanta). */
+export interface BlokadaObliczen {
+  rodzaj: 'BRAK_ZAKRESU' | 'BLOKADA_GOTOWOSCI';
+  komunikat: string;
+}
+
+/**
+ * JEDYNY predykat dostępności obliczeń (karta K1 POWLOKA, zasada „predykaty
+ * parami"): przycisk „Oblicz" paska projektu pokazuje tę przyczynę jako powód
+ * niedostępności, a `uruchomObliczenie` odmawia startu DOKŁADNIE z tego samego
+ * powodu i tym samym zdaniem. Dwa niezależne warunki mogłyby się rozjechać —
+ * przycisk aktywny, a bieg odmówiony (albo odwrotnie).
+ *
+ * `readiness === null` (gotowość jeszcze nie odczytana) NIE blokuje — tak jak
+ * dotąd w torze wykonania: bramkę stawia dopiero ODCZYTANA blokada.
+ */
+export function przyczynaBlokadyObliczen(
+  activeCaseId: string | null,
+  readiness: ReadinessInfo | null,
+): BlokadaObliczen | null {
+  if (!activeCaseId) {
+    return { rodzaj: 'BRAK_ZAKRESU', komunikat: 'Wybierz aktywny zakres obliczeń.' };
+  }
+  if (readiness && !readiness.ready) {
+    const pierwszaBlokada = readiness.blockers?.[0];
+    return {
+      rodzaj: 'BLOKADA_GOTOWOSCI',
+      komunikat: pierwszaBlokada
+        ? sanitizePublicReadinessMessage(pierwszaBlokada.message_pl)
+        : 'Dokończ konfigurację układu przed analizą.',
+    };
+  }
+  return null;
+}
+
+/** Hook przycisku „Oblicz": ta sama przyczyna co w `uruchomObliczenie` (stan bieżący). */
+export function usePrzyczynaBlokadyObliczen(): BlokadaObliczen | null {
+  const activeCaseId = useAppStateStore((stan) => stan.activeCaseId);
+  const readiness = useSnapshotStore((stan) => stan.readiness);
+  return przyczynaBlokadyObliczen(activeCaseId, readiness);
+}
+
 /**
  * Wspólny KONIEC każdego biegu zleconego z powłoki (stan końcowy już osiągnięty):
- * zdrowie przebiegu → związanie z powłoką (`setActiveRun`) → status wyników → migawka
+ * zdrowie przebiegu → status wyników → związanie z powłoką (karta K8: `wybierzBieg`
+ * magazynu kontekstu wyniku) → migawka
  * → komunikat. Jedno źródło dla biegu z przypadku (`uruchomObliczenie`) i biegu ze
  * scenariusza zwarciowego (`uruchomScenariuszZwarciowy`) — karta OD-14, partia
  * integracji 10: bieg ze scenariusza zostawał dotąd w stanie PENDING (nikt go nie
@@ -152,7 +197,6 @@ export async function waitForExecutionRunTerminalState(
  */
 async function zakonczBieg(run: ExecutionRun): Promise<boolean> {
   const runHealth = await fetchAnalysisRunHealth(run.id);
-  useAppStateStore.getState().setActiveRun(run.id);
 
   if (isFailedAnalysisRun(run, runHealth)) {
     useAppStateStore.getState().setActiveCaseResultStatus('NONE');
@@ -169,6 +213,10 @@ async function zakonczBieg(run: ExecutionRun): Promise<boolean> {
   }
 
   useAppStateStore.getState().setActiveCaseResultStatus('FRESH');
+  // Karta K8: bieg z wynikiem staje się AKTYWNYM biegiem swojej rodziny i rodzina
+  // staje się oglądaną — schemat, panel dolny, pasek stanu i ekrany pokazują go
+  // jednocześnie (jedna akcja magazynu kontekstu wyniku, zero drugiej kopii).
+  useKontekstWynikuStore.getState().wybierzBieg(run.id, 'bieg');
   try {
     const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
     if (response.ok) {
@@ -181,7 +229,7 @@ async function zakonczBieg(run: ExecutionRun): Promise<boolean> {
     // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
   }
   // S9-11 / W-4: bieg zostawia projektanta TAM, GDZIE JEST — zero nawigacji.
-  // `setActiveRun` wyżej już związał świeży przebieg z powłoką: nakładka na
+  // `wybierzBieg` wyżej już związał świeży przebieg z powłoką: nakładka na
   // schemacie odświeża się sama (S9-2), a jawny klik w „Wyniki i dowody"
   // otwiera wyniki tego biegu (`mostTrasyPrzestrzeni` dokleja `?run=`).
   notify(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA, 'success');
@@ -205,19 +253,11 @@ export async function uruchomObliczenie(
   const stanAplikacji = useAppStateStore.getState();
   const activeCaseId = stanAplikacji.activeCaseId;
 
-  if (!activeCaseId) {
-    notify('Wybierz aktywny zakres obliczeń.', 'error');
-    return false;
-  }
-
-  const readiness = useSnapshotStore.getState().readiness;
-  if (readiness && !readiness.ready) {
-    const firstBlocker = readiness.blockers?.[0];
+  const blokada = przyczynaBlokadyObliczen(activeCaseId, useSnapshotStore.getState().readiness);
+  if (blokada || !activeCaseId) {
     notify(
-      firstBlocker
-        ? sanitizePublicReadinessMessage(firstBlocker.message_pl)
-        : 'Dokończ konfigurację układu przed analizą.',
-      'warning',
+      blokada?.komunikat ?? 'Wybierz aktywny zakres obliczeń.',
+      blokada?.rodzaj === 'BLOKADA_GOTOWOSCI' ? 'warning' : 'error',
     );
     return false;
   }

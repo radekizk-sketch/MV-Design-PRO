@@ -23,8 +23,6 @@ export {
   daneModulu,
   pracaMagazynu,
   dopasujMagazyn,
-  wybierzPrzebiegZwarciowy,
-  wybierzPrzebiegRozplywu,
 } from './pulpitModel';
 export type {
   PozycjaModulu,

@@ -88,11 +88,11 @@ describe('DowodCertyfikatuOpis — dowód × odrzucenie × brak × źródło dan
 it('dowód certyfikatu: identyfikator rekordu wykazu wyłącznie w informacjach audytowych trybu eksperckiego', async () => {
   const dowod = ZGODNOSC.bieg!.modules.find((m) => m.dowod_certyfikatu !== null)!.dowod_certyfikatu!;
   const uzytkownik = userEvent.setup();
-  useShellStore.setState({ advancementMode: 'expert' });
+  useShellStore.setState({ szczegolyAudytowe: true });
   render(<DowodCertyfikatuOpis dowod={dowod} zrodloDanych="ZATWIERDZONY_MODEL" testid="d" />);
   await uzytkownik.click(screen.getByTestId('d-informacje-audytowe-przelacz'));
   expect(screen.getByTestId('d-informacje-audytowe-lista')).toHaveTextContent(dowod.rekord_id);
-  useShellStore.setState({ advancementMode: 'basic' });
+  useShellStore.setState({ szczegolyAudytowe: false });
 });
 
 describe('ListaRekordowWymagan', () => {

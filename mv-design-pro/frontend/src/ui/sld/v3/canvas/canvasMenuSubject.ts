@@ -69,7 +69,7 @@
  * `OwnerKind` etykiety jest STRUKTURALNIE NIEZDOLNY do niesienia rodzaju obiektu:
  * jeden rodzaj `'station-name'` obsługuje wiersz nazwy STACJI, TRANSFORMATORA i
  * ŹRÓDŁA (pomiar: 266 / 4 / 3 etykiety). Dlatego rodzaj obiektu dla WSZYSTKICH
- * konsumentów (menu, szuflada, selekcja) pochodzi TERAZ z kotwicy modelu, a
+ * konsumentów (menu, panel elementu inspektora, selekcja) pochodzi TERAZ z kotwicy modelu, a
  * `LABEL_OWNER_ELEMENT_KIND` jest wyłącznie tym, czym uczciwie jest —
  * KATEGORIĄ RYSUNKOWĄ trafienia (patrz jej nagłówek po zmianie).
  *
@@ -83,6 +83,7 @@
  * renderu i uruchamialny w skrypcie odbioru `scripts/sld_v3_acceptance.mjs`.
  */
 import type { EnergyNetworkModel } from '../../../../types/enm';
+import { polaSnStacji } from '../../../shared/polaStacji';
 import type { DerSourceKind } from '../compose/sourceKind';
 import type { PreviewElementKind } from '../compose/preview';
 import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
@@ -111,7 +112,7 @@ export type MenuAnchorKind =
  * elementu rysunku". Czytają ją OBA końce pary (reguła KLASA pkt 3):
  *  - WEJŚCIE — bramka przejścia stacja→szyna w `resolveCanvasMenuSubject`
  *    (`input.elementKind === ELEMENT_KIND_KOTWICY.szyna`);
- *  - WYJŚCIE — kategoria elementu podawana budowniczym szuflady i selekcji
+ *  - WYJŚCIE — kategoria elementu podawana budowniczym panelu elementu i selekcji
  *    (`SldCanvasV3Workspace`, dawna lokalna tabela `ELEMENT_KIND_KOTWICY`).
  *
  * Tabela ZAMKNIĘTA (`satisfies`) i ODWRACALNA — jej injektywność jest
@@ -274,26 +275,13 @@ export interface CanvasModelIndex {
   readonly generatory: ReadonlySet<string>;
   readonly zrodla: ReadonlySet<string>;
   readonly transformatory: ReadonlySet<string>;
-  /** `field_ref` pola SN → ref stacji-właścicielki (`substation.meta.field_specs`). */
+  /** `ref_id` pola SN stacji → ref stacji-właścicielki (rekordy `bays`, `polaSnStacji`). */
   readonly pola: ReadonlyMap<string, string>;
 }
 
 function dodajRefy(cel: Set<string>, element: { readonly ref_id?: string; readonly id?: string }): void {
   if (element.ref_id) cel.add(element.ref_id);
   if (element.id) cel.add(element.id);
-}
-
-function fieldRefSpecu(spec: unknown): string | null {
-  if (!spec || typeof spec !== 'object') return null;
-  const rekord = spec as Record<string, unknown>;
-  const meta = rekord.meta && typeof rekord.meta === 'object' ? (rekord.meta as Record<string, unknown>) : null;
-  const szablon = meta?.sn_field_template && typeof meta.sn_field_template === 'object'
-    ? (meta.sn_field_template as Record<string, unknown>)
-    : null;
-  for (const kandydat of [rekord.field_ref, szablon?.field_ref, meta?.field_ref]) {
-    if (typeof kandydat === 'string' && kandydat.trim()) return kandydat.trim();
-  }
-  return null;
 }
 
 /**
@@ -313,12 +301,7 @@ export function buildCanvasModelIndex(snapshot: EnergyNetworkModel | null): Canv
   for (const stacja of snapshot?.substations ?? []) {
     if (stacja.ref_id) stacje.set(stacja.ref_id, stacja);
     if (stacja.id) stacje.set(stacja.id, stacja);
-    const meta = stacja.meta && typeof stacja.meta === 'object' ? (stacja.meta as Record<string, unknown>) : null;
-    const specyfikacje = Array.isArray(meta?.field_specs) ? (meta!.field_specs as unknown[]) : [];
-    for (const spec of specyfikacje) {
-      const ref = fieldRefSpecu(spec);
-      if (ref) pola.set(ref, stacja.ref_id ?? stacja.id ?? '');
-    }
+    for (const pole of polaSnStacji(snapshot, stacja.ref_id)) pola.set(pole.ref_id, stacja.ref_id);
   }
   for (const szyna of snapshot?.buses ?? []) {
     if (szyna.ref_id) szyny.set(szyna.ref_id, szyna);
@@ -447,6 +430,8 @@ function kotwicaRefu(index: CanvasModelIndex, ref: string): Kotwica | null {
  * predykat brzmiał „pierwsza szyna o `voltage_kv > 1`" i był poprawny WYŁĄCZNIE
  * PRZEZ KOLEJNOŚĆ `bus_refs`. Zmierzone na sieci referencyjnej:
  * GPZ `bus_refs = [section/001/bus_sn = 15 kV, transformer/001/bus_110 = 110 kV]`
+ * (szyna 110 kV per transformator sprzed karty GPZ-MODEL; dziś jedna wspólna
+ * `hv_section/001/bus_wn` — kryterium niżej nie zależy od tej nazwy)
  * — dawny predykat zwracał szynę 15 kV RÓWNIEŻ dla napisu „Szyna WN · 110 kV",
  * czyli PODMIENIAŁBY obiekt (menu sekcji operujące na szynie 15 kV pod napisem
  * o szynie 110 kV) w chwili, gdy uchwyt napisu zaczął odpalać to przejście.

@@ -17,11 +17,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './obszar.css';
-import type { AdvancementMode } from '../../shell/modeModel';
 import type { GenLimits } from '../../../types/enm';
 import { useAppStateStore } from '../../../ui/app-state';
-import { notify } from '../../../ui/notifications/store';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
   InformacjeAudytowe,
@@ -39,7 +36,6 @@ import {
   type WidokObszaruPQ,
   type ZapytanieObszaruPQ,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import { WykresObszaruChart } from './WykresObszaruChart';
 import {
   kolumnyTabeliObszaru,
@@ -50,6 +46,7 @@ import {
 import { OBSZAR_STRINGS, fmtMWObszar, fmtMvarObszar } from './strings';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_STEP_P_MW = 0.5;
 const DOMYSLNY_STEP_Q_MVAR = 0.25;
@@ -99,16 +96,15 @@ function StanPanel({
 
 function WynikObszaru({
   dane,
-  trybZaawansowania,
+  szczegolyAudytowe,
   krzywaProducenta,
   onOtworzDowod,
 }: {
   dane: WidokObszaruPQ;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   krzywaProducenta?: readonly (readonly [number, number, number])[];
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
 
   const punkty = useMemo(() => punktyObszaru(dane.vertices, krzywaProducenta), [dane, krzywaProducenta]);
@@ -172,7 +168,7 @@ function WynikObszaru({
 
       {/* Karta #145: przebieg i odcisk wejścia wyłącznie w „Informacjach audytowych". */}
       <InformacjeAudytowe
-        trybEkspercki={trybEkspercki}
+        szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-obszar-informacje-audytowe"
         wiersze={[
           { etykieta: OBSZAR_STRINGS.zalPrzebieg, wartosc: dane.context.run_id },
@@ -188,7 +184,7 @@ function WynikObszaru({
         kolumny={kolumny}
         wiersze={wiersze}
         onOtworzDowod={onOtworzDowod}
-        trybZaawansowania={trybZaawansowania}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       <div className="mvd-obszar-slad-blok">
@@ -276,10 +272,13 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
         q_min_mvar: qMinLiczba,
         q_max_mvar: qMaxLiczba,
       };
-      const odpowiedz = await executeDomainOperation(caseId, 'update_element_parameters', {
-        element_ref: generator.ref_id,
-        parameters: { limits: limity },
-      });
+      // Jeden toast sukcesu — z magazynu (zdanie ekranu zamiast ogólnego).
+      const odpowiedz = await executeDomainOperation(
+        caseId,
+        'update_element_parameters',
+        { element_ref: generator.ref_id, parameters: { limits: limity } },
+        { komunikatSukcesuPl: OBSZAR_STRINGS.limityZapisano },
+      );
       if (!odpowiedz) {
         setBlad(useSnapshotStore.getState().error ?? OBSZAR_STRINGS.limityBladZapisu);
         return;
@@ -290,7 +289,6 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
         setBlad(odpowiedz.error);
         return;
       }
-      notify(OBSZAR_STRINGS.limityZapisano, 'success');
     } catch (err) {
       setBlad(err instanceof Error ? err.message : OBSZAR_STRINGS.limityBladZapisu);
     } finally {
@@ -301,7 +299,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
   return (
     <section className="mvd-obszar-limity" data-testid="mvd-obszar-limity">
       <p className="mvd-obszar-limity-tytul">{OBSZAR_STRINGS.limityTytul}</p>
-      <p className="mvd-obszar-limity-opis">{OBSZAR_STRINGS.limityOpis}</p>
+      <p className="mvd-obszar-limity-opis"><TekstZWzorami tekst={OBSZAR_STRINGS.limityOpis} /></p>
 
       {generatory.length === 0 ? (
         <p className="mvd-obszar-limity-brak" data-testid="mvd-obszar-limity-brak-generatorow">
@@ -383,16 +381,15 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
 // ---------------------------------------------------------------------------
 
 export interface EkranObszaruPQProps {
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
    * z rodzica, `WynikiWarsztat`), nie zaślepka. */
   onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszaruPQProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszaruPQProps) {
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);
@@ -405,6 +402,10 @@ export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszar
 
   // Katalog typów falowników — do opcjonalnej nakładki krzywej producenta.
   const [rekordy, setRekordy] = useState<RekordKonwertera[]>([]);
+  // Stan odczytu katalogu konwerterów: wczytywanie i błąd ≠ „brak typów z krzywą".
+  const [odczytRekordow, setOdczytRekordow] = useState<'wczytywanie' | 'blad' | 'gotowe'>(
+    'wczytywanie',
+  );
   const [wybranyTyp, setWybranyTyp] = useState('');
 
   const [zapytanie, setZapytanie] = useState<ZapytanieObszaruPQ | null>(null);
@@ -416,15 +417,20 @@ export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszar
     return rekord?.pq_curve;
   }, [rekordy, wybranyTyp]);
 
-  // Wczytanie katalogu konwerterów (raz, przy montażu); błąd → brak nakładki.
+  // Wczytanie katalogu konwerterów (raz, przy montażu); błąd nazwany jawnie przy wyborze
+  // nakładki (bieg obszaru pozostaje dostępny — nakładka jest opcjonalna).
   useEffect(() => {
     let anulowane = false;
     pobierzKonwertery()
       .then((dane) => {
-        if (!anulowane) setRekordy(dane);
+        if (anulowane) return;
+        setRekordy(dane);
+        setOdczytRekordow('gotowe');
       })
       .catch(() => {
-        if (!anulowane) setRekordy([]);
+        if (anulowane) return;
+        setRekordy([]);
+        setOdczytRekordow('blad');
       });
     return () => {
       anulowane = true;
@@ -577,6 +583,9 @@ export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszar
                 value={wybranyTyp}
                 onChange={(e) => setWybranyTyp(e.target.value)}
                 data-testid="mvd-obszar-typ"
+                data-odczyt={odczytRekordow}
+                disabled={odczytRekordow !== 'gotowe'}
+                aria-busy={odczytRekordow === 'wczytywanie' ? true : undefined}
               >
                 <option value="">{OBSZAR_STRINGS.paramNakladkaBrak}</option>
                 {opcjeTypow.map((t) => (
@@ -585,6 +594,19 @@ export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszar
                   </option>
                 ))}
               </select>
+              {odczytRekordow === 'wczytywanie' ? (
+                <p
+                  className="mvd-obszar-param-opis"
+                  data-testid="mvd-obszar-typ-wczytywanie"
+                  aria-busy="true"
+                >
+                  {OBSZAR_STRINGS.paramNakladkaWczytywanie}
+                </p>
+              ) : odczytRekordow === 'blad' ? (
+                <p className="mvd-obszar-param-opis" data-testid="mvd-obszar-typ-blad" role="alert">
+                  {OBSZAR_STRINGS.paramNakladkaBlad}
+                </p>
+              ) : null}
               <p className="mvd-obszar-param-opis">{OBSZAR_STRINGS.paramNakladkaOpis}</p>
             </div>
 
@@ -625,7 +647,7 @@ export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszar
             <>
               <WynikObszaru
                 dane={stan.dane}
-                trybZaawansowania={trybZaawansowania}
+                szczegolyAudytowe={szczegolyAudytowe}
                 krzywaProducenta={krzywaProducenta}
                 onOtworzDowod={onOtworzDowod}
               />

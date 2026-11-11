@@ -80,6 +80,18 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     swzFail: '#A93226',
     swzUnknown: '#8C4400',
   },
+  /** GPZ-PARYTET: role pól GPZ pod biel arkusza (każdy ≥ 3:1), te same rodziny odcieni
+   *  co motyw ciemny, wartości różne od pozostałych tokenów. */
+  rolaPola: {
+    zasilajace: '#8A5A00',
+    liniowe: '#1F5F99',
+    transformatorowe: '#5E3A9E',
+    sprzeglo: '#56626F',
+    pomiarowe: '#0B6E60',
+    zrodlowe: '#3C6E1E',
+    uziemiajace: '#6B6400',
+    kompensacyjne: '#9E2A5E',
+  },
 };
 
 export { DARK_SCADA_SLD_PALETTE } from './colorTokens';

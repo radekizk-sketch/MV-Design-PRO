@@ -20,6 +20,13 @@ export const SKLADOWE_STRINGS = {
     + 'zobaczyć impedancje składowych i kontekst sieci zerowej.',
   zeroAkcja: 'Przejdź do obliczeń',
 
+  // Aktywny bieg zwarcia jest symetryczny (3F) — jawne przełączenie kontekstu (karta K8).
+  symetrycznyTytul: 'Aktywny przebieg zwarciowy jest trójfazowy (symetryczny)',
+  symetrycznyOpis: 'Składowe symetryczne i sieć zerowa dotyczą zwarć niesymetrycznych. Na schemacie, '
+    + 'w panelu dolnym i na pasku stanu jest przebieg zwarcia trójfazowego. Pokaż najnowszy przebieg '
+    + 'zwarcia niesymetrycznego — zmieni się on także na schemacie i w panelu dolnym.',
+  symetrycznyAkcja: 'Pokaż przebieg zwarcia niesymetrycznego',
+
   // Stany dostawcy danych.
   ladowanieTytul: 'Ładowanie wyniku zwarciowego',
   ladowanieOpis: 'Widok pobiera wiersze kanoniczne, ślad obliczeń i wersję układu przebiegu.',
@@ -76,11 +83,12 @@ export const SKLADOWE_STRINGS = {
   // Sekcja uziemienia punktu neutralnego.
   uziemienieTytul: 'Sposób uziemienia punktu neutralnego',
   uziemienieOpis: 'Konfiguracja uziemienia z zamrożonej wersji układu tego przebiegu '
-    + '(sposób uziemienia szyn oraz punktów neutralnych górnego i dolnego napięcia '
-    + 'transformatorów modelu).',
-  uziemieniePunktu: 'Uziemienie wybranego punktu (źródło na szynie)',
-  uziemienieBrakPunktu: 'Model nie określa konfiguracji uziemienia dla szyny wybranego punktu.',
-  uziemienieSiec: 'Punkty neutralne w sieci (źródła i transformatory)',
+    + '(zespoły uziemiające sieci SN, punkt neutralny sieci 110 kV za granicą modelu '
+    + 'oraz punkty neutralne górnego i dolnego napięcia transformatorów modelu).',
+  uziemieniePunktu: 'Uziemienie na szynie wybranego punktu (zespół uziemiający albo źródło)',
+  uziemienieBrakPunktu: 'Na szynie wybranego punktu model nie ma zespołu uziemiającego ani '
+    + 'źródła z opisem punktu neutralnego — uziemienie sieci tej szyny pokazuje lista niżej.',
+  uziemienieSiec: 'Punkty neutralne w sieci (zespoły uziemiające, źródła i transformatory)',
   uziemienieBrakSieci: 'Zamrożona wersja układu nie zawiera żadnej jawnej konfiguracji '
     + 'uziemienia punktu neutralnego. Uzupełnij dane uziemienia w modelu sieci, '
     + 'aby raport sieci zerowej był kompletny.',
@@ -89,9 +97,45 @@ export const SKLADOWE_STRINGS = {
   uziemienieAkcjaModel: 'Przejdź do modelu sieci',
   uziemienieStronaGN: 'strona GN',
   uziemienieStronaDN: 'strona DN',
-  uziemienieZrodlo: 'punkt neutralny sieci SN (źródło)',
+  uziemienieZrodlo: 'punkt neutralny sieci 110 kV za granicą modelu (źródło)',
+  uziemienieZespol: 'zespół uziemiający sieci SN',
+  zespolBezposrednie: 'uziemienie bezpośrednie',
+  zespolDlawik: 'dławik gaszący',
+  zespolDlawikAwsc: 'dławik gaszący z rezystorem wymuszającym AWSC',
+  zespolRezystor: 'rezystor uziemiający',
+  zespolBezElementu: 'bez elementu w punkcie neutralnym (brak modelu)',
   uziemienieRezystancja: 'R',
   uziemienieReaktancja: 'X',
+
+  // Doziemienie sieci SN wg sposobu pracy punktu neutralnego (solver doziemienie_sn).
+  doziemienieTytul: 'Doziemienie sieci SN wg sposobu pracy punktu neutralnego',
+  doziemienieOpis: 'Prąd w miejscu doziemienia, jego charakter, napięcie składowej zerowej '
+    + 'i napięcia faz zdrowych liczone modelem właściwym dla sposobu pracy punktu neutralnego '
+    + 'sieci tego punktu: sieć izolowana — prąd pojemnościowy, kompensowana — prąd resztkowy, '
+    + 'z rezystorem — prąd rezystancyjno-pojemnościowy, uziemiona bezpośrednio — prąd '
+    + 'zwarciowy IEC 60909.',
+  doziemienieBrakWiersza: 'Wybrany punkt nie niesie doziemienia sieci SN (zwarcie inne niż '
+    + 'jednofazowe, punkt poza siecią SN albo starszy przebieg).',
+  doziemieniePrad: 'Prąd w miejscu doziemienia',
+  doziemienieIC: 'Prąd pojemnościowy sieci $I_C$',
+  doziemienieIL: 'Prąd indukcyjny dławików $I_L$',
+  doziemienieIW: 'Składowa czynna $I_w$',
+  doziemienieV: 'Rozstrojenie $v = (I_C - I_L)/I_C$ (dodatnie — niedokompensowanie)',
+  doziemienieUF: 'Napięcie fazowe $U_f$',
+  doziemienieU0: 'Napięcie składowej zerowej $U_0$',
+  doziemienieUB: 'Napięcie fazy zdrowej B $U_b$',
+  doziemienieUC: 'Napięcie fazy zdrowej C $U_c$',
+  doziemienieK: 'Współczynnik zwarcia doziemnego $k$',
+  doziemienieZF: 'Impedancja w miejscu doziemienia $Z_f$',
+  doziemienieWzor: 'Wzór',
+  doziemienieUziemienie: 'Układ punktu neutralnego w stanie przebiegu',
+  doziemieniePodstawa: 'Podstawa',
+  doziemienieBrak: 'Brak wyniku',
+  doziemieniePodwojne: 'Podwójne doziemienie',
+  doziemienieZastrzezenia: 'Zastrzeżenia',
+  doziemienieDanePrzyjete: 'Dane przyjęte (wartości robocze)',
+  doziemienieNiepelny: 'Wynik na wartościach roboczych albo z brakiem — dowód niepełny.',
+  doziemienieSlad: 'Ślad obliczenia (model zastosowany dla sposobu pracy punktu neutralnego)',
 
   // Raportowalność wybranego punktu.
   raportTytul: 'Raportowalność wybranego punktu',
@@ -110,6 +154,8 @@ export const SKLADOWE_STRINGS = {
 
   // Jednostki i wartości puste.
   jednOhm: 'Ω',
+  jednA: 'A',
+  jednV: 'V',
   jednKA: 'kA',
   jednS: 's',
   kreska: '—',

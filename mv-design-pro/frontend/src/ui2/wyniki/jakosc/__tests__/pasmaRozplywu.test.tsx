@@ -19,7 +19,7 @@ const mockedPasma = vi.mocked(fetchPasmaRozplywu);
 function props(over = {}) {
   return {
     przebieg: przebiegTestowy('pf-pasma-1', 'LOAD_FLOW'),
-    trybZaawansowania: 'basic' as const,
+    szczegolyAudytowe: false as const,
     onOtworzDowod: vi.fn(),
     ...over,
   };
@@ -88,7 +88,7 @@ describe('SekcjaPasmRozplywu — sekcja Napięcia szyn', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
     expect(screen.queryByText('bus-A')).toBeNull();
 
-    rerender(<SekcjaPasmRozplywu {...props({ trybZaawansowania: 'expert' })} />);
+    rerender(<SekcjaPasmRozplywu {...props({ szczegolyAudytowe: true })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
     expect(screen.queryAllByText('bus-A')).toHaveLength(0);
   });

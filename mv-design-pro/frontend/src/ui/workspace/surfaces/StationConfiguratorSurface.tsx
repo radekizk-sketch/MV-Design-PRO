@@ -5,7 +5,7 @@
  * przyłączeniowe przypięte do tej stacji oraz otwiera właściwe powierzchnie
  * konfiguracji z zachowaniem kontekstu stacji.
  *
- * Punkt 3 Phase 4: konfiguracja audytu 2 (mvNeutralGroundingRef etc.)
+ * Punkt 3 Phase 4: konfiguracja audytu 2 (zaczepy, wkładki, przekładniki itd.)
  * pull-from-backend przez `useStationAudit2Config` + UPSERT przez
  * `useUpdateStationAudit2Config` (React Query, optimistic updates).
  */
@@ -20,7 +20,6 @@ import {
 } from '../../network-build/station-configurator/StationConfigurator';
 import type { StationConfigBayRow } from '../../network-build/station-configurator/cards/StationConfigBaysCard';
 import type { StationConfigPortRow } from '../../network-build/station-configurator/cards/StationConfigTopologyCard';
-import type { ProtectionRow } from '../../network-build/station-configurator/cards/StationConfigProtectionCard';
 import type {
   StationConfigTransformerRow,
   StationTransformerCatalogOption,
@@ -34,12 +33,24 @@ import {
   useStationAudit2Config,
   useStationDerStore,
   useUpdateStationAudit2Config,
+  useUziemienieSnStacji,
   selectDersOfStation,
   type StationDerConnection,
 } from '../../network-build/station-der';
 import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
-import { stationSnFieldSpecs, stationSnapshotBays } from '../../network-build/stationSnFields';
+import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
+import { stationSnBays } from '../../network-build/stationSnFields';
+import { przekladnikiStacji } from '../../network-build/station-configurator/przekladnikiStacji';
+import { przekaznikiStacji } from '../../network-build/station-configurator/przekaznikiStacji';
+import { polaPomiaroweStacji } from '../../network-build/station-configurator/polaPomiaroweStacji';
+import {
+  odbioryNnZGrafu,
+  rozdzielniceNnZGrafu,
+  type StanDanychNn,
+} from '../../network-build/station-configurator/stronaNnStacji';
+import { fetchLvDomainProjectionV1 } from '../../sld/v3/lv-domain/projectionApi';
+import type { LvDomainGraphView } from '../../sld/v3/lv-domain/types';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
@@ -62,39 +73,28 @@ import { wierszPolaLiniowego } from '../../network-build/zajetoscPol';
 import { buildOperationContext } from '../../network-build/operationContext';
 import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
 import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
-import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
+import { powyzejPasmaNn, toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
+import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
 }
 
-/**
- * Konfiguracja stacji audytu 2 — projekcja na potrzeby Surface.
- *
- * Punkt 3: dane plyną przez React Query z backendu (`station_audit2_configs`).
- * Optimistic updates przez `useUpdateStationAudit2Config`.
- */
-interface StationLocalConfig {
-  readonly mvNeutralGroundingRef: string | null;
-}
-
 /** Minimalne propsy konfiguratora — używane gdy brak danych snapshot. */
-function buildBaseStationProps(stationName: string, localConfig: StationLocalConfig) {
+function buildBaseStationProps(stationName: string) {
   return {
     basic: {
       stationName,
       // Brak danych stacji w migawce = rodzaj nieustalony (bez domysłu „końcowa”).
       topologicalType: null,
       topologicalReasonPl: null,
-      constructionType: 'kontenerowa' as const,
-      snVoltageKv: 15,
-      nnVoltageLevels: [0.4],
+      // Brak typu konstrukcyjnego w migawce = „nie podano” (bez domysłu „kontenerowa”).
+      constructionType: null,
+      // Brak danych stacji = napięcia nieznane (bez domysłu 15 / 0,4 kV).
+      snVoltageKv: null,
+      nnVoltageLevels: [],
       completeness: 'missing' as const,
-      mvNeutralGroundingRef: localConfig.mvNeutralGroundingRef,
-      // Karta FAB-L: nadpisane niżej danymi ze snapshotu audytu 2 — pusta
-      // lista jest stanem PRZED pobraniem, nie brakiem katalogu.
-      mvNeutralGroundings: [],
     },
     topology: {
       externalPorts: [],
@@ -118,32 +118,11 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
     bays: { bays: [], hvFuses: [] },
     // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu audytu 2.
     transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
-    // Krok "Strona nN" zawiera rozdzielnice nN i odbiory techniczne.
-    nnSwitchgear: { switchgears: [], loads: [] },
     protection: {
-      relays: [],
-      automation: [],
-      interlocksConfigured: false,
-      controlMode: 'lokalne' as const,
-      // Pakiet G: typ uziemienia synchronizowany z karty 1 (basic).
-      mvNeutralGroundingType: mapGroundingRefToType(localConfig.mvNeutralGroundingRef),
       deviceWithstandRows: [],
     },
-    measurements: { cts: [], vts: [], metersCount: 0, telemetryCount: 0 },
     readiness: { items: [] },
   };
-}
-
-/** Mapowanie catalog_ref do typu uziemienia (dla ProtectionCard validation). */
-function mapGroundingRefToType(
-  ref: string | null,
-): 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded' | undefined {
-  if (!ref) return undefined;
-  if (ref === 'mng_isolated') return 'isolated';
-  if (ref === 'mng_petersen') return 'petersen_coil';
-  if (ref.startsWith('mng_resistor')) return 'resistor_grounded';
-  if (ref === 'mng_directly') return 'directly_grounded';
-  return undefined;
 }
 
 /** Mapowanie rodzaju DER → screenCode konfiguratora. */
@@ -185,23 +164,12 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-const TRANSFORMER_SN_VOLTAGE_TOLERANCE_KV = 0.5;
-const TRANSFORMER_NN_VOLTAGE_TOLERANCE_KV = 0.05;
-
 function catalogItemIdFromRef(ref: string | null | undefined): string | null {
   if (!ref) return null;
   const trimmed = ref.trim();
   if (!trimmed) return null;
   const parts = trimmed.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? trimmed;
-}
-
-function voltageMatchesCatalog(
-  left: number,
-  right: number,
-  toleranceKv: number,
-): boolean {
-  return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= toleranceKv;
 }
 
 function transformerCatalogMatchesRef(type: TransformerType, ref: string | null | undefined): boolean {
@@ -214,8 +182,8 @@ function isTransformerCatalogVoltageCompatible(
   transformer: Pick<StationConfigTransformerRow, 'uhvKv' | 'ulvKv'>,
 ): boolean {
   return (
-    voltageMatchesCatalog(type.voltage_hv_kv, transformer.uhvKv, TRANSFORMER_SN_VOLTAGE_TOLERANCE_KV)
-    && voltageMatchesCatalog(type.voltage_lv_kv, transformer.ulvKv, TRANSFORMER_NN_VOLTAGE_TOLERANCE_KV)
+    toSamoNapiecieZnamionowe(type.voltage_hv_kv, transformer.uhvKv)
+    && toSamoNapiecieZnamionowe(type.voltage_lv_kv, transformer.ulvKv)
   );
 }
 
@@ -435,17 +403,18 @@ function isPortExpectedToBeBound(kind: PortKind): boolean {
  * (`logical_views.line_fields`). Dawniej port wejściowy i odgałęźny były „zajęte” z samej
  * roli pola — wolne pole odgałęźne wyglądało na zajęte. Zajęte pole pokazuje nazwę odcinka.
  */
-function occupiedLabelForLineFieldPort(
+function occupiedLabelForBayPort(
   kind: PortKind,
-  fieldRef: string | null,
+  bay: Bay,
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
 ): string | null {
-  if (kind !== 'sn_input' && kind !== 'sn_output' && kind !== 'sn_branch') {
-    return occupiedLabelForPort(kind);
-  }
-  const wiersz = wierszPolaLiniowego(logicalViews, fieldRef);
-  if (!wiersz?.occupied) return null;
+  const wiersz = kind === 'sn_input' || kind === 'sn_output' || kind === 'sn_branch'
+    ? wierszPolaLiniowego(logicalViews, bay.ref_id)
+    : null;
+  // Pole spoza modelu odczytu pól liniowych GPZ — zajętość z roli i danych rekordu.
+  if (!wiersz) return occupiedLabelForPort(kind, bay);
+  if (!wiersz.occupied) return null;
   const odcinek = (snapshot?.branches ?? []).find(
     (branch) => wiersz.segment_refs.includes(branch.ref_id),
   );
@@ -455,7 +424,7 @@ function occupiedLabelForLineFieldPort(
 function deriveStationPortRows(
   snapshot: EnergyNetworkModel | null,
   station: Substation | null,
-  nominalVoltageKv: number,
+  nominalVoltageKv: number | null,
   stationDers: readonly StationDerConnection[] = [],
   logicalViews: LogicalViewsV1 | null = null,
 ): StationConfigPortRow[] {
@@ -468,49 +437,32 @@ function deriveStationPortRows(
     return publicPortId(kind, next);
   };
 
-  const snapshotBays = stationSnapshotBays(snapshot?.bays ?? [], station);
+  const stationBays = stationSnBays(snapshot, station);
   const derPorts = stationDers
     .map((der): StationConfigPortRow => {
       const kind = derConnectionPortKind(der);
       return {
         portId: nextPortId(kind),
         kind,
-        nominalVoltageKv: kind.startsWith('nn_') ? inferDerBusVoltage(snapshot, der) ?? 0.4 : nominalVoltageKv,
+        nominalVoltageKv: kind.startsWith('nn_') ? inferDerBusVoltage(snapshot, der) : nominalVoltageKv,
         bayDesignation: der.name,
         occupiedByLabelPl: derConnectionPortLabel(der, snapshot),
       };
     })
 
-  if (snapshotBays.length > 0) {
-    const bayPorts = snapshotBays.map((bay, index) => {
-      const kind = portKindFromBayRole(bay.bay_role);
-      return {
-        portId: nextPortId(kind),
-        kind,
-        nominalVoltageKv,
-        bayDesignation: bayDesignation(bay, index),
-        occupiedByLabelPl: occupiedLabelForPort(kind, bay),
-      };
-    });
-    return [...bayPorts, ...derPorts];
-  }
-
-  const stationFieldPorts = stationSnFieldSpecs(station).map((field, index) => {
-    const kind = portKindFromBayRole(field.bay_role);
+  // Karta W5-B: jeden zestaw portów z rekordów pól SN stacji. Zajętość pola liniowego GPZ —
+  // z modelu odczytu backendu (`line_fields`), pozostałych pól — z roli i danych rekordu.
+  const bayPorts = stationBays.map((bay, index) => {
+    const kind = portKindFromBayRole(bay.bay_role);
     return {
       portId: nextPortId(kind),
       kind,
       nominalVoltageKv,
-      bayDesignation: String(field.name ?? `Pole ${index + 1}`),
-      occupiedByLabelPl: occupiedLabelForLineFieldPort(
-        kind,
-        typeof field.field_ref === 'string' ? field.field_ref : null,
-        snapshot,
-        logicalViews,
-      ),
+      bayDesignation: bayDesignation(bay, index),
+      occupiedByLabelPl: occupiedLabelForBayPort(kind, bay, snapshot, logicalViews),
     };
   });
-  return [...stationFieldPorts, ...derPorts];
+  return [...bayPorts, ...derPorts];
 }
 
 function inferDerBusVoltage(
@@ -527,31 +479,25 @@ function deriveStationBayRows(
   station: Substation | null,
 ): StationConfigBayRow[] {
   if (!station) return [];
-  const snapshotBays = stationSnapshotBays(snapshot?.bays ?? [], station);
-  if (snapshotBays.length > 0) {
-    return snapshotBays.map((bay, index) => ({
-      bayId: bay.ref_id ?? bay.id ?? `bay-${index}`,
+  const pomiaryPol = new Set(
+    (snapshot?.measurements ?? []).map((pomiar) => pomiar.bay_ref).filter((ref): ref is string => Boolean(ref)),
+  );
+  return stationSnBays(snapshot, station).map((bay, index) => {
+    const hasEquipment = (bay.equipment_refs ?? []).length > 0;
+    return {
+      bayId: bay.ref_id,
       designation: bayDesignation(bay, index),
       bayRole: bay.bay_role ?? null,
       attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
-      hasEquipment: (bay.equipment_refs ?? []).length > 0,
+      hasEquipment,
       hasProtection: Boolean(bay.protection_ref),
-      hasMeasurements: true,
-      statusPl: 'kompletne',
+      // Pomiar pola z modelu: przekładnik (`Measurement.bay_ref`) wskazuje to pole.
+      hasMeasurements: pomiaryPol.has(bay.ref_id),
+      // Pole bez aparatu pola w modelu nie jest kompletne (dawniej stała „kompletne").
+      statusPl: hasEquipment ? 'kompletne' : 'częściowe',
       hvFuseCatalogRef: null,
-    }));
-  }
-
-  return stationSnFieldSpecs(station).map((field, index) => ({
-    bayId: String(field.ref_id ?? field.field_ref ?? field.id ?? `field-${index}`),
-    designation: String(field.name ?? `Pole ${index + 1}`),
-    bayRole: typeof field.bay_role === 'string' ? field.bay_role : null,
-    hasEquipment: true,
-    hasProtection: true,
-    hasMeasurements: true,
-    statusPl: 'kompletne',
-    hvFuseCatalogRef: null,
-  }));
+    };
+  });
 }
 
 function deriveStationTransformerRows(
@@ -585,7 +531,7 @@ function deriveStationTransformerRows(
 
 function uniqueLvVoltages(transformers: readonly StationConfigTransformerRow[]): number[] {
   const values = transformers.map((transformer) => transformer.ulvKv).filter(Number.isFinite);
-  return values.length > 0 ? Array.from(new Set(values)).sort((a, b) => a - b) : [0.4];
+  return Array.from(new Set(values)).sort((a, b) => a - b);
 }
 
 const SUPPORTED_STATION_DEFAULT_CARDS = new Set<StationConfigCardId>([
@@ -603,7 +549,6 @@ const SUPPORTED_STATION_DEFAULT_CARDS = new Set<StationConfigCardId>([
   'power-quality',
   'protection',
   'nc-rfg',
-  'infrastructure',
   'network-analysis',
   'readiness',
   'topology',
@@ -640,6 +585,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const stationRef = surface.entityRef ?? null;
+  // UI-02b JEDEN-INSPEKTOR: gdy nad tym oknem pasek działań inspektora pokazuje tę samą
+  // pozycję rejestru dla tej stacji, okno nie dubluje jej własnym przyciskiem.
+  const dzialaniaPaska = useDzialaniaPaskaNadOknem(stationRef);
+  const ciagWPasku = dzialaniaPaska.has('continue-trunk');
+  const odgalezienieWPasku = dzialaniaPaska.has('start-branch');
   const localDers = useStationDerStore((state) =>
     stationRef ? selectDersOfStation(state, stationRef) : [],
   );
@@ -648,17 +598,18 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const projectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
   // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
   // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
   // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
-  // Karta FAB-L: TEN SAM snapshot niesie też `mv_neutral_groundings`/
-  // `tap_changers` — zero drugiego zapytania sieciowego dla katalogów, które
-  // konfigurator już potrzebuje (Karta 1/Uziemienie, Karta 5 transformatora).
+  // Karta FAB-L: TEN SAM snapshot niesie też `tap_changers` — zero drugiego
+  // zapytania sieciowego dla katalogów, które konfigurator już potrzebuje (Karta 5
+  // transformatora). Uziemienie punktu neutralnego SN nie jest pozycją katalogu
+  // audytu 2 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA): niesie je zespół uziemiający
+  // sekcji w modelu, a karta zabezpieczeń czyta je z backendu.
   const audit2CatalogSnapshotQuery = useAudit2CatalogSnapshot();
   const blockTransformers = audit2CatalogSnapshotQuery.data?.block_transformers ?? [];
-  const mvNeutralGroundings = audit2CatalogSnapshotQuery.data?.mv_neutral_groundings ?? [];
   const tapChangers = audit2CatalogSnapshotQuery.data?.tap_changers ?? [];
   // Karta FAB-M: katalog bezpieczników HV (eng.17) — ten sam snapshot audytu 2
   // (zero nowego zapytania sieciowego); front nie ma już własnej kopii
@@ -718,12 +669,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   // Punkt 3 Phase 4: pull konfiguracji audytu 2 z backendu (React Query).
   const audit2Config = useStationAudit2Config(projectId, stationRef);
   const updateAudit2Config = useUpdateStationAudit2Config();
-  const localConfig: StationLocalConfig = useMemo(
-    () => ({
-      mvNeutralGroundingRef: audit2Config.data?.mv_neutral_grounding_ref ?? null,
-    }),
-    [audit2Config.data?.mv_neutral_grounding_ref],
-  );
+  // Karta UX-04/POLE-ZU: uziemienie punktu neutralnego sieci SN stacji czytane z MODELU
+  // (backend, `enm.uziemienie_sekcji`); rewizja modelu w kluczu — zmiana modelu = odczyt.
+  const rewizjaModelu = snapshot?.header?.revision ?? null;
+  const uziemienieSn = useUziemienieSnStacji(projectId, stationRef, rewizjaModelu);
 
   // Punkt 3 Phase 5: sync der_specs -> backend gdy DERs zmieniaja sie w lokalnym
   // Zustand store. Zustand pozostaje dla SLD rendering (kompatybilnosc z istniejacym
@@ -755,7 +704,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       projectId,
       stationId: stationRef,
       body: {
-        mv_neutral_grounding_ref: audit2Config.data.mv_neutral_grounding_ref,
         tap_changer_refs: audit2Config.data.tap_changer_refs,
         der_specs: targetDerSpecs,
       },
@@ -787,6 +735,81 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     () => deriveStationBayRows(snapshot, station),
     [snapshot, station],
   );
+  // Pola SN stacji z oznaczeniem — JEDNA lista dla przekładników, przekaźników i pól pomiarowych.
+  const polaSnStacji = useMemo(
+    () =>
+      station
+        ? stationSnBays(snapshot, station).map((bay, index) => ({
+            bay,
+            oznaczenie: bayDesignation(bay, index),
+          }))
+        : [],
+    [snapshot, station],
+  );
+  // Przekładniki CT/VT pól tej stacji wprost z modelu (karty „Przekładniki CT/VT”).
+  const stationMeasurements = useMemo(
+    () =>
+      przekladnikiStacji(
+        snapshot?.measurements ?? [],
+        polaSnStacji.map(({ bay, oznaczenie }) => ({ ref: bay.ref_id, oznaczenie })),
+      ),
+    [snapshot?.measurements, polaSnStacji],
+  );
+  // Przekaźniki pól SN wprost z modelu (`Bay.protection_ref` → `ProtectionAssignment`).
+  const stationRelays = useMemo(
+    () =>
+      przekaznikiStacji(
+        snapshot?.protection_assignments ?? [],
+        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, protectionRef: bay.protection_ref })),
+      ),
+    [snapshot?.protection_assignments, polaSnStacji],
+  );
+  // Pola pomiarowe SN z deklaracją pomiaru (krok „Pola pomiarowe”).
+  const stationMeteringBays = useMemo(
+    () => polaPomiaroweStacji(polaSnStacji, snapshot?.measurements ?? []),
+    [snapshot?.measurements, polaSnStacji],
+  );
+  // Strona nN: atomowa projekcja domeny nN backendu (ten sam klient co portal nN). Zmiana
+  // migawki modelu odświeża projekcję — inaczej karta pokazywałaby model sprzed operacji.
+  const [grafNn, setGrafNn] = useState<LvDomainGraphView | null>(null);
+  const [stanDanychNn, setStanDanychNn] = useState<StanDanychNn>({ stan: 'brak_przypadku' });
+  const stationRefNn = station?.ref_id ?? null;
+  useEffect(() => {
+    if (!activeCaseId || !stationRefNn) {
+      setGrafNn(null);
+      setStanDanychNn({ stan: 'brak_przypadku' });
+      return;
+    }
+    const controller = new AbortController();
+    setStanDanychNn({ stan: 'ladowanie' });
+    fetchLvDomainProjectionV1({
+      caseId: activeCaseId,
+      stationRef: stationRefNn,
+      signal: controller.signal,
+    })
+      .then((projekcja) => {
+        setGrafNn(projekcja.graph);
+        setStanDanychNn(
+          projekcja.graph.status === 'OK'
+            ? { stan: 'gotowe' }
+            : {
+                stan: 'brak_domeny',
+                komunikatPl: projekcja.graph.reason_pl ?? 'Stacja nie ma domeny nN w modelu.',
+              },
+        );
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setGrafNn(null);
+        setStanDanychNn({
+          stan: 'blad',
+          komunikatPl: reason instanceof Error ? reason.message : 'Nie udało się pobrać domeny nN.',
+        });
+      });
+    return () => controller.abort();
+  }, [activeCaseId, stationRefNn, snapshot]);
+  const stationNnSwitchgears = useMemo(() => (grafNn ? rozdzielniceNnZGrafu(grafNn) : []), [grafNn]);
+  const stationNnLoads = useMemo(() => (grafNn ? odbioryNnZGrafu(grafNn) : []), [grafNn]);
   const stationTransformers = useMemo(
     () => deriveStationTransformerRows(snapshot, station),
     [snapshot, station],
@@ -804,7 +827,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     const bus = (snapshot?.buses ?? []).find(
       (candidate) => busRefs.has(candidate.ref_id) && powyzejPasmaNn(candidate.voltage_kv),
     );
-    return bus?.voltage_kv ?? stationTransformers[0]?.uhvKv ?? 15;
+    return bus?.voltage_kv ?? stationTransformers[0]?.uhvKv ?? null;
   }, [snapshot?.buses, station?.bus_refs, stationTransformers]);
   const stationPorts = useMemo(
     () => deriveStationPortRows(snapshot, station, stationSnVoltageKv, ders, logicalViews),
@@ -956,7 +979,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         const response = await executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
           element_ref: transformerId,
           catalog_binding: buildCatalogBinding('TRAFO_SN_NN', selectedType.id),
-          source_mode: 'KATALOG',
         });
         if (response?.error) {
           notify(response.error, 'error');
@@ -1018,10 +1040,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const handleOpenCalculations = useCallback(() => {
     navigateToAnalysis({
       caseId: activeCaseId,
-      runId: activeRunId,
+      runId: runIdOgladany,
       selectionId: stationRef,
     });
-  }, [activeCaseId, activeRunId, stationRef]);
+  }, [activeCaseId, runIdOgladany, stationRef]);
 
   const requestDetach = useCallback(
     (derId: string) => {
@@ -1042,7 +1064,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   // Phase 8: helper do mutacji audit2 config (centralizuje budowe body).
   const mutateAudit2 = useCallback(
     (patch: Partial<{
-      mv_neutral_grounding_ref: string | null;
       tap_changer_refs: readonly string[];
       transformer_tap_changers: Record<string, string>;
       bay_hv_fuses: Record<string, string>;
@@ -1057,10 +1078,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         projectId,
         stationId: stationRef,
         body: {
-          mv_neutral_grounding_ref:
-            patch.mv_neutral_grounding_ref !== undefined
-              ? patch.mv_neutral_grounding_ref
-              : current?.mv_neutral_grounding_ref ?? null,
           tap_changer_refs: [...(patch.tap_changer_refs ?? current?.tap_changer_refs ?? [])],
           der_specs: current?.der_specs ?? [],
           transformer_tap_changers: {
@@ -1088,7 +1105,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   );
 
   const configuratorProps = useMemo(() => {
-    const base = buildBaseStationProps(stationName, localConfig);
+    const base = buildBaseStationProps(stationName);
     const stationHasCoupler = stationBays.some((bay) => canonicalFieldRole(bay.bayRole) === 'SPRZEGLO');
     // Phase 8: projektuj per-transformer / per-bay refs z audit2Config do propsow.
     const transformerTapChangers = audit2Config.data?.transformer_tap_changers ?? {};
@@ -1105,15 +1122,42 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         topologicalReasonPl: rodzajKonfiguratora?.przyczynaPl ?? null,
         snVoltageKv: stationSnVoltageKv,
         nnVoltageLevels: stationLvVoltages,
+        designation: station?.designation ?? null,
+        constructionType: station?.construction_type ?? null,
         completeness:
           stationBays.length > 0 && stationTransformers.length > 0
             ? 'complete' as const
             : 'partial' as const,
-        mvNeutralGroundings,
-        onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
-          if ('mvNeutralGroundingRef' in changes) {
-            mutateAudit2({ mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null });
-          }
+        // Zmiana danych stacji — JEDNA droga produktu: formularz operacji modelu.
+        onEditStation: station
+          ? () =>
+              openOperationForm('update_element_parameters', {
+                element_ref: station.ref_id,
+                element_type: 'substation',
+              })
+          : undefined,
+      },
+      earthing: {
+        stan: !projectId || !stationRef
+          ? ('brak_kontekstu' as const)
+          : uziemienieSn.isError
+            ? ('blad' as const)
+            : uziemienieSn.data
+              ? ('gotowe' as const)
+              : ('ladowanie' as const),
+        sekcje: uziemienieSn.data?.sekcje ?? [],
+        przyczynaBraku: uziemienieSn.data?.przyczyna_braku ?? null,
+        bladPl: uziemienieSn.error?.message ?? null,
+        onDodajZespol: (szyny: readonly string[]) => {
+          // Szyna sekcji należąca do TEJ stacji (sieć galwaniczna obejmuje też inne stacje).
+          const szynyStacji = new Set(station?.bus_refs ?? []);
+          const busRef = szyny.find((ref) => szynyStacji.has(ref)) ?? szyny[0];
+          if (!busRef) return;
+          const bus = snapshot?.buses?.find((b) => b.ref_id === busRef);
+          openOperationForm('add_zespol_uziemiajacy_sn', {
+            bus_ref: busRef,
+            bus_name: bus?.name ?? undefined,
+          });
         },
       },
       topology: {
@@ -1186,8 +1230,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       },
       protection: {
         ...base.protection,
+        // Karta UX-04/POLE-ZU: sposób uziemienia SN do zgodności przekładników czyta
+        // karta zabezpieczeń z modelu (backend), w kontekście tej stacji projektu.
+        kontekstUziemienia:
+          projectId && stationRef
+            ? { projectId, stationId: stationRef, rewizja: rewizjaModelu }
+            : null,
         // Phase 8: VT per-bay z audit2Config.bay_vts.
-        relays: (base.protection.relays as readonly ProtectionRow[]).map((r) => ({
+        relays: stationRelays.map((r) => ({
           ...r,
           vtCatalogRef: bayVts[r.bayDesignation] ?? null,
         })),
@@ -1206,6 +1256,16 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           });
         },
       },
+      nnSwitchgear: {
+        switchgears: stationNnSwitchgears,
+        loads: stationNnLoads,
+        stanDanych: stanDanychNn,
+      },
+      measurements: {
+        cts: stationMeasurements.cts,
+        vts: stationMeasurements.vts,
+        polaPomiarowe: stationMeteringBays,
+      },
       derSources: {
         stationId: stationRef ?? 'unselected',
         stationLabel: stationName,
@@ -1222,6 +1282,12 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   }, [
     rodzajKonfiguratora,
     stationBays,
+    stationMeasurements,
+    stationRelays,
+    stationMeteringBays,
+    stationNnSwitchgears,
+    stationNnLoads,
+    stanDanychNn,
     stationTransformerCatalogOptions,
     stationLvVoltages,
     stationName,
@@ -1237,13 +1303,19 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     handleAddTransformer,
     handleAssignTransformerCatalog,
     requestDetach,
-    localConfig,
     audit2Config.data,
+    uziemienieSn.data,
+    uziemienieSn.error,
+    uziemienieSn.isError,
+    rewizjaModelu,
+    openOperationForm,
+    projectId,
+    station,
+    snapshot?.buses,
     mutateAudit2,
     transformerCatalogError,
     transformerCatalogLoading,
     blockTransformers,
-    mvNeutralGroundings,
     tapChangers,
     hvFuses,
     ncRfgOperators,
@@ -1253,7 +1325,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
             Konfigurator stacji SN/nN
           </div>
           <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
@@ -1269,6 +1341,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
                 NIE niosą własnych barw (rodzaj układu rozróżnia etykieta, nie
                 kolor obrysu). Stan nieaktywny ma zawsze tę samą klasę. */}
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {!ciagWPasku && (
               <button
                 type="button"
                 onClick={handleContinueTrunk}
@@ -1280,6 +1353,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               >
                 Kontynuuj ciąg SN ze stacji
               </button>
+              )}
+              {!odgalezienieWPasku && (
               <button
                 type="button"
                 onClick={handleStartBranch}
@@ -1291,6 +1366,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               >
                 Rozpocznij odgałęzienie
               </button>
+              )}
               <button
                 type="button"
                 onClick={() => handleAddDer('PV')}
@@ -1322,15 +1398,15 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
                 Dodaj FW
               </button>
             </div>
-            {(continuationBlockReason || branchBlockReason) && (
+            {((continuationBlockReason && !ciagWPasku) || (branchBlockReason && !odgalezienieWPasku)) && (
               <div
-                className="max-w-xl rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-3 py-2 text-[11px] leading-relaxed text-sygnal-blokada-tusz"
+                className="max-w-xl rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-3 py-2 text-[length:var(--mvd-font-size-data)] leading-relaxed text-sygnal-blokada-tusz"
                 data-testid="station-network-action-blockers"
               >
-                {continuationBlockReason && (
+                {continuationBlockReason && !ciagWPasku && (
                   <div data-testid="station-continue-trunk-reason">{continuationBlockReason}</div>
                 )}
-                {branchBlockReason && (
+                {branchBlockReason && !odgalezienieWPasku && (
                   <div data-testid="station-start-branch-reason">{branchBlockReason}</div>
                 )}
               </div>
@@ -1338,7 +1414,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           </div>
         )}
         {!stationRef && (
-          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz">
             Wybierz stację z drzewa układów albo kliknij stację w SLD i wybierz
             "Otwórz konfigurator stacji".
           </p>
@@ -1372,7 +1448,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
         >
           <div className="w-[420px] max-w-[90vw] rounded-lg border border-scada-border bg-scada-panel p-5 shadow-2xl">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+            <div className="mb-2 text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
               Operacja nieodwracalna
             </div>
             <h3 className="text-base font-semibold text-scada-text">

@@ -42,6 +42,11 @@ _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny — pozycja bez niego ma odcisk
     # sprzed karty.
     "ConverterType": POLA_TORU_MASZYNY,
+    # Karta KATALOG-APARATURA-WN: jakość pól pozycji łącznika (``card_field_status``) —
+    # pozycja bez deklaracji ma odcisk sprzed karty; odcisk zmieniają wyłącznie nowe pozycje
+    # minimalnych łączników 110 kV, które ją niosą.
+    "SwitchEquipmentType": ("card_field_status",),
+    "MVApparatusType": ("card_field_status",),
 }
 #: Pola-kolekcje typów DODANE PO ZAMROŻENIU odcisków, które w zrzucie kanonicznym występują
 #: WYŁĄCZNIE, gdy są niepuste (ta sama reguła addytywności co wyżej, dla kolekcji). Karta
@@ -62,7 +67,17 @@ _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
 #: Przestrzenie repozytorium DODANE PO ZAMROŻENIU odcisków, pomijane w zrzucie, gdy są
 #: puste (karta AB-H0 §0.7: `karty_widmowe` — katalog statyczny nie ma dziś ani jednej
 #: karty; pierwsza karta z dokumentem zmieni odcisk, bo zmienia katalog).
-_PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: frozenset[str] = frozenset(("karty_widmowe",))
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy przestrzenie elementów zespołu uziemiającego —
+#: repozytorium bez nich (np. złożone z rekordów w teście) ma odcisk sprzed karty; katalog
+#: domyślny z pozycjami typowymi §16 ma odcisk nowy (zmiana danych katalogu).
+_PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: frozenset[str] = frozenset(
+    (
+        "karty_widmowe",
+        "earthing_transformer_types",
+        "arc_suppression_coil_types",
+        "neutral_earthing_resistor_types",
+    )
+)
 
 
 def _kanon(wartosc: Any) -> Any:

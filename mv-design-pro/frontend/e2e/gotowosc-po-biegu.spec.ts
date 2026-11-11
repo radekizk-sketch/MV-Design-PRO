@@ -29,6 +29,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { przelaczMotyw } from './powloka';
 import { transformatoryStacjiSnNn } from './transformatoryStacji';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
@@ -46,7 +47,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string; type?: string }>;
+    branches?: Array<{ ref_id: string; type?: string; name?: string }>;
     transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     buses?: Array<{ ref_id: string; voltage_kv?: number }>;
   };
@@ -145,8 +146,6 @@ async function zbudujSiecGotowaDoObliczen(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
@@ -265,9 +264,9 @@ async function uruchomBiegScPrzezApi(request: APIRequestContext, caseId: string)
 async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   fs.mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-dark.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
   await page.screenshot({ path: path.join(KATALOG_ZRZUTOW, `${nazwa}-light.png`) });
-  await page.getByTestId('mvd-theme-toggle').click();
+  await przelaczMotyw(page);
 }
 
 test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO modelu (bramka AUD-F)', async ({
@@ -282,9 +281,20 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
 
   // Model PSUJE SIĘ PO biegu: łącznik normalnie otwarty odcina ciąg od źródła
   // (realna sytuacja projektowa) ⇒ serwer zgłasza blokadę gotowości.
-  await executeDomainOp(request, caseId, 'set_normal_open_point', {
-    switch_ref: segmentRefs[0],
+  // Karta W5-C: punktem normalnie otwartym jest WYŁĄCZNIE łącznik (odcinek linii nie ma
+  // pozycji normalnej) — rozłącznik sekcyjny z katalogu na pierwszym odcinku, potem
+  // przeniesienie na niego punktu podziału (dawniej spec wskazywał sam odcinek).
+  const nazwaLacznika = 'Łącznik sekcyjny NO';
+  const wstawienie = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
+    segment_id: segmentRefs[0],
+    insert_at: { mode: 'RATIO', value: 0.5 },
+    switch_type: 'ROZLACZNIK',
+    switch_name: nazwaLacznika,
+    catalog_binding: buildCatalogBinding('APARAT_SN', 'sw-ls-schneider-rm6-17kv-400a'),
   });
+  const lacznik = (wstawienie.snapshot?.branches ?? []).find((b) => b.name === nazwaLacznika)?.ref_id;
+  expect(lacznik, 'rozłącznik sekcyjny w modelu').toBeTruthy();
+  await executeDomainOp(request, caseId, 'set_normal_open_point', { switch_ref: lacznik });
   const gotowosc = await pobierzGotowosc(request, caseId);
   expect(gotowosc.ready).toBe(false);
   expect(blokadySerwera(gotowosc)).toBeGreaterThan(0);
@@ -305,14 +315,15 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
     // Okno wyników żyje (migawka przebiegu wczytana) …
     await expect(strona.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
 
-    // … a gotowość opisuje BIEŻĄCY model: chip nie deklaruje zwalidowanego
-    // modelu i liczy blokady tak samo jak serwer.
-    await expect(strona.getByTestId('mvd-casebar-readiness')).toContainText(
+    // … a gotowość opisuje BIEŻĄCY model: pasek stanu (jedyne miejsce gotowości
+    // w chromie po karcie K1 POWLOKA) liczy blokady tak samo jak serwer i nie
+    // deklaruje modelu bez uwag.
+    await expect(strona.getByTestId('mvd-status-gotowosc')).toContainText(
       String(blokadySerwera(gotowosc)),
       { timeout: 30000 },
     );
-    await expect(strona.getByTestId('mvd-casebar-model')).toContainText('Model: w budowie');
-    await expect(strona.getByTestId('mvd-casebar-model')).not.toContainText('Model: zwalidowany');
+    await expect(strona.getByTestId('mvd-status-gotowosc')).toHaveAttribute('data-ustalona', 'true');
+    await expect(strona.getByTestId('mvd-status-gotowosc')).not.toContainText('brak uwag');
 
     // Zrzut po pełnej hydratacji okna wyników (zakładka wg rodzaju przebiegu +
     // wczytana tabela zwarć) — dowód, że uczciwa gotowość współistnieje z ŻYWYM

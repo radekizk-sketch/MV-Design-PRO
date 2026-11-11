@@ -23,14 +23,17 @@
 
 import { useMemo, useRef, useEffect, useState, type KeyboardEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { AdvancementMode } from '../../shell/modeModel';
 import { useGlobalSelectionSync } from '../../../ui/selection';
+import { canonicalizeSelectedElement } from '../../../ui/shared/selectionResolution';
+import { refModeluElementu, useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { usePokazBiegEkranuNaSchemacie } from '../kontekst/kontekstWyniku';
 import type {
   DefinicjaKolumny,
   StanSortowania,
   WartoscKomorki,
   WierszTabeli,
 } from './wzorzecModel';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { WZORZEC_STRINGS } from './strings';
 import { akcjaNaprawcza, type RodzajPrzekroczenia } from './akcjeNaprawcze';
 
@@ -64,7 +67,7 @@ interface TabelaWynikowProps {
   kolumny: DefinicjaKolumny[];
   wiersze: WierszTabeli[];
   onOtworzDowod?: (ref: string) => void;
-  trybZaawansowania: AdvancementMode;
+  szczegolyAudytowe: boolean;
   /** Klucz kolumny identyfikującej wiersz (domyślnie klucz pierwszej kolumny). */
   kluczWiersza?: string;
   /** Natywny wybór wiersza (klik/Enter) — delta API E8.2. */
@@ -146,7 +149,7 @@ export function TabelaWynikow({
   kolumny,
   wiersze,
   onOtworzDowod,
-  trybZaawansowania,
+  szczegolyAudytowe,
   kluczWiersza,
   onWybierzWiersz,
   wybranyWiersz,
@@ -160,6 +163,9 @@ export function TabelaWynikow({
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
   const { selectFromResults } = useGlobalSelectionSync();
+  const snapshot = useSnapshotStore((stan) => stan.snapshot);
+  // Karta K8: wiersz ekranu pełnego niesie bieg ekranu — schemat przełącza się na niego.
+  const pokazBiegEkranu = usePokazBiegEkranuNaSchemacie();
   // D-2 (deep-link SLD → preselekcja wiersza): mapa klucz wiersza → węzeł DOM,
   // do przewinięcia widoku na wybrany wiersz. Ref (nie state) — nie wywołuje
   // dodatkowych renderów, wyłącznie odczyt w efekcie poniżej.
@@ -169,8 +175,8 @@ export function TabelaWynikow({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const kolumnyWidoczne = useMemo(
-    () => kolumny.filter((k) => !k.tylkoEkspercki || trybZaawansowania === 'expert'),
-    [kolumny, trybZaawansowania],
+    () => kolumny.filter((k) => !k.tylkoEkspercki || szczegolyAudytowe),
+    [kolumny, szczegolyAudytowe],
   );
   // F-E6.1: kolumna decyzji dokłada się WYŁĄCZNIE gdy wołający ją obsłuży.
   const kolumnaDecyzji = onPoprawWModelu != null;
@@ -280,7 +286,20 @@ export function TabelaWynikow({
         // tylko tam, gdzie ta kolumna już jest czytelną nazwą — p. `wzorzecModel.ts`).
         const nazwa =
           nazwaElementuWiersza?.(rowKey) ?? (idKom ? String(idKom.wartosc) : rowKey);
-        selectFromResults(elementId, typ, nazwa);
+        // Karta K8 (predykaty parami): wiersz zaznacza element WYŁĄCZNIE wtedy, gdy
+        // przyjmie go ta sama kanonikalizacja, którą synchronizacja adresu odrzuca
+        // selekcję (`useUrlSelectionSync`). Wiersz szyny pomocniczej (zacisk końcowy
+        // odcinka — nienarysowany na schemacie) dotąd zaznaczał element, przełączał
+        // kontekst biegu i chwilę później tracił zaznaczenie bez słowa.
+        const cel = canonicalizeSelectedElement(snapshot, {
+          id: refModeluElementu(snapshot, elementId) ?? elementId,
+          type: typ,
+          name: nazwa,
+        });
+        if (cel) {
+          pokazBiegEkranu();
+          selectFromResults(elementId, typ, nazwa);
+        }
       }
     };
     return (
@@ -367,7 +386,7 @@ export function TabelaWynikow({
               const wskaznik = aktywne ? (sort.kierunek === 'rosnaco' ? '▲' : '▼') : '';
               const naglowekTresc = (
                 <>
-                  <span>{kol.etykieta}</span>
+                  <span><TekstZWzorami tekst={kol.etykieta} /></span>
                   {kol.jednostka && <span className="mvd-wyn-th-unit">[{kol.jednostka}]</span>}
                   {wskaznik && (
                     <span className="mvd-wyn-sort-ind" aria-hidden="true">
@@ -452,7 +471,17 @@ function Komorka({
     .join(' ');
 
   if (!komorka) {
-    return <td className={klasyTd || undefined}>—</td>;
+    // Brak wyniku ≠ zero: kreska z opisem (dymek + nazwa dostępna), nigdy „0".
+    return (
+      <td
+        className={klasyTd || undefined}
+        title={WZORZEC_STRINGS.brakWyniku}
+        aria-label={WZORZEC_STRINGS.brakWyniku}
+        data-brak-wyniku="true"
+      >
+        —
+      </td>
+    );
   }
 
   const { wartosc, jednostka, dowodRef, ostrzezenie } = komorka;

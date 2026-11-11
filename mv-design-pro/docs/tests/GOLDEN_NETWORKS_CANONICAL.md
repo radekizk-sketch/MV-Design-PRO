@@ -313,7 +313,7 @@ profile_load:
 > Korekta (CV-3.2, 58e520ce): kroki 6-15 tej listy myliły C3 (9 usuniętych
 > operacji domenowych zapisujących fantomowe `study_cases[]` do ENM) z C1
 > (żywy `StudyCase` — `api/study_cases.py`/`domain/study_case.py`) i z
-> `set_dynamic_profile` (żywa operacja v2, ale przypisująca profil do
+> `set_dynamic_profile` (operacja skasowana 2026-10-22 jako dubel `set_der_catalog_bindings`, karta MENU-KANON; dawniej żywa operacja v2, ale przypisująca profil do
 > ŹRÓDŁA nN, nie do przypadku). Konkretna sekwencja wywołań budująca ten
 > wariant sieci (dzień/noc, PV wyłączone nocą, porównanie SC/PF) NIE była
 > zweryfikowana względem żadnej z dwóch żywych ścieżek (C1 `StudyCase`+CV-3.1

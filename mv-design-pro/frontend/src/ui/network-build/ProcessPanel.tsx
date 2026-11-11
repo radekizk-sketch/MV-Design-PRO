@@ -376,7 +376,7 @@ function TrunksSection({
             >
               <span className="font-medium">M{index + 1}</span>
               <span className={mutedTextClass}>{trunk.segments.length} segm.</span>
-              {trunk.no_point_ref && <span className="text-eng-amber text-[10px]">NOP</span>}
+              {trunk.no_point_refs.length > 0 && <span className="text-eng-amber text-[10px]">NOP</span>}
               <button
                 type="button"
                 onClick={() => handleInsertStation(trunk)}
@@ -927,7 +927,6 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
   const collapsedSections = useNetworkBuildStore((state) => state.collapsedSections);
   const toggleSection = useNetworkBuildStore((state) => state.toggleSection);
   const fieldReadModel = useFieldReadModel();
-  const snapshot = useSnapshotStore((state) => state.snapshot);
 
   const {
     blockersByCategory,
@@ -976,11 +975,11 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
       withRelay,
     };
   }, [fieldReadModel.data.fields]);
-  const snapshotSnFieldCount = snapshot?.bays?.length ?? 0;
+  // Karta W5-B: liczba pól SN z jednej projekcji (`selectSnFieldCount` — rekordy `bays` stacji
+  // na szynie SN); dawna liczność całej kolekcji `bays` liczyła też pola nN i ZKSN.
   const effectiveConfiguredSnFieldCount = Math.max(
     configuredGpzSnFieldCount ?? 0,
     snFieldCount ?? 0,
-    snapshotSnFieldCount,
   );
   const hasSnFieldInventory = effectiveConfiguredSnFieldCount > 0 || snSectionCount > 0 || stationCount > 0;
 

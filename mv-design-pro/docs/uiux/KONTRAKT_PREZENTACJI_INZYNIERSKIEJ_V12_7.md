@@ -185,6 +185,69 @@ kontener KaTeX musi siedzieć wewnątrz elementu z `color: var(--mvd-ink)` (albo
 pochodnej) — NIGDY z kolorem zaszytym inline. Zrzuty obu motywów są dowodem
 (nie kod) — werdykt wizualny wydaje właściciel (B-02).
 
+## 10. Standard warsztatu inżyniera — ekran referencyjny KD6 (decyzja właściciela 2026-11-04)
+
+**Zakres: CAŁA aplikacja** (nie tylko warsztat Wyników). Ekran „Wytrzymałość
+aparatury w punkcie zwarcia” (KD6, oba motywy;
+`docs/audit/visual/flow-ekspert/kd6-ogniwo-model-{light,dark}.png`, karta
+APARATURA-TABELA) jest referencyjnym kierunkiem wizualnym i funkcjonalnym.
+Nie kopiuje się jego układu na każdy ekran — stosuje się konsekwentnie te same
+zasady. Cel nadrzędny: wygodny warsztat inżyniera elektroenergetyka, nie
+rozbudowany panel demonstracyjny.
+
+**Zasady:**
+
+1. Maksimum informacji inżynierskiej przy minimum zajętego miejsca — bez pustych
+   przestrzeni, nadmiernych odstępów i rozbudowanych bloków opisowych.
+2. Wyniki przede wszystkim: wartości obliczone, znamionowe, jednostki, różnice
+   i marginesy na pierwszym planie.
+3. Tabele zamiast powtarzalnych kart wszędzie, gdzie inżynier porównuje
+   urządzenia, warianty lub wyniki (jeden obiekt = jeden wiersz, rozwinięcie na
+   żądanie).
+4. Jedna informacja w jednym miejscu — bez powtarzania danych wejściowych,
+   nagłówków i objaśnień (wspólna wartość raz, nad tabelą; uzasadnienie raz,
+   w pozostałych miejscach odwołanie).
+5. Szczegóły na żądanie: wzory, założenia, źródła danych i uzasadnienia
+   w sekcjach rozwijanych (jeden przycisk „Szczegóły obliczeń” na obiekt, nie
+   na każde kryterium).
+6. Ograniczone komunikaty opisowe — wyniku nie zastępuje się oceną słowną;
+   plakietki statusu nie powtarzają się przy każdym kryterium (status
+   i kompletność dowodu zostają w szczegółach, §6a bez zmian).
+7. Spójna typografia: jednolita hierarchia nagłówków, liczby wyrównane
+   (`mvd-num`), jednostki w nagłówkach kolumn, konsekwentna precyzja (prądy
+   i zapasy 2 miejsca, czasy 3; wartości znamionowe całkowite bez zbędnych zer)
+   — jeden formater liczb, nie lokalne.
+8. Kolor wyłącznie z konkretnym znaczeniem — przy wartości wymagającej uwagi
+   (zapas ujemny, brak limitu/zapasu, czas nieustalony), nigdy tło całego
+   obszaru.
+9. Pełna spójność motywu jasnego i ciemnego: identyczny układ, kontrast
+   i hierarchia (§9).
+10. Polskie nazewnictwo techniczne zgodne z terminologią elektroenergetyczną
+    (np. I_sc dla wyłączników SN wg IEC 62271-100, I_cu tylko dla nN).
+
+**Zastosowanie w modułach** (każdy zachowuje właściwy sobie sposób prezentacji):
+SLD — kompaktowe pola, czytelne symbole, ograniczone opisy, szczegóły zależne od
+LOD; obliczenia — zwarte tabele, wyeksponowane wyniki, wyprowadzenia po
+rozwinięciu; aparatura — bezpośrednie porównanie parametrów znamionowych
+i obliczonych; zabezpieczenia — czytelne nastawy i funkcje bez powielania
+informacji katalogowych; mapy i profile — maksymalna powierzchnia robocza,
+ograniczone panele zasłaniające projekt; inspektory — logicznie pogrupowane
+parametry, edycja bez zbędnych przejść i okien.
+
+**Granice:** brak globalnej przebudowy interfejsu i osobnego programu. Standard
+wdraża się stopniowo przy planowanych pracach nad modułami (wiersze
+`PLANS.md` część A §C). Zachowana architektura i działające funkcje; bez
+przepisywania ekranów wyłącznie dla ujednolicenia wyglądu; bez nowego systemu
+komponentów, gdy istniejące wystarczają (`ui2/wyniki/wzorzec`, `ui2/shared`);
+bez zmian ENM, obliczeń i kontraktów danych z powodów estetycznych.
+
+**Kryterium odbioru każdego zmienionego ekranu** (ocena na rzeczywistym ekranie,
+zrzuty obu motywów; werdykt wizualny — właściciel, B-02): bardziej czytelny,
+bardziej kompaktowy, szybszy w obsłudze, bez zbędnych powtórzeń, spójny
+wizualnie z KD6. Zmiana, która zwiększa liczbę kliknięć, przewijanie lub ilość
+tekstu bez rzeczywistej korzyści dla inżyniera, jest odrzucana. Meldunek karty
+podaje pomiar przed/po (wysokość ekranu w px, liczba kliknięć do wyniku).
+
 ## Strażnik klasy
 
 `scripts/ui_math_guard.py` — skan `frontend/src/ui2/**` i
