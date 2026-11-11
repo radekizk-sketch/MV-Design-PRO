@@ -17,10 +17,13 @@ jobs:
           python-version: "3.x"
       - name: Run docs guard
         run: python mv-design-pro/scripts/docs_guard.py
-      # Opis struktury w CLAUDE.md musi zgadzac sie z repozytorium. Ta sama klasa
-      # fikcji wyszla z tego pliku trzy razy (nieistniejace testy kontraktowe SLD,
-      # skasowany `designer/`, osiemnascie modulow widmo przy przemilczanej
-      # warstwie `ui2/`), wiec tekst dostaje straznika zamiast kolejnej korekty.
+      # Opis struktury w CLAUDE.md i `.claude/rules/` musi zgadzac sie z repozytorium.
+      # Ta sama klasa fikcji wyszla z CLAUDE.md trzy razy (nieistniejace testy
+      # kontraktowe SLD, skasowany `designer/`, osiemnascie modulow widmo przy
+      # przemilczanej warstwie `ui2/`), wiec tekst dostaje straznika zamiast kolejnej
+      # korekty. Od 2026-11-11 drzewa `ui/`+`ui2/` i `backend/src` stoja w regulach
+      # sciezkowych `.claude/rules/{frontend,backend}.md`; guard pilnuje tez mapy regul
+      # w CLAUDE.md, wzorcow `paths` i tego, ze zadna regula nie jest ignorowana przez git.
       - name: Run CLAUDE.md structure guard
         run: python mv-design-pro/scripts/claude_md_struktura_guard.py
       # Plan A/B §13 (decyzja O-35, karta AB-1a Pakiet E1): wiazaca sekwencja przyrostow §5

@@ -1,10 +1,22 @@
 # CLAUDE.md - AI Assistant Guidelines for MV-DESIGN-PRO
 
----
+«Ten kod źródłowy jest twój: jego przeznaczenie i sposób budowy zależą od ciebie, i będziesz na nim dalej budować.»
+
+<!-- Notatka opiekuna (komentarz HTML — Claude Code usuwa go przed wstrzyknięciem, zero kosztu
+     kontekstu). Układ wg dokumentacji Claude Code „memory” (odczyt 2026-11-11, karta
+     CLAUDE-MD-ANTHROPIC): ten plik < 200 linii i niesie tylko to, co potrzebne w KAŻDEJ sesji.
+     Treść dotycząca części repozytorium stoi w regułach ścieżkowych `.claude/rules/*.md`
+     (frontmatter `paths` — ładują się dopiero przy odczycie pasującego pliku); dyrektywy
+     obowiązujące zawsze, które się tu nie mieszczą, stoją w regułach BEZ `paths` (ładują się przy
+     starcie jak ten plik). Jedna reguła = jedno brzmienie w jednym pliku: nie powtarzaj tu treści
+     reguł innymi słowami. Pilnują: `scripts/docs_guard.py` (tabela „Document Hierarchy” niżej ==
+     „Hierarchia kanonu” w `mv-design-pro/docs/INDEX.md`) i `scripts/claude_md_struktura_guard.py`
+     (drzewo `ui/`+`ui2/` w `.claude/rules/frontend.md`; mapa reguł niżej == pliki `.claude/rules/`;
+     każdy wzorzec `paths` trafia w plik śledzony). -->
 
 ## ⛔ ZASADY NADRZĘDNE PROJEKTU (czytaj przed każdą pracą)
 
-Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i dług: `mv-design-pro/STAN_REPO.md` (czytaj NAJPIERW). Repo > specy > rejestr.
+Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i dług: `mv-design-pro/STAN_REPO.md` (czytaj NAJPIERW). Repo > specy > rejestr. Jedna kolejka zadań: `mv-design-pro/PLANS.md` część A §C.
 
 **ZASADA NR 1 — ZERO DŁUGU.** Każda funkcja w UI ma w pełni wdrożony backend: UI + solver + kontrakt + testy + integracja. Zakaz `no_module` / `funkcja w przygotowaniu` / `TODO` / zaślepek. Funkcja istniejąca tylko w testach, niewpięta w ścieżkę użytkownika, to dług.
 
@@ -24,295 +36,52 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 
 **ZASADA NR 4 — BRAK DANYCH KATALOGOWYCH NIE BLOKUJE OBLICZEŃ (dyrektywa właściciela 2026-10-21, zasada stała).** System pomaga projektować, a nie zatrzymuje pracy z powodu niekompletnego katalogu. Gdy brakuje parametru urządzenia: (1) system PROPONUJE wartość roboczą — z dobranego profilu urządzenia, z normy (z numerem i jednostką redakcyjną) albo z jawnego założenia inżynierskiego; (2) obliczenie biegnie od razu z tą wartością — brak parametru urządzenia nie jest blokerem gotowości ani statusem „brak podstawy"; (3) projektant może zmienić każdą proponowaną wartość w modelu i przeliczyć; (4) źródło i założenie są w wyjaśnieniu, komentarzu obliczeń i raporcie — dyskretnie, bez natrętnych ostrzeżeń; (5) wartość robocza NIGDY nie udaje danej producenta: jakość `ESTIMATED` (nie `DATASHEET`), wpis w `dane_przyjete`, a ocena oparta na niej ma kompletność dowodu `NIEPELNY` — wynik na założeniach jest odróżniony od potwierdzonego dowodu zgodności (kontrakt werdyktu §3). Nie dotyczy braków MODELU (topologia, brak elementu, brak zasilania) ani podstawy limitu wymagania — te pozostają jawnymi brakami.
 
----
+## Mapa reguł (`.claude/rules/`)
 
-## 🤖 Model i pisanie promptów
+| Plik | Ładowanie | Treść |
+|------|-----------|-------|
+| `.claude/rules/zero-dlug.md` | zawsze | Zero-Debt Rule (BINDING, 2026-07-17) |
+| `.claude/rules/klasa-nie-instancja.md` | zawsze | Reguła KLASA, NIE INSTANCJA (BINDING, 2026-08-01) |
+| `.claude/rules/dyrektywy-wlasciciela.md` | zawsze | Dyrektywy projektowania i wdrażania 1–11, jeden wątek programów, zasady inżynierskie 1–8 |
+| `.claude/rules/agenci-i-prompty.md` | zawsze | Oszczędność tokenów, metody użycia agentów, kontrakt API modeli, pisanie promptów i kart |
+| `.claude/rules/rdzen-modelu.md` | backend, `frontend/src`, `scripts` | Granice warstw (diagram), Core Rules 1–10 w pełnym brzmieniu, terminologia |
+| `.claude/rules/backend.md` | `mv-design-pro/backend/**` | Stos, struktura, polecenia, Docker, styl Pythona, testy backendu |
+| `.claude/rules/solvery-i-katalog.md` | solvery, ENM, Proof Engine | Proof Engine, nowy typ elementu, zmiana wyniku solvera, przypadki, typy katalogowe |
+| `.claude/rules/frontend.md` | `mv-design-pro/frontend/**` | Stos, struktura `ui/`+`ui2/`, polecenia, styl TS, testy, nowa funkcja UI |
+| `.claude/rules/sld.md` | SLD | Krytyczne testy kontraktowe SLD (workflow SLD Determinism) |
+| `.claude/rules/guardy-i-ci.md` | `scripts/**`, workflowy | Lista guardów, uruchamianie, tabela workflowów CI |
+| `.claude/rules/dokumentacja-i-plany.md` | dokumentacja, `mv-design-pro/*.md` | Układ dokumentacji, uwagi do hierarchii, programy |
+
+## 🤖 Model i drzewo agentów
+
+**Przydział modeli (właściciel, 2026-11-11):** Claude Fable 5.2 (`claude-fable-5-2`) — architektura,
+integracja globalna, najtrudniejsze problemy algorytmiczne; Claude Opus 5.5 (`claude-opus-5-5`) —
+implementacja, konfiguratory, UI/UX.
 
 **Drzewo agentów Claude Code** (planuj na `high`, deleguj na `medium`, podnoś, gdy trzeba):
-- Sesja główna: Claude Opus 5.5 (`claude-opus-5-5`), effort `high` — planuje, deleguje,
-  a po powrocie wykonawców sama recenzuje i weryfikuje (bramki uruchamia niezależnie).
+- Sesja główna (architekt) — planuje, deleguje, a po powrocie wykonawców sama recenzuje
+  i weryfikuje (bramki uruchamia niezależnie); effort `high`.
 - Wykonawcy — definicje w `.claude/agents/` (jedno źródło; Claude Code ładuje je jako typy
   subagentów), Opus 5.5: `explorer` (effort `low`) — czytanie kodu i pomiar klasy defektu (bez
   edycji); `researcher` (effort `low`) — dokumentacja i normy; `worker` (effort `medium`) — edycje +
   testy w swoim drzewie (commit bez push); `worker-rdzen` (effort `high`) — rola `worker` dla rdzenia
   solvera, wyroczni i bramek poprawności. Effort podnosisz tylko, gdy zadanie tego wymaga.
 - Sesje w chmurze (karty roju) i wykonawcy decyzji: domyślnie Opus 5.5 (`medium`; `high` dla
-  rdzeni B-01). Decyzje architektoniczne z delegacji O-59 wydaje sesja główna Opus 5.5.
-- **Claude Fable 5.1 (`claude-fable-5-1`) — wyłącznie ostatecznie, dla zadań najtrudniejszych**
-  (dyrektywa właściciela 2026-10-15): po dwóch nieudanych podejściach Opus do tego samego problemu
-  albo dla decyzji, której Opus nie umie ugruntować w dowodach repo. Nie jest modelem głównym ani
-  domyślnym wykonawcą kart.
-- Oszczędność tokenów (wg dokumentacji Claude Code „Manage costs”): wąskie karty z plikiem:linią
-  zamiast szerokiego skanowania; gadatliwe wyjścia (testy, logi, listy sesji) do pliku, do kontekstu
-  tylko podsumowanie i kody wyjścia; jeden pełny bieg regresji na końcu karty, nie po każdym kroku;
-  bezczynna sesja z dużym kontekstem nie jest wybudzana po wygaśnięciu pamięci podręcznej promptu
-  (1 h) — kontynuację prowadzi nowa sesja z kartą i gałęzią jako stanem; check-iny planowane rzadko
-  (każdy niesie pełny kontekst); workflowy i przeglądy adwersarzowe tylko dla zmian rdzenia
-  i kart dużych; okno autokompakcji 400 tys. tokenów (`autoCompactWindow` w `.claude/settings.json`,
-  zamiast domyślnych ~967 tys.) — każde żądanie niesie mniejszy kontekst.
-- Metody użycia agentów (delegacja asynchroniczna, weryfikator ze świeżym kontekstem, meldunki
-  ugruntowane w kodach wyjścia, granice nazwane w karcie, karta bez listy kroków, wznawianie
-  wykonawców zamiast tworzenia nowych): `mv-design-pro/ORKIESTRACJA_AGENTOW.md` §3–§3a.
+  rdzeni B-01). Decyzje architektoniczne z delegacji O-59 wydaje sesja główna.
 - Dwa nieudane podejścia do tego samego problemu → STOP i meldunek do właściciela albo przejście
-  na Fable 5.1 zgodnie z punktem wyżej.
-
-Kontrakt API modeli (Claude Fable 5.1, GPT-6 Astra: parametry, zakazy 400, caching, koszty,
-wywołanie Codex CLI) jest w `mv-design-pro/docs/prompts/KONTRAKT_API_MODELI.md` — czytaj go,
-gdy piszesz kod wywołujący API modelu albo prompt/skill dla niego.
-
-Reguły pisania promptów, kart i skilli w tym repo:
-- Podawaj cel, ograniczenia i kryterium ukończenia zamiast wyliczać kroki — rozpisany proces
-  („krok 1, krok 2…") obniża jakość na obecnych modelach. Numerowana kolejność zostaje tylko
-  tam, gdzie kolejność jest faktem (zależności, operacje nieodwracalne).
-- Podaj **powód** zadania, nie tylko polecenie.
-- Nazwij **granice**: kontrakty FROZEN, determinizm, fikstury e2e i cudze warstwy.
-- Recenzent zewnętrzny (GPT-6 Astra) działa wg `mv-design-pro/docs/uiux/SKILL_GPT_RECENZENT.md`:
-  nie wolno zacytować opinii GPT, której GPT nie wypowiedział — brak CLI albo klucza =
-  recenzja własna, jawnie oznaczona.
+  na Fable 5.2.
 
 **Styl meldunków dla właściciela:** pełne zdania po polsku technicznym; najpierw wynik
 i dowód, potem szczegóły; skróty wewnętrzne (K-, H-, V12K-, E-) rozwinięte przy pierwszym
 użyciu w meldunku.
 
----
-
 ## Project Overview
 
-MV-DESIGN-PRO is a professional Medium Voltage (MV) network design and analysis system for the power industry. It provides tools for network modeling, short circuit calculations (IEC 60909), power flow analysis (Newton-Raphson, Gauss-Seidel, Fast Decoupled), protection coordination, and proof generation with full OZE (renewable energy) integration.
+MV-DESIGN-PRO is a professional Medium Voltage (MV) network design and analysis system for the power industry: network modeling, short circuit calculations (IEC 60909), power flow analysis (Newton-Raphson, Gauss-Seidel, Fast Decoupled), protection coordination, and proof generation with full OZE (renewable energy) integration. Binding functional inventory (solver/analysis/API/UI surface): `mv-design-pro/docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`.
 
-The system is architecturally aligned with **DIgSILENT PowerFactory** principles:
-- One explicit Network Model per project (singleton)
-- Multiple Study Cases (calculation scenarios)
-- WHITE BOX calculations (all intermediate values auditable)
-- No fictional entities in solvers
-- Strict layer separation (Solver vs Analysis vs Application vs Presentation)
+The system is architecturally aligned with **DIgSILENT PowerFactory** principles: one explicit Network Model per project (singleton); multiple Study Cases (calculation scenarios); WHITE BOX calculations (all intermediate values auditable); no fictional entities in solvers; strict layer separation (Solver vs Analysis vs Application vs Presentation).
 
-## Technology Stack
-
-### Backend (Python 3.11+)
-- **Framework**: FastAPI
-- **Package Manager**: Poetry
-- **Core Dependencies**: numpy, scipy, networkx, pydantic, pandas
-- **Databases**: PostgreSQL (asyncpg/psycopg); SQLite (tor dev/e2e/testy)
-- **Wykonanie biegów**: wykonawca w procesie API (`application/execution/wykonawca.py`, karta DYNAMIKA-W-TLE) — jeden ciężki bieg naraz, `POST …/execute` → 202 + odpytywanie; Celery/Redis/MongoDB skasowane (0 konsumentów) z bramką wskrzeszenia
-- **HTTP Client**: httpx
-- **Export**: reportlab (PDF), python-docx (DOCX)
-- **Testing**: pytest, pytest-asyncio, pytest-cov
-- **Linting/Formatting**: black (line-length 100), ruff (E, F, W, I, N, UP, B, C4), mypy w trybie projektu z zapadką długu (`scripts/mypy_ratchet_guard.py`; pin 167 błędów / 21 plików zmierzony 2026-10-22 na drzewie scalenia gałęzi programu (partie 9–13) z gałęzią UI/UX (W5-B), zapadka w obie strony) — `--strict` obowiązuje per pakiet na nowych pakietach (`werdykt`, `catalog.profiles.nc_rfg`, `network_model.solvers.ncrfg_ptpiree`, `application.ncrfg_compliance`, `dziedziny`): `MYPYPATH=src mypy --strict --follow-imports=silent -p <pakiet>`
-
-### Frontend (TypeScript 5 / React 18)
-- **Build Tool**: Vite 5
-- **State Management**: Zustand
-- **Data Fetching**: @tanstack/react-query
-- **Forms**: react-hook-form with zod validation
-- **Styling**: Tailwind CSS, tailwind-merge, clsx
-- **Math Rendering**: KaTeX
-- **Charts**: Recharts
-- **PDF Export**: html2canvas + jspdf
-- **Routing**: react-router-dom
-- **Testing**: Vitest (unit), @testing-library/react (components), Playwright (e2e)
-- **Node.js**: >=18.0.0 (CI uses Node 20)
-
-## Project Structure
-
-```
-MV-Design-PRO/
-├── .github/workflows/            # CI/CD pipelines (9 workflows — see "CI/CD Pipelines" below)
-│   ├── python-tests.yml          # Backend tests + Python guards
-│   ├── frontend-checks.yml       # Frontend tests, lint, type-check + guards
-│   ├── sld-determinism.yml       # SLD contract tests + render artifacts
-│   ├── docs-guard.yml            # Documentation integrity checks
-│   ├── arch-guard.yml            # Architecture layer + repo hygiene guards
-│   ├── p0-extended-guards.yml    # V12K invariant guards
-│   ├── physics-label-guard.yml   # Catalog-first physics field guard
-│   ├── frontend-e2e-smoke.yml    # Critical-path Playwright e2e (real backend)
-│   └── frontend-e2e-full.yml     # Full Playwright e2e suite (real backend)
-├── docs/                         # Root-level documentation index
-│   ├── INDEX.md                  # UI documentation index
-│   ├── ui/                       # UI contracts (root-level)
-│   ├── sld/                      # SLD layout contracts
-│   └── system/                   # System-level docs
-│   # Detailed audit reports + execution plans live under mv-design-pro/docs/audit/ and mv-design-pro/docs/plan/
-├── mv-design-pro/                # Main application
-│   ├── SYSTEM_SPEC.md            # Executive overview + navigation hub (BINDING, v4.1)
-│   ├── AGENTS.md                 # Agent governance rules (BINDING, v4.3)
-│   ├── ARCHITECTURE.md           # Technical architecture reference (BINDING, v4.0)
-│   ├── PLANS.md                  # Jedyny nadrzędny rejestr postępu, priorytetów i odpowiedzialności (LIVING, v6.0)
-│   ├── docker-compose.yml        # 3 services: backend, frontend, postgres
-│   ├── backend/
-│   │   ├── pyproject.toml        # Poetry configuration
-│   │   ├── Dockerfile
-│   │   ├── src/
-│   │   │   ├── api/              # FastAPI endpoints (15+ modules)
-│   │   │   ├── analysis/         # Interpretation layer (NO physics)
-│   │   │   │   ├── boundary/     # Boundary identification
-│   │   │   │   ├── coverage_score/
-│   │   │   │   ├── energy_validation/
-│   │   │   │   ├── lf_sensitivity/
-│   │   │   │   ├── normative/
-│   │   │   │   ├── power_flow/
-│   │   │   │   ├── power_flow_interpretation/
-│   │   │   │   ├── protection_curves_it/
-│   │   │   │   ├── protection_insight/
-│   │   │   │   ├── recommendations/
-│   │   │   │   ├── reporting/    # PDF report generation
-│   │   │   │   ├── scenario_comparison/
-│   │   │   │   ├── sensitivity/
-│   │   │   │   └── voltage_profile/
-│   │   │   ├── application/      # Application layer (NO physics)
-│   │   │   │   ├── active_case/  # Active case management
-│   │   │   │   ├── analyses/     # Analysis execution services
-│   │   │   │   ├── analysis_dispatch/
-│   │   │   │   ├── analysis_run/
-│   │   │   │   ├── designer/     # Designer/Wizard engine
-│   │   │   │   ├── equipment_proof/
-│   │   │   │   ├── network_model/# Single model management
-│   │   │   │   ├── network_wizard/
-│   │   │   │   ├── project_archive/
-│   │   │   │   ├── reference_patterns/
-│   │   │   │   ├── sld/          # SLD layout, overlay, integration
-│   │   │   │   ├── study_case/
-│   │   │   │   ├── wizard_actions/
-│   │   │   │   └── wizard_runtime/
-│   │   │   ├── compliance/       # IEC normative compliance checks
-│   │   │   ├── diagnostics/      # Diagnostic utilities
-│   │   │   ├── domain/           # Domain models (mutation allowed HERE ONLY)
-│   │   │   ├── enm/              # Energy Network Model (API, topology, validator)
-│   │   │   ├── infrastructure/   # Persistence (repositories), external services
-│   │   │   ├── network_model/    # Core network model
-│   │   │   │   ├── core/         # Bus, Branch, Switch, Source, Load, Graph, Snapshot, Station
-│   │   │   │   ├── catalog/      # Type library (immutable types, resolver, governance)
-│   │   │   │   ├── solvers/      # Physics calculations (WHITE BOX)
-│   │   │   │   │   ├── short_circuit_iec60909.py
-│   │   │   │   │   ├── power_flow_newton.py
-│   │   │   │   │   ├── power_flow_gauss_seidel.py
-│   │   │   │   │   └── power_flow_fast_decoupled.py
-│   │   │   │   ├── validation/   # legacy NetworkValidator — 0 production consumers (ADR-025, O-65): the single validator is enm/validator.py + CalculationReadiness; package removed by card GOTOWOSC-JEDEN-REJESTR
-│   │   │   │   └── whitebox/     # Calculation trace utilities
-│   │   │   ├── protection/       # Protection domain (NOT a solver)
-│   │   │   ├── solver_input/     # Solver input preparation, contracts, eligibility
-│   │   │   ├── solvers/          # Solver wrapper/dispatcher layer
-│   │   │   └── whitebox/         # Stub (realny proof engine: application/proof_engine/)
-│   │   ├── tests/                # Backend tests (1600+ tests)
-│   │   │   ├── conftest.py
-│   │   │   ├── analysis/         # Analysis layer tests
-│   │   │   ├── api/              # API endpoint tests
-│   │   │   ├── application/      # Application layer tests
-│   │   │   ├── ci/               # CI guard validation tests
-│   │   │   ├── domain/           # Domain model tests
-│   │   │   ├── e2e/              # End-to-end workflow tests
-│   │   │   ├── enm/              # ENM model tests
-│   │   │   ├── golden/           # Golden network fixtures
-│   │   │   ├── infrastructure/   # Persistence tests
-│   │   │   ├── network_model/    # Network model & catalog tests
-│   │   │   ├── proof_engine/     # Proof engine tests
-│   │   │   ├── reference_networks/ # Reference network builders
-│   │   │   └── utils/            # Test utilities (determinism helpers)
-│   │   └── schemas/              # JSON schemas (resultset_v1_schema.json)
-│   ├── frontend/
-│   │   ├── package.json
-│   │   ├── tsconfig.json         # Strict mode, ES2020, noUnusedLocals/Parameters
-│   │   ├── vite.config.ts        # Vitest config embedded (jsdom, globals)
-│   │   ├── tailwind.config.js
-│   │   ├── src/
-│   │   │   ├── App.tsx           # Root React component
-│   │   │   ├── main.tsx          # Entry point
-│   │   │   ├── engine/           # Algorithm engines
-│   │   │   │   └── sld-layout/   # SLD auto-layout engine (7-phase pipeline)
-│   │   │   ├── types/            # Shared TypeScript type definitions
-│   │   │   ├── test/             # Test infrastructure (setup.ts)
-│   │   │   ├── ui/               # React components — 49 moduly (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
-│   │   │   │   ├── analysis-eligibility/  # Wynik pre-kontroli analizy
-│   │   │   │   ├── app-state/             # Globalny store Zustand
-│   │   │   │   ├── audit/                 # Narzedzia audytowe
-│   │   │   │   ├── canon/                 # Narzedzia postaci kanonicznej
-│   │   │   │   ├── catalog/               # Przegladarka biblioteki typow
-│   │   │   │   ├── common/                # Wspolne
-│   │   │   │   ├── comparison/            # Modul porownania
-│   │   │   │   ├── config/                # Konfiguracja
-│   │   │   │   ├── context-menu/          # Akcje menu kontekstowego
-│   │   │   │   ├── contracts/             # Definicje kontraktow API
-│   │   │   │   ├── engineering-readiness/ # Bramka gotowosci inzynierskiej
-│   │   │   │   ├── enm-inspector/         # Inspektor modelu ENM
-│   │   │   │   ├── fault-scenarios/       # Konfiguracja scenariuszy zwarciowych
-│   │   │   │   ├── field/                 # Komponenty pol formularza
-│   │   │   │   ├── help/                  # Pomoc kontekstowa
-│   │   │   │   ├── history/               # Cofnij/ponow
-│   │   │   │   ├── icons/                 # Definicje ikon
-│   │   │   │   ├── inspector/             # Inspektor ogolny
-│   │   │   │   ├── mode-gate/             # Bramkowanie trybu eksperckiego
-│   │   │   │   ├── navigation/            # Nawigacja aplikacji
-│   │   │   │   ├── network-build/         # Narzedzia budowy sieci
-│   │   │   │   ├── notifications/         # Powiadomienia
-│   │   │   │   ├── onboarding/            # Wdrozenie uzytkownika
-│   │   │   │   ├── power-distribution/    # Analiza rozdzialu mocy
-│   │   │   │   ├── power-flow-comparison/ # Porownanie A/B rozplywu
-│   │   │   │   ├── power-flow-results/    # Wyniki rozplywu mocy
-│   │   │   │   ├── projects/              # Lista i zarzadzanie projektami
-│   │   │   │   ├── proof/                 # Prezentacja pakietu dowodowego
-│   │   │   │   ├── property-grid/         # Edytor wlasciwosci elementu
-│   │   │   │   ├── protection/            # Przegladarka biblioteki zabezpieczen
-│   │   │   │   ├── protection-comparison/ # Porownanie A/B zabezpieczen
-│   │   │   │   ├── protection-coordination/ # Wykresy TCC, koordynacja
-│   │   │   │   ├── protection-curves/     # Rysowanie krzywych zabezpieczen
-│   │   │   │   ├── reports/               # Raporty
-│   │   │   │   ├── results/               # Modul wynikow
-│   │   │   │   ├── results-inspector/     # Inspektor szczegolow wyniku
-│   │   │   │   ├── schema-completeness/   # Kompletnosc schematu
-│   │   │   │   ├── selection/             # Zaznaczenie elementow
-│   │   │   │   ├── settings/              # Ustawienia
-│   │   │   │   ├── shared/                # Wspoldzielone
-│   │   │   │   ├── shell/                 # Komponenty powloki
-│   │   │   │   ├── sld/          # Schemat jednokreskowy (kanwa v2/v3, sedno produktu)
-│   │   │   │   │   ├── canonical_symbols/
-│   │   │   │   │   ├── core/
-│   │   │   │   │   ├── export/
-│   │   │   │   │   ├── reference/
-│   │   │   │   │   ├── shared/
-│   │   │   │   │   ├── v2/
-│   │   │   │   │   ├── v3/
-│   │   │   │   ├── sld-editor/            # Edycja SLD (geometria CAD, przeciaganie, trasowanie)
-│   │   │   │   ├── sld-overlay/           # Nakladka wynikow na SLD
-│   │   │   │   ├── status-bar/            # Pasek stanu
-│   │   │   │   ├── study-cases/           # Menedzer przypadkow obliczeniowych
-│   │   │   │   ├── tech-card/             # Karta techniczna elementu
-│   │   │   │   ├── topology/              # Drzewo topologii
-│   │   │   │   ├── workspace/             # Zarzadzanie przestrzenia robocza
-│   │   │   └── ui2/              # Warstwa UI programu 2026-07 — 18 modulow (tu toczy sie biezaca praca)
-│   │   │       ├── adapters/          # Adaptery do kontraktow backendu
-│   │   │       ├── events/            # Szyna zdarzen
-│   │   │       ├── freshness/         # Znaczniki swiezosci wynikow
-│   │   │       ├── inspector/         # Inspektor ui2
-│   │   │       ├── kreatory/          # Kreatory (stacja, pole SN, zrodlo OZE, pierscien)
-│   │   │       ├── kryteria/          # Kryteria oceny
-│   │   │       ├── legacy/            # Mosty do warstwy ui/
-│   │   │       ├── model/             # Warstwa modelu ui2
-│   │   │       ├── nav/               # Nawigacja etapow E1-E8
-│   │   │       ├── oze/               # Strumien OZE (krzywe, LOM, zgodnosc NC RfG)
-│   │   │       ├── proces/            # Kanon etapow E1-E8: mapa procesu + nastepna najlepsza akcja
-│   │   │       ├── referencje/        # Referencje katalogowe
-│   │   │       ├── search/            # Wyszukiwanie
-│   │   │       ├── shared/            # Wspoldzielone komponenty ui2 (tabela edytowalna)
-│   │   │       ├── shell/             # Powloka ui2 (chrom, doki, store powloki)
-│   │   │       ├── spaces/            # Przestrzenie pracy (projekt, model, analizy)
-│   │   │       ├── theme/             # Motyw i tokeny
-│   │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
-│   │   └── e2e/                  # Playwright end-to-end tests
-│   ├── scripts/                  # CI/CD guard scripts (`ls scripts/*guard*.py`)
-│   └── docs/                     # Detailed documentation (150+ files)
-│       ├── spec/                 # DETAILED SPECIFICATION (18 chapters + supplements - SOURCE OF TRUTH)
-│       ├── ui/                   # UI contracts (35+ canonical contracts)
-│       ├── proof_engine/         # Proof Pack specifications
-│       ├── analysis/             # Analysis specifications
-│       ├── adr/                  # Architecture Decision Records (15+)
-│       ├── sld/                  # SLD specifications
-│       ├── protection/           # Protection specifications
-│       ├── domain/               # Domain model specs
-│       ├── export/               # Export specifications
-│       ├── audit/                # Audit reports, historical exec plans
-│       ├── prompts/              # AI prompt engineering templates
-│       └── tests/                # Test specifications (golden networks)
-```
+Układ: `mv-design-pro/backend/` (Python 3.11+, FastAPI, Poetry), `mv-design-pro/frontend/` (TypeScript 5, React 18, Vite 5, Zustand; bieżąca praca UI w `src/ui2/`), `mv-design-pro/scripts/` (guardy CI), `mv-design-pro/docs/` (dokumentacja), `.github/workflows/` (9 workflowów CI), `docs/` (indeks dokumentacji w korzeniu).
 
 ## Document Hierarchy (BINDING)
 
@@ -333,752 +102,46 @@ Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K
 | 10 | `mv-design-pro/docs/audit/archive/` + `mv-design-pro/docs/audit/historical_execplans/` | ARCHIVE (closed audits, ExecPlans) |
 | — | `mv-design-pro/docs/twin/` | **NOT canon** — input and evidence material of the Digital Twin package (K-20, O-63). The owner verdict „M1–M7: STOP do odbioru M0" (`docs/twin/OWNER_REVIEW_PACKAGE.md` §4a) binds only the `docs/twin` migration plan; the binding programme is the closing mission 2026-09-09 with slices W1–W12 (ADR-012, V12K-340). `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` does not exist and is not created; any reference to it is dead (package P-L in `mv-design-pro/docs/plan/DANE_WLASCICIELA_O59_2026-09.md`) |
 
-Note: `POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-21); PowerFactory/catalog compliance guidance now lives in `mv-design-pro/docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` (priority 2 above).
-
-In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
-
-**Jeden plan wykonawczy (konsolidacja 2026-10-23):** `mv-design-pro/PLANS.md` część A — stan bazowy (§B), jedna kolejka zadań P0–P3 (§C), rozstrzygnięcia sprzeczności (§D). Agent nie zakłada nowego programu, planu, roadmapy ani rejestru postępu; aktualizuje wiersz w §C. Active operational programs (2026-07, subordinate to the canon above and to `PLANS.md` §C): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). **Nadrzędna misja właściciela od 2026-09-09:** `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (domknięcie całego produktu w 12 domenach; architektura, kolejność, kontrakty i wdrożenie po stronie architekta; bramki właściciela B-01/B-02 bez zmian; mapa domknięcia budowana z dowodów repo, nie z planów). **Mapa domknięcia (2026-09-09):** `mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` — klasyfikacja każdej zdolności 12 domen z dowodem, klasy defektów, kolejność wycinków W1–W12; pierwszy wycinek W1 (jedna prawda sieci: import XLSX → ENM, kasacja legacy ORM). See "Active programs" in Project Status below.
-
-## Architecture Layer Boundaries (CRITICAL)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    PRESENTATION LAYER                        │
-│  - Frontend, Reports, Export                                 │
-│  NO physics, NO model mutation                               │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                    APPLICATION LAYER                         │
-│  - Wizard (edit controller)                                  │
-│  - SLD (visualization)                                       │
-│  - Validation (pre-check)                                    │
-│  NO physics calculations                                     │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                      DOMAIN LAYER                            │
-│  - NetworkModel (Bus, Branch, Switch, Source, Load)          │
-│  - ENM (Energy Network Model)                                │
-│  - Catalog (Type Library - immutable)                        │
-│  - Case (Study Cases)                                        │
-│  Model mutation allowed HERE ONLY                            │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                      SOLVER LAYER                            │
-│  - IEC 60909 Short Circuit                                   │
-│  - Newton-Raphson Power Flow                                 │
-│  - Gauss-Seidel Power Flow                                   │
-│  - Fast Decoupled Power Flow                                 │
-│  - Fault Scenario Executor                                   │
-│  PHYSICS HERE ONLY, WHITE BOX REQUIRED                       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                     ANALYSIS LAYER                           │
-│  - Protection Analysis / Insight / Curves                    │
-│  - Voltage Profile / Sensitivity                             │
-│  - Boundary Identification                                   │
-│  - Coverage Score / Normative Compliance                     │
-│  - Scenario Comparison / Recommendations                     │
-│  INTERPRETATION ONLY, NO physics                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Core Rules (IMMUTABLE)
-
-### 1. NOT-A-SOLVER Rule
-Only dedicated solvers in `network_model/solvers/` compute physics. These components **CANNOT** contain physics calculations:
-- Protection, Frontend, Reporting, Wizard, SLD, Validation, Proof Engine, Analysis
-
-Addendum (CV-4.3 K4, 2026-09-06): jedyne poza solverami miejsce dla algebry wielkości pochodnych (U/√3, S/cosφ, Q=P·tgφ, I=S/(√3·U), I²t, R_θ=R20·[1+α(θ−20)], Z=U²/S) to liściowy pakiet `network_model/pochodne/wielkosci_pochodne.py` (importuje wyłącznie `math`; rodzeństwo `core/` i `solvers/`, NIE potomek `solvers/`, bo gorliwy `solvers/__init__.py` zamknąłby import z `core/` w cyklu). Poza `network_model/solvers/**` i `network_model/pochodne/**` te wzory są zakazane — pilnuje `scripts/backend_no_physics_guard.py` (AST, allowlista pusta, zapadka tylko w dół); import z `pochodne/` do rdzeni FROZEN jest zabroniony.
-
-### 2. WHITE BOX Rule
-All solvers **MUST**:
-- Expose all calculation steps
-- Provide intermediate values (Y-bus matrix, Z-thevenin, Jacobian, etc.)
-- Allow numerical audit
-- Document assumptions
-
-**Forbidden**: Black-box solvers, hidden corrections, undocumented simplifications.
-
-### 3. Single Model Rule
-- **ONE NetworkModel** per project (singleton)
-- Wizard and SLD edit **THE SAME** model instance
-- No shadow models, no duplicate data stores
-
-### 4. Case Immutability Rule
-- Case **CANNOT mutate** NetworkModel
-- Case stores **ONLY** calculation parameters (configuration)
-- Multiple Cases reference one Model (read-only view)
-- Model change invalidates ALL case results
-- Protection settings (ADR-022 ACCEPTED 2026-09-30, decision O-63 / O-73 in `mv-design-pro/docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3): BASE settings (IED, functions, setting groups 1–4, trip matrix) are ASSET data of the ENM model; a Case only SELECTS a setting group or overlays an override as a scenario delta resolved in `EffectiveNetworkSnapshot` (ADR-017). Settings kept outside the model are a second truth and are forbidden.
-
-### 5. BoundaryNode Prohibition Rule
-- **BoundaryNode is NOT in NetworkModel** (it's interpretation, not physics)
-- BoundaryNode belongs ONLY in the Analysis/Interpretation layer (BoundaryIdentifier)
-- The prohibition covers the PHYSICS model only: `network_model/core`, `network_model/solvers`, `solver_input`, NetworkGraph and NetworkSnapshot. The connection point exists as a CONTRACTUAL object `GridConnectionPoint` (ADR-027 ACCEPTED 2026-09-30, decision O-60 / G-15(a)) in the contract layer, pointing at a physics terminal through `terminal_ref`; it is never a node, a branch or a solver parameter. S_k,min and X/R of the connection point live in the existing `ConnectionConditions` (`backend/src/enm/models.py`), not in the profile and not in `Generator.deklaracje_modulu` (O-60). The presentation label „punkt przyłączenia" denotes this contractual object (K-19). `scripts/pcc_zero_guard.py` checks structurally that `GridConnectionPoint`/`BoundaryNode` never enter the physics model.
-
-### 6. Frozen Result API Rule
-- ShortCircuitResult and PowerFlowResult APIs are **FROZEN**
-- Changes require major version bump
-- Proof Engine reads results READ-ONLY
-
-### 7. Determinism Rule
-- Same input **MUST** produce identical output
-- Solver results, proof documents, exports must be deterministic
-- SHA-256 fingerprints must be stable
-
-### 8. No Codenames in UI
-Project codenames (P7, P11, P14, P17, P20, etc.) must **NEVER** appear in:
-- UI-visible strings
-- Exports
-- Test artifacts
-
-Use Polish labels instead. Enforced by `scripts/no_codenames_guard.py`.
-
-### 9. No Heuristics in Solvers
-Load flow and protection solvers must NOT apply heuristics, guesses, or undocumented corrections. Enforced by `scripts/load_flow_no_heuristics_guard.py` and `scripts/protection_no_heuristics_guard.py`.
-
-### 10. Catalog Binding Rule
-All network elements must reference catalog types. Direct parameter injection bypassing the catalog is forbidden. Enforced by `scripts/catalog_binding_guard.py`, `catalog_enforcement_guard.py`, `catalog_gate_guard.py`.
-
-## Development Commands
-
-### Backend
-```bash
-cd mv-design-pro/backend
-
-# Install dependencies
-poetry install --with dev
-
-# Run tests (full suite: 4 processes via pytest-xdist, as CI — `-n auto` there; a file
-# stays on one process, `--dist loadfile`; each worker gets its own ENM store, session DB and
-# one BLAS thread — tests/conftest.py). Single process: drop `-n`/`--dist`.
-# Measured 2026-09-30 on 4 vCPU: 27 043 tests — 1 process 5 015 s, `-n 4 --dist loadfile` ~1 350 s.
-poetry run pytest -q -n 4 --dist loadfile
-
-# Merge gate: backend tests selected through the AST import graph of the change + invariant
-# core (golden, invariants, determinism, frozen ResultSet/OpenAPI contracts) under xdist,
-# vitest related (main and budget steps), scripts/guardy_z_ci.py; prints why each test was
-# selected. Complements the full run (CI keeps it on every push and before merging to main).
-poetry run python ../scripts/bramka_scalenia.py --baza <ref>      # --glowa <ref>: commit range
-
-# Run specific test file
-poetry run pytest tests/test_short_circuit_iec60909.py -v
-
-# Run specific test directory
-poetry run pytest tests/proof_engine/ -v
-
-# Run linting
-poetry run black src tests
-poetry run ruff check src tests
-poetry run mypy src
-
-# Run server (development)
-poetry run uvicorn src.api.main:app --reload --port 8000
-```
-
-### Frontend
-```bash
-cd mv-design-pro/frontend
-
-# Install dependencies
-npm ci            # preferred (deterministic)
-npm install       # alternative
-
-# Run tests: two steps — files in parallel in the `forks` pool, then CPU-time budget tests
-# (every test file importing src/test/czasProcesora.ts) one file at a time; vite.config.ts
-npm test
-# Equivalent: vitest run && vitest run --mode budzety (budget step alone: npm run test:budzety)
-
-# Run tests for CI
-npm run test:ci
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; every e2e/*.spec.ts file — 125 measured 2026-10-30; the vitest guard src/test/__tests__/ladowanieSpecowE2e.test.ts checks that each one loads)
-npm run test:e2e
-# One shard of the full suite — files assigned by measured spec times (LPT,
-# `scripts/e2e_shardy.py`, times in `e2e/czasy_specow.json`); CI runs 4 shards on 4 runners.
-# Locally give each concurrent shard its own PLAYWRIGHT_BACKEND_URL/PLAYWRIGHT_FRONTEND_URL ports.
-npm run test:e2e -- $(python ../scripts/e2e_shardy.py --shard 1/4)
-# Refresh the spec times after a full run with `--reporter=json` (PLAYWRIGHT_JSON_OUTPUT_NAME):
-python ../scripts/e2e_shardy.py --aktualizuj raport.json --zrodlo "<opis pomiaru>"
-# An e2e run never changes the repository tree (globalTeardown `e2e/straznikDrzewa.ts` fails the run
-# otherwise). Screenshot specs write to test-results/zrzuty-dokumentacji/<path> by default
-# (`e2e/katalogZrzutow.ts`); refreshing the committed documentation screenshots is explicit:
-ZRZUTY_DO_DOKUMENTACJI=1 npm run test:e2e -- e2e/<spec zrzutowy>.spec.ts
-
-# Run e2e against real backend (critical path)
-npm run test:e2e:real
-
-# Set up Playwright dependencies
-npm run test:e2e:setup
-
-# E2E with UI debugger
-npm run test:e2e:ui
-
-# Bootstrap e2e (npm ci + setup)
-npm run test:e2e:bootstrap
-
-# Full e2e bootstrap with real backend
-npm run test:e2e:setup:real
-
-# Type checking
-npm run type-check
-
-# Linting
-npm run lint
-
-# Build (runs tsc then vite build)
-npm run build
-
-# Development server (port 5173, proxies /api to backend)
-npm run dev
-
-# No-codenames guard check
-npm run guard:codenames
-```
-
-### Docker (3 services)
-```bash
-cd mv-design-pro
-
-# Start all services (backend:18000, frontend:3000, postgres:5432)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f backend
-
-# Stop services
-docker-compose down
-```
-
-### Guard Scripts (selection — full list: `ls scripts/*guard*.py`)
-```bash
-cd mv-design-pro
-
-# Architecture & domain integrity
-python scripts/arch_guard.py                      # Architecture layer boundaries
-python scripts/pcc_zero_guard.py                  # Prevent PCC in NetworkModel
-python scripts/domain_no_guessing_guard.py        # Domain model validation
-python scripts/solver_boundary_guard.py           # Solver layer isolation
-python scripts/solver_diff_guard.py               # Solver output diff guard
-python scripts/active_public_layer.py             # Active/public layer separation
-
-# Operations & canonicalization
-python scripts/canonical_ops_guard.py             # Canonical operations check
-python scripts/readiness_codes_guard.py           # Readiness gate validation
-python scripts/audit_contract_guard.py            # Audit contract compliance
-python scripts/api_lifecycle_guard.py             # API lifecycle enforcement
-
-# Catalog guards
-python scripts/catalog_binding_guard.py           # Catalog binding enforcement
-python scripts/catalog_enforcement_guard.py       # Catalog usage enforcement
-python scripts/catalog_gate_guard.py              # Catalog gate checks
-python scripts/catalog_metadata_guard.py          # Catalog metadata validation
-python scripts/transformer_catalog_voltage_guard.py # Transformer catalog voltage
-
-# UI / UX guards
-python scripts/no_codenames_guard.py              # Block codenames in UI strings
-python scripts/test_no_codenames_guard.py         # Block codenames in test artifacts
-python scripts/forbidden_ui_terms_guard.py        # Block forbidden UI terminology
-python scripts/ui_terminology_guard.py            # UI terminology validation
-python scripts/dead_click_guard.py                # Detect dead/unhandled UI actions
-python scripts/fix_action_completeness_guard.py   # Fix action completeness
-python scripts/dialog_completeness_guard.py       # Dialog contract completeness
-python scripts/nn_source_menu_guard.py            # Source menu guard
-python scripts/guard_ux_flow_v1.py                # UX flow v1 compliance
-python scripts/interaction_matrix_guard.py        # Interaction matrix validation
-python scripts/ui_no_physics_guard.py             # No network physics in ui2/** presentation layer
-
-# Physics separation guards
-python scripts/overlay_no_physics_guard.py        # Overlay layer physics prohibition
-python scripts/physics_label_guard.py             # Physics label validation
-python scripts/load_flow_no_heuristics_guard.py   # No heuristics in load flow
-python scripts/protection_no_heuristics_guard.py  # No heuristics in protection
-python scripts/no_direct_fault_params_guard.py    # No direct fault param injection
-
-# SLD & determinism guards
-python scripts/sld_determinism_guards.py          # SLD rendering determinism
-python scripts/fault_scenarios_determinism_guard.py # Fault scenario determinism
-
-# Schema guards
-python scripts/resultset_v1_schema_guard.py       # ResultSet v1 schema compliance
-python scripts/severity_contract_guard.py         # Severity contract enforcement
-
-# Legacy & compatibility guards
-python scripts/legacy_public_path_guard.py        # Legacy path detection
-python scripts/v12xx_canon_guard.py               # v12.xx canonical form guard
-python scripts/reference_networks_guard.py        # Reference network validation
-
-# Repository & quality guards
-python scripts/docs_guard.py                      # Documentation integrity
-python scripts/local_truth_guard.py               # Local vs remote consistency
-python scripts/docs_archive_guard.py              # Documentation archive validation
-python scripts/repo_hygiene_guard.py              # Repository cleanliness
-python scripts/grep_zero_guard.py                 # Zero-occurrence grep checks
-python scripts/import_graph_guard.py              # Import dependency graph analysis
-python scripts/vulture_guard.py                   # Dead code detection
-python scripts/utf8_mojibake_guard.py             # UTF-8 encoding validation
-
-# Testing & verification
-python scripts/test_no_codenames_guard.py         # Test artifact codename check
-python scripts/test_api_lifecycle_guard.py        # API lifecycle test validation
-python scripts/test_interaction_matrix_guard.py   # Interaction matrix test validation
-python scripts/test_legacy_public_path_guard.py   # Legacy path test validation
-python scripts/test_reference_networks_guard.py   # Reference network test validation
-python scripts/test_severity_contract_guard.py    # Severity contract test validation
-python scripts/test_ui_terminology_guard.py       # UI terminology test validation
-python scripts/test_utf8_mojibake_guard.py        # UTF-8 encoding test validation
-python scripts/verify_v12_5.py                    # v12.5 verification suite
-python scripts/verify_v12_5_1.py                  # v12.5.1 verification suite
-
-# Scripts & utilities
-python scripts/smoke_local.sh                     # Local smoke test
-```
-
-## CI/CD Pipelines
-
-9 workflows in `.github/workflows/`, all on push and pull_request (`frontend-e2e-smoke.yml` and `frontend-e2e-full.yml` are path-filtered to `frontend/**` + `backend/**`):
-
-| Workflow | File | What It Does |
-|----------|------|-------------|
-| Python tests | `python-tests.yml` | pytest + pcc_zero + domain_no_guessing + canonical_ops + readiness_codes + catalog_binding + catalog_gate + audit_contract + repo_hygiene guards |
-| Frontend checks | `frontend-checks.yml` | type-check + lint + vitest + codenames + dialog_completeness + local_truth guards |
-| SLD Determinism | `sld-determinism.yml` | Python SLD guards + SLD v2/v3 Vitest contract tests + render-odbiór acceptance |
-| Docs Guard | `docs-guard.yml` | Documentation integrity check (broken links, PCC terms) |
-| Architecture & Repo Hygiene | `arch-guard.yml` | arch_guard + repo_hygiene guards |
-| P0 Extended Guards | `p0-extended-guards.yml` | V12K invariant guards (load_flow/protection heuristics, solver_boundary, overlay_no_physics, fault_scenarios_determinism, ui_terminology, forbidden_ui_terms) |
-| Physics Label Guard | `physics-label-guard.yml` | Catalog-first physics field guard for modals |
-| Frontend E2E smoke | `frontend-e2e-smoke.yml` | Playwright e2e against the real backend (`npm run test:e2e:real`) |
-| Frontend E2E full | `frontend-e2e-full.yml` | Full Playwright e2e suite against the real backend (`npm run test:e2e`, all `e2e/*.spec.ts`) |
-
-## Code Style & Conventions
-
-### Python
-- Line length: 100 characters
-- Formatter: black (`target-version = ['py311']`)
-- Linter: ruff (rules: E, F, W, I, N, UP, B, C4; ignores: E501)
-- Type hints required: mypy z wtyczką pydantic w trybie projektu (`[tool.mypy]` w `backend/pyproject.toml` NIE ma `strict = true` — dług typów 167/21 (pomiar 2026-10-22, scalenie partii 9–13 z gałęzią UI/UX) pilnowany zapadką `mypy_ratchet_guard`; korekta 2026-09-23: dawne zdanie „mypy strict mode" było nieprawdziwe); nowe pakiety pisane pod `--strict` per pakiet
-- asyncio mode: auto (pytest-asyncio)
-- Use frozen dataclasses for immutable result types
-
-### TypeScript
-- Strict mode enabled (`noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`)
-- Target: ES2020, module: ESNext, JSX: react-jsx
-- ESLint with React hooks + React refresh plugins
-- Prefer zustand for state management
-- Tests exclude pattern in tsconfig: `src/**/__tests__/**/*`
-
-### Terminology
-| Term | Definition | PowerFactory Equivalent |
-|------|------------|------------------------|
-| Bus | Electrical node (single potential) | Terminal |
-| Line | Overhead line (explicit branch) | Line |
-| Cable | Underground cable (explicit branch) | Cable |
-| Transformer2W | Two-winding transformer | Transformer |
-| Switch/Breaker | Switching device (no impedance) | Switch/Breaker |
-| Source | External Grid / Generator / Inverter | External Grid |
-| Load | Electrical load | Load |
-| Station | Logical container (no physics) | Substation folder |
-| Case | Calculation scenario | Study Case |
-| Catalog | Type library (immutable) | Type Library |
-
-**Forbidden Terms in Core Model**: PCC, Connection Point, Virtual Node, Aggregated Element, BoundaryNode
-
-## Testing Guidelines
-
-### Backend Tests (1600+ tests)
-- Located in `mv-design-pro/backend/tests/`
-- Use pytest with asyncio mode auto
-- Mark integration tests with `@pytest.mark.integration`
-- Key test areas:
-  - `test_short_circuit_iec60909.py` - IEC 60909 SC solver
-  - `test_power_flow_v2.py` - Power flow solver
-  - `tests/proof_engine/` - All proof pack generation (SC3F, VDROP, Equipment, Protection, Earthing, Losses, LF Voltage)
-  - `tests/enm/` - ENM model, topology, validation, golden network
-  - `tests/e2e/` - Determinism workflows, export stability
-  - `tests/api/` - API endpoint contract tests
-  - `tests/golden/` - Golden network fixtures
-  - `tests/ci/` - CI guard validation tests
-
-### Frontend Tests (190+ test files)
-- Unit tests with Vitest in `src/**/__tests__/`
-- E2E tests with Playwright in `e2e/`
-- Component tests use @testing-library/react
-- Test files run in parallel in the `forks` pool, one file per process at a time (karta
-  SZYBKIE-TESTY 2026-09-30; it supersedes the archival INV-TST-06 of `--no-file-parallelism`).
-  CPU-time budget tests (`src/test/czasProcesora.ts`) run in a separate sequential step
-  (`vitest run --mode budzety`, set derived by `plikiBudzetuCzasu` in vite.config.ts) — neighbouring
-  processes inflate CPU time; the helper refuses to measure outside that mode and outside the
-  process main thread (`src/test/__tests__/{pulaTestow,plikiBudzetuCzasu}.test.ts` pin both)
-- Test environment: jsdom with globals enabled
-- Critical contract tests (run in SLD Determinism CI) — **spisane z
-  `.github/workflows/sld-determinism.yml`, nie z pamięci** (korekta 2026-08-08:
-  poprzednia lista wymieniała sześć plików w `sld/core/__tests__/`, z których
-  **nie istniał ANI JEDEN** — ani tam, ani nigdzie w `src`; workflow nie
-  uruchamia niczego z `sld/core/**`. Przy każdej zmianie tego workflowa
-  aktualizuj tę listę, inaczej wróci fikcja):
-  - `sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
-  - `sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
-  - `sld/v2/__tests__/{ViewportController,LodPolicy}.test.ts` (StationInternalView.test.tsx
-    usunięty w `08ccf7c9`, renderers.test.tsx razem z martwymi rendererami v2 2026-10-21; martwy krok workflowa zdjęty 2026-09-02 — M0-1, pilnuje `verification_phantom_paths_guard`)
-  - `sld/v2/command/__tests__/SldCommandService.test.ts` · `sld/v2/core/__tests__/ports.test.ts`
-  - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,buildScene.gpzCollapsed,busbarLabelClearance}.test.ts`
-  - `sld/v3/canvas/__tests__/{minSymbolSize,kadrTresci,toolbarLayout,tozsamoscEtykiet}.contract.test.ts(x)`
-    oraz `gpzCollapsedExpand.test.tsx`
-  - `sld/v3/layout/__tests__/sheetRows.test.ts` · `sld/v3/theme/__tests__/palette.test.ts`
-  - SLD v3 render-odbiór acceptance: `npm run accept:sld-v3`
-- Critical E2E (real backend): `e2e/critical-run-flow.spec.ts` via `npm run test:e2e:real`
-
-## Proof Engine
-
-The Proof Engine generates mathematical proofs from solver results:
-
-### Key Concepts
-- **TraceArtifact**: Immutable calculation trace from solvers
-- **ProofDocument**: Formal mathematical proof
-- **ProofStep**: Formula -> Data -> Substitution -> Result -> Unit verification
-- **EquationRegistry**: Canonical equation definitions (LaTeX)
-
-### Proof Pack Types
-- SC3F (3-phase short circuit)
-- VDROP (voltage drop)
-- Equipment (thermal/dynamic withstand)
-- Power Flow (load flow)
-- Losses/Energy
-- Protection (overcurrent)
-- Earthing (ground fault)
-- LF Voltage (load flow voltage)
-
-### Invariants
-- Solver untouched - Proof Engine does NOT modify solvers
-- Determinism - same `run_id` produces identical output
-- Pure interpretation - proofs generated from existing trace/result data
-- LaTeX-only math - all formulas in block LaTeX `$$...$$`
-- I_dyn and I_th mandatory in SC3F proofs
-
-### Export Formats
-- JSON (`proof.json`)
-- LaTeX (`proof.tex`)
-- PDF (`proof.pdf`)
-- DOCX
-
-## Project Status (as of 2026-07)
-
-**Binding functional inventory:** `mv-design-pro/docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` —
-single source of truth for the solver/analysis/API/UI surface. Where this file's structure
-snapshot (above) and the inventory differ, the inventory wins.
-
-The system is fully functional with:
-- 18 solver modules (IEC 60909 SC + machine SC, NR/GS/FD/unbalanced Power Flow, inverter/ZIP
-  models, IEC 60364 fault loop, IEC 60255 protection, NC RfG/PTPiREE, FRT/HVRT, RMS stability,
-  WLS state estimation, phase state SN, grid source preview, V12.6 academic)
-- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage, V12.6 academic)
-- 18 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
-  Energy Validation — see inventory; `machine_short_circuit` skasowany 2026-09-30)
-- Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
-- 10 792 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-30,
-  partia integracji 5 z DETERMINIZM-KATA-FAZORA); 12 716 frontend tests in 879 files (full
-  vitest run, 2026-09-30, łańcuch partii 5); 168 guard scripts + 66 guard self-test files
-  (`ls scripts/*_guard.py scripts/*_guards.py`, `ls scripts/test_*guard*.py`, pomiar 2026-10-21) — full backend regression
-  `-m "not pandapower and not andes"`: **26 608 passed** (2026-09-29, łańcuch partii 5 na `e233886a`;
-  `backend/src` identyczny z `3840e239`; rdzeń dynamiki po poprawce determinizmu — testy celowane w wierszu
-  partii 5 rejestru planu A/B §7)
-- Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
-  PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
-
-### Active programs (2026-07) — three programs, unified thread (2026-07-21)
-0. **Misja domknięcia produktu (dyrektywa właściciela 2026-09-09, nadrzędna wobec 1–3):**
-   `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` — 12 domen jako jedno środowisko
-   inżynierskie, kontrakt ukończenia CLAIMED DONE → VERIFICATION GATE → ACCEPTED DONE, mapa
-   domknięcia z dowodów repo (istnieje / pozornie / częściowe / zduplikowane / bez konsumenta /
-   UI bez zdolności / backend bez toku pracy / brak / do przeprojektowania / do kasacji), wycinki
-   pionowe wg zależności, ryzyka i wartości. Programy 1–3 są jej częścią, nie konkurencją.
-1. **Program UI/UX klasy przemysłowej** (`mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md`,
-   phases U0–U5; orchestration: `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`).
-   Program branch merged to `main`; work on the session's branch.
-2. **SLD rework F1–F5** (`mv-design-pro/docs/plan/PLAN_SLD_REWORK.md`) —
-   `frontend/src/ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`.
-3. **Engineering 10x program F0–F4** (`mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md`) —
-   CI gates, auth/perimeter, concurrency, god-file containment.
-
-**Jeden wątek prowadzi wszystkie trzy programy end-to-end** (dyrektywa właściciela):
-w tej samej sesji/PR edytujesz `ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`
-i warstwy 10x; łańcuch domykasz do ostatniego klika w jednej pracy. Rygor jakości bez zmian: pełna regresja właściwej
-warstwy + guardy + determinizm + FROZEN/golden nietknięte przed scaleniem.
-Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16.md`.
-
-## Common Tasks
-
-### Adding a New Element Type
-1. Check `docs/v12xx/KANON_V12_XX.md`, `docs/system/SPEC_*.md` and `SYSTEM_SPEC.md` for allowed element types
-2. Add to `network_model/core/`
-3. Update ENM model if applicable (`src/enm/`)
-4. Update the ENM validator (`src/enm/validator.py`) and the readiness codes of `CalculationReadinessService` (ADR-025, O-65)
-5. Add SLD symbol mapping
-6. Write tests
-
-### Modifying Solver Output
-1. **STOP** - Result APIs are FROZEN
-2. Check if change requires version bump
-3. Ensure WHITE BOX trace is maintained
-4. Update ProofDocument mapping if needed
-5. Verify determinism (SHA-256 fingerprints)
-
-### Adding UI Feature
-1. Review UI contracts in `mv-design-pro/docs/ui/`
-2. Follow layer boundaries (no physics in UI)
-3. Use Polish labels, no project codenames
-4. Add tests (Vitest for unit, Playwright for e2e)
-5. Run `npm run guard:codenames` and `scripts/forbidden_ui_terms_guard.py` to verify
-6. Any math shown to the engineer (symbol, condition, formula) must render via
-   `ui/proof/MathRenderer.tsx` from a backend `*_latex` field — never as ASCII
-   text. Production metadata (`run_id`, hashes, solver version) stays out of
-   the first-plan view via the shared `ui2/wyniki/wzorzec/InformacjeAudytowe`
-   component. See `mv-design-pro/docs/uiux/KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7.md`.
-7. Every modified screen follows the owner's workshop standard (decision 2026-11-04, reference
-   screen KD6 „Wytrzymałość aparatury”): maximum engineering information in minimum space,
-   tables instead of repeated cards, one fact in one place, details on demand, colour only
-   with meaning, both themes identical. A change that adds clicks, scrolling or text without
-   real benefit to the engineer is rejected; report height/clicks before and after. Applied
-   gradually within planned module work — never as a separate rebuild programme.
-   See §10 of the same contract.
-
-### Working with Study Cases
-- Cases store config only, not model data
-- Model changes invalidate ALL case results
-- Clone creates new case with NONE status (no results copied)
-- Only ONE case active at a time
-
-### Adding Catalog Types
-1. Review `mv-design-pro/docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` for catalog compliance rules
-2. Add to `network_model/catalog/` (types are immutable once published)
-3. Run catalog guards: `catalog_binding_guard.py`, `catalog_enforcement_guard.py`, `catalog_gate_guard.py`
-
-### Running All Guards Locally
-```bash
-cd mv-design-pro
-
-# Core architectural guards (critical)
-python scripts/pcc_zero_guard.py
-python scripts/domain_no_guessing_guard.py
-python scripts/arch_guard.py
-python scripts/solver_boundary_guard.py
-python scripts/canonical_ops_guard.py
-
-# UI & terminology guards
-python scripts/no_codenames_guard.py
-python scripts/forbidden_ui_terms_guard.py
-python scripts/ui_terminology_guard.py
-python scripts/dialog_completeness_guard.py
-python scripts/dead_click_guard.py
-
-# Catalog & binding guards
-python scripts/catalog_binding_guard.py
-python scripts/catalog_enforcement_guard.py
-python scripts/catalog_gate_guard.py
-python scripts/catalog_metadata_guard.py
-
-# Physics & solver guards
-python scripts/overlay_no_physics_guard.py
-python scripts/load_flow_no_heuristics_guard.py
-python scripts/protection_no_heuristics_guard.py
-
-# Determinism & trace guards
-python scripts/sld_determinism_guards.py
-python scripts/fault_scenarios_determinism_guard.py
-python scripts/resultset_v1_schema_guard.py
-
-# Validation & contracts
-python scripts/readiness_codes_guard.py
-python scripts/audit_contract_guard.py
-python scripts/api_lifecycle_guard.py
-python scripts/severity_contract_guard.py
-python scripts/reference_networks_guard.py
-
-# Repository & code quality
-python scripts/docs_guard.py
-python scripts/local_truth_guard.py
-python scripts/docs_archive_guard.py
-python scripts/repo_hygiene_guard.py
-python scripts/import_graph_guard.py
-python scripts/vulture_guard.py
-```
-
-## Important Warnings
-
-1. **NEVER** add PCC/BoundaryNode concepts to NetworkModel
-2. **NEVER** add physics calculations to non-solver components
-3. **NEVER** modify frozen Result APIs without version bump
-4. **NEVER** create shadow/duplicate data models
-5. **NEVER** bypass the ENM validator (`enm/validator.py`) + `CalculationReadiness` before a run (through `enm/canonical_analysis`) — ADR-025 ACCEPTED 2026-09-30, O-65; the former „NetworkValidator" rule was dead in code (`network_model/validation/validator.py` has 0 production consumers)
-6. **NEVER** use project codenames (P11, P14, etc.) in UI strings
-7. **NEVER** apply heuristics or undocumented corrections in load flow or protection solvers
-8. **NEVER** bypass catalog type binding (use catalog types, not direct parameter injection)
-9. **ALWAYS** maintain WHITE BOX traceability in solvers
-10. **ALWAYS** preserve deterministic behavior (same input = same output)
-11. **ALWAYS** consult `docs/v12xx/KANON_V12_XX.md` and `docs/system/SPEC_*.md` before architectural changes
-12. **ALWAYS** run relevant guards before pushing changes
-13. **ALWAYS** consult `docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` when adding/modifying network model elements
-
-## Zero-Debt Rule (BINDING — dyrektywa właściciela, 2026-07-17)
-
-Każdy wykryty defekt, dług techniczny, bug lub brak naprawiasz **end-to-end,
-od razu, bez pytania o pozwolenie** — dotyczy to również znalezisk ubocznych
-(guard czerwony na HEAD, wykluczony test, martwy kod, nieaktualny dokument,
-workflow CI, który nigdy się nie wykonał, niespójność danych szablonu).
-
-Zasady wykonania:
-1. **Wykluczenie ≠ naprawa.** Nie wolno maskować długu (exclude w konfigu
-   testów, `continue-on-error`, skip, komentarz „do naprawy później").
-   Nowe wykluczenie wymaga uzasadnienia w commicie i wpisu długu w execplanie.
-   **Każdy NAPOTKANY błąd naprawiasz — także pre-existing, nie tylko własny
-   (dyrektywa właściciela 2026-07-21: „masz naprawiać wszystkie napotkane
-   błędy").** Błąd typów/lint/test/guard, który zobaczyłeś przy swojej pracy
-   (nawet jeśli był w repo przed Twoją zmianą), naprawiasz u źródła w tej samej
-   kolejce — nie wolno go pominąć argumentem „był wcześniej" ani „poza moim
-   zakresem". Jedyny wyjątek to dług nienaprawialny w bieżącej sesji (pkt 4) —
-   wtedy wpis do execplanu z pomiarem i planem, nigdy cicho.
-2. **Naprawa u źródła.** Test czerwony z powodu regresji komponentu ⇒ napraw
-   komponent, nie asercję. Test czerwony z powodu zmiany kanonu ⇒ przepisz
-   test do obecnego kanonu z zachowaniem intencji (i zapisz intencję w
-   komentarzu).
-3. **Weryfikacja end-to-end przed commitem**: pełna regresja właściwego
-   stosu, kody wyjścia łapane BEZPOŚREDNIO (nigdy `cmd | tail; echo $?` —
-   pipe zwraca kod ostatniego członu); pętle oczekiwania bez samodopasowania
-   `pgrep -f` (sentinel w pliku wyników zamiast wzorca tekstowego procesu).
-4. **Dług nienaprawialny w bieżącej sesji** (wymaga decyzji produktowej,
-   danych, których nie ma, albo przekracza sesję) — wpis do execplanu z
-   pomiarem, przyczyną i planem, nigdy cicho.
-5. **Test maskujący defekt produktu = dwa defekty** (dyrektywa właściciela,
-   2026-07-17). Gdy test „przechodzi" tylko dzięki obejściu realnej ścieżki
-   użytkownika (syntetyczny `dispatchEvent` zamiast natywnego klika,
-   wymuszony stan store zamiast interakcji, sztuczny fixture omijający
-   walidację) — naprawiasz OBA: defekt produktu u źródła ORAZ test, żeby
-   ćwiczył realną ścieżkę (inaczej regresja naprawy będzie niewykrywalna).
-   Precedens: martwy lewy klik w elementy kanwy SLD (capture-on-pointerdown
-   przekierowywał click na tło) był latami niewidoczny, bo wszystkie specy
-   klikały syntetycznie. Nowy test interakcji ZAWSZE zaczyna od ścieżki
-   natywnej; syntetyczny event wymaga uzasadnienia w komentarzu.
-
-## Reguła KLASA, NIE INSTANCJA (BINDING — wniosek z przeglądu 2026-08-01)
-
-Przegląd kodu fali audytu (`docs/audit/PRZEGLAD_FALI_2026-08-01.md`) wykrył
-**jeden błąd metodyczny powtórzony cztery razy w czterech niezależnych kartach**:
-naprawiono INSTANCJĘ defektu nazwaną w audycie, a nie jego KLASĘ. Za każdym razem
-zbiór, na którym działa nowy mechanizm, okazał się inny niż zbiór, na którym
-powinien: rozdzielano szerzej niż doklejano z powrotem (wielomian ZIP), bramkowano
-transformator, ale nie źródło nN ani aparat pola (brama katalogowa), blokowano
-jeden z czterech cykli zapisu (współbieżność), wycofywano model, ale nie dziennik.
-Wszystkie cztery przeszły pełną regresję, komplet guardów i iniekcje — bo iniekcje
-sprawdzały ścieżkę, którą ktoś przewidział.
-
-Dlatego każda karta naprawcza MUSI zawierać:
-
-1. **Inwentarz klasy przed naprawą.** Wypisz WSZYSTKIE miejsca/ścieżki/elementy
-   dzielące ten sam mechanizm — nie tylko to z audytu. Inwentarz idzie do meldunku
-   i do wpisu rejestru. Miejsce świadomie zostawione poza naprawą wymaga
-   uzasadnienia merytorycznego (nie „poza zakresem karty").
-2. **Test jako ILOCZYN CECH, nie przykład z karty.** Nowe testy pokrywają iloczyn
-   cech, w którym defekt mógłby się schować (np. „czułość częstotliwościowa ×
-   generacja na szynie", „ten sam obiekt × awaria zapisu dziennika", „operacja A ×
-   operacja B równolegle"), a nie tylko scenariusz opisany w karcie. Zanim uznasz
-   pokrycie za wystarczające, wypisz cechy i sprawdź grepem, czy ich kombinacja
-   występuje w testach.
-3. **Predykaty parami.** Gdy kod dzieli zbiór na dwie części i składa je z powrotem
-   (rozdziel/dołóż, zablokuj/zwolnij, zapisz/wycofaj), warunek WEJŚCIA i WYJŚCIA
-   musi pochodzić z JEDNEGO źródła prawdy. Dwa niezależne warunki, które „dziś się
-   zgadzają", są defektem oczekującym na dane brzegowe.
-4. **Deklaracja bez testu = fałszywa pewność.** Każde mocne zdanie w docstringu,
-   rejestrze albo dokumencie („operacja meldująca błąd nie zostawia żadnego skutku",
-   „lista ZAMKNIĘTA — każde nowe miejsce to naruszenie") musi mieć PRZYPIĘTY test.
-   Obietnica bez testu jest groźniejsza niż sam defekt, bo wyłącza czujność.
-5. **Uczciwość w obrębie jednego pliku.** Jeśli karta zakazuje wzorca (zaszyty próg,
-   ciche zero, domysł), przeszukaj CAŁY moduł, w którym pracujesz — zostawienie tego
-   samego wzorca w sąsiedniej funkcji jest naruszeniem tej samej karty.
-
-## Dyrektywy właściciela — projektowanie i wdrażanie (BINDING)
-
-Skumulowane, wiążące zasady właściciela (dyrektywy 2026-07-17…19). Obowiązują
-łącznie z Zero-Debt powyżej i kanonem V12.xx.
-
-1. **Wizja globalna end-to-end (2026-07-19).** Każdy element planujesz i wdrażasz
-   z wizją całego łańcucha — „do ostatniego klika w systemie": od kontraktu danych,
-   przez backend, warstwę domenową i API, po UI i miejsce, GDZIE dane są dalej
-   wykorzystywane (SLD, analizy, zabezpieczenia, raporty, oceny zgodności). Przed
-   budową ustalasz: skąd dane pochodzą, jak się wiążą, gdzie spływają. Nigdy nie
-   buduj wyspy — buduj ogniwo łańcucha.
-
-2. **Opcja MAX, bez spłycania (2026-07-18).** Realizujesz maksymalny, kompletny
-   zakres funkcji — bez skracania, upraszczania „na później", ukrywania opcji.
-   „Wszystko, co potrzebne, rozbuduj". Kompletność wyprowadzasz z rzeczywistego
-   kontraktu backendu/domeny (a nie z wygody UI).
-
-3. **Zero fabrykacji (phantom rule).** Każda opcja/kontrolka UI MUSI mapować na
-   realne pole/operację backendu. Kontrolka, którą backend ignoruje, jest zakazana
-   (to „phantom"). Jeśli brakuje pokrycia w backendzie — rozbudowujesz backend
-   (osobnym, przetestowanym krokiem), nie udajesz działania. Wynik liczbowy zawsze
-   z solvera/backendu — ZERO fizyki w UI.
-
-4. **Nigdy nic na potem — braki uzupełniasz end-to-end (2026-07-18).** Wykryty brak
-   (zdolność bez dostawcy, brak powiązania, luka w łańcuchu) naprawiasz od razu, w
-   tej samej kolejce. Rejestr „do zlecenia" nie jest poczekalnią.
-
-5. **Audyt szerokiego grona ekspertów przed przebudową od zera (2026-07-18).** Dla
-   zadań jakościowych („zadanie dla fable, opcja max") najpierw wielosoczewkowy
-   audyt ekspercki (projektant sieci, zwarciowiec, zabezpieczenia, rozdzielnie,
-   katalogi/Reference Engine, przyłączenia/OZE, UX/IA), potem projekt i wdrożenie.
-   Wynik audytu zapisujesz jako wiążący dokument w `docs/uiux/`.
-
-6. **FLOW projektanta — stare ekrany nie są kanoniczne (2026-07-18).** Projektujesz
-   od etapu pracy inżyniera (E1–E8), wg kontraktu ekranu prowadzącego (cel jednym
-   zdaniem · tor pracy z akcjami naprawczymi · uczciwe stany zerowe · jawny następny
-   krok · język inżynierski: po co / z czego / co daje). Kanon V12.xx = rejestr
-   ZDOLNOŚCI, nie ekranów; `componentKey` jest metadaną dostawcy (podmiana Opcja 1).
-   Szczegóły: `mv-design-pro/docs/uiux/FLOW_PROJEKTANTA_2026-07.md`.
-
-7. **Reużycie zamiast duplikacji.** Wykorzystujesz istniejącą infrastrukturę
-   (szablony pól producentów / Reference Engine, gotowe pickery, kontrakty
-   kreatora stacji), zamiast tworzyć równoległe rozwiązania. „Po to było robione,
-   żeby to wykorzystać".
-
-8. **Pokazuj ekrany do oceny po każdym etapie (2026-07-18).** Po każdym scalonym
-   etapie UI publikujesz zrzuty ŻYWEJ aplikacji (oba motywy) na stałej stronie oceny
-   i traktujesz uwagi z oględzin jako karty naprawcze.
-
-9. **Rola: sesja główna zarządza, wykonawcy wykonują** (drzewo agentów na początku pliku). Piszesz karty z §0 rozstrzygnięć +
-   bramkami, delegujesz do wykonawców (worktree, commit BEZ push), niezależnie
-   weryfikujesz, cherry-pickujesz, uruchamiasz pełne potwierdzenia i pushujesz.
-   Wyjątek: zadania jakościowe oznaczone „tylko dla fable / opcja max" robisz osobiście.
-
-10. **Pełna autonomia.** Działasz jak architekt bez zatrzymywania: dzielisz zadania,
-    zlecasz kolejne karty, nie pytasz o pozwolenie. Ulepszasz i usuwasz braki/dług/błędy
-    aż do pełnego wdrożenia end-to-end. Myślisz jak inżynier projektujący sieci
-    energetyczne. Wyjątek: realne rozstrzygnięcia produktowe (AskUserQuestion).
-
-11. **Weryfikacja end-to-end przed scaleniem.** Zmiana warstwy → pełna regresja tej
-    warstwy (backend pytest, frontend vitest), type-check, lint, właściwe guardy,
-    determinizm/hash. Kontrakty FROZEN i determinizm nietknięte (nowe pola addytywne,
-    `exclude_none`; seed bez zmian dla istniejących payloadów).
-
-## Zasady inżynierskie (dyrektywa właściciela)
-
-1. Nie dbaj o kompatybilność wsteczną. Co przestarzałe, to usuń na amen – bez warstw kompatybilności, bez migracji, bez fallbacków.
-2. Wybierz najprostszą implementację, która spełnia bieżące potrzeby. Zero prewencyjnych abstrakcji, zero zbędnych warstw konfiguracyjnych.
-3. Dziel system na warstwy, ale stopniowo. Najpierw uruchom minimalną wersję end-to-end, potem dodawaj. Nigdy nie rozwalaj działającej rzeczy dla niedokończonej złożoności.
-4. Trzymaj komponenty modułowe, separuj odpowiedzialności.
-5. Stawiaj na dojrzałe, utrzymywane biblioteki. Bez konkretnego powodu nie przepisuj od zera.
-6. Najpierw sprawdź, co potrafią istniejące zależności w projekcie, zanim zaczniesz dodawać nowe pakiety czy pisać własne. Nie zakładaj z góry, że w bibliotekach niczego nie ma.
-7. Podejmuj decyzje architektoniczne z myślą o przyszłości. Nie akceptuj prowizorek w stylu „na razie tak, potem zmienimy".
-8. Sprawdź, jak dojrzałe produkty rozwiązują ten sam problem – korzystaj z zweryfikowanych wzorców, nie wymyślaj koła na nowo.
+In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`.
+
+**Jeden plan wykonawczy (konsolidacja 2026-10-23):** `mv-design-pro/PLANS.md` część A — stan bazowy (§B), jedna kolejka zadań P0–P3 (§C), rozstrzygnięcia sprzeczności (§D). Agent nie zakłada nowego programu, planu, roadmapy ani rejestru postępu; aktualizuje wiersz w §C. Programy operacyjne i nadrzędna misja domknięcia produktu (2026-09-09): `.claude/rules/dokumentacja-i-plany.md`.
+
+## Reguły rdzenia (skrót — pełne brzmienie i diagram warstw: `.claude/rules/rdzen-modelu.md`)
+
+Warstwy: Presentation (frontend, raporty, eksport) → Application (kreator, SLD, pre-check) → Domain (NetworkModel, ENM, Catalog, Case; mutacja modelu TYLKO tu) → Solver (fizyka TYLKO tu, WHITE BOX) → Analysis (interpretacja, bez fizyki).
+
+1. **NOT-A-SOLVER** — fizyka tylko w `network_model/solvers/**` (algebra wielkości pochodnych: `network_model/pochodne/**`; guard `backend_no_physics_guard.py`).
+2. **WHITE BOX** — każdy solver ujawnia kroki i wartości pośrednie; zakaz ukrytych korekt.
+3. **Single Model** — jeden NetworkModel na projekt; kreator i SLD edytują tę samą instancję.
+4. **Case Immutability** — Case nie mutuje modelu, niesie tylko parametry; nastawy bazowe zabezpieczeń są danymi modelu ENM (ADR-022).
+5. **BoundaryNode/PCC poza modelem fizycznym** — punkt przyłączenia to obiekt kontraktowy `GridConnectionPoint` (ADR-027; guard `pcc_zero_guard.py`).
+6. **Frozen Result API** — `ShortCircuitResult`/`PowerFlowResult` zmieniasz tylko z podniesieniem wersji głównej.
+7. **Determinizm** — to samo wejście → identyczne wyjście, stabilne odciski SHA-256.
+8. **Bez kryptonimów** (P7, P11, …) w UI, eksportach i artefaktach testów (`no_codenames_guard.py`).
+9. **Bez heurystyk** w solverach rozpływu i zabezpieczeń.
+10. **Wiązanie z katalogiem** — każdy element wskazuje typ katalogowy; zakaz wstrzykiwania parametrów z pominięciem katalogu.
+
+Ponadto (dawne „Important Warnings", pozycje bez odpowiednika w regułach 1–10):
+- **NEVER** bypass the ENM validator (`enm/validator.py`) + `CalculationReadiness` before a run (through `enm/canonical_analysis`) — ADR-025 ACCEPTED 2026-09-30, O-65; the former „NetworkValidator" rule was dead in code (`network_model/validation/validator.py` has 0 production consumers).
+- **ALWAYS** consult `docs/v12xx/KANON_V12_XX.md` and `docs/system/SPEC_*.md` before architectural changes; `docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` when adding/modifying network model elements.
+- **ALWAYS** run relevant guards before pushing changes (`.claude/rules/guardy-i-ci.md`).
+
+## Najważniejsze polecenia
+
+| Action | Command |
+|--------|---------|
+| Pełna regresja backendu (4 procesy jak CI) | `cd mv-design-pro/backend && poetry run pytest -q -n 4 --dist loadfile` |
+| Merge gate (tests selected by the change + invariant core + vitest related + `guardy_z_ci.py`; complements, does NOT replace the full run in CI — `ORKIESTRACJA_AGENTOW.md` §3a pkt 16) | `cd mv-design-pro/backend && poetry run python ../scripts/bramka_scalenia.py --baza <ref>` |
+| Format / lint Pythona | `cd mv-design-pro/backend && poetry run black src tests && poetry run ruff check src tests` |
+| Guardy z CI + ich self-testy | `cd mv-design-pro/backend && poetry run python ../scripts/guardy_z_ci.py` |
+| Testy frontendu (vitest + krok budżetów) | `cd mv-design-pro/frontend && npm test` |
+| Wybrane pliki vitest | `cd mv-design-pro/frontend && npx vitest run <ścieżki>` |
+| Type check / lint frontendu | `cd mv-design-pro/frontend && npm run type-check && npm run lint` |
+| e2e (real backend): pełne / ścieżka krytyczna | `cd mv-design-pro/frontend && npm run test:e2e` / `npm run test:e2e:real` |
+| Build frontendu | `cd mv-design-pro/frontend && npm run build` |
+| Serwisy deweloperskie (backend:18000, frontend:3000, postgres:5432) | `cd mv-design-pro && docker-compose up -d` |
+
+Szczegóły poleceń (pojedyncze testy, shardy e2e, zrzuty dokumentacji, mypy per pakiet): `.claude/rules/backend.md`, `.claude/rules/frontend.md`.
 
 ## Escalation
 
@@ -1089,39 +152,5 @@ bramki bezpieczeństwa) albo gdy hierarchia nie rozstrzyga — wtedy pytasz wła
 
 ## Git Workflow
 
-### Branch Naming
-- `main` - stable, tested
-- `develop` - integration
-- `feature/*` - new features
-- `refactor/*` - architectural changes
-- `fix/*` - bug fixes
-- `claude/*` - AI assistant branches
-
-### PR Requirements
-- Small, focused changes
-- Reference to ExecPlan step (if applicable)
-- Verification of compliance checklist
-- WHITE BOX tests included for solver changes
-- All CI workflows (see „CI/CD Pipelines") must pass
-
-## Quick Reference
-
-| Action | Command |
-|--------|---------|
-| Run backend tests | `cd mv-design-pro/backend && poetry run pytest -q -n 4 --dist loadfile` |
-| Merge gate (tests selected by the change + invariant core + vitest related + `guardy_z_ci.py`; complements, does NOT replace the full run in CI — `ORKIESTRACJA_AGENTOW.md` §3a pkt 16) | `cd mv-design-pro/backend && poetry run python ../scripts/bramka_scalenia.py --baza <ref>` |
-| Run frontend tests | `cd mv-design-pro/frontend && npm test` |
-| Run frontend tests (CI) | `cd mv-design-pro/frontend && npm run test:ci` |
-| Run e2e tests | `cd mv-design-pro/frontend && npm run test:e2e` |
-| Run e2e (real backend) | `cd mv-design-pro/frontend && npm run test:e2e:real` |
-| Type check frontend | `cd mv-design-pro/frontend && npm run type-check` |
-| Lint frontend | `cd mv-design-pro/frontend && npm run lint` |
-| Lint Python | `cd mv-design-pro/backend && poetry run ruff check src` |
-| Format Python | `cd mv-design-pro/backend && poetry run black src tests` |
-| Check codenames | `cd mv-design-pro && python scripts/no_codenames_guard.py` |
-| Check PCC guard | `cd mv-design-pro && python scripts/pcc_zero_guard.py` |
-| Check catalog binding | `cd mv-design-pro && python scripts/catalog_binding_guard.py` |
-| Check physics leaks | `cd mv-design-pro && python scripts/overlay_no_physics_guard.py` |
-| Check docs guard | `cd mv-design-pro && python scripts/docs_guard.py` |
-| Start dev servers | `cd mv-design-pro && docker-compose up -d` |
-| Build frontend | `cd mv-design-pro/frontend && npm run build` |
+- Branch naming: `main` (stable, tested), `develop` (integration), `feature/*` (new features), `refactor/*` (architectural changes), `fix/*` (bug fixes), `claude/*` (AI assistant branches).
+- PR requirements: small, focused changes; reference to ExecPlan step (if applicable); verification of compliance checklist; WHITE BOX tests included for solver changes; all CI workflows (`.claude/rules/guardy-i-ci.md`) must pass.
