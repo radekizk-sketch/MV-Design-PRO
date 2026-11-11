@@ -866,13 +866,16 @@ function ulozenieKadru(
  *     rośnie" zostaje tam bez zmian).
  *  2. **Prostokąt bezpieczny** — `safeInsets` jak w refit/kotwicy: cel nie chowa
  *     się pod dokami.
- *  3. **Poziom szczegółu wynika ze skali** — ta sama histereza co zoom
- *     (`lodFromScaleWithHysteresis` na `refScale`), z dolną granicą `minLod`
- *     (kadr stacji pokazuje wnętrze). Prostokąt celu brany jest z poziomu, na
- *     którym kamera kończy (stąd `anchorByLod`); poziom bez rysunku celu (`null`)
- *     jest pomijany. Pętla ma limit trzech obrotów, a gdy histereza zawraca na
- *     poziom już odwiedzony, wybierany jest NIŻSZY z dwóch — czysta arytmetyka,
- *     determinizm P7. Żadnego zejścia poziomu „dla zmieszczenia sąsiada".
+ *  3. **Poziom szczegółu wynika ze skali kadru, nie z poziomu sprzed akcji** —
+ *     progi `lodFromScale` na `refScale` (bez histerezy), start od najniższego
+ *     dostępnego poziomu, z dolną granicą `minLod` (kadr stacji pokazuje
+ *     wnętrze). Ten sam cel na tej samej kanwie daje ten sam kadr każdą drogą
+ *     (dwuklik, „Dopasuj widok", ponowienie po zmianie rozmiaru kanwy). Prostokąt
+ *     celu brany jest z poziomu, na którym kamera kończy (stąd `anchorByLod`);
+ *     poziom bez rysunku celu (`null`) jest pomijany. Pętla ma limit trzech
+ *     obrotów, a gdy progi zawracają na poziom już odwiedzony, wybierany jest
+ *     NIŻSZY z dwóch — czysta arytmetyka, determinizm P7. Żadnego zejścia poziomu
+ *     „dla zmieszczenia sąsiada".
  *  4. **Kadr podąża za rozmiarem kanwy** — stan pamięta akcję (`kadr`), a
  *     'resize' ponawia ją na nowym viewporcie i na nowych zasłonach (portal nN,
  *     mini-ścieżka, komunikat kadru), dopóki projektant nie ruszy kamery.
@@ -909,12 +912,17 @@ function applyKadr(state: CameraState, action: AkcjaKadru): CameraState {
     return (nizsze[nizsze.length - 1] ?? wyzsze[0]) as SceneLod;
   };
 
-  let lod: SceneLod = przyciagnij(state.lod, 'gora');
+  // SLD-CZYTELNOSC-STACJI (Dopasuj = dwuklik): poziom kadru jest funkcją SAMEJ akcji —
+  // start od najniższego dostępnego poziomu, progi bez histerezy. Histereza chroni przed
+  // migotaniem przy ciągłym zoomie; w kadrze uzależniała wynik od poziomu sprzed akcji
+  // (pomiar e2e 1440×900, stacja przelotowa: dwuklik L2 przy 1,03, „Dopasuj widok" L1
+  // przy 1,258 — dwuklik kadrował przed otwarciem inspektora i ponawiał kadr z L2).
+  let lod: SceneLod = dostepne[0];
   const odwiedzone = new Set<SceneLod>();
   for (let obrot = 0; obrot < 3; obrot += 1) {
     odwiedzone.add(lod);
     const scale = skalaKadru(anchorByLod[lod]!, viewportSize, safeInsets);
-    const surowy = lodFromScaleWithHysteresis(refScaleFor(scale, lod, lodBboxes), lod);
+    const surowy = lodFromScale(refScaleFor(scale, lod, lodBboxes));
     const nastepny = przyciagnij(surowy, surowy > lod ? 'gora' : 'dol');
     if (nastepny === lod) break;
     if (odwiedzone.has(nastepny)) {

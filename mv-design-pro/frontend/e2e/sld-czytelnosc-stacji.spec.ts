@@ -16,7 +16,8 @@
  *    proporcji albo brakiem miejsca, których slot leży w widocznym obszarze kanwy);
  *  - każdy narysowany opis w obszarze ma pismo ≥ 9 px ekranu;
  *  - odstęp sąsiednich równoległych tras (odpływów) w obszarze ≥ `MIN_ODSTEP_TRAS_PX`;
- *  - zacisk nN stacji ≥ `MIN_ZACISK_NN_PX`;
+ *  - zacisk nN stacji ≥ `MIN_ZACISK_NN_SWIAT` × skala kadru (portal nN z marginesem);
+ *  - „Dopasuj widok” daje ten sam kadr co dwuklik (skala i poziom szczegółu);
  *  - żaden przycisk paska narzędzi kanwy nie zawija etykiety i nie wychodzi poza kanwę;
  *  - w kadrze stacji (dwuklik, „Dopasuj widok”) każdy odpływ wychodzący za ramkę ma znak
  *    kontynuacji z nazwą celu („dalej: …”), opis ≥ 9 px i cały w widocznym obszarze kanwy.
@@ -47,9 +48,13 @@ const MIN_OPIS_PX = 9;
 /** Najmniejszy odstęp sąsiednich równoległych tras [px ekranu]: dwie kreski toru o grubości
  *  ~2 px muszą mieć między sobą wyraźne światło (≥ 3 grubości) — inaczej zlewają się w jedną. */
 const MIN_ODSTEP_TRAS_PX = 8;
-/** Najmniejsza długość zacisku nN [px ekranu]: szyna, a nie kreska — co najmniej szerokość
- *  portalu nN (32 j.św.) przy skali kadru stacji ~0,6. */
-const MIN_ZACISK_NN_PX = 24;
+/** Najmniejsza długość zacisku nN [j.św.]: szyna, a nie kreska — szerokość portalu nN
+ *  (`LV_PORTAL_WIDTH` = 32) i krok siatki z każdej strony (`LV_TERMINAL_MIN_HALF` = 24,
+ *  `layout/measure.ts`). Kryterium karty jest proporcją do portalu, więc na ekranie
+ *  porównujemy z tą długością razy skala kadru (pierwsza wersja specu miała próg bezwzględny
+ *  24 px, wyprowadzony z założonej skali ~0,6 — przy kadrze stacji odgałęźnej w oknie
+ *  1280×720 skala wynosi 0,451, a zacisk 48 j.św. ma tam 21,7 px). */
+const MIN_ZACISK_NN_SWIAT = 48;
 
 const OKNA = [
   { klucz: '1440x900', width: 1440, height: 900, zrzuty: true },
@@ -341,10 +346,16 @@ for (const okno of OKNA) {
           expect.soft(pomiar.opisyPonizejProgu, `${opis}: opisy poniżej ${MIN_OPIS_PX} px`).toEqual([]);
           expect.soft(pomiar.minOdstepTrasPx ?? Infinity, `${opis}: odstęp tras (${pomiar.paraTras})`).toBeGreaterThanOrEqual(MIN_ODSTEP_TRAS_PX);
           if (stacja.plik !== 'gpz') {
-            expect.soft(pomiar.zaciskNnPx ?? 0, `${opis}: zacisk nN`).toBeGreaterThanOrEqual(MIN_ZACISK_NN_PX);
+            expect.soft(pomiar.zaciskNnPx ?? 0, `${opis}: zacisk nN`).toBeGreaterThanOrEqual(MIN_ZACISK_NN_SWIAT * pomiar.skala - 0.5);
           }
           expect.soft(pomiar.przyciskiZawiniete, `${opis}: przyciski paska zawinięte`).toEqual([]);
           expect.soft(pomiar.przyciskiPozaKanwa, `${opis}: przyciski paska poza kanwą`).toEqual([]);
+          if (droga === 'dopasuj') {
+            // Karta (A): „Dopasuj widok” = dwuklik — ten sam kadr (skala i poziom szczegółu).
+            const dwuklik = pomiary[`${stacja.plik}-dwuklik`];
+            expect.soft(pomiar.lod, `${opis}: poziom jak po dwukliku`).toBe(dwuklik?.lod);
+            expect.soft(pomiar.skala, `${opis}: skala jak po dwukliku`).toBeCloseTo(dwuklik?.skala ?? NaN, 3);
+          }
           if (droga !== 'kolko') {
             expect.soft(pomiar.odejscia.length, `${opis}: znaki kontynuacji odpływów`).toBeGreaterThan(0);
             expect.soft(pomiar.odejscia.every((t) => /^dalej: .+/.test(t)), `${opis}: opis odejścia z nazwą celu`).toBe(true);

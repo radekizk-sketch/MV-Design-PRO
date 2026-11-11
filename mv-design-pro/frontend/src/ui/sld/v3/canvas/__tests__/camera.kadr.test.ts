@@ -4,7 +4,9 @@
  *
  * Cechy iloczynu (każda kombinacja ma tu przypadek):
  *  - kierunek skali: cel mały (kadr PRZYBLIŻA) × cel duży (kadr oddala);
- *  - poziom szczegółu: histereza zoomu × dolna granica `minLod` × poziom bez
+ *  - poziom szczegółu: progi bez histerezy, wynik niezależny od poziomu i skali
+ *    sprzed akcji oraz od ponowienia na innej kanwie (Dopasuj = dwuklik) ×
+ *    stabilność wobec histerezy zoomu × dolna granica `minLod` × poziom bez
  *    rysunku celu (`null`) × poziom wymuszony (`wymuszonyLod`);
  *  - prostokąt bezpieczny: bez zasłon × z zasłonami (`safeInsets`);
  *  - poziom niższy: na wybranym poziomie sąsiedzi nierozwiązywalni × zejście
@@ -136,6 +138,37 @@ describe("akcja 'kadruj' — skala i poziom szczegółu", () => {
         expect(lodFromScaleWithHysteresis(refScaleFor(po.transform.scale, po.lod, swiat), po.lod)).toBe(po.lod);
       }
     }
+  });
+
+  it('SLD-CZYTELNOSC-STACJI (Dopasuj = dwuklik): kadr jest funkcją akcji — ten sam przy każdym poziomie i skali sprzed akcji oraz po ponowieniu na innej kanwie', () => {
+    // Iloczyn: szerokość celu (przez każdy próg poziomu) × minLod {brak, 1} × stan
+    // przed akcją {L0 0,2; L1 0,8; L2 1,6; L2 0,9 — wewnątrz pasma histerezy} ×
+    // droga {kadr na kanwie docelowej; kadr na kanwie szerokiej, potem zmiana
+    // rozmiaru na docelową — dwuklik przed otwarciem inspektora}.
+    const szeroka = { width: 1600, height: 1000 } as const;
+    const waska = { width: 1100, height: 700 } as const;
+    const przed: readonly [number, SceneLod][] = [[0.2, 0], [0.8, 1], [1.6, 2], [0.9, 2], [1.3, 1]];
+    let rozneOdHisterezy = 0;
+    for (const szerokosc of [50, 400, 700, 900, 1200, 1500, 3000, 8000, 30000]) {
+      for (const minLod of [undefined, 1] as const) {
+        const akcja = (viewportSize: { width: number; height: number }) =>
+          kadr(cel(szerokosc), { viewportSize, ...(minLod !== undefined ? { minLod } : {}) });
+        const wzorzec = cameraReducer({ ...stan(0.2, 0), viewportSize: waska }, akcja(waska));
+        for (const [skala, lod] of przed) {
+          const wprost = cameraReducer({ ...stan(skala, lod), viewportSize: waska }, akcja(waska));
+          expect(wprost.transform, `${szerokosc} ${minLod} ${lod}@${skala}`).toEqual(wzorzec.transform);
+          expect(wprost.lod).toBe(wzorzec.lod);
+          const najpierwSzeroka = cameraReducer({ ...stan(skala, lod), viewportSize: szeroka }, akcja(szeroka));
+          const poZmianie = cameraReducer(najpierwSzeroka, { type: 'resize', viewportSize: waska });
+          expect(poZmianie.transform, `${szerokosc} ${minLod} ${lod}@${skala} po zmianie kanwy`).toEqual(wzorzec.transform);
+          expect(poZmianie.lod).toBe(wzorzec.lod);
+          if (najpierwSzeroka.lod !== wzorzec.lod) rozneOdHisterezy += 1;
+        }
+      }
+    }
+    // Fikstura ćwiczy przypadek, w którym kanwa szeroka daje inny poziom niż wąska
+    // (inaczej ponowienie kadru nie mogłoby ujawnić zależności od poziomu sprzed akcji).
+    expect(rozneOdHisterezy).toBeGreaterThan(0);
   });
 
   it('minLod: kadr stacji pokazuje WNĘTRZE — nigdy poziom niższy niż minLod, choć cel zmieściłby się na L0', () => {
