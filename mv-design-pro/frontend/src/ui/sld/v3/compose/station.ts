@@ -647,18 +647,27 @@ function buildBayStack(
   // `undefined` na ścieżce konwencji) przekazany 1:1 — prymat danych §12.1.
   const itemDesignations = items.map((item) => item.designation);
   // Teksty oznaczeń — `opisyAparatowPolaStacji` (ta sama funkcja co rezerwacja kolumny oznaczeń).
-  const identifierTexts = opisyAparatowPolaStacji(bay).map((o) => o.oznaczenie);
-  const identifierSources = apparatusIdentifierSources(items.map((item) => item.symbolId), itemDesignations);
+  const opisyAparatow = opisyAparatowPolaStacji(bay);
+  const identifierTexts = opisyAparatow.map((o) => o.oznaczenie);
+  // Pochodzenie oznaczenia: konwencja §19.1 albo dana; aparat bez identyfikatora konwencji ma
+  // oznaczenie wyłącznie z rekordu (`opisyAparatowPolaStacji`) — 'dane'.
+  const identifierSources = apparatusIdentifierSources(items.map((item) => item.symbolId), itemDesignations).map(
+    (zrodlo, i) => zrodlo ?? (identifierTexts[i] ? ('dane' as const) : null),
+  );
+  // Poziom szczegółu oznaczenia (przekładniki od LOD1, reszta LOD2) — ta sama reguła co pole GPZ.
+  const identifierOdLod = opisyAparatow.map((o) => o.odLod);
 
   const stackItems = plan.mainSequenceIndices.map((i) => items[i]);
   const stackIdentifiers = plan.mainSequenceIndices.map((i) => identifierTexts[i]);
   const stackIdentifierSources = plan.mainSequenceIndices.map((i) => identifierSources[i]);
+  const stackIdentifierOdLod = plan.mainSequenceIndices.map((i) => identifierOdLod[i]);
   const mainItems = stackItems;
   const laterals = plan.laterals.map((lat) => ({
     item: items[lat.sequenceIndex],
     afterMainIndex: lat.afterMainIndex,
     identifier: identifierTexts[lat.sequenceIndex],
     identifierSource: identifierSources[lat.sequenceIndex],
+    identifierOdLod: identifierOdLod[lat.sequenceIndex],
   }));
   // UX-04/POLE-LINIOWE-WZORZEC: pole z portami ENM — przewody i odgałęzienia WYŁĄCZNIE tam,
   // gdzie porty leżą na wspólnym węźle (ta sama reguła co `compose/gpz.ts::buildFieldStack`).
@@ -670,7 +679,12 @@ function buildBayStack(
   // całego pola (`wierszeOpisowPola` potrzebuje wszystkich wierszy pola naraz).
   const oznaczeniaInstancji = new Map<
     ComposedSymbolInstance,
-    { readonly ownerRef: string; readonly text: string; readonly designationSource: SimpleAnchoredOwnerInput['designationSource'] }
+    {
+      readonly ownerRef: string;
+      readonly text: string;
+      readonly designationSource: SimpleAnchoredOwnerInput['designationSource'];
+      readonly odLod: SimpleAnchoredOwnerInput['odLod'];
+    }
   >();
   // Położenia pionowe toru głównego — `polozeniaToruGlownego` (ta sama reguła co plan
   // `bayApparatusPlanFootprint` i pole GPZ; aparat za kotwicą odgałęzienia toru pod jego pasem).
@@ -719,6 +733,7 @@ function buildBayStack(
         // Z3 (spec §12.1): pochodzenie identyfikatora na etykietę — wyrocznia
         // sceny rozróżnia DANĄ producencką (np. „F1"/„TR") od wzorca konwencji.
         designationSource: stackIdentifierSources[index] ?? undefined,
+        odLod: stackIdentifierOdLod[index],
       });
     }
 
@@ -758,7 +773,7 @@ function buildBayStack(
   if (laterals.length > 0) {
     const odstepy = uklad.boczne;
     const odczepy: (OdczepBoczny & { readonly ownerRef: string })[] = [];
-    laterals.forEach(({ item, afterMainIndex, identifier, identifierSource }, lateralIndex) => {
+    laterals.forEach(({ item, afterMainIndex, identifier, identifierSource, identifierOdLod: lateralOdLod }, lateralIndex) => {
       const def = SYMBOL_DEFS[item.symbolId];
       const anchor = kotwicaToru(afterMainIndex);
       const x = mainRightX + odstepy[lateralIndex];
@@ -798,6 +813,7 @@ function buildBayStack(
           ownerRef: `${bay.bayRef}#apparatus-id-${item.symbolId}-lateral-${lateralIndex}`,
           text: identifier,
           designationSource: identifierSource ?? undefined,
+          odLod: lateralOdLod,
         });
       }
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
@@ -858,6 +874,7 @@ function buildBayStack(
         ownerRef: `${bay.bayRef}#apparatus-id-${pozycja.symbolId}-odgalezienie-${numer}-${pozycja.sequenceIndex}`,
         text: identifier,
         designationSource: identifierSource ?? undefined,
+        odLod: identifierOdLod[pozycja.sequenceIndex],
       });
     });
     if (rysunek.odczep) {
@@ -924,6 +941,7 @@ function buildBayStack(
       wyrownanieTekstu: 'poczatek',
       designationSource: oznaczenie.designationSource,
       symbolOpisu: prostokatSymbolu(instance),
+      ...(oznaczenie.odLod ? { odLod: oznaczenie.odLod } : {}),
     });
   });
   const kolumnaPrzekladniX = kolumnaX + pasy.oznaczenia;

@@ -5817,14 +5817,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       ? simpleAnchored
       : simpleAnchored.filter(
           (owner) =>
-            !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#apparatus-id-'))
-            // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET pola GPZ — ta sama reguła
-            // poziomu szczegółu co identyfikatory aparatów stacji; etykieta stanu nieznanego
-            // (`unresolved`) zostaje na każdym LOD (stan łącznika nie znika z rysunku).
-            // Odbiór B-02 (pkt 6): oznaczenia przekładników (`odLod: 1`) zostają na LOD1.
-            && !(
+            // Oznaczenia aparatów pola — pole stacji (`#apparatus-id-`) i pole GPZ
+            // (`#etykieta-aparatu-`) JEDNĄ regułą poziomu szczegółu: LOD2, oznaczenia przekładników
+            // (`odLod: 1`, odbiór B-02 pkt 6) od LOD1; etykieta stanu nieznanego (`unresolved`)
+            // zostaje na każdym LOD (stan łącznika nie znika z rysunku).
+            !(
               owner.ownerKind === 'apparatus'
-              && owner.ownerRef.includes('#etykieta-aparatu-')
+              && (owner.ownerRef.includes('#apparatus-id-') || owner.ownerRef.includes('#etykieta-aparatu-'))
               && !owner.unresolved
               && (owner.odLod ?? 2) > lod
             )
@@ -6757,8 +6756,13 @@ export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdent
   // WYŁĄCZNIE przez `compose/station.ts`; GPZ, `compose/gpz.ts`, POZA
   // autoryzacją F10.2 — własne oznaczniki `bayNumber`/`feederName` zostają
   // niezmienione, patrz raport F10.2, „WIEDZA NADZORCY O TERENIE").
+  // Uprawnione: aparat z identyfikatorem konwencji §19.1 (lista wyżej) ALBO aparat bez
+  // identyfikatora konwencji (przekładnik prądowy, głowica kablowa, wskaźnik napięcia), którego
+  // rekord niesie oznaczenie (`designationSource === 'dane'`) — wzorzec właściciela 2026-11-05:
+  // oznaczenia WSZYSTKICH aparatów pola w kolumnie oznaczeń (`compose/kolumnaOpisowPola.ts`
+  // `opisyAparatowPolaStacji`; karta RAMKA-PRZEKAZNIKA, następca 2026-11-11).
   const eligible = scene.symbols.filter(
-    (s) => IDENTIFIER_ELIGIBLE_SYMBOLS.has(rodzajSymbolu(s.symbolId))
+    (s) => (IDENTIFIER_ELIGIBLE_SYMBOLS.has(rodzajSymbolu(s.symbolId)) || s.meta?.designationSource === 'dane')
       && (s.meta?.elementKind === 'apparatus' || s.meta?.elementKind === 'transformer')
       && s.meta?.apparatusSource != null,
   );

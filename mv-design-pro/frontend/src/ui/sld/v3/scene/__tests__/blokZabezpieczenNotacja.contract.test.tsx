@@ -7,12 +7,10 @@
  * pierwszego łącznika pola).
  *
  * Iloczyn cech: rodzaj pola {GPZ z powiązaniami obwodów wtórnych, GPZ bez powiązań, pole
- * liniowe stacji SN, sprzęgło, pole transformatorowe, pole źródła OZE} × liczba kodów
- * {0, 1, 2, 7} × LOD {0, 1, 2} × motyw {ciemny, jasny}. Pola stacji to celki katalogu
- * konfiguracji (`fieldConfigurationsCatalog.json`) wstrzyknięte do pola stacji sieci
- * `sldSubstrate52s` (wzorzec macierzy W1c), z przypisaniem zabezpieczenia wskazującym wyłącznik
- * celki; pola GPZ — fikstury Z.10 (powiązania obwodów wtórnych szablonu ENEA) i ścieżki danych
- * zabezpieczeń (bez powiązań).
+ * liniowe stacji SN, sprzęgło, pole transformatorowe, pole źródła OZE, pole źródła OZE w GPZ,
+ * pole toru transformatora GPZ} × liczba kodów {0, 1, 2, 7} × LOD {0, 1, 2} × motyw {ciemny,
+ * jasny}. Fikstury pól — `fixtures/polaZFunkcjamiEaz.ts` (jedno źródło z kontraktem kolumny
+ * opisów pola, `kolumnaOpisowPolaKlasa.contract.test.ts`).
  *
  * Wyrocznie (niezależne od kompozytora — geometria z meta sceny, porty z definicji symboli):
  *  (a) na scenie nie ma okręgu przekaźnika — każdy symbol `protectionRelay` niesie ramkę, glif
@@ -37,15 +35,10 @@
  * wysokości kolumny, `layout/measure.ts`) — na każdym bloku stacji fikstury 52 stacji i na
  * iloczynie rodzaj pola stacji × liczba kodów.
  */
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import type { Bay, BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/enm';
-import { polaSnStacji } from '../../../../shared/polaStacji';
+import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { daneGlifuSymbolu, type PreviewSymbol } from '../../compose/preview';
 import { GRID, type V3Rect } from '../../core/grid';
 import { gabarytSymbolu, ramkaBlokuSymbolu, ramkaBlokuZWierszy } from '../../symbols/blokZabezpieczen';
@@ -57,24 +50,18 @@ import type { ThemeMode } from '../../../../../ui2/theme/themeMode';
 import { buildSceneV3, protectionMarkingGaps, symbolWireCollisions, type SceneV3 } from '../buildScene';
 import { dolRamkiBlokuPolaStacji } from '../../compose/blokZabezpieczenPola';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
-import { buildW1cCases } from './fixtures/w1cMatrixCatalog';
+import {
+  BAZA_STACJI,
+  poleGpz,
+  poleOzeGpz,
+  poleStacji,
+  poleTorTransformatoraGpz,
+  SCIEZKA_DANYCH,
+  Z10,
+  zasilane,
+  type PrzypadekPola,
+} from './fixtures/polaZFunkcjamiEaz';
 import { naruszeniaKodowRamki, naruszeniaOpisowPola, zachodzi } from './wyroczniaOpisowPola';
-
-const here = dirname(fileURLToPath(import.meta.url));
-const FRONTEND = resolve(here, '../../../../../..');
-
-function model(sciezka: string): EnergyNetworkModel {
-  const raw = JSON.parse(readFileSync(resolve(FRONTEND, sciezka), 'utf8')) as Record<string, unknown>;
-  for (const kandydat of [raw, raw.enm, raw.snapshot]) {
-    const enm = kandydat as Partial<EnergyNetworkModel> | undefined;
-    if (enm && Array.isArray(enm.buses) && Array.isArray(enm.branches)) return enm as EnergyNetworkModel;
-  }
-  throw new Error(`brak modelu ENM w ${sciezka}`);
-}
-
-const Z10 = model('src/harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json');
-const SCIEZKA_DANYCH = model('src/ui/sld/v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json');
-const BAZA_STACJI = model('src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json');
 
 /** Listy kodów ze słownika funkcji EAZ (`funkcje_eaz.py`) — 0, 1, 2 i 7 funkcji. */
 const KODY: Readonly<Record<0 | 1 | 2 | 7, readonly string[]>> = {
@@ -87,55 +74,15 @@ const LICZBY_KODOW = [0, 1, 2, 7] as const;
 const LODY = [0, 1, 2] as const;
 const MOTYWY: readonly ThemeMode[] = ['dark_scada', 'light_technical'];
 
-interface PrzypadekPola {
-  readonly enm: EnergyNetworkModel;
-  readonly bayRef: string;
-}
-
 type RodzajPola =
   | 'GPZ z powiązaniami obwodów wtórnych'
   | 'GPZ bez powiązań'
   | 'pole liniowe stacji SN'
   | 'sprzęgło'
   | 'pole transformatorowe'
-  | 'pole źródła OZE';
-
-const kopia = (enm: EnergyNetworkModel): EnergyNetworkModel => structuredClone(enm);
-const zasilane = (b: Bay): boolean => (b.primary_devices ?? []).some((d) => (d.funkcje_eaz_zasilane ?? []).length > 0);
-
-/** Pole GPZ fikstury: kody pola podmienione na `kody`; pozostałe pola bez zmian. */
-function poleGpz(baza: EnergyNetworkModel, wybor: (b: Bay) => boolean, kody: readonly string[]): PrzypadekPola {
-  const enm = kopia(baza);
-  const bay = (enm.bays ?? []).find((b) => b.gpz_section_id && (b.primary_devices ?? []).length > 0 && wybor(b))!;
-  bay.protection_codes = [...kody];
-  return { enm, bayRef: bay.ref_id };
-}
-
-/** Celka katalogu wstrzyknięta do pierwszego pola SN pierwszej stacji sieci `sldSubstrate52s`
- *  (wzorzec W1c), z przypisaniem zabezpieczenia wskazującym wyłącznik i przekładnik celki. */
-function poleStacji(configRef: string, kody: readonly string[]): PrzypadekPola {
-  const przypadek = buildW1cCases().find((c) => c.configId === `${configRef}::zamkniety`)!;
-  const enm = kopia(BAZA_STACJI);
-  const stacja = [...(enm.substations as unknown as { ref_id: string; station_type?: string }[])]
-    .filter((s) => ['branch', 'inline', 'terminal'].includes(s.station_type ?? ''))
-    .sort((a, b) => a.ref_id.localeCompare(b.ref_id))[0];
-  const host = [...polaSnStacji(enm, stacja.ref_id)].sort((a, b) => a.ref_id.localeCompare(b.ref_id))[0] as Bay;
-  host.primary_devices = przypadek.devices.map((d) => ({ ...d })) as BayPrimaryDevice[];
-  host.config_id = przypadek.configId;
-  host.protection_codes = [...kody];
-  const wylacznik = przypadek.devices.find((d) => d.kind === 'CB' || d.kind === 'LOAD_SWITCH');
-  const przekladnik = przypadek.devices.find((d) => d.kind === 'CT');
-  if (kody.length > 0 && wylacznik) {
-    const wzor = (SCIEZKA_DANYCH.protection_assignments ?? [])[0];
-    const ref = `${host.ref_id}/prot`;
-    enm.protection_assignments = [
-      ...(enm.protection_assignments ?? []),
-      { ...structuredClone(wzor), id: `${ref}-id`, ref_id: ref, breaker_ref: wylacznik.device_ref, ct_ref: przekladnik?.device_ref ?? null },
-    ];
-    host.protection_ref = ref;
-  }
-  return { enm, bayRef: host.ref_id };
-}
+  | 'pole źródła OZE'
+  | 'pole źródła OZE w GPZ'
+  | 'pole toru transformatora GPZ';
 
 const RODZAJE: readonly (readonly [RodzajPola, (kody: readonly string[]) => PrzypadekPola])[] = [
   ['GPZ z powiązaniami obwodów wtórnych', (k) => poleGpz(Z10, zasilane, k)],
@@ -144,6 +91,8 @@ const RODZAJE: readonly (readonly [RodzajPola, (kody: readonly string[]) => Przy
   ['sprzęgło', (k) => poleStacji('kanoniczny:bay_template_coupler', k)],
   ['pole transformatorowe', (k) => poleStacji('kanoniczny:bay_template_transformer', k)],
   ['pole źródła OZE', (k) => poleStacji('kanoniczny:bay_template_der_pv', k)],
+  ['pole źródła OZE w GPZ', (k) => poleOzeGpz(k)],
+  ['pole toru transformatora GPZ', (k) => poleTorTransformatoraGpz(k)],
 ];
 
 type SymbolSceny = SceneV3['symbols'][number];

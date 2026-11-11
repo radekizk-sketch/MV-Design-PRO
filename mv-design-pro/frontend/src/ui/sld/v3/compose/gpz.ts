@@ -41,7 +41,7 @@
  * rozwija gramatyki pól WN poza polem TR).
  */
 
-import { GRID, rectsOverlap, snapDown, snapToGrid, snapUp, type V3Rect } from '../core/grid';
+import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
 import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
 import {
   LABEL_TYPOGRAPHY,
@@ -53,7 +53,7 @@ import {
   measureTextWidth,
 } from '../core/text';
 import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../canvas/camera';
-import { SYMBOL_DEFS, czySymbolQet, obrysSymbolu, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { SYMBOL_DEFS, obrysSymbolu, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { BayPrimaryDeviceKind, StanObiektu } from '../../../../types/enm';
 import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
@@ -119,7 +119,6 @@ import {
   PROTECTION_FULL_LIST_LABEL_CLASS,
   czyPrzekaznikZPowiazaniamiObwodow,
   odniesieniaPrzekaznikaPola,
-  protectionDeviceCenter,
   resolveCtRatingAnnotations,
   resolveStationProtectionMarking,
   resolveVtMountingAnnotations,
@@ -128,10 +127,15 @@ import {
   type ResolvedCtRatingAnnotation,
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
-import { pasyOpisowPola, prostokatSymbolu, wierszeOpisowPola, type PasyOpisowPola } from './kolumnaOpisowPola';
+import {
+  pasyOpisowPola,
+  prostokatSymbolu,
+  RODZAJE_PRZEKLADNIKOW_OD_LOD1,
+  wierszeOpisowPola,
+  type PasyOpisowPola,
+} from './kolumnaOpisowPola';
 import {
   elementyBlokuZabezpieczen,
-  portWtornyWSwiecie,
   prostokatyOdcinkow,
   protectionAnnotationColumnWidth,
   ulozBlokZabezpieczenPola,
@@ -989,11 +993,6 @@ interface SectionLayout {
  *  nieustalony z „?" jest silniejszym nośnikiem niż podpis, a podpis dublował treść). */
 export const KLASA_ETYKIETY_APARATU_GPZ = 't3';
 
-/** Rodzaje aparatów pola, których oznaczenie (T1, T2, T3) jest na rysunku od LOD1 — odbiór B-02
- *  właściciela 2026-11-04 pkt 6: „LOD0 — same symbole; LOD1 — oznaczenia (T1, T2, T3); LOD2 —
- *  krótkie przekładnie”. Pozostałe podpisy aparatów i przekładnie — LOD2. */
-export const RODZAJE_PRZEKLADNIKOW_OD_LOD1: ReadonlySet<string> = new Set(['CT', 'VT', 'CORE_BALANCE_CT']);
-
 /** Klasa pisma oznaczeń zacisków pierwotnych przekładnika prądowego (P1/P2) — pismo danych
  *  t4, drobniejsze od oznaczenia aparatu, jak dopiski zacisków na rysunku ENEA Z.10/Z.11.1. */
 export const KLASA_ZACISKU_PRZEKLADNIKA_GPZ = 't4';
@@ -1007,20 +1006,19 @@ interface TekstEtykietyAparatuGpz {
 }
 
 /**
- * Etykiety aparatów pola GPZ rysowanego symbolami QET (wzorzec pola liniowego ENEA Z.10,
- * karta UX-04/POLE-LINIOWE-WZORZEC): oznaczenie aparatu z rekordu (`designation`, np. Q1, Q0,
- * T1, P1, GK, T2), inaczej identyfikator konwencji §19.1. Stan łącznika NIE wchodzi do
- * podpisu (kafel stanu, rozszerzenie 5). Pole bez symboli QET — bez etykiet
- * (tożsamość pola niesie oznacznik pola, jak dotąd). Index-aligned do `spec`.
+ * Oznaczenia aparatów pola GPZ (wzorzec pola liniowego ENEA Z.10, karta UX-04/POLE-LINIOWE-WZORZEC;
+ * wzorzec właściciela 2026-11-05 „Opisy pól po lewej”): oznaczenie aparatu z rekordu
+ * (`designation`, np. Q1, Q0, T1, P1, GK, T2), inaczej identyfikator konwencji §19.1. Stan
+ * łącznika NIE wchodzi do podpisu (kafel stanu, rozszerzenie 5). Każdy aparat z rekordem ma
+ * oznaczenie — niezależnie od tego, czy pole rysuje się symbolami QET, czy kanonicznymi (karta
+ * RAMKA-PRZEKAZNIKA, następca 2026-11-11: dawny warunek „pole bez symboli QET — bez etykiet”
+ * zostawiał bez kolumny opisów pola GPZ z blokiem zabezpieczeń rysowane symbolami
+ * kanonicznymi — sonda 59 fikstur: 8 bloków GPZ bez kolumny, w tym pola liniowe i TR ścieżki
+ * danych zabezpieczeń, pole BKR i pola źródeł OZE w GPZ). Pozycja bez rekordu (zakończenie toru
+ * `bayReserve`) — bez oznaczenia. Index-aligned do `spec`.
  */
 function tekstyEtykietAparatowGpz(spec: readonly FieldApparatusSpec[]): readonly TekstEtykietyAparatuGpz[] {
   const brak: TekstEtykietyAparatuGpz = { tekst: null, najdluzszy: null };
-  // Konwencja QET rozpoznawana po aparatach Z REKORDEM: zakończenie toru (`bayReserve`,
-  // odejście kablowe poza modelem) jest symbolem QET bez rekordu i stoi także w torze rysowanym
-  // symbolami kanonicznymi — nie może przełączać konwencji podpisów pola.
-  if (!spec.some((pozycja) => pozycja.device != null && czySymbolQet(pozycja.symbolId))) {
-    return spec.map(() => brak);
-  }
   const identyfikatory = apparatusIdentifiers(
     spec.map((pozycja) => pozycja.symbolId),
     spec.map((pozycja) => pozycja.device?.designation),
@@ -1047,6 +1045,17 @@ export function oznaczenieZPrzedrostkiemPola(numerPola: string | null, oznaczeni
   if (numer.length === 0) return oznaczenie;
   const zPrzedrostkiem = oznaczenie.startsWith(numer) && /^[A-Za-z]/.test(oznaczenie.slice(numer.length));
   return zPrzedrostkiem ? oznaczenie : `${numer}${oznaczenie}`;
+}
+
+/** Kolumna przekładni pola GPZ (`kolumnyOpisowPolaGpz` → `adnotacjePolaGpz`): lewa krawędź,
+ *  opisy przekładników rozstrzygnięte na narysowany stos (tabliczki, potem montaż VT — jedna
+ *  rozdzielczość dla wierszy i rysunku) i środek wiersza każdego opisu, index-aligned do
+ *  `[...opisyCt, ...opisyVt]`. */
+interface KolumnaPrzekladniPolaGpz {
+  readonly x: number;
+  readonly opisyCt: readonly ResolvedCtRatingAnnotation[];
+  readonly opisyVt: readonly ReturnType<typeof resolveVtMountingAnnotations>[number][];
+  readonly wierszeOpisow: readonly number[];
 }
 
 /** Kolumny opisów pola GPZ i pas oznaczeń zacisków P1/P2 [j.św.] — `szerokosc` = odległość
@@ -1092,7 +1101,7 @@ function pasyOpisowPolaGpz(spec: readonly FieldApparatusSpec[]): PasyOpisowPolaG
  * Zaciski pierwotne przekładników prądowych toru głównego pola GPZ (PN-EN 61869-2: P1, P2;
  * karta UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta §11.7 pkt 6), index-aligned do `spec`;
  * `null` = aparat bez oznaczeń. Oznaczenia dostaje aparat rodzaju `currentTransformer` toru
- * głównego, który (1) ma podpis (konwencja QET pola GPZ, `tekstyEtykietAparatowGpz`), (2) niesie
+ * głównego, który (1) ma oznaczenie (`tekstyEtykietAparatowGpz` — każdy aparat z rekordem), (2) niesie
  * w rekordzie oba porty z węzłem (`zaciskiPierwotneWTorze`) i (3) jest wpięty w tor przewodem
  * od strony szyny albo odpływu (`czyWspolnyWezelToru` — ta sama reguła co przewód toru,
  * `przewodyToruZPortow`; pierwszy aparat toru — port `we` na węźle szyny, `czyTorOdSzyny`). Tor
@@ -1210,30 +1219,6 @@ function oznaczenieZaciskuPrzekladnika(
     }),
   );
   return kandydaci.find((k) => !przeszkody.some((p) => rectsOverlap(k.rect, p))) ?? kandydaci[0];
-}
-
-/** Zacisk obwodu wtórnego aparatu w świecie (`SymbolDef.secondaryPorts`). */
-/** Liczba kroków po pół oczka w górę i w dół od wysokości wyjściowej tabliczki przekładnika
- *  (kandydaci wysokości przycięci potem do pasa symbolu ± oczko). */
-const MAKS_KROKOW_TABLICZKI = 24;
-
-/** Kolejne poszerzenia pasa wysokości tabliczki przekładnika względem obrysu symbolu. */
-const POSZERZENIA_PASA_TABLICZKI = [GRID, 2 * GRID, 3 * GRID, 4 * GRID] as const;
-
-/**
- * Wysokość kotwicy adnotacji przekładnika prądowego (tabliczka albo pomiar, §18.3) po prawej
- * toru. Przekładnik rysowany symbolem z zaciskiem wtórnym skierowanym na wschód
- * (`qetCurrentTransformer`, ENEA Z.10/Z.11.1) wyprowadza z tego zacisku poziomą linię
- * pomiarową do przekaźnika — adnotacja stoi wtedy w wierszu siatki NAD tą linią (dolna krawędź
- * tuszu co najmniej ćwierć oczka nad przewodem), a nie na wysokości środka symbolu, która
- * wypada na przewodzie (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6). Symbol bez takiego
- * zacisku (kanoniczny `currentTransformer`) — środek symbolu, jak dotąd.
- */
-function wysokoscAdnotacjiPrzekladnika(aparat: PlacedStackDevice, srodekY: number): number {
-  const zacisk = portWtornyWSwiecie(aparat, 'wtorny');
-  if (zacisk === null || zacisk.dir !== 'E') return srodekY;
-  const wysokosc = labelLineHeight(PROTECTION_FULL_LIST_LABEL_CLASS);
-  return snapDown(zacisk.y - GRID / 4 - wysokosc) + wysokosc / 2;
 }
 
 /** F9.9 R-1: szerokość kolumny adnotacji zabezpieczeń pola GPZ — TA SAMA
@@ -1589,8 +1574,12 @@ function zasiegWiezy(transformer: CanonicalGpzTransformer): ZasiegWiezy {
     lewo = Math.max(lewo, polowa);
     prawo = Math.max(prawo, plan.width - polowa);
     if (pole) {
+      // Kolumny opisów pola przy jego lewej krawędzi (`pasyOpisowPolaGpz` — ta sama funkcja co
+      // rysunek, `kolumnyOpisowPolaGpz`): zasięg w lewo o pasy, w prawo — reszta kolumny pola.
+      const pasy = pasyOpisowPolaGpz(specyfikacja).szerokosc;
       const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
-      prawo = Math.max(prawo, snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)) - polowa);
+      lewo = Math.max(lewo, polowa + pasy);
+      prawo = Math.max(prawo, snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)) - pasy - polowa);
     }
   }
   prawo = Math.max(prawo, odsuniecieTabliczki() + szerokoscTabliczki(wierszeTabliczkiTransformatora(transformer)));
@@ -2037,11 +2026,117 @@ function composeGpzPrzebieg(
     grupa.wieze.forEach((wieza, i) => osieWiezBezSekcji.set(wieza.transformer.transformerRef, baza + grupa.przesuniecia[i]));
   }
 
+  // Kolumny opisów pola GPZ przy jego lewej krawędzi (wzorzec właściciela 2026-11-05, `./kolumnaOpisowPola`)
+  // i oznaczenia zacisków P1/P2 — JEDNA funkcja dla pól sekcji i pól toru transformatora (pole WN TR,
+  // pole TR; karta RAMKA-PRZEKAZNIKA, następca 2026-11-11 — dawniej pola wieży nie miały kolumny
+  // oznaczeń, a tabliczki stały po prawej symbolu). Zwraca kolumnę przekładni dla `adnotacjePolaGpz`.
+  const kolumnyOpisowPolaGpz = (
+    bay: CanonicalGpzBay,
+    spec: readonly FieldApparatusSpec[],
+    stack: FieldStack,
+    centerX: number,
+  ): KolumnaPrzekladniPolaGpz => {
+    const footprint = gpzFieldPlanFootprint(spec);
+    const tekstyEtykiet = tekstyEtykietAparatowGpz(spec);
+    const pasy = pasyOpisowPolaGpz(spec);
+    const lewaKrawedzToru = snapToGrid(centerX - footprint.mainStack.width / 2);
+    const kolumnaOznaczenX = lewaKrawedzToru - pasy.szerokosc;
+    const kolumnaPrzekladniX = kolumnaOznaczenX + pasy.oznaczenia;
+    // Opisy przekładników rozstrzygnięte na narysowany stos — te same funkcje i ta sama
+    // kolejność co rysunek tabliczek (`adnotacjePolaGpz`).
+    const opisyCt = resolveCtRatingAnnotations(bay.ctRatingAnnotations, stack.instances);
+    const opisyVt = resolveVtMountingAnnotations(bay.vtMountingAnnotations, stack.instances);
+    const opisyPrzekladnikow = [...opisyCt, ...opisyVt];
+    const pozycjeOpisow = stack.pozycje.map((pozycja) => {
+      const indeks = spec.indexOf(pozycja.spec);
+      return {
+        pozycja,
+        indeks,
+        tekst: tekstyEtykiet[indeks]?.tekst ?? null,
+        liczbaTabliczek: opisyPrzekladnikow.filter((o) => o.device === pozycja.instance).length,
+      };
+    });
+    const wiersze = wierszeOpisowPola(
+      pozycjeOpisow.map(({ pozycja, tekst, liczbaTabliczek }) => ({
+        srodekY: pozycja.instance.y + SYMBOL_DEFS[pozycja.instance.symbolId].height / 2,
+        symbolX: pozycja.instance.x,
+        zOznaczeniem: tekst !== null,
+        liczbaTabliczek,
+      })),
+      KLASA_ETYKIETY_APARATU_GPZ,
+      PROTECTION_FULL_LIST_LABEL_CLASS,
+    );
+    const wierszeTabliczek = new Map<PlacedStackDevice, readonly number[]>();
+    pozycjeOpisow.forEach(({ pozycja, indeks, tekst }, k) => {
+      const wiersz = wiersze[k];
+      if (wiersz.tabliczkiY.length > 0) wierszeTabliczek.set(pozycja.instance, wiersz.tabliczkiY);
+      if (tekst === null || wiersz.oznaczenieY === null) return;
+      fieldDesignations.push({
+        ownerRef: `${bay.bayRef}#etykieta-aparatu-${pozycja.spec.device?.deviceRef ?? indeks}`,
+        ownerKind: 'apparatus',
+        text: tekst,
+        labelClass: KLASA_ETYKIETY_APARATU_GPZ,
+        anchor: { x: kolumnaOznaczenX, y: wiersz.oznaczenieY },
+        placement: 'right',
+        clearance: 0,
+        wyrownanieTekstu: 'poczatek',
+        symbolOpisu: prostokatSymbolu(pozycja.instance),
+        ...(pozycja.spec.device && RODZAJE_PRZEKLADNIKOW_OD_LOD1.has(pozycja.spec.device.kind) ? { odLod: 1 as const } : {}),
+      });
+    });
+    // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6, korekta po oględzinach
+    // zrzutów 2026-10-30): zaciski pierwotne przekładnika prądowego toru głównego
+    // (PN-EN 61869-2) — P1 przy zacisku górnym (od szyny), P2 przy dolnym, po stronie
+    // przeciwnej do kolumny podpisów aparatów (`oznaczenieZaciskuPrzekladnika`).
+    const przeszkodyZaciskow = przeszkodyOznaczenZaciskow(
+      stack,
+      fieldDesignations.filter((d) => d.ownerRef.startsWith(`${bay.bayRef}#etykieta-aparatu-`)).map(prostokatEtykietyZakotwiczonej),
+    );
+    zaciskiPrzekladnikowPolaGpz(spec).forEach((zaciski, indeks) => {
+      if (zaciski === null) return;
+      const pozycja = stack.pozycje.find((p) => p.spec === spec[indeks]);
+      if (!pozycja) return;
+      const { instance } = pozycja;
+      const def = SYMBOL_DEFS[instance.symbolId];
+      const portGorny = def.ports.find((p) => p.dir === 'N');
+      const portDolny = def.ports.find((p) => p.dir === 'S');
+      if (!portGorny || !portDolny) return;
+      const kafel: V3Rect = { x: instance.x, y: instance.y, width: def.width, height: def.height };
+      const deviceRef = spec[indeks].device?.deviceRef ?? indeks;
+      for (const [oznaczenie, zaciskY, odPierscienia] of [
+        [zaciski.odSzyny, instance.y + portGorny.y, -1],
+        [zaciski.odOdplywu, instance.y + portDolny.y, 1],
+      ] as const) {
+        const polozenie = oznaczenieZaciskuPrzekladnika(oznaczenie, zaciskY, kafel, odPierscienia, przeszkodyZaciskow);
+        // Oznaczenie P2 omija P1 tego samego przekładnika (i każde poprzednie).
+        przeszkodyZaciskow.push(polozenie.rect);
+        fieldDesignations.push({
+          ownerRef: `${bay.bayRef}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}${deviceRef}-${oznaczenie}`,
+          ownerKind: 'apparatus',
+          text: oznaczenie,
+          labelClass: KLASA_ZACISKU_PRZEKLADNIKA_GPZ,
+          anchor: polozenie.anchor,
+          placement: polozenie.placement,
+          clearance: 0,
+        });
+      }
+    });
+    // Wiersz każdego opisu przekładnika (index-aligned do `[...opisyCt, ...opisyVt]`): k-ty opis
+    // aparatu — k-ty wiersz tabliczek tego aparatu. Liczba wierszy aparatu = liczba jego opisów
+    // (`liczbaTabliczek` wyżej, ta sama lista), więc każdy opis ma wiersz z konstrukcji.
+    const uzyte = new Map<PlacedStackDevice, number>();
+    const wierszeOpisow = opisyPrzekladnikow.map((ann) => {
+      const k = uzyte.get(ann.device) ?? 0;
+      uzyte.set(ann.device, k + 1);
+      return wierszeTabliczek.get(ann.device)![k];
+    });
+    return { x: kolumnaPrzekladniX, opisyCt, opisyVt, wierszeOpisow };
+  };
+
   // GPZ-PARYTET cz. 3 (pkt 2): adnotacje zabezpieczeń/CT/VT pola — JEDNA funkcja dla pól
   // sekcji i pól toru transformatora (pole WN TR, pole TR); pole przeniesione z sekcji do
   // wieży zachowuje blok zabezpieczeń, tor wyzwalania, linię pomiarową i przekładnie CT.
   //  - `rightX` — prawa krawędź zarezerwowanej kolumny pola (położenie ostatnie bloku);
-  //  - `textAnchorX` — krawędź pasma adnotacji CT/VT tuż za planem stosu;
   //  - oznacznik pola (`#designation`) i podpisy aparatów są przeszkodą wyboru położenia
   //    bloku (`ulozBlokZabezpieczenPola`);
   //  - `metaPola` — meta odcinków adnotacji (sekcja albo transformator + `bayRef`).
@@ -2049,14 +2144,13 @@ function composeGpzPrzebieg(
     bay: CanonicalGpzBay,
     instances: readonly ComposedGpzSymbolInstance[],
     rightX: number,
-    textAnchorX: number,
     metaPola: Partial<GpzElementMeta>,
-    // Kolumna przekładni pola przy jego lewej krawędzi (`./kolumnaOpisowPola`, wzorzec
-    // właściciela 2026-11-05): lewa krawędź kolumny i wiersze opisów przekładnika każdego
-    // aparatu (`wierszeOpisowPola` — w wierszu oznaczenia aparatu; kolejność: tabliczki, potem
-    // montaż VT — ta sama co `resolveCtRatingAnnotations` + `resolveVtMountingAnnotations`).
-    // Brak = pole bez kolumn opisów (wieże transformatora) — opisy po prawej symbolu.
-    kolumnaPrzekladni?: { readonly x: number; readonly wiersze: ReadonlyMap<PlacedStackDevice, readonly number[]> },
+    // Kolumna przekładni pola przy jego lewej krawędzi (`kolumnyOpisowPolaGpz`, wzorzec
+    // właściciela 2026-11-05): lewa krawędź kolumny, opisy przekładników rozstrzygnięte na
+    // narysowany stos i wiersz każdego z nich (w wierszu oznaczenia aparatu). Każde pole GPZ —
+    // pole sekcji i pole toru transformatora — ma kolumnę (karta RAMKA-PRZEKAZNIKA, następca
+    // 2026-11-11), więc tabliczka nie ma drugiego położenia „po prawej symbolu”.
+    kolumnaPrzekladni: KolumnaPrzekladniPolaGpz,
   ): void => {
     // F11.1 (spec §17.1-§17.4/§20.1, ZNIESIENIE wyjątku §17.6 — R-1):
     // blok zabezpieczeń pola SN GPZ TERAZ dostaje tor wyzwalania + linię
@@ -2099,170 +2193,34 @@ function composeGpzPrzebieg(
     const powiazanyPola = czyPrzekaznikZPowiazaniamiObwodow(gpzCodes, bay.primaryDevices);
     // Odniesienia obwodów spoza pola (źródło 3U₀).
     const odniesieniaPola = markingPola ? odniesieniaPrzekaznikaPola(bay, markingPola.codes) : [];
-    // Przeszkody stałe pola dla wyboru położenia bloku zabezpieczeń i tabliczek przekładników.
+    // Przeszkody stałe pola dla wyboru położenia bloku zabezpieczeń.
     const prefiksPolaPrzekaznika = `${bay.bayRef}#`;
-    const obrysAparatu = (d: PlacedStackDevice): V3Rect => {
-      const o = obrysSymbolu(d.symbolId);
-      return { x: d.x + o.x, y: d.y + o.y, width: o.width, height: o.height };
-    };
-    // Gabaryt aparatu dla linii przekaźnika: obrys tuszu ∪ gabaryt symbolu (ten sam prostokąt co
-    // wyrocznia przewód↔symbol sceny, `symbolWireCollisions`).
-    const gabarytAparatu = (d: PlacedStackDevice): V3Rect => {
-      const o = obrysAparatu(d);
-      const def = SYMBOL_DEFS[d.symbolId];
-      const x0 = Math.min(o.x, d.x);
-      const y0 = Math.min(o.y, d.y);
-      return {
-        x: x0,
-        y: y0,
-        width: Math.max(o.x + o.width, d.x + def.width) - x0,
-        height: Math.max(o.y + o.height, d.y + def.height) - y0,
-      };
-    };
     const przeszkodyStalePola: V3Rect[] = [
       ...fieldDesignations.filter((d) => d.ownerRef.startsWith(prefiksPolaPrzekaznika)).map(prostokatEtykietyZakotwiczonej),
       ...segments
         .filter((g) => g.ownerRef === bay.bayRef || g.ownerRef.startsWith(prefiksPolaPrzekaznika))
         .flatMap((g) => prostokatyOdcinkow(g.points)),
     ];
-    // Miejsce tabliczki przekładnika (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6): JEDNA
-    // funkcja wyszukiwania dla rezerwacji miejsc (przekładniki kolumny odgałęzienia, przed
-    // wyborem położenia przekaźnika) i końcowego ułożenia (po nim, z blokiem kodów przekaźnika
-    // jako przeszkodą) — decyzja architekta 2026-11-04 (UX04 §11.20 pkt 1, predykat z jednego
-    // źródła). Wynik zależy wyłącznie od `przeszkody` i geometrii przekładnika (determinizm).
-    const prostokatTabliczki = (
-      ann: ResolvedCtRatingAnnotation,
-      x: number,
-      yy: number,
-    ): V3Rect =>
-      prostokatEtykietyZakotwiczonej({ text: ann.text, labelClass: PROTECTION_FULL_LIST_LABEL_CLASS, anchor: { x, y: yy }, placement: 'right' });
     // Opisy przekładników w kolumnie przekładni pola: wiersz każdego opisu (tabliczki, potem montaż
     // VT; kolejne opisy tego samego aparatu — kolejne wiersze tabliczek z `wierszeOpisowPola`).
     // Kotwica lewą krawędzią na krawędzi kolumny, w wierszu oznaczenia aparatu — położenie
     // wyznacza kolumna, nie wyszukiwanie wolnego miejsca.
-    const opisyCt = resolveCtRatingAnnotations(bay.ctRatingAnnotations, instances);
-    const opisyVt = resolveVtMountingAnnotations(bay.vtMountingAnnotations, instances);
-    const wierszeOpisow: (number | null)[] = [...opisyCt, ...opisyVt].map(() => null);
-    if (kolumnaPrzekladni) {
-      const uzyte = new Map<PlacedStackDevice, number>();
-      [...opisyCt, ...opisyVt].forEach((ann, i) => {
-        const wiersze = kolumnaPrzekladni.wiersze.get(ann.device);
-        const k = uzyte.get(ann.device) ?? 0;
-        if (wiersze === undefined || k >= wiersze.length) return;
-        uzyte.set(ann.device, k + 1);
-        wierszeOpisow[i] = wiersze[k];
-      });
-    }
-    /** Kotwica i prostokąt opisu w kolumnie przekładni: `i` — indeks w `[...opisyCt, ...opisyVt]`;
-     *  `null` — opis poza kolumną (pole bez kolumn opisów). */
+    const { opisyCt, opisyVt, wierszeOpisow } = kolumnaPrzekladni;
+    /** Kotwica i prostokąt opisu w kolumnie przekładni: `i` — indeks w `[...opisyCt, ...opisyVt]`. */
     const opisWKolumnie = (
       i: number,
       text: string,
-    ): { readonly anchor: { readonly x: number; readonly y: number }; readonly rect: V3Rect; readonly symbolOpisu: V3Rect } | null => {
-      const y = wierszeOpisow[i];
-      if (y === null || !kolumnaPrzekladni) return null;
-      const anchor = { x: kolumnaPrzekladni.x, y };
+    ): { readonly anchor: { readonly x: number; readonly y: number }; readonly rect: V3Rect; readonly symbolOpisu: V3Rect } => {
+      const anchor = { x: kolumnaPrzekladni.x, y: wierszeOpisow[i] };
       return {
         anchor,
         symbolOpisu: prostokatSymbolu([...opisyCt, ...opisyVt][i].device),
         rect: prostokatEtykietyZakotwiczonej({ text, labelClass: PROTECTION_FULL_LIST_LABEL_CLASS, anchor, placement: 'right', clearance: 0 }),
       };
     };
-    const szukajMiejscaTabliczki = (
-      ann: ResolvedCtRatingAnnotation,
-      przeszkody: readonly V3Rect[],
-    ): { readonly x: number; readonly y: number } => {
-      const center = protectionDeviceCenter(ann.device);
-      const y = wysokoscAdnotacjiPrzekladnika(ann.device, center.y);
-      const obrys = obrysSymbolu(ann.device.symbolId);
-      const tabliczka = (x: number, yy: number) => prostokatTabliczki(ann, x, yy);
-      const wolna = (r: V3Rect) => !przeszkody.some((p) => rectsOverlap(p, r));
-      const x0 = snapUp(ann.device.x + obrys.x + obrys.width + GRID / 2);
-      // Kandydaci wysokości: najpierw wysokość z zacisku wtórnego
-      // (`wysokoscAdnotacjiPrzekladnika`), potem kolejne co pół oczka, naprzemiennie w dół
-      // i w górę; przycinani do pasa symbolu poszerzonego o `poszerzenie`.
-      const wysokosci = [y];
-      for (let k = 1; k <= MAKS_KROKOW_TABLICZKI; k += 1) wysokosci.push(y + (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * (GRID / 2));
-      // Symbol z zaciskiem wtórnym na wschód wyprowadza z niego linię pomiarową, a wysokość
-      // wyjściowa stoi NAD nią (§11.7 pkt 6). W pasie symbolu ± oczko tabliczka może zejść pod
-      // linię (zostaje przy symbolu — np. przekładnik Ferrantiego pod uziemnikiem odczepu); pas
-      // poszerzony, który oddala tabliczkę od symbolu, rośnie wyłącznie w górę od linii —
-      // tabliczka odsunięta od symbolu nie przeskakuje własnej linii pomiarowej.
-      const zaciskWtorny = portWtornyWSwiecie(ann.device, 'wtorny');
-      const dolNadLinia = zaciskWtorny?.dir === 'E' ? zaciskWtorny.y - GRID / 4 : Infinity;
-      const wPasie = (poszerzenie: number): number[] => {
-        const gora = ann.device.y + obrys.y - poszerzenie;
-        const dolPasa = ann.device.y + obrys.y + obrys.height + poszerzenie;
-        const dol = poszerzenie > GRID ? Math.min(dolPasa, dolNadLinia) : dolPasa;
-        const w = wysokosci.filter((yy) => {
-          const r = tabliczka(x0, yy);
-          return r.y >= gora && r.y + r.height <= dol;
-        });
-        // Pas ma co najmniej wysokość symbolu + 2·GRID, a tabliczka jedną linię — pusty zbiór
-        // nie występuje dla symboli biblioteki; gdyby wystąpił, wysokość wyjściowa.
-        return w.length > 0 ? w : [y];
-      };
-      // Kolejność prób (stała — determinizm): pas symbolu ± oczko, kolumny od `x0` w prawo do
-      // prawej krawędzi kolumny (`rightX`); potem pas coraz szerszy (aż do ± 4 oczek) w tych
-      // samych kolumnach. Tabliczka zostaje przy symbolu i w kolumnie pola. Gdy nic nie jest
-      // wolne (model zdegenerowany — np. aparaty poza torem obok przekładnika), kolejne kolumny
-      // w prawo w pasie ± oczko aż do wolnej: tabliczka nigdy nie zostaje na przeszkodzie
-      // (silnik etykiet odrzuciłby ją — tabliczka znikałaby z rysunku).
-      let polozenie: { x: number; y: number } | null = null;
-      for (const poszerzenie of POSZERZENIA_PASA_TABLICZKI) {
-        const pas = wPasie(poszerzenie);
-        for (let xx = x0; polozenie === null && tabliczka(xx, y).x + tabliczka(xx, y).width <= rightX; xx += GRID) {
-          const yy = pas.find((h) => wolna(tabliczka(xx, h)));
-          if (yy !== undefined) polozenie = { x: xx, y: yy };
-        }
-        if (polozenie !== null) break;
-      }
-      if (polozenie === null) {
-        const pas = wPasie(GRID);
-        for (let xx = x0; polozenie === null; xx += GRID) {
-          const yy = pas.find((h) => wolna(tabliczka(xx, h)));
-          if (yy !== undefined) polozenie = { x: xx, y: yy };
-        }
-      }
-      return polozenie;
-    };
-    // Wyjściowe miejsca tabliczek przekładników: w kolumnie przekładni pola (`opisWKolumnie`),
-    // a w polu bez kolumn opisów (wieże transformatora) — tuż za symbolem, NAD linią pomiarową
-    // (§11.7 pkt 6), o ile są wolne od rysunku pola. Przekaźnik (ramka bloku, linie) omija je.
-    const przeszkodyTabliczekStale: V3Rect[] = [
-      ...instances.map((d) => {
-        const o = obrysSymbolu(d.symbolId);
-        return { x: d.x + o.x, y: d.y + o.y, width: o.width, height: o.height };
-      }),
-      ...fieldDesignations.filter((d) => d.ownerRef.startsWith(prefiksPolaPrzekaznika)).map(prostokatEtykietyZakotwiczonej),
-      ...[...segments, ...measurementSegments, ...protectionSegments]
-        .filter((g) => g.ownerRef === bay.bayRef || g.ownerRef.startsWith(prefiksPolaPrzekaznika))
-        .flatMap((g) => prostokatyOdcinkow(g.points)),
-    ];
-    const miejscaTabliczek: V3Rect[] = [];
-    if (markingPola && hasCtRatings) {
-      const przeszkodyRezerwacji: V3Rect[] = [...przeszkodyTabliczekStale];
-      for (const [i, ann] of opisyCt.entries()) {
-        const wKolumnie = opisWKolumnie(i, ann.text);
-        if (wKolumnie) {
-          miejscaTabliczek.push(wKolumnie.rect);
-          przeszkodyRezerwacji.push(wKolumnie.rect);
-          continue;
-        }
-        const obrys = obrysSymbolu(ann.device.symbolId);
-        const r = prostokatEtykietyZakotwiczonej({
-          text: ann.text,
-          labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-          anchor: {
-            x: snapUp(ann.device.x + obrys.x + obrys.width + GRID / 2),
-            y: wysokoscAdnotacjiPrzekladnika(ann.device, protectionDeviceCenter(ann.device).y),
-          },
-          placement: 'right',
-        });
-        const zajete = instances.some((d) => rectsOverlap(gabarytAparatu(d), r)) || przeszkodyStalePola.some((p) => rectsOverlap(p, r));
-        if (!zajete) miejscaTabliczek.push(r);
-      }
-    }
+    // Miejsca tabliczek przekładników w kolumnie przekładni pola (`opisWKolumnie`) — przeszkody
+    // wyboru położenia bloku zabezpieczeń (ramka i linie bloku je omijają).
+    const miejscaTabliczek: V3Rect[] = markingPola && hasCtRatings ? opisyCt.map((ann, i) => opisWKolumnie(i, ann.text).rect) : [];
     // Blok zabezpieczeń (`ulozBlokZabezpieczenPola`): pierwsze od łącznika położenie co oczko,
     // w którym ramka i linie bloku nie wchodzą na aparaty, podpisy, tory pola i zarezerwowane
     // tabliczki; żadne — prawo-wyrównane do rezerwacji kolumny (`rightX`).
@@ -2281,11 +2239,7 @@ function composeGpzPrzebieg(
     })();
     // Blok prawo-wyrównany do rezerwacji kolumny — kolumny tego pola nie zwęża się.
     if (blokPola?.uklad.wyrownanyDoPrawej) pomiar?.wyrownaneDoPrawej.add(bay.bayRef);
-    // Przeszkody tabliczek przekładników: ramka bloku i RZECZYWISTE linie bloku (wyłączania
-    // i pomiarowe) w wybranym położeniu.
-    const przeszkodyPrzekaznika: readonly V3Rect[] = blokPola && annotationDetail === 'full' ? blokPola.uklad.przeszkody : [];
-    // Tabliczki przekładników pola — rozmieszczone PO wyborze położenia przekaźnika (wyżej),
-    // z ramką bloku i liniami jako przeszkodami; wynik w `tabliczkiPola`.
+    // Tabliczki przekładników pola (kolumna przekładni) — wynik w `tabliczkiPola`.
     const tabliczkiPola: SimpleAnchoredOwnerInput[] = [];
     // F11.1 (spec §18.3): adnotacje przekładni CT — TA SAMA funkcja co
     // stacje (`resolveCtRatingAnnotations`), dopasowanie na aparat
@@ -2295,27 +2249,21 @@ function composeGpzPrzebieg(
     // Wzorzec właściciela 2026-11-05 (pole liniowe Z.11.1): tabliczka KAŻDEGO przekładnika pola
     // (prądowy, napięciowy, Ferrantiego; tor główny i kolumna odgałęzienia) stoi w kolumnie
     // przekładni przy lewej krawędzi pola, w wierszu oznaczenia swojego aparatu
-    // (`opisWKolumnie`) — położenie wyznacza kolumna. Pole bez kolumn opisów (wieże
-    // transformatora): tuż za symbolem, w pasie jego wysokości (`szukajMiejscaTabliczki`),
-    // przesuwana o całe oczka (stała kolejność — determinizm) tylko wtedy, gdy zachodziłaby na
-    // rysunek pola. Prostokąty napisów z tej samej funkcji, którą scena liczy sloty
-    // (`prostokatEtykietyZakotwiczonej`) — jedno źródło położenia.
+    // (`opisWKolumnie`) — położenie wyznacza kolumna; każde pole GPZ ma kolumnę (pole sekcji
+    // i pole toru transformatora, `kolumnyOpisowPolaGpz`).
     if (annotationDetail === 'full' && hasCtRatings) {
       const ctAnnotations = opisyCt;
-      const przeszkodyPola: V3Rect[] = [...przeszkodyTabliczekStale, ...przeszkodyPrzekaznika];
-      const zajete: V3Rect[] = [];
       ctAnnotations.forEach((ann, ctIndex) => {
         const wKolumnie = opisWKolumnie(ctIndex, ann.text);
-        const anchor = wKolumnie?.anchor ?? szukajMiejscaTabliczki(ann, [...przeszkodyPola, ...zajete]);
-        zajete.push(wKolumnie?.rect ?? prostokatTabliczki(ann, anchor.x, anchor.y));
         tabliczkiPola.push({
           ownerRef: `${bay.bayRef}#${ann.przyrostek}-${ann.device.deviceRef ?? ctIndex}`,
           ownerKind: 'protection',
           text: ann.text,
           labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-          anchor,
+          anchor: wKolumnie.anchor,
           placement: 'right',
-          ...(wKolumnie ? { clearance: 0, symbolOpisu: wKolumnie.symbolOpisu } : {}),
+          clearance: 0,
+          symbolOpisu: wKolumnie.symbolOpisu,
           wyrownanieTekstu: 'poczatek',
           // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,
           // geometrycznie neutralny (tekst adnotacji bez zmian).
@@ -2382,8 +2330,7 @@ function composeGpzPrzebieg(
       // CTVT-RENDER (spec §20.2, parytet ze stacjami): adnotacje montażu VT —
       // TA SAMA funkcja co stacje (`resolveVtMountingAnnotations`), dopasowanie
       // na aparat `voltageTransformer` NARYSOWANEGO stosu przez `linked_ref`. W kolumnie
-      // przekładni pola, w wierszu oznaczenia VT (`opisWKolumnie`); pole bez kolumn opisów
-      // (wieże transformatora) — za planem pola (`textAnchorX`), na wysokości środka VT.
+      // przekładni pola, w wierszu oznaczenia VT (`opisWKolumnie`).
       if (annotationDetail === 'full' && hasVtMountings) {
         const vtAnnotations = opisyVt;
         vtAnnotations.forEach((ann, vtIndex) => {
@@ -2393,9 +2340,10 @@ function composeGpzPrzebieg(
             ownerKind: 'protection',
             text: ann.text,
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-            anchor: wKolumnie?.anchor ?? { x: textAnchorX, y: protectionDeviceCenter(ann.device).y },
+            anchor: wKolumnie.anchor,
             placement: 'right',
-            ...(wKolumnie ? { clearance: 0, symbolOpisu: wKolumnie.symbolOpisu } : {}),
+            clearance: 0,
+            symbolOpisu: wKolumnie.symbolOpisu,
             wyrownanieTekstu: 'poczatek',
           });
         });
@@ -2634,91 +2582,7 @@ function composeGpzPrzebieg(
       // oznaczenia swojego aparatu (rysowane w `adnotacjePolaGpz`, LOD2). Kolumny zaczynają się
       // na lewej krawędzi pola — `pasyOpisowPolaGpz` przed torem głównym, ta sama funkcja co
       // rezerwacja kolumny i oś pola. Oznaczenie samo (położenie łącznika niesie kafel).
-      const tekstyEtykiet = tekstyEtykietAparatowGpz(spec);
-      const pasy = pasyOpisowPolaGpz(spec);
-      const lewaKrawedzToru = snapToGrid(field.centerX - footprint.mainStack.width / 2);
-      const kolumnaOznaczenX = lewaKrawedzToru - pasy.szerokosc;
-      const kolumnaPrzekladniX = kolumnaOznaczenX + pasy.oznaczenia;
-      // Opisy przekładników rozstrzygnięte na narysowany stos — te same funkcje i ta sama
-      // kolejność co rysunek tabliczek (`adnotacjePolaGpz`).
-      const opisyPrzekladnikow = [
-        ...resolveCtRatingAnnotations(field.bay.ctRatingAnnotations, stack.instances),
-        ...resolveVtMountingAnnotations(field.bay.vtMountingAnnotations, stack.instances),
-      ];
-      const pozycjeOpisow = stack.pozycje.map((pozycja) => {
-        const indeks = spec.indexOf(pozycja.spec);
-        return {
-          pozycja,
-          indeks,
-          tekst: tekstyEtykiet[indeks]?.tekst ?? null,
-          liczbaTabliczek: opisyPrzekladnikow.filter((o) => o.device === pozycja.instance).length,
-        };
-      });
-      const wiersze = wierszeOpisowPola(
-        pozycjeOpisow.map(({ pozycja, tekst, liczbaTabliczek }) => ({
-          srodekY: pozycja.instance.y + SYMBOL_DEFS[pozycja.instance.symbolId].height / 2,
-          symbolX: pozycja.instance.x,
-          zOznaczeniem: tekst !== null,
-          liczbaTabliczek,
-        })),
-        KLASA_ETYKIETY_APARATU_GPZ,
-        PROTECTION_FULL_LIST_LABEL_CLASS,
-      );
-      const wierszeTabliczek = new Map<PlacedStackDevice, readonly number[]>();
-      pozycjeOpisow.forEach(({ pozycja, indeks, tekst }, k) => {
-        const wiersz = wiersze[k];
-        if (wiersz.tabliczkiY.length > 0) wierszeTabliczek.set(pozycja.instance, wiersz.tabliczkiY);
-        if (tekst === null || wiersz.oznaczenieY === null) return;
-        fieldDesignations.push({
-          ownerRef: `${field.bay.bayRef}#etykieta-aparatu-${pozycja.spec.device?.deviceRef ?? indeks}`,
-          ownerKind: 'apparatus',
-          text: tekst,
-          labelClass: KLASA_ETYKIETY_APARATU_GPZ,
-          anchor: { x: kolumnaOznaczenX, y: wiersz.oznaczenieY },
-          placement: 'right',
-          clearance: 0,
-          wyrownanieTekstu: 'poczatek',
-          symbolOpisu: prostokatSymbolu(pozycja.instance),
-          ...(pozycja.spec.device && RODZAJE_PRZEKLADNIKOW_OD_LOD1.has(pozycja.spec.device.kind) ? { odLod: 1 as const } : {}),
-        });
-      });
-      // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6, korekta po oględzinach
-      // zrzutów 2026-10-30): zaciski pierwotne przekładnika prądowego toru głównego
-      // (PN-EN 61869-2) — P1 przy zacisku górnym (od szyny), P2 przy dolnym, po stronie
-      // przeciwnej do kolumny podpisów aparatów (`oznaczenieZaciskuPrzekladnika`).
-      const przeszkodyZaciskow = przeszkodyOznaczenZaciskow(
-        stack,
-        fieldDesignations.filter((d) => d.ownerRef.startsWith(`${field.bay.bayRef}#etykieta-aparatu-`)).map(prostokatEtykietyZakotwiczonej),
-      );
-      zaciskiPrzekladnikowPolaGpz(spec).forEach((zaciski, indeks) => {
-        if (zaciski === null) return;
-        const pozycja = stack.pozycje.find((p) => p.spec === spec[indeks]);
-        if (!pozycja) return;
-        const { instance } = pozycja;
-        const def = SYMBOL_DEFS[instance.symbolId];
-        const portGorny = def.ports.find((p) => p.dir === 'N');
-        const portDolny = def.ports.find((p) => p.dir === 'S');
-        if (!portGorny || !portDolny) return;
-        const kafel: V3Rect = { x: instance.x, y: instance.y, width: def.width, height: def.height };
-        const deviceRef = spec[indeks].device?.deviceRef ?? indeks;
-        for (const [oznaczenie, zaciskY, odPierscienia] of [
-          [zaciski.odSzyny, instance.y + portGorny.y, -1],
-          [zaciski.odOdplywu, instance.y + portDolny.y, 1],
-        ] as const) {
-          const polozenie = oznaczenieZaciskuPrzekladnika(oznaczenie, zaciskY, kafel, odPierscienia, przeszkodyZaciskow);
-          // Oznaczenie P2 omija P1 tego samego przekładnika (i każde poprzednie).
-          przeszkodyZaciskow.push(polozenie.rect);
-          fieldDesignations.push({
-            ownerRef: `${field.bay.bayRef}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}${deviceRef}-${oznaczenie}`,
-            ownerKind: 'apparatus',
-            text: oznaczenie,
-            labelClass: KLASA_ZACISKU_PRZEKLADNIKA_GPZ,
-            anchor: polozenie.anchor,
-            placement: polozenie.placement,
-            clearance: 0,
-          });
-        }
-      });
+      const kolumnaPrzekladni = kolumnyOpisowPolaGpz(field.bay, spec, stack, field.centerX);
 
       // pkt 8 (recenzja NO-GO 2026-07-17): oznacznik z layoutu (bay_number
       // albo deterministyczne F01/FT1… — patrz `gpzFieldOrdinalDesignation`).
@@ -2771,10 +2635,9 @@ function composeGpzPrzebieg(
         field.bay,
         stack.instances,
         field.rightX,
-        snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width),
         { sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
         // Kolumna przekładni pola: lewa krawędź i wiersze opisów każdego aparatu (`wierszeOpisowPola`).
-        { x: kolumnaPrzekladniX, wiersze: wierszeTabliczek },
+        kolumnaPrzekladni,
       );
     });
 
@@ -3063,6 +2926,11 @@ function composeGpzPrzebieg(
       const planPola = gpzFieldPlanFootprint(specyfikacja);
       const lewaKrawedz = trCenterX - planPola.mainStack.width / 2;
       const textAnchorX = snapToGrid(lewaKrawedz + planPola.width);
+      // Kolumny opisów pola toru transformatora przy jego lewej krawędzi — ta sama funkcja co pole
+      // sekcji (`kolumnyOpisowPolaGpz`); lewa krawędź kolumny pola = lewa krawędź toru − pasy
+      // opisów (`pasyOpisowPolaGpz`, ta sama funkcja co zasięg wieży `zasiegWiezy`).
+      const kolumnaPrzekladni = kolumnyOpisowPolaGpz(pole, specyfikacja, stos, trCenterX);
+      const lewaKolumnyPola = snapToGrid(lewaKrawedz) - pasyOpisowPolaGpz(specyfikacja).szerokosc;
       const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
       if (oznaczenie) {
         fieldDesignations.push({
@@ -3077,9 +2945,9 @@ function composeGpzPrzebieg(
       adnotacjePolaGpz(
         pole,
         stos.instances,
-        lewaKrawedz + snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)),
-        textAnchorX,
+        lewaKolumnyPola + snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)),
         { transformerRef: transformer.transformerRef, bayRef: pole.bayRef },
+        kolumnaPrzekladni,
       );
     }
 
