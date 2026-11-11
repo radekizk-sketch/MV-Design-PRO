@@ -645,18 +645,24 @@ export interface PozycjaToruPola {
   readonly device?: Pick<AparatSekwencjiPola, 'kind' | 'ports'>;
 }
 
-/** Przewód port → port: z portu S symbolu `a` do portu N symbolu `b`; przy różnych osiach
- *  (port szynowy łącznika trójpołożeniowego leży obok osi) — odcinek poziomy na wysokości
- *  portu S, potem pion do portu N. `null` = któryś symbol nie ma portu w tym kierunku. */
+/** Przewód port → port między kolejnymi aparatami toru `a` → `b` (kolejność od szyny): z portu
+ *  `a` zwróconego do `b` do portu `b` zwróconego do `a`. Tor rysowany od szyny w dół (pole pod
+ *  szyną) — port S `a` → port N `b`; tor od szyny w górę (pole zasilające nad szyną, karta
+ *  UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta D1) — port N `a` → port S `b`. Kierunek
+ *  z położenia aparatów (`b` niżej niż `a` = tor w dół), więc jedna reguła dla obu kierunków.
+ *  Przy różnych osiach (port szynowy łącznika trójpołożeniowego leży obok osi) — odcinek poziomy
+ *  na wysokości portu `a`, potem pion do portu `b`. `null` = któryś symbol nie ma portu w tym
+ *  kierunku. */
 export function przewodPortPort(
   a: Pick<PozycjaToruPola, 'symbolId' | 'x' | 'y'>,
   b: Pick<PozycjaToruPola, 'symbolId' | 'x' | 'y'>,
 ): readonly { readonly x: number; readonly y: number }[] | null {
-  const south = SYMBOL_DEFS[a.symbolId].ports.find((port) => port.dir === 'S');
-  const north = SYMBOL_DEFS[b.symbolId].ports.find((port) => port.dir === 'N');
-  if (!south || !north) return null;
-  const od = { x: a.x + south.x, y: a.y + south.y };
-  const do_ = { x: b.x + north.x, y: b.y + north.y };
+  const wDol = b.y >= a.y;
+  const wyjscie = SYMBOL_DEFS[a.symbolId].ports.find((port) => port.dir === (wDol ? 'S' : 'N'));
+  const wejscie = SYMBOL_DEFS[b.symbolId].ports.find((port) => port.dir === (wDol ? 'N' : 'S'));
+  if (!wyjscie || !wejscie) return null;
+  const od = { x: a.x + wyjscie.x, y: a.y + wyjscie.y };
+  const do_ = { x: b.x + wejscie.x, y: b.y + wejscie.y };
   return od.x === do_.x ? [od, do_] : [od, { x: do_.x, y: od.y }, do_];
 }
 
@@ -1408,13 +1414,89 @@ export function polozeniaToruGlownego(
   return { y, height: n > 0 ? y[n - 1] + SYMBOL_DEFS[plan.mainPath[n - 1]].height : 0 };
 }
 
+/**
+ * Kierunek toru pola na rysunku względem szyny, z której pole wychodzi: `w-dol` — pole pod
+ * szyną (odpływ: pole liniowe, ZU, BKR, pomiar, celki sprzęgła), `w-gore` — pole zasilające
+ * NAD szyną (pole transformatora 110 kV/SN w wieży nad szyną SN, pole liniowe WN nad szyną WN).
+ * Karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta D1: kolejność aparatów liczy się
+ * zawsze OD SZYNY na zewnątrz (jak rysunek ENEA Z.7 czytany od szyn), więc w polu `w-gore`
+ * aparat przy szynie stoi najniżej, a głowica kablowa przy transformatorze — najwyżej.
+ */
+export type KierunekToruPola = 'w-dol' | 'w-gore';
+
+/**
+ * Położenia aparatów toru głównego pola ZASILAJĄCEGO NAD SZYNĄ (`w-gore`) — lustro reguły
+ * `polozeniaToruGlownego` dla toru biegnącego od szyny w górę. Zwraca położenia GÓRNYCH krawędzi
+ * aparatów względem szczytu pola (`y`), Y węzłów odczepu (`wezly`: klucz `afterMainIndex`)
+ * i wysokość pola.
+ *
+ * Reguły (te same intencje co pole pod szyną): aparaty boczne i odgałęzienia wiszą W DÓŁ od
+ * węzła odczepu (ziemia zawsze w stronę ziemi; aparat boczny nie staje na głowie), na prawo od
+ * toru (`ukladBocznyPola`). Węzeł odczepu za aparatem `a` (od strony odpływu, tj. NAD nim) stoi
+ * nad nim o całe pasmo odczepionych pasów (`wysokoscPasaBocznego`, `pasOdgalezienia`), więc
+ * pas wisi w przerwie między `a` a następnym aparatem — linie obwodów wtórnych aparatu `a`
+ * (pomiar przekładnika do bloku zabezpieczeń) biegną pod pasem, nie przez niego; następny aparat
+ * stoi raster nad węzłem. Węzeł od strony szyny (`afterMainIndex = -1`) stoi nad szyną o pasmo
+ * jego pasów, a pierwszy aparat — nad węzłem o odsunięcie węzła poza kafel. Węzeł za ostatnim
+ * aparatem wyznacza szczyt pola (dalej biegnie przyłącze do transformatora).
+ */
+export function polozeniaToruWGore(
+  plan: Pick<BayApparatusPlan, 'mainPath'> &
+    Partial<Pick<BayApparatusPlan, 'galezie'>> & {
+      readonly laterals?: readonly Pick<LateralApparatusPlanEntry, 'symbolId' | 'afterMainIndex'>[];
+    },
+): { readonly y: readonly number[]; readonly wezly: ReadonlyMap<number, number>; readonly height: number } {
+  const galezie = plan.galezie ?? [];
+  const laterals = plan.laterals ?? [];
+  const pasmo = (a: number): number | null => {
+    const pasy = [
+      ...laterals.filter((lat) => lat.afterMainIndex === a).map((lat) => wysokoscPasaBocznego(lat.symbolId)),
+      ...galezie.filter((g) => g.afterMainIndex === a).map((g) => pasOdgalezienia(g).wysokosc),
+    ];
+    return pasy.length > 0 ? Math.max(...pasy) : null;
+  };
+  // Wysokości liczone od dołu pola (strona szyny = 0) w górę.
+  const wezlyOdDolu = new Map<number, number>();
+  const dolAparatu: number[] = [];
+  const goraAparatu: number[] = [];
+  let h = 0;
+  const pasmoSzyny = pasmo(-1);
+  if (pasmoSzyny !== null && plan.mainPath.length > 0) {
+    const wezel = snapUp(pasmoSzyny);
+    wezlyOdDolu.set(-1, wezel);
+    h = wezel + odsuniecieWezlaOdczepu(plan.mainPath[0]);
+  }
+  plan.mainPath.forEach((symbolId, i) => {
+    dolAparatu.push(h);
+    const gora = h + SYMBOL_DEFS[symbolId].height;
+    goraAparatu.push(gora);
+    const p = pasmo(i);
+    if (p !== null) {
+      const wezel = snapUp(gora + odsuniecieWezlaOdczepu(symbolId) + p);
+      wezlyOdDolu.set(i, wezel);
+      h = wezel + APPARATUS_STACK_VERTICAL_GAP;
+    } else {
+      h = gora + APPARATUS_STACK_VERTICAL_GAP;
+    }
+  });
+  const n = plan.mainPath.length;
+  const height = n > 0 ? Math.max(goraAparatu[n - 1], wezlyOdDolu.get(n - 1) ?? 0) : 0;
+  const y = goraAparatu.map((gora) => height - gora);
+  const wezly = new Map<number, number>();
+  wezlyOdDolu.forEach((wezel, a) => wezly.set(a, height - wezel));
+  return { y, wezly, height };
+}
+
 /** Y WĘZŁA odczepu względem szczytu stosu = dół aparatu `afterMainIndex` toru głównego
  *  (`polozeniaToruGlownego`, port S) + odsunięcie węzła poza kafel; dla -1 → port N pierwszego
- *  aparatu minus odsunięcie (`odsuniecieWezlaOdczepu`, ta sama funkcja co kompozytory). */
+ *  aparatu minus odsunięcie (`odsuniecieWezlaOdczepu`, ta sama funkcja co kompozytory). Tor
+ *  `w-gore` — węzeł z `polozeniaToruWGore` (jedna reguła rysunku i gabarytu). */
 function kotwicaWzglednaY(
   plan: Parameters<typeof polozeniaToruGlownego>[0],
   afterMainIndex: number,
+  kierunek: KierunekToruPola = 'w-dol',
 ): number {
+  if (kierunek === 'w-gore') return polozeniaToruWGore(plan).wezly.get(afterMainIndex) ?? 0;
   if (afterMainIndex < 0) return plan.mainPath.length > 0 ? -odsuniecieWezlaOdczepu(plan.mainPath[0]) : 0;
   const symbolId = plan.mainPath[afterMainIndex];
   return polozeniaToruGlownego(plan).y[afterMainIndex] + SYMBOL_DEFS[symbolId].height + odsuniecieWezlaOdczepu(symbolId);
@@ -1428,13 +1510,17 @@ function kotwicaWzglednaY(
  */
 export function bayApparatusPlanFootprint(
   plan: Pick<BayApparatusPlan, 'mainPath' | 'laterals'> & Partial<Pick<BayApparatusPlan, 'galezie'>>,
+  kierunek: KierunekToruPola = 'w-dol',
 ): BayApparatusPlanFootprint {
   const galezie = plan.galezie ?? [];
-  const mainStack = { width: stackFootprint(plan.mainPath).width, height: polozeniaToruGlownego(plan).height };
+  const mainStack = {
+    width: stackFootprint(plan.mainPath).width,
+    height: kierunek === 'w-gore' ? polozeniaToruWGore(plan).height : polozeniaToruGlownego(plan).height,
+  };
   if (plan.laterals.length === 0 && galezie.length === 0) {
     return { width: mainStack.width, height: mainStack.height, lateralExtension: 0, mainStack };
   }
-  const anchorRelY = (afterMainIndex: number): number => kotwicaWzglednaY(plan, afterMainIndex);
+  const anchorRelY = (afterMainIndex: number): number => kotwicaWzglednaY(plan, afterMainIndex, kierunek);
   const uklad = ukladBocznyPola({ laterals: plan.laterals, galezie }, anchorRelY);
   let lateralExtension = 0;
   let height = mainStack.height;

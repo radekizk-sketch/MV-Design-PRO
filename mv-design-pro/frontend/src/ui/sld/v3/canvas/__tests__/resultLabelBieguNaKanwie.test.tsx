@@ -173,15 +173,17 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
     expect(container.querySelectorAll('[data-testid^="sld-v3-flow-arrow-"]').length).toBeGreaterThan(0);
   });
 
-  it('POKRYCIE w panelu: 10 z 25 punktów + 2 w tabeli pól GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (etap 1 — model): pole TR transformatora GPZ w modelu (Z.7)
+  // dokłada punkt wyniku w tabeli pól GPZ (25 → 26, tabela 2 → 3).
+  it('POKRYCIE w panelu: 10 z 26 punktów + 3 w tabeli pól GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
     const uzytkownik = userEvent.setup();
     renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 10 z 25 punktów wyniku',
+      'Etykiety: 10 z 26 punktów wyniku',
     );
     expect(screen.getByTestId('sld-v3-result-coverage-gpz').textContent).toBe(
-      'W tabeli pól GPZ: 2 punktów wyniku (pola i bilans GPZ)',
+      'W tabeli pól GPZ: 3 punktów wyniku (pola i bilans GPZ)',
     );
     const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
     expect(braki).toContain('7 nierysowanych w modelu');

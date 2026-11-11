@@ -529,6 +529,8 @@ export interface PreviewSymbol {
   readonly uzwojenia?: UzwojeniaTransformatora;
   /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — dla symbolu `capacitorBank`. */
   readonly bateria?: GlifBaterii;
+  /** Karta UX-04/ROZDZIELNICA-SN-KOREKTA (D1): orientacja toru aparatu pola nad szyną. */
+  readonly kierunekToru?: 'w-dol' | 'w-gore';
   readonly meta?: PreviewElementMeta;
 }
 
@@ -550,6 +552,7 @@ export function daneGlifuSymbolu(
     earthingKind: symbol.earthingKind,
     uzwojenia: symbol.uzwojenia,
     bateria: symbol.bateria,
+    kierunekToru: symbol.kierunekToru,
     hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
     ramkaBloku: meta?.ramkaBlokuPrzekaznika,
     // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora

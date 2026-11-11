@@ -204,9 +204,20 @@ export function buildCanonicalGpzProps(
     const pole = polaTrSn.get(tr.ref_id);
     return pole && pole.terminal_bus_ref === tr.lv_bus_ref ? pole.bus_ref : tr.lv_bus_ref;
   };
+  // D1 (karta UX-04/ROZDZIELNICA-SN-KOREKTA): celka pola TR stoi w szeregu celek sekcji w miejscu,
+  // które pole TR zajmuje w kolejności modelu (`enm.bays`) — liczba pól sekcji przed nim.
+  const indeksPolaWModelu = new Map(allBays.map((bay, i) => [bay.ref_id, i]));
+  const pozycjaCelki = (tr: Transformer): number | null => {
+    const pole = polaTrSn.get(tr.ref_id);
+    const sekcja = lvSections.find((sec) => sec.sectionId === sectionIdByLvBusRef.get(szynaSekcjiTransformatora(tr)));
+    if (!pole || !sekcja) return null;
+    const indeks = indeksPolaWModelu.get(pole.ref_id)!;
+    return sekcja.bays.filter((bay) => (indeksPolaWModelu.get(bay.bayRef) ?? Infinity) < indeks).length;
+  };
   const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef, szynaSekcjiTransformatora, (tr) => ({
     poleTr: polaTrSn.has(tr.ref_id) ? buildBay(polaTrSn.get(tr.ref_id)!, protectionCtx) : null,
     poleWn: polaTrWn.has(tr.ref_id) ? buildBay(polaTrWn.get(tr.ref_id)!, protectionCtx) : null,
+    pozycjaCelkiWSekcji: pozycjaCelki(tr),
   }));
 
   return {
@@ -388,7 +399,7 @@ function buildTransformers(
   transformers: readonly Transformer[],
   sectionIdByLvBusRef: ReadonlyMap<string, string>,
   szynaSekcji: (tr: Transformer) => string,
-  polaToru: (tr: Transformer) => Pick<CanonicalGpzTransformer, 'poleTr' | 'poleWn'>,
+  polaToru: (tr: Transformer) => Pick<CanonicalGpzTransformer, 'poleTr' | 'poleWn' | 'pozycjaCelkiWSekcji'>,
 ): CanonicalGpzTransformer[] {
   return transformers
     .slice()

@@ -2,7 +2,8 @@
  * ROZDZIELNICA SN — zrzuty przed/po korekty schematów pól (karta UX-04/ROZDZIELNICA-SN-KOREKTA,
  * werdykt właściciela 0/10 z 2026-11-11).
  *
- * Kadry: cała rozdzielnica GPZ dwusekcyjna (`gpz110kvPolaSzablonow`), powiększenia pól TR1, TR2
+ * Kadry: rozdzielnica GPZ dwusekcyjna (`gpz110kvPolaSzablonow`) sekcjami w skali czytelnych
+ * opisów (bez „Ukryto N opisów", decyzja architekta D3g), powiększenia pól TR1, TR2
  * (ENEA Z.7), sprzęgła (Z.12), zespołu uziemiającego (Z.13), baterii kondensatorów (Z.16),
  * pomiaru napięcia (Z.17) i jednego pola liniowego (regresja wzorca UX04) oraz stacje SN/nN
  * typu A, B, C, D (`stacjeTypowAbcd`) — OBA motywy. Fikstury powstają z generatora
@@ -40,7 +41,12 @@ interface ModelFikstury {
   }[];
   readonly transformers: readonly { readonly ref_id: string; readonly name?: string | null }[];
   readonly branches: readonly { readonly ref_id: string; readonly type: string }[];
-  readonly substations: readonly { readonly ref_id: string; readonly name?: string | null; readonly station_type: string }[];
+  readonly substations: readonly {
+    readonly ref_id: string;
+    readonly name?: string | null;
+    readonly station_type: string;
+    readonly gpz_sections?: readonly { readonly section_id: string; readonly bus_ref?: string | null }[];
+  }[];
 }
 
 function model(fikstura: string): ModelFikstury {
@@ -65,6 +71,20 @@ function refySprzegla(m: ModelFikstury): readonly string[] {
     .filter((b) => b.bay_role === 'COUPLER' || (b.equipment_refs ?? []).some((r) => galezie.includes(r)))
     .map((b) => b.ref_id);
   return [...galezie, ...pola];
+}
+
+/** Refy kadru sekcji GPZ: sekcja, jej pola (z polem TR) i transformator przypięty polem TR sekcji. */
+function refySekcjiGpz(m: ModelFikstury, indeks: number): readonly string[] {
+  const gpzStacja = m.substations.find((s) => s.station_type === 'gpz');
+  const sekcja = gpzStacja?.gpz_sections?.[indeks];
+  if (!sekcja) return [];
+  const pola = (m.bays as readonly (ModelFikstury['bays'][number] & { readonly gpz_section_id?: string | null })[]).filter(
+    (b) => b.gpz_section_id === sekcja.section_id,
+  );
+  const transformatory = m.transformers
+    .filter((t) => pola.some((b) => b.bay_role === 'TR' && (b.equipment_refs ?? []).includes(t.ref_id)))
+    .map((t) => t.ref_id);
+  return [sekcja.section_id, ...pola.map((b) => b.ref_id), ...transformatory];
 }
 
 function refyStacji(m: ModelFikstury, typ: string): readonly string[] {
@@ -141,13 +161,55 @@ test.describe('rozdzielnica-sn-korekta:screenshot — rozdzielnica SN GPZ i stac
 
   for (const theme of ['dark', 'light'] as const) {
     const motyw = theme === 'dark' ? 'ciemny' : 'jasny';
-    test(`cała rozdzielnica GPZ dwusekcyjna — motyw ${theme}`, async ({ page }) => {
-      const bledy = await otworzHarness(page, GPZ, theme);
-      expect(bledy, bledy.join('\n')).toEqual([]);
-      const plik = path.join(OUTPUT_DIR, `rozdzielnica-gpz-${motyw}.png`);
-      await page.screenshot({ path: plik, fullPage: false });
-      expect(fs.existsSync(plik)).toBe(true);
-    });
+    // Decyzja architekta D3g: kadr oględzin rozdzielnicy w skali, w której nazwy pól, sekcji
+    // i aparatów są narysowane — bez komunikatu „Ukryto N opisów". Cała rozdzielnica dwusekcyjna
+    // nie mieści się w tej skali w oknie, więc kadr dzielimy na sekcje (przybliżenie natywnym
+    // kółkiem nad środkiem kadru sekcji, aż plan etykiet niczego nie ukrywa).
+    for (const indeks of [0, 1]) {
+      test(`rozdzielnica GPZ — sekcja ${indeks + 1} — motyw ${theme}`, async ({ page }) => {
+        const refy = refySekcjiGpz(gpz, indeks);
+        expect(refy.length, `sekcja ${indeks + 1} bez refów w fiksturze ${GPZ}`).toBeGreaterThan(1);
+        const bledy = await otworzHarness(page, GPZ, theme);
+        expect(bledy, bledy.join('\n')).toEqual([]);
+        const etykiety = page.locator('[data-hidden-unreadable]').first();
+        for (let i = 0; i < 40; i += 1) {
+          const ukryte = Number((await etykiety.getAttribute('data-hidden-unreadable')) ?? '0');
+          if (ukryte === 0 && (await page.getByTestId('sld-v3-hidden-labels-hint').count()) === 0) break;
+          const r = await ramka(page, refy);
+          if (!r) break;
+          await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+          await page.mouse.wheel(0, -120);
+          await page.waitForTimeout(150);
+        }
+        await page.waitForTimeout(400);
+        expect(Number((await etykiety.getAttribute('data-hidden-unreadable')) ?? '0')).toBe(0);
+        await expect(page.getByTestId('sld-v3-hidden-labels-hint')).toHaveCount(0);
+        // D3e: w tej skali żadna nazwa nie jest skracana planem etykiet (znak „…").
+        const skrocone = await page.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="sld-canvas-v3"] text')]
+            .map((t) => t.textContent ?? '')
+            .filter((t) => t.includes('…')),
+        );
+        expect(skrocone).toEqual([]);
+        const r = await ramka(page, refy);
+        expect(r, `sekcja ${indeks + 1} bez elementów na rysunku`).not.toBeNull();
+        const widok = page.viewportSize()!;
+        const margines = 40;
+        const x = Math.max(0, r!.x - margines);
+        const y = Math.max(0, r!.y - margines);
+        const plik = path.join(OUTPUT_DIR, `rozdzielnica-gpz-sekcja-${indeks + 1}-${motyw}.png`);
+        await page.screenshot({
+          path: plik,
+          clip: {
+            x,
+            y,
+            width: Math.min(widok.width - x, r!.width + 2 * margines),
+            height: Math.min(widok.height - y, r!.height + 2 * margines),
+          },
+        });
+        expect(fs.existsSync(plik)).toBe(true);
+      });
+    }
 
     for (const kadr of KADRY) {
       test(`${kadr.plik} — motyw ${theme}`, async ({ page }) => {

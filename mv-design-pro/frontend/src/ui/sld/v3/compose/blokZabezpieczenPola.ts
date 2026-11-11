@@ -333,6 +333,14 @@ export function pionBlokuPola(
   const wzorcowa = ramkaBlokuZabezpieczen(wierszeBlokuZabezpieczen(bayRef, marking.codes, odniesienia, 0, 0), 0, 0, 0)!;
   const goraStosu = Math.min(...stos.map((d) => gabarytAparatu(d).y));
   let blokY = snapToGrid(wysokoscOsi - wzorcowa.y - wzorcowa.height / 2);
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (D1): pole zasilające nad szyną (`w-gore`) ma szynę POD
+  // stosem — ramka nie schodzi poniżej dolnej krawędzi rysunku aparatów (ta sama reguła co górna
+  // krawędź dla toru w dół: ramka nie wchodzi na szynę ani zejście; pomiar: ramka siedmiu kodów
+  // pola toru transformatora GPZ przecinała szynę sekcji). Górna granica wygrywa przy konflikcie.
+  if (stos.some((d) => d.kierunekToru === 'w-gore')) {
+    const dolStosu = Math.max(...stos.map((d) => gabarytAparatu(d).y + gabarytAparatu(d).height));
+    if (blokY + wzorcowa.y + wzorcowa.height > dolStosu) blokY = Math.floor((dolStosu - wzorcowa.y - wzorcowa.height) / GRID) * GRID;
+  }
   if (blokY + wzorcowa.y < goraStosu) blokY = snapUp(goraStosu - wzorcowa.y);
   return { blokY, wysokoscOsi, gora: blokY + wzorcowa.y, dol: blokY + wzorcowa.y + wzorcowa.height };
 }

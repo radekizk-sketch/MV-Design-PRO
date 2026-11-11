@@ -11,6 +11,11 @@ transformer field anchor (never straight on the SN busbar), and the composition 
 the ``noDirectTransformerBusTies`` oracle that the composition tests pin. This guard is
 structural: it prevents regressions where the composition bypasses switchgear and draws
 one direct line from 110 kV to the SN trunk.
+
+The one explicit exception is the supply boundary: a transformer whose HV bay is absent
+from the model (the 110 kV apparatus is outside the model) gets a DASHED connector marked
+``terminatesAt: KONIEC_GRANICY_ZASILANIA_WN`` with a data-state caption, never a solid line
+and never an HV bay symbol; the oracle accepts exactly that combination.
 """
 
 from __future__ import annotations
@@ -29,6 +34,8 @@ REQUIRED_MARKERS: tuple[str, ...] = (
     "directTieSn: false",
     "terminatesAt: 'tr_field_anchor'",
     "export function noDirectTransformerBusTies",
+    "export const KONIEC_GRANICY_ZASILANIA_WN = 'granica_zasilania_wn'",
+    "dashed: true,",
 )
 
 FORBIDDEN_HINTS: tuple[str, ...] = (

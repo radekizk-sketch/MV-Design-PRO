@@ -136,11 +136,14 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
           )}
         </g>
       )}
-      {tabela && (
+      {/* Karta UX-04/ROZDZIELNICA-SN-KOREKTA (decyzja architekta D3a): tabela pól to JEDNA klasa —
+          próbki ról, plakietki automatyki i legenda bez swoich opisów były rzędami kolorowych
+          kwadratów i kreskowanych prostokątów bez znaczenia (zrzut „po" rozdzielnicy GPZ). Poniżej
+          progu czytelności pisma nie rysujemy tabeli wcale; tła pól (`panele`) zostają. */}
+      {tabela && tekstyCzytelne && (
         <g data-testid="sld-v3-gpz-tabela-pol">
-          {tekstyCzytelne && tekst('sld-v3-gpz-tabela-tytul', tabela.tytul.x, tabela.tytul.y, tekstTytuluTabeliGpz(maWynik, nieaktualny), kolorTekstu)}
-          {tekstyCzytelne &&
-            tabela.kolumnyKart.map((kx, k) =>
+          {tekst('sld-v3-gpz-tabela-tytul', tabela.tytul.x, tabela.tytul.y, tekstTytuluTabeliGpz(maWynik, nieaktualny), kolorTekstu)}
+          {tabela.kolumnyKart.map((kx, k) =>
               tabela.kolumnyWartosci.map((kol) => (
                 <g key={`gpz-naglowek-${k}-${kol.klucz}`}>
                   {tekst(`sld-v3-gpz-naglowek-${k}-${kol.klucz}`, kx + kol.dx + kol.width, tabela.naglowekY, kol.naglowek, kolorTekstu, 'end')}
@@ -169,8 +172,8 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                 >
                   <title>{ETYKIETA_ROLI_POLA_PL[karta.rola]}</title>
                 </rect>
-                {tekstyCzytelne && tekst(`sld-v3-gpz-karta-oznaczenie-${karta.bayRef}`, karta.oznaczenieX, karta.rect.y, karta.oznaczenie, kolorTekstu)}
-                {tekstyCzytelne && tekst(`sld-v3-gpz-karta-rola-${karta.bayRef}`, karta.rolaX, karta.rect.y, ETYKIETA_ROLI_POLA_PL[karta.rola], palette.rolaPola[karta.rola])}
+                {tekst(`sld-v3-gpz-karta-oznaczenie-${karta.bayRef}`, karta.oznaczenieX, karta.rect.y, karta.oznaczenie, kolorTekstu)}
+                {tekst(`sld-v3-gpz-karta-rola-${karta.bayRef}`, karta.rolaX, karta.rect.y, ETYKIETA_ROLI_POLA_PL[karta.rola], palette.rolaPola[karta.rola])}
                 {karta.plakietki.map((plakietka) => (
                   <g
                     key={`gpz-plakietka-${karta.bayRef}-${plakietka.flaga}`}
@@ -190,24 +193,21 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                       strokeWidth={1}
                       strokeDasharray={KRESKOWANIE_PLAKIETKI_BEZ_STANU}
                     />
-                    {tekstyCzytelne && (
-                      <text
-                        x={plakietka.rect.x + plakietka.rect.width / 2}
-                        y={plakietka.rect.y + plakietka.rect.height / 2}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill={kolorTekstu}
-                        fontFamily={SLD_FONT_FAMILY}
-                        fontSize={typo.fontSize}
-                        fontWeight={typo.fontWeight}
-                      >
-                        {plakietka.flaga}
-                      </text>
-                    )}
+                    <text
+                      x={plakietka.rect.x + plakietka.rect.width / 2}
+                      y={plakietka.rect.y + plakietka.rect.height / 2}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill={kolorTekstu}
+                      fontFamily={SLD_FONT_FAMILY}
+                      fontSize={typo.fontSize}
+                      fontWeight={typo.fontWeight}
+                    >
+                      {plakietka.flaga}
+                    </text>
                   </g>
                 ))}
-                {tekstyCzytelne &&
-                  tabela.kolumnyWartosci.map((kol) => (
+                {tabela.kolumnyWartosci.map((kol) => (
                     <g key={`gpz-wartosc-${karta.bayRef}-${kol.klucz}`}>
                       {tekst(
                         `sld-v3-gpz-wartosc-${karta.bayRef}-${kol.klucz}`,
@@ -234,7 +234,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                 stroke={palette.rolaPola[pozycja.rola]}
                 strokeWidth={1}
               />
-              {tekstyCzytelne && tekst(`sld-v3-gpz-legenda-tekst-${pozycja.rola}`, pozycja.tekstX, pozycja.y, pozycja.tekst, kolorTekstu)}
+              {tekst(`sld-v3-gpz-legenda-tekst-${pozycja.rola}`, pozycja.tekstX, pozycja.y, pozycja.tekst, kolorTekstu)}
             </g>
           ))}
         </g>

@@ -313,16 +313,34 @@ describe('buildCanonicalGpzProps — pole TR modelu jako pole toru transformator
     }
   });
 
-  it('determinizm: odwrócona kolejność pól i transformatorów → te same props', () => {
+  it('determinizm: odwrócona kolejność transformatorów i przeplot pól różnych sekcji → te same props', () => {
     const pola = [
       bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] }),
       bay('bay-tr2', 'TR', 'g', 'bus-110', { gpz_section_id: 'h1', equipment_refs: ['tr-2'] }),
       bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' }),
     ];
     const trafa = [transformer('tr-1'), transformer('tr-2')];
+    // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (D1, raster celek): kolejność pól JEDNEJ sekcji w modelu
+    // jest kolejnością celek rozdzielnicy (pola sekcji i celka pola TR — `pozycjaCelkiWSekcji`), więc
+    // jej odwrócenie to inna rozdzielnica. Intencja testu zostaje: kolejność transformatorów i
+    // przeplot pól RÓŻNYCH sekcji (h1 / s1) w liście modelu nie zmienia props.
+    const przeplot = [pola[1], pola[0], pola[2]];
     const a = buildCanonicalGpzProps(enmTr(pola, trafa), 'g');
-    const b = buildCanonicalGpzProps(enmTr([...pola].reverse(), [...trafa].reverse()), 'g');
+    const b = buildCanonicalGpzProps(enmTr(przeplot, [...trafa].reverse()), 'g');
     expect(JSON.stringify(b)).toBe(JSON.stringify(a));
+  });
+
+  it('pozycja celki pola TR w sekcji = liczba pól sekcji przed nim w kolejności modelu', () => {
+    const tr = bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] });
+    const o1 = bay('b-o1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' });
+    const o2 = bay('b-o2', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' });
+    const pozycja = (pola: ReturnType<typeof bay>[]) =>
+      buildCanonicalGpzProps(enmTr(pola, [transformer('tr-1')]), 'g').transformers[0].pozycjaCelkiWSekcji;
+    expect(pozycja([tr, o1, o2])).toBe(0);
+    expect(pozycja([o1, tr, o2])).toBe(1);
+    expect(pozycja([o1, o2, tr])).toBe(2);
+    // Transformator bez pola TR w sekcji — brak pozycji (kompozycja stawia wieżę na końcu szeregu).
+    expect(pozycja([o1, o2])).toBeNull();
   });
 });
 

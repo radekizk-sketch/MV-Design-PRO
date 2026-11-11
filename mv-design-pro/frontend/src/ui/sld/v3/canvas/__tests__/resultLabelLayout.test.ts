@@ -142,11 +142,28 @@ describe('layoutResultLabels — R2 priorytety / agregacja / metryki', () => {
   });
 
   it('wym.14 agregacja: skupisko bliskich kotwic → marker „+N wyniki"; członkowie posortowani po (ranga, ref) i NIEobecni w placements', () => {
-    const { scene, payload } = fullPayload(2);
+    // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (raster celek, granica zasilania WN): rozdzielnica GPZ
+    // fikstury rozłożyła się w szereg celek i żadne dwie kotwice wyników nie leżą już w promieniu
+    // agregacji (pomiar: 0 skupisk na 12 fiksturach sceny). Intencja testu zostaje — agregacja ma
+    // realny skutek — więc skupisko powstaje JAWNIE: bliźniak symbolu transformatora (inny ref,
+    // przesunięty o GRID) z własnym punktem wyniku; reszta sceny i payloadu bez zmian.
+    const { scene: bazowa, payload: bazowy } = fullPayload(2);
+    const tr = bazowa.symbols.find((sym) => sym.meta?.elementKind === 'transformer' && sym.meta?.ownerRef)!;
+    expect(tr, 'symbol transformatora na scenie fikstury').toBeDefined();
+    const blizniakRef = `${tr.meta!.ownerRef}-blizniak-skupiska`;
+    const scene = { ...bazowa, symbols: [...bazowa.symbols, { ...tr, x: tr.x + 8, meta: { ...tr.meta!, ownerRef: blizniakRef } }] };
+    const payload: RawOverlayPayload = {
+      ...bazowy,
+      elements: {
+        ...bazowy.elements,
+        [blizniakRef]: { ref_id: blizniakRef, kind: 'transformer', badges: [], severity: 'INFO', metrics: metricsForKind('transformer') },
+      },
+    };
     const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
     const layout = layoutResultLabels(scene, byRef, [], 2);
-    // Fixtura referencyjna zawiera ≥1 skupisko (bramka: agregacja ma realny skutek).
+    // Bramka: agregacja ma realny skutek (≥1 skupisko z bliźniakiem).
     expect(layout.aggregates.length).toBeGreaterThan(0);
+    expect(layout.aggregates.some((agg) => agg.members.some((m) => m.ownerRef === blizniakRef))).toBe(true);
     const placedRefs = new Set(layout.placements.map((p) => p.ownerRef));
     for (const agg of layout.aggregates) {
       expect(agg.count).toBe(agg.members.length);

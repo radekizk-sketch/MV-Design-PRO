@@ -29,7 +29,7 @@
  * × {bez sprzęgła, ze sprzęgłem} × LOD {1, 2}; druga sekcja zawsze z jednym
  * transformatorem (sąsiad grupy). Kryteria: jeden symbol TR2W na transformator,
  * zejście na szynie SN sekcji docelowej i zaczep na szynie WN, osie rosnące
- * w porządku refów, źródło nad prawym końcem szyny WN, wyłącznik sprzęgła między
+ * w porządku celek (pole TR w kolejności modelu, wieże bez pola TR na końcu po refach), źródło nad prawym końcem szyny WN, wyłącznik sprzęgła między
  * szynami, brak przecięcia prostokątów (symbole i etykiety) wieży, źródła i sprzęgła
  * z czymkolwiek spoza nich, żadna etykieta GPZ nieusunięta przez silnik etykiet,
  * determinizm względem kolejności transformatorów w modelu.
@@ -238,11 +238,26 @@ function sprawdzWieze(m: Migawka, scena: SceneV3): void {
   const hv = scena.segments.find((g) => g.meta?.testId === 'gpz-canonical-hv-bus')!;
   const hvXs = hv.points.map((p) => p.x);
   const wszystkie = [...m.wgSekcji.values()].flat();
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (D1, raster celek): wieża transformatora stoi w szeregu
+  // celek sekcji w miejscu swojego pola TR w kolejności modelu (`pozycjaCelkiWSekcji`), wieże bez
+  // pola TR w sekcji — na końcu szeregu w porządku refów. Fikstura niesie pole TR (Z.7) wyłącznie
+  // dla transformatora bazowego, więc jego wieża stoi PRZED wieżami dodanymi testem (dawniej
+  // wszystkie wieże stały grupą w porządku refów). Intencja zostaje: osie ściśle rosnące, bez
+  // kolizji, każde zejście w szynie swojej sekcji.
+  const gpzRef = m.enm.substations.find((s) => s.station_type === 'gpz')!.ref_id;
+  const pozycja = new Map(
+    buildCanonicalGpzProps(m.enm, gpzRef).transformers.map((t) => [t.transformerRef, t.pozycjaCelkiWSekcji ?? null]),
+  );
+  const porzadekCelek = (a: string, b: string): number => {
+    const pa = pozycja.get(a) ?? Number.POSITIVE_INFINITY;
+    const pb = pozycja.get(b) ?? Number.POSITIVE_INFINITY;
+    return pa !== pb ? pa - pb : a < b ? -1 : a > b ? 1 : 0;
+  };
   for (const sekcja of SEKCJE) {
-    const refy = m.wgSekcji.get(sekcja)!;
+    const refy = [...m.wgSekcji.get(sekcja)!].sort(porzadekCelek);
     const szyna = szynaSekcji(scena, m.sekcjaId[sekcja]);
     const osie = refy.map((ref) => osWiezy(scena, ref));
-    // Porządek po refach: osie ściśle rosnące (dawniej wszystkie równe).
+    // Porządek celek: osie ściśle rosnące (dawniej wszystkie równe).
     osie.forEach((os, i) => {
       if (i > 0) expect(os, `oś wieży ${refy[i]} na prawo od ${refy[i - 1]}`).toBeGreaterThan(osie[i - 1]);
     });

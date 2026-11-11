@@ -104,6 +104,8 @@ import {
   planApparatusSymbolIds,
   przewodyToruZPortow,
   polozeniaToruGlownego,
+  polozeniaToruWGore,
+  type KierunekToruPola,
   rekordyToruPola,
   symbolAparatuPola,
   ukladBocznyPola,
@@ -254,6 +256,10 @@ export interface ComposedGpzSymbolInstance {
   /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE dla symbolu
    *  `capacitorBank`; przechodzą przez scenę do glifu (układ połączeń, przekładnik). */
   readonly bateria?: GlifBaterii;
+  /** Karta UX-04/ROZDZIELNICA-SN-KOREKTA (decyzja architekta D1): orientacja toru, w którym
+   *  stoi aparat toru głównego — `w-gore` dla pola zasilającego nad szyną; przechodzi przez
+   *  scenę do glifu (`GlyphProps.kierunekToru`). Brak = tor od szyny w dół. */
+  readonly kierunekToru?: KierunekToruPola;
   /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): ref rekordu aparatu tej
    *  pozycji stosu (`BayPrimaryDevice.device_ref` albo ref gałęzi pola) — stos GPZ jest
    *  budowany Z rekordów (`specyfikacjaPolaGpz`, GEOMETRIA-STACJI §0 pkt 4), więc każda
@@ -442,6 +448,10 @@ export interface GpzComposition {
    *  i alarmów w nagłówku) — geometria bez wartości; wartości dokłada render z wyniku
    *  backendu. `null` razem z `zone` (kompozycja pusta). */
   readonly adnotacje: GpzAdnotacje | null;
+  /** Raster celek sekcji SN (D1, karta UX-04/ROZDZIELNICA-SN-KOREKTA): pola sekcji i kolumny wież
+   *  transformatorów w kolejności szeregu, z ciągłym numerem celki i krawędziami kolumny (po
+   *  translacji końcowej). Jedno źródło dla wyroczni rozłączności kolumn i numeracji. */
+  readonly rasterCelek: readonly CelkaRastraGpz[];
   readonly bbox: V3Rect;
 }
 
@@ -533,6 +543,40 @@ const BRAK_DANYCH_WYPOSAZENIA: FieldApparatusSpec = {
   symbolId: 'bayNoEquipment',
   parityKeys: ['gpz.bay.no_equipment_data'],
 };
+
+/** Karta UX-04/ROZDZIELNICA-SN-KOREKTA (decyzja architekta D3b): transformator BEZ pola WN TR
+ *  w modelu (`poleWn === null` — aparatura 110 kV nie jest zamodelowana) nie dostaje w torze
+ *  sylwetki „?" (`bayNoEquipment` to pole MODELU bez rekordów aparatów — tu pola nie ma wcale),
+ *  tylko jawną GRANICĘ ZASILANIA: kreskowane połączenie szyna WN → TR (kreska = poza modelem,
+ *  ta sama konwencja co odejście pola rezerwowego) z opisem stanu danych. Pole WN obecne
+ *  w modelu bez rekordów aparatów nadal rysuje sylwetkę braku danych wyposażenia. JEDEN
+ *  predykat (`czyGranicaZasilaniaWn`) steruje rysunkiem, zasięgiem wieży i wyrocznią
+ *  `noDirectTransformerBusTies` (predykaty parami). */
+export const OPIS_GRANICY_ZASILANIA_WN: readonly string[] = ['Granica zasilania WN', 'pole WN TR poza modelem'];
+export const KONIEC_GRANICY_ZASILANIA_WN = 'granica_zasilania_wn';
+
+function czyGranicaZasilaniaWn(transformer: CanonicalGpzTransformer): boolean {
+  return transformer.poleWn === null;
+}
+
+/** Wysokość pasma opisu granicy zasilania WN (wiersze t3 jeden pod drugim). */
+/** Wiersze opisu granicy zasilania WN (pasmo nazwy transformatora) — jedna funkcja dla budowy
+ *  opisu i rezerwacji pasma (`wysokoscOpisuGranicyWn`, `szerokoscOpisuGranicyWn`). */
+function wierszeOpisuGranicyWn(): StationNameBandRow[] {
+  return OPIS_GRANICY_ZASILANIA_WN.map((text, i) => ({ text, labelClass: 't3', role: i === 0 ? 'tozsamosc' : 'dane' }));
+}
+
+/** Przyrostek właściciela pasma opisu granicy (`<transformerRef>#granica-zasilania-wn#name-row-<i>`). */
+export const KLUCZ_OPISU_GRANICY_WN = 'granica-zasilania-wn';
+
+function wysokoscOpisuGranicyWn(): number {
+  return snapUp(wierszeOpisuGranicyWn().reduce((suma, row) => suma + labelLineHeight(row.labelClass), 0));
+}
+
+/** Szerokość opisu granicy zasilania WN na prawo od osi toru. */
+function szerokoscOpisuGranicyWn(): number {
+  return snapUp(GRID + Math.max(...wierszeOpisuGranicyWn().map((w) => measureLabelWidth(w.text, w.labelClass))));
+}
 
 /** GEOMETRIA-STACJI (§0 pkt 5): zakończenie toru pola rezerwowego/wolnego — odejście kablowe
  *  poza modelem (kabel kreskowany ze strzałką w dół; decyzja właściciela 2026-10-30): kabla
@@ -924,6 +968,9 @@ interface FieldStack {
    *  (albo pole nie niesie portów — wtedy zejście jak dotąd). `false` = zejście z szyny
    *  NIE powstaje (byłoby przewodem bez pokrycia w modelu). */
   readonly torOdSzyny: boolean;
+  /** Kierunek toru od szyny (`KierunekToruPola`): `w-gore` — pole zasilające nad szyną; szyna
+   *  przy `bottomPort`, odpływ (transformator) przy `topPort`. */
+  readonly kierunek: KierunekToruPola;
 }
 
 interface PozycjaStosuGpz {
@@ -935,9 +982,12 @@ interface PozycjaStosuGpz {
 }
 
 interface OpcjeStosuPolaGpz {
-  /** Przewody port → port z portów ENM (pola SN sekcji). WN i wieże transformatorów —
-   *  bez zmian (granica karty: 110 kV nietknięte). */
+  /** Przewody port → port z portów ENM (pola SN sekcji i pole TR wieży). */
   readonly przewodyZPortow?: boolean;
+  /** Kierunek toru od szyny (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta D1):
+   *  `w-gore` — pole zasilające NAD szyną, aparaty w kolejności od szyny ku górze
+   *  (`polozeniaToruWGore`), glify toru z orientacją toru (`kierunekToru`). Brak = `w-dol`. */
+  readonly kierunek?: KierunekToruPola;
 }
 
 function portsInWorld(symbolId: SymbolId, x: number, y: number): Readonly<Record<string, RoutePort>> {
@@ -1003,6 +1053,8 @@ function buildFieldStack(
   // z danymi wejściowymi zachowany). Przypadek zdegenerowany (same aparaty boczne) — plan
   // zwraca je jako tor główny.
   const plan = planPolaGpz(specs);
+  const kierunek: KierunekToruPola = opcje.kierunek ?? 'w-dol';
+  const wGore = kierunek === 'w-gore';
   const stackSpecs = plan.mainSequenceIndices.map((index) => ({ spec: specs[index], index }));
   const mainSpecs = stackSpecs;
   const laterals = plan.laterals.map((lat) => ({
@@ -1016,12 +1068,13 @@ function buildFieldStack(
   // Położenia pionowe toru głównego — `polozeniaToruGlownego` (ta sama reguła co plan
   // `gpzFieldPlanFootprint` i stos stacji; aparat za kotwicą odgałęzienia toru pod jego pasem).
   const polozenia = polozeniaToruGlownego(plan);
+  const polozeniaWGore = wGore ? polozeniaToruWGore(plan) : null;
   let topPort: RoutePort | null = null;
   let bottomPort: RoutePort | null = null;
 
   stackSpecs.forEach(({ spec, index }, stackIndex) => {
     const def = SYMBOL_DEFS[spec.symbolId];
-    const y = topY + polozenia.y[stackIndex];
+    const y = topY + (polozeniaWGore ? polozeniaWGore.y[stackIndex] : polozenia.y[stackIndex]);
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(spec.symbolId, x, y);
     const instance: ComposedGpzSymbolInstance = {
@@ -1031,6 +1084,10 @@ function buildFieldStack(
       ...daneRekordu(spec),
       ...(spec.bateria ? { bateria: spec.bateria } : {}),
       ...(spec.uzwojenia ? { uzwojenia: spec.uzwojenia } : {}),
+      // Orientacja glifu toru (decyzja architekta D1): w polu nad szyną styki stałe łączników
+      // i miseczka głowicy kablowej zwracają się ku szynie / ku kablowi tak jak w polu pod
+      // szyną; ziemia zawsze w dół (`symbols/glyphs.tsx`, `kierunekToru`).
+      ...(wGore ? { kierunekToru: 'w-gore' as const } : {}),
       ports,
       meta: metaPozycji(spec, index),
     };
@@ -1038,6 +1095,15 @@ function buildFieldStack(
     mainInstances.push(instance);
     pozycje.push({ instance, spec, boczny: false });
 
+    if (wGore) {
+      // Tor od szyny w górę: szyna przy porcie S pierwszego aparatu, odpływ przy porcie N
+      // ostatniego (węzły odczepu na końcach — niżej, po aparatach bocznych).
+      const north = def.ports.find((p) => p.dir === 'N');
+      const south = def.ports.find((p) => p.dir === 'S');
+      if (stackIndex === 0 && south) bottomPort = { x: x + south.x, y: y + south.y, dir: south.dir };
+      if (north) topPort = { x: x + north.x, y: y + north.y, dir: north.dir };
+      return;
+    }
     if (stackIndex === 0) {
       const north = def.ports.find((p) => p.dir === 'N');
       topPort = north ? { x: x + north.x, y: y + north.y, dir: north.dir } : Object.values(ports)[0] ?? null;
@@ -1065,6 +1131,14 @@ function buildFieldStack(
   // (jedna reguła z planem).
   const wezelToru = (afterMainIndex: number) => {
     const inst = afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
+    if (polozeniaWGore) {
+      // Tor w górę: węzeł za aparatem — nad nim (port N), węzeł od szyny — pod pierwszym (port S);
+      // Y węzła z `polozeniaToruWGore` (pasmo pasów wiszących pod węzłem mieści się w przerwie).
+      const p = SYMBOL_DEFS[inst.symbolId].ports.find((q) => q.dir === (afterMainIndex >= 0 ? 'N' : 'S'))
+        ?? SYMBOL_DEFS[inst.symbolId].ports[0];
+      const port = { x: inst.x + p.x, y: inst.y + p.y };
+      return { port, wezel: { x: port.x, y: topY + (polozeniaWGore.wezly.get(afterMainIndex) ?? port.y - topY) } };
+    }
     return wezelOdczepu(inst.symbolId, inst.x, inst.y, afterMainIndex >= 0);
   };
   const kotwicaToru = (afterMainIndex: number): { readonly x: number; readonly y: number } => wezelToru(afterMainIndex).wezel;
@@ -1151,6 +1225,18 @@ function buildFieldStack(
     });
   }
 
+  if (polozeniaWGore && mainInstances.length > 0) {
+    // Węzły odczepu na końcach toru w górę stają się końcami toru: przyłącze transformatora
+    // schodzi do węzła za ostatnim aparatem, zejście do szyny wychodzi z węzła od szyny
+    // (dojście port → węzeł dorysowuje `dojsciaDoWezlowOdczepu` niżej).
+    // Porty ustawiane w pętli `forEach` — TypeScript nie śledzi przypisań w domknięciu.
+    const gora = topPort as RoutePort | null;
+    const dol = bottomPort as RoutePort | null;
+    const ostatni = polozeniaWGore.wezly.get(mainInstances.length - 1);
+    if (ostatni !== undefined && gora) topPort = { x: gora.x, y: topY + ostatni, dir: 'N' };
+    const odSzyny = polozeniaWGore.wezly.get(-1);
+    if (odSzyny !== undefined && dol) bottomPort = { x: dol.x, y: topY + odSzyny, dir: 'S' };
+  }
   if (!topPort) {
     throw new Error('composeGpz: pusty stos aparatów pola (brak symboli z portem)');
   }
@@ -1176,7 +1262,7 @@ function buildFieldStack(
     branchSegments.push({ points, ownerSuffix: `wezel-odczepu-${i}` }),
   );
   const torOdSzyny = !zPortami || czyTorOdSzyny(stackSpecs[0]?.spec.device);
-  return { instances, topPort, bottomPort, branchSegments, wireSegments, pozycje, torOdSzyny };
+  return { instances, topPort, bottomPort, branchSegments, wireSegments, pozycje, torOdSzyny, kierunek };
 }
 
 // ---------------------------------------------------------------------------
@@ -1201,6 +1287,8 @@ interface FieldColumnLayout {
    *  zabezpieczeń nie wychodzi za nią (położenie ostatnie: prawo-wyrównany; ten sam
    *  model co `compose/station.ts`: `bx + reservedWidth`). */
   readonly rightX: number;
+  /** Numer celki w szeregu sekcji (1…), ciągły z kolumnami wież transformatorów (D1). */
+  readonly numerCelki: number;
 }
 
 interface SectionLayout {
@@ -1210,6 +1298,8 @@ interface SectionLayout {
   readonly fields: readonly FieldColumnLayout[];
   /** Osie X wież transformatorów tej sekcji (`transformerRef` → X), z `layoutSections`. */
   readonly osieWiez: ReadonlyMap<string, number>;
+  /** Kolumny wież transformatorów w rastrze celek sekcji (D1). */
+  readonly kolumnyWiez: readonly KolumnaWiezy[];
   /** Wolny pas na szynie między zajętością pasma tej sekcji (szyna z blokiem źródła)
    *  a etykietą sekcji następnej — miejsce wyłącznika sprzęgła; `null` dla ostatniej. */
   readonly pasSprzegla: { readonly lewo: number; readonly prawo: number } | null;
@@ -1486,8 +1576,8 @@ function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
  *  boczne (TA SAMA arytmetyka co `bayApparatusPlanFootprint` w measure/station
  *  — jedna prawda). `mainStack.width` wyznacza OŚ stosu; pełna szerokość
  *  zawiera rozszerzenie boczne w prawo. */
-function gpzFieldPlanFootprint(spec: readonly FieldApparatusSpec[]) {
-  return bayApparatusPlanFootprint(planPolaGpz(spec));
+function gpzFieldPlanFootprint(spec: readonly FieldApparatusSpec[], kierunek: KierunekToruPola = 'w-dol') {
+  return bayApparatusPlanFootprint(planPolaGpz(spec), kierunek);
 }
 
 /** Pozycje (w `spec`) aparatów szeregowych toru głównego pola GPZ — podział z tego samego
@@ -1515,9 +1605,14 @@ function planPolaGpz(spec: readonly FieldApparatusSpec[]) {
  *  zabezpieczeń, TYLKO dla pól z `protectionCodes` (§17.3 — zero zmian
  *  geometrii dla pól bez danych; fixtura referencyjna: 0 pól z kodami,
  *  zweryfikowane, baseline'y nietknięte). */
-function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldApparatusSpec[], designation: string): number {
+function fieldColumnRequiredWidth(
+  bay: CanonicalGpzBay,
+  spec: readonly FieldApparatusSpec[],
+  designation: string,
+  kierunek: KierunekToruPola = 'w-dol',
+): number {
   // F10.1: pełna szerokość planu (tor główny + rozszerzenie boczne ES/VT/SA).
-  const footprint = gpzFieldPlanFootprint(spec);
+  const footprint = gpzFieldPlanFootprint(spec, kierunek);
   const sidecar = designation ? GRID + measureLabelWidth(designation, 't3') : 0;
   return (
     pasyOpisowPolaGpz(spec).szerokosc + footprint.width + sidecar + gpzBayAnnotationWidth(bay)
@@ -1551,15 +1646,65 @@ function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, nu
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
 }
 
+/** Kolumna wieży transformatora w rastrze celek sekcji (decyzja architekta D1): oś toru,
+ *  krawędzie kolumny (zasięg wieży `zasiegWiezy`) i numer celki w szeregu sekcji. */
+interface KolumnaWiezy {
+  readonly transformerRef: string;
+  readonly os: number;
+  readonly leftX: number;
+  readonly rightX: number;
+  readonly numerCelki: number;
+}
+
+/** Celka rastra sekcji — pole sekcji albo kolumna wieży transformatora — z numerem w szeregu. */
+export interface CelkaRastraGpz {
+  readonly sectionId: string;
+  readonly numer: number;
+  readonly rodzaj: 'pole' | 'wieza';
+  /** `bayRef` pola albo `transformerRef` wieży. */
+  readonly ref: string;
+  readonly leftX: number;
+  readonly rightX: number;
+}
+
 function layoutSectionFields(
   section: CanonicalGpzSection,
   startX: number,
   szerokosciZmierzone?: ReadonlyMap<string, RysunekPola>,
-): { readonly fields: readonly FieldColumnLayout[]; readonly width: number } {
+  wieze: readonly { readonly transformer: CanonicalGpzTransformer; readonly zasieg: ZasiegWiezy }[] = [],
+  minLewoWiezy: number = -Infinity,
+): { readonly fields: readonly FieldColumnLayout[]; readonly width: number; readonly kolumnyWiez: readonly KolumnaWiezy[] } {
   const fields: FieldColumnLayout[] = [];
+  const kolumnyWiez: KolumnaWiezy[] = [];
   let cursor = startX + SECTION_MARGIN;
+  let numerCelki = 0;
   const ordinalCounters = new Map<string, number>();
+  // D1 (karta UX-04/ROZDZIELNICA-SN-KOREKTA): kolumna wieży transformatora jest CELKĄ szeregu
+  // sekcji — stoi w miejscu pola TR w kolejności modelu (`pozycjaCelkiWSekcji`, brak = koniec
+  // szeregu), szerokość = zasięg wieży (siatka), oś = oś toru; lewa krawędź nie wchodzi pod
+  // etykietę sekcji (`minLewoWiezy`). Ta sama arytmetyka kursora co pola: kolumny rozłączne.
+  const pozycja = (w: { readonly transformer: CanonicalGpzTransformer }): number =>
+    w.transformer.pozycjaCelkiWSekcji ?? Number.POSITIVE_INFINITY;
+  const postawWieze = (przed: number): void => {
+    for (const wieza of wieze) {
+      const p = pozycja(wieza);
+      if (!(p === przed || (przed === section.bays.length && p >= przed))) continue;
+      cursor = Math.max(cursor, snapUp(minLewoWiezy));
+      numerCelki += 1;
+      const os = snapToGrid(cursor + wieza.zasieg.lewo);
+      kolumnyWiez.push({
+        transformerRef: wieza.transformer.transformerRef,
+        os,
+        leftX: cursor,
+        rightX: os + wieza.zasieg.prawo,
+        numerCelki,
+      });
+      cursor = os + wieza.zasieg.prawo + FIELD_GAP;
+    }
+  };
   section.bays.forEach((bay, index) => {
+    postawWieze(index);
+    numerCelki += 1;
     const spec = specyfikacjaPolaGpz(bay);
     // F10.1: oś stosu = połowa szerokości TORU GŁÓWNEGO (aparaty boczne
     // rozszerzają kolumnę w prawo, nie przesuwają osi).
@@ -1582,12 +1727,14 @@ function layoutSectionFields(
         : zRezerwacji;
     // Kolumny opisów pola przy jego lewej krawędzi (`pasyOpisowPolaGpz`), za nimi tor główny.
     const centerX = snapToGrid(cursor + pasyOpisowPolaGpz(spec).szerokosc + footprint.width / 2);
-    fields.push({ bay, index, spec, designation, centerX, leftX: cursor, rightX: cursor + reserved });
+    fields.push({ bay, index, spec, designation, centerX, leftX: cursor, rightX: cursor + reserved, numerCelki });
     cursor += reserved + FIELD_GAP;
   });
-  const contentRight = fields.length > 0 ? cursor - FIELD_GAP + SECTION_MARGIN : startX + SECTION_MARGIN * 2;
+  postawWieze(section.bays.length);
+  const contentRight =
+    fields.length + kolumnyWiez.length > 0 ? cursor - FIELD_GAP + SECTION_MARGIN : startX + SECTION_MARGIN * 2;
   const width = snapUp(Math.max(contentRight - startX, 4 * GRID));
-  return { fields, width };
+  return { fields, width, kolumnyWiez };
 }
 
 /** Prefix-sum sekcji SN (spec §5.3 arytmetyka, zastosowana do sekcji GPZ —
@@ -1634,24 +1781,21 @@ function layoutSections(
         pasSprzegla: { lewo: poprzednia.prawaSzyny, prawo: cursor - polowaEtykiety },
       };
     }
-    const { fields, width: szerokoscPol } = layoutSectionFields(section, cursor, szerokosciZmierzone);
     const grupa = pasmo.grupy.get(section.sectionId) ?? null;
-    // Dosunięcie niżej daje też minimum `rozpietosc + 2 × SECTION_MARGIN` (baza ≥ x + margines,
-    // bo `zaEtykieta` ≥ x + `FIELD_GAP` = x + `SECTION_MARGIN`).
-    let width = szerokoscPol;
-    const osieWiez = new Map<string, number>();
-    let prawaWiez = -Infinity;
-    if (grupa) {
-      const naSrodku = snapToGrid(cursor + width / 2 - grupa.rozpietosc / 2);
-      const zaEtykieta = snapUp(cursor + polowaEtykiety + FIELD_GAP + grupa.lewo);
-      const baza = Math.max(naSrodku, zaEtykieta);
-      width = Math.max(width, snapUp(baza + grupa.rozpietosc + SECTION_MARGIN - cursor));
-      grupa.wieze.forEach((wieza, i) => osieWiez.set(wieza.transformer.transformerRef, baza + grupa.przesuniecia[i]));
-      prawaWiez = baza + grupa.rozpietosc + grupa.prawo;
-    }
+    // D1: wieże transformatorów są celkami rastra sekcji (`layoutSectionFields`) — nie grupą
+    // wyśrodkowaną nad szyną; kolumna wieży nie wchodzi pod etykietę sekcji (lewy koniec szyny).
+    const { fields, width, kolumnyWiez } = layoutSectionFields(
+      section,
+      cursor,
+      szerokosciZmierzone,
+      grupa?.wieze ?? [],
+      cursor + polowaEtykiety + FIELD_GAP,
+    );
+    const osieWiez = new Map<string, number>(kolumnyWiez.map((k) => [k.transformerRef, k.os]));
+    const prawaWiez = kolumnyWiez.length > 0 ? Math.max(...kolumnyWiez.map((k) => k.rightX)) : -Infinity;
     const prawaSzyny = cursor + width;
     const blok = pasmo.blokZrodla.get(section.sectionId) ?? 0;
-    out.push({ section, x: cursor, width, fields, osieWiez, pasSprzegla: null });
+    out.push({ section, x: cursor, width, fields, osieWiez, kolumnyWiez, pasSprzegla: null });
     poprzednia = {
       prawaSzyny: prawaSzyny + blok,
       zajetosc: Math.max(prawaSzyny + blok, prawaWiez),
@@ -1818,6 +1962,17 @@ function wierszeTabliczkiTransformatora(transformer: CanonicalGpzTransformer): S
   ];
 }
 
+/** Wysokość najwyższej tabliczki transformatorów GPZ — jedno źródło dla początku stosu pola TR
+ *  (pod tabliczką) i poziomu szyny SN. */
+function wysokoscTabliczekTr(props: CanonicalGpzProps): number {
+  return Math.max(
+    0,
+    ...props.transformers.map((transformer) =>
+      wierszeTabliczkiTransformatora(transformer).reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
+    ),
+  );
+}
+
 /** Odsunięcie lewej krawędzi pasma tabliczki transformatora od osi wieży. */
 function odsuniecieTabliczki(): number {
   return snapToGrid(SYMBOL_DEFS.transformer2W.width / 2 + GRID);
@@ -1841,12 +1996,16 @@ function zasiegWiezy(transformer: CanonicalGpzTransformer): ZasiegWiezy {
   const polowaTr = SYMBOL_DEFS.transformer2W.width / 2;
   let lewo = polowaTr;
   let prawo = polowaTr;
-  const stosy: ReadonlyArray<readonly [CanonicalGpzBay | null, readonly FieldApparatusSpec[]]> = [
-    [transformer.poleWn, specyfikacjaPolaGpz(transformer.poleWn)],
-    [transformer.poleTr, specyfikacjaPolaGpz(transformer.poleTr)],
+  // Pole WN TR schodzi od szyny WN w dół, pole TR wznosi się od szyny SN (`w-gore`, D1).
+  const stosy: ReadonlyArray<readonly [CanonicalGpzBay | null, readonly FieldApparatusSpec[], KierunekToruPola]> = [
+    [transformer.poleWn, specyfikacjaPolaGpz(transformer.poleWn), 'w-dol'],
+    [transformer.poleTr, specyfikacjaPolaGpz(transformer.poleTr), 'w-gore'],
   ];
-  for (const [pole, specyfikacja] of stosy) {
-    const plan = gpzFieldPlanFootprint(specyfikacja);
+  // D3b: bez pola WN TR w modelu tor WN to kreskowana granica zasilania z opisem na prawo od osi.
+  if (czyGranicaZasilaniaWn(transformer)) prawo = Math.max(prawo, szerokoscOpisuGranicyWn());
+  for (const [pole, specyfikacja, kierunek] of stosy) {
+    if (kierunek === 'w-dol' && czyGranicaZasilaniaWn(transformer)) continue;
+    const plan = gpzFieldPlanFootprint(specyfikacja, kierunek);
     const polowa = plan.mainStack.width / 2;
     lewo = Math.max(lewo, polowa);
     prawo = Math.max(prawo, plan.width - polowa);
@@ -1856,7 +2015,7 @@ function zasiegWiezy(transformer: CanonicalGpzTransformer): ZasiegWiezy {
       const pasy = pasyOpisowPolaGpz(specyfikacja).szerokosc;
       const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
       lewo = Math.max(lewo, polowa + pasy);
-      prawo = Math.max(prawo, snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)) - pasy - polowa);
+      prawo = Math.max(prawo, snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie, kierunek)) - pasy - polowa);
     }
   }
   prawo = Math.max(prawo, odsuniecieTabliczki() + szerokoscTabliczki(wierszeTabliczkiTransformatora(transformer)));
@@ -2184,9 +2343,14 @@ function composeGpzPrzebieg(
     .forEach((hvSection) => {
       hvSection.bays.forEach((bay) => {
         // GEOMETRIA-STACJI (§0 pkt 4): stos pola WN z rekordów aparatów (brak → sylwetka).
+        // D1 (karta UX-04/ROZDZIELNICA-SN-KOREKTA): pole liniowe WN stoi NAD szyną WN — tor liczony
+        // OD SZYNY w górę (`w-gore`, ta sama reguła co pole TR nad szyną SN): pierwszy rekord
+        // aparatów (od strony szyn) przy szynie, zaczep szyny z portu tego aparatu.
         const hvLineBaySpecTemplate = specyfikacjaPolaGpz(bay);
-        const hvLineBayFootprint = stackFootprint(hvLineBaySpecTemplate.map((s) => s.symbolId));
-        const centerX = snapToGrid(hvLineBayCursor + hvLineBayFootprint.width / 2);
+        // Gabaryt pełnego planu (tor + pasy aparatów bocznych w przerwach toru): oś = połowa toru
+        // głównego, kolumna = pełna szerokość planu (aparaty boczne nie wchodzą na pole następne).
+        const hvLineBayFootprint = gpzFieldPlanFootprint(hvLineBaySpecTemplate, 'w-gore');
+        const centerX = snapToGrid(hvLineBayCursor + hvLineBayFootprint.mainStack.width / 2);
         const topY = hvBusY - GRID - hvLineBayFootprint.height;
         const stack = buildFieldStack(
           hvLineBaySpecTemplate,
@@ -2194,6 +2358,7 @@ function composeGpzPrzebieg(
           topY,
           (_i, id) => `gpz-canonical-hv-bay-${bay.bayRef}-${id}`,
           { sectionId: hvSection.sectionId, bayRef: bay.bayRef, ...(bay.reserve ? { bayReserve: bay.reserve } : {}) },
+          { kierunek: 'w-gore' },
         );
         symbols.push(...stack.instances);
         stack.instances.forEach((instance) => tag(instance.meta.parityKeys));
@@ -2380,9 +2545,14 @@ function composeGpzPrzebieg(
       if (!portGorny || !portDolny) return;
       const kafel: V3Rect = { x: instance.x, y: instance.y, width: def.width, height: def.height };
       const deviceRef = spec[indeks].device?.deviceRef ?? indeks;
+      // Pole nad szyną (`w-gore`, decyzja architekta D1): zacisk od szyny (P1) jest DOLNYM
+      // zaciskiem symbolu, od odpływu (P2) — górnym; oznaczenia idą za stroną szyny.
+      const wGore = stack.kierunek === 'w-gore';
+      const zaciskOdSzyny = wGore ? portDolny : portGorny;
+      const zaciskOdOdplywu = wGore ? portGorny : portDolny;
       for (const [oznaczenie, zaciskY, odPierscienia] of [
-        [zaciski.odSzyny, instance.y + portGorny.y, -1],
-        [zaciski.odOdplywu, instance.y + portDolny.y, 1],
+        [zaciski.odSzyny, instance.y + zaciskOdSzyny.y, wGore ? 1 : -1],
+        [zaciski.odOdplywu, instance.y + zaciskOdOdplywu.y, wGore ? -1 : 1],
       ] as const) {
         const polozenie = oznaczenieZaciskuPrzekladnika(oznaczenie, zaciskY, kafel, odPierscienia, przeszkodyZaciskow);
         // Oznaczenie P2 omija P1 tego samego przekładnika (i każde poprzednie).
@@ -2646,27 +2816,39 @@ function composeGpzPrzebieg(
   // równają do jednej osi TR2W; krótszy stos domyka odcinek do TR i do szyny SN).
   const wysokoscPasma = (stosy: readonly (readonly FieldApparatusSpec[])[]): number =>
     Math.max(...stosy.map((stos) => stackFootprint(stos.map((spec) => spec.symbolId)).height));
-  const stosyWn = props.transformers.map((transformer) => specyfikacjaPolaGpz(transformer.poleWn));
+  const stosyWn = props.transformers.filter((t) => !czyGranicaZasilaniaWn(t)).map((t) => specyfikacjaPolaGpz(t.poleWn));
   const stosyTr = props.transformers.map((transformer) => specyfikacjaPolaGpz(transformer.poleTr));
-  const hvFieldFootprint = { height: wysokoscPasma(stosyWn.length > 0 ? stosyWn : [[BRAK_DANYCH_WYPOSAZENIA]]) };
-  const trFieldFootprint = { height: wysokoscPasma(stosyTr.length > 0 ? stosyTr : [[BRAK_DANYCH_WYPOSAZENIA]]) };
+  // D3b: pasmo WN mieści stos pola WN TR albo opis granicy zasilania (wieże równają do jednej osi TR2W).
+  const hvFieldFootprint = {
+    height: Math.max(
+      stosyWn.length > 0 || props.transformers.length === 0 ? wysokoscPasma(stosyWn.length > 0 ? stosyWn : [[BRAK_DANYCH_WYPOSAZENIA]]) : 0,
+      props.transformers.some(czyGranicaZasilaniaWn) ? wysokoscOpisuGranicyWn() : 0,
+    ),
+  };
+  // Pole TR wznosi się od szyny SN (`w-gore`, D1): wysokość z planu toru w górę — pasy aparatów
+  // bocznych i odgałęzień wiszą w przerwach toru (`polozeniaToruWGore`).
+  const trFieldFootprint = {
+    height: Math.max(
+      ...(stosyTr.length > 0 ? stosyTr : [[BRAK_DANYCH_WYPOSAZENIA]]).map((stos) => gpzFieldPlanFootprint(stos, 'w-gore').height),
+    ),
+  };
   const trHeight = SYMBOL_DEFS.transformer2W.height;
 
   const hvFieldTopY = hvBusY + GRID;
   const trTopY = hvFieldTopY + hvFieldFootprint.height + STACK_GAP;
-  const trFieldTopY = trTopY + trHeight + STACK_GAP;
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (D1): pole TR wznosi się od szyny SN, więc aparaty przy
+  // zaciskach transformatora (ogranicznik przepięć Z.7 s.86, odgałęzienie boczne w prawo) stoją
+  // tuż pod TR2W — w pasie tabliczki transformatora (na prawo od symbolu, od `trTopY` w dół).
+  // Stos pola zaczyna się POD tabliczką: tabliczka i aparaty boczne pola nie dzielą pasa
+  // (dawniej silnik etykiet odrzucał wiersze tabliczki i opis zacisku pola).
+  const trFieldTopY = Math.max(trTopY + trHeight + STACK_GAP, snapUp(trTopY + wysokoscTabliczekTr(props) + GRID));
   // GEOMETRIA-STACJI (§0 pkt 4): tabliczka transformatora (pasmo na prawo od TR2W, od osi
   // `trTopY` w dół) należy do wieży — kończy się nad pasmem nad szyną SN, w którym stoją
   // blok źródła zasilania (`rysujBlokZrodel`: symbol `3·GRID + wysokość` nad szyną) i opis
   // sekcji (prześwit `BUSBAR_LABEL_PATH_CLEARANCE` + wiersz t2). Dawniej wysokość wieży
   // dawały stosy aparatów „z konwencji", więc tabliczka mieściła się przypadkiem; wieża
   // z rekordów modelu (albo sylwetki braku danych) bywa niższa od tabliczki.
-  const wysokoscTabliczek = Math.max(
-    0,
-    ...props.transformers.map((transformer) =>
-      wierszeTabliczkiTransformatora(transformer).reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
-    ),
-  );
+  const wysokoscTabliczek = wysokoscTabliczekTr(props);
   const pasmoNadSzynaSn = Math.max(
     3 * GRID + SYMBOL_DEFS.gridSource.height,
     BUSBAR_LABEL_PATH_CLEARANCE + labelLineHeight('t2') + GRID,
@@ -3256,7 +3438,10 @@ function composeGpzPrzebieg(
     const poleTr = transformer.poleTr;
     const hvFieldSpecs = specyfikacjaPolaGpz(poleWn);
     const hvBayTestIdBase = `gpz-canonical-hv-tr-bay-${transformer.transformerRef}`;
-    const hvStack = buildFieldStack(
+    const granicaWn = czyGranicaZasilaniaWn(transformer);
+    const hvStack = granicaWn
+      ? null
+      : buildFieldStack(
       hvFieldSpecs,
       trCenterX,
       hvFieldTopY,
@@ -3270,29 +3455,63 @@ function composeGpzPrzebieg(
         ...(poleWn ? { bayRef: poleWn.bayRef } : {}),
       },
     );
-    symbols.push(...hvStack.instances);
-    hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
-    // F10.1: odgałęzienia boczne pola WN TR (ES/VT/SA z rekordów).
-    hvStack.branchSegments.forEach((branch, bi) => {
-      segments.push({
-        ownerRef: branch.ownerSuffix ? `${transformer.transformerRef}#${branch.ownerSuffix}` : `${transformer.transformerRef}#hv-lateral-${bi}`,
-        points: branch.points,
-        meta: { parityKeys: [], transformerRef: transformer.transformerRef },
+    if (hvStack) {
+      symbols.push(...hvStack.instances);
+      hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
+      // F10.1: odgałęzienia boczne pola WN TR (ES/VT/SA z rekordów).
+      hvStack.branchSegments.forEach((branch, bi) => {
+        segments.push({
+          ownerRef: branch.ownerSuffix ? `${transformer.transformerRef}#${branch.ownerSuffix}` : `${transformer.transformerRef}#hv-lateral-${bi}`,
+          points: branch.points,
+          meta: { parityKeys: [], transformerRef: transformer.transformerRef },
+        });
       });
-    });
-
-    const hvConnectorMeta: GpzElementMeta = {
-      parityKeys: ['gpz.transformer.hv_connector'],
-      transformerRef: transformer.transformerRef,
-      directTie110: false,
-      terminatesAt: 'hv_tr_bay_apparatus',
-    };
-    tag(hvConnectorMeta.parityKeys);
-    segments.push({
-      ownerRef: `${transformer.transformerRef}#hv-connector`,
-      points: [{ x: trCenterX, y: hvBusY }, { x: trCenterX, y: hvStack.topPort.y }],
-      meta: hvConnectorMeta,
-    });
+      const hvConnectorMeta: GpzElementMeta = {
+        parityKeys: ['gpz.transformer.hv_connector'],
+        transformerRef: transformer.transformerRef,
+        directTie110: false,
+        terminatesAt: 'hv_tr_bay_apparatus',
+      };
+      tag(hvConnectorMeta.parityKeys);
+      segments.push({
+        ownerRef: `${transformer.transformerRef}#hv-connector`,
+        points: [{ x: trCenterX, y: hvBusY }, { x: trCenterX, y: hvStack.topPort.y }],
+        meta: hvConnectorMeta,
+      });
+    } else {
+      // D3b: granica zasilania — kreskowane połączenie szyna WN → zacisk WN TR2W (aparatura 110 kV
+      // poza modelem; nie jest to styk bez rozdzielni narysowany jako ciągły przewód) z opisem
+      // stanu danych na prawo od osi, w pasmie WN (zarezerwowanym w `zasiegWiezy`).
+      const granicaMeta: GpzElementMeta = {
+        parityKeys: ['gpz.transformer.hv_connector'],
+        transformerRef: transformer.transformerRef,
+        directTie110: false,
+        terminatesAt: KONIEC_GRANICY_ZASILANIA_WN,
+        dashed: true,
+      };
+      tag(granicaMeta.parityKeys);
+      segments.push({
+        ownerRef: `${transformer.transformerRef}#hv-connector`,
+        points: [{ x: trCenterX, y: hvBusY }, { x: trCenterX, y: trTopY }],
+        meta: granicaMeta,
+      });
+      // Opis granicy należy do TRANSFORMATORA (obiekt modelu pod kotwicą — pasmo nazwy, jak jego
+      // tabliczka; rodzaj właściciela z kotwicy, `kotwicaJednoZrodlo`), nie do aparatu, którego
+      // w modelu nie ma. Wiersz 1 nazywa element rysunku (tożsamość), wiersz 2 opisuje stan danych
+      // modelu (dana szczegółowa — przy małej skali może ustąpić, linia kreskowana zostaje).
+      const wiersze = wierszeOpisuGranicyWn();
+      const wysokoscOpisu = wiersze.reduce((suma, row) => suma + labelLineHeight(row.labelClass), 0);
+      transformerLabels.push({
+        ownerRef: `${transformer.transformerRef}#${KLUCZ_OPISU_GRANICY_WN}`,
+        nameSlot: {
+          x: trCenterX + GRID,
+          y: snapToGrid(hvBusY + (trTopY - hvBusY - wysokoscOpisu) / 2),
+          width: szerokoscOpisuGranicyWn() - GRID,
+          height: wysokoscOpisu,
+        },
+        rows: wiersze,
+      });
+    }
 
     const trDef = SYMBOL_DEFS.transformer2W;
     const trX = snapToGrid(trCenterX - trDef.width / 2);
@@ -3319,23 +3538,45 @@ function composeGpzPrzebieg(
     // Zejście HV→TR: od dolnego portu pola WN TR do górnego portu TR2W (jeśli
     // pole WN TR kończy się wyżej niż TR — zwykle styk 1:1, ale krótki
     // odcinek zamyka geometrię niezależnie od ewentualnej różnicy gabarytów).
-    segments.push({
-      ownerRef: `${transformer.transformerRef}#hv-field-to-tr`,
-      points: [{ x: trCenterX, y: hvStack.bottomPort.y }, { x: trCenterX, y: trTopY }],
-      meta: { parityKeys: [], transformerRef: transformer.transformerRef },
-    });
+    if (hvStack) {
+      segments.push({
+        ownerRef: `${transformer.transformerRef}#hv-field-to-tr`,
+        points: [{ x: trCenterX, y: hvStack.bottomPort.y }, { x: trCenterX, y: trTopY }],
+        meta: { parityKeys: [], transformerRef: transformer.transformerRef },
+      });
+    }
 
     const trFieldTestIdBase = `gpz-canonical-tr-field-${transformer.transformerRef}`;
     const trFieldSpecs = specyfikacjaPolaGpz(poleTr);
+    // Pole TR: zasilające NAD szyną SN — tor od szyny w górę (decyzja architekta D1, ENEA Z.7
+    // s.86 czytany od szyn), przewody z portów ENM pola (karta etap 1: pole TR z szablonu Z.7
+    // niesie porty aparatów). Pole wyrównane do dołu pasma (szyna SN pod nim).
     const trFieldStack = buildFieldStack(
       trFieldSpecs,
       trCenterX,
-      trFieldTopY,
+      trFieldTopY + trFieldFootprint.height - gpzFieldPlanFootprint(trFieldSpecs, 'w-gore').height,
       (_i, id) => `${trFieldTestIdBase}-${przyrostekAparatuToru(id)}`,
       { transformerRef: transformer.transformerRef, ...(poleTr ? { bayRef: poleTr.bayRef } : {}) },
+      { przewodyZPortow: true, kierunek: 'w-gore' },
     );
     symbols.push(...trFieldStack.instances);
     trFieldStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
+    // Przewody port → port między aparatami toru pola TR (porty ENM na wspólnym węźle — ta sama
+    // reguła co pole sekcji, `przewodyToruZPortow`). Tor w górę ma przerwy na pasy odgałęzień
+    // (przekładnik napięciowy za wyłącznikiem, Z.7 s.86) — bez przewodów tor byłby przerwany,
+    // a odczep odgałęzienia wisiałby w powietrzu (wyrocznia `sceneSegmentEndpointGaps`).
+    if (trFieldStack.wireSegments.length > 0) tag(['gpz.bay.power_path']);
+    trFieldStack.wireSegments.forEach((wire, wi) => {
+      segments.push({
+        ownerRef: `${poleTr?.bayRef ?? transformer.transformerRef}#wire-${wi}`,
+        points: wire.points,
+        meta: {
+          parityKeys: ['gpz.bay.power_path'],
+          transformerRef: transformer.transformerRef,
+          ...(poleTr ? { bayRef: poleTr.bayRef } : {}),
+        },
+      });
+    });
     // F10.1 (spec §18.1): ES pola TR jako odgałęzienie boczne.
     trFieldStack.branchSegments.forEach((branch, bi) => {
       segments.push({
@@ -3351,12 +3592,12 @@ function composeGpzPrzebieg(
     // tą samą funkcją (`adnotacjePolaGpz`), z kolumną zarezerwowaną tą samą arytmetyką
     // co pole sekcji (`fieldColumnRequiredWidth`).
     const stosyToru: ReadonlyArray<readonly [CanonicalGpzBay | null, FieldStack, readonly FieldApparatusSpec[]]> = [
-      [poleWn, hvStack, hvFieldSpecs],
+      ...(hvStack ? [[poleWn, hvStack, hvFieldSpecs] as const] : []),
       [poleTr, trFieldStack, trFieldSpecs],
     ];
     for (const [pole, stos, specyfikacja] of stosyToru) {
       if (!pole) continue;
-      const planPola = gpzFieldPlanFootprint(specyfikacja);
+      const planPola = gpzFieldPlanFootprint(specyfikacja, stos.kierunek);
       const lewaKrawedz = trCenterX - planPola.mainStack.width / 2;
       const textAnchorX = snapToGrid(lewaKrawedz + planPola.width);
       // Kolumny opisów pola toru transformatora przy jego lewej krawędzi — ta sama funkcja co pole
@@ -3378,7 +3619,7 @@ function composeGpzPrzebieg(
       adnotacjePolaGpz(
         pole,
         stos.instances,
-        lewaKolumnyPola + snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)),
+        lewaKolumnyPola + snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie, stos.kierunek)),
         { transformerRef: transformer.transformerRef, bayRef: pole.bayRef },
         kolumnaPrzekladni,
       );
@@ -3908,6 +4149,27 @@ function composeGpzPrzebieg(
   if (adnotacjePlan && panele.length > 0) tag(['gpz.bay.panel']);
   const adnotacje: GpzAdnotacje | null = adnotacjePlan ? { ...adnotacjePlan, panele } : null;
 
+  const rasterCelek: CelkaRastraGpz[] = sectionLayouts.flatMap((layout) =>
+    [
+      ...layout.fields.map((f) => ({
+        sectionId: layout.section.sectionId,
+        numer: f.numerCelki,
+        rodzaj: 'pole' as const,
+        ref: f.bay.bayRef,
+        leftX: f.leftX + shiftX,
+        rightX: f.rightX + shiftX,
+      })),
+      ...layout.kolumnyWiez.map((k) => ({
+        sectionId: layout.section.sectionId,
+        numer: k.numerCelki,
+        rodzaj: 'wieza' as const,
+        ref: k.transformerRef,
+        leftX: k.leftX + shiftX,
+        rightX: k.rightX + shiftX,
+      })),
+    ].sort((a, b) => a.numer - b.numer),
+  );
+
   const contentBbox = computeBbox(symbols, segments);
   // Bbox kompozycji obejmuje ramę strefy (dekoracja też musi zmieścić się w
   // arkuszu/kamerze), unia jawna — rama nie jest segmentem, `computeBbox` jej
@@ -3944,6 +4206,7 @@ function composeGpzPrzebieg(
     measurementSegments,
     zone,
     adnotacje,
+    rasterCelek,
     // V12K-223: opis do LEGENDY arkusza. Zero fabrykacji — brak modelu
     // uziemienia daje `null`, a legenda wtedy nic o nim nie pisze.
     neutralEarthingNotePl: props.snNeutralEarthing
@@ -4120,6 +4383,8 @@ export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition):
  * szynie WN wprost do TR), połączenie SN kończy się na polu TR (nie wprost na
  * szynie SN), każde z obu pól ma stos (aparaty z rekordów albo sylwetka braku
  * danych) i ŻADEN segment „lv_connector" (bezpośredni styk) nie istnieje.
+ * Jedyny wyjątek po stronie WN (D3b): transformator bez pola WN TR w modelu ma
+ * KRESKOWANĄ granicę zasilania (`KONIEC_GRANICY_ZASILANIA_WN`) i zero symboli pola WN TR.
  */
 export function noDirectTransformerBusTies(composition: GpzComposition): boolean {
   return composition.transformers.every((tr) => {
@@ -4138,12 +4403,20 @@ export function noDirectTransformerBusTies(composition: GpzComposition): boolean
     // model nie ma; zakaz bezpośredniego styku zostaje: pole bez ŻADNEGO symbolu = styk.
     const hasFieldStack = (prefix: string): boolean =>
       composition.symbols.some((s) => s.meta.testId?.startsWith(`${prefix}-`));
+    // D3b: granica zasilania WN (pole WN TR poza modelem) — kreskowane połączenie bez ŻADNEGO
+    // symbolu pola WN TR; ciągły przewód albo granica z narysowanym polem to sprzeczność.
+    const granicaWn =
+      !!hvConnector && hvConnector.meta.terminatesAt === KONIEC_GRANICY_ZASILANIA_WN &&
+      hvConnector.meta.dashed === true &&
+      !hasFieldStack(tr.hvBayTestId);
+    const polaczenieWn =
+      granicaWn || (hasFieldStack(tr.hvBayTestId) && hvConnector?.meta.terminatesAt === 'hv_tr_bay_apparatus');
 
     return (
-      !!hvConnector && hvConnector.meta.directTie110 === false && hvConnector.meta.terminatesAt === 'hv_tr_bay_apparatus' &&
+      !!hvConnector && hvConnector.meta.directTie110 === false && polaczenieWn &&
       !!fieldAnchor && fieldAnchor.meta.directTieSn === false && fieldAnchor.meta.terminatesAt === 'tr_field_anchor' &&
       !forbiddenDirectLv &&
-      hasFieldStack(tr.hvBayTestId) && hasFieldStack(tr.trFieldTestId)
+      hasFieldStack(tr.trFieldTestId)
     );
   });
 }

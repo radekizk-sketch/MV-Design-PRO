@@ -113,7 +113,7 @@ describe('KD-5 — L0: blok GPZ ZWINIĘTY (jeden symbol, zero geometrii pól wew
     expect(gpzCollapseGaps(sceneL0)).toEqual([]);
   });
 
-  it('GPZ wnosi na L0 dokładnie 3 symbole (blok + sieć zewnętrzna + aparat pola magistrali) wobec 5 na L1', () => {
+  it('GPZ wnosi na L0 dokładnie 3 symbole (blok + sieć zewnętrzna + aparat pola magistrali) wobec 4 na L1', () => {
     // POMIAR BAZOWY (fixtura niezmienna — liczby przybite jak golden): przed
     // zwinięciem GPZ rysował na L0 16 symboli po 16 px świata, co przy skali
     // przeglądu 0,1203 dawało ≈1,9 px na symbol (V12K-285).
@@ -145,10 +145,15 @@ describe('KD-5 — L0: blok GPZ ZWINIĘTY (jeden symbol, zero geometrii pól wew
     // + transformator. L0: aparat ciągłości pola magistrali jest TYM SAMYM, co rysuje L1 —
     // sylwetka braku danych (do karty L0 rysował wyłącznik z konwencji w każdym polu).
     expect(gpzSymbols(sceneL0).map((s) => s.symbolId).sort()).toEqual(['bayNoEquipment', 'gpzCollapsed', 'gridSource']);
+    //
+    // AKTUALIZACJA (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta D3b, 2026-11-11): 5 → 4
+    // na L1/L2. Pole WN TR, którego NIE MA w modelu, to granica zasilania (kreskowane połączenie
+    // szyny WN z transformatorem i opis stanu danych), nie sylwetka braku wyposażenia w torze WN
+    // („?" między szyną 110 kV a TR). Sylwetki zostają dla pola TR i pola magistrali.
     expect(gpzSymbols(sceneL1).map((s) => s.symbolId).sort()).toEqual(
-      ['bayNoEquipment', 'bayNoEquipment', 'bayNoEquipment', 'gridSource', 'transformer2W'],
+      ['bayNoEquipment', 'bayNoEquipment', 'gridSource', 'transformer2W'],
     );
-    expect(gpzSymbols(sceneL2).length).toBe(5);
+    expect(gpzSymbols(sceneL2).length).toBe(4);
   });
 
   it('blok niesie TOŻSAMOŚĆ (ref GPZ + pas nazwy z napięciem i stanem) — nie anonimowy prostokąt', () => {

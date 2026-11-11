@@ -368,7 +368,9 @@ describe('SLD-GEN-POLA — tor pionowy, odgałęzienia i zakończenia', () => {
       'loadBreakSwitch',
     );
     const vpis = producencka.symbole.find((symbol) => symbol.oznaczenie === 'VPIS');
-    expect(vpis?.id).toBe('voltageIndicator');
+    // Parytet z kanwą SLD i pakietem iec60617 (karta UX-04/ROZDZIELNICA-SN-KOREKTA): VPIS rysuje
+    // się wyłącznie rysunkiem QET.
+    expect(vpis?.id).toBe('qetVoltageIndicator');
     expect(vpis?.umiejscowienie).toBe('BOCZNE');
     expect(vpis!.x).toBeGreaterThan(0);
   });

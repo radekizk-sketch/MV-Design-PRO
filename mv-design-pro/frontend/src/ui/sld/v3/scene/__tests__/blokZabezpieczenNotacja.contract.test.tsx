@@ -21,7 +21,8 @@
  *  (c) środek ramki na wysokości łącznika ±1 oczko (łącznik wyłączany: zacisk cewki albo środek
  *      symbolu; bez wskazania — pierwszy łącznik pola) albo — gdy oś wypada ponad rysunkiem
  *      aparatów pola — górna krawędź ramki w górnej krawędzi rysunku aparatów (ramka nie
- *      przecina szyny);
+ *      przecina szyny); pole nad szyną (`w-gore`, D1) — lustrzanie: dolna krawędź ramki w dolnej
+ *      krawędzi rysunku aparatów;
  *  (d) opisy pola bez kolizji (wspólna wyrocznia `wyroczniaOpisowPola.ts`);
  *  (e) ramka bloku nie styka się z obcym przewodem (wyrocznia sceny `symbolWireCollisions`:
  *      gabaryt bloku = ramka, porty = wejścia linii bloku na krawędziach) — pomiar 2026-11-05:
@@ -158,9 +159,14 @@ function osBloku(scena: SceneV3, bayRef: string): number | null {
     }
     return null;
   }
+  // „Pierwszy łącznik pola" = pierwszy OD SZYNY (kolejność toru). Karta UX-04/ROZDZIELNICA-SN-KOREKTA
+  // (decyzja architekta D1): pole zasilające nad szyną (pole toru transformatora GPZ, ENEA Z.7)
+  // wznosi się od szyny (`kierunekToru` = `w-gore`), więc pierwszy od szyny jest łącznik NAJNIŻSZY;
+  // dawna wyrocznia brała zawsze najwyższy (założenie toru w dół).
+  const wGore = aparatyPola.some((s) => s.kierunekToru === 'w-gore');
   const lacznik = aparatyPola
     .filter((s) => RODZAJE_LACZNIKOW.has(rodzajSymbolu(s.symbolId)))
-    .sort((a, b) => a.y - b.y || a.x - b.x)[0];
+    .sort((a, b) => (wGore ? b.y - a.y : a.y - b.y) || a.x - b.x)[0];
   return lacznik ? lacznik.y + SYMBOL_DEFS[lacznik.symbolId].height / 2 : null;
 }
 
@@ -170,6 +176,15 @@ function goraAparatowPola(scena: SceneV3, bayRef: string): number {
     ...scena.symbols
       .filter((s) => s.meta?.ownerRef === bayRef && s.symbolId !== 'protectionRelay' && s.symbolId !== 'meter')
       .map((s) => gabarytSymbolu(s).y),
+  );
+}
+
+/** Dolna krawędź rysunku aparatów pola na scenie. */
+function dolAparatowPola(scena: SceneV3, bayRef: string): number {
+  return Math.max(
+    ...scena.symbols
+      .filter((s) => s.meta?.ownerRef === bayRef && s.symbolId !== 'protectionRelay' && s.symbolId !== 'meter')
+      .map((s) => gabarytSymbolu(s).y + gabarytSymbolu(s).height),
   );
 }
 
@@ -212,7 +227,12 @@ function naruszenia(scena: SceneV3, bayRef: string, kody: readonly string[]): st
       const srodek = ramka.y + ramka.height / 2;
       const gora = goraAparatowPola(scena, bayRef);
       const dosunieta = os - ramka.height / 2 < gora && ramka.y >= gora && ramka.y - gora <= GRID;
-      if (Math.abs(srodek - os) > GRID && !dosunieta) n.push(`(c) środek ramki y=${srodek} ≠ oś łącznika y=${os} (±${GRID})`);
+      // D1 (karta UX-04/ROZDZIELNICA-SN-KOREKTA): pole nad szyną (`w-gore`) — szyna pod stosem, więc
+      // ramka dosunięta do DOLNEJ krawędzi rysunku aparatów, gdy środek musiałby stać niżej.
+      const dol = dolAparatowPola(scena, bayRef);
+      const wGore = scena.symbols.some((s) => s.meta?.ownerRef === bayRef && s.kierunekToru === 'w-gore');
+      const dosunietaDol = wGore && os + ramka.height / 2 > dol && ramka.y + ramka.height <= dol && dol - (ramka.y + ramka.height) <= GRID;
+      if (Math.abs(srodek - os) > GRID && !dosunieta && !dosunietaDol) n.push(`(c) środek ramki y=${srodek} ≠ oś łącznika y=${os} (±${GRID})`);
     }
     // (d, ramka) obcy napis nie przecina ramki bloku; własne wiersze w ramce.
     for (const l of scena.labels) {

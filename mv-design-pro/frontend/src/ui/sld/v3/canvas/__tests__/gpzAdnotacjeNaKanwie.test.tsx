@@ -117,7 +117,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   // GEOMETRIA-STACJI: kadr całej sieci tej fikstury mieści się dziś w progu czytelności (stosy
   // pól bez rekordów są niższe i węższe — sylwetka braku danych zamiast stosu z konwencji),
   // więc stan „poniżej progu" osiągamy natywnym oddaleniem kółkiem, nie samym kadrem startowym.
-  it('pismo poniżej progu czytelności (oddalony kadr): teksty nie są rysowane, tła pól i próbki ról zostają', () => {
+  it('pismo poniżej progu czytelności (oddalony kadr): teksty i cała tabela pól nie są rysowane, tła pól zostają', () => {
     const container = renderKanwe(2);
     const warstwa = container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!;
     expect(warstwa).not.toBeNull();
@@ -125,9 +125,21 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     expect(warstwa.getAttribute('data-gpz-teksty')).toBe('ponizej-progu-czytelnosci');
     expect(container.querySelector('[data-testid="sld-v3-gpz-bilans-zasilania"]')).toBeNull();
     expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]').length).toBeGreaterThan(0);
+    // D3a (karta UX-04/ROZDZIELNICA-SN-KOREKTA): tabela pól jest JEDNĄ klasą — bez pisma nie
+    // zostają po niej próbki ról ani kreskowane plakietki (rzędy kwadratów bez opisu).
+    expect(container.querySelector('[data-testid="sld-v3-gpz-tabela-pol"]')).toBeNull();
+    expect(container.querySelectorAll('[data-gpz-plakietka]').length).toBe(0);
+    expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-legenda-"]').length).toBe(0);
     powiekszDoCzytelnosci(container);
     expect(warstwa.getAttribute('data-gpz-teksty')).toBe('widoczne');
     expect(container.querySelector('[data-testid="sld-v3-gpz-bilans-zasilania"]')).not.toBeNull();
+    const tabela = container.querySelector('[data-testid="sld-v3-gpz-tabela-pol"]');
+    expect(tabela).not.toBeNull();
+    // Każda karta tabeli niesie swój opis (oznaczenie pola) — próbka bez opisu nie istnieje.
+    for (const karta of tabela!.querySelectorAll('[data-testid^="sld-v3-gpz-karta-"][data-gpz-rola]')) {
+      const ref = karta.getAttribute('data-testid')!.slice('sld-v3-gpz-karta-'.length);
+      expect(karta.querySelector(`[data-testid="sld-v3-gpz-karta-oznaczenie-${ref}"]`)).not.toBeNull();
+    }
   });
 
   it('BRAK BIEGU: belka i tabela mówią jawnie „brak wyniku rozpływu mocy", wartości pól „brak" (nie zero)', () => {
@@ -201,6 +213,8 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
         expect(panel.getAttribute('fill')).toBe(paleta.rolaPola[rola]);
         expect(panel.getAttribute('fill-opacity')).toBe(String(KRYCIE_TLA_POLA_GPZ));
       }
+      // D3a: legenda należy do tabeli pól — rysowana tylko przy czytelnym piśmie (jedna klasa).
+      powiekszDoCzytelnosci(container);
       const roleLegendy = [...container.querySelectorAll('[data-testid^="sld-v3-gpz-legenda-"]')]
         .map((n) => n.getAttribute('data-testid')!)
         .filter((id) => !id.includes('-tekst-'))

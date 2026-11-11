@@ -590,8 +590,32 @@ describe('GPZ — klasa napięcia aparatów pola WN (V12K-217)', () => {
   // ona wie, po której stronie stoi aparat — testId/ownerRef obu pól zawierają
   // ten sam człon `wn_sn` i nie da się z nich tej strony odczytać.
   it('aparaty pola WN niosą voltageClass=hv, aparaty pola SN nie niosą jej wcale', () => {
+    // D3b (karta UX-04/ROZDZIELNICA-SN-KOREKTA): bez pola WN TR w modelu tor WN jest kreskowaną
+    // granicą zasilania bez aparatów, więc intencję testu (klasa napięcia aparatów strony WN)
+    // sprawdzamy na transformatorze, którego pole WN TR niesie rekordy aparatów (DS+CB+CT).
+    const props = buildCanonicalGpzProps(fullFixture(), 'gpz-1');
     const composition = composeGpz(
-      buildCanonicalGpzProps(fullFixture(), 'gpz-1'),
+      {
+        ...props,
+        transformers: props.transformers.map((tr) => ({
+          ...tr,
+          poleWn: {
+            bayRef: `${tr.transformerRef}/pole-wn`,
+            bayNumber: null,
+            feederName: null,
+            destinationLabel: null,
+            fieldRole: 'TRANSFORMER',
+            rolaPola: 'transformatorowe',
+            statusFlags: [],
+            qDesignations: {},
+            primaryDevices: (['DS', 'CB', 'CT'] as const).map((kind, i) => ({
+              kind,
+              placement: 'MIDSTREAM' as const,
+              deviceRef: `${tr.transformerRef}/pole-wn/${kind.toLowerCase()}-${i}`,
+            })),
+          },
+        })),
+      },
       { x: 0, y: 0 },
     );
     const wnBay = composition.symbols.filter((s) =>

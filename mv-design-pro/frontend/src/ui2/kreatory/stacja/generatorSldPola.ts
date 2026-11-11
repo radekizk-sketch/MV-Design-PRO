@@ -15,7 +15,7 @@
  *     / odgałęzienie pomiarowe / strona nN)
  *        ↓ `SYMBOL_RODZAJU_BOM` (+ nadpisanie aparatu głównego)
  *   SYMBOLE IEC — WYŁĄCZNIE kanon `ui/sld/v3/symbols` (`SYMBOL_DEFS`/`SYMBOL_GLYPHS`);
- *     brakujący glif dorabia się W KANONIE (tak powstały `fuse` i `voltageIndicator`),
+ *     brakujący glif dorabia się W KANONIE (tak powstał `fuse`),
  *     nigdy lokalną biblioteką glifów
  *        ↓ `zbudujScenePola`
  *   SCENA POLA — symbole z pozycją i oznaczeniem, odcinki toru, strefa kablowa,
@@ -243,8 +243,9 @@ function umiejscowienie(rodzaj: RodzajAparatuBom, zrodla: UmiejscowienieBom): Um
 /**
  * INWENTARZ MAPOWAŃ aparat → symbol kanonu. Każdy rodzaj BOM ma symbol; brak
  * symbolu w kanonie zamyka się DOROBIENIEM GLIFU W KANONIE (tak powstały `fuse`
- * — bezpiecznik sam, bo kanon miał wyłącznie rozłącznik z bezpiecznikiem — oraz
- * `voltageIndicator` dla VPIS), nigdy podstawieniem symbolu podobnego.
+ * — bezpiecznik sam, bo kanon miał wyłącznie rozłącznik z bezpiecznikiem), nigdy
+ * podstawieniem symbolu podobnego. Rysunek aparatu jest TEN SAM co na kanwie SLD (parytet
+ * przypina `__tests__/parytetRysunkuAparatu.test.ts`).
  *
  * `APARAT_GLOWNY` ma tu wartość DOMYŚLNĄ: rzeczywisty symbol wynika z pozycji
  * katalogu APARAT_SN wskazanej przez projektanta (`SYMBOL_RODZAJU_APARATU`),
@@ -268,7 +269,12 @@ export const SYMBOL_RODZAJU_BOM: Readonly<Record<RodzajAparatuBom, SymbolId>> = 
   OGRANICZNIK_PRZEPIEC: 'surgeArrester',
   GLOWICA_KABLOWA: 'cableHead',
   TRANSFORMATOR: 'transformer2W',
-  WSKAZNIK_NAPIECIA: 'voltageIndicator',
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (parytet kreator × kanwa, D4): VPIS ma w kanonie
+  // WYŁĄCZNIE rysunek QET — kanwa (`symbolIdForPrimaryDeviceKind`) i pakiet iec60617
+  // (`frontend_symbol_id`) rysują `qetVoltageIndicator` w każdym wariancie; dawny glif
+  // `voltageIndicator` w podglądzie kreatora był drugim rysunkiem tego samego aparatu
+  // (`voltageIndicator` zostaje rodzajem semantycznym QET, `RODZAJ_SEMANTYCZNY_QET`).
+  WSKAZNIK_NAPIECIA: 'qetVoltageIndicator',
   PRZEKAZNIK: 'protectionRelay',
   LICZNIK: 'meter',
   WYLACZNIK_NN: 'breaker',

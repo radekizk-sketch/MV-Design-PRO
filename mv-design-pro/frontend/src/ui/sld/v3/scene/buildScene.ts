@@ -2755,8 +2755,21 @@ function odsunPodpisOdElementowGpz<T extends V3Rect>(
   rect: T,
   gpz: GpzComposition | null,
   renderowana: GpzComposition | null,
+  /** Karta UX-04/ROZDZIELNICA-SN-KOREKTA (raster celek): trasa WŁASNEGO kabla podpisu. Jej PIONOWE
+   *  przebiegi (zejście z pola GPZ do korytarza) są przeszkodą jak symbole GPZ — po wstawieniu
+   *  kolumny wieży transformatora w szereg celek zejście pola odpływowego wypadało w środku
+   *  wyśrodkowanego podpisu („GPZ ↔ S02" na własnym kablu). Przebiegi poziome nie są przeszkodą
+   *  (podpis stoi nad nimi z konstrukcji pasma; przesuw w prawo nigdy by ich nie opuścił). */
+  trasa: readonly { readonly x: number; readonly y: number }[] = [],
 ): T {
   if (gpz === null) return rect;
+  const pionyTrasy: V3Rect[] = [];
+  for (let i = 1; i < trasa.length; i += 1) {
+    const a = trasa[i - 1];
+    const b = trasa[i];
+    if (a.x !== b.x || a.y === b.y) continue;
+    pionyTrasy.push({ x: a.x - 1, y: Math.min(a.y, b.y), width: 2, height: Math.abs(a.y - b.y) });
+  }
   const etykiety = renderowana?.labels;
   const przeszkody: V3Rect[] = [
     ...(etykiety
@@ -2778,6 +2791,7 @@ function odsunPodpisOdElementowGpz<T extends V3Rect>(
       width: SYMBOL_DEFS[sym.symbolId].width,
       height: SYMBOL_DEFS[sym.symbolId].height,
     })),
+    ...pionyTrasy,
   ];
   let x = rect.x;
   for (;;) {
@@ -3402,6 +3416,8 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
     // UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — czwarta dana tej samej jawnej
     // listy pól (lekcja V12K-217/219: nieprzepuszczona dana = glif w wariancie domyślnym).
     bateria: sym.bateria,
+    // UX-04/ROZDZIELNICA-SN-KOREKTA (D1): orientacja toru pola nad szyną — piąta dana tej listy.
+    kierunekToru: sym.kierunekToru,
   };
 }
 
@@ -4536,6 +4552,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
                 ),
                 gpzGeometry,
                 gpzComposition,
+                route.points,
               ),
             });
           }
@@ -5038,6 +5055,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               ),
               gpzGeometry,
               gpzComposition,
+              inPoints,
             ),
           });
         }
@@ -5867,10 +5885,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // TEGO symbolu — `czyZakonczenieToruKablowego`, jeden predykat z wyrocznią niżej.
       if (!czyZakonczenieToruKablowego(head.symbolId)) continue;
       const headDef = SYMBOL_DEFS[head.symbolId];
-      const south = headDef.ports.find((pt) => pt.dir === 'S');
-      const portDx = south?.x ?? headDef.width / 2;
-      const portDy = south?.y ?? headDef.height;
-      if (endpointSet.has(`${head.x + portDx},${head.y + portDy}`)) continue;
+      const koniecKabla = portKoncaKablaGlowicy(head);
+      if (endpointSet.has(`${koniecKabla.x},${koniecKabla.y}`)) continue;
       // BLOK-LATERAL-WLASNOSC (reguła KLASA §5 „uczciwość w obrębie jednego
       // pliku"): dawny zapas `?? 'nieznane-pole'` FABRYKOWAŁ ref właściciela —
       // etykieta zakończenia toru dostawała `nieznane-pole#termination`, czyli
@@ -5905,7 +5921,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // wariancie umiejscowienia).
         rect: {
           x: head.x + Math.round(headDef.width / 2) - Math.round(width / 2),
-          y: head.y + headDef.height + 2,
+          // Glif odbity (`w-gore`): koniec kabla u góry — podpis NAD głowicą.
+          y: head.kierunekToru === 'w-gore' ? head.y - height - 2 : head.y + headDef.height + 2,
           width,
           height,
         },
@@ -6160,14 +6177,27 @@ export function noSceneSymbolOverlaps(scene: SceneV3): boolean {
  * dotyka głowicy — nie że każda głowica MUSI mieć trasę (to inny kontrakt,
  * `source_connectivity_probe`/§14.1, poza zakresem F9.3).
  */
+/**
+ * Port KOŃCA KABLA głowicy (strona kabla, port S definicji) w układzie sceny — JEDNO źródło dla
+ * podpisu zakończenia toru i wyroczni `fieldEntryConnectionsReachCableHead` (predykaty parami).
+ * Karta UX-04/ROZDZIELNICA-SN-KOREKTA (D1): glif pola zasilającego nad szyną (`kierunekToru`
+ * = `w-gore`, pole TR wieży GPZ wg Z.7 s.86) jest odbity w pionie (`y' = H − y`, lustro
+ * `glyphs.tsx`), więc koniec kabla stoi u GÓRY symbolu (od strony transformatora); dawny odczyt
+ * portu S bez orientacji widział tam wolny koniec toru i stawiał „koniec toru" pod głowicą.
+ */
+function portKoncaKablaGlowicy(head: PreviewSymbol): { readonly x: number; readonly y: number } {
+  const def = SYMBOL_DEFS[head.symbolId];
+  const poludnie = def.ports.find((p) => p.dir === 'S');
+  const dy = poludnie?.y ?? def.height;
+  return {
+    x: head.x + (poludnie?.x ?? def.width / 2),
+    y: head.y + (head.kierunekToru === 'w-gore' ? def.height - dy : dy),
+  };
+}
+
 export function fieldEntryConnectionsReachCableHead(scene: SceneV3): readonly PreviewSymbol[] {
   const cableHeads = scene.symbols.filter((s) => czyZakonczenieToruKablowego(s.symbolId));
   if (cableHeads.length === 0) return [];
-  const portSouth = (head: PreviewSymbol): { readonly x: number; readonly y: number } => {
-    const def = SYMBOL_DEFS[head.symbolId];
-    const southPort = def.ports.find((p) => p.dir === 'S');
-    return { x: head.x + (southPort?.x ?? def.width / 2), y: head.y + (southPort?.y ?? def.height) };
-  };
   const endpoints = new Set<string>();
   scene.segments.forEach((seg) => {
     const first = seg.points[0];
@@ -6176,7 +6206,7 @@ export function fieldEntryConnectionsReachCableHead(scene: SceneV3): readonly Pr
     if (last) endpoints.add(`${last.x},${last.y}`);
   });
   return cableHeads.filter((head) => {
-    const port = portSouth(head);
+    const port = portKoncaKablaGlowicy(head);
     return !endpoints.has(`${port.x},${port.y}`);
   });
 }

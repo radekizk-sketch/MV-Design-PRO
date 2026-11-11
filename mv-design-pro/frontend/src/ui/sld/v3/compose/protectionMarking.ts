@@ -233,6 +233,9 @@ export interface PlacedStackDevice {
   /** Kody funkcji EAZ wyłączających aparat (`BayPrimaryDevice.funkcje_eaz_wylaczajace`) —
    *  cel linii wyłączania. */
   readonly funkcjeEazWylaczajace?: readonly string[];
+  /** Karta UX-04/ROZDZIELNICA-SN-KOREKTA (D1): orientacja toru pola (`w-gore` — pole zasilające
+   *  nad szyną, szyna POD stosem). Brak = tor w dół (szyna nad stosem). */
+  readonly kierunekToru?: 'w-dol' | 'w-gore';
 }
 
 function centerOf(device: PlacedStackDevice): { readonly x: number; readonly y: number } {

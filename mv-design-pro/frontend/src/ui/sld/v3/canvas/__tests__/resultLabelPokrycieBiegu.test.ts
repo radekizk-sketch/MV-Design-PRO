@@ -14,7 +14,7 @@
  * kanwa dostaje je od orkiestratora.
  *   * `s92Bieg.enm.json`         — migawka ENM (`GET /api/cases/{case}/enm`);
  *   * `s92Zwarcie.overlay.json`  — nakładka biegu zwarciowego (10 punktów);
- *   * `s92Rozplyw.overlay.json`  — nakładka biegu rozpływowego (23 punkty).
+ *   * `s92Rozplyw.overlay.json`  — nakładka biegu rozpływowego (26 punktów).
  *
  * ATRYBUCJA LICZB (karta SLD-SUBSTRAT, regeneracja z API zamiast zrzutu ręcznego):
  *   * zwarcie 3 → 9 punktów: +6 szyn odpływów nN — automigracja promocji pól nN
@@ -32,6 +32,9 @@
  *     (`gpz/…/hv_section/001/bus_wn`), a solver liczy zwarcie także w niej. Szyna WN
  *     jest na rysunku (kolumna WN GPZ), więc jej punkt dostaje etykietę: schemat ma
  *     4 punkty (3 SN + 1 WN), rozdzielnice nN — 6.
+ *   * rozpływ 25 → 26 punktów (karta UX-04/ROZDZIELNICA-SN-KOREKTA, etap 1): transformator GPZ
+ *     przyłącza się do sekcji SN przez swoje pole TR (ENEA Z.7), więc wynik niesie wiersz pola TR
+ *     (`gpz/…/transformer/001/bay`) — opisany w tabeli pól GPZ.
  *
  * ODBIÓR KARTY: „liczba etykiet wynikowych > 0 i RÓWNA liczbie punktów wyniku
  * z backendu". Dla biegu ZWARCIOWEGO równość jest dosłowna (3 punkty = 3
@@ -134,8 +137,11 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
 describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () => {
   const entries = buildResultLabelsForSnapshot(enm, rozplyw);
 
-  it('kontrola wejścia: nakładka biegu niesie 25 punktów (szyny, gałęzie, transformatory, źródło, pole i bilans GPZ)', () => {
-    expect(Object.keys(rozplyw.elements)).toHaveLength(25);
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (etap 1 — model): transformator GPZ przyłącza się do sekcji
+  // przez SWOJE pole TR (Z.7), więc migawka biegu z backendu niesie o jeden punkt wyniku więcej —
+  // wiersz pola TR w tabeli pól GPZ (25 → 26; wiersze tabeli GPZ 2 → 3). Intencja bez zmian.
+  it('kontrola wejścia: nakładka biegu niesie 26 punktów (szyny, gałęzie, transformatory, źródło, pola i bilans GPZ)', () => {
+    expect(Object.keys(rozplyw.elements)).toHaveLength(26);
     expect(new Set(Object.values(rozplyw.elements).map((element) => element.kind))).toEqual(
       new Set(['bus', 'branch', 'generator', 'bay', 'substation']),
     );
@@ -144,17 +150,17 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
   it('GPZ-PARYTET: wiersze pola i bilansu GPZ liczą się jako opisane w tabeli GPZ (nie „bez wielkości dla tej analizy")', () => {
     const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
     const wierszeGpz = Object.keys(rozplyw.elements).filter((ref) => ['bay', 'substation'].includes(rozplyw.elements[ref].kind));
-    expect(wierszeGpz).toHaveLength(2);
+    expect(wierszeGpz).toHaveLength(3);
     expect(wierszeGpz).toContain(gpz.ref_id);
     expect(wierszeGpz.every((ref) => gpzTabela.has(ref))).toBe(true);
     const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
-    expect(coverage.inGpzTable).toBe(2);
+    expect(coverage.inGpzTable).toBe(3);
     expect(coverage.withoutTemplate).toBe(0);
     // Bez zbioru tabeli GPZ te same wiersze spadają do „bez wielkości" (kategoria
     // nie jest pusta z definicji — predykat realnie rozstrzyga).
     const bezTabeli = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, new Set());
     expect(bezTabeli.inGpzTable).toBe(0);
-    expect(bezTabeli.withoutTemplate).toBe(2);
+    expect(bezTabeli.withoutTemplate).toBe(3);
     // L0: blok GPZ zwinięty, adnotacji nie ma — zbiór pusty.
     expect(resultPointsInGpzTable(buildSceneV3(enm, 0)).size).toBe(0);
   });
@@ -176,7 +182,7 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
 
   it('ODBIÓR: INWARIANT SUMY sześciu kategorii === total, przy withoutAnchor = 0', () => {
     const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
-    expect(coverage.total).toBe(25);
+    expect(coverage.total).toBe(26);
     expect(coverage.labelled).toBeGreaterThan(0);
     expect(
       coverage.labelled + coverage.hiddenByModel + coverage.inGpzTable + coverage.withoutTemplate

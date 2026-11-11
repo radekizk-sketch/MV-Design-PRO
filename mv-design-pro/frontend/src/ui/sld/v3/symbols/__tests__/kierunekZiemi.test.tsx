@@ -402,6 +402,21 @@ const INWENTARZ: readonly Wpis[] = [
     const z = QET_SYMBOLE_POLA_SN[id].ziemia!;
     return { nazwa: `v3 ${id}`, stany: STANY, rysuj: (stan, motyw, skala) => glif(id, { state: stan }, motyw, skala), wymagania: { kotwica: [z.kotwica.x, z.kotwica.y], przerwaCelowa: false } };
   }),
+  // Decyzja architekta D1 (karta UX-04/ROZDZIELNICA-SN-KOREKTA): tor pola nad szyną liczony od
+  // szyny w górę (`kierunekToru: 'w-gore'`) — rysunek toru w lustrze osi poziomej gabarytu, ziemia
+  // przesunięta razem z przegubem noża (o `wysokość − 2·cy` w dół), BEZ lustra: dalej pod kotwicą,
+  // skierowana w dół, na końcu pionu odgałęzienia. Kotwica przesuwa się z przegubem.
+  ...QET_Z_ZIEMIA.map((id): Wpis => {
+    const sym = QET_SYMBOLE_POLA_SN[id];
+    const z = sym.ziemia!;
+    const przesuniecie = sym.noz ? sym.wysokosc - 2 * sym.noz.cy : 0;
+    return {
+      nazwa: `v3 ${id} tor w górę`,
+      stany: STANY,
+      rysuj: (stan, motyw, skala) => glif(id, { state: stan, kierunekToru: 'w-gore' }, motyw, skala),
+      wymagania: { kotwica: [z.kotwica.x, z.kotwica.y + przesuniecie], przerwaCelowa: false },
+    };
+  }),
   // Styk stały noża uziemnika rodziny kanonicznej: koniec noża zamkniętego (8, 14).
   { nazwa: 'v3 earthSwitch', stany: STANY, rysuj: (stan, motyw, skala) => glif('earthSwitch', { state: stan }, motyw, skala), wymagania: { kotwica: [8, 14], przerwaCelowa: false } },
   ...RODZAJE_UZIEMIENIA.map((kind): Wpis => ({

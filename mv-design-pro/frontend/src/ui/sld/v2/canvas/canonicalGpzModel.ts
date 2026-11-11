@@ -263,6 +263,12 @@ export interface CanonicalGpzTransformer {
   readonly poleTr: CanonicalGpzBay | null;
   /** To samo dla pola WN transformatora (pole TR sekcji WN wskazujące transformator). */
   readonly poleWn: CanonicalGpzBay | null;
+  /** Karta UX-04/ROZDZIELNICA-SN-KOREKTA (decyzja architekta D1): miejsce celki pola TR
+   *  w szeregu celek sekcji — liczba pól sekcji (`CanonicalGpzSection.bays`), które w modelu
+   *  (kolejność `enm.bays`) stoją PRZED polem TR transformatora. Kolumna wieży transformatora
+   *  zajmuje w rastrze celek to miejsce (numeracja ciągła z szeregiem). `null`/brak =
+   *  transformator bez pola TR w modelu — celka na końcu szeregu sekcji. */
+  readonly pozycjaCelkiWSekcji?: number | null;
 }
 
 export interface CanonicalGpzHvSection {

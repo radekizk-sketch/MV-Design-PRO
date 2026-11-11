@@ -180,11 +180,50 @@ export function kolumnyOpisowPol(scena: SceneV3): ReadonlyMap<string, { readonly
  * Naruszenia z prefiksem `(kol-<litera>)` (litery własne wyroczni, niezależne od liter
  * wyroczni kontraktów, które ją wołają).
  */
+/**
+ * Karta UX-04/ROZDZIELNICA-SN-KOREKTA (pkt 2, Z.12): układ łącznika szyn to JEDNO pole modelu
+ * w DWÓCH celkach (celka szyny pola i celka drugiej szyny), każda z własnym torem i własną kolumną
+ * opisów. Litera celki z identyfikatora symbolu (`gpz-canonical-coupler-<gałąź>-l-…` / `-p-…`);
+ * wyłącznik układu (identyfikator bez litery) należy do celki, w której osi stoi. Pole
+ * jednocelkowe — jedna celka `''` (wyrocznia jak dotąd).
+ */
+function celkiPola(symbole: readonly SymbolSceny[]): Map<SymbolSceny, string> {
+  const celki = new Map<SymbolSceny, string>();
+  const litera = (s: SymbolSceny): string | null => /^gpz-canonical-coupler-.*?-([lp])-/.exec(s.meta?.testId ?? '')?.[1] ?? null;
+  const srodek = (s: SymbolSceny): number => s.x + SYMBOL_DEFS[s.symbolId].width / 2;
+  for (const s of symbole) {
+    const l = litera(s);
+    if (l !== null) celki.set(s, l);
+  }
+  for (const s of symbole) {
+    if (celki.has(s)) continue;
+    const wOsi = symbole.find((inny) => celki.has(inny) && srodek(inny) === srodek(s));
+    celki.set(s, wOsi ? celki.get(wOsi)! : '');
+  }
+  return celki;
+}
+
 export function naruszeniaKolumnOpisow(scena: SceneV3): string[] {
   const n: string[] = [];
   const przewody = labelWireCollisions(scena);
+  const kolumny: [string, { oznaczenia: NapisSceny[]; przekladnie: NapisSceny[] }, SymbolSceny[]][] = [];
   for (const [pole, { oznaczenia, przekladnie }] of kolumnyOpisowPol(scena)) {
-    const symbolePola = scena.symbols.filter((s) => s.meta?.ownerRef === pole && s.symbolId in SYMBOL_DEFS && !ramkaBlokuSymbolu(s));
+    const wszystkie = scena.symbols.filter((s) => s.meta?.ownerRef === pole && s.symbolId in SYMBOL_DEFS && !ramkaBlokuSymbolu(s));
+    const celki = celkiPola(wszystkie);
+    const celkaNapisu = (l: NapisSceny): string => {
+      const r = l.symbolOpisu;
+      const s = r ? wszystkie.find((x) => takiSam(r, { x: x.x, y: x.y, width: SYMBOL_DEFS[x.symbolId].width, height: SYMBOL_DEFS[x.symbolId].height })) : undefined;
+      return s ? (celki.get(s) ?? '') : '';
+    };
+    for (const celka of [...new Set([...celki.values(), ''])].sort()) {
+      const oz = oznaczenia.filter((l) => celkaNapisu(l) === celka);
+      const pr = przekladnie.filter((l) => celkaNapisu(l) === celka);
+      if (oz.length === 0 && pr.length === 0) continue;
+      const sym = wszystkie.filter((s) => (celki.get(s) ?? '') === celka);
+      kolumny.push([celka ? `${pole} (celka ${celka})` : pole, { oznaczenia: oz, przekladnie: pr }, sym.length > 0 ? sym : wszystkie]);
+    }
+  }
+  for (const [pole, { oznaczenia, przekladnie }, symbolePola] of kolumny) {
     const krawedzToru = Math.min(...symbolePola.map((s) => Math.min(s.x, obrysNaScenie(s).x)));
     const lewaOznaczen = new Set(oznaczenia.map((l) => l.rect.x));
     if (lewaOznaczen.size > 1) n.push(`(kol-a) ${pole}: lewe krawędzie oznaczeń ${[...lewaOznaczen].sort((x, y) => x - y).join(', ')}`);

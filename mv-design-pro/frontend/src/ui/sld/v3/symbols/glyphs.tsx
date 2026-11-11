@@ -269,6 +269,21 @@ export interface GlyphProps {
    *  `CapacitorBankGlyph` (układ połączeń i obecność rekordu przekładnika niezrównoważenia
    *  pola). `undefined`/`uklad: null` = model nie deklaruje układu (znak „?"). */
   readonly bateria?: GlifBaterii;
+  /** Karta UX-04/ROZDZIELNICA-SN-KOREKTA (decyzja architekta D1): orientacja toru, w którym stoi
+   *  aparat — `w-gore` dla pola zasilającego NAD szyną (tor czytany od szyny ku górze). Czytają ją
+   *  WYŁĄCZNIE glify QET o kierunku toru (`czyGlifZOrientacjaToru`: łącznik z nożem, głowica
+   *  kablowa): styk stały łącznika stoi od strony szyny, przegub od strony odpływu, miseczka
+   *  głowicy od strony kabla; symbol uziemienia i osprzęt napędu NIE odwracają się (ziemia zawsze
+   *  w dół, litera napędu czytelna). Brak = tor od szyny w dół (rysunek źródła QET). */
+  readonly kierunekToru?: 'w-dol' | 'w-gore';
+}
+
+/** Glif QET niosący kierunek toru (styk stały / przegub łącznika, miseczka głowicy kablowej) —
+ *  jedyne glify, które `kierunekToru` przestawia. Przekładnik prądowy, przekładnik napięciowy,
+ *  wskaźnik napięcia i ogranicznik nie mają strony szyny w rysunku (zaciski P1/P2 przekładnika
+ *  opisuje kompozycja wg strony szyny, `compose/gpz.ts`). */
+export function czyGlifZOrientacjaToru(id: SymbolId): boolean {
+  return czySymbolQet(id) && (QET_SYMBOLE_POLA_SN[id].noz !== null || id === 'qetCableHead');
 }
 
 /** Dane glifu baterii kondensatorów (`v2/model/bateriaPola.ts BateriaPolaView` bez refu). */
@@ -1752,6 +1767,13 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
     const f = props.skalaZnacznika ?? 1;
     const detale = DETALE_KAFLA_WG_LOD[props.lod ?? 2];
     const kafel = symbol.kafel ?? { x: 0, y: 0, width: symbol.szerokosc, height: symbol.wysokosc };
+    // Orientacja toru (decyzja architekta D1): tor od szyny w górę — rysunek toru (przewody,
+    // styk stały, nóż, znaczniki rodzaju) w lustrze osi poziomej gabarytu, więc styk stały stoi od
+    // strony szyny (dół), przegub od strony odpływu (góra). Ziemia i osprzęt napędu wiszą przy
+    // przegubie — przesunięte razem z nim, bez lustra (ziemia w dół, litera „M" prosto).
+    const wGore = props.kierunekToru === 'w-gore' && czyGlifZOrientacjaToru(id);
+    const lustroToru = wGore ? `matrix(1 0 0 -1 0 ${symbol.wysokosc})` : undefined;
+    const przesuniecieZPrzegubem = wGore && noz ? `translate(0 ${symbol.wysokosc - 2 * noz.cy})` : undefined;
     const pasmaCzlonu = symbol.czlon
       ? ([
           ['gora', symbol.czlon.gora, 0],
@@ -1763,7 +1785,8 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
         })
       : [];
     return (
-      <g {...glyphGroupProps(id, props)} data-symbol-family="qet" data-qet-polozenie={polozenie}>
+      <g {...glyphGroupProps(id, props)} data-symbol-family="qet" data-qet-polozenie={polozenie} data-kierunek-toru={wGore ? 'w-gore' : undefined}>
+        <g transform={lustroToru}>
         <g data-qet="przewody">
           <CadPrimitiveLayer prims={symbol.przewody} ink={ink} paper="none" strokeWidth={wPrzewodu} nonScalingStroke={false} state="closed" />
         </g>
@@ -1794,8 +1817,9 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
             </g>
           ))}
         </g>
+        </g>
         {symbol.ziemia && (
-          <g data-qet="ziemia">
+          <g data-qet="ziemia" transform={przesuniecieZPrzegubem}>
             <CadPrimitiveLayer
               prims={prymitywyZiemiWSkali(symbol.ziemia.prymitywy, kafel, f)}
               ink={ink}
@@ -1807,7 +1831,7 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
           </g>
         )}
         {detale.naped && symbol.osprzet.length > 0 && (
-          <g data-qet="osprzet">
+          <g data-qet="osprzet" transform={przesuniecieZPrzegubem}>
             <CadPrimitiveLayer prims={symbol.osprzet} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
           </g>
         )}

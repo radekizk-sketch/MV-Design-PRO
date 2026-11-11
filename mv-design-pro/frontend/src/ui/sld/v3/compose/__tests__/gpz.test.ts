@@ -49,8 +49,11 @@ import {
   busbarTopologyOf,
   composeGpz,
   gpzInternalSegmentsEndAtPortsOrBus,
+  KLUCZ_OPISU_GRANICY_WN,
+  KONIEC_GRANICY_ZASILANIA_WN,
   noDirectTransformerBusTies,
   noGpzSymbolOverlaps,
+  OPIS_GRANICY_ZASILANIA_WN,
   type GpzComposition,
 } from '../gpz';
 import { measureLabelWidth } from '../../core/text';
@@ -262,19 +265,66 @@ describe('V3 compose/gpz — migracja noDirectTie (guard no_direct_110kv_tr_tie_
     expect(composition.symbols.some((s) => s.meta.testId === `${tr.trFieldTestId}-es`)).toBe(true);
   });
 
-  it('pola WN i TR bez rekordów aparatów: sylwetka braku danych zamiast aparatów z konwencji, styk nadal zakazany', () => {
-    // GEOMETRIA-STACJI (§0 pkt 4c): transformator bez rekordów pól nie dostaje
-    // wymyślonych DS/CB/CT/ES — obie kolumny niosą JEDNĄ sylwetkę bez stanu, a wyrocznia
-    // zakazu bezpośredniego styku trzyma (pole jest, tylko jego wyposażenie jest nieznane).
+  it('transformator bez pól w modelu: strona WN = kreskowana granica zasilania z opisem, pole TR = sylwetka braku danych', () => {
+    // GEOMETRIA-STACJI (§0 pkt 4c): transformator bez rekordów pól nie dostaje wymyślonych
+    // DS/CB/CT/ES. D3b (karta UX-04/ROZDZIELNICA-SN-KOREKTA): pola WN TR NIE MA w modelu
+    // (aparatura 110 kV poza modelem), więc zamiast pustej ramki „?" tor WN niesie jawną
+    // granicę zasilania — kreskowane połączenie szyna WN → TR2W bez żadnego symbolu pola WN TR
+    // i dwuwierszowy opis stanu danych; pole TR (zakres rozdzielnicy SN) zostaje sylwetką braku.
     const composition = composeGpz(baseProps(), ORIGIN);
     expect(noDirectTransformerBusTies(composition)).toBe(true);
     const tr = composition.transformers[0];
-    for (const prefix of [tr.hvBayTestId, tr.trFieldTestId]) {
-      const stos = composition.symbols.filter((s) => s.meta.testId?.startsWith(`${prefix}-`));
-      expect(stos.map((s) => s.symbolId)).toEqual(['bayNoEquipment']);
-      expect(stos[0].state).toBeUndefined();
-      expect(stos[0].meta.apparatusSource).toBe('brak');
-    }
+    expect(composition.symbols.filter((s) => s.meta.testId?.startsWith(`${tr.hvBayTestId}-`))).toEqual([]);
+    const granica = composition.segments.find((s) => s.ownerRef === `${tr.transformerRef}#hv-connector`)!;
+    expect(granica.meta).toMatchObject({ directTie110: false, terminatesAt: KONIEC_GRANICY_ZASILANIA_WN, dashed: true });
+    const trSymbol = composition.symbols.find((s) => s.symbolId === 'transformer2W')!;
+    expect(granica.points[granica.points.length - 1].y).toBe(trSymbol.y);
+    // Opis granicy w paśmie nazwy TRANSFORMATORA (właściciel = obiekt modelu pod kotwicą): wiersz 1
+    // tożsamość elementu rysunku, wiersz 2 stan danych modelu.
+    const opis = composition.labels.transformerLabels.find((l) => l.ownerRef === `${tr.transformerRef}#${KLUCZ_OPISU_GRANICY_WN}`)!;
+    expect(opis.rows.map((r) => r.text)).toEqual([...OPIS_GRANICY_ZASILANIA_WN]);
+    expect(opis.rows.map((r) => r.role)).toEqual(['tozsamosc', 'dane']);
+    expect(opis.nameSlot.y).toBeGreaterThan(granica.points[0].y);
+    expect(opis.nameSlot.y + opis.nameSlot.height).toBeLessThanOrEqual(trSymbol.y);
+    expect(opis.nameSlot.x).toBeGreaterThan(granica.points[0].x);
+    expect(composition.segments.some((s) => s.ownerRef === `${tr.transformerRef}#hv-field-to-tr`)).toBe(false);
+    const stos = composition.symbols.filter((s) => s.meta.testId?.startsWith(`${tr.trFieldTestId}-`));
+    expect(stos.map((s) => s.symbolId)).toEqual(['bayNoEquipment']);
+    expect(stos[0].state).toBeUndefined();
+    expect(stos[0].meta.apparatusSource).toBe('brak');
+  });
+
+  it('pole WN TR w modelu BEZ rekordów aparatów: sylwetka braku danych (nie granica zasilania), połączenie ciągłe', () => {
+    // Iloczyn cech D3b: pole WN {brak w modelu, jest bez rekordów, jest z rekordami} — brak
+    // rekordów pola MODELU to brak danych wyposażenia, nie granica zasilania.
+    const composition = composeGpz(
+      baseProps({ transformers: [{ ...TR1, poleWn: { ...TR1_DANE.poleWn!, primaryDevices: [] } }] }),
+      ORIGIN,
+    );
+    expect(noDirectTransformerBusTies(composition)).toBe(true);
+    const tr = composition.transformers[0];
+    const stos = composition.symbols.filter((s) => s.meta.testId?.startsWith(`${tr.hvBayTestId}-`));
+    expect(stos.map((s) => s.symbolId)).toEqual(['bayNoEquipment']);
+    const polaczenie = composition.segments.find((s) => s.ownerRef === `${tr.transformerRef}#hv-connector`)!;
+    expect(polaczenie.meta.terminatesAt).toBe('hv_tr_bay_apparatus');
+    expect(polaczenie.meta.dashed).toBeUndefined();
+    expect(composition.labels.transformerLabels.some((l) => l.ownerRef.endsWith(`#${KLUCZ_OPISU_GRANICY_WN}`))).toBe(false);
+  });
+
+  it('wyrocznia oblewa granicę zasilania narysowaną ciągłą linią albo z symbolem pola WN TR', () => {
+    const composition = composeGpz(baseProps(), ORIGIN);
+    const tr = composition.transformers[0];
+    const ciagla: GpzComposition = {
+      ...composition,
+      segments: composition.segments.map((s) =>
+        s.ownerRef === `${tr.transformerRef}#hv-connector` ? { ...s, meta: { ...s.meta, dashed: undefined } } : s,
+      ),
+    };
+    expect(noDirectTransformerBusTies(ciagla)).toBe(false);
+    const zPolem = composeGpz(baseProps({ transformers: [TR1_DANE] }), ORIGIN);
+    const symbolPolaWn = zPolem.symbols.find((s) => s.meta.testId?.startsWith(`${zPolem.transformers[0].hvBayTestId}-`))!;
+    const sprzeczna: GpzComposition = { ...composition, symbols: [...composition.symbols, { ...symbolPolaWn, meta: { ...symbolPolaWn.meta, testId: `${tr.hvBayTestId}-cb` } }] };
+    expect(noDirectTransformerBusTies(sprzeczna)).toBe(false);
   });
 
   it('wyrocznia oblewa, gdy pole TR nie ma ŻADNEGO symbolu (bezpośredni styk)', () => {
@@ -710,29 +760,28 @@ describe('V3 compose/gpz — FIX-B: szyna rezerwowa NIE pokrywa się z primary',
 // Poprawka: `bottomPort` = port S ostatniego symbolu, który go MA.
 // ---------------------------------------------------------------------------
 
-describe('V3 compose/gpz — FIX-C: bottomPort stosu z ES na końcu = port S CT (nie topPort)', () => {
-  it('pole TR transformatora: segment #tr-field-to-bus zaczyna się w porcie S symbolu CT, nie w topPort stosu', () => {
+// UX-04/ROZDZIELNICA-SN-KOREKTA (decyzja architekta D1, ENEA Z.7 s.86): pole TR jest polem
+// zasilającym NAD szyną SN, więc jego tor liczy się OD SZYNY w górę — pierwszy aparat rekordów
+// (od strony szyn) stoi przy szynie, ostatni przy transformatorze. Intencja FIX-C zostaje:
+// odcinek `#tr-field-to-bus` startuje w porcie aparatu NAJBLIŻSZEGO szynie (dawniej port S CT,
+// bo tor szedł w dół od TR), nigdy w porcie końca toru po stronie transformatora.
+describe('V3 compose/gpz — FIX-C × D1: odcinek do szyny SN startuje w porcie aparatu przy szynie', () => {
+  it('pole TR transformatora: #tr-field-to-bus zaczyna się w porcie S odłącznika przy szynie, nie przy transformatorze', () => {
     const composition = composeGpz(baseProps({ transformers: [TR1_DANE] }), ORIGIN);
     const tr = composition.transformers[0];
     const ctSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ct`)!;
     const dsSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ds`)!;
     expect(ctSymbol).toBeDefined();
-    const ctSouthPort = ctSymbol.ports.bottom;
-    expect(ctSouthPort).toBeDefined();
-
+    expect(dsSymbol).toBeDefined();
     const toBusSegment = composition.segments.find((s) => s.ownerRef === `${tr.transformerRef}#tr-field-to-bus`)!;
     expect(toBusSegment).toBeDefined();
-    expect(toBusSegment.points[0].y).toBe(ctSouthPort.y);
-    // NIE topPort stosu (port N symbolu DS, pierwszego w stosie).
-    expect(toBusSegment.points[0].y).not.toBe(dsSymbol.ports.top.y);
+    // Odłącznik (pierwszy rekord, od strony szyn) stoi NAJNIŻEJ, przekładnik nad nim.
+    expect(ctSymbol.ports.bottom.y).toBeLessThanOrEqual(dsSymbol.ports.top.y);
+    expect(toBusSegment.points[0].y).toBe(dsSymbol.ports.bottom.y);
+    expect(toBusSegment.points[0].y).not.toBe(ctSymbol.ports.bottom.y);
   });
 
-  it('test ogólny — dla KAŻDEGO transformatora niezależnie (pole TR kończy się ES): bottomPort (CT) > topPort (DS)', () => {
-    // `bottomPort` jest konsumowany downstream WYŁĄCZNIE przez pole TR
-    // dedykowane transformatora (`trFieldStack`, segment `#tr-field-to-bus`)
-    // — to jedyne miejsce w compose, gdzie stos kończy się symbolem (ES) bez
-    // portu S. Sprawdzamy niezależnie dla wielu transformatorów (wzorzec z
-    // istniejącego testu noDirectTie „wielu transformatorów").
+  it('dla KAŻDEGO transformatora niezależnie: tor pola TR od szyny w górę, odcinek do szyny z portu odłącznika', () => {
     const composition = composeGpz(
       baseProps({
         sections: [
@@ -750,11 +799,10 @@ describe('V3 compose/gpz — FIX-C: bottomPort stosu z ES na końcu = port S CT 
       expect(ctSymbol).toBeDefined();
       expect(dsSymbol).toBeDefined();
       expect(esSymbol).toBeDefined();
-      const topPortY = dsSymbol.ports.top.y;
-      const bottomPortY = ctSymbol.ports.bottom.y;
-      expect(bottomPortY).toBeGreaterThan(topPortY);
+      expect(dsSymbol.kierunekToru).toBe('w-gore');
+      expect(ctSymbol.ports.bottom.y).toBeLessThanOrEqual(dsSymbol.ports.top.y);
       const toBusSegment = composition.segments.find((s) => s.ownerRef === `${tr.transformerRef}#tr-field-to-bus`)!;
-      expect(toBusSegment.points[0].y).toBe(bottomPortY);
+      expect(toBusSegment.points[0].y).toBe(dsSymbol.ports.bottom.y);
     }
   });
 });

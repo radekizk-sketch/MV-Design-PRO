@@ -30,6 +30,11 @@ function migawka(miejsce: Miejsce, grupa: string | null): { enm: EnergyNetworkMo
   const tr = enm.transformers.find((t) => t.ref_id === trRef)! as { vector_group?: string | null };
   if (grupa === null) delete tr.vector_group;
   else tr.vector_group = grupa;
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (etap 1): sieć referencyjna niesie już pole TR
+  // z szablonu ENEA Z.7 przypisane temu transformatorowi. Intencja testu (miejsce pola TR:
+  // w modelu / poza modelem) wymaga, żeby JEDYNYM polem TR transformatora było pole migawki —
+  // dwa pola TR jednego transformatora nie przypisują się do toru (`przypiszPolaTr`).
+  enm.bays = enm.bays.filter((b) => !(b.bay_role === 'TR' && ((b.equipment_refs ?? []).includes(trRef) || b.meta?.transformer_ref === trRef)));
   if (miejsce === 'w polu TR') {
     const sekcja = gpz.gpz_sections![0];
     const zacisk = `${WYLACZNIK}/k`;
@@ -92,7 +97,15 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
           // TR w modelu i pole WN TR bez rekordu mają sylwetkę braku danych bez stanu.
           const stosPolaTr = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-tr-field-${trRef}-`));
           const stosPolaWn = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-hv-tr-bay-${trRef}-`));
-          expect(stosPolaWn.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);
+          // D3b (karta UX-04/ROZDZIELNICA-SN-KOREKTA): migawka nie ma pola WN TR w modelu —
+          // tor WN to kreskowana granica zasilania (zero symboli pola WN TR), nie ramka „?".
+          expect(stosPolaWn).toEqual([]);
+          const granicaWn = scena.segments.find((s) => s.meta?.ownerRef === `${trRef}#hv-connector`);
+          expect(granicaWn?.meta?.dashed).toBe(true);
+          expect(scena.labels.filter((l) => l.ownerRef.startsWith(`${trRef}#granica-zasilania-wn#name-row-`)).map((l) => l.text)).toEqual([
+            'Granica zasilania WN',
+            'pole WN TR poza modelem',
+          ]);
           const wylacznikToru = scena.symbols.find(
             (s) => s.meta?.testId === `gpz-canonical-tr-field-${trRef}-cb`,
           );
