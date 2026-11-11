@@ -9,7 +9,8 @@ name: P0 Extended Guards (V12K invariants)
 #
 # Reference:
 # - Test architect audyt 2026-05-14 (background agent)
-# - CLAUDE.md § Core Rules: NO HEURISTICS, WHITE BOX, Determinism, etc.
+# - CLAUDE.md § Reguły rdzenia (pełne brzmienie: .claude/rules/rdzen-modelu.md § Core Rules):
+#   NO HEURISTICS (9), WHITE BOX (2), Determinism (7) i pozostałe reguły 1–10
 # - mv-design-pro/scripts/ (67 guard scripts total)
 
 on:
@@ -70,7 +71,7 @@ jobs:
         run: echo "GUARD_PY=$(poetry env info --path)/bin/python" >> "$GITHUB_ENV"
 
       # === Physics / Solver boundary guards (V12K rule §9) ===
-      # CLAUDE.md § Core Rules: solvers MUST NOT contain heuristics
+      # .claude/rules/rdzen-modelu.md § Core Rules 9: solvers MUST NOT contain heuristics
       - name: Load Flow — no heuristics
         run: $GUARD_PY scripts/load_flow_no_heuristics_guard.py
 
@@ -84,7 +85,7 @@ jobs:
         run: $GUARD_PY scripts/overlay_no_physics_guard.py
 
       # === Determinism / trace guards ===
-      # CLAUDE.md § Core Rules: Same input MUST produce identical output
+      # .claude/rules/rdzen-modelu.md § Core Rules 7: Same input MUST produce identical output
       # 2026-07-17: warn-only ZDJĘTE — wszystkie guardy tego workflowu zielone
       # na czystym HEAD (weryfikacja lokalna przy przenosinach z martwego
       # katalogu mv-design-pro/.github/workflows); karta TRACE-V2 (2026-09-10)
