@@ -48,6 +48,15 @@ test('pomiar przed/po: E-28 i karta nastaw w scenariuszu 67N', async ({ page, re
   await expect(tabela).toBeVisible({ timeout: 20000 });
   await page.waitForTimeout(300);
   const e28 = await pomiarPierwszegoPlanu(tabela);
+  // Po karcie: przy 1440×900 żadna tabela oceny nie wychodzi poza panel (bez zawijania
+  // nagłówków rodzina 67N miała 1280 px, bez zawijania odwołania tabela źródeł 1620 px — w panelu
+  // 1096 px). Na kodzie sprzed karty tabela rodziny nie istniała, a spec mierzy oba stany —
+  // asercja tylko, gdy ekran ma tabele rodzin.
+  if ((await tabela.locator('[data-rodzina]').count()) > 0) expect(e28.tabele_szersze_niz_panel).toEqual([]);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.waitForTimeout(300);
+  const e28w1280 = await pomiarPierwszegoPlanu(tabela);
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   await otworzZabezpieczeniaIAutomatyke(page);
   await edytorSterownika(page, pole1, sterownik.ref_id);
@@ -60,6 +69,7 @@ test('pomiar przed/po: E-28 i karta nastaw w scenariuszu 67N', async ({ page, re
 
   const wynik = {
     e28_tabela_zwarc_doziemnych: e28,
+    e28_tabela_zwarc_doziemnych_1280x720: e28w1280,
     karta_nastaw_ocena: kartaNastaw,
     klikniecia_do_nastawy: doNastawy.liczba,
     klikniecia_do_wyniku: doWyniku.liczba,

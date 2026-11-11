@@ -1,0 +1,68 @@
+{
+  "opis": "Pomiar przed/po karty EKRANY-EAZ-ZIEMNOZWARCIOWE: scenariusz e2e 67N (e2e/ekrany-eaz-pomiar.spec.ts, realny backend, natywne kliki). Wysokość = scrollHeight elementu w px; słowa = innerText (pierwszy plan, bez zwiniętych szczegółów); kliknięcia liczone od palety poleceń do zapisanej nastawy i od „Oblicz” do widocznego wyniku oceny.",
+  "przed": {
+    "kod": "105b64f3d (rodzic pierwszego commitu karty 9ebf3eb1f)",
+    "e28_tabela_zwarc_doziemnych": {
+      "wysokosc_px": 1692,
+      "slowa": 1365,
+      "szerokosc_dostepna_px": 1096,
+      "najszersza_tabela_px": 1096,
+      "najszersza_tabela": "mvd-ocena-zabezpieczen-ziemne",
+      "tabele_szersze_niz_panel": []
+    },
+    "e28_tabela_zwarc_doziemnych_1280x720": {
+      "wysokosc_px": 2088,
+      "slowa": 1365,
+      "szerokosc_dostepna_px": 936,
+      "najszersza_tabela_px": 936,
+      "najszersza_tabela": "mvd-ocena-zabezpieczen-ziemne",
+      "tabele_szersze_niz_panel": []
+    },
+    "karta_nastaw_ocena": {
+      "wysokosc_px": 314,
+      "slowa": 264,
+      "szerokosc_dostepna_px": 1062,
+      "najszersza_tabela_px": 1062,
+      "najszersza_tabela": "mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela",
+      "tabele_szersze_niz_panel": []
+    },
+    "klikniecia_do_nastawy": 10,
+    "klikniecia_do_wyniku": 5,
+    "okno": "1440x900"
+  },
+  "po": {
+    "kod": "gałąź karty, commit niosący ten plik",
+    "e28_tabela_zwarc_doziemnych": {
+      "wysokosc_px": 666,
+      "slowa": 332,
+      "szerokosc_dostepna_px": 1096,
+      "najszersza_tabela_px": 1096,
+      "najszersza_tabela": "ZEROWOPRADOWE mvd-ocena-zabezpieczen-ziemne-rodzina",
+      "tabele_szersze_niz_panel": []
+    },
+    "e28_tabela_zwarc_doziemnych_1280x720": {
+      "wysokosc_px": 786,
+      "slowa": 332,
+      "szerokosc_dostepna_px": 936,
+      "najszersza_tabela_px": 1006,
+      "najszersza_tabela": "KIERUNKOWE_67N mvd-ocena-zabezpieczen-ziemne-rodzina",
+      "tabele_szersze_niz_panel": [
+        {
+          "tabela": "KIERUNKOWE_67N mvd-ocena-zabezpieczen-ziemne-rodzina",
+          "szerokosc_px": 1006
+        }
+      ]
+    },
+    "karta_nastaw_ocena": {
+      "wysokosc_px": 164,
+      "slowa": 91,
+      "szerokosc_dostepna_px": 1334,
+      "najszersza_tabela_px": 1334,
+      "najszersza_tabela": "KIERUNKOWE_67N mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela-rodzina",
+      "tabele_szersze_niz_panel": []
+    },
+    "klikniecia_do_nastawy": 10,
+    "klikniecia_do_wyniku": 5,
+    "okno": "1440x900"
+  }
+}

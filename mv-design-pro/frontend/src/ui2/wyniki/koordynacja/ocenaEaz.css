@@ -88,14 +88,22 @@
   white-space: nowrap;
 }
 
-/* Nazwa pola (z nazwą stacji przy nazwie powtarzalnej) zawija się — liczby i stan zostają
- * w kadrze zamiast wypychać tabelę w przewijanie poziome. */
-.mvd-eaz-tabela td:first-child {
+/* Tekst opisowy w tabelach zawija się: nazwa pola (z nazwą stacji przy nazwie powtarzalnej)
+ * i odwołanie do źródła wymagania. Liczby zostają w jednej linii. Pomiar karty EKRANY-EAZ
+ * (1440×900): tabela źródeł wymagań bez zawijania odwołania miała 1620 px w panelu 1096 px. */
+.mvd-eaz-tabela td:first-child,
+.mvd-eaz-tabela td.mvd-eaz-przypis {
   white-space: normal;
-  min-width: 10em;
 }
 
+.mvd-eaz-tabela td.mvd-eaz-przypis {
+  min-width: 24em;
+}
+
+/* Nagłówek kolumny zawija się — szerokość kolumny wyznacza liczba, nie opis wielkości
+ * (rodzina 67N: 16 kolumn; bez zawijania 1280 px w panelu 1096 px przy 1440×900). */
 .mvd-eaz-tabela th {
+  white-space: normal;
   font-weight: 600;
   color: var(--mvd-muted);
   font-size: var(--mvd-font-size-small);

@@ -306,15 +306,28 @@ export async function pomiarPierwszegoPlanu(l: Locator): Promise<{
   slowa: number;
   szerokosc_dostepna_px: number;
   najszersza_tabela_px: number;
+  najszersza_tabela: string;
+  tabele_szersze_niz_panel: Array<{ tabela: string; szerokosc_px: number }>;
 }> {
   return l.evaluate((el) => {
     const h = el as HTMLElement;
-    const tabele = Array.from(h.querySelectorAll('table')) as HTMLElement[];
+    const tabele = (Array.from(h.querySelectorAll('table')) as HTMLElement[]).sort(
+      (a, b) => b.scrollWidth - a.scrollWidth,
+    );
+    const opis = (t: HTMLElement) =>
+      `${t.closest('[data-rodzina]')?.getAttribute('data-rodzina') ?? ''} ${
+        t.closest('[data-testid]')?.getAttribute('data-testid') ?? ''
+      }`.trim();
+    const najszersza = tabele[0];
     return {
       wysokosc_px: Math.round(h.scrollHeight),
       slowa: (h.innerText.match(/\S+/g) ?? []).length,
       szerokosc_dostepna_px: Math.round(h.clientWidth),
-      najszersza_tabela_px: Math.round(Math.max(0, ...tabele.map((t) => t.scrollWidth))),
+      najszersza_tabela_px: Math.round(najszersza?.scrollWidth ?? 0),
+      najszersza_tabela: najszersza ? opis(najszersza) : '',
+      tabele_szersze_niz_panel: tabele
+        .filter((t) => t.scrollWidth > h.clientWidth)
+        .map((t) => ({ tabela: opis(t), szerokosc_px: Math.round(t.scrollWidth) })),
     };
   });
 }
