@@ -1395,7 +1395,28 @@ _RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ: dict[str, str] = {
     "breaker": "CB",
     "switch": "LOAD_SWITCH",
     "disconnector": "DS",
+    # Decyzja architekta D3: aparat główny pola sprzęgła (Q0, ENEA Zeszyt 1 Z.12) wskazuje
+    # gałąź `bus_coupler` między sekcjami. Rodzaj wg pozycji katalogu gałęzi, gdy ją ma
+    # (`_rodzaj_aparatu_glownego_galezi`); bez pozycji — wyłącznik (Z.12).
+    "bus_coupler": "CB",
 }
+
+
+def _rodzaj_aparatu_glownego_galezi(galaz: Mapping[str, Any]) -> str | None:
+    """Rodzaj aparatu pierwotnego pola wskazującego gałąź łącznika modelu. Gałąź `bus_coupler`
+    jest rolą w topologii (łącznik sekcji), nie rodzajem wyrobu — rodzaj wyrobu pochodzi
+    z pozycji katalogu gałęzi (`_DEVICE_KIND_NA_TYP_GALEZI`), domyślnie wyłącznik."""
+    typ = str(galaz.get("type"))
+    if typ == "bus_coupler":
+        catalog_ref = galaz.get("catalog_ref")
+        kind = (
+            _rodzaj_aparatu_sn_z_katalogu(catalog_ref)
+            if isinstance(catalog_ref, str) and catalog_ref
+            else None
+        )
+        if kind in _DEVICE_KIND_NA_TYP_GALEZI:
+            typ = _DEVICE_KIND_NA_TYP_GALEZI[kind][0]
+    return _RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ.get(typ)
 
 
 def _aparaty_pola_liniowego_gpz(
@@ -1463,7 +1484,7 @@ def _powiaz_aparaty_pola_z_galezia(
     zgodne ze stanem gałęzi (patrz `_aparaty_pola_liniowego_gpz`). `z_polozeniem=False` —
     WYŁĄCZNIE wskazanie gałęzi aparatu głównego (operacja wyposażenia pola nie ustawia stanu
     łącznika, `enm.wyposazenie_pola`)."""
-    rodzaj = _RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ.get(str(galaz.get("type")))
+    rodzaj = _rodzaj_aparatu_glownego_galezi(galaz)
     kandydaci = [a for a in aparaty if a.get("kind") == rodzaj]
     glowny = next((a for a in kandydaci if a.get("placement") == "MIDSTREAM"), None) or next(
         iter(kandydaci), None
@@ -6146,42 +6167,272 @@ def _typ_i_nazwa_aparatu_pola(
     return typ, f"{nazwa} pola SN {ordinal}"
 
 
+#: Kod odmowy: pole sprzęgła w rozdzielnicy o jednej sekcji szyn (decyzja architekta D3).
+KOD_SPRZEGLO_WYMAGA_DWOCH_SEKCJI = "field.coupler_requires_two_sections"
+#: Kod odmowy: każde sprzęgło sekcji ma już pole, a sąsiednie sekcje są już połączone.
+KOD_SPRZEGLO_SEKCJI_ZAJETE = "field.coupler_sections_bound"
+
+
+@dataclass(frozen=True)
+class SprzegloPola:
+    """Gałąź `bus_coupler`, z którą wiąże się pole sprzęgła (decyzja architekta D3).
+
+    `section_a_bus_ref` — początek gałęzi (Q1 pola), `section_b_bus_ref` — koniec (Q2).
+    `do_utworzenia` — gałęzi jeszcze nie ma: tworzy ją ta sama operacja, która tworzy pole."""
+
+    coupler_ref: str
+    section_a_bus_ref: str
+    section_b_bus_ref: str
+    do_utworzenia: bool
+
+
+def sekcje_szyn_sn_stacji(enm: Mapping[str, Any], station: Mapping[str, Any]) -> list[str]:
+    """Szyny sekcji rozdzielnicy SN stacji w kolejności sekcji: GPZ — `gpz_sections` wg
+    `order`; stacja SN/nN — `bus_refs` stacji na napięciu pierwszej szyny SN (szyna nN,
+    szyny potrzeb własnych i zaciski pól nie są sekcjami rozdzielnicy SN)."""
+    sekcje_gpz = station.get("gpz_sections")
+    if station.get("station_type") == "gpz" and isinstance(sekcje_gpz, list):
+        uporzadkowane = sorted(
+            (s for s in sekcje_gpz if isinstance(s, Mapping) and isinstance(s.get("bus_ref"), str)),
+            key=lambda s: (int(s.get("order") or 0), str(s.get("section_id") or "")),
+        )
+        return [str(s["bus_ref"]) for s in uporzadkowane]
+    szyny = {
+        str(b.get("ref_id")): b
+        for b in enm.get("buses", [])
+        if isinstance(b, Mapping) and isinstance(b.get("ref_id"), str)
+    }
+    refy = [r for r in station.get("bus_refs") or [] if isinstance(r, str) and r in szyny]
+    napiecia = [
+        float(szyny[r].get("voltage_kv") or 0.0)
+        for r in refy
+        if "field_terminal" not in (szyny[r].get("tags") or [])
+    ]
+    if not napiecia:
+        return []
+    napiecie_sn = max(napiecia)
+    return [
+        r
+        for r in refy
+        if math.isclose(float(szyny[r].get("voltage_kv") or 0.0), napiecie_sn, rel_tol=1e-9)
+        and "field_terminal" not in (szyny[r].get("tags") or [])
+    ]
+
+
+def _sprzegla_zwiazane_z_polami(enm: Mapping[str, Any]) -> set[str]:
+    """Gałęzie `bus_coupler` będące aparatem istniejącego pola sprzęgła (`equipment_refs`)."""
+    return {
+        str(ref)
+        for pole_rec in enm.get("bays", [])
+        if isinstance(pole_rec, Mapping) and pole_rec.get("bay_role") == "COUPLER"
+        for ref in pole_rec.get("equipment_refs") or []
+        if isinstance(ref, str)
+    }
+
+
+def rozstrzygnij_sprzeglo_pola(
+    enm: Mapping[str, Any],
+    *,
+    sekcje: list[str],
+    bus_ref: str,
+    nowy_coupler_ref: str,
+) -> tuple[SprzegloPola | None, tuple[str, str] | None]:
+    """Gałąź sprzęgła pola sprzęgła na szynie `bus_ref` — JEDNA reguła dla każdej drogi
+    tworzącej pole sprzęgła (decyzja architekta D3): wcięcie stacji sekcyjnej, pola GPZ
+    i `add_sn_bay`. Zwraca (sprzęgło, None) albo (None, (kod odmowy, komunikat)).
+
+    1. Rozdzielnica o jednej sekcji — odmowa `field.coupler_requires_two_sections`.
+    2. Istniejąca gałąź `bus_coupler` z końcem na `bus_ref` i drugim końcem na innej sekcji,
+       bez pola — pole wiąże się z nią (sąsiad prawy, potem lewy, potem dalsze sekcje).
+    3. Sąsiednia sekcja bez żadnej gałęzi sprzęgła z `bus_ref` — sprzęgło do utworzenia
+       (początek: sekcja wcześniejsza).
+    4. W przeciwnym razie — odmowa `field.coupler_sections_bound`."""
+    if bus_ref not in sekcje or len(sekcje) < 2:
+        return None, (
+            KOD_SPRZEGLO_WYMAGA_DWOCH_SEKCJI,
+            "Pole sprzęgła łączy dwie sekcje szyn, a rozdzielnica tej stacji ma jedną sekcję. "
+            "Dodaj drugą sekcję szyn rozdzielnicy, a potem pole sprzęgła między sekcjami.",
+        )
+    indeks = sekcje.index(bus_ref)
+    zwiazane = _sprzegla_zwiazane_z_polami(enm)
+
+    def _odleglosc(drugi: str) -> tuple[int, int]:
+        i = sekcje.index(drugi)
+        return (abs(i - indeks), 0 if i > indeks else 1)
+
+    sprzegla: list[tuple[tuple[int, int], str, dict[str, Any]]] = []
+    for galaz in enm.get("branches", []):
+        if not isinstance(galaz, dict) or galaz.get("type") != "bus_coupler":
+            continue
+        konce = (galaz.get("from_bus_ref"), galaz.get("to_bus_ref"))
+        if bus_ref not in konce:
+            continue
+        drugi = konce[1] if konce[0] == bus_ref else konce[0]
+        if drugi not in sekcje or drugi == bus_ref:
+            continue
+        sprzegla.append((_odleglosc(str(drugi)), str(galaz.get("ref_id")), galaz))
+    for _klucz, ref, galaz in sorted(sprzegla, key=lambda w: (w[0], w[1])):
+        if ref not in zwiazane:
+            return (
+                SprzegloPola(
+                    coupler_ref=ref,
+                    section_a_bus_ref=str(galaz.get("from_bus_ref")),
+                    section_b_bus_ref=str(galaz.get("to_bus_ref")),
+                    do_utworzenia=False,
+                ),
+                None,
+            )
+    polaczone = {
+        (
+            galaz.get("to_bus_ref")
+            if galaz.get("from_bus_ref") == bus_ref
+            else galaz.get("from_bus_ref")
+        )
+        for _k, _r, galaz in sprzegla
+    }
+    for sasiad in (indeks + 1, indeks - 1):
+        if 0 <= sasiad < len(sekcje) and sekcje[sasiad] not in polaczone:
+            a, b = sorted((indeks, sasiad))
+            return (
+                SprzegloPola(
+                    coupler_ref=nowy_coupler_ref,
+                    section_a_bus_ref=sekcje[a],
+                    section_b_bus_ref=sekcje[b],
+                    do_utworzenia=True,
+                ),
+                None,
+            )
+    return None, (
+        KOD_SPRZEGLO_SEKCJI_ZAJETE,
+        "Każde sprzęgło tej sekcji szyn ma już swoje pole sprzęgła, a sąsiednie sekcje są już "
+        "połączone. Dodaj kolejną sekcję szyn albo usuń pole sprzęgła, które ma zostać zastąpione.",
+    )
+
+
+def utworz_galaz_sprzegla(
+    enm: dict[str, Any], sprzeglo: SprzegloPola, *, nazwa: str, station: Mapping[str, Any] | None
+) -> tuple[dict[str, Any], str | None]:
+    """Gałąź `bus_coupler` (normalnie zamknięta, PROJEKTOWANA) między sekcjami sprzęgła pola.
+    W GPZ sąsiednie sekcje dostają referencje sprzęgła (`left/right_coupler_ref`) — ten sam
+    zapis co budowa GPZ (`add_grid_source_sn`). Zwraca (model, komunikat błędu)."""
+    wynik = create_branch(
+        enm,
+        {
+            "ref_id": sprzeglo.coupler_ref,
+            "name": nazwa,
+            "type": "bus_coupler",
+            "from_bus_ref": sprzeglo.section_a_bus_ref,
+            "to_bus_ref": sprzeglo.section_b_bus_ref,
+            "status": "closed",
+        },
+    )
+    if not wynik.success:
+        return enm, wynik.issues[0].message_pl if wynik.issues else "Nieznany błąd."
+    nowy = wynik.enm
+    if station is not None and station.get("station_type") == "gpz":
+        for stacja in nowy.get("substations", []):
+            if not isinstance(stacja, dict) or stacja.get("ref_id") != station.get("ref_id"):
+                continue
+            for sekcja in stacja.get("gpz_sections") or []:
+                if not isinstance(sekcja, dict):
+                    continue
+                if sekcja.get("bus_ref") == sprzeglo.section_a_bus_ref:
+                    sekcja["right_coupler_ref"] = sprzeglo.coupler_ref
+                elif sekcja.get("bus_ref") == sprzeglo.section_b_bus_ref:
+                    sekcja["left_coupler_ref"] = sprzeglo.coupler_ref
+    return nowy, None
+
+
+def meta_pola_sprzegla(sprzeglo: SprzegloPola, *, requires_catalog_binding: bool) -> dict[str, Any]:
+    """Metadane rekordu pola sprzęgła — JEDNO źródło dla każdej drogi (decyzja D3)."""
+    return {
+        "default_device_ref": sprzeglo.coupler_ref,
+        "requires_catalog_binding": requires_catalog_binding,
+        "coupler_ref": sprzeglo.coupler_ref,
+        "section_a_bus_ref": sprzeglo.section_a_bus_ref,
+        "section_b_bus_ref": sprzeglo.section_b_bus_ref,
+    }
+
+
 def _przypisz_aparat_pola_sprzeglu(
     enm: dict[str, Any],
     coupler_ref: str,
     *,
-    catalog_ref: str,
+    catalog_ref: str | None,
     apparatus_params: dict[str, Any],
     field_ref: str,
     station_ref: str,
     field_role: str,
     bay_role: str,
 ) -> None:
-    """Sprzęgło międzysekcyjne stacji staje się APARATEM pola sprzęgła (POLA-W-TORZE).
+    """Sprzęgło międzysekcyjne stacji staje się APARATEM pola sprzęgła (POLA-W-TORZE, D3).
 
     Pozycja katalogu wskazana dla pola (B-12) przechodzi na realny łącznik sekcji — ten, który
     leży w torze prądowym między sekcjami. Typ gałęzi zostaje `bus_coupler` (rola elementu
-    w topologii rozdzielni, `_typ_i_nazwa_aparatu_pola`)."""
+    w topologii rozdzielni, `_typ_i_nazwa_aparatu_pola`). Pole bez wskazanej pozycji katalogu
+    wiąże gałąź bez zmiany jej pochodzenia katalogowego."""
     for galaz in enm.get("branches", []):
         if isinstance(galaz, dict) and galaz.get("ref_id") == coupler_ref:
-            galaz["catalog_ref"] = catalog_ref
-            galaz["catalog_namespace"] = "APARAT_SN"
-            galaz["parameter_source"] = "OVERRIDE" if galaz.get("overrides") else "CATALOG"
-            galaz["source_mode"] = "KATALOG"
-            galaz["materialized_params"] = copy.deepcopy(apparatus_params)
-            galaz["tags"] = sorted({*(galaz.get("tags") or []), "station_field_device"})
-            galaz["meta"] = {
+            meta: dict[str, Any] = {
                 **(galaz.get("meta") or {}),
                 "field_ref": field_ref,
                 "station_ref": station_ref,
                 "field_role": field_role,
                 "bay_role": bay_role,
-                "catalog_message": (
+            }
+            if catalog_ref:
+                galaz["catalog_ref"] = catalog_ref
+                galaz["catalog_namespace"] = "APARAT_SN"
+                galaz["parameter_source"] = "OVERRIDE" if galaz.get("overrides") else "CATALOG"
+                galaz["source_mode"] = "KATALOG"
+                galaz["materialized_params"] = copy.deepcopy(apparatus_params)
+                meta["catalog_message"] = (
                     "Aparat pola SN z jawnie wskazanej pozycji katalogu — "
                     f"{opis_pozycji_katalogu(catalog_ref, 'APARAT_SN', 'typ')}."
-                ),
-            }
+                )
+            galaz["tags"] = sorted({*(galaz.get("tags") or []), "station_field_device"})
+            galaz["meta"] = meta
             return
+
+
+def zwiaz_pole_ze_sprzeglem(
+    enm: dict[str, Any],
+    sprzeglo: SprzegloPola,
+    *,
+    catalog_ref: str | None,
+    apparatus_params: dict[str, Any],
+    field_ref: str,
+    station_ref: str,
+    field_role: str,
+    bay_role: str,
+    aparaty_pola: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Wiązanie pola sprzęgła z gałęzią `bus_coupler` — JEDNA funkcja wcięcia stacji
+    sekcyjnej i `add_sn_bay` (GPZ i stacja SN/nN; decyzja architekta D3): pozycja katalogu
+    pola przechodzi na gałąź, aparat główny szablonu (Q0) wskazuje gałąź (`linked_ref`),
+    łączniki szablonu (Q1 na sekcji A, Q2 na sekcji B) dostają położenie zgodne ze stanem
+    gałęzi. Zwraca aparaty pola do zapisu na rekordzie."""
+    _przypisz_aparat_pola_sprzeglu(
+        enm,
+        sprzeglo.coupler_ref,
+        catalog_ref=catalog_ref,
+        apparatus_params=apparatus_params,
+        field_ref=field_ref,
+        station_ref=station_ref,
+        field_role=field_role,
+        bay_role=bay_role,
+    )
+    galaz = next(
+        (
+            g
+            for g in enm.get("branches", [])
+            if isinstance(g, dict) and g.get("ref_id") == sprzeglo.coupler_ref
+        ),
+        None,
+    )
+    if galaz is None or not aparaty_pola:
+        return aparaty_pola
+    return _powiaz_aparaty_pola_z_galezia(aparaty_pola, galaz)
 
 
 def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) -> dict[str, Any]:
@@ -7872,27 +8123,39 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         if wyposazenie_pola:
             wyposazenie_pol.append((field_ref, field_role, wyposazenie_pola))
 
-        if is_sectional and field_role == "SPRZEGLO":
+        if field_role == "SPRZEGLO":
             # POLA-W-TORZE (klasa: aparat pola martwy elektrycznie): aparatem pola sprzęgła
             # stacji sekcyjnej JEST sprzęgło międzysekcyjne — dawniej pole dostawało DRUGI
             # wyłącznik szyna A → pusty zacisk, którego otwarcie niczego nie odłączało, a realne
-            # sprzęgło nie niosło pozycji katalogu wskazanej dla pola (B-12).
-            _przypisz_aparat_pola_sprzeglu(
+            # sprzęgło nie niosło pozycji katalogu wskazanej dla pola (B-12). Decyzja D3: ta
+            # sama reguła co `add_sn_bay` (`rozstrzygnij_sprzeglo_pola`) — stacja bez drugiej
+            # sekcji nie ma pola sprzęgła (odmowa nazwana, nie martwy aparat).
+            sprzeglo, odmowa_sprzegla = rozstrzygnij_sprzeglo_pola(
                 new_enm,
-                coupler_id,
-                catalog_ref=breaker_catalog_ref,
-                apparatus_params=apparatus_params,
-                field_ref=field_ref,
-                station_ref=stn_id,
-                field_role=field_role,
-                bay_role=bay_role,
+                sekcje=[sn_bus_id, sn_bus_b_id] if is_sectional else [sn_bus_id],
+                bus_ref=sn_bus_b_id if is_sectional else sn_bus_id,
+                nowy_coupler_ref=coupler_id,
             )
+            if odmowa_sprzegla is not None or sprzeglo is None:
+                kod, komunikat = odmowa_sprzegla or (KOD_SPRZEGLO_SEKCJI_ZAJETE, "")
+                return _error_response(komunikat, kod)
             aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
                 field_ref=field_ref,
                 bay_template_ref=field_bay_template_ref,
                 switchgear_family_ref=field_family_ref,
                 wybor_bloku=field_wybor_bloku,
                 napiecie_szyny_kv=float(sn_voltage_kv),
+            )
+            aparaty_pola = zwiaz_pole_ze_sprzeglem(
+                new_enm,
+                sprzeglo,
+                catalog_ref=breaker_catalog_ref,
+                apparatus_params=apparatus_params,
+                field_ref=field_ref,
+                station_ref=stn_id,
+                field_role=field_role,
+                bay_role=bay_role,
+                aparaty_pola=aparaty_pola,
             )
             dodaj_pole(
                 new_enm,
@@ -7901,9 +8164,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     name=f"{nazwa_roli_pola_sn(field_role)} {idx + 1}",
                     bay_role=bay_role,
                     field_role=field_role,
-                    bus_ref=sn_bus_b_id,
+                    bus_ref=sprzeglo.section_b_bus_ref,
                     substation_ref=stn_id,
-                    equipment_refs=[coupler_id],
+                    equipment_refs=[sprzeglo.coupler_ref],
                     protection_ref=field_protection_ref,
                     protection_codes=field_protection_codes,
                     bay_template_ref=field_bay_template_ref,
@@ -7914,13 +8177,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     wybor_bloku=field_wybor_bloku,
                     metadane_pochodzenia=field_metadane,
                     tags=["station_sn_field"],
-                    meta={
-                        "default_device_ref": coupler_id,
-                        "requires_catalog_binding": True,
-                        "coupler_ref": coupler_id,
-                        "section_a_bus_ref": sn_bus_id,
-                        "section_b_bus_ref": sn_bus_b_id,
-                    },
+                    meta=meta_pola_sprzegla(sprzeglo, requires_catalog_binding=True),
                     stan_obiektu="PROJEKTOWANY",
                 ),
             )
@@ -11487,8 +11744,34 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 zmiany["equipment_refs"] = equipment_refs
             if zacisk in deleted_bus_refs:
                 zmiany["terminal_bus_ref"] = None
+            meta_pola = rekord.get("meta")
+            if isinstance(meta_pola, dict) and meta_pola.get("coupler_ref") in deleted_branch_refs:
+                # Pole sprzęgła bez gałęzi sprzęgła (D3): rekord nie wskazuje łącznika, którego
+                # nie ma — zostaje polem bez aparatu (rezerwą), do usunięcia albo ponownego
+                # związania nowym polem sprzęgła.
+                zmiany["meta"] = {
+                    k: v
+                    for k, v in meta_pola.items()
+                    if k
+                    not in (
+                        "coupler_ref",
+                        "section_a_bus_ref",
+                        "section_b_bus_ref",
+                        "default_device_ref",
+                    )
+                }
             if zmiany:
                 zmien_pole(new_enm, ref_pola, **zmiany)
+    # Sekcje GPZ wskazujące skasowane sprzęgło (`left/right_coupler_ref`) — referencja znika
+    # razem z gałęzią (dawniej zostawała wisząca).
+    if deleted_branch_refs:
+        for sub in new_enm.get("substations", []):
+            for sekcja in (sub.get("gpz_sections") or []) if isinstance(sub, dict) else []:
+                if not isinstance(sekcja, dict):
+                    continue
+                for klucz in ("left_coupler_ref", "right_coupler_ref"):
+                    if sekcja.get(klucz) in deleted_branch_refs:
+                        sekcja[klucz] = None
 
     # Cleanup references in station and branch-point structures.
     if deleted_bus_refs or deleted_transformer_refs:
@@ -12241,6 +12524,14 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     )
     if blad_pomiaru is not None:
         return blad_pomiaru
+    # Decyzja architekta D3: stacja na końcu ciągu ma jedną sekcję szyn SN (szyna zacisku
+    # końcowego) — pole sprzęgła nie ma czego łączyć. Ta sama reguła co `add_sn_bay`.
+    if any(kanoniczna_rola_pola_sn(f.get("field_role")) == "SPRZEGLO" for f in sn_fields):
+        _sprzeglo, odmowa_sprzegla = rozstrzygnij_sprzeglo_pola(
+            enm, sekcje=[str(endpoint_bus_ref)], bus_ref=str(endpoint_bus_ref), nowy_coupler_ref=""
+        )
+        if odmowa_sprzegla is not None:
+            return _error_response(odmowa_sprzegla[1], odmowa_sprzegla[0])
     # PS-4: wspólny resolver kodów zabezpieczeń pól (parytet z insert/add_sn_bay).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 

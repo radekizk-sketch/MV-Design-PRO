@@ -89,6 +89,7 @@ from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .deklaracje_modulu import pola_nc_rfg_generatora
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
+    KOD_SPRZEGLO_SEKCJI_ZAJETE,
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
     POLE_RODZAJU_POLA,
@@ -114,10 +115,15 @@ from .domain_operations import (
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
     blad_pomiaru_w_torze_tranzytu,
+    meta_pola_sprzegla,
     metadane_pochodzenia_pola,
     rozstrzygnij_pomiar_pola,
+    rozstrzygnij_sprzeglo_pola,
+    sekcje_szyn_sn_stacji,
     szyna_prowadzi_tranzyt_sn,
+    utworz_galaz_sprzegla,
     wybor_bloku_fabrycznego,
+    zwiaz_pole_ze_sprzeglem,
 )
 from .dynamika_z_katalogu import (
     BladMaterializacjiDynamiki,
@@ -2438,6 +2444,40 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         producer_refs["primary_devices"] = primary_devices_spec
 
     new_enm = kopia_graniczna_enm(enm)
+    # Decyzja architekta D3: pole sprzęgła jest rekordem pola związanym z gałęzią `bus_coupler`
+    # między sekcjami — nie powstaje ze zmiany funkcji innego pola (ani odwrotnie), bo jego
+    # aparatem jest łącznik sekcji, a nie aparat na zacisku pola.
+    rola_przed = existing_field.get("bay_role") if isinstance(existing_field, dict) else None
+    if existing_field is not None and (bay_role == "COUPLER") != (rola_przed == "COUPLER"):
+        return _error_response(
+            "Pole sprzęgła nie powstaje ze zmiany funkcji innego pola i nie zmienia funkcji — "
+            "jego aparatem jest sprzęgło sekcji szyn. Dodaj nowe pole sprzęgła albo usuń pole "
+            "i dodaj pole właściwej funkcji.",
+            "sn.coupler_zmiana_roli",
+        )
+    if bay_role == "COUPLER" and not existing_field_ref:
+        return _zapisz_pole_sprzegla(
+            new_enm,
+            station=station,
+            bus_ref=bus_ref,
+            field_ref=field_ref,
+            field_name=field_name,
+            seed=seed,
+            gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            apparatus_params=apparatus_params,
+            apparatus_kind=apparatus_kind if isinstance(apparatus_kind, str) else None,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            wybor_bloku=wybor_bloku,
+            primary_devices_spec=primary_devices_spec,
+            protection_ref=protection_ref,
+            protection_codes=protection_codes,
+            manufacturer_ref=manufacturer_ref,
+            pochodzenie_pola=pochodzenie_pola,
+            tags=list(payload.get("tags") or []),
+        )
     existing_equipment_refs = (
         _field_equipment_refs(new_enm, field_ref) if existing_field_ref else []
     )
@@ -2453,8 +2493,10 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             None,
         )
         if branch is not None:
-            branch["name"] = f"Aparat {field_name}"
-            branch["type"] = branch_type
+            if branch.get("type") != "bus_coupler":
+                # Gałąź sprzęgła pola sprzęgła zachowuje typ i nazwę łącznika sekcji (D3).
+                branch["name"] = f"Aparat {field_name}"
+                branch["type"] = branch_type
             # Pochodzenie katalogowe deklarujemy TYLKO wtedy, gdy pozycja katalogu
             # naprawdę stoi za aparatem. Pole bez wskazanego aparatu jest kanoniczne
             # (`requires_catalog_binding`) i nie może nieść kategorii, z której nic
@@ -2732,6 +2774,128 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             {"event_seq": 3, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
             *zdarzenia_zespolu,
         ],
+    )
+
+
+def _zapisz_pole_sprzegla(
+    new_enm: dict[str, Any],
+    *,
+    station: dict[str, Any],
+    bus_ref: str,
+    field_ref: str,
+    field_name: str,
+    seed: str,
+    gpz_section_id: str | None,
+    catalog_ref: str | None,
+    catalog_binding: dict[str, Any] | None,
+    apparatus_params: dict[str, Any],
+    apparatus_kind: str | None,
+    bay_template_ref: str | None,
+    switchgear_family_ref: str | None,
+    wybor_bloku: dict[str, Any] | None,
+    primary_devices_spec: list[dict[str, Any]],
+    protection_ref: str | None,
+    protection_codes: list[str] | None,
+    manufacturer_ref: str | None,
+    pochodzenie_pola: dict[str, Any] | None,
+    tags: list[str],
+) -> dict[str, Any]:
+    """Nowe pole sprzęgła `add_sn_bay` (decyzja architekta D3): wiąże się z istniejącym
+    sprzęgłem sekcji bez pola, a gdy sąsiednia sekcja nie ma sprzęgła — tworzy je tym samym
+    krokiem. Rozdzielnica o jednej sekcji — odmowa `field.coupler_requires_two_sections`.
+    Nie powstaje zacisk pola ani drugi wyłącznik."""
+    station_ref = str(station["ref_id"])
+    sprzeglo, odmowa = rozstrzygnij_sprzeglo_pola(
+        new_enm,
+        sekcje=sekcje_szyn_sn_stacji(new_enm, station),
+        bus_ref=bus_ref,
+        nowy_coupler_ref=_make_id("sn", seed, "bay_coupler"),
+    )
+    if odmowa is not None or sprzeglo is None:
+        kod, komunikat = odmowa or (KOD_SPRZEGLO_SEKCJI_ZAJETE, "")
+        return _error_response(komunikat, kod)
+    created: list[str] = [field_ref]
+    zdarzenia: list[dict[str, Any]] = []
+    if sprzeglo.do_utworzenia:
+        sekcje = sekcje_szyn_sn_stacji(new_enm, station)
+        numery = (
+            f"{sekcje.index(sprzeglo.section_a_bus_ref) + 1}-"
+            f"{sekcje.index(sprzeglo.section_b_bus_ref) + 1}"
+        )
+        nazwa_sprzegla = (
+            f"Sprzęgło sekcji GPZ {numery}"
+            if station.get("station_type") == "gpz"
+            else f"Sprzęgło sekcji {numery} {nazwa_nadana(station.get('name')) or ''}".strip()
+        )
+        new_enm, blad = utworz_galaz_sprzegla(
+            new_enm, sprzeglo, nazwa=nazwa_sprzegla, station=station
+        )
+        if blad is not None:
+            return _error_response(
+                f"Nie udało się utworzyć sprzęgła sekcji szyn: {blad}", "sn.coupler_branch_failed"
+            )
+        created.append(sprzeglo.coupler_ref)
+        zdarzenia.append(
+            {"event_seq": 1, "event_type": "BRANCH_CREATED", "element_id": sprzeglo.coupler_ref}
+        )
+    aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
+        field_ref=field_ref,
+        bay_template_ref=bay_template_ref,
+        switchgear_family_ref=switchgear_family_ref,
+        wybor_bloku=wybor_bloku or {},
+        napiecie_szyny_kv=_bus_voltage_kv(new_enm, bus_ref),
+        primary_devices=primary_devices_spec or None,
+    )
+    aparaty_pola = zwiaz_pole_ze_sprzeglem(
+        new_enm,
+        sprzeglo,
+        catalog_ref=catalog_ref,
+        apparatus_params=apparatus_params,
+        field_ref=field_ref,
+        station_ref=station_ref,
+        field_role="SPRZEGLO",
+        bay_role="COUPLER",
+        aparaty_pola=aparaty_pola,
+    )
+    dodaj_pole(
+        new_enm,
+        zbuduj_pole(
+            ref_id=field_ref,
+            name=field_name,
+            bay_role="COUPLER",
+            field_role="SPRZEGLO",
+            bus_ref=bus_ref,
+            substation_ref=station_ref,
+            gpz_section_id=gpz_section_id,
+            equipment_refs=[sprzeglo.coupler_ref],
+            protection_ref=protection_ref,
+            protection_codes=protection_codes,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            manufacturer_ref=manufacturer_ref,
+            primary_devices=aparaty_pola,
+            config_id=konfiguracja_pola,
+            wybor_bloku=wybor_bloku,
+            metadane_pochodzenia=pochodzenie_pola,
+            tags=tags,
+            meta={
+                **meta_pola_sprzegla(sprzeglo, requires_catalog_binding=catalog_ref is None),
+                "apparatus_kind": apparatus_kind,
+                "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                "field_status": "CONFIGURED_FOR_TRUNK",
+            },
+            stan_obiektu="PROJEKTOWANY",
+        ),
+    )
+    zdarzenia.append(
+        {
+            "event_seq": len(zdarzenia) + 1,
+            "event_type": "FIELDS_CREATED_SN",
+            "element_id": field_ref,
+        }
+    )
+    return _response(
+        new_enm, created=created, selection_id=field_ref, selection_type="bay", events=zdarzenia
     )
 
 

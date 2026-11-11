@@ -115,9 +115,10 @@ APARATY_ROLI: dict[str, list[tuple[str, str]]] = {
 
 
 def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
-    """GPZ → 2 odcinki; stacja wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR) i pola
-    COUPLER/MEASUREMENT/OZE dodane ``add_sn_bay``. Zwraca (migawka, rola → pole SN,
-    pole nN stacji)."""
+    """GPZ → 2 odcinki; stacja SEKCYJNA wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR, dwie
+    sekcje szyn i sprzęgło bez pola) i pola COUPLER/MEASUREMENT/OZE dodane ``add_sn_bay``. Pole
+    sprzęgła wiąże się ze sprzęgłem sekcji (decyzja architekta D3 — w stacji o jednej sekcji
+    byłoby odmową). Zwraca (migawka, rola → pole SN, pole nN stacji)."""
     enm = _odcinki(_gpz(), [200, 300])
     enm = wykonaj(
         enm,
@@ -125,7 +126,7 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
         {
             "segment_ref": _kable(enm)[-1]["ref_id"],
             "field_apparatus_catalog_ref": APARAT_POLA,
-            "station_type": "B",
+            "station_type": "D",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "FEEDER"],
