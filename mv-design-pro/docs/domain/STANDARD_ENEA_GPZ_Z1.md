@@ -83,3 +83,8 @@ urządzeń, skróty ANSI na schemacie. To standard wizualny produktu (dyspozycja
    wynikające z §13 kreator zakłada, gdy projektant wybrał wariant ENEA wymagający tego wyposażenia
    (np. rozdzielnica dwusekcyjna). W innych konfiguracjach nie generuje zbędnych pól
    (dyspozycja właściciela 2026-11-12).
+8. SCO I, SCO II i SPZ po SCO (E-18) pozostają w szablonie Z.17 jako funkcje konfigurowalne,
+   domyślnie NIEAKTYWNE. Schemat pokazuje wyłącznie funkcje rzeczywiście skonfigurowane. Inspektor
+   pola ma grupę „Automatyka SCO” z nastawami, sygnałami pomiarowymi i powiązaniami wykonawczymi.
+   Wyłączenie funkcji nie usuwa jej definicji katalogowej. SCO (stopnie I i II) i SPZ po SCO są
+   odrębnymi funkcjami (dyspozycja właściciela 2026-11-12).
