@@ -73,6 +73,37 @@ async function zgodnyCel(page: Page, ref: string): Promise<void> {
   await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(stacja!);
 }
 
+/**
+ * Cel widoczny i wyróżniony na kadrze (oględziny architekta 2026-11-12, zrzut
+ * `wejscie-z-wynikow-zwarc-jasny`: cały schemat wyblakły, cel nie do znalezienia). Po wejściu:
+ *  - obrys zaznaczenia celu (`data-zaznaczenie-ref` = ref celu, barwa zaznaczenia) istnieje,
+ *    a jego środek leży w środkowej części kadru (60 % szerokości i wysokości obszaru kanwy);
+ *  - rysunek celu (`data-owner-ref` = ref celu) jest NARYSOWANY i nie leży pod kurtyną kadru
+ *    (`data-kadr="poza"` — przygaszenie kontekstu dotyczy otoczenia, nigdy celu).
+ * Nie opiera się na komunikacie o ukrytych opisach (karta skali go usuwa).
+ */
+async function celWKadrze(page: Page, ref: string): Promise<void> {
+  const kanwa = await page.getByTestId('sld-canvas-v3').boundingBox();
+  const obrys = page.locator(`[data-testid="sld-v3-zaznaczenie"] [data-zaznaczenie-ref="${ref}"]`).first();
+  // Miękkie asercje: test melduje WSZYSTKIE wejścia z celem poza kadrem, nie tylko pierwsze.
+  await expect.soft(obrys, `obrys zaznaczenia celu ${ref}`).toHaveCount(1, { timeout: 20000 });
+  const pudlo = (await obrys.count()) > 0 ? await obrys.boundingBox() : null;
+  if (pudlo) {
+    const sx = pudlo.x + pudlo.width / 2;
+    const sy = pudlo.y + pudlo.height / 2;
+    expect.soft(sx, `środek celu ${ref} w poziomie kadru`).toBeGreaterThan(kanwa!.x + 0.2 * kanwa!.width);
+    expect.soft(sx, `środek celu ${ref} w poziomie kadru`).toBeLessThan(kanwa!.x + 0.8 * kanwa!.width);
+    expect.soft(sy, `środek celu ${ref} w pionie kadru`).toBeGreaterThan(kanwa!.y + 0.2 * kanwa!.height);
+    expect.soft(sy, `środek celu ${ref} w pionie kadru`).toBeLessThan(kanwa!.y + 0.8 * kanwa!.height);
+  }
+  const rysunek = page.getByTestId('sld-canvas-v3').locator(`[data-owner-ref="${ref}"]`);
+  expect.soft(await rysunek.count(), `rysunek celu ${ref}`).toBeGreaterThan(0);
+  expect.soft(
+    await page.getByTestId('sld-canvas-v3').locator(`[data-kadr="poza"] [data-owner-ref="${ref}"]`).count(),
+    `cel ${ref} pod kurtyną kadru`,
+  ).toBe(0);
+}
+
 /** „Wróć do: <ekran>" po obserwacji, że schemat nie odchodzi sam (pułapka W-3). */
 async function wrocDo(page: Page, etykieta: string): Promise<void> {
   const powrot = page.getByTestId('mvd-schemat-powrot');
@@ -152,6 +183,7 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     await pokazZwarcie.click();
     await naSchemacie(page);
     await zgodnyCel(page, refPunktu);
+    await celWKadrze(page, refPunktu);
     await zrzut(page, 'z-wynikow-zwarc', motyw.klucz);
     await wrocDo(page, 'Wyniki — Zwarcia');
     await expect(page.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveAttribute('aria-selected', 'true');
@@ -173,6 +205,7 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     await problem.locator('.mvd-problem-select').click();
     await naSchemacie(page);
     await zgodnyCel(page, idProblemu!.replace('mvd-problem-W043-', ''));
+    await celWKadrze(page, idProblemu!.replace('mvd-problem-W043-', ''));
     await zrzut(page, 'z-gotowosci', motyw.klucz);
     await wrocDo(page, 'Gotowość');
     await expect(page.getByTestId('mvd-gotowosc-panel')).toBeVisible({ timeout: 30000 });
@@ -210,6 +243,7 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     await page.keyboard.press('Enter');
     await naSchemacie(page);
     await zgodnyCel(page, refWezla);
+    await celWKadrze(page, refWezla);
     await zrzut(page, 'z-drzewa', motyw.klucz);
     await wrocDo(page, 'Model sieci — Właściwości');
     await expect(page.getByTestId('mvd-model-zakladka-wlasciwosci')).toHaveAttribute('aria-selected', 'true');
