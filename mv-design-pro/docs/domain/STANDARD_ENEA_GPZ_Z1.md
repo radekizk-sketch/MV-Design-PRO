@@ -75,3 +75,11 @@ urządzeń, skróty ANSI na schemacie. To standard wizualny produktu (dyspozycja
 3. Zgodności z ENEA nie deklaruje się bez sprawdzenia rysunku źródłowego dla danego pola.
 4. Wartości tego dokumentu zasilają katalog i profile, nie kod rysujący ani literały w UI.
 5. Zmiana wersji standardu ENEA wymaga nowej wersji tego dokumentu z porównaniem wydań.
+6. Odrębność urządzeń (E-16) jest faktem modelu i inspektora, nie wymogiem rysunku: inspektor pola
+   rozróżnia sterownik pola, zabezpieczenie różnicowe transformatora i regulator napięcia; schemat
+   jednokreskowy może pokazywać zwarty blok funkcji pola bez trzech osobnych ramek
+   (dyspozycja właściciela 2026-11-12).
+7. Kreator nie dodaje pól bezwarunkowo. Pole pomiaru napięcia, pole sprzęgła i inne wyposażenie
+   wynikające z §13 kreator zakłada, gdy projektant wybrał wariant ENEA wymagający tego wyposażenia
+   (np. rozdzielnica dwusekcyjna). W innych konfiguracjach nie generuje zbędnych pól
+   (dyspozycja właściciela 2026-11-12).
