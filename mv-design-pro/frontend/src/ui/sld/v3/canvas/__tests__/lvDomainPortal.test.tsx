@@ -110,6 +110,10 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
     expect(stationRef).toBeTruthy();
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    // R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja jest symbolem stacji (bez
+    // zacisku nN i portalu) — projektant dojeżdża natywnym kółkiem do skali czytania z kursorem
+    // nad portalem, jak w testach transformatora niżej.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, portalIndex)));
     fireEvent.click(uchwyt(container, scene, portalIndex));
 
     expect(screen.getByTestId('lv-domain-portal-drawer')).toBeInTheDocument();
@@ -131,6 +135,10 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
     const scene = buildSceneV3(enm);
     const portalIndex = indexOf(scene, (s) => s.meta?.elementKind === 'lvPortal');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    // R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja jest symbolem stacji (bez
+    // zacisku nN i portalu) — projektant dojeżdża natywnym kółkiem do skali czytania z kursorem
+    // nad portalem, jak w testach transformatora niżej.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, portalIndex)));
     fireEvent.click(uchwyt(container, scene, portalIndex));
     expect(useSelectionStore.getState().selectedElements).toHaveLength(0);
   });
@@ -168,6 +176,10 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
     const scene = buildSceneV3(enm);
     const portalIndex = indexOf(scene, (s) => s.meta?.elementKind === 'lvPortal');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    // R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja jest symbolem stacji (bez
+    // zacisku nN i portalu) — projektant dojeżdża natywnym kółkiem do skali czytania z kursorem
+    // nad portalem, jak w testach transformatora niżej.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, portalIndex)));
     fireEvent.click(uchwyt(container, scene, portalIndex));
     await screen.findByTestId('lv-domain-portal');
 

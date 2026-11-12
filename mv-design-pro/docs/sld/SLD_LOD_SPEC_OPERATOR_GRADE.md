@@ -62,6 +62,9 @@ Wyniki pisane 9 px są czytelne od skali 1,0 (skala czytania) na każdej ścież
 - Kolizje rozstrzyga deterministycznie priorytet GPZ > stacja > sekcja > pole; remis rozstrzyga `ref`.
 - Napis, który przegrał kolizję, jest w dymku obiektu (`tytul` celu trafienia) i w nawigatorze.
 - Mechanizm to istniejący plan etykiet (`canvas/labelLegibility.ts`, plan w `SldCanvasV3.tsx`).
+- **Nazwa stacji i GPZ na widoku całej sieci (rozstrzygnięcie architekta 2026-11-12).** Nazwa jest adnotacją o stałej wielkości ekranowej (≥ 9 px niezależnie od skali kamery), przypiętą do symbolu stacji. Adnotacją są nazwa GPZ, nazwa stacji, oznaczenie sekcji i szyny (`adnotacjaStalejWielkosci`). Kontrakt proporcji „napis ≤ 2,5 glifu” dotyczy napisów sceny (oznacznik aparatu, opis pola, dane, tożsamość rangi pola), nie adnotacji (`core/__tests__/proporcjeRysunku.test.tsx`, blok „ZAKRES”).
+- **Pierwszeństwo.** Nazwa stacji zaznaczonej (zaznaczony obiekt rozstrzygnięty do swojej stacji tą samą hierarchią co kadr i cel kliku) i stacji z alarmem (zbiór glifu zbiorczego, `najgorszyStanStacji`) jest zawsze narysowana: idzie przed innymi napisami, a gdy żadna pozycja nie jest wolna od rysunku, stoi w swoim slocie z otoczką (`naRysunku`, atrybut `data-na-rysunku`). Innych napisów nie przykrywa; przy zbiegu kolizji dwóch nazw z pierwszeństwem rozstrzyga kolejność stała (ranga, priorytet rodzaju, ref), a przegrana idzie do dymka.
+- **Przeszkody nazw.** Rysunek (symbole, łączniki, punkt N.O., tory — `sceneObstacleRects`) i znaczniki stanu o stałym rozmiarze ekranowym (`przeszkodyZnacznikowStanu`; pomiar 2026-11-12: bez nich nazwa „Stacja L6-2” przykrywała znacznik stanu w kadrze całej sieci). Adnotacje wyników (warstwa nakładek, karta nakładek wyników) czytają wynik rozmieszczenia nazw (`rozmieszczenieNazw(plan)`: ref bloku i prostokąt tuszu) jako przeszkody; test `canvas/__tests__/nazwyStacjiPrzegladu.contract.test.ts` dowodzi, że ten odczyt wystarcza (`layoutResultLabels` z tymi prostokątami nie wchodzi na nazwy).
 
 **R5. Podłogi czytelności toru; znaki stanu nie giną.**
 - **Podłoga grubości.** Szyny i przewody magistralne mają podłogę grubości w pikselach ekranu z hierarchią szyna > magistrala > odgałęzienie pola. Jedno źródło: `compose/preview.tsx`.
@@ -101,14 +104,12 @@ Wyniki pisane 9 px są czytelne od skali 1,0 (skala czytania) na każdej ścież
   - Historia kadrów działa wstecz i naprzód (`Alt+←` / `Alt+→`). Nowe polecenie widoku kasuje drogę naprzód.
   - Kółko i szczypanie działają natychmiast, do kursora.
   - Wszystkie skróty są w jednym rejestrze `ui/sld/core/keyboardShortcuts.ts` z przypiętą obsługą (test rejestru) i są widoczne w pomocy skrótów.
-- **Wymagania kontraktu, których stan wdrożenia prowadzi wiersz `UX-04/SLD-SKALA-I-NAWIGACJA` rejestru `PLANS.md` §C:**
-  - przelot kamery (van Wijk i Nuij 2003, 120–500 ms, przerywany wejściem użytkownika, przy `prefers-reduced-motion` cięcie, atrybut stanu kamery dla e2e);
-  - skala czytania pod klawiszem `1`;
-  - powiększenie oknem (`Z` + przeciągnięcie, przycisk w pasku);
-  - wskaźnik skali z menu (cała sieć, zaznaczenie, 100 %);
-  - sterowanie kamerą kółkiem i przeciąganiem nad nawigatorem;
-  - pamięć kamery i zaznaczenia per projekt przy wyjściu z przestrzeni schematu.
-- **Kolizja klawisza `1`.** Klawisz koliduje z przełączaniem przestrzeni pracy klawiszami `1–N` (`ui2/shell/AppShell.tsx`). Kolizja jest zgłoszona architektowi.
+- **Polecenia widoku z przelotem.** Skala czytania, powiększenie oknem, „Cała sieć”, „Dopasuj widok”, kadr celu i historia kadrów przechodzą do nowego kadru przelotem kamery (van Wijk i Nuij 2003, ρ = √2, 220 ms na jednostkę długości ścieżki, w granicach 120–500 ms; `canvas/przelotKamery.ts`). Stan kamery jest od początku kadrem celu (plan napisów, odcinanie, trafienia i `data-skala-kamery` liczą się dla celu); animowany jest wyłącznie `viewBox`, a okno renderu w trakcie przelotu to suma okien startu i celu. Każde wejście użytkownika (wskaźnik, kółko, klawisz) tnie przelot do kadru celu. Przy `prefers-reduced-motion: reduce` albo bez `requestAnimationFrame` — cięcie. Zmiana układu w trakcie przelotu przestawia jego cel. Stan kamery dla e2e: `data-stan-kamery` (`spoczynek` / `przelot`). Gesty (kółko, szczypanie, przeciąganie, `+`/`−`, strzałki, nawigator) działają natychmiast.
+- **Skala czytania: `Shift+1`.** Wokół ostatniego położenia kursora nad kanwą, a gdy kursor ją opuścił — wokół środka kadru. Odstępstwo od klawisza `1` z kontraktu: cyfry `1–N` przełączają przestrzenie pracy (`ui2/shell/AppShell.tsx`); `Shift+1` daje znak „!”, którego powłoka nie rozpoznaje jako cyfry, więc kolizji nie ma.
+- **Powiększenie oknem.** `Z` albo przycisk „⬚ Okno” w pasku włącza tryb jednorazowy; przeciągnięcie rysuje prostokąt (`sld-v3-okno-powiekszenia`), puszczenie kadruje go z przelotem i kończy tryb. Prostokąt mniejszy niż 8 px w którejś osi jest kliknięciem i tryb zostaje. `Shift+przeciągnięcie` zostaje lassem, `Esc` i ponowne `Z` kończą tryb. Kadr sprzed polecenia trafia do historii.
+- **Wskaźnik skali z menu.** Procent skali względem skali czytania; menu: „Cała sieć” (jak `Shift+F`), „Zaznaczenie” (nieaktywne bez zaznaczenia, z przyczyną w podpowiedzi) i „100 %” (skala czytania).
+- **Nawigator.** Klik i przeciągnięcie przenoszą kadr; kółko nad nawigatorem zmienia skalę kamery wokół środka bieżącego kadru (ta sama czułość co kółko nad kanwą, natychmiast, bez wpisu historii).
+- **Pamięć kamery per projekt.** Warsztat schematu odmontowuje się przy wyjściu z przestrzeni schematu; ostatni kadr projektu (przekształcenie i rozmiar kanwy) jest pamiętany w sesji przeglądarki per identyfikator projektu (`canvas/pamiecKamery.ts`) i przywracany cięciem przy powrocie. Zaznaczenie jest globalne (`ui/selection/store.ts`) i przeżywa wyjście samo. Pamięć nie trafia do modelu, archiwum projektu ani eksportu.
 - **Bez nazwanych zakładek widoków.** Cele hierarchii, wyszukiwanie i historia pokrywają tę potrzebę bez nowego magazynu danych (decyzja, nie odroczenie).
 
 **R8. Wydajność z pomiaru.**
@@ -144,6 +145,9 @@ Liczba węzłów DOM w warsztacie, sieć wzorcowa 52 stacji:
 | Znaki stanu: skala × rodzaj znaku | `canvas/__tests__/znacznikiStanu.contract.test.tsx` |
 | Trafianie: skala × obiekt | `canvas/__tests__/trafienieKanwy.contract.test.tsx` |
 | Kamera: wskazanie, klawisze, historia w obie strony | `canvas/__tests__/nawigacjaKamery.contract.test.tsx` |
+| Przelot: ścieżka, czas, cel w kadrze, numer przelotu reduktora, warunek ruchu | `canvas/__tests__/przelotKamery.test.ts` |
+| Warsztat: polecenie widoku × ruch, przerwanie × wejście, układ w trakcie przelotu, gesty bez przelotu, skala czytania, okno, wskaźnik skali, nawigator, pamięć kamery | `canvas/__tests__/nawigacjaKamery.workspace.test.tsx`; e2e `e2e/sld-kamera-przelot-okno.spec.ts` |
+| Nazwy na widoku całej sieci: fikstura × okno × {stała wielkość, brak kolizji z rysunkiem, znacznikami i wynikami, pierwszeństwo} | `canvas/__tests__/nazwyStacjiPrzegladu.contract.test.ts`, `canvas/__tests__/nazwyStacjiNaKanwie.test.tsx` |
 | Kadry | `canvas/__tests__/camera.kadr.test.ts` |
 | Budżet DOM | `canvas/__tests__/budzetDom.contract.test.tsx` |
 

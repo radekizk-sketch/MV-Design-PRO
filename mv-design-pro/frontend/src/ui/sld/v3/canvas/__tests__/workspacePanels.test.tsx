@@ -22,6 +22,7 @@ import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { stanKaflaLacznika } from '../../symbols/glyphs';
+import { powiekszKolkiemDoSkali, punktCeluTrafienia, testIdSymboluSceny } from './kameraTestowa';
 
 /**
  * KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy wąskiej kanwie
@@ -173,12 +174,19 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
     const scene = buildSceneV3(enm);
     const derIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der');
     expect(derIndex).toBeGreaterThanOrEqual(0);
+    const derTestId = testIdSymboluSceny(scene, derIndex);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const symbolsGroup = () => container.querySelector('[data-testid="sld-v3-symbols"]')!;
+    const derWDom = () => Array.from(symbolsGroup().children).some((el) => el.getAttribute('data-testid') === derTestId);
+    // R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja OZE jest symbolem stacji
+    // (znak B1 zamiast symbolu źródła) — źródło ma własny węzeł na kadrze roboczym; projektant
+    // dojeżdża natywnym kółkiem do skali czytania z kursorem nad źródłem.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, derTestId));
 
     // Widoczne domyślnie (brak layerVisibility jawnego = wszystko widoczne).
-    expect(symbolsGroup().children[derIndex]).toBeTruthy();
+    expect(derWDom()).toBe(true);
+    const przed = symbolsGroup().children.length;
 
     fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     const derCheckbox = screen.getByTestId('sld-v3-layer-toggle-derSources');
@@ -186,18 +194,15 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
 
     fireEvent.click(derCheckbox);
     expect((derCheckbox as HTMLInputElement).checked).toBe(false);
-    // Element ukrytej warstwy renderuje `null` — DOM child na tym indeksie
-    // znika (liczba dzieci grupy maleje), reszta pozostaje nietknięta.
-    expect(symbolsGroup().children.length).toBeLessThan(scene.symbols.length);
-    expect(
-      Array.from(symbolsGroup().children).some(
-        (el) => el.getAttribute('data-testid') === (scene.symbols[derIndex].meta?.testId ?? `sld-v3-symbol-${derIndex}`),
-      ),
-    ).toBe(false);
+    // Element ukrytej warstwy renderuje `null` — węzeł źródła znika (liczba dzieci grupy maleje),
+    // reszta pozostaje nietknięta.
+    expect(symbolsGroup().children.length).toBeLessThan(przed);
+    expect(derWDom()).toBe(false);
 
     fireEvent.click(derCheckbox);
     expect((derCheckbox as HTMLInputElement).checked).toBe(true);
-    expect(symbolsGroup().children.length).toBe(scene.symbols.length);
+    expect(symbolsGroup().children.length).toBe(przed);
+    expect(derWDom()).toBe(true);
   });
 
   it('reset przywraca wszystkie warstwy do widoczności domyślnej', () => {

@@ -150,7 +150,7 @@ import {
   type CanvasLayerVisibility,
   type L2SublayerId,
 } from './layers';
-import { cameraViewBox, type ViewportTransform } from './camera';
+import { cameraViewBox, SKALA_CZYTANIA, type ViewportTransform } from './camera';
 // K11-B (karta K11-B §0.1): minimapa/nawigator — geometria w `./minimap`
 // (czyste funkcje, testowalne bez DOM), rysunek w `./SldMinimapPanel`.
 import {
@@ -180,6 +180,8 @@ const KIERUNKI_STRZALEK: Readonly<Record<string, readonly [-1 | 0 | 1, -1 | 0 | 
   ArrowUp: [0, -1],
   ArrowDown: [0, 1],
 };
+/** Najmniejszy bok okna powiększenia [px kanwy] — krótsze przeciągnięcie to klik (karta R7). */
+const MIN_OKNA_PX = 8;
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
 import { applyContentFitFrame, computeContentFitFrame } from '../export/exportFrame';
@@ -207,7 +209,8 @@ import {
 // K2 (UI-04): kadrowanie zakresu pracy, historia kadrów, mini-ścieżka kontekstu.
 import { useKadrowanieWidoku, type StanKameryWorkspace } from './useKadrowanieWidoku';
 import type { ZaznaczenieWidoku } from './historiaKadrow';
-import { KLASA_PRZYCISKU_DOKU, MenuDopasujDo, PanelKomunikatuKadru, PasekKontekstuKadru } from './KontekstKadru';
+import { kadrProjektu, zapamietajKadrProjektu } from './pamiecKamery';
+import { KLASA_PRZYCISKU_DOKU, MenuDopasujDo, PanelKomunikatuKadru, PasekKontekstuKadru, WskaznikSkali } from './KontekstKadru';
 import { zakresCelu } from './zakresKadru';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 import {
@@ -1491,7 +1494,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // adresu natychmiast przywraca selekcję z hasha.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
       const store = useSelectionStore.getState();
       if (store.selectedElements.length === 0) return;
       store.clearSelection();
@@ -1772,8 +1775,20 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // stanem WEWNĘTRZNYM kanwy od F6b), potrzebny do `worldToScreen` w
   // `symbolsInLassoRect` (hit-test wyżej).
   const [cameraState, setCameraState] = useState<StanKameryWorkspace | null>(null);
+  // R7 — PAMIĘĆ KAMERY PER PROJEKT (`pamiecKamery.ts`): warsztat odmontowuje się przy wyjściu
+  // z przestrzeni schematu, więc kadr projektu zapisujemy przy każdej zmianie kamery, a przy
+  // montażu przywracamy CIĘCIEM. Odczyt w pierwszym renderze — zanim kanwa zgłosi swój kadr
+  // startowy (dopasowanie), który nadpisałby pamięć.
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
+  const projektKamery = useRef(activeProjectId);
+  projektKamery.current = activeProjectId;
+  const [przywrocenieZPamieci] = useState(() => {
+    const kadr = kadrProjektu(activeProjectId);
+    return kadr ? { ...kadr, seq: -1, natychmiast: true as const } : null;
+  });
   const handleCameraChange = useCallback(
     (transform: ViewportTransform, viewportSize: StanKameryWorkspace['viewportSize']) => {
+      zapamietajKadrProjektu(projektKamery.current, { transform, viewportSize });
       setCameraState((prev) =>
         prev && prev.transform === transform && prev.viewportSize === viewportSize ? prev : { transform, viewportSize },
       );
@@ -1886,6 +1901,29 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     polecenieKameryNr.current += 1;
     setPolecenieKamery({ ...polecenie, seq: polecenieKameryNr.current } as PolecenieKamery);
   }, []);
+  // R7: polecenia WIDOKU (skok do innego kadru) zapisują kadr bieżący w historii — ta sama
+  // reguła co „Dopasuj widok” i „Cały arkusz”; gesty i kroki klawiszami jej nie zapisują.
+  const { zapamietajPrzedPoleceniem } = kadrowanie;
+  const skalaCzytania = useCallback(
+    (wokol: 'kursor' | 'srodek') => {
+      zapamietajPrzedPoleceniem();
+      wydajPolecenieKamery({ rodzaj: 'skala_czytania', wokol });
+    },
+    [zapamietajPrzedPoleceniem, wydajPolecenieKamery],
+  );
+  const powiekszOknem = useCallback(
+    (prostokat: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }) => {
+      zapamietajPrzedPoleceniem();
+      wydajPolecenieKamery({ rodzaj: 'okno', prostokat });
+    },
+    [zapamietajPrzedPoleceniem, wydajPolecenieKamery],
+  );
+  // R7: powiększenie oknem — tryb jednorazowy (klawisz `Z` albo przycisk paska): następne
+  // przeciągnięcie lewym przyciskiem rysuje okno, puszczenie kadruje je; `Esc` albo ponowne `Z`
+  // wychodzi z trybu. Shift+przeciągnięcie pozostaje lassem zaznaczenia.
+  const [trybOkna, setTrybOkna] = useState(false);
+  const trybOknaRef = useRef(trybOkna);
+  trybOknaRef.current = trybOkna;
   // `Esc` przy PUSTYM zaznaczeniu = poziom wyżej w hierarchii kadru (okruszek przedostatni).
   // Zaznaczenie niepuste zdejmuje najpierw zaznaczenie (efekt K11-A wyżej) — jedno `Esc`, jeden
   // skutek: stan zaznaczenia czytany w fazie przechwytywania, zanim efekt K11-A go wyczyści.
@@ -1894,6 +1932,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
+      // R7: `Esc` w trybie powiększenia oknem wychodzi z trybu — i tylko to.
+      if (trybOknaRef.current) {
+        event.preventDefault();
+        setTrybOkna(false);
+        return;
+      }
       if (useSelectionStore.getState().selectedElements.length > 0) return;
       const cel = event.target;
       if (cel instanceof HTMLElement && cel.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="menu"]')) return;
@@ -1948,6 +1992,19 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         else dopasujZakres();
         return;
       }
+      // R7: skala czytania wokół kursora. Karta przewiduje sam klawisz `1`, ale cyfry 1–N
+      // przełączają przestrzenie pracy w całej powłoce (`AppShell`), więc skala czytania ma
+      // `Shift+1` — po kodzie fizycznym klawisza, bo znak (`!`) zależy od układu klawiatury.
+      if (event.code === 'Digit1' && event.shiftKey) {
+        event.preventDefault();
+        skalaCzytania('kursor');
+        return;
+      }
+      if ((event.key === 'z' || event.key === 'Z') && !event.shiftKey) {
+        event.preventDefault();
+        setTrybOkna((v) => !v);
+        return;
+      }
       // Karta SLD-SKALA-I-NAWIGACJA R7: `+`/`−` wokół środka kadru, strzałki = przesunięcie.
       // `=` to `+` bez Shift na układzie US; `_` to `−` z Shift.
       if (event.key === '+' || event.key === '=') {
@@ -1968,7 +2025,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [kadrujCel, dopasujZakres, poprzedniWidok, nastepnyWidok, wydajPolecenieKamery]);
+  }, [kadrujCel, dopasujZakres, poprzedniWidok, nastepnyWidok, wydajPolecenieKamery, skalaCzytania]);
   const stacjeNawigacji = useMemo(() => {
     const nazwy = new Map((snapshot?.substations ?? []).map((st) => [st.ref_id, st.name]));
     // Stacja bez nazwy w modelu: polska etykieta rodzaju z referencji (most nazw wyników), nie
@@ -2020,6 +2077,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       setCenterRequest((prev) => ({ x: world.x, y: world.y, seq: (prev?.seq ?? 0) + 1 }));
     },
     [minimapProjection, scenaCameraBbox],
+  );
+  // R7: kółko nad nawigatorem — ta sama zmiana skali co kółko nad kanwą (natychmiast, bez
+  // przelotu i bez wpisu historii — gest), wokół środka bieżącego kadru.
+  const handleMinimapWheel = useCallback(
+    (deltaY: number) => wydajPolecenieKamery({ rodzaj: 'kolko', deltaY }),
+    [wydajPolecenieKamery],
   );
   // S9-6 (audyt E-4 „Legenda domyślnie wyłączona"): domyślnie WŁĄCZONA.
   // Rysunek techniczny bez klucza symboli nie jest dokumentem — projektant,
@@ -2211,7 +2274,14 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // Shift) — zwykły drag BEZ Shift przechodzi NIEZMIENIONY do `SldCanvasV3`
   // (pan/zoom kamery nietknięte, spec §10.1 F12-B pkt 5 wymóg wprost).
   const [shiftHeld, setShiftHeld] = useState(false);
-  const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
+  const [lassoRect, setLassoRectStan] = useState<LassoRect | null>(null);
+  // Prostokąt w toku także w ref: puszczenie przycisku czyta OSTATNI ruch, nawet gdy ruch i
+  // puszczenie przyszły przed ponownym renderem (zdarzenie ciągłe i dyskretne w jednej klatce).
+  const lassoRectRef = useRef<LassoRect | null>(null);
+  const setLassoRect = useCallback((rect: LassoRect | null) => {
+    lassoRectRef.current = rect;
+    setLassoRectStan(rect);
+  }, []);
   const lassoStartRef = useRef<{ x: number; y: number } | null>(null);
   const selectElements = useSelectionStore((state) => state.selectElements);
 
@@ -2235,25 +2305,44 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     };
   }, []);
 
+  // R7: rodzaj prostokąta w toku — lasso zaznaczenia (Shift) albo okno powiększenia (tryb okna).
+  // Jedno przeciągnięcie, jedna nakładka; rodzaj ustalony przy wciśnięciu, nie przy puszczeniu.
+  const [rodzajProstokata, setRodzajProstokata] = useState<'lasso' | 'okno'>('lasso');
+  const rodzajProstokataRef = useRef<'lasso' | 'okno'>('lasso');
   const handleLassoPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!event.shiftKey || event.button !== 0) return;
+    if (event.button !== 0) return;
+    const okno = trybOknaRef.current && !event.shiftKey;
+    if (!okno && !event.shiftKey) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     const bounds = event.currentTarget.getBoundingClientRect();
     const start = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
     lassoStartRef.current = start;
+    rodzajProstokataRef.current = okno ? 'okno' : 'lasso';
+    setRodzajProstokata(rodzajProstokataRef.current);
     setLassoRect({ x: start.x, y: start.y, width: 0, height: 0 });
-  }, []);
+  }, [setLassoRect]);
 
   const handleLassoPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!lassoStartRef.current) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const end = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
     setLassoRect(rectFromPoints(lassoStartRef.current, end));
-  }, []);
+  }, [setLassoRect]);
 
   const handleLassoPointerUp = useCallback(() => {
-    const activeRect = lassoStartRef.current ? lassoRect : null;
+    const activeRect = lassoStartRef.current ? lassoRectRef.current : null;
     lassoStartRef.current = null;
+    if (rodzajProstokataRef.current === 'okno') {
+      rodzajProstokataRef.current = 'lasso';
+      setRodzajProstokata('lasso');
+      setLassoRect(null);
+      // Okno krótsze niż MIN_OKNA_PX na którejś osi to klik, nie okno — tryb trwa dalej.
+      if (activeRect && activeRect.width >= MIN_OKNA_PX && activeRect.height >= MIN_OKNA_PX) {
+        powiekszOknem(activeRect);
+        setTrybOkna(false);
+      }
+      return;
+    }
     if (activeRect && snapshot && cameraState) {
       const scene = scenaSld(snapshot);
       const hits = symbolsInLassoRect(scene, activeRect, cameraState.transform);
@@ -2272,7 +2361,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       }
     }
     setLassoRect(null);
-  }, [snapshot, cameraState, lassoRect, selectElements]);
+  }, [snapshot, cameraState, selectElements, powiekszOknem, setLassoRect]);
 
   // PORTAL DOMENY nN (architektura LV Domain Projection po B-02, `docs/sld/
   // PROJEKCJA_SN_NN_PORTAL_V1.md`): projekcja nN stacji otwiera się z JAWNEGO
@@ -2660,6 +2749,29 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             ⌖ Dopasuj widok
           </button>
           <MenuDopasujDo dostepnosc={kadrowanie.dostepnosc} onWybierz={(cel) => kadrujCel(cel)} torWToku={kadrowanie.torWToku} />
+          {/* R7: powiększenie oknem — przycisk i klawisz `Z` włączają ten sam tryb. */}
+          <button
+            type="button"
+            onClick={() => setTrybOkna((v) => !v)}
+            data-testid="sld-v3-powieksz-oknem"
+            aria-pressed={trybOkna}
+            title={
+              trybOkna
+                ? 'Powiększenie oknem: przeciągnij prostokąt na schemacie (Esc albo Z — wyjście)'
+                : 'Powiększ oknem — klawisz Z, potem przeciągnij prostokąt; Shift+przeciągnięcie zaznacza'
+            }
+            className={KLASA_PRZYCISKU_DOKU}
+          >
+            ⬚ Okno
+          </button>
+          {/* R7: wskaźnik skali (procent skali czytania) z menu kadru. */}
+          <WskaznikSkali
+            procent={cameraState ? Math.round((cameraState.transform.scale / SKALA_CZYTANIA) * 100) : null}
+            zaznaczenie={zaznaczenieRefy.length}
+            onCalaSiec={() => kadrujCel('siec', [])}
+            onZaznaczenie={dopasujZakres}
+            onSkalaCzytania={() => skalaCzytania('srodek')}
+          />
           <button
             type="button"
             onClick={poprzedniWidok}
@@ -2803,7 +2915,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           zadanieKadru={kadrowanie.zadanieKadru}
           polecenieKamery={polecenieKamery}
           trybDokumentu={trybDokumentu}
-          przywrocenieKamery={kadrowanie.przywrocenieKamery}
+          przywrocenieKamery={kadrowanie.przywrocenieKamery ?? przywrocenieZPamieci}
           refyKadru={kadrowanie.refyKurtyny}
           trybWidoku={trybWidokuSchematu}
           safeInsets={effectiveCanvasInsets}
@@ -2846,7 +2958,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       <div
         data-testid="sld-v3-lasso-capture"
         className="absolute inset-0 z-10"
-        style={{ pointerEvents: shiftHeld || lassoRect ? 'auto' : 'none', cursor: shiftHeld ? 'crosshair' : undefined }}
+        data-tryb-okna={trybOkna ? 'tak' : undefined}
+        style={{
+          pointerEvents: shiftHeld || trybOkna || lassoRect ? 'auto' : 'none',
+          cursor: shiftHeld || trybOkna ? 'crosshair' : undefined,
+        }}
         onPointerDown={handleLassoPointerDown}
         onPointerMove={handleLassoPointerMove}
         onPointerUp={handleLassoPointerUp}
@@ -2854,7 +2970,22 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       >
         {lassoRect && (
           <svg className="pointer-events-none absolute inset-0" width="100%" height="100%">
-            <LassoSelector visible rect={lassoRect} />
+            {rodzajProstokata === 'okno' ? (
+              <rect
+                data-testid="sld-v3-okno-powiekszenia"
+                x={lassoRect.x}
+                y={lassoRect.y}
+                width={lassoRect.width}
+                height={lassoRect.height}
+                fill="none"
+                stroke="var(--mvd-accent, #38BDD8)"
+                strokeWidth={1.5}
+                strokeDasharray="6 3"
+                pointerEvents="none"
+              />
+            ) : (
+              <LassoSelector visible rect={lassoRect} />
+            )}
           </svg>
         )}
       </div>
@@ -3028,6 +3159,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             shapes={minimapShapes}
             frame={minimapFrame}
             onNavigate={handleMinimapNavigate}
+            onWheelZoom={handleMinimapWheel}
           />
         </div>
       )}

@@ -39,8 +39,9 @@ export interface CanvasToolbarGroup {
 }
 
 /**
- * Minima POLICZONE z realnej treści rzędu (font mono 10 px ⇒ ≈ 6,2 px na znak;
- * `px-2` = 16 px obudowy; odstęp wewnętrzny 4 px), zaokrąglone w górę do 4 px:
+ * Minima POLICZONE z realnej treści rzędu (pismo interfejsu 11 px ⇒ ≈ 6,2 px na znak, wartość
+ * przyjęta z zapasem po zmianie pisma o stałej szerokości 10 px na pismo interfejsu; `px-2` =
+ * 16 px obudowy; odstęp wewnętrzny 4 px), zaokrąglone w górę do 4 px:
  *  - drzewo  „▸ Drzewo układu" ................................ 111 → 116
  *  - układy  etykieta + 3 przyciski PV/BESS/FW (＋ … ) ......... 476 → 480
  *  - widok   „⌖ Dopasuj widok" (15 zn. → 109) + rozwijacz „▾" menu
@@ -51,12 +52,15 @@ export interface CanvasToolbarGroup {
  *            kadrów w tym samym doku widoku; menu jako przycisk dzielony
  *            przy „Dopasuj widok", żeby dok widoku nie zwijał się na
  *            kanwie 800 px) ............................................ 491 → 492
+ *            + „⬚ Okno" (6 → 53 → 56, powiększenie oknem) + wskaźnik skali
+ *            „100 % ▾" (7 → 59 → 60) + 2 odstępy po 4 px (karta
+ *            SLD-SKALA-I-NAWIGACJA R7) ................................. 492 + 124 → 616
  *  - eksport „↓ SVG" + menu formatów + „Dołącz legendę" ....... 314 → 320
  */
 export const CANVAS_TOOLBAR_GROUPS: readonly CanvasToolbarGroup[] = [
   { id: 'drzewo', label: 'Drzewo układu', minWidth: 116, rank: 4 },
   { id: 'uklady', label: 'Układy PV/BESS/FW', minWidth: 480, rank: 2 },
-  { id: 'widok', label: 'Widok', minWidth: 492, rank: 3 },
+  { id: 'widok', label: 'Widok', minWidth: 616, rank: 3 },
   { id: 'eksport', label: 'Eksport', minWidth: 320, rank: 1 },
 ];
 

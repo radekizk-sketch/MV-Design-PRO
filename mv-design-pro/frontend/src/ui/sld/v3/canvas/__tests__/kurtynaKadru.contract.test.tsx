@@ -7,7 +7,7 @@
  * z której liczy się prostokąt kadru, tusz etykiet i podłoga opisów celu
  * (predykaty parami, reguła KLASA pkt 3).
  *
- * ILOCZYN CECH: rodzaj obiektu (odcinek · symbol · etykieta) × przynależność
+ * ILOCZYN CECH: rodzaj obiektu (odcinek · symbol · symbol stacji kadru całej sieci · etykieta) × przynależność
  * (cel · spoza celu) × kadr (stacja · brak kadru = sieć) × tryb widoku
  * (roboczy · arkusz · domyślny).
  */
@@ -58,6 +58,16 @@ describe('kurtyna kadru stacji (L2, DOM)', () => {
     };
     scena.segments.forEach((s, i) => sprawdz(segmentTestId(s, i), s.meta?.ownerRef));
     scena.symbols.forEach((s, i) => sprawdz(symbolTestId(s, i), s.meta?.ownerRef));
+    // R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja SN/nN bez rozpoznawalnego
+    // aparatu jest SYMBOLEM STACJI (szyna i nogi toru) zamiast swoich odcinków i aparatów —
+    // kurtyna obejmuje go tą samą relacją przynależności (ref stacji).
+    for (const el of container.querySelectorAll('[data-symbol-stacji="true"]')) {
+      const ref = el.getAttribute('data-owner-ref') ?? undefined;
+      const nalezy = nalezyDoZakresu(ref, zbior);
+      expect(pozaKadru(el), `symbol stacji ${ref}`).toBe(!nalezy);
+      if (nalezy) cel += 1;
+      else obce += 1;
+    }
     expect(cel, 'cel musi mieć narysowane obiekty').toBeGreaterThan(0);
     expect(obce, 'sieć musi mieć obiekty spoza celu').toBeGreaterThan(0);
   });

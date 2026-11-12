@@ -156,6 +156,10 @@ export interface PlannedLabel {
    *  przeniósł etykietę (`stronyWKolejnosci`); `undefined` = strona zadeklarowana przez scenę
    *  (`label.placement`). Trafia do węzła tekstu (`wyrownanieEtykiety`, zaczep w krawędzi). */
   readonly strona?: SimpleAnchorPlacement;
+  /** R4 — nazwa stacji/GPZ z PIERWSZEŃSTWEM (zaznaczona, z alarmem), dla której żadna pozycja
+   *  nie była wolna od rysunku: stoi w swoim slocie mimo przeszkody (nazwa zaznaczonej stacji
+   *  i stacji z alarmem jest ZAWSZE narysowana). Innych napisów nadal nie przykrywa. */
+  readonly naRysunku?: true;
 }
 
 export interface LabelRenderPlan {
@@ -906,6 +910,18 @@ function poziomRozstrzygania(label: OwnedLabel): number {
   return Math.max(1, rangaTozsamosci(label));
 }
 
+/**
+ * R4 (rozstrzygnięcie architekta 2026-11-12): NAZWA stacji albo GPZ (ranga ≥ 3), której blok
+ * należy do `pierwszenstwo` (stacja zaznaczona, stacja z alarmem), wygrywa rozstrzyganie przed
+ * każdą inną etykietą — także przed nazwą GPZ. Remis między nimi rozstrzyga zwykły porządek
+ * (`kolejnoscRozstrzygania`), więc wynik jest deterministyczny.
+ */
+export function poziomPierwszenstwa(label: OwnedLabel, pierwszenstwo: ReadonlySet<string> | undefined): number {
+  if (pierwszenstwo === undefined || pierwszenstwo.size === 0 || rangaTozsamosci(label) < 3) return 0;
+  return pierwszenstwo.has(label.ownerRef.split('#')[0] ?? '') ? 1 : 0;
+}
+
+
 export function kolejnoscRozstrzygania(
   a: { readonly label: OwnedLabel; readonly index: number },
   b: { readonly label: OwnedLabel; readonly index: number },
@@ -935,8 +951,19 @@ export function kolejnoscRozstrzygania(
  * — w granicy sufitu proporcji klasy (`enlargedFontSizeWithinProportion`); `null`
  * ⇒ napisu nie da się narysować proporcjonalnie i trafia do podpowiedzi.
  */
+/**
+ * ADNOTACJA o stałej wielkości ekranowej (R4, rozstrzygnięcie architekta 2026-11-12): nazwa GPZ,
+ * nazwa stacji, oznaczenie sekcji i szyny (ranga tożsamości ≥ 2). Jedno źródło prawdy dla pary
+ * „rozmiar pisma bez sufitu proporcji” (`pismoTozsamosci`) i „zwolnienie ze strażnika sufitu”
+ * (`plannedLabelsAboveProportionCeiling`) — kontrakt proporcji (napis ≤ 2,5 glifu) dotyczy
+ * NAPISÓW SCENY (oznacznik aparatu, opis pola, dane), nie adnotacji.
+ */
+export function adnotacjaStalejWielkosci(label: OwnedLabel): boolean {
+  return rangaTozsamosci(label) >= 2;
+}
+
 function pismoTozsamosci(label: OwnedLabel, scale: number): number | null {
-  return rangaTozsamosci(label) >= 2
+  return adnotacjaStalejWielkosci(label)
     ? minReadableFontSize(label.labelClass, scale)
     : enlargedFontSizeWithinProportion(label.labelClass, scale);
 }
@@ -974,6 +1001,7 @@ export function planSceneLabels(
   sheet: SheetOutline,
   podlogaCelu?: PodlogaOpisowCelu,
   poprzednio?: ReadonlySet<number>,
+  pierwszenstwo?: ReadonlySet<string>,
 ): LabelRenderPlan {
   if (!Number.isFinite(scale) || scale <= 0) {
     return {
@@ -1069,8 +1097,11 @@ export function planSceneLabels(
   const przestawione = pasmaPrzestawione.zKorekta;
   const zeSlotami = kandydaci.map((k) => ({ ...k, slot: przestawione.get(k.index) ?? k.slot }));
 
-  // (d) pierwszeństwo — ranga tożsamości, priorytet rodzaju, ref (R4).
-  const kolejnosc = [...zeSlotami].sort(kolejnoscRozstrzygania);
+  // (d) pierwszeństwo — nazwa stacji/GPZ z `pierwszenstwo` (zaznaczona, z alarmem) przed
+  // wszystkim, potem ranga tożsamości, priorytet rodzaju, ref (R4).
+  const kolejnosc = [...zeSlotami].sort(
+    (a, b) => poziomPierwszenstwa(b.label, pierwszenstwo) - poziomPierwszenstwa(a.label, pierwszenstwo) || kolejnoscRozstrzygania(a, b),
+  );
   const pozycjaWKolejnosci = new Map(kolejnosc.map((k, i) => [k.index, i] as const));
 
   // S9-9: przeszkody sceny indeksowane RAZ na plan (zbiór stały), „zajęte"
@@ -1203,6 +1234,30 @@ export function planSceneLabels(
       for (const p of zmienione) zajmij(p);
       continue;
     }
+    if ((!dopasowanie || dopasowanie.text.length === 0) && poziomPierwszenstwa(kandydatPierwotny.label, pierwszenstwo) > 0) {
+      // R4 — nazwa z pierwszeństwem jest ZAWSZE narysowana. Kolejność stawia ją przed innymi
+      // napisami, więc brak miejsca znaczy: każdą pozycję zajmuje RYSUNEK. Stoi wtedy w swoim
+      // slocie (pełny tekst, pismo planu, halo kanwy) z jawną flagą `naRysunku`; napisów
+      // zaplanowanych wcześniej (inne nazwy z pierwszeństwem, w kolejności stałej) nie
+      // przykrywa — przegrana z nimi idzie do podpowiedzi, deterministycznie.
+      const k = kandydatPierwotny;
+      const rect = prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, wagaPisma(k.label), k.label.rotated === true, undefined, wyrownanieEtykiety(k.label));
+      if (k.tekstBazowy.length > 0 && !zajeteDla(k).anyOverlap(rect)) {
+        const naRysunku: PlannedLabel = {
+          label: k.label,
+          index: k.index,
+          text: k.tekstBazowy,
+          fontSize: k.fontSize,
+          rect,
+          enlarged: k.fontSize > LABEL_TYPOGRAPHY[k.label.labelClass].fontSize + 1e-9,
+          naRysunku: true,
+        };
+        zajmij(naRysunku);
+        uzyteKandydaty.set(k.index, k);
+        zaplanowane.set(k.index, naRysunku);
+        continue;
+      }
+    }
     if (!dopasowanie || dopasowanie.text.length === 0) {
       // Tożsamość bez miejsca (R4): ustępuje wyższej randze i trafia do podpowiedzi
       // uchwytu (`tozsamosciWPodpowiedzi`); dane bez miejsca po prostu nie są rysowane.
@@ -1334,10 +1389,10 @@ export function plannedLabelsAboveProportionCeiling(
   scale: number,
 ): readonly { readonly ownerRef: string; readonly enlargement: number }[] {
   if (!Number.isFinite(scale) || scale <= 0) return [];
-  // R4: nazwa GPZ, nazwa stacji i oznaczenie sekcji (ranga ≥ 2) mają stały
-  // rozmiar ekranowy bez sufitu — sufit obowiązuje tożsamość rangi pola i dane.
+  // R4: adnotacje (nazwa GPZ, nazwa stacji, oznaczenie sekcji — `adnotacjaStalejWielkosci`)
+  // mają stały rozmiar ekranowy bez sufitu — sufit obowiązuje napisy sceny.
   return plan.drawn
-    .filter((p) => rangaTozsamosci(p.label) < 2)
+    .filter((p) => !adnotacjaStalejWielkosci(p.label))
     .map((p) => ({
       ownerRef: p.label.ownerRef,
       enlargement: p.fontSize / LABEL_TYPOGRAPHY[p.label.labelClass].fontSize,
@@ -1388,4 +1443,22 @@ export function plannedLabelObstacleCollisions(
   return plan.drawn
     .filter((p) => obstacles.some((r) => rectsOverlap(p.rect, r)))
     .map((p) => p.label.ownerRef);
+}
+
+/** Rozmieszczona nazwa stacji albo GPZ: ref bloku i prostokąt tuszu napisu [j.św. sceny]. */
+export interface RozmieszczonaNazwa {
+  readonly ref: string;
+  readonly rect: V3Rect;
+}
+
+/**
+ * R4 — WYNIK ROZMIESZCZENIA NAZW stacji i GPZ do odczytu przez inne warstwy (adnotacje wyników
+ * traktują nazwy jako przeszkody — rozstrzygnięcie architekta 2026-11-12). Te same prostokąty,
+ * które rysuje kanwa (plan etykiet), w porządku etykiet sceny; nazwa w podpowiedzi uchwytu nie
+ * jest narysowana, więc nie jest przeszkodą.
+ */
+export function rozmieszczenieNazw(plan: LabelRenderPlan): readonly RozmieszczonaNazwa[] {
+  return plan.drawn
+    .filter((p) => rangaTozsamosci(p.label) >= 3)
+    .map((p) => ({ ref: p.label.ownerRef.split('#')[0] ?? p.label.ownerRef, rect: p.rect }));
 }

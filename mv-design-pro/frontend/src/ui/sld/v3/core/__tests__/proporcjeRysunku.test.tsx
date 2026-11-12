@@ -11,6 +11,15 @@
  *       napis < 9 px ekranu"), ale GÓRNEJ nie postawił nikt: powiększenie
  *       awaryjne przypina napis do 9 px, podczas gdy rysunek kurczy się razem
  *       z kamerą, więc stosunek rośnie jak 1/skala.
+ *       ZAKRES (rozstrzygnięcie architekta 2026-11-12, karta SLD-SKALA-I-NAWIGACJA R4):
+ *       proporcja (napis ≤ 2,5 najmniejszej reprezentacji bloku dla t1, ≤ 1,5 symbolu dla
+ *       t2–t4) dotyczy NAPISÓW SCENY — oznacznika aparatu, opisu pola, danych, tożsamości
+ *       rangi pola: one są częścią rysunku i rosną razem z nim. ADNOTACJA (nazwa GPZ,
+ *       nazwa stacji, oznaczenie sekcji i szyny — `adnotacjaStalejWielkosci`) nie jest
+ *       napisem sceny: ma stałą wielkość ekranową (≥ 9 px niezależnie od skali kamery),
+ *       przypiętą do symbolu stacji, a widoczność rozstrzyga priorytet i kolizja, nie sufit.
+ *       Intencja kontraktu — „oznacznik nie przygniata symbolu, który opisuje" — zostaje
+ *       w całości dla napisów sceny (iloczyn niżej); adnotacji dotyczy osobny blok testów.
  *   (2) HIERARCHIA GRUBOŚCI — rośnie od aparatu przez odgałęzienie i
  *       magistralę do szyny, ale aparat MUSI mieć kreskę rozpoznawalną. S9-8
  *       dała podłogę ekranową TOROM; aparatura z tej hierarchii wypadła, więc
@@ -44,6 +53,7 @@ import {
 } from '../text';
 import { sheetSizeFor } from '../../sheet/outline';
 import {
+  adnotacjaStalejWielkosci,
   planSceneLabels,
   plannedLabelsAboveProportionCeiling,
   plannedLabelsBelowScreenFloor,
@@ -280,6 +290,58 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (jedna scena × skala
     // Po naprawie ta sama skala nie daje ŻADNEGO rozmiaru proporcjonalnego (tożsamość
     // rangi pola t1 nie powstaje na rysunku; nazwa bloku — R4 — ma stały rozmiar ekranowy).
     expect(enlargedFontSizeWithinProportion('t1', DAWNY_DOLNY_KRANIEC_ZOOMU)).toBeNull();
+  });
+});
+
+describe('PROPORCJE §1 — ZAKRES: sufit dotyczy napisów sceny, nie adnotacji nazw (R4)', () => {
+  const scena = buildSceneV3(SIEC);
+  const przeszkody = sceneObstacleRects(scena);
+
+  it('podział etykiet sceny jest pełny: nazwa GPZ i stacji, sekcja, szyna — adnotacje; reszta — napisy sceny', () => {
+    const adnotacje = scena.labels.filter((l) => adnotacjaStalejWielkosci(l));
+    expect(adnotacje.length, 'nazwy stacji i GPZ są adnotacjami').toBeGreaterThanOrEqual(54);
+    for (const l of scena.labels) {
+      expect(adnotacjaStalejWielkosci(l), `${l.ownerKind} „${l.text}”`).toBe(rangaTozsamosci(l) >= 2);
+      if (adnotacjaStalejWielkosci(l)) expect(['station-name', 'busbar-voltage']).toContain(l.ownerKind);
+    }
+    // Żaden oznacznik aparatu, opis pola ani dana nie jest adnotacją — te zostają pod sufitem.
+    expect(scena.labels.filter((l) => l.ownerKind === 'apparatus' && adnotacjaStalejWielkosci(l))).toEqual([]);
+    expect(scena.labels.filter((l) => l.labelRole === 'dane' && adnotacjaStalejWielkosci(l))).toEqual([]);
+  });
+
+  it('ILOCZYN {adnotacja} × {skala}: stała wielkość ekranowa — dokładnie 9 px poniżej rozmiaru naturalnego, bez sufitu', () => {
+    let ponadSufitem = 0;
+    for (const scale of SKALE) {
+      const plan = planSceneLabels(scena.labels, przeszkody, scale, sheetSizeFor(scena));
+      for (const p of plan.drawn.filter((x) => adnotacjaStalejWielkosci(x.label))) {
+        const naturalny = LABEL_TYPOGRAPHY[p.label.labelClass].fontSize;
+        const ekran = p.fontSize * scale;
+        if (p.enlarged) expect(ekran, `${p.label.text} @${scale}`).toBeCloseTo(MIN_READABLE_LABEL_SCREEN_PX, 9);
+        else expect(p.fontSize, `${p.label.text} @${scale}`).toBe(naturalny);
+        if (p.fontSize / naturalny > LABEL_TYPOGRAPHY[p.label.labelClass].maxEnlargement + 1e-9) ponadSufitem += 1;
+      }
+    }
+    // Warunek sensu: przy oddaleniu adnotacje REALNIE przekraczają sufit napisów sceny
+    // (inaczej zwolnienie niczego by nie dowodziło).
+    expect(ponadSufitem).toBeGreaterThan(0);
+  });
+
+  it('strażnik sufitu: napis sceny ponad sufitem jest wskazany, adnotacja w tym samym położeniu — nie', () => {
+    const scale = 0.06;
+    const napis = scena.labels.find((l) => !adnotacjaStalejWielkosci(l) && l.ownerKind === 'apparatus')!;
+    const nazwa = scena.labels.find((l) => rangaTozsamosci(l) >= 3)!;
+    const ponad = (label: typeof napis) => ({
+      label,
+      index: 0,
+      text: label.text,
+      fontSize: MIN_READABLE_LABEL_SCREEN_PX / scale,
+      rect: label.rect,
+      enlarged: true,
+    });
+    expect(plannedLabelsAboveProportionCeiling({ drawn: [ponad(napis)], tozsamosciWPodpowiedzi: [] }, scale).map((x) => x.ownerRef)).toEqual([
+      napis.ownerRef,
+    ]);
+    expect(plannedLabelsAboveProportionCeiling({ drawn: [ponad(nazwa)], tozsamosciWPodpowiedzi: [] }, scale)).toEqual([]);
   });
 });
 

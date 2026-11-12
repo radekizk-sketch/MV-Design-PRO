@@ -37,6 +37,8 @@ import {
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState, type CameraState } from '../camera';
 import { kameraNadSymbolem, kameraNaPunkcieSceny } from './kameraTestowa';
+import { bezWezlaPrzegladu, stacjePrzegladu } from '../hitAreas';
+import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { LABEL_ROLE_BY_OWNER_KIND } from '../../layout/labels';
@@ -95,12 +97,30 @@ function stripColorAttrs(html: string): string {
     .replace(/ data-(?:energized|flow-direction|flow-source)="[^"]*"/g, '');
 }
 
+/**
+ * R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja SN/nN bez rozpoznawalnego aparatu
+ * jest SYMBOLEM STACJI — jej symbole i odcinki nie mają węzłów własnych (`bezWezlaPrzegladu`), za to
+ * symbol stacji niesie jej ref. Bilans „nic nie ginie po cichu” liczy obie postacie.
+ */
+function bezWezlaWKadrze(container: ParentNode, scene: ReturnType<typeof buildSceneV3>) {
+  const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-skala-kamery'));
+  const h = hierarchiaCelowTrafienia(enm, scene);
+  const wynik = bezWezlaPrzegladu(scene.symbols, scene.segments, h, stacjePrzegladu(scene.symbols, h, skala));
+  const symboleStacji = new Set([...container.querySelectorAll('[data-symbol-stacji="true"]')].map((g) => g.getAttribute('data-owner-ref')));
+  for (const stacja of new Set([...wynik.symbole.values(), ...wynik.odcinki.values()])) {
+    expect(symboleStacji.has(stacja), `stacja ${stacja} narysowana symbolem stacji`).toBe(true);
+  }
+  return wynik;
+}
+
 describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
-  it('liczba symboli w DOM = scene.symbols.length (pełny widok sieci)', () => {
+  it('symbole w DOM + symbole stacji narysowanych symbolem stacji = scene.symbols.length (pełny widok sieci)', () => {
     const scene = buildSceneV3(enm);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
-    expect(symbolGroup?.children.length).toBe(scene.symbols.length);
+    const wSymbolu = bezWezlaWKadrze(container, scene).symbole;
+    expect(wSymbolu.size, 'kadr całej sieci ma stacje narysowane symbolem stacji').toBeGreaterThan(0);
+    expect(symbolGroup!.children.length + wSymbolu.size).toBe(scene.symbols.length);
   });
 
   // INTENCJA (zachowana z wersji sprzed V12K-218): render NIE GUBI elementów sceny — nic nie
@@ -114,7 +134,7 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
-    expect(symbolGroup?.children.length).toBe(scene.symbols.length);
+    expect(symbolGroup!.children.length + bezWezlaWKadrze(container, scene).symbole.size).toBe(scene.symbols.length);
     const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
     const wPodpowiedzi = Number(labelGroup?.getAttribute('data-tozsamosci-w-podpowiedzi') ?? 'NaN');
@@ -158,23 +178,40 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     const { container: duzy } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH * 6} height={CANVAS_HEIGHT * 6} />);
     const skala = (c: ParentNode) => Number(c.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
     expect(skala(duzy)).toBeGreaterThan(skala(maly) * 3);
-    // Odcinki: identyczne co do węzła (oba kadry pokazują całą sieć, więc okno renderu R8
-    // niczego nie odcina; różni się tylko grubość kreski z podłogą ekranową).
-    const odcinki = (c: ParentNode) => c.querySelector('[data-testid="sld-v3-segments"]');
-    expect(odcinki(maly), 'sld-v3-segments').toBeTruthy();
-    expect(bezGruboscKreski(odcinki(maly)!.innerHTML)).toBe(bezGruboscKreski(odcinki(duzy)!.innerHTML));
-    // Symbole: te same obiekty w tej samej kolejności. Jedyna dozwolona różnica to reguła R8
-    // obrysu bez wnętrza (symbol < 3 px ekranu rysuje sam gabaryt) — a symbol narysowany
-    // pełnym glifem na obu kanwach ma ten sam rysunek.
+    // Jedna scena: dozwolone różnice to wyłącznie reguły renderu R8 — stacja narysowana symbolem
+    // stacji (jej odcinki i symbole bez węzłów własnych, `bezWezlaPrzegladu`) i obrys bez wnętrza
+    // (symbol < 3 px ekranu rysuje sam gabaryt). Oba kadry pokazują całą sieć, więc okno renderu
+    // niczego nie odcina. Każdy obiekt narysowany na OBU kanwach ma ten sam rysunek (poza grubością
+    // kreski z podłogą ekranową), a zbiór węzłów każdej kanwy to scena bez obiektów symbolu stacji.
+    const scene = buildSceneV3(enm);
+    const bezMaly = bezWezlaWKadrze(maly, scene);
+    const bezDuzy = bezWezlaWKadrze(duzy, scene);
+    expect(bezMaly.odcinki.size, 'mała kanwa ma stacje narysowane symbolem stacji').toBeGreaterThan(0);
+    expect(bezDuzy.odcinki.size).toBeLessThanOrEqual(bezMaly.odcinki.size);
+    const wezly = (c: ParentNode, grupa: string) =>
+      new Map([...c.querySelector(`[data-testid="${grupa}"]`)!.children].map((n) => [n.getAttribute('data-testid') ?? '', n] as const));
+    const odcinkiMaly = wezly(maly, 'sld-v3-segments');
+    const odcinkiDuzy = wezly(duzy, 'sld-v3-segments');
+    expect(odcinkiMaly.size + bezMaly.odcinki.size).toBe(scene.segments.length);
+    expect(odcinkiDuzy.size + bezDuzy.odcinki.size).toBe(scene.segments.length);
+    let odcinkowNaObu = 0;
+    for (const [id, n] of odcinkiMaly) {
+      const m = odcinkiDuzy.get(id);
+      if (!m) continue;
+      odcinkowNaObu += 1;
+      expect(bezGruboscKreski(n.outerHTML), id).toBe(bezGruboscKreski(m.outerHTML));
+    }
+    expect(odcinkowNaObu, 'część odcinków narysowana na obu kanwach').toBeGreaterThan(0);
     const symbole = (c: ParentNode) => [...c.querySelector('[data-testid="sld-v3-symbols"]')!.children];
     const a = symbole(maly);
     const b = symbole(duzy);
-    expect(a.map((n) => n.getAttribute('data-testid'))).toEqual(b.map((n) => n.getAttribute('data-testid')));
+    const naDuzej = new Map(b.map((n) => [n.getAttribute('data-testid') ?? '', n] as const));
     let pelnychNaObu = 0;
-    a.forEach((n, i) => {
-      if (n.hasAttribute('data-bez-wnetrza') || b[i].hasAttribute('data-bez-wnetrza')) return;
+    a.forEach((n) => {
+      const m = naDuzej.get(n.getAttribute('data-testid') ?? '');
+      if (!m || n.hasAttribute('data-bez-wnetrza') || m.hasAttribute('data-bez-wnetrza')) return;
       pelnychNaObu += 1;
-      expect(bezGruboscKreski(n.outerHTML), n.getAttribute('data-testid') ?? '').toBe(bezGruboscKreski(b[i].outerHTML));
+      expect(bezGruboscKreski(n.outerHTML), n.getAttribute('data-testid') ?? '').toBe(bezGruboscKreski(m.outerHTML));
     });
     expect(pelnychNaObu, 'część symboli ma pełny glif na obu kanwach (porównanie nie jest puste)').toBeGreaterThan(0);
     expect(a.some((n) => n.hasAttribute('data-bez-wnetrza')), 'mała kanwa ma symbole poniżej progu wnętrza').toBe(true);
@@ -1124,22 +1161,49 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
 });
 
 describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (tabela §3, BEZ nakładki wynikowej)', () => {
-  it('szyna SN stacji (#sn-bus) ma stroke = VOLTAGE_COLOR.sn; szyna nN (#lv-bus, gdy fixtura ją niesie) ma stroke = VOLTAGE_COLOR.nn — dwa RÓŻNE kolory, nie jednolity V3_STROKE_BASE jak przed S3', () => {
+  // R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja SN/nN bez rozpoznawalnego
+  // aparatu jest SYMBOLEM STACJI (szyna i nogi toru) zamiast swoich odcinków — kolor napięcia
+  // i precedencja nakładki obowiązują OBIE postacie. ILOCZYN: kadr {roboczy (skala 1 nad szyną):
+  // odcinek szyny, cała sieć: szyna symbolu stacji} × nakładka {brak, de-energizacja}.
+  const srodekOdcinka = (seg: { readonly points: readonly { readonly x: number; readonly y: number }[] }) => ({
+    x: (seg.points[0].x + seg.points[seg.points.length - 1].x) / 2,
+    y: (seg.points[0].y + seg.points[seg.points.length - 1].y) / 2,
+  });
+  const szynaSymboluStacji = (container: HTMLElement, ownerRef: string) =>
+    [...container.querySelectorAll('[data-symbol-stacji="true"]')]
+      .find((g) => g.getAttribute('data-owner-ref') === ownerRef.split('#')[0])
+      ?.querySelector('[data-szyna-stacji="true"]') ?? null;
+
+  it('szyna SN stacji (#sn-bus) ma stroke = VOLTAGE_COLOR.sn; szyna nN (#lv-bus, gdy fixtura ją niesie) ma stroke = VOLTAGE_COLOR.nn — dwa RÓŻNE kolory, nie jednolity V3_STROKE_BASE jak przed S3 (kadr roboczy)', () => {
     const scene = buildSceneV3(enm);
     const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
     expect(snBus).toBeTruthy();
+    const viewport = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} cameraOverride={kameraNaPunkcieSceny(scene, srodekOdcinka(snBus!), 1, viewport)} />,
     );
     const snPath = container.querySelector(`[data-owner-ref="${snBus!.meta!.ownerRef}"]`);
     expect(snPath?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.sn);
+    cleanup();
 
     const lvBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#lv-bus'));
     if (lvBus) {
-      const lvPath = container.querySelector(`[data-owner-ref="${lvBus.meta!.ownerRef}"]`);
+      const { container: c2 } = render(
+        <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} cameraOverride={kameraNaPunkcieSceny(scene, srodekOdcinka(lvBus), 1, viewport)} />,
+      );
+      const lvPath = c2.querySelector(`[data-owner-ref="${lvBus.meta!.ownerRef}"]`);
       expect(lvPath?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.nn);
-      expect(lvPath?.getAttribute('stroke')).not.toBe(snPath?.getAttribute('stroke'));
+      expect(lvPath?.getAttribute('stroke')).not.toBe(VOLTAGE_COLOR.sn);
     }
+  });
+
+  it('kadr całej sieci: szyna symbolu stacji ma stroke = VOLTAGE_COLOR.sn (kolor napięcia nie ginie w symbolu stacji)', () => {
+    const scene = buildSceneV3(enm);
+    const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'))!;
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+    const szyna = szynaSymboluStacji(container, snBus.meta!.ownerRef!);
+    expect(szyna, 'stacja w kadrze całej sieci jest symbolem stacji').toBeTruthy();
+    expect(szyna!.getAttribute('stroke')).toBe(VOLTAGE_COLOR.sn);
   });
 
   it('szyna WN GPZ (#hv-bus) ma stroke = VOLTAGE_COLOR.hv (matrix §3: „110 biały" = baza — zero zmiany wizualnej dla WN)', () => {
@@ -1155,19 +1219,25 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
     expect(path?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.hv);
   });
 
-  it('nakładka energizacji WCIĄŻ WYGRYWA nad kolorem napięcia (precedencja niezmieniona: wyróżnienie > napięcie)', () => {
+  it('nakładka energizacji WCIĄŻ WYGRYWA nad kolorem napięcia (precedencja niezmieniona: wyróżnienie > napięcie) — kadr roboczy i cała sieć', () => {
     const scene = buildSceneV3(enm);
     const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
     expect(snBus).toBeTruthy();
     const ownerRef = snBus!.meta!.ownerRef!;
     const overlay: SldV3Overlay = { energizedByTestId: {}, energizedByOwnerRef: { [ownerRef]: false } };
+    const viewport = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={kameraNaPunkcieSceny(scene, srodekOdcinka(snBus!), 1, viewport)} />,
     );
     const path = container.querySelector(`[data-owner-ref="${ownerRef}"]`);
     // De-energizacja (szary) nadpisuje kolor napięcia (zielony SN) — precedencja z nagłówka `theme/colorTokens.ts`.
     expect(path?.getAttribute('stroke')).toBe(HIGHLIGHT_COLOR.deenergized);
     expect(path?.getAttribute('stroke')).not.toBe(VOLTAGE_COLOR.sn);
+    cleanup();
+    const { container: calaSiec } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />);
+    const szyna = szynaSymboluStacji(calaSiec, ownerRef);
+    expect(szyna, 'stacja w kadrze całej sieci jest symbolem stacji').toBeTruthy();
+    expect(szyna!.getAttribute('stroke')).toBe(HIGHLIGHT_COLOR.deenergized);
   });
 });
 

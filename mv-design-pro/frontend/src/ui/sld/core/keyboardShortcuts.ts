@@ -65,6 +65,18 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
     action_id: 'skala_klawiszem',
   },
   {
+    keys: 'Shift+1',
+    description_pl: 'Schemat: skala czytania (100 %, aparaty w rozmiarze nominalnym) wokół kursora',
+    category: 'NAWIGACJA',
+    action_id: 'skala_czytania',
+  },
+  {
+    keys: 'Z',
+    description_pl: 'Schemat: powiększ oknem — potem przeciągnij prostokąt (Esc albo ponowne Z — wyjście)',
+    category: 'NAWIGACJA',
+    action_id: 'powieksz_oknem',
+  },
+  {
     keys: 'Strzałki',
     description_pl: 'Schemat: przesuń kadr',
     category: 'NAWIGACJA',

@@ -22,7 +22,8 @@
  * tam).
  */
 import { obrysyZaznaczenia } from './obrysZaznaczenia';
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { czasPrzelotu, przelotDozwolony, punktWidzenia, reduktorZPrzelotem, sciezkaPrzelotu, transformPunktu } from './przelotKamery';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
@@ -54,6 +55,7 @@ import {
   buildCanvasHitAreas,
   bezWezlaPrzegladu,
   celTrafienia,
+  poleIStacjaObiektu,
   rozstrzygnijTrafienieWezla,
   stacjePrzegladu,
   stopnieCeluSymbolu,
@@ -86,6 +88,7 @@ import {
   boundingBoxOfRect,
   cameraReducer,
   cameraViewBox,
+  SKALA_CZYTANIA,
   SKALA_PODLOGI_ROZDZIELNICY,
   computeInitialCameraState,
   type CameraState,
@@ -129,7 +132,7 @@ import {
 } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import { isExceedanceSeverity, resultRefForSegment } from './resultLabels';
-import { nosnikiZnacznikowStanu, znacznikiStanu, type ZnacznikStanu } from './znacznikiStanu';
+import { nosnikiZnacznikowStanu, przeszkodyZnacznikowStanu, znacznikiStanu, type ZnacznikStanu } from './znacznikiStanu';
 import { resultLabelLines, RESULT_LABEL_TREND_GLYPH } from '../../shared/resultLabelTemplates';
 import { czytelnyNaEkranie, klasaInformacjiEtykiety } from './gestoscInformacji';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
@@ -221,7 +224,22 @@ const OKNO_DOKUMENTU = { x: -1e12, y: -1e12, width: 2e12, height: 2e12 } as cons
 /** Polecenie kamery z klawiatury (`SldCanvasV3Props.polecenieKamery`). */
 export type PolecenieKamery =
   | { readonly rodzaj: 'przybliz' | 'oddal'; readonly seq: number }
-  | { readonly rodzaj: 'przesun'; readonly kierunekX: -1 | 0 | 1; readonly kierunekY: -1 | 0 | 1; readonly seq: number };
+  | { readonly rodzaj: 'przesun'; readonly kierunekX: -1 | 0 | 1; readonly kierunekY: -1 | 0 | 1; readonly seq: number }
+  /** Skala czytania (`SKALA_CZYTANIA`, aparaty w rozmiarze nominalnym) wokół kursora nad kanwą,
+   *  a gdy kursora nad kanwą nie ma — wokół środka kadru. */
+  | { readonly rodzaj: 'skala_czytania'; readonly wokol: 'kursor' | 'srodek'; readonly seq: number }
+  /** Kółko nad nawigatorem (R7): zmiana skali wokół środka kadru, ta sama czułość co kółko
+   *  nad kanwą (`WHEEL_ZOOM_SENSITIVITY`), natychmiast — gest, nie polecenie widoku. */
+  | { readonly rodzaj: 'kolko'; readonly deltaY: number; readonly seq: number }
+  /** Powiększenie oknem: prostokąt w pikselach kanwy (te same współrzędne co lasso). */
+  | {
+      readonly rodzaj: 'okno';
+      readonly prostokat: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+      readonly seq: number;
+    };
+
+/** Reduktor kanwy: reduktor kamery z zamiarem przelotu (karta SLD-SKALA-I-NAWIGACJA, R7). */
+const reduktorKamery = reduktorZPrzelotem(cameraReducer);
 
 /** RAMKA-TNIE-PODPISY: treść podpisu skali arkusza. Kanwa ekranowa nie ma
  *  podziałki liczbowej (skala zmienia się z zoomem), więc podpis mówi wprost,
@@ -478,6 +496,8 @@ export interface SldCanvasV3Props {
     /** Viewport, w którym zapamiętany transform obowiązywał. */
     readonly viewportSize: { readonly width: number; readonly height: number };
     readonly seq: number;
+    /** Przywrócenie bez przelotu (pamięć kamery projektu przy powrocie na schemat, R7). */
+    readonly natychmiast?: true;
   } | null;
   /**
    * K2b §0.1 (c) — KURTYNA KADRU: refy rysunku celu bieżącego kadru
@@ -2675,6 +2695,7 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
       data-label-role={label.labelRole}
       data-label-enlarged={planned.enlarged ? 'true' : 'false'}
       data-label-strona={strona}
+      data-na-rysunku={planned.naRysunku === true ? 'true' : undefined}
     >
       {label.leader && (
         <path
@@ -2699,7 +2720,9 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
         // ekranowej (`OTOCZKA_TOZSAMOSCI_PX`), malowany POD wypełnieniem
         // (`paint-order: stroke`). Napis w stałym rozmiarze ekranowym bywa większy
         // od otoczenia rysunku; otoczka oddziela go od kresek bez zasłaniania
-        // aparatów (plan nie kładzie napisu na rysunku).
+        // aparatów (plan nie kładzie napisu na rysunku — wyjątek: nazwa stacji
+        // z pierwszeństwem bez wolnego miejsca, `data-na-rysunku`, warstwa nad
+        // symbolami czyta się dzięki otoczce).
         {...(otoczka
           ? {
               stroke: palette.canvasBackground,
@@ -2895,7 +2918,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   }, [scene]);
 
   const [camera, dispatch] = useReducer(
-    cameraReducer,
+    reduktorKamery,
     { bbox: fitBbox, viewportSize, focusPoint: gpzFocusPoint, cameraOverride },
     (arg) =>
       // PROPORCJE: kadr narzucony (zrzuty/eksport) jest stanem POCZĄTKOWYM —
@@ -2972,7 +2995,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       skippedInitialFitSignal.current = false;
       return;
     }
-    dispatch({ type: 'refit', bbox: fitBbox, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+    dispatch({ type: 'refit', bbox: fitBbox, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets, przelot: true });
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
   }, [fitSignal]);
 
@@ -2986,7 +3009,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     if (!zadanie) return;
     if (zadanie.zakres.cel === 'siec') {
       const trescSieci = sceneBoxToCameraWorld(contentBbox ?? sceneBbox);
-      dispatch({ type: 'refit', bbox: trescSieci, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+      dispatch({ type: 'refit', bbox: trescSieci, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets, przelot: true });
       return;
     }
     const { cel, przeszkody, tuszEtykiet } = prostokatyZakresu(scene, zadanie.zakres, sceneBoxToCameraWorld);
@@ -3001,6 +3024,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       safeInsets: effectiveSafeInsets,
       ...(rozdzielnica ? { podlogaSkali: SKALA_PODLOGI_ROZDZIELNICY } : {}),
       ...(zadanie.wskazanie ? { wskazanie: true } : {}),
+      przelot: true,
     });
     // Zależność wyłącznie od `seq` (dyscyplina `fitSignal`/`centerRequest`).
   }, [props.zadanieKadru?.seq]);
@@ -3009,15 +3033,42 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   useEffect(() => {
     const wpis = props.przywrocenieKamery;
     if (!wpis) return;
-    dispatch({ type: 'przywroc', transform: wpis.transform, viewportSize: wpis.viewportSize });
+    dispatch({ type: 'przywroc', transform: wpis.transform, viewportSize: wpis.viewportSize, przelot: wpis.natychmiast !== true });
   }, [props.przywrocenieKamery?.seq]);
 
   // Karta SLD-SKALA-I-NAWIGACJA R7: klawisze kamery — te same akcje 'zoom'/'pan' co kółko
-  // i przeciągnięcie (natychmiastowe, bez przelotu), zoom wokół środka kadru.
+  // i przeciągnięcie (natychmiastowe, bez przelotu), zoom wokół środka kadru. Skala czytania
+  // i powiększenie oknem są POLECENIAMI WIDOKU (skok do innego kadru) — z przelotem.
   const polecenieKamery = props.polecenieKamery ?? null;
+  // Ostatnie położenie kursora nad kanwą [px kanwy] — punkt stały skali czytania (`1`).
+  const ostatniKursor = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
     if (!polecenieKamery) return;
     const srodek = { x: viewportSize.width / 2, y: viewportSize.height / 2 };
+    if (polecenieKamery.rodzaj === 'skala_czytania') {
+      const wokol = polecenieKamery.wokol === 'kursor' && ostatniKursor.current ? ostatniKursor.current : srodek;
+      dispatch({ type: 'zoom', cursor: wokol, factor: SKALA_CZYTANIA / camera.transform.scale, przelot: true });
+      return;
+    }
+    if (polecenieKamery.rodzaj === 'okno') {
+      const { x, y, width: w, height: h } = polecenieKamery.prostokat;
+      const t = camera.transform;
+      // Prostokąt ekranu → świat kamery (odwrotność `ekran = świat · skala + przesunięcie`).
+      const anchor = {
+        minX: (x - t.translateX) / t.scale,
+        minY: (y - t.translateY) / t.scale,
+        maxX: (x + w - t.translateX) / t.scale,
+        maxY: (y + h - t.translateY) / t.scale,
+      };
+      dispatch({ type: 'kadruj', anchor, viewportSize, safeInsets: effectiveSafeInsets, przelot: true });
+      return;
+    }
+    if (polecenieKamery.rodzaj === 'kolko') {
+      if (Number.isFinite(polecenieKamery.deltaY) && polecenieKamery.deltaY !== 0) {
+        dispatch({ type: 'zoom', cursor: srodek, factor: Math.exp(-polecenieKamery.deltaY * WHEEL_ZOOM_SENSITIVITY) });
+      }
+      return;
+    }
     if (polecenieKamery.rodzaj === 'przybliz') dispatch({ type: 'zoom', cursor: srodek, factor: KROK_SKALI_KLAWISZEM });
     else if (polecenieKamery.rodzaj === 'oddal') dispatch({ type: 'zoom', cursor: srodek, factor: 1 / KROK_SKALI_KLAWISZEM });
     else if (polecenieKamery.rodzaj === 'przesun') {
@@ -3228,7 +3279,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // (nazwa GPZ i stacji, sekcja szyny, oznaczenie pola) nie znika przy oddaleniu:
   // stały rozmiar ekranowy, ranga przy kolizji, przegrana — w podpowiedzi uchwytu
   // (karta SLD-SKALA-I-NAWIGACJA, R4). Dane znikają poniżej progu czytelności (R3).
-  const labelObstacles = useMemo(() => sceneObstacleRects(scene), [scene]);
+  // R4 (rozstrzygnięcie architekta 2026-11-12): znaczniki stanu o stałym rozmiarze ekranowym
+  // (łącznik otwarty, punkt N.O., miejsce zwarcia, przekroczenie) są przeszkodą nazw tej samej
+  // rangi co rysunek — nazwa nie przykrywa znaku rozstrzygającego o topologii i uwadze.
+  const przeszkodyStanu = useMemo(() => przeszkodyZnacznikowStanu(znacznikiStanuPlan), [znacznikiStanuPlan]);
+  const labelObstacles = useMemo(
+    () => (przeszkodyStanu.length === 0 ? sceneObstacleRects(scene) : [...sceneObstacleRects(scene), ...przeszkodyStanu]),
+    [scene, przeszkodyStanu],
+  );
   // RAMKA-TNIE-PODPISY: plan dostaje TEN SAM obrys arkusza (`sheetSize`), który
   // dostaje `SheetFrame` niżej — jedna wartość, jedna prawda o krawędzi
   // rysunku. Wcześniej plan o krawędzi nie wiedział nic, więc powiększone
@@ -3271,12 +3329,27 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
     return out;
   }, [trybDokumentu, scene, hierarchiaCelow, skalaRysunku]);
+  const alarmyStacji = useMemo(
+    () => najgorszyStanStacji(hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements),
+    [hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements],
+  );
+  // R4 — PIERWSZEŃSTWO nazw: stacja zaznaczona (zaznaczony obiekt rozstrzygnięty do swojej stacji
+  // tą samą hierarchią co kadr i cel kliku) i stacja z alarmem (`alarmyStacji`, ten sam zbiór co
+  // glif zbiorczy). Nazwa takiej stacji jest zawsze narysowana (`planSceneLabels`).
+  const pierwszenstwoNazw = useMemo((): ReadonlySet<string> => {
+    const out = new Set<string>(alarmyStacji.keys());
+    for (const ref of zaznaczenieRefy ?? []) {
+      const stacja = poleIStacjaObiektu(hierarchiaCelow, ref).stacja;
+      if (stacja !== undefined) out.add(stacja);
+    }
+    return out;
+  }, [alarmyStacji, zaznaczenieRefy, hierarchiaCelow]);
   const poprzedniPlanRef = useRef<{ readonly scene: SceneV3; readonly narysowane: ReadonlySet<number> } | null>(null);
   const labelPlan = useMemo((): LabelRenderPlan => {
     if (!isLayerVisible('labels', layerVisibility)) return { drawn: [], tozsamosciWPodpowiedzi: [] };
     const poprzedni = poprzedniPlanRef.current;
     const poprzednio = poprzedni !== null && poprzedni.scene === scene ? poprzedni.narysowane : undefined;
-    const plan = planSceneLabels(scene.labels, labelObstacles, skalaPlanu, sheetSize, podlogaCelu, poprzednio);
+    const plan = planSceneLabels(scene.labels, labelObstacles, skalaPlanu, sheetSize, podlogaCelu, poprzednio, pierwszenstwoNazw);
     if (szynyPunktowBezRysunku.size === 0) return plan;
     const opisRysowany = (ownerRef: string | undefined) => !szynyPunktowBezRysunku.has((ownerRef ?? '').split('#')[0]);
     return {
@@ -3284,7 +3357,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       drawn: plan.drawn.filter((p) => opisRysowany(p.label.ownerRef)),
       tozsamosciWPodpowiedzi: plan.tozsamosciWPodpowiedzi.filter((t) => opisRysowany(t.label.ownerRef)),
     };
-  }, [scene, labelObstacles, skalaPlanu, layerVisibility, sheetSize, podlogaCelu, szynyPunktowBezRysunku]);
+  }, [scene, labelObstacles, skalaPlanu, layerVisibility, sheetSize, podlogaCelu, szynyPunktowBezRysunku, pierwszenstwoNazw]);
   const obrysArkusza = useMemo(() => obrysArkuszaPlanu(labelPlan, sheetSize), [labelPlan, sheetSize]);
   useEffect(() => {
     poprzedniPlanRef.current = { scene, narysowane: new Set(labelPlan.drawn.map((p) => p.index)) };
@@ -3472,13 +3545,23 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   }, [resultLabelLayout, onResultLabelActivate, toggleAggregate]);
 
   const viewBox = cameraViewBox(camera.transform, viewportSize);
+  // R7 — PRZELOT KAMERY (`przelotKamery.ts`). Stan kamery (reduktor) jest od razu KADREM CELU:
+  // plan napisów, odcinanie, obszary trafienia i `data-skala-kamery` liczą się dla celu. Przelot
+  // animuje wyłącznie `viewBox` (rysunek celu ogląda się z kolejnych punktów ścieżki), więc klatka
+  // nie przebudowuje sceny. Okno renderu w trakcie przelotu = suma okien startu i celu.
+  const [stanPrzelotu, setStanPrzelotu] = useState<{ readonly okno: ReturnType<typeof oknoRenderuSceny> } | null>(null);
 
   // R8 (karta SLD-SKALA-I-NAWIGACJA, `oknoRenderu.ts`): odcinanie RENDERU — okno kamery
   // z zapasem i znak zbiorczy symboli bez czytelnego wnętrza. Scena, plan etykiet i obszary
   // trafienia liczą na pełnej scenie; tu zapada wyłącznie decyzja „węzeł DOM czy nie”.
   const oknoRenderu = useMemo(
-    () => (trybDokumentu ? OKNO_DOKUMENTU : oknoRenderuSceny(camera.transform, viewportSize, FRAME_MARGIN)),
-    [trybDokumentu, camera.transform, viewportSize],
+    () =>
+      trybDokumentu
+        ? OKNO_DOKUMENTU
+        : stanPrzelotu
+          ? stanPrzelotu.okno
+          : oknoRenderuSceny(camera.transform, viewportSize, FRAME_MARGIN),
+    [trybDokumentu, stanPrzelotu, camera.transform, viewportSize],
   );
   const obwiednieOdcinkow = useMemo(
     () => scene.segments.map((segment) => obwiedniaLamanej(segment.points, segmentStrokeWidthForScale(klasaWagiOdcinka(segment.meta), 1))),
@@ -3527,10 +3610,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     });
     return wynik;
   }, [trybDokumentu, scene, hierarchiaCelow, skalaRysunku]);
-  const alarmyStacji = useMemo(
-    () => najgorszyStanStacji(hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements),
-    [hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements],
-  );
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
   // AKTUALNYM transformie kamery — jedyny sposób uzyskania go z zewnątrz
@@ -3545,6 +3624,96 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // unifikują mysz/dotyk/pen, jeden kod ścieżki (patrz `canvas/camera.ts`
   // nagłówek: v2 nie ma żadnej obsługi dotyku, budowane od zera).
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // R7 — przelot: ostatni POKAZANY kadr (start następnego przelotu, także przerwanego) i bieżąca
+  // animacja. Przejście animowane wyłącznie, gdy stan niesie zamiar przelotu (polecenie widoku);
+  // gest, zmiana rozmiaru i tryb dokumentu tną. Każde wejście użytkownika przerywa przelot
+  // CIĘCIEM do celu — stan końcowy jest deterministyczny (zawsze kadr celu).
+  const pokazanyKadr = useRef<ViewportTransform>(camera.transform);
+  // Numer ostatniego ODTWORZONEGO przelotu (`przelotKamery.ts`, `reduktorZPrzelotem`).
+  const odtworzonyPrzelot = useRef<number | undefined>(camera.przelot);
+  const przelotTrwa = useRef<{ raf: number; readonly na: ViewportTransform; readonly widok: { readonly width: number; readonly height: number } } | null>(null);
+  const zakonczPrzelot = useCallback(() => {
+    const p = przelotTrwa.current;
+    if (!p) return;
+    window.cancelAnimationFrame(p.raf);
+    przelotTrwa.current = null;
+    pokazanyKadr.current = p.na;
+    svgRef.current?.setAttribute('viewBox', cameraViewBox(p.na, p.widok));
+    setStanPrzelotu(null);
+  }, []);
+  useLayoutEffect(() => {
+    const z = pokazanyKadr.current;
+    const na = camera.transform;
+    const widok = camera.viewportSize;
+    const svg = svgRef.current;
+    // Przelot w toku i nowy stan kamery: wejście użytkownika przerwało by przelot WCZEŚNIEJ (słuchacze
+    // w fazie przechwytywania niżej), więc zmiana pochodzi z układu (zasłony prostokąta
+    // bezpiecznego, rozmiar kanwy — np. mini-ścieżka kadru pojawia się po wejściu w głąb).
+    // Przelot leci dalej z bieżącej klatki do NOWEGO celu.
+    const wToku = przelotTrwa.current !== null;
+    if (przelotTrwa.current) {
+      window.cancelAnimationFrame(przelotTrwa.current.raf);
+      przelotTrwa.current = null;
+    }
+    const tenSam = z.scale === na.scale && z.translateX === na.translateX && z.translateY === na.translateY;
+    const nowyPrzelot = camera.przelot !== odtworzonyPrzelot.current;
+    odtworzonyPrzelot.current = camera.przelot;
+    if ((!nowyPrzelot && !wToku) || trybDokumentu || tenSam || !svg || !przelotDozwolony(typeof window === 'undefined' ? undefined : window)) {
+      pokazanyKadr.current = na;
+      if (svg) svg.setAttribute('viewBox', cameraViewBox(na, widok));
+      setStanPrzelotu(null);
+      return;
+    }
+    const sciezka = sciezkaPrzelotu(punktWidzenia(z, widok), punktWidzenia(na, widok));
+    const czas = czasPrzelotu(sciezka.dlugosc);
+    const a = oknoRenderuSceny(z, widok, FRAME_MARGIN);
+    const b = oknoRenderuSceny(na, widok, FRAME_MARGIN);
+    const minX = Math.min(a.x, b.x);
+    const minY = Math.min(a.y, b.y);
+    const okno = {
+      x: minX,
+      y: minY,
+      width: Math.max(a.x + a.width, b.x + b.width) - minX,
+      height: Math.max(a.y + a.height, b.y + b.height) - minY,
+    };
+    svg.setAttribute('viewBox', cameraViewBox(z, widok));
+    const start = window.performance.now();
+    const klatka = (teraz: number) => {
+      const p = przelotTrwa.current;
+      if (!p) return;
+      const t = Math.min(1, Math.max(0, (teraz - start) / czas));
+      const kadr = t >= 1 ? na : transformPunktu(sciezka.punkt(t), widok);
+      pokazanyKadr.current = kadr;
+      svg.setAttribute('viewBox', cameraViewBox(kadr, widok));
+      if (t >= 1) {
+        przelotTrwa.current = null;
+        setStanPrzelotu(null);
+        return;
+      }
+      p.raf = window.requestAnimationFrame(klatka);
+    };
+    przelotTrwa.current = { raf: window.requestAnimationFrame(klatka), na, widok };
+    setStanPrzelotu({ okno });
+  }, [camera]);
+  // Przerwanie przelotu KAŻDYM wejściem użytkownika (wskaźnik, kółko, klawisz) — w fazie
+  // przechwytywania, zanim wejście zadziała na kamerę.
+  useEffect(() => {
+    if (!stanPrzelotu) return undefined;
+    const przerwij = () => zakonczPrzelot();
+    window.addEventListener('pointerdown', przerwij, true);
+    window.addEventListener('wheel', przerwij, true);
+    window.addEventListener('keydown', przerwij, true);
+    return () => {
+      window.removeEventListener('pointerdown', przerwij, true);
+      window.removeEventListener('wheel', przerwij, true);
+      window.removeEventListener('keydown', przerwij, true);
+    };
+  }, [stanPrzelotu, zakonczPrzelot]);
+  useEffect(() => () => {
+    if (przelotTrwa.current) window.cancelAnimationFrame(przelotTrwa.current.raf);
+  }, []);
+
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchDistance = useRef<number | null>(null);
   const panAnchor = useRef<{ x: number; y: number } | null>(null);
@@ -3600,6 +3769,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   }, [zwolnijWskaznik]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+    // R7: punkt stały skali czytania — ostatnie położenie kursora nad kanwą.
+    ostatniKursor.current = toLocalPoint(svgRef.current, event.clientX, event.clientY);
     if (!pointers.current.has(event.pointerId)) return;
     if (event.buttons === 0) {
       zwolnijWskaznik(event.pointerId);
@@ -3802,6 +3973,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       // — jedyny parametr widoku, od którego zależy gęstość napisów; scena jest
       // od niej niezależna (R1). Testy e2e czekają na skalę, nie na „poziom”.
       data-skala-kamery={trybDokumentu ? undefined : camera.transform.scale.toFixed(4)}
+      // R7: stan kamery — e2e czeka na „spoczynek” deterministycznie (bez odczytu klatek przelotu).
+      data-stan-kamery={stanPrzelotu ? 'przelot' : 'spoczynek'}
       data-kadr-aktywny={zbiorKadru ? 'true' : undefined}
       data-min-opis-celu-px={zbiorKadru && opisyCelu.minPx !== null ? opisyCelu.minPx.toFixed(2) : undefined}
       width={width}
@@ -3820,6 +3993,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onPointerLeave={() => {
+        ostatniKursor.current = null;
+      }}
       // F8c pkt 3: prawy klik NIEZŁAPANY przez symbol/odcinek (te wołają
       // `stopPropagation`) bąbelkuje aż tu — „tło" kanwy. `testId` stały
       // (`sld-v3-background`) odróżnia to od realnego elementu w wołającym

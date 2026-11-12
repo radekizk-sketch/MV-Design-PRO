@@ -224,3 +224,18 @@ export function nosnikiZnacznikowStanu(wejscie: WejscieNosnikow): readonly Nosni
   }
   return out;
 }
+
+/**
+ * R4 — znaczniki stanu jako PRZESZKODY planu etykiet: prostokąt opisany na znaczniku [j.św.
+ * sceny] o średnicy `srednicaSwiata` wokół kotwicy nośnika. Nazwa stacji (adnotacja tożsamości
+ * o stałej wielkości ekranowej) nie wchodzi na znak łącznika otwartego, punktu N.O., miejsca
+ * zwarcia ani przekroczenia. Znacznik ZAZNACZENIA nie jest przeszkodą: zaznaczenie nie przestawia
+ * napisów rysunku.
+ */
+export function przeszkodyZnacznikowStanu(
+  znaczniki: readonly ZnacznikStanu[],
+): readonly { readonly x: number; readonly y: number; readonly width: number; readonly height: number }[] {
+  return znaczniki
+    .filter((z) => z.rodzaj !== 'zaznaczenie')
+    .map((z) => ({ x: z.x - z.srednicaSwiata / 2, y: z.y - z.srednicaSwiata / 2, width: z.srednicaSwiata, height: z.srednicaSwiata }));
+}

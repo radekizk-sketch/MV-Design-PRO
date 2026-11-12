@@ -31,6 +31,8 @@ import { resultRefForSegment } from '../resultLabels';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import { pierwszaStacjaZUchwytem } from './uchwytStacji';
+import { poleIStacjaObiektu } from '../hitAreas';
+import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { powiekszKolkiemDoSkali, punktCeluTrafienia, testIdSymboluSceny } from './kameraTestowa';
 import { DARK_SCADA_SLD_PALETTE } from '../../theme/palette';
 import type {
@@ -216,14 +218,34 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
     // `SupplyPathHighlight` nie zna, więc koloru energizacji nie dostaje (brak stanu ≠ stan).
     // Intencja bez zmian: rysunek stacji ciągu głównego niesie kolor energizacji, nie bazowy.
     const overlay = buildEnergizationOverlayForTest(enm);
-    const tor = scene.segments.find(
-      (s) => (s.meta?.ownerRef ?? '').startsWith('stn/') && overlay.energizedByOwnerRef?.[s.meta!.ownerRef!] === true,
-    );
-    expect(tor, 'scena niesie energizowany tor SN stacji').toBeDefined();
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    // R8 (karta SLD-SKALA-I-NAWIGACJA): w kadrze całej sieci stacja SN/nN jest SYMBOLEM STACJI —
+    // szyna i nogi toru niosą barwę energizacji stacji (ten sam kolor wyróżnienia). Tor wybrany
+    // spośród energizowanych torów stacji narysowanych symbolem stacji z szyną (stacja
+    // rozstrzygnięta tą samą hierarchią co kanwa, `poleIStacjaObiektu`).
+    const hierarchia = hierarchiaCelowTrafienia(enm, scene);
+    const symbolZSzyna = (stacja: string | undefined) =>
+      [...container.querySelectorAll('[data-symbol-stacji="true"]')].find(
+        (g) => g.getAttribute('data-owner-ref') === stacja && g.querySelector('[data-szyna-stacji]') !== null,
+      );
+    const tor = scene.segments.find(
+      (s) =>
+        (s.meta?.ownerRef ?? '').startsWith('stn/') &&
+        overlay.energizedByOwnerRef?.[s.meta!.ownerRef!] === true &&
+        symbolZSzyna(poleIStacjaObiektu(hierarchia, s.meta!.ownerRef!).stacja) !== undefined,
+    );
+    expect(tor, 'scena niesie energizowany tor stacji narysowanej symbolem stacji').toBeDefined();
+    const symbolStacji = symbolZSzyna(poleIStacjaObiektu(hierarchia, tor!.meta!.ownerRef!).stacja);
+    const barwySymbolu = new Set(
+      [...symbolStacji!.querySelectorAll('[data-szyna-stacji], [data-nogi-stacji]')].map((p) => p.getAttribute('stroke')),
+    );
+    expect([...barwySymbolu]).toEqual([DARK_SCADA_SLD_PALETTE.highlight.energized]);
+    // Kadr roboczy (natywne kółko do skali czytania nad torem): odcinek toru ma własny węzeł.
+    const koniec = tor!.points[tor!.points.length - 1];
+    powiekszKolkiemDoSkali(container, 1, { x: (tor!.points[0].x + koniec.x) / 2, y: (tor!.points[0].y + koniec.y) / 2 });
     const sciezka = container.querySelector(`[data-testid="sld-v3-segments"] [data-owner-ref="${CSS.escape(tor!.meta!.ownerRef!)}"]`)
       ?? [...container.querySelectorAll('path[data-owner-ref]')].find((n) => n.getAttribute('data-owner-ref') === tor!.meta!.ownerRef);
-    expect(sciezka, 'tor stacji narysowany na kanwie').toBeTruthy();
+    expect(sciezka, 'tor stacji narysowany na kanwie w kadrze roboczym').toBeTruthy();
     expect(sciezka!.getAttribute('data-energized')).toBe('true');
     expect(sciezka!.getAttribute('stroke')).toBe(DARK_SCADA_SLD_PALETTE.highlight.energized);
   });

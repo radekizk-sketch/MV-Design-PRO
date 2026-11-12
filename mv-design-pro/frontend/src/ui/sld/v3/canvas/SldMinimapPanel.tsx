@@ -12,9 +12,10 @@
  * (`SldCanvasV3.handlePointerMove`) — klik i przeciągnięcie to ten sam gest o
  * różnej długości, więc jedna ścieżka kodu obsługuje oba (klik = wciśnięcie
  * bez ruchu). Dzięki temu spec e2e klikający natywnie ćwiczy dokładnie ten
- * kod, którego używa projektant.
+ * kod, którego używa projektant. Kółko nad nawigatorem zmienia skalę kamery wokół środka
+ * bieżącego kadru (`onWheelZoom`, karta SLD-SKALA-I-NAWIGACJA R7).
  */
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { MinimapProjection, MinimapRect, MinimapShape } from './minimap';
 
 export interface SldMinimapPanelProps {
@@ -24,6 +25,10 @@ export interface SldMinimapPanelProps {
   readonly frame: MinimapRect;
   /** Punkt WSKAZANY w panelu (piksele panelu) — wołający przelicza na świat. */
   readonly onNavigate: (point: { readonly x: number; readonly y: number }) => void;
+  /** Kółko nad nawigatorem (karta SLD-SKALA-I-NAWIGACJA, R7): zmiana skali kamery wokół środka
+   *  bieżącego kadru — ramka kadru rośnie albo maleje w miejscu, w którym stoi. `deltaY` jak
+   *  w zdarzeniu `wheel` (dodatnia — oddalenie). */
+  readonly onWheelZoom?: (deltaY: number) => void;
 }
 
 /** Kolory nawigatora: neutralna szarość szkieletu + akcent kadru. Świadomie
@@ -33,9 +38,26 @@ export interface SldMinimapPanelProps {
 const MINIMAP_FRAME_STROKE = '#4EA1FF';
 
 export function SldMinimapPanel(props: SldMinimapPanelProps): JSX.Element {
-  const { projection, shapes, frame, onNavigate } = props;
+  const { projection, shapes, frame, onNavigate, onWheelZoom } = props;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const dragging = useRef(false);
+
+  // Kółko — natywny nasłuch z `passive: false` (jak kanwa): React podpina `onWheel` pasywnie,
+  // więc `preventDefault` nie zatrzymałby przewijania strony pod nawigatorem.
+  const kolko = useRef(onWheelZoom);
+  kolko.current = onWheelZoom;
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const handler = (event: WheelEvent) => {
+      if (!kolko.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      kolko.current(event.deltaY);
+    };
+    svg.addEventListener('wheel', handler, { passive: false });
+    return () => svg.removeEventListener('wheel', handler);
+  }, []);
 
   const pointFromEvent = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;

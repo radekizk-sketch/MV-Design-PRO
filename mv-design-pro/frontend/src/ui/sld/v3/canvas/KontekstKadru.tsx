@@ -104,6 +104,101 @@ export function MenuDopasujDo(props: {
   );
 }
 
+/**
+ * Wskaźnik skali kanwy (karta SLD-SKALA-I-NAWIGACJA, R7): skala kamery w procentach SKALI CZYTANIA
+ * (100 % = aparaty w rozmiarze nominalnym, `camera.ts` `SKALA_CZYTANIA`) z menu kadru: cała sieć,
+ * zaznaczenie, 100 %. Pozycja „Zaznaczenie” bez zaznaczenia jest nieaktywna z podaną przyczyną.
+ */
+export function WskaznikSkali(props: {
+  readonly procent: number | null;
+  readonly zaznaczenie: number;
+  readonly onCalaSiec: () => void;
+  readonly onZaznaczenie: () => void;
+  readonly onSkalaCzytania: () => void;
+}): JSX.Element {
+  const { procent, zaznaczenie, onCalaSiec, onZaznaczenie, onSkalaCzytania } = props;
+  const [otwarte, setOtwarte] = useState(false);
+  const korzen = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!otwarte) return undefined;
+    const poza = (zdarzenie: PointerEvent) => {
+      if (!korzen.current?.contains(zdarzenie.target as Node)) setOtwarte(false);
+    };
+    const klawisz = (zdarzenie: KeyboardEvent) => {
+      if (zdarzenie.key === 'Escape') setOtwarte(false);
+    };
+    document.addEventListener('pointerdown', poza);
+    document.addEventListener('keydown', klawisz);
+    return () => {
+      document.removeEventListener('pointerdown', poza);
+      document.removeEventListener('keydown', klawisz);
+    };
+  }, [otwarte]);
+  const pozycje: readonly {
+    readonly id: string;
+    readonly etykieta: string;
+    readonly opis: string;
+    readonly przyczyna: string | null;
+    readonly akcja: () => void;
+  }[] = [
+    { id: 'siec', etykieta: 'Cała sieć', opis: 'Shift+F', przyczyna: null, akcja: onCalaSiec },
+    {
+      id: 'zaznaczenie',
+      etykieta: 'Zaznaczenie',
+      opis: 'F',
+      przyczyna: zaznaczenie > 0 ? null : 'Brak zaznaczenia — zaznacz obiekt na schemacie albo w drzewie',
+      akcja: onZaznaczenie,
+    },
+    { id: '100', etykieta: '100 % — skala czytania', opis: 'Shift+1 (wokół kursora)', przyczyna: null, akcja: onSkalaCzytania },
+  ];
+  return (
+    <div ref={korzen} className="relative" data-testid="sld-v3-wskaznik-skali">
+      <button
+        type="button"
+        onClick={() => setOtwarte((v) => !v)}
+        aria-expanded={otwarte}
+        aria-haspopup="menu"
+        aria-label={procent === null ? 'Skala schematu' : `Skala schematu: ${procent} % skali czytania`}
+        data-testid="sld-v3-wskaznik-skali-toggle"
+        data-procent={procent ?? undefined}
+        title="Skala w procentach skali czytania (100 % — aparaty w rozmiarze nominalnym)"
+        className={`${KLASA_PRZYCISKU_DOKU} tabular-nums`}
+      >
+        {procent === null ? '— %' : `${procent} %`} ▾
+      </button>
+      {otwarte && (
+        <ul
+          role="menu"
+          aria-label="Skala schematu"
+          data-testid="sld-v3-wskaznik-skali-menu"
+          className="absolute right-0 z-50 mt-1 w-64 rounded border border-scada-border bg-scada-panel-raised p-1 shadow-lg"
+        >
+          {pozycje.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={p.przyczyna !== null}
+                aria-disabled={p.przyczyna !== null}
+                data-testid={`sld-v3-skala-${p.id}`}
+                title={p.przyczyna ?? undefined}
+                onClick={() => {
+                  setOtwarte(false);
+                  p.akcja();
+                }}
+                className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left text-[13px] text-scada-text hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="font-semibold">{p.etykieta}</span>
+                <span className="text-[13px] text-scada-muted">{p.przyczyna ?? p.opis}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function PasekKontekstuKadru(props: {
   readonly sciezka: readonly PoziomSciezki[];
   readonly onPoziom: (poziom: PoziomSciezki) => void;
