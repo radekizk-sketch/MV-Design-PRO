@@ -282,8 +282,16 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
         `maks|Δ|=${stab.maxAnchorDisplacement} poziome=${stab.movedHorizontalCount} pionowe=${stab.movedVerticalCount}`,
     );
 
-    // Zmiana MA skutek (sanity — inaczej test nic nie sprawdza).
-    expect(stab.anchorMovementCount).toBeGreaterThan(0);
+    // Zmiana MA skutek (sanity — inaczej test nic nie sprawdza): po operacji jest o jedną
+    // stację więcej. Dawniej sanity żądało przesunięcia choć jednej istniejącej kotwicy —
+    // to był skutek uboczny upakowania footprintu, nie wymaganie. Od integracji 2026-11
+    // (fikstura po scaleniu ZU-JEDEN-NOSNIK, karta SLD-SKALA-I-NAWIGACJA) stacja dopisana na
+    // ogonie nie rusza żadnej kotwicy (pomiar: przesunięte=0; ta sama wartość w macierzy
+    // lokalności SLD-LOC „+1 stacja na ogonie magistrali” dla każdej sieci) — to jest
+    // lokalność doskonała, której ten test pilnuje, więc zero przesunięć jest dopuszczalne.
+    expect(after.meta.stationCount).toBe(before.meta.stationCount + 1);
+    // Miara porównuje realny zbiór kotwic (wspólnych obu scenom), nie pusty.
+    expect(stab.anchorMovementCount + stab.unchangedSubtreeMovementCount).toBeGreaterThan(0);
     // REGUŁA OGÓLNA: dodanie stacji na ogonie magistrali wydłuża magistralę
     // POZIOMO — żadna kotwica nie jest pchana PIONOWO, DOPÓKI podział arkusza
     // na wiersze (S9-1 łamanie arkusza, `sheetRowStationIds`) zostaje ten sam.
