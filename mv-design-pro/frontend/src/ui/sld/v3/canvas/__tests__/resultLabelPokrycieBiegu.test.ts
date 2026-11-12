@@ -155,8 +155,10 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
     const bezTabeli = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, new Set());
     expect(bezTabeli.inGpzTable).toBe(0);
     expect(bezTabeli.withoutTemplate).toBe(2);
-    // L0: blok GPZ zwinięty, adnotacji nie ma — zbiór pusty.
-    expect(resultPointsInGpzTable(buildSceneV3(enm)).size).toBe(0);
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): dawny widok L0 ze zwiniętym blokiem GPZ (zbiór
+    // pusty) nie istnieje — tabela GPZ jest na rysunku przy każdej skali, a zbiór jest funkcją
+    // SCENY, nie skali kamery: ta sama scena daje ten sam zbiór (deterministycznie).
+    expect([...resultPointsInGpzTable(buildSceneV3(enm))].sort()).toEqual([...gpzTabela].sort());
   });
 
   it('model DEKLARUJE 7 punktów jako nierysowane (2 mufy ciągu + 5 zacisków pól RMU) — to nie jest brak warstwy', () => {

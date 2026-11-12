@@ -429,6 +429,9 @@ const KOTWICE_DOZWOLONE_DLA_KLASY = {
   'portal-nn': [],
   etykieta: ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
   'znacznik-wyniku': ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
+  // R6 (karta SLD-SKALA-I-NAWIGACJA): obszar celu niesie wprost ref pola albo stacji.
+  pole: ['pole'],
+  stacja: ['stacja'],
 } satisfies Record<HitObjectClass, readonly MenuAnchorKind[]>;
 
 function kotwicaDopuszczalna(klasa: HitObjectClass | undefined, kotwica: MenuAnchorKind): boolean {

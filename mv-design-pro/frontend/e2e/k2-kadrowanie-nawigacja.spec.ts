@@ -58,7 +58,7 @@ interface PomiarKadru {
   readonly widoczneStacje: readonly string[];
   /** `ownerRef` rysunku w obszarze, nieprzyciemnionego (posortowane). */
   readonly widoczneOwnerRef: readonly string[];
-  readonly ukryteOpisyCelu: string | null;
+  readonly minOpisCeluPx: string | null;
 }
 /**
  * Refy rysunku każdej stacji — z PÓL REKORDÓW modelu zwróconego przez backend (szyny,
@@ -141,7 +141,7 @@ async function zmierzKadr(page: Page, enm: Enm, stacjaRef: string): Promise<Pomi
         stacja,
         widoczneStacje: [...widoczneStacje].sort(),
         widoczneOwnerRef: [...widoczneOwnerRef].sort(),
-        ukryteOpisyCelu: root.getAttribute('data-ukryte-opisy-celu'),
+        minOpisCeluPx: root.getAttribute('data-min-opis-celu-px'),
       };
     },
     { stacje: refyStacji(enm), cel: stacjaRef },
@@ -294,14 +294,11 @@ for (const motyw of [
       expect(s.right, `${stacja.nazwa}: (a) prawa krawędź w kadrze`).toBeLessThanOrEqual(pomiar.obszar.right + 0.5);
       expect(s.top, `${stacja.nazwa}: (a) górna krawędź pod paskiem narzędzi i ścieżką`).toBeGreaterThanOrEqual(pomiar.obszar.top - 0.5);
       expect(s.bottom, `${stacja.nazwa}: (a) dolna krawędź w kadrze`).toBeLessThanOrEqual(pomiar.obszar.bottom + 0.5);
-      expect(pomiar.ukryteOpisyCelu, `${stacja.nazwa}: (b) ukryte opisy celu`).toBe('0');
+      // (b) Karta SLD-SKALA-I-NAWIGACJA (R3, R4): licznika ukrytych opisów nie ma — tożsamość celu
+      // nie znika, a narysowany opis celu ma pismo co najmniej progu czytelności (9 px).
+      await expect(page.getByTestId('sld-v3-hidden-labels-hint'), `${stacja.nazwa}: (b) brak licznika`).toHaveCount(0);
+      expect(Number(pomiar.minOpisCeluPx), `${stacja.nazwa}: (b) najmniejsze pismo opisu celu`).toBeGreaterThanOrEqual(9 - 0.01);
       expect(pomiar.widoczneStacje, `${stacja.nazwa}: (c) widoczne stacje = {cel}`).toEqual([ref]);
-      // (b) komunikat ukrytych opisów (jeśli jest) mówi wyłącznie o opisach SPOZA celu.
-      const hint = page.getByTestId('sld-v3-hidden-labels-hint');
-      if ((await hint.count()) > 0 && Number(await hint.getAttribute('data-hidden-count')) > 0) {
-        await expect(hint, `${stacja.nazwa}: komunikat o opisach poza celem`).toHaveText(/poza celem kadru — opisy celu widoczne w całości$/);
-        expect(await hint.getAttribute('data-opisy-celu')).toBeNull();
-      }
       kadry.push({ nazwa: stacja.nazwa, viewBox: vb, ownerRef: pomiar.widoczneOwnerRef.join('|') });
       await zrzut(page, `stacja-${stacja.plik}`, motyw.klucz);
     }

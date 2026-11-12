@@ -19,6 +19,7 @@ import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { pierwszaStacjaZUchwytem } from './uchwytStacji';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
@@ -85,6 +86,15 @@ function renderZInspektorem() {
       <InspektorKanwyTestowy />
     </>,
   );
+}
+
+/** Karta SLD-SKALA-I-NAWIGACJA, R6: aparat, transformator i źródło są celem kliku dopiero na
+ *  kadrze roboczym (symbol rozpoznawalny na ekranie); z kadru całej sieci klik trafia stację.
+ *  Projektant dojeżdża tam kółkiem — ta sama ścieżka natywna. */
+function renderZInspektoremNaKadrzeRoboczym() {
+  const wynik = renderZInspektorem();
+  powiekszKolkiemDoSkali(wynik.container, 1);
+  return wynik;
 }
 
 function pierwszySymbol(predykat: (s: ReturnType<typeof buildSceneV3>['symbols'][number]) => boolean) {
@@ -160,7 +170,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
 
   it('klik w transformator: selekcja niesie REALNY ref transformatora, inspektor pokazuje transformator', () => {
     const { scene, index } = pierwszySymbol((s) => s.meta?.elementKind === 'transformer');
-    const { container } = renderZInspektorem();
+    const { container } = renderZInspektoremNaKadrzeRoboczym();
     fireEvent.click(uchwytSymbolu(container, scene, index)!);
     const ref = zaznaczone()[0];
     expect(enm.transformers.some((t) => t.ref_id === ref)).toBe(true);
@@ -173,7 +183,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
     // i bez stanu rekordu) nie ma stanu w modelu — intencja testu to łącznik ZE stanem glifu,
     // więc wybór wprost po stanie.
     const { scene, index, symbol } = pierwszySymbol((s) => s.meta?.elementKind === 'apparatus' && s.state !== undefined);
-    const { container } = renderZInspektorem();
+    const { container } = renderZInspektoremNaKadrzeRoboczym();
     fireEvent.click(uchwytSymbolu(container, scene, index)!);
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-rodzaj', 'apparatus');
     expect(screen.getByTestId('inspektor-element-sciezka').textContent).toContain('›');
@@ -190,7 +200,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
   // wyników są obecne; doszły nagłówek i karta rodzaju „źródło".
   it('klik w źródło OZE: karta techniczna źródła, działania z menu źródła i sekcja wyników', () => {
     const { scene, index } = pierwszySymbol((s) => s.meta?.elementKind === 'der');
-    const { container } = renderZInspektorem();
+    const { container } = renderZInspektoremNaKadrzeRoboczym();
     expect(() => fireEvent.click(uchwytSymbolu(container, scene, index)!)).not.toThrow();
     const panel = screen.getByTestId('inspektor-element-kanwy');
     expect(panel).toHaveAttribute('data-rodzaj', 'generator');

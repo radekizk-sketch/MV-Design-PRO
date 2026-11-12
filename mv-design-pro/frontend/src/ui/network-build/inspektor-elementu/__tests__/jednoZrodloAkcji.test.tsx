@@ -30,6 +30,7 @@ import { buildW1MatrixFixture } from '../../../sld/v3/scene/__tests__/fixtures/w
 import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspace';
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from './inspektorKanwyTestowy';
+import { powiekszKolkiemDoSkali } from '../../../sld/v3/canvas/__tests__/kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SIEC = (
@@ -99,7 +100,10 @@ interface Przypadek {
 /** Uchwyt stacji jednej sceny (karta SLD-SKALA-I-NAWIGACJA R1): obrys trafienia napisu
  *  identyfikacji `<ref>#name-row-0` — dawniej zwinięty symbol stacji widoku ogólnego. */
 function stacja(scena: SceneV3): string {
-  const ref = scena.meta.stationTraversalOrder[0];
+  // Pierwsza stacja obchodu, która MA napis identyfikacji w pasie nazw — GPZ (pierwszy w obchodzie)
+  // ma nagłówek strefy GPZ, nie wiersz `#name-row-0`, więc wskazanie „pierwszy w obchodzie” celowało
+  // w nieistniejący uchwyt.
+  const ref = scena.meta.stationTraversalOrder.find((r) => scena.labels.some((l) => l.ownerRef === `${r}#name-row-0`));
   expect(ref, 'stacja w scenie').toBeDefined();
   return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
 }
@@ -155,6 +159,10 @@ describe.each(PRZYPADKI)('menu kanwy = pasek inspektora: $nazwa', (przypadek) =>
       </>,
     );
     const selektor = przypadek.uchwyt(buildSceneV3(przypadek.enm));
+    // Karta SLD-SKALA-I-NAWIGACJA, R6: obiekt rysunku (aparat, pole, transformator, źródło) jest
+    // własnym celem kliku na kadrze roboczym — z kadru całej sieci klik w jego obręb trafia pole albo
+    // stację. Projektant dojeżdża tam natywnym kółkiem; napis stacji jest uchwytem w każdej skali.
+    if (selektor.includes('data-hit-for')) powiekszKolkiemDoSkali(container, 1);
     const uchwyt = container.querySelector(selektor);
     expect(uchwyt, `uchwyt trafienia ${selektor}`).not.toBeNull();
 

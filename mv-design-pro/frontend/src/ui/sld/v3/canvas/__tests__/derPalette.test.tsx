@@ -20,6 +20,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { stacjeZUchwytem } from './uchwytStacji';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
@@ -126,6 +127,9 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('der-palette-btn-BESS'));
     expect(screen.getByTestId('sld-v3-der-cancel')).toBeTruthy();
+    // R6 (karta SLD-SKALA-I-NAWIGACJA): aparat jest celem kliku dopiero na kadrze roboczym
+    // (z kadru całej sieci klik trafia stację, czyli byłby dropem) — natywne kółko do skali czytania.
+    powiekszKolkiemDoSkali(container, 1);
 
     // Karta S9-4: klik w uchwyt aparatu (patrz komentarz w teście (a)).
     const apparatusTestId = scene.symbols[apparatusIndex].meta?.testId ?? `sld-v3-symbol-${apparatusIndex}`;

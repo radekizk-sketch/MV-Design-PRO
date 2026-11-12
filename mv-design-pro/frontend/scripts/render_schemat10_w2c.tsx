@@ -138,18 +138,18 @@ function gate(testCase: W2cCase): void {
         .map((p) => `${p.label.text}→${p.text}`);
       const line =
         `W2c ${testCase.id} @${scale}: etykiety=${scene.labels.length}` +
-        ` narysowane=${plan.drawn.length} ukryte-dane=${plan.hiddenDetail.length}` +
+        ` narysowane=${plan.drawn.length} ukryte-dane=${(scene.labels.length - plan.drawn.length - plan.tozsamosciWPodpowiedzi.length)}` +
         `, etykiety-kolizje=${collisions.length}` +
         `, etykiety-symbole=${onDrawing.length}${onDrawing.length ? ` [${onDrawing.join(', ')}]` : ''}` +
-        `, utracone-tożsamości=${plan.droppedIdentity.length}` +
-        `${plan.droppedIdentity.length ? ` [${plan.droppedIdentity.map((l) => l.ownerRef).join(', ')}]` : ''}` +
+        `, tożsamości-w-podpowiedzi=${plan.tozsamosciWPodpowiedzi.length}` +
+        `${plan.tozsamosciWPodpowiedzi.length ? ` [${plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef).join(', ')}]` : ''}` +
         `, poza-arkuszem=${outside.length}` +
         `, skrócone-identyfikatory=${truncatedIds.length}${truncatedIds.length ? ` [${truncatedIds.join(', ')}]` : ''}` +
         (czytanie ? `, identyfikatory-boczne=${lateralIds.length - lateralMissing.length}/${lateralIds.length}` : '');
       const failed =
         collisions.length > 0 ||
         onDrawing.length > 0 ||
-        plan.droppedIdentity.length > 0 ||
+        plan.tozsamosciWPodpowiedzi.length > 0 ||
         outside.length > 0 ||
         truncatedIds.length > 0 ||
         lateralMissing.length > 0 ||

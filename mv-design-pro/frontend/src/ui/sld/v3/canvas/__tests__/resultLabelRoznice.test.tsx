@@ -28,6 +28,7 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useAppStateStore } from '../../../../app-state';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { SKALA_WYNIKOW, powiekszKolkiemDoSkali } from './kameraTestowa';
 import { buildResultLabelsFromScene, resultLabelLineQuantity, orientedSegmentRefs } from '../resultLabels';
 import {
   RESULT_LABEL_TEMPLATES,
@@ -315,6 +316,9 @@ describe('Kanwa w trybie różnic A/B', () => {
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaJednaLinia() });
 
     const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
+    // R3 (karta SLD-SKALA-I-NAWIGACJA): wartości wyników są rysowane, gdy pismo wyników (t4) jest
+    // czytelne na ekranie — projektant powiększa natywnym kółkiem do skali, przy której się pojawiają.
+    powiekszKolkiemDoSkali(container, SKALA_WYNIKOW);
 
     const tresc = trescWarstwyWynikowej(container);
     expect(tresc).toContain('Δ Ik″');
@@ -341,6 +345,9 @@ describe('Kanwa w trybie różnic A/B', () => {
     zasiejBiegiNieaktualne([{ id: 'sc-run-b', analysisType: 'SC_3F' }]);
 
     const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
+    // R3 (karta SLD-SKALA-I-NAWIGACJA): wartości wyników są rysowane, gdy pismo wyników (t4) jest
+    // czytelne na ekranie — projektant powiększa natywnym kółkiem do skali, przy której się pojawiają.
+    powiekszKolkiemDoSkali(container, SKALA_WYNIKOW);
 
     const warstwa = container.querySelector('[data-testid="sld-v3-result-labels"]')!;
     const znaczniki = Array.from(warstwa.querySelectorAll('[data-result-stale]'));
@@ -388,6 +395,9 @@ describe('Kanwa w trybie różnic A/B', () => {
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaJednaLinia() });
 
     const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
+    // R3 (karta SLD-SKALA-I-NAWIGACJA): wartości wyników są rysowane, gdy pismo wyników (t4) jest
+    // czytelne na ekranie — projektant powiększa natywnym kółkiem do skali, przy której się pojawiają.
+    powiekszKolkiemDoSkali(container, SKALA_WYNIKOW);
     otworzPanelFiltrow();
 
     await user.click(screen.getByTestId('sld-v3-result-roznice-wylacz'));

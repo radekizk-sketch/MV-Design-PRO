@@ -198,7 +198,10 @@ describe('pokrycie: każdy znak etykiet sceny na każdej fiksturze repozytorium 
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 58 → 59 — fikstura `pola_gpz_szablonow.json`.
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 59 → 63 — sceny generatora
     // `gpz110kvPolaSzablonow`, `gpz110kvPoleZu{Z13,Z14,Z15}` (public/test-fixtures).
-    expect(FIKSTURY.length).toBe(63);
+    // Pomiar 2026-11-12 (karta SLD-SKALA-I-NAWIGACJA, czerwień odziedziczona): 63 → 66 —
+    // `stacjeKonstrukcjiPol.enm.json` w public/test-fixtures i scene/__tests__/fixtures (3945dad1c)
+    // oraz `glowice_kablowe_pol_gpz.json` (de8419487); ta sama liczba co test mostków i węzłów.
+    expect(FIKSTURY.length).toBe(66);
   });
 
   it('LOD 2 (pełna treść etykiet): zero znaków poza tabelą', () => {

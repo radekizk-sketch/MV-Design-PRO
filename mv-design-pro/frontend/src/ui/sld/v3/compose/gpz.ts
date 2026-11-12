@@ -2703,6 +2703,9 @@ function composeGpzPrzebieg(
       placement: 'above',
       // KD-8 poz. 5: etykieta siada NAD torem szyny — prześwit toru, nie symbolu.
       clearance: BUSBAR_LABEL_PATH_CLEARANCE,
+      // Karta SLD-SKALA-I-NAWIGACJA (R4): obrys kotwicy = oś szyny sekcji — plan etykiet
+      // przesuwa napis wzdłuż szyny, gdy przy lewym końcu nie ma miejsca na pełne brzmienie.
+      obrysKotwicy: { x: busLeftX, y: snBusY, width: busRightX - busLeftX, height: 0 },
     });
     tag(['gpz.section.label']);
 
@@ -3294,6 +3297,7 @@ function composeGpzPrzebieg(
           anchor: { x: snapToGrid((busLeft + busRight) / 2), y: hvBusY },
           placement: 'above',
           clearance: BUSBAR_LABEL_PATH_CLEARANCE,
+          obrysKotwicy: { x: busLeft, y: hvBusY, width: busRight - busLeft, height: 0 },
         });
         tag(['gpz.bus.hv.label']);
       }
@@ -3356,6 +3360,8 @@ function composeGpzPrzebieg(
         anchor: { x: busLeft, y: hvBusY },
         placement: 'above',
         clearance: BUSBAR_LABEL_PATH_CLEARANCE,
+        // R4: oś szyny WN jako obrys kotwicy — napis przesuwa się wzdłuż szyny.
+        obrysKotwicy: { x: busLeft, y: hvBusY, width: busRight - busLeft, height: 0 },
       });
       tag(['gpz.bus.hv.label']);
     }

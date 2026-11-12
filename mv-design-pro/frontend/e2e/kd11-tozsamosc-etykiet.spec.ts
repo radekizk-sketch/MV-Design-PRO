@@ -11,11 +11,12 @@
  *  2. blok GPZ rozwijany KLIKIEM w blok na przeglądzie;
  *  3. kadr ustawiany przyciskiem „Dopasuj widok";
  *  4. asercja: KAŻDA nazwa stacji Z MODELU (odczytana z API `GET /api/cases/
- *     {id}/enm`, nie z literału UI) ma na rysunku podpis tożsamości — pełny albo
- *     skrócony z wielokropkiem wg kanonicznej reguły skracania; zero podpisów
- *     tożsamości porzuconych; wskaźnik „Ukryto N opisów" dotyczy WYŁĄCZNIE
- *     danych szczegółowych;
- *  5. przybliżenie kółkiem ⇒ dane szczegółowe wracają (licznik ukrytych maleje).
+ *     {id}/enm`, nie z literału UI) ma na rysunku podpis tożsamości W PEŁNYM
+ *     brzmieniu, bez wielokropka (karta SLD-SKALA-I-NAWIGACJA, R4: tożsamość nie
+ *     jest skracana ani porzucana); na ekranie nie ma licznika „Ukryto N opisów";
+ *     niewidoczne są wyłącznie dane, których pismo jest nieczytelne przy tej skali
+ *     (kanał audytu `data-dane-nieczytelne`);
+ *  5. przybliżenie kółkiem ⇒ dane szczegółowe wracają (dane nieczytelne maleją).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
@@ -155,8 +156,9 @@ async function tozsamosciStacjiZModelu(
     .map((s) => (s.name ?? '').trim())
     .filter((n) => n.length > 0)
     .map((nazwa) => {
-      const kod = nazwa.match(/\bS\d{2,3}\b/i)?.[0].toUpperCase();
-      return kod ? [nazwa, kod] : [nazwa];
+      // Jedna scena (karta SLD-SKALA-I-NAWIGACJA, R1): pasmo nazw niesie zawsze pełną nazwę,
+      // nie kod poziomu przeglądowego.
+      return [nazwa];
     });
   expect(warianty.length, 'model musi nieść nazwane stacje').toBeGreaterThan(0);
   return warianty;
@@ -193,33 +195,14 @@ async function otworzSchemat(page: Page, seed: Seed): Promise<void> {
 }
 
 /**
- * Czy podpis na rysunku ODNOSI SIĘ do nazwy z modelu. Dwa dopuszczalne
- * odstępstwa, oba kanoniczne:
- *  - podpis SKRÓCONY z wielokropkiem (reguła skracania KD-11), więc porównujemy
- *    rdzeń bez wielokropka;
- *  - podpis ZŁOŻONY przez kompozycję (nagłówek bloku GPZ to „⟨nazwa⟩ ·
- *    ⟨UHV/ULV⟩ kV"), więc nazwa modelu może być PREFIKSEM podpisu.
- * Rdzeń krótszy niż 2 znaki nie jest dowodem tożsamości.
+ * Czy podpis na rysunku jest PEŁNĄ nazwą z modelu (karta SLD-SKALA-I-NAWIGACJA, R4: tożsamości
+ * nie skraca się). Jedno dopuszczalne odstępstwo, kanoniczne: podpis ZŁOŻONY przez kompozycję
+ * (nagłówek bloku GPZ to „⟨nazwa⟩ · ⟨UHV/ULV⟩ kV"), więc nazwa modelu może być PREFIKSEM
+ * podpisu, po którym stoi spacja. Wielokropek w podpisie tożsamości jest defektem.
  */
-function odpowiadaTekstowi(podpis: string, oczekiwany: string): boolean {
-  // (c) skrócenie W ŚRODKU wyrazu z zachowaniem OGONA ROZRÓŻNIAJĄCEGO —
-  // kanoniczna reguła 3 z `sld/v3/core/text.ts` („Stacja SN-01" → „S…SN-01",
-  // „GPZ Referencyjny 15 kV" → „GPZ…15 kV"). Ta forma istniała w rendererze od
-  // karty KD-11, ale helper znał WYŁĄCZNIE wielokropek na końcu, więc uznawał
-  // ją za brak podpisu. Defekt był niewidoczny, dopóki wszystkie nazwy mieściły
-  // się w kadrze w całości; ujawnił się, gdy rysunek stał się szerszy (stacje z
-  // pełnym polem transformatorowym, karta KOMPLETNOSC-POLA-TR). Intencja bramki
-  // BEZ ZMIAN: podpis ma pozwolić rozpoznać TĘ stację — przy skróceniu
-  // środkowym rozpoznajemy ją po głowie ORAZ po ogonie.
-  const srodkowy = podpis.indexOf('…');
-  if (srodkowy > 0 && srodkowy < podpis.length - 1) {
-    const glowa = podpis.slice(0, srodkowy);
-    const ogon = podpis.slice(srodkowy + 1);
-    return oczekiwany.startsWith(glowa) && oczekiwany.endsWith(ogon);
-  }
-  const rdzen = podpis.endsWith('…') ? podpis.slice(0, -1) : podpis;
-  if (rdzen.length < 2) return false;
-  return rdzen.startsWith(oczekiwany) || oczekiwany.startsWith(rdzen);
+function pelnaNazwa(podpis: string, oczekiwany: string): boolean {
+  if (podpis.includes('…')) return false;
+  return podpis === oczekiwany || podpis.startsWith(`${oczekiwany} `);
 }
 
 test('po „Dopasuj widok" rysunek z rozwinietym GPZ niesie podpisy tozsamosci (bramka KD-11)', async ({
@@ -263,37 +246,32 @@ test('po „Dopasuj widok" rysunek z rozwinietym GPZ niesie podpisy tozsamosci (
   await expect(page).not.toHaveURL(/[?&]sel=/, { timeout: 10000 });
   await page.waitForTimeout(500);
 
-  /** Sprawdza JEDEN kadr: tożsamość każdej stacji z modelu jest na rysunku,
-   *  nic z tożsamości nie zostało porzucone, a ukryte są tylko dane. */
+  /** Sprawdza JEDEN kadr: tożsamość każdej stacji z modelu jest na rysunku w pełnym
+   *  brzmieniu, licznika ukrytych opisów nie ma, a niewidoczne są tylko dane. */
   async function zmierzKadr(nazwaKadru: string): Promise<number> {
     const podpisyTozsamosci = etykiety.locator('g[data-label-role="tozsamosc"]');
     const liczbaTozsamosci = await podpisyTozsamosci.count();
     expect(liczbaTozsamosci, `${nazwaKadru}: rysunek bez podpisow tozsamosci = defekt KD-11`).toBeGreaterThan(0);
-    await expect(etykiety).toHaveAttribute('data-dropped-identity', '0');
 
     const teksty = (await podpisyTozsamosci.locator('text').allTextContents()).map((t) => t.trim());
+    expect(teksty.filter((t) => t.includes('…')), `${nazwaKadru}: tozsamosc skrocona wielokropkiem`).toEqual([]);
     for (const warianty of tozsamosciStacji) {
       expect(
-        teksty.some((t) => warianty.some((w) => odpowiadaTekstowi(t, w))),
-        `${nazwaKadru}: brak podpisu tozsamosci stacji „${warianty[0]}" (podpisy: ${teksty.join(' | ')})`,
+        teksty.some((t) => warianty.some((w) => pelnaNazwa(t, w))),
+        `${nazwaKadru}: brak pelnego podpisu tozsamosci stacji „${warianty[0]}" (podpisy: ${teksty.join(' | ')})`,
       ).toBe(true);
     }
-    // Kadr ma być CZYTELNY, nie ograniczony do kikutów: co najmniej jedna
-    // tożsamość stacji jest na rysunku w PEŁNEJ postaci (bez skrócenia).
-    expect(
-      tozsamosciStacji.some((warianty) => warianty.some((w) => teksty.includes(w))),
-      `${nazwaKadru}: zadna tozsamosc stacji nie zmiescila sie w calosci (podpisy: ${teksty.join(' | ')})`,
-    ).toBe(true);
 
-    // Ukryte są WYŁĄCZNIE dane szczegółowe — i to one stoją we wskaźniku.
-    const ukryte = Number(await etykiety.getAttribute('data-hidden-unreadable'));
-    expect(ukryte, `${nazwaKadru}: kadr ma ukrywać opisy szczegółowe`).toBeGreaterThan(0);
-    await expect(page.getByTestId('sld-v3-hidden-labels-hint')).toContainText('Ukryto');
-    return ukryte;
+    // Niewidoczne są WYŁĄCZNIE dane szczegółowe, a na ekranie nie ma licznika.
+    const nieczytelne = Number(await etykiety.getAttribute('data-dane-nieczytelne'));
+    expect(nieczytelne, `${nazwaKadru}: kadr ma nie pokazywac nieczytelnych danych`).toBeGreaterThan(0);
+    await expect(page.getByTestId('sld-v3-hidden-labels-hint')).toHaveCount(0);
+    await expect(canvas).not.toContainText('Ukryto');
+    return nieczytelne;
   }
 
   // (3) KADR ROZWINIĘCIA — dokładnie ten ze zrzutu odbioru KD-8, na którym
-  // rysunek nie niósł ANI JEDNEGO podpisu („Ukryto 35 opisów").
+  // rysunek nie niósł ANI JEDNEGO podpisu (dawny licznik „Ukryto 35 opisów").
   await zmierzKadr('kadr rozwiniecia GPZ');
 
   // (4) „DOPASUJ WIDOK" — kadr z rozstrzygnięcia karty.
@@ -301,14 +279,14 @@ test('po „Dopasuj widok" rysunek z rozwinietym GPZ niesie podpisy tozsamosci (
   await page.waitForTimeout(800);
   const ukryte = await zmierzKadr('kadr „Dopasuj widok"');
 
-  // (6) PRZYBLIŻENIE kółkiem ⇒ dane szczegółowe wracają (licznik maleje).
+  // (6) PRZYBLIŻENIE kółkiem ⇒ dane szczegółowe wracają (dane nieczytelne maleją).
   await page.mouse.move(canvasBox!.x + canvasBox!.width / 2, canvasBox!.y + canvasBox!.height / 2);
   for (let krok = 0; krok < 8; krok++) {
     await page.mouse.wheel(0, -200);
     await page.waitForTimeout(120);
   }
   await page.waitForTimeout(400);
-  const ukryteBlizej = Number(await etykiety.getAttribute('data-hidden-unreadable'));
+  const ukryteBlizej = Number(await etykiety.getAttribute('data-dane-nieczytelne'));
   expect(ukryteBlizej, 'po przyblizeniu opisy szczegolowe musza wracac').toBeLessThan(ukryte);
   // …a tożsamość nadal jest (nie znika przy zbliżeniu — rysowana naturalnie).
   expect(await etykiety.locator('g[data-label-role="tozsamosc"]').count()).toBeGreaterThan(0);

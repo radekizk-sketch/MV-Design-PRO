@@ -47,7 +47,9 @@ import {
   planSceneLabels,
   plannedLabelsAboveProportionCeiling,
   plannedLabelsBelowScreenFloor,
+  rangaTozsamosci,
 } from '../../canvas/labelLegibility';
+import { klasaInformacjiEtykiety } from '../../canvas/gestoscInformacji';
 import {
   APPARATUS_STROKE_WIDTH,
   apparatusStrokeWidthForScale,
@@ -112,6 +114,10 @@ const KLASY: readonly LabelClass[] = ['t1', 't2', 't3', 't4'];
 /** Skale: dolny kraniec · przegląd · dopasowanie typowej sieci · praca · zoom
  *  roboczy · górny kraniec. Iloczyn liczony z KAŻDĄ z nich, żeby „defekt gaśnie
  *  przy 1:1" i „defekt tylko przy oddaleniu" nie miały gdzie się schować. */
+/** Dolny kraniec zoomu sprzed karty SLD-SKALA-I-NAWIGACJA (R2) — skala, przy której
+ *  zmierzono historyczne defekty proporcji (dowody „stan przed” niżej). */
+const DAWNY_DOLNY_KRANIEC_ZOOMU = 0.05;
+
 const SKALE: readonly number[] = [MIN_SCALE, 0.1, 0.14, 0.3, 0.6, 1, 1.38, 4, MAX_SCALE];
 
 /**
@@ -224,17 +230,20 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (jedna scena × skala
     }
   });
 
-  it('napis usunięty przez sufit jest POLICZONY, nie zgubiony po cichu', () => {
+  it('napis usunięty przez sufit NIE ginie — trafia do podpowiedzi uchwytu (R4)', () => {
     const scene = scena;
     const przeszkody = sceneObstacleRects(scene);
     const plan = planSceneLabels(scene.labels, przeszkody, MIN_SCALE, sheetSizeFor(scene));
-    const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc');
+    const tozsamosci = scene.labels.map((l, i) => [l, i] as const).filter(([l]) => klasaInformacjiEtykiety(l) === 'tozsamosc');
     expect(tozsamosci.length).toBeGreaterThan(0);
-    // Przy dolnym krańcu zoomu ŻADNEJ tożsamości nie da się narysować
-    // proporcjonalnie — wszystkie muszą trafić do zbioru jawnego (wskaźnik
-    // „Ukryto N opisów"), a nie zniknąć bez śladu.
-    expect(plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc')).toEqual([]);
-    expect(plan.droppedIdentity.length).toBe(tozsamosci.length);
+    // Przy technicznym dolnym krańcu zoomu żadnej tożsamości RANGI POLA nie da się
+    // narysować proporcjonalnie (karta SLD-SKALA-I-NAWIGACJA R4: sufit proporcji
+    // obowiązuje tylko ją; nazwy bloków i sekcje mają stały rozmiar ekranowy). Każda
+    // tożsamość jest narysowana albo w podpowiedzi uchwytu — żadna nie znika bez śladu.
+    expect(plan.drawn.filter((p) => rangaTozsamosci(p.label) === 1)).toEqual([]);
+    const narysowane = new Set(plan.drawn.map((p) => p.index));
+    const wPodpowiedzi = new Set(plan.tozsamosciWPodpowiedzi.map((t) => t.index));
+    for (const [l, i] of tozsamosci) expect(narysowane.has(i) !== wPodpowiedzi.has(i), l.text).toBe(true);
   });
 
   it('ZERO REGRESJI KD-11: przy DOPASOWANIU widoku tożsamość stacji nadal jest na rysunku', () => {
@@ -259,13 +268,17 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (jedna scena × skala
   });
 
   it('DOWÓD, że defekt był realny: bez sufitu napis byłby 3,75× wyższy od zwiniętego bloku stacji', () => {
-    // Stan PRZED (`minReadableFontSize` bez sufitu) przy MIN_SCALE: pismo t1
-    // urosłoby do 9/0,05 = 180 j.św. obok glifu stacji 48 j.św.
-    const bezSufitu = MIN_READABLE_LABEL_SCREEN_PX / MIN_SCALE;
+    // Stan PRZED (`minReadableFontSize` bez sufitu) przy ówczesnym dolnym krańcu
+    // zoomu 0,05: pismo t1 urosłoby do 9/0,05 = 180 j.św. obok glifu stacji 48 j.św.
+    // (Karta SLD-SKALA-I-NAWIGACJA R2: dolną granicą skali jest dopasowanie całej
+    // sieci, a stała `MIN_SCALE` jest już tylko techniczną podłogą 0,001 — dowód
+    // historyczny zostaje przy wartości, przy której defekt zmierzono.)
+    const bezSufitu = MIN_READABLE_LABEL_SCREEN_PX / DAWNY_DOLNY_KRANIEC_ZOOMU;
     expect(bezSufitu / NAJMNIEJSZY_OPISYWANY.t1).toBeCloseTo(3.75, 9);
     expect(bezSufitu / NAJMNIEJSZY_OPISYWANY.t1).toBeGreaterThan(MAX_STOSUNEK_NAPIS_OBIEKT.t1);
-    // Po naprawie ta sama skala nie daje ŻADNEGO rozmiaru (napis nie powstaje).
-    expect(enlargedFontSizeWithinProportion('t1', MIN_SCALE)).toBeNull();
+    // Po naprawie ta sama skala nie daje ŻADNEGO rozmiaru proporcjonalnego (tożsamość
+    // rangi pola t1 nie powstaje na rysunku; nazwa bloku — R4 — ma stały rozmiar ekranowy).
+    expect(enlargedFontSizeWithinProportion('t1', DAWNY_DOLNY_KRANIEC_ZOOMU)).toBeNull();
   });
 });
 
@@ -328,7 +341,7 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     const mnoznikS98 = (scale: number) => Math.max(1, PODLOGA_S9_8_PX / (SEGMENT_STROKE_WIDTH.snTrunk * scale));
     const stanPrzed = (scale: number) =>
       (SEGMENT_STROKE_WIDTH.bus * mnoznikS98(scale) * scale) / (APPARATUS_STROKE_WIDTH * scale);
-    expect(stanPrzed(MIN_SCALE)).toBeCloseTo(41.666666, 4);
+    expect(stanPrzed(DAWNY_DOLNY_KRANIEC_ZOOMU)).toBeCloseTo(41.666666, 4);
     expect(stanPrzed(0.1327)).toBeGreaterThan(8); // kadr „Dopasuj widok" — zgłoszenie mówiło 8–10×
     expect(stanPrzed(1.38)).toBeCloseTo(3.333333, 5); // z bliska proporcja BYŁA poprawna
   });

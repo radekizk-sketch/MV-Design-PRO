@@ -239,7 +239,7 @@ const SKALE_KAMERY = [0.2, 0.5, 1] as const;
 
 function ukryteOpisy(scene: SceneV3, skala: number): number {
   const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
-  return plan.hiddenDetail.length;
+  return (scene.labels.length - plan.drawn.length - plan.tozsamosciWPodpowiedzi.length);
 }
 
 for (const siec of SIECI) {

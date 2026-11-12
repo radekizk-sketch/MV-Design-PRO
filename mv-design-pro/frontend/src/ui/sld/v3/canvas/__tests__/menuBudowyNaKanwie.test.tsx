@@ -51,6 +51,8 @@ import { useSelectionStore } from '../../../../selection';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { hierarchiaCelowTrafienia } from '../zakresKadru';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
 import { maStartOperacjiCiagu } from '../../../../../ui2/kreatory/magistrala/magistralaModel';
 import { stacjeWgRoli, stacjeZWejsciemKontynuacji, type WejscieObszaru } from './pomiarWejscBudowy';
 
@@ -128,19 +130,32 @@ function pierwszaStacja(kanwa: Kanwa, prefiks: string): CanvasHitArea | undefine
   return kanwa.obszary.find((a) => jestWierszemNazwyStacji(a) && refStacjiObszaru(a).startsWith(prefiks));
 }
 
-function renderKanwe(model: EnergyNetworkModel = enm): Kanwa {
+/**
+ * Kadr kanwy, na którym test szuka obiektów: `'roboczy'` — skala czytania, do której projektant
+ * dojeżdża kółkiem (karta SLD-SKALA-I-NAWIGACJA, R6: aparat, szyna, źródło i odcinek są tam
+ * WŁASNYMI celami kliku); `'calaSiec'` — kadr startowy całej sieci, na którym klik w obręb pola
+ * albo stacji trafia pole albo stację (cel hierarchii `celTrafienia`).
+ */
+type KadrKanwy = 'roboczy' | 'calaSiec';
+
+function renderKanwe(model: EnergyNetworkModel = enm, kadr: KadrKanwy = 'roboczy'): Kanwa {
   const { container } = render(<SldCanvasV3Workspace width={W} height={H} />);
+  if (kadr === 'roboczy') powiekszKolkiemDoSkali(container, 1);
   const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
   const viewBox = svg.getAttribute('viewBox')!.split(' ').map(Number);
   const scale = W / viewBox[2];
   const scene = buildSceneV3(model);
   const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
+  // Obszary złożone tak samo jak w żywej kanwie (hierarchia celów trafienia, tożsamości
+  // w podpowiedzi) — inaczej inwentarz zawierałby obiekty, których kanwa na tym kadrze nie łapie.
   const obszary = buildCanvasHitAreas({
     symbols: scene.symbols,
     segments: scene.segments,
     labels: plan.drawn,
+    tozsamosciWPodpowiedzi: plan.tozsamosciWPodpowiedzi,
     resultMarkers: [],
     scale,
+    hierarchiaCelow: hierarchiaCelowTrafienia(model, scene),
   });
   const busRefy = new Map<string, string | undefined>();
   scene.segments.forEach((segment, index) => {
@@ -262,18 +277,27 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
       'kreska/znacznik bez odpowiednika w modelu (zejście pola bez gałęzi, słupek terminalny) — operacja domenowa nie miałaby na czym pracować',
   };
 
-  it('KAŻDA para {klasa obiektu × kotwica modelu} obecna na scenie otwiera menu SWOJEJ kategorii (prawy klik natywny)', async () => {
-      const kanwa = renderKanwe();
+  it('KAŻDA para {kadr × klasa obiektu × kotwica modelu} obecna na scenie otwiera menu SWOJEJ kategorii (prawy klik natywny)', async () => {
+    // Iloczyn z kadrem (karta SLD-SKALA-I-NAWIGACJA, R6): na kadrze całej sieci klasy celu to
+    // napisy, pola i stacje; na kadrze roboczym — aparaty, szyny, źródła i odcinki.
+    const klasyKadru = new Map<KadrKanwy, Set<string>>();
+    for (const kadr of ['calaSiec', 'roboczy'] as const) {
+      const kanwa = renderKanwe(enm, kadr);
       // Inwentarz par obecnych na tej scenie — liczony z DANYCH, nie z listy
       // wpisanej ręcznie (reguła KLASA pkt 1: inwentarz przed naprawą).
       const pary = new Map<string, CanvasHitArea>();
       for (const area of kanwa.obszary) {
+        // Napisy wchodzą do inwentarza z kadru całej sieci: po powiększeniu kółkiem plan napisów
+        // kanwy niesie pasmo histerezy z poprzednich klatek (R3), którego plan liczony w teście
+        // od zera nie zna — klasy rysunku (aparat, szyna, źródło, odcinek) od planu nie zależą.
+        if (kadr === 'roboczy' && area.klasa === 'etykieta') continue;
         const temat = tematObiektu(kanwa, area);
         if (!temat) continue;
         const klucz = `${area.klasa}|${kluczOczekiwania(temat)}`;
         if (!pary.has(klucz)) pary.set(klucz, area);
       }
-      expect(pary.size, `scena ma pary {klasa × kotwica}`).toBeGreaterThan(0);
+      expect(pary.size, `scena ma pary {klasa × kotwica} (${kadr})`).toBeGreaterThan(0);
+      klasyKadru.set(kadr, new Set([...pary.keys()].map((k) => k.split('|')[0])));
 
       for (const [klucz, area] of [...pary.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
         const kluczKotwicy = klucz.split('|')[1];
@@ -285,8 +309,14 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
         expect(pozycjeMenu(menu!), `pozycja rozstrzygająca dla ${klucz}`).toContain(oczekiwane.rozstrzygajaca);
         await zamknijMenu();
       }
-    },
-    300000,
+      cleanup();
+    }
+    // Iloczyn bez przypadku nie jest dowodem: obszary pola i stacji występują na kadrze całej
+    // sieci, a aparat — na kadrze roboczym.
+    expect(klasyKadru.get('calaSiec')!.has('stacja') || klasyKadru.get('calaSiec')!.has('pole')).toBe(true);
+    expect(klasyKadru.get('roboczy')!.has('aparat')).toBe(true);
+  },
+    600000,
   );
 
   it('obiekty świadomie bez menu mają powód — i powód jest sprawdzalny', async () => {

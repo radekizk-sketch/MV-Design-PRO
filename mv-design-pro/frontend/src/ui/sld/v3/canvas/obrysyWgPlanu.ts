@@ -28,13 +28,13 @@
  * Moduł czysty: zero React, zero DOM, zero fizyki.
  */
 import { ramkaBlokuPrzekaznika } from '../symbols/blokZabezpieczen';
-import { panelePolGpz, type PanelPolaGpz } from '../compose/gpzAdnotacje';
+import { MARGINES_TLA_POLA_GPZ, panelePolGpz, type PanelPolaGpz } from '../compose/gpzAdnotacje';
 import type { PreviewSymbol } from '../compose/preview';
-import { GRID, type V3Rect } from '../core/grid';
+import type { V3Rect } from '../core/grid';
 import type { PlannedLabel } from './labelLegibility';
 
-/** Margines tła pola — ta sama wartość, którą `panelePolGpz` dokłada do obrysu elementów. */
-const MARGINES_TLA_POLA = GRID / 2;
+/** Margines tła pola — ta sama stała, którą `panelePolGpz` dokłada do obrysu elementów. */
+const MARGINES_TLA_POLA = MARGINES_TLA_POLA_GPZ;
 
 /** Prostokąty narysowanych etykiet wg `ownerRef` (etykieta może mieć kilka wierszy planu). */
 function narysowaneWgWlasciciela(drawn: readonly PlannedLabel[]): ReadonlyMap<string, readonly V3Rect[]> {

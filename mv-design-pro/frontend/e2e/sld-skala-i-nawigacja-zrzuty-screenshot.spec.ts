@@ -152,8 +152,8 @@ async function przyblizDo(page: Page, prefiks: string, ulamek: number, wysokosc:
 interface Pomiar {
   readonly skala: number;
   readonly napisyNarysowane: number;
-  readonly napisyUkryte: number;
-  readonly tozsamosciPorzucone: number;
+  readonly daneNieczytelne: number;
+  readonly tozsamosciWPodpowiedzi: number;
   readonly wezlyDom: number;
   readonly najcienszyPrzewodPx: number | null;
   readonly klatkaSredniaMs: number;
@@ -176,8 +176,8 @@ async function zmierz(page: Page): Promise<Pomiar> {
     return {
       skala,
       napisyNarysowane: svg.querySelectorAll('[data-testid="sld-v3-labels"] text').length,
-      napisyUkryte: Number(etykiety?.getAttribute('data-hidden-unreadable') ?? 0),
-      tozsamosciPorzucone: Number(etykiety?.getAttribute('data-dropped-identity') ?? 0),
+      daneNieczytelne: Number(etykiety?.getAttribute('data-dane-nieczytelne') ?? 0),
+      tozsamosciWPodpowiedzi: Number(etykiety?.getAttribute('data-tozsamosci-w-podpowiedzi') ?? 0),
       wezlyDom: svg.querySelectorAll('*').length,
       najcienszyPrzewodPx: najciensza,
     };

@@ -30,7 +30,7 @@ import { GRID, type V3Rect } from '../../core/grid';
 import { kolumnyBlokuWPismie } from '../../core/kolumnyBloku';
 import { ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../../compose/zaciskiPrzekladnika';
 import { LABEL_TYPOGRAPHY, measureTextWidth } from '../../core/text';
-import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, kolumnyTlaPolGpz, sceneObstacleRects, type SceneV3 } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
 import { planSceneLabels, type LabelRenderPlan } from '../labelLegibility';
 import { paneleWgPlanu, ramkiBlokowWgPlanu } from '../obrysyWgPlanu';
@@ -366,5 +366,43 @@ describe('kanwa: ramka bloku i tło pola w kadrze pola obejmują powiększone wi
     const r = przekaznik.meta!.ramkaBlokuPrzekaznika!;
     const ramkaSceny = { ...r, x: przekaznik.x + r.x, y: przekaznik.y + r.y };
     expect(wiersze.some((w) => !zawiera(ramkaSceny, w.rect)), 'ramka sceny nie obejmuje powiększonego wiersza').toBe(true);
+  });
+});
+
+/**
+ * Kolumny tła pól GPZ (`scene/buildScene.ts::kolumnyTlaPolGpz`) — granica, w której plan etykiet
+ * trzyma tusz członka tła (`OwnedLabel.granicaTlaPola`). Deklaracja „rozłączne parami, tło sceny
+ * w kolumnie, każdy członek tła niesie kolumnę SWOJEGO pola" przypięta na fiksturach i na układzie
+ * syntetycznym {obok siebie, jedno nad drugim, po przekątnej}.
+ */
+describe('kolumny tła pól GPZ — rozłączne parami, jedno źródło z listą członków tła', () => {
+  it.each(FIKSTURY.map(([n]) => n))('%s: kolumny rozłączne parami, tło sceny w kolumnie, członkowie niosą kolumnę swojego pola', (fikstura) => {
+    const scena = SCENY.get(fikstura)!;
+    const panele = scena.meta.gpzAdnotacje!.panele;
+    const kolumny = kolumnyTlaPolGpz(panele);
+    expect(kolumny.size).toBe(panele.length);
+    for (const p of panele) expect(zawiera(kolumny.get(p.bayRef)!, p.rect), p.bayRef).toBe(true);
+    panele.forEach((a, i) =>
+      panele.slice(i + 1).forEach((b) => expect(zachodzi(kolumny.get(a.bayRef)!, kolumny.get(b.bayRef)!), `${a.bayRef} × ${b.bayRef}`).toBe(false)),
+    );
+    const czlonkowie = new Map(panele.flatMap((p) => p.etykiety.map((ref) => [ref, p.bayRef] as const)));
+    for (const l of scena.labels) {
+      const pole = czlonkowie.get(l.ownerRef);
+      if (pole === undefined) expect(l.granicaTlaPola, l.ownerRef).toBeUndefined();
+      else expect(l.granicaTlaPola, l.ownerRef).toEqual(kolumny.get(pole));
+    }
+  });
+
+  it('układ syntetyczny: obok siebie, jedno nad drugim i po przekątnej — kolumny rozłączne parami', () => {
+    const panel = (bayRef: string, x: number, y: number): PanelPolaGpz => ({ bayRef, rola: 'liniowe', rect: { x, y, width: 100, height: 100 }, etykiety: [] });
+    const panele = [panel('a', 0, 0), panel('b', 140, 0), panel('c', 0, 160), panel('d', 140, 160)];
+    const kolumny = kolumnyTlaPolGpz(panele);
+    panele.forEach((a, i) => {
+      expect(zawiera(kolumny.get(a.bayRef)!, a.rect)).toBe(true);
+      panele.slice(i + 1).forEach((b) => expect(zachodzi(kolumny.get(a.bayRef)!, kolumny.get(b.bayRef)!), `${a.bayRef} × ${b.bayRef}`).toBe(false));
+    });
+    // Cięcie w połowie odstępu: a | b na x = 120.
+    expect(kolumny.get('a')!.x + kolumny.get('a')!.width).toBe(120);
+    expect(kolumny.get('b')!.x).toBe(120);
   });
 });

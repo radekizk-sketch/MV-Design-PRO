@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
@@ -27,6 +27,7 @@ import { HIT_ATTR } from '../hitAreas';
 import { SldCanvasV3 } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
+import { kameraNadSymbolem, powiekszKolkiemDoSkali } from './kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const gpzDataPathEnm = (
@@ -44,6 +45,8 @@ const substrateEnm = (
 ).enm;
 
 afterEach(() => cleanup());
+
+const WIDOK = { width: 1322, height: 696 } as const;
 beforeEach(() => {
   useSnapshotStore.getState().reset();
   useSelectionStore.getState().clearSelection();
@@ -81,8 +84,10 @@ describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
 
     const user = userEvent.setup();
     const onElementClick = vi.fn();
+    // R6 (karta SLD-SKALA-I-NAWIGACJA): aparat jest celem kliku na kadrze roboczym (skala
+    // czytania); z przeglądu sieci celem jest stacja.
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={1322} height={696} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={1322} height={696} onElementClick={onElementClick} cameraOverride={kameraNadSymbolem(scene, para!.a.testId, WIDOK)} />,
     );
 
     await user.click(uchwytObrysu(container, para!.a.testId));
@@ -103,7 +108,7 @@ describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
     const para = paraAparatowJednegoPola(scene);
     expect(para).toBeTruthy();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={1322} height={696} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={1322} height={696} onElementClick={() => {}} cameraOverride={kameraNadSymbolem(scene, para!.a.testId, WIDOK)} />,
     );
     expect(uchwytObrysu(container, para!.a.testId).getAttribute(HIT_ATTR.deviceRef)).toBe(para!.a.deviceRef);
     expect(uchwytObrysu(container, para!.b.testId).getAttribute(HIT_ATTR.deviceRef)).toBe(para!.b.deviceRef);
@@ -123,6 +128,7 @@ describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
         width={1322}
         height={696}
         onElementClick={onElementClick}
+        cameraOverride={kameraNadSymbolem(scene, aparat!.meta!.testId!, WIDOK)}
       />,
     );
     await user.click(uchwytObrysu(container, aparat!.meta!.testId!));
@@ -141,6 +147,8 @@ describe('S9-10 — inspektor pokazuje KLIKNIĘTY aparat (Workspace, realna ści
     useSnapshotStore.setState({ snapshot: enm });
     const user = userEvent.setup();
     const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} /><InspektorKanwyTestowy /></>);
+    // R6: aparat jest celem kliku na kadrze roboczym — natywne kółko do skali czytania.
+    powiekszKolkiemDoSkali(container, 1);
 
     const inspektor = (): { tresc: string; ref: string } => {
       const panel = container.querySelector('[data-testid="inspektor-element-kanwy"]');
@@ -160,7 +168,9 @@ describe('S9-10 — inspektor pokazuje KLIKNIĘTY aparat (Workspace, realna ści
     expect(a.tresc).not.toBe(b.tresc);
     expect(a.ref).toBe(para!.a.deviceRef);
     expect(b.ref).toBe(para!.b.deviceRef);
-  });
+    // Budżet czasu: Workspace z całą sceną na skali czytania (R6: jedna scena, bez form
+    // zwiniętych) rysuje każdy aparat; dwa kliki userEvent przerysowują ją dwukrotnie.
+  }, 120000);
 });
 
 describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo długu S9-4-DLUG-INSPEKTOR)', () => {
@@ -205,10 +215,9 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
     // rysunkiem). Test sprawdza ROZWIĄZYWANIE KOTWICY etykiety aparatu, więc
     // musi stać na kadrze ROBOCZYM — projektant dojeżdża tam TAK SAMO jak w
     // aplikacji: natywnym kółkiem myszy (ścieżka realna, nie wymuszony stan).
-    const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
-    for (let i = 0; i < 40; i += 1) {
-      fireEvent.wheel(svg, { clientX: 1322 / 2, clientY: 696 / 2, deltaY: -140 });
-    }
+    // Jedno zdarzenie kółka z przesunięciem do skali czytania (`powiekszKolkiemDoSkali`) zamiast
+    // 40 kroków — każdy krok przerysowywał całą scenę 53 stacji, a przedmiotem testu jest kadr końcowy.
+    powiekszKolkiemDoSkali(container, 1);
     // Etykieta, której temat menu kotwiczy się na POLU (aparat) — bierzemy
     // pierwszą etykietę o refie kompozytowym wskazującym pole sn_field.
     const etykieta = Array.from(
@@ -218,5 +227,6 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
     await user.click(etykieta!);
     const label = container.querySelector('[data-testid="inspektor-element-etykieta"]');
     expect(label, 'inspektor pokazuje element po kliku w etykietę aparatu').toBeTruthy();
-  });
+    // Budżet czasu jak wyżej: scena 53 stacji na skali czytania (R6).
+  }, 120000);
 });

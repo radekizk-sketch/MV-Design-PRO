@@ -56,8 +56,10 @@ import type { V3Rect } from '../core/grid';
 import { SEGMENT_STROKE_WIDTH, type PreviewElementKind, type PreviewSegment, type PreviewSymbol } from '../compose/preview';
 import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { OwnerKind } from '../layout/labels';
-import type { PlannedLabel } from './labelLegibility';
+import type { PlannedLabel, TozsamoscWPodpowiedzi } from './labelLegibility';
 import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../layout/measure';
+import { MIN_SYMBOL_SCREEN_PX } from '../symbols/defs';
+import { kluczePrzynaleznosci } from './viewAnchor';
 import { podpowiedzStanuObiektuPl } from '../../../shared/stanObiektu';
 
 /**
@@ -91,7 +93,11 @@ export type HitObjectClass =
   | 'tor'
   | 'lacznik-wiersza'
   | 'etykieta'
-  | 'znacznik-wyniku';
+  | 'znacznik-wyniku'
+  // R6 (karta SLD-SKALA-I-NAWIGACJA): obszar POLA i obszar STACJI — cele trafienia, gdy aparaty
+  // (albo całe pole) są na ekranie poniżej progu rozpoznawalności (`celTrafienia`).
+  | 'pole'
+  | 'stacja';
 
 /** Wszystkie rodzaje obiektów kanwy — lista ZAMKNIĘTA (dopisanie rodzaju bez
  *  obsługi w `buildCanvasHitAreas` łamie test kontraktu inwentarza). */
@@ -108,6 +114,8 @@ export const HIT_OBJECT_CLASSES: readonly HitObjectClass[] = [
   'lacznik-wiersza',
   'etykieta',
   'znacznik-wyniku',
+  'pole',
+  'stacja',
 ];
 
 export interface HitRectShape {
@@ -330,6 +338,82 @@ export interface ResultMarkerHitInput {
   readonly height: number;
 }
 
+// ---------------------------------------------------------------------------
+// R6 — cel trafienia w hierarchii aparat → pole → stacja
+// ---------------------------------------------------------------------------
+
+/** Stopień hierarchii celu trafienia. */
+export type PoziomCelu = 'aparat' | 'pole' | 'stacja';
+
+export interface StopienCelu {
+  readonly poziom: PoziomCelu;
+  readonly ref: string;
+  /** Obszar stopnia w świecie sceny. */
+  readonly rect: V3Rect;
+}
+
+/**
+ * Karta SLD-SKALA-I-NAWIGACJA, R6 — CEL TRAFIENIA: najmniejszy obiekt hierarchii
+ * aparat → pole → stacja, który na ekranie ma co najmniej próg rozpoznawalności
+ * (`MIN_SYMBOL_SCREEN_PX`, najmniejszy bok obszaru × skala). Gdy żaden stopień nie jest
+ * rozpoznawalny — największy (stacja): z przeglądu sieci klik trafia stację, nie przypadkowy
+ * aparat narysowany na 3 px. Stopnie podaje się od najmniejszego; lista pusta to błąd
+ * wołającego. Skala niewiarygodna (≤0, NaN) — 1:1, jak cały moduł.
+ */
+export function celTrafienia(stopnie: readonly StopienCelu[], scale: number): StopienCelu {
+  if (stopnie.length === 0) throw new Error('celTrafienia: brak stopni hierarchii');
+  const skala = bezpiecznaSkala(scale);
+  for (const stopien of stopnie) {
+    if (Math.min(stopien.rect.width, stopien.rect.height) * skala >= MIN_SYMBOL_SCREEN_PX) return stopien;
+  }
+  return stopnie[stopnie.length - 1];
+}
+
+/** Hierarchia pól i stacji sceny (`zakresKadru.hierarchiaCelowTrafienia` — te same zbiory refów
+ *  co kadr pola i stacji). Strukturalna, żeby moduł nie zależał od indeksu modelu. */
+export interface HierarchiaCelowWejscie {
+  readonly pola: ReadonlyMap<string, { readonly rect: V3Rect; readonly stacjaRef: string }>;
+  readonly stacje: ReadonlyMap<string, V3Rect>;
+  readonly stacjaObiektu: ReadonlyMap<string, string>;
+}
+
+/** `data-testid` obszaru celu pola/stacji — jedno źródło dla renderu, mapy kliku i sondy. */
+export function testIdObszaruCelu(poziom: Exclude<PoziomCelu, 'aparat'>, ref: string): string {
+  return `sld-v3-cel-${poziom}:${ref}`;
+}
+
+/** Pole i stacja obiektu o `ownerRef` (ref wprost albo klucz przynależności kompozytu). */
+function poleIStacja(
+  hierarchia: HierarchiaCelowWejscie,
+  ownerRef: string | undefined,
+): { readonly pole: string | undefined; readonly stacja: string | undefined } {
+  let pole: string | undefined;
+  let stacja: string | undefined;
+  for (const klucz of [...kluczePrzynaleznosci(ownerRef)].reverse()) {
+    if (pole === undefined && hierarchia.pola.has(klucz)) pole = klucz;
+    if (stacja === undefined && hierarchia.stacjaObiektu.has(klucz)) stacja = hierarchia.stacjaObiektu.get(klucz);
+  }
+  if (pole !== undefined) stacja = hierarchia.pola.get(pole)?.stacjaRef ?? stacja;
+  return { pole, stacja };
+}
+
+/** Stopnie hierarchii obiektu o obszarze `rect` (od najmniejszego). */
+export function stopnieCeluObiektu(
+  hierarchia: HierarchiaCelowWejscie | undefined,
+  ownerRef: string | undefined,
+  rect: V3Rect,
+): readonly StopienCelu[] {
+  const aparat: StopienCelu = { poziom: 'aparat', ref: ownerRef ?? '', rect };
+  if (!hierarchia || !ownerRef) return [aparat];
+  const { pole, stacja } = poleIStacja(hierarchia, ownerRef);
+  const stopnie: StopienCelu[] = [aparat];
+  const obszarPola = pole === undefined ? undefined : hierarchia.pola.get(pole);
+  if (pole !== undefined && obszarPola) stopnie.push({ poziom: 'pole', ref: pole, rect: obszarPola.rect });
+  const obszarStacji = stacja === undefined ? undefined : hierarchia.stacje.get(stacja);
+  if (stacja !== undefined && obszarStacji) stopnie.push({ poziom: 'stacja', ref: stacja, rect: obszarStacji });
+  return stopnie;
+}
+
 export interface CanvasHitAreaInput {
   readonly symbols: readonly PreviewSymbol[];
   readonly segments: readonly PreviewSegment[];
@@ -337,12 +421,19 @@ export interface CanvasHitAreaInput {
    *  więc tylko te są uchwytami. Etykiety ukryte progiem czytelności nie mają
    *  obszaru trafienia (nie ma czego kliknąć — uczciwie). */
   readonly labels: readonly PlannedLabel[];
+  /** Tożsamości NIEnarysowane w tej skali (karta SLD-SKALA-I-NAWIGACJA, R4:
+   *  przegrały kolizję z tożsamością wyższej rangi). Mają uchwyt w miejscu slotu
+   *  sceny z PODPOWIEDZIĄ = pełny tekst — obiekt pozostaje wskazywalny i nazwany,
+   *  choć jego napisu nie ma na rysunku. Brak = żadnej. */
+  readonly tozsamosciWPodpowiedzi?: readonly TozsamoscWPodpowiedzi[];
   readonly resultMarkers: readonly ResultMarkerHitInput[];
   /** Skala kamery [px ekranu na jednostkę świata]. */
   readonly scale: number;
   /** `testId` obiektów UKRYTYCH filtrem warstw — bez węzła w DOM, więc i bez
    *  obszaru trafienia. Pusty zbiór = wszystko widoczne. */
   readonly ukryteTestId?: ReadonlySet<string>;
+  /** R6: hierarchia pól i stacji. Brak = każdy symbol jest własnym celem (eksport, harness). */
+  readonly hierarchiaCelow?: HierarchiaCelowWejscie;
 }
 
 /** `data-testid` symbolu — TA SAMA formuła co render (`symbolTestId`). */
@@ -363,13 +454,66 @@ function testIdOdcinka(segment: PreviewSegment, index: number): string {
 export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasHitArea[] {
   const { symbols, segments, labels, resultMarkers, scale } = input;
   const ukryte = input.ukryteTestId;
+  const hierarchia = input.hierarchiaCelow;
   const areas: CanvasHitArea[] = [];
   let z = 0;
+
+  // R6: cel każdego symbolu i każdego odcinka pola rozstrzygnięty PRZED budową obszarów —
+  // obiekt, którego celem jest pole albo stacja, nie dostaje własnego obszaru (trafia go obszar
+  // celu), a obszar celu powstaje wyłącznie wtedy, gdy jest celem choć jednego obiektu.
+  const celeWyzsze = new Map<string, StopienCelu>();
+  const pominiete = new Set<string>();
+  const rozstrzygnij = (testId: string, stopnie: readonly StopienCelu[]): void => {
+    if (ukryte?.has(testId)) return;
+    const cel = celTrafienia(stopnie, scale);
+    if (cel.poziom === 'aparat') return;
+    pominiete.add(testId);
+    const klucz = testIdObszaruCelu(cel.poziom, cel.ref);
+    if (!celeWyzsze.has(klucz)) celeWyzsze.set(klucz, cel);
+  };
+  if (hierarchia) {
+    symbols.forEach((symbol, index) => {
+      const ownerRef = symbol.meta?.ownerRef;
+      // Portal nN i adnotacje nie są obiektami pola — zostają własnymi celami.
+      const kind = symbol.meta?.elementKind;
+      if (kind === 'lvPortal' || kind === 'protectionAnnotation') return;
+      rozstrzygnij(testIdSymbolu(symbol, index), stopnieCeluObiektu(hierarchia, ownerRef, symbolInkRect(symbol)));
+    });
+    segments.forEach((segment, index) => {
+      if (segment.points.length < 2) return;
+      const ownerRef = segment.meta?.ownerRef;
+      // Odcinek pola (zejście, tor pola): jego pierwszym celem jest POLE (kreska nie ma
+      // „gabarytu aparatu”); szyny, magistrale i odcinki spoza pól zostają własnymi celami.
+      const { pole } = poleIStacja(hierarchia, ownerRef);
+      if (pole === undefined) return;
+      const stopnie = stopnieCeluObiektu(hierarchia, ownerRef, { x: 0, y: 0, width: 0, height: 0 }).slice(1);
+      if (stopnie.length === 0) return;
+      const cel = celTrafienia(stopnie, scale);
+      if (cel.poziom !== 'stacja') return;
+      rozstrzygnij(testIdOdcinka(segment, index), [cel]);
+    });
+  }
+  // Obszary celów najniżej w kolejności malowania: tusz każdego innego obiektu (szyna, tor,
+  // napis) nad obszarem stacji/pola wygrywa przebieg obrysów; stacje pod polami.
+  const celeUporzadkowane = [...celeWyzsze.entries()].sort(
+    ([ka, a], [kb, b]) => (a.poziom === b.poziom ? (ka < kb ? -1 : ka > kb ? 1 : 0) : a.poziom === 'stacja' ? -1 : 1),
+  );
+  for (const [testId, cel] of celeUporzadkowane) {
+    areas.push({
+      testId,
+      ownerRef: cel.ref,
+      elementKind: cel.poziom === 'stacja' ? 'station' : 'apparatus',
+      klasa: cel.poziom,
+      z: z++,
+      obrys: { ksztalt: 'prostokat', x: cel.rect.x, y: cel.rect.y, width: cel.rect.width, height: cel.rect.height },
+      obszar: expandRectToMinHit(cel.rect, scale),
+    });
+  }
 
   segments.forEach((segment, index) => {
     if (segment.points.length < 2) return;
     const testId = testIdOdcinka(segment, index);
-    if (ukryte?.has(testId)) return;
+    if (ukryte?.has(testId) || pominiete.has(testId)) return;
     areas.push({
       testId,
       ownerRef: segment.meta?.ownerRef,
@@ -383,7 +527,7 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
 
   symbols.forEach((symbol, index) => {
     const testId = testIdSymbolu(symbol, index);
-    if (ukryte?.has(testId)) return;
+    if (ukryte?.has(testId) || pominiete.has(testId)) return;
     const rect = symbolInkRect(symbol);
     areas.push({
       testId,
@@ -425,6 +569,21 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
         height: planned.rect.height,
       },
       obszar: expandRectToMinHit(planned.rect, scale),
+    });
+  });
+
+  (input.tozsamosciWPodpowiedzi ?? []).forEach(({ label, index }) => {
+    const testId = `sld-v3-label-${index}`;
+    if (ukryte?.has(testId)) return;
+    areas.push({
+      testId,
+      ownerRef: label.ownerRef,
+      elementKind: LABEL_OWNER_ELEMENT_KIND[label.ownerKind],
+      tytul: label.text,
+      klasa: 'etykieta',
+      z: z++,
+      obrys: { ksztalt: 'prostokat', x: label.rect.x, y: label.rect.y, width: label.rect.width, height: label.rect.height },
+      obszar: expandRectToMinHit(label.rect, scale),
     });
   });
 

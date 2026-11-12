@@ -22,6 +22,7 @@ import { useNetworkBuildStore } from '../../../../network-build/networkBuildStor
 import { useNotificationStore } from '../../../../notifications/store';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
+import { pierwszyObszarStacji } from './uchwytStacji';
 
 afterEach(() => {
   cleanup();
@@ -52,22 +53,22 @@ beforeEach(() => {
   useSnapshotStore.setState({ snapshot: enm });
 });
 
-function openStationMenu(): { stationId: string } {
+/**
+ * Menu stacji z kanwy w kadrze startowym (przegląd sieci). Jedna scena nie ma symbolu stacji
+ * (karta SLD-SKALA-I-NAWIGACJA, R1); z przeglądu klik trafia OBSZAR stacji — najmniejszy
+ * rozpoznawalny obiekt hierarchii aparat → pole → stacja (R6, `hitAreas.celTrafienia`).
+ * Intencja testu bez zmian: prawy klik w stację otwiera menu stacji, którego akcje wykonuje
+ * wykonawca domenowy.
+ */
+function openStationMenu(readOnly = false): { stationId: string } {
   const scene = buildSceneV3(enm);
-  const stationSymbol = scene.symbols.find((s) => s.meta?.elementKind === 'station');
-  const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
-  expect(stationIndex).toBeGreaterThanOrEqual(0);
-
-  const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+  const { container } = render(<SldCanvasV3Workspace width={800} height={600} readOnly={readOnly} />);
   // Karta S9-4: rysunek kanwy jest bierny — prawy klik trafia w UCHWYT obiektu
   // (warstwa `sld-v3-trafienia`), ten sam węzeł, w który trafia mysz użytkownika.
-  const stationTestId = scene.symbols[stationIndex]?.meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
-  const stationGroup = container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`);
-  expect(stationGroup, 'stacja ma uchwyt trafienia').toBeTruthy();
-  fireEvent.contextMenu(stationGroup!, { clientX: 120, clientY: 80 });
+  const { ref, el } = pierwszyObszarStacji(container, scene);
+  fireEvent.contextMenu(el, { clientX: 120, clientY: 80 });
   expect(screen.getByRole('menu')).toBeTruthy();
-
-  return { stationId: stationSymbol!.meta!.ownerRef! };
+  return { stationId: ref };
 }
 
 describe('SldCanvasV3Workspace — F11.4-B: wykonawca akcji domenowych (ARCH-3)', () => {
@@ -142,14 +143,7 @@ describe('SldCanvasV3Workspace — F11.4-B: wykonawca akcji domenowych (ARCH-3)'
     const openOperationForm = vi.fn();
     useNetworkBuildStore.setState({ openOperationForm } as never);
 
-    const scene = buildSceneV3(enm);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} readOnly />);
-    // Karta S9-4: prawy klik w uchwyt obiektu (patrz komentarz w `otworzMenuStacji`).
-    const stationTestId = scene.symbols[stationIndex]?.meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
-    const stationGroup = container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`);
-    fireEvent.contextMenu(stationGroup!, { clientX: 120, clientY: 80 });
-    expect(screen.getByRole('menu')).toBeTruthy();
+    openStationMenu(true);
 
     fireEvent.click(screen.getByTestId('sld-menu-add-load'));
 

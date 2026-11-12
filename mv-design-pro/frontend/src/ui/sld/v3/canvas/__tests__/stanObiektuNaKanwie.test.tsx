@@ -23,6 +23,7 @@ import fxGpz from '../../../../../harness-fixtures/generated/geometria_stacji_gp
 import { nazwaStanuObiektuPl } from '../../../../shared/stanObiektu';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3 } from '../SldCanvasV3';
+import { kameraNadSrodkiemSceny } from './kameraTestowa';
 
 afterEach(cleanup);
 
@@ -31,15 +32,19 @@ type Kompozycja = 'stacja' | 'gpz';
 
 const PRZELACZNIKI = new Set(['switch', 'breaker', 'disconnector', 'bus_coupler']);
 
-/** Model kompozycji: GPZ dostaje jedno pole bez rekordów aparatów (aparat z gałęzi pola) —
- *  fikstura GPZ niesie wyłącznie pola z rekordami, a gałąź jest drugą drogą danych. */
+/** Model kompozycji: jedno pole bez rekordów aparatów (aparat z gałęzi pola) — fikstury niosą
+ *  wyłącznie pola z rekordami, a gałąź jest drugą drogą danych. */
 function model(kompozycja: Kompozycja): EnergyNetworkModel {
   const fx = kompozycja === 'stacja' ? fxStacja : fxGpz;
   const enm = structuredClone((fx as unknown as { snapshot: EnergyNetworkModel }).snapshot);
-  if (kompozycja === 'gpz') {
-    const pole = (enm.bays ?? []).find((b) => (b.primary_devices ?? []).length > 0 && (b.equipment_refs ?? []).length > 0)!;
-    pole.primary_devices = [];
-  }
+  // Druga droga danych (aparat z gałęzi łączeniowej pola) w KAŻDEJ kompozycji: jedno pole ze
+  // stacji/GPZ traci rekordy aparatów. Generator fikstur stacji niesie dziś rekordy aparatów we
+  // WSZYSTKICH polach (pomiar 2026-11-12: 0 symboli `galaz_pola` w `geometria_stacji_zamkniete`),
+  // więc bez tego iloczyn stacja × gałąź pola byłby pusty — przypadek bez dowodu.
+  const pole = (enm.bays ?? []).find(
+    (b) => (b.primary_devices ?? []).length > 0 && (b.equipment_refs ?? []).length > 0 && (kompozycja === 'gpz' || b.ref_id.startsWith('stn/')),
+  )!;
+  pole.primary_devices = [];
   return enm;
 }
 
@@ -56,8 +61,14 @@ function zeStanem(enm: EnergyNetworkModel, stan: StanObiektu | null): EnergyNetw
   return kopia;
 }
 
+const WIDOK = { width: 1600, height: 1000 } as const;
+
+/** Karta SLD-SKALA-I-NAWIGACJA, R6: podpowiedź stanu leży na kształcie trafienia APARATU, a aparat
+ *  jest własnym celem kliku dopiero na kadrze roboczym (na kadrze całej sieci trafia stację).
+ *  Kanwa staje więc przy skali czytania — tam, gdzie projektant wskazuje aparat kursorem. */
 function kanwa(enm: EnergyNetworkModel) {
-  return render(<SldCanvasV3 snapshot={enm} width={1600} height={1000} />).container;
+  const kamera = kameraNadSrodkiemSceny(buildSceneV3(enm), 1, WIDOK);
+  return render(<SldCanvasV3 snapshot={enm} width={WIDOK.width} height={WIDOK.height} cameraOverride={kamera} />).container;
 }
 
 function symboleAparatow(enm: EnergyNetworkModel, pochodzenie: Pochodzenie) {

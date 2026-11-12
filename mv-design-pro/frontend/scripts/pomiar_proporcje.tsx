@@ -244,7 +244,7 @@ console.log('skala        | skróconych | porzuconych tożsamości | ukrytych da
     const plan = planSceneLabels(scene.labels, przeszkody, s.v, sheetSizeFor(scene));
     const skrocone = plan.drawn.filter((p) => p.text !== p.label.text).length;
     console.log(
-      `${s.nazwa.padEnd(12)} | ${String(skrocone).padStart(10)} | ${String(plan.droppedIdentity.length).padStart(22)} | ${String(plan.hiddenDetail.length).padStart(15)}`,
+      `${s.nazwa.padEnd(12)} | ${String(skrocone).padStart(10)} | ${String(plan.tozsamosciWPodpowiedzi.length).padStart(22)} | ${String((scene.labels.length - plan.drawn.length - plan.tozsamosciWPodpowiedzi.length)).padStart(15)}`,
     );
   }
 }

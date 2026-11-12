@@ -22,7 +22,10 @@ import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
+import { planSceneLabels } from '../labelLegibility';
+import { sheetSizeFor } from '../../sheet/outline';
+import { klasaInformacjiEtykiety } from '../gestoscInformacji';
 import { SldCanvasV3, computeFaultFlowPlacements, computeFaultPointMarkerPlacement, computeFlowOverlayPlacements, computeOltcBadgePlacements, contentBoundingBoxOf, sceneBoxToCameraWorld, flowOverlayGeometry, formatFlowLabelPl, formatOltcBadgeLabel } from '../SldCanvasV3';
 import {
   orientedSegmentRefs,
@@ -100,55 +103,42 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
   });
 
-  // INTENCJA (zachowana z wersji sprzed V12K-218): render NIE GUBI elementów
-  // sceny. Od declutteru ekranowego etykieta poniżej progu czytelności nie
-  // trafia do DOM, więc równość „węzły = scene.labels.length" przestała być
-  // prawdziwa przy pełnym widoku sieci (kadr 1200×800 na 53 stacje daje skalę,
-  // przy której CAŁE pismo ma ~2 px). Intencja zostaje wyrażona mocniej: nic nie
-  // ginie PO CICHU — każda etykieta jest albo w DOM, albo policzona jako ukryta.
-  //
-  // KD-11: kubełki są TRZY, nie dwa — ukryte DANE SZCZEGÓŁOWE
-  // (`data-hidden-unreadable`) ORAZ tożsamości bez miejsca
-  // (`data-dropped-identity`).
-  it('symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte dane + porzucone tożsamości = scene.labels.length', () => {
+  // INTENCJA (zachowana z wersji sprzed V12K-218): render NIE GUBI elementów sceny — nic nie
+  // ginie PO CICHU. Po karcie SLD-SKALA-I-NAWIGACJA (R3, R4) kubełki są inne: licznik
+  // „Ukryto N opisów” i porzucanie tożsamości usunięte. Każda TOŻSAMOŚĆ jest narysowana albo
+  // w podpowiedzi uchwytu (`data-tozsamosci-w-podpowiedzi`); niewidoczne bywają wyłącznie
+  // DANE (oznaczenia, parametry), których pismo jest nieczytelne przy tej skali — gęstość
+  // informacji jest funkcją skali, a nie stratą. Bilans liczony z TEGO SAMEGO planu co render.
+  it('symbole w DOM = scene.symbols.length; etykiety: narysowane + tożsamości w podpowiedzi + dane nieczytelne = scene.labels.length', () => {
     const scene = buildSceneV3(enm);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
-    const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
-    const porzucone = Number(labelGroup?.getAttribute('data-dropped-identity') ?? '0');
-    expect((labelGroup?.children.length ?? 0) + ukryte + porzucone).toBe(scene.labels.length);
+    const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
+    const wPodpowiedzi = Number(labelGroup?.getAttribute('data-tozsamosci-w-podpowiedzi') ?? 'NaN');
+    expect(labelGroup?.children.length).toBe(plan.drawn.length);
+    expect(wPodpowiedzi).toBe(plan.tozsamosciWPodpowiedzi.length);
+    const widoczne = new Set([...plan.drawn, ...plan.tozsamosciWPodpowiedzi].map((p) => p.index));
+    const nieczytelne = scene.labels.filter((_, i) => !widoczne.has(i));
+    expect(nieczytelne.filter((l) => klasaInformacjiEtykiety(l) === 'tozsamosc')).toEqual([]);
+    expect(plan.drawn.length + wPodpowiedzi + nieczytelne.length).toBe(scene.labels.length);
   });
 
-  // Dowód, że próg NAPRAWDĘ gryzie na tym kadrze, i że ukrycie jest JAWNE.
-  // Bez tego poprzedni test przechodziłby także wtedy, gdyby declutter przestał
-  // działać (0 ukrytych + wszystkie w DOM też daje sumę).
-  it('pełny widok sieci: opisy nieczytelne są ukryte i zameldowane w warstwie ekranu', () => {
+  // Dowód, że próg NAPRAWDĘ gryzie na tym kadrze (bez tego bilans wyżej przechodziłby także
+  // przy wyłączonej gęstości) i że licznika ukrytych opisów nie ma na ekranie.
+  it('pełny widok sieci: dane nieczytelne niewidoczne, żadnego licznika „Ukryto N opisów”, nazwy stacji narysowane', () => {
     const scene = buildSceneV3(enm);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
-    const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
-    const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
-    const porzucone = Number(labelGroup?.getAttribute('data-dropped-identity') ?? '0');
-    expect(ukryte).toBeGreaterThan(0);
-    expect(ukryte + porzucone).toBeLessThanOrEqual(scene.labels.length);
-    // V12K-222: komunikat przeniesiony z ramki ARKUSZA do warstwy EKRANU. Pierwsza
-    // wersja wpadała w pułapkę, którą sama opisuje — przy skali ukrywającej etykiety
-    // sam komunikat miał ~2 px i był nieczytelny.
-    const komunikat = container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]');
-    expect(komunikat?.textContent).toContain('przybliż, aby zobaczyć');
-    // S9-7 (audyt C-4): komunikat liczy OBA rodzaje niewidocznych opisów —
-    // ukryte dane szczegółowe ORAZ tożsamości, dla których zabrakło miejsca w
-    // rozmiarze czytelnym. Kanały audytu w DOM zostają ROZDZIELONE (żeby
-    // bilans „narysowane + ukryte + porzucone == etykiety sceny" dało się
-    // sprawdzić bez podwójnego liczenia), ale użytkownik musi zobaczyć sumę:
-    // napis, którego nie ma, nie może być niepoliczony.
-    expect(komunikat?.getAttribute('data-hidden-count')).toBe(String(ukryte + porzucone));
-    // Dowód kompensacji skali: pismo w jednostkach ŚWIATA musi być tym większe, im
-    // mniejsza skala kamery — tylko wtedy na ekranie ma stały rozmiar. Przy pełnym
-    // widoku sieci (skala ≪ 1) fontSize w świecie jest wyraźnie większy od nominału.
-    const fontSize = Number(komunikat?.getAttribute('font-size') ?? '0');
-    expect(fontSize).toBeGreaterThan(12);
+    const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
+    const widoczne = new Set([...plan.drawn, ...plan.tozsamosciWPodpowiedzi].map((p) => p.index));
+    expect(scene.labels.filter((_, i) => !widoczne.has(i)).length).toBeGreaterThan(0);
+    expect(container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]')).toBeNull();
+    expect(container.textContent ?? '').not.toContain('Ukryto');
+    const nazwyStacji = plan.drawn.filter((p) => p.label.ownerRef.endsWith('/station#name-row-0'));
+    expect(nazwyStacji.length).toBeGreaterThan(0);
   });
 
   it('kanwa niesie ramkę arkusza (SheetFrame) i tło SCADA', () => {

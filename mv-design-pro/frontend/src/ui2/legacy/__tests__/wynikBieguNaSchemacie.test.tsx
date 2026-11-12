@@ -34,6 +34,7 @@ import { useSelectionStore } from '../../../ui/selection/store';
 import { useRawResultOverlayStore } from '../../../ui/sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../ui/sld-overlay/overlayStore';
 import { SldCanvasV3Workspace } from '../../../ui/sld/v3/canvas/SldCanvasV3Workspace';
+import { SKALA_WYNIKOW, powiekszKolkiemDoSkali } from '../../../ui/sld/v3/canvas/__tests__/kameraTestowa';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import type { RawOverlayPayload } from '../../../ui/sld-overlay/rawResultOverlayStore';
 
@@ -156,7 +157,12 @@ describe('S9-2 — łańcuch od klika: bieg → schemat → wyniki na rysunku', 
     );
     expect(Object.keys(zwarcie.elements)).toHaveLength(10);
 
-    // 4. OSTATNI KLIK ŁAŃCUCHA: rysunek pokazuje wartości biegu.
+    // 4. OSTATNI KLIK ŁAŃCUCHA: rysunek pokazuje wartości biegu. Karta SLD-SKALA-I-NAWIGACJA (R3):
+    // liczby wyników rysuje się, gdy ich pismo jest czytelne na ekranie — na kadrze całej sieci
+    // miejsce zwarcia niesie znacznik stanu o stałym rozmiarze, a wartości czyta się po
+    // powiększeniu kółkiem (ścieżka natywna) do skali, przy której pismo wyników się pojawia.
+    await waitFor(() => expect(container.querySelector('[data-testid="sld-canvas-v3"]')).not.toBeNull());
+    powiekszKolkiemDoSkali(container, SKALA_WYNIKOW);
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBeGreaterThan(0);
     });

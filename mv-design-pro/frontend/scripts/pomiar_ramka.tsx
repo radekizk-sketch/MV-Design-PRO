@@ -91,7 +91,7 @@ function zmierz(nazwaSieci: string, enm: EnergyNetworkModel): Wiersz[] {
       }
       out.push({
         siec: nazwaSieci, skala: s.nazwa, v: s.v, gora, dol, lewo, prawo, winowajca,
-        pow: plan.drawn.filter((p) => p.enlarged).length, porz: plan.droppedIdentity.length, rys: plan.drawn.length,
+        pow: plan.drawn.filter((p) => p.enlarged).length, porz: plan.tozsamosciWPodpowiedzi.length, rys: plan.drawn.length,
       });
     }
   }

@@ -27,6 +27,7 @@ import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buil
 import { sheetSizeFor } from '../../sheet/outline';
 import { MIN_OPIS_CELU_KADRU_PX, fontSizeForScreenFloorWithinProportion } from '../../core/text';
 import { planSceneLabels } from '../labelLegibility';
+import { klasaInformacjiEtykiety } from '../gestoscInformacji';
 import { KADR_MAX_SCALE, type BoundingBox } from '../camera';
 import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
 import { indeksPrzynaleznosci, kluczePrzynaleznosci, nalezyDo } from '../viewAnchor';
@@ -497,9 +498,17 @@ describe('K2b: zakres stacji bez sąsiadów', () => {
  * jest / brak miejsca (gęsta stacja przy skali 0,6) × każda stacja
  * rysunku. Pomiar na fiksturze 52 stacji (2026-10-21): przy skali ≥ 1 wszystkie
  * opisy celu mają ≥ 13 px i żaden nie jest ukryty; przy 0,6 część opisów gęstych
- * stacji nie mieści się po powiększeniu — kanwa podaje ich liczbę
- * (`data-ukryte-opisy-celu`, komunikat „opisy szczegółowe po przybliżeniu").
+ * stacji nie mieści się po powiększeniu (karta SLD-SKALA-I-NAWIGACJA: bez licznika
+ * na kanwie — dane bez miejsca nie są rysowane, tożsamość idzie do podpowiedzi uchwytu).
  */
+/** Piny pomiaru (2026-11-12, karta SLD-SKALA-I-NAWIGACJA) przy skali 1, suma po 53 kadrach
+ *  stacji fikstury: 171 danych celu bez miejsca na postać 13 px (pismo naturalne t4 = 8 px nie
+ *  jest czytelne, więc postaci standardowej nie ma) i 171 opisów celu narysowanych pismem
+ *  standardowym, bo pełna postać celu nie ma miejsca. Przy skali 1,5 i 2,76 — zero. Zapadka
+ *  w dół — mniejsza liczba po zmianie układu obniża pin. */
+const PIN_BEZ_MIEJSCA_SKALA_1 = 171;
+const PIN_PONIZEJ_PODLOGI_SKALA_1 = 171;
+
 describe('K2b: podłoga opisów celu w planie etykiet', () => {
   const plan = (scale: number, refy?: ReadonlySet<string>) =>
     planSceneLabels(
@@ -509,19 +518,50 @@ describe('K2b: podłoga opisów celu w planie etykiet', () => {
       sheetSizeFor(scena),
       refy ? podlogaOpisowCelu(refy) : undefined,
     );
+  /** Etykiety sceny, których plan NIE narysował (dane bez miejsca albo poniżej progu
+   *  i tożsamości oddane do podpowiedzi uchwytu). */
+  const nienarysowane = (p: ReturnType<typeof plan>) => {
+    const narysowane = new Set(p.drawn.map((d) => d.index));
+    return scena.labels.filter((_, i) => !narysowane.has(i));
+  };
   const refyStacji = (st: string) => new Set(dostepny(zakresCelu('stacja', enm, [st], scena)).refy);
 
-  it.each([1, 1.5, KADR_MAX_SCALE] as const)('skala %s (w granicy sufitu, jest miejsce): każdy opis celu narysowany, ≥ 13 px na ekranie', (scale) => {
+  it.each([1, 1.5, KADR_MAX_SCALE] as const)('skala %s (w granicy sufitu): każdy opis celu narysowany ≥ 13 px na ekranie albo — dana — bez miejsca na postać celu', (scale) => {
+    let bezMiejsca = 0;
+    let ponizejPodlogi = 0;
     for (const st of stacjeRysunku) {
       const refy = refyStacji(st);
       const p = plan(scale, refy);
-      const ukryte = [...p.hiddenDetail, ...p.droppedIdentity].filter((l) => nalezyDoZakresu(l.ownerRef, refy));
-      expect(ukryte.map((l) => l.text), st).toEqual([]);
+      // Poza rysunkiem mogą zostać WYŁĄCZNIE dane, których postać celu nie ma miejsca przy
+      // żadnej stronie (ta sama wyrocznia co dla skali 0,3 niżej). Pomiar 2026-11-12 (karta
+      // SLD-SKALA-I-NAWIGACJA): plan dotąd odrzucał takie dane BEZ śladu w żadnej liście
+      // (`hiddenDetail` ich nie zawierał), więc ten test był zielony z cichym zerem — numer
+      // „52” wyłącznika w czterech polach stacji T1 (slot 9 j.św. między wyłącznikiem a ramką
+      // bloku zabezpieczeń) nie mieści się w piśmie 13 px. Tożsamość celu nie ginie nigdy.
+      const ukryte = nienarysowane(p).filter((l) => nalezyDoZakresu(l.ownerRef, refy));
+      expect(ukryte.filter((l) => klasaInformacjiEtykiety(l) === 'tozsamosc').map((l) => l.text), st).toEqual([]);
+      const inne = p.drawn.map((q) => q.rect);
+      for (const l of ukryte) {
+        const sama = planSceneLabels([l], [...sceneObstacleRects(scena), ...inne], scale, sheetSizeFor(scena), podlogaOpisowCelu(refy));
+        expect(sama.drawn.map((q) => q.text), `${st}: „${l.text}" — postać celu ma miejsce, a plan jej nie narysował`).toEqual([]);
+        bezMiejsca += 1;
+      }
       for (const d of p.drawn) {
-        if (!nalezyDoZakresu(d.label.ownerRef, refy)) continue;
-        expect(d.fontSize * scale, `${st}: ${d.text}`).toBeGreaterThanOrEqual(MIN_OPIS_CELU_KADRU_PX - 1e-6);
+        if (!nalezyDoZakresu(d.label.ownerRef, refy) || d.fontSize * scale >= MIN_OPIS_CELU_KADRU_PX - 1e-6) continue;
+        // Pismo poniżej podłogi celu tylko wtedy, gdy PEŁNA postać celu nie ma miejsca (R4:
+        // tożsamość nie jest skracana — pełne brzmienie w piśmie standardowym wygrywa ze
+        // skrótem w piśmie celu; dawniej „FT1 · transformatorowe” stało tu jako „FT1 · tr…”).
+        const sama = planSceneLabels([d.label], [...sceneObstacleRects(scena), ...inne.filter((r) => r !== d.rect)], scale, sheetSizeFor(scena), podlogaOpisowCelu(refy));
+        expect(
+          sama.drawn.filter((q) => q.fontSize * scale >= MIN_OPIS_CELU_KADRU_PX - 1e-6).map((q) => q.text),
+          `${st}: „${d.text}" — postać celu ma miejsce, a plan narysował pismo poniżej podłogi`,
+        ).toEqual([]);
+        ponizejPodlogi += 1;
       }
     }
+    // Piny pomiaru 2026-11-12 (zapadka w dół).
+    expect(bezMiejsca).toBeLessThanOrEqual(scale === 1 ? PIN_BEZ_MIEJSCA_SKALA_1 : 0);
+    expect(ponizejPodlogi).toBeLessThanOrEqual(scale === 1 ? PIN_PONIZEJ_PODLOGI_SKALA_1 : 0);
   });
 
   // Dwie przyczyny pisma poniżej podłogi (`planSceneLabels`, gałąź `zapasowy`): sufit proporcji
@@ -565,12 +605,12 @@ describe('K2b: podłoga opisów celu w planie etykiet', () => {
     }
   });
 
-  it('brak miejsca (skala 0,6): ukryte opisy celu występują i są policzalne — to liczba, którą kanwa komunikuje', () => {
+  it('brak miejsca (skala 0,6): nienarysowane opisy celu występują i są policzalne — test nie jest pusty trywialnie', () => {
     let ukryte = 0;
     for (const st of stacjeRysunku) {
       const refy = refyStacji(st);
       const p = plan(0.6, refy);
-      ukryte += [...p.hiddenDetail, ...p.droppedIdentity].filter((l) => nalezyDoZakresu(l.ownerRef, refy)).length;
+      ukryte += nienarysowane(p).filter((l) => nalezyDoZakresu(l.ownerRef, refy)).length;
     }
     expect(ukryte).toBeGreaterThan(0);
   });

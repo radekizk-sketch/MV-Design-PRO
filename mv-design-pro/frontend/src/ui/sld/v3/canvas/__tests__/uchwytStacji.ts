@@ -42,3 +42,26 @@ export function pierwszaStacjaZUchwytem(container: ParentNode, scene: SceneV3): 
   if (!pierwsza) throw new Error('kadr nie rysuje napisu identyfikacji żadnej stacji');
   return pierwsza;
 }
+
+/**
+ * Obrys trafienia OBSZARU stacji `ref` (R6: cel trafienia, gdy aparaty i pola stacji są na
+ * ekranie poniżej progu rozpoznawalności — `hitAreas.celTrafienia`) albo `null`, gdy w tym
+ * kadrze celem są aparaty lub pola.
+ */
+export function uchwytObszaruStacjiLubNull(container: ParentNode, ref: string): Element | null {
+  return (
+    [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="stacja"]')].find(
+      (n) => n.getAttribute('data-hit-owner-ref') === ref,
+    ) ?? null
+  );
+}
+
+/** Pierwsza stacja (kolejność obejścia sceny) z obrysem OBSZARU w bieżącym kadrze; brak — błąd
+ *  testu (w kadrze przeglądu każda stacja jest celem trafienia). */
+export function pierwszyObszarStacji(container: ParentNode, scene: SceneV3): { readonly ref: string; readonly el: Element } {
+  for (const ref of scene.meta.stationTraversalOrder) {
+    const el = uchwytObszaruStacjiLubNull(container, ref);
+    if (el) return { ref, el };
+  }
+  throw new Error('kadr nie ma obszaru trafienia żadnej stacji');
+}

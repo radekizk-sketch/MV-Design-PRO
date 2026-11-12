@@ -33,13 +33,16 @@ export type LabelClass = 't1' | 't2' | 't3' | 't4';
  * wszystkiego. Rozstrzygnięcie: dwie klasy z OSOBNYMI regułami widoczności.
  *
  *  - `'tozsamosc'` — nazwa elementu, napięcie szyny/sekcji, oznaczenie pola,
- *    nazwa źródła/stacji. Widoczna wszędzie tam, gdzie widoczny jest jej
- *    element; poniżej progu czytelności renderowana w rozmiarze MINIMALNYM
- *    czytelnym (skalowana niezależnie od kamery — jak minimalny rozmiar
- *    symboli `MIN_SYMBOL_SCREEN_PX`), a NIE ukrywana.
+ *    nazwa źródła/stacji. Nie znika z powodu skali: poniżej progu czytelności
+ *    rysuje się w STAŁYM rozmiarze ekranowym (karta SLD-SKALA-I-NAWIGACJA, R4;
+ *    `minReadableFontSize`), z otoczką w kolorze tła; przy kolizji ustępuje
+ *    tożsamości wyższej rangi i trafia do podpowiedzi swojego uchwytu
+ *    (`canvas/labelLegibility.ts`).
  *  - `'dane'` — parametry (Yd11, uk%, Pk, przekroje, długości, nastawy) i
- *    adnotacje. Podlegają progowi czytelności jak dotąd (ukrywanie z
- *    licznikiem „Ukryto N opisów", który liczy WYŁĄCZNIE tę klasę).
+ *    adnotacje. Widoczne, gdy ich pismo jest czytelne na ekranie (R3, próg
+ *    z histerezą `canvas/gestoscInformacji.ts`); poniżej progu po prostu nie
+ *    ma ich na rysunku — bez licznika ukrytych opisów (gęstość informacji jest
+ *    funkcją skali, a nie stratą, którą trzeba raportować).
  *
  * Klasa jest DANĄ SCENY (deklarowaną przez wytwórcę etykiety w
  * `compose/*`/`layout/labels.ts`), nigdy nie jest zgadywana z TREŚCI tekstu —
@@ -48,34 +51,6 @@ export type LabelClass = 't1' | 't2' | 't3' | 't4';
  * = parametry = dane).
  */
 export type LabelRole = 'tozsamosc' | 'dane';
-
-/**
- * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
- * BINDING) — KLASA POZIOMU SZCZEGÓŁU etykiety/adnotacji sceny: TRZY poziomy
- * informacji etykiety (scena jest jedna — karta SLD-SKALA-I-NAWIGACJA, R1 — więc
- * klasa nie wybiera sceny, tylko gęstość napisów w kanwie), ROZŁĄCZNA od `LabelClass` (rozmiar pisma) i
- * WARSTWĄ NAD `LabelRole` (KD-11), nie jej zastępstwem — wyprowadzenie:
- * `layout/labels.ts` `lodClassOf`.
- *
- *  - `'L0'` (Fit / cały arkusz) — NIGDY nie ukrywane, żadnym zoomem (dokładny
- *    odpowiednik `LabelRole.tozsamosc`): oznaczenia referencyjne aparatów,
- *    poziomy napięć i etykiety szyn, nazwy pól, nazwa+parametry kluczowe
- *    transformatora, stany OPEN/CLOSED, ostrzeżenia krytyczne (SLD INVALID,
- *    UNRESOLVED), granica domen napięciowych — bez tej treści rysunek nie
- *    mówi, CO przedstawia;
- *  - `'L1'` (zbliżenie robocze) — dochodzą: typy katalogowe, prądy znamionowe,
- *    przekroje/długości kabli, oznaczenia głowic, układ N/PE/PEN szczegółowo;
- *  - `'L2'` (inspekcja) — dochodzą: parametry katalogowe pełne, producent,
- *    warstwa wyników inline (Ib/Iz/ΔU/Ik/SWZ per element), marginesy doboru.
- *
- * Wyjątek bezwzględny (plan, dosłownie): element w stanie błędu/UNRESOLVED
- * renderuje PEŁNĄ etykietę na KAŻDYM poziomie — patrz `OwnedLabel.unresolved`
- * (`layout/labels.ts`), egzekwowane w `canvas/labelLegibility.ts`.
- * „Ukryto N opisów" (`LabelRenderPlan.hiddenDetail`) liczy WYŁĄCZNIE `'L1'`/
- * `'L2'` — `'L0'` nigdy tam nie trafia, z konstrukcji (wyrocznia:
- * `canvas/labelLegibility.ts` `hiddenDetailContainsL0`).
- */
-export type LodClass = 'L0' | 'L1' | 'L2';
 
 export interface LabelTypography {
   readonly fontSize: number;
@@ -254,11 +229,11 @@ export function isLabelReadableAtScale(cls: LabelClass, scale: number): boolean 
 }
 
 /**
- * KD-11: czy etykieta ZNIKA przy tej skali. Znika WYŁĄCZNIE klasa `'dane'` i
- * wyłącznie poniżej progu czytelności — tożsamość nie znika NIGDY (jest
- * przeskalowana do rozmiaru minimalnego, patrz `minReadableFontSize`).
- * Jedyne miejsce, które wolno pytać o ukrycie etykiety (warstwa renderu ORAZ
- * licznik „Ukryto N opisów" — jedna prawda, bez dwóch reguł).
+ * KD-11: czy etykieta ZNIKA przy tej skali (bez historii klatek — sam próg).
+ * Znika WYŁĄCZNIE klasa `'dane'` i wyłącznie poniżej progu czytelności —
+ * tożsamość nie znika z powodu skali (stały rozmiar ekranowy, patrz
+ * `minReadableFontSize`). Plan renderu stosuje ten sam próg z histerezą
+ * (`canvas/gestoscInformacji.ts` `czytelnyNaEkranie`).
  */
 export function isLabelHiddenAtScale(role: LabelRole, cls: LabelClass, scale: number): boolean {
   return role === 'dane' && !isLabelReadableAtScale(cls, scale);
@@ -300,9 +275,17 @@ export function minReadableFontSize(cls: LabelClass, scale: number): number {
  *   · nieczytelne, ale kompensacja mieści się w sufic­ie ⇒ rozmiar powiększony
  *     (dokładnie `MIN_READABLE_LABEL_SCREEN_PX` na ekranie);
  *   · nieczytelne i kompensacja przekroczyłaby sufit    ⇒ `null` — etykiety
- *     NIE rysujemy i mówimy o tym wprost (`droppedIdentity` + wskaźnik
- *     „Ukryto N opisów"). Napis czytelny, ale wielkości trzech aparatów obok
- *     siebie, nie jest rysunkiem technicznym — jest szyldem na rysunku.
+ *     NIE rysujemy na rysunku; trafia do podpowiedzi uchwytu swojego obiektu
+ *     (`canvas/labelLegibility.ts`, `tozsamosciWPodpowiedzi`). Napis czytelny,
+ *     ale wielkości trzech aparatów obok siebie, nie jest rysunkiem
+ *     technicznym — jest szyldem na rysunku.
+ *
+ * KARTA SLD-SKALA-I-NAWIGACJA (R4): sufit obowiązuje WYŁĄCZNIE tożsamości rangi
+ * pola (oznaczenie aparatu, rola pola, źródło, punkt rozcięcia — opisują obiekt
+ * o własnym, małym kształcie). Nazwa GPZ, nazwa stacji i oznaczenie sekcji szyny
+ * opisują BLOK i rysują się w stałym rozmiarze ekranowym bez sufitu
+ * (`minReadableFontSize`) — są tym, po czym projektant orientuje się na widoku
+ * całej sieci.
  *
  * Skala niewiarygodna (≤0/NaN — viewport 0×0 przed pierwszym pomiarem układu)
  * ⇒ rozmiar naturalny (parytet z `isLabelReadableAtScale`: brak pomiaru nie
@@ -400,12 +383,15 @@ const CZLON_SEPARATOR = ' · ';
  *     wprost, że jest skrótem, a alternatywą na tym etapie jest brak podpisu;
  *  7. gdy nie mieści się nawet jeden znak z wielokropkiem ⇒ PUSTY tekst.
  *     Wołający (plan renderu) traktuje pusty wynik jak brak miejsca i etykiety
- *     NIE rysuje — uczciwy brak, policzony we wskaźniku „Ukryto N opisów".
+ *     NIE rysuje (napis danych po prostu nie mieści się w tej skali).
+ *
+ * KARTA SLD-SKALA-I-NAWIGACJA (R4): tożsamości plan renderu NIE skraca — nazwa
+ * stacji, sekcji, pola i oznaczenie aparatu stoją w całości albo ustępują
+ * miejsca i trafiają do podpowiedzi uchwytu. Funkcja skraca wyłącznie dane.
  *
  * OGRANICZENIE NAZWANE: gdy element rozróżnia wyraz ze ŚRODKA nazwy („GPZ
  * *Referencyjny* 15 kV" vs „GPZ *Wschodni* 15 kV"), żadna forma mieszcząca
- * się w kilku glifach go nie przeniesie — wynikiem jest „GPZ …" plus wskaźnik
- * ukrycia. Rozróżnianie po ŚRODKU wymagałoby porównania z resztą zbioru
+ * się w kilku glifach go nie przeniesie — wynikiem jest „GPZ …". Rozróżnianie po ŚRODKU wymagałoby porównania z resztą zbioru
  * etykiet (wspólny przedrostek), czego ta funkcja świadomie nie robi: byłaby
  * wtedy zależna od sąsiadów, a więc niedeterministyczna względem pojedynczej
  * etykiety.

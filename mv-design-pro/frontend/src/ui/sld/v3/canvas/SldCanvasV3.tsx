@@ -41,11 +41,10 @@ import {
   SLD_TEXT_STYLE,
   labelLineHeight,
   measureLabelWidth,
-  measureTextWidth,
-  screenFixedFontSize,
+  screenFixedLength,
 } from '../core/text';
 import { GRID } from '../core/grid';
-import { planSceneLabels, type PlannedLabel } from './labelLegibility';
+import { obrysArkuszaPlanu, planSceneLabels, type LabelRenderPlan, type PlannedLabel } from './labelLegibility';
 import { paneleWgPlanu, ramkiBlokowWgPlanu } from './obrysyWgPlanu';
 import {
   LABEL_OWNER_ELEMENT_KIND,
@@ -68,16 +67,6 @@ import {
 } from '../compose/preview';
 import { FRAME_MARGIN, SheetFrame, type SheetLegendEntry } from '../sheet/Frame';
 import { sheetSizeFor } from '../sheet/outline';
-import {
-  HIDDEN_LABELS_HINT_FONT_PX,
-  HIDDEN_LABELS_HINT_FONT_WEIGHT,
-  hiddenLabelsHintPlateRect,
-  hiddenLabelsHintScreenRect,
-  hiddenLabelsHintText,
-  hiddenLabelsHintTextKadru,
-  hiddenLabelsHintTextPozaCelem,
-  sheetCaptionScreenRects,
-} from './chromeLayout';
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
 import type { SafeInsets } from '../../v2/viewport/ViewportController';
 import type { RouteVertex } from '../layout/route';
@@ -87,6 +76,7 @@ import {
   boundingBoxOfRect,
   cameraReducer,
   cameraViewBox,
+  SKALA_PODLOGI_ROZDZIELNICY,
   computeInitialCameraState,
   type CameraState,
   pointerDistance,
@@ -95,11 +85,10 @@ import {
   type ViewportTransform,
 } from './camera';
 import { kotwicaWidoku, prostokatRefowWScenie } from './viewAnchor';
-import { nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
+import { hierarchiaCelowTrafienia, nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
-import { screenToWorld } from '../../v2/viewport/ViewportController';
 import {
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
@@ -107,9 +96,10 @@ import {
   type TransformerOltcOverlay,
 } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
-import { resultRefForSegment } from './resultLabels';
+import { isExceedanceSeverity, resultRefForSegment } from './resultLabels';
+import { nosnikiZnacznikowStanu, znacznikiStanu, type ZnacznikStanu } from './znacznikiStanu';
 import { resultLabelLines, RESULT_LABEL_TREND_GLYPH } from './resultLabelTemplates';
-import { czytelnyNaEkranie } from './gestoscInformacji';
+import { czytelnyNaEkranie, klasaInformacjiEtykiety } from './gestoscInformacji';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
@@ -185,7 +175,7 @@ function faultFlowColor(token: FaultFlowColorToken, palette: SldPalette): string
 const FAULT_ARROW_MIN_RUN = 2 * FLOW_ARROW_LENGTH;
 /** Wrażliwość zoomu kółkiem — kalibracja wizualna (spec nie podaje liczby;
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
-const WHEEL_ZOOM_SENSITIVITY = 0.0015;
+export const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 
 /** RAMKA-TNIE-PODPISY: treść podpisu skali arkusza. Kanwa ekranowa nie ma
  *  podziałki liczbowej (skala zmienia się z zoomem), więc podpis mówi wprost,
@@ -1380,6 +1370,60 @@ function SceneFaultPointMarkerNode(props: { readonly placement: FaultPointMarker
   );
 }
 
+/** R5 — barwa znacznika stanu z tokenów motywu (zero literałów barwy w węźle). */
+function barwaZnacznikaStanu(znacznik: ZnacznikStanu, palette: SldPalette): string {
+  switch (znacznik.rodzaj) {
+    case 'lacznik-otwarty':
+      return palette.state.otwarty;
+    case 'punkt-rozciecia':
+      // Stan z kafla łącznika, gdy model go niesie; bez rekordu położenia — barwa rysunku.
+      return znacznik.stanKafla ? palette.state[znacznik.stanKafla] : palette.baseStroke;
+    case 'zaznaczenie':
+      return palette.highlight.selection;
+    case 'miejsce-zwarcia':
+      return palette.highlight.fault;
+    case 'przekroczenie':
+      return resultSeverityColor(znacznik.severity, palette) ?? palette.highlight.fault;
+  }
+}
+
+/** R5 — znacznik stanu: kształt z rejestru, średnica stała na ekranie (`srednicaSwiata` =
+ *  px ekranu / skala), obwódka tła dla odcięcia od rysunku pod spodem. */
+function SceneZnacznikStanuNode(props: { readonly znacznik: ZnacznikStanu; readonly cameraScale: number }): JSX.Element {
+  const { znacznik } = props;
+  const palette = useSldPalette();
+  const barwa = barwaZnacznikaStanu(znacznik, palette);
+  const r = znacznik.srednicaSwiata / 2;
+  const kreska = screenFixedLength(1.5, props.cameraScale);
+  const { x, y } = znacznik;
+  const wspolne = {
+    'data-testid': 'sld-v3-znacznik-stanu',
+    'data-znacznik-rodzaj': znacznik.rodzaj,
+    'data-znacznik-ref': znacznik.ref,
+    'data-znacznik-ksztalt': znacznik.wpis.ksztalt,
+    'data-znacznik-srednica-ekran': znacznik.wpis.rozmiarEkranPx,
+    'aria-label': znacznik.wpis.opis,
+  } as const;
+  switch (znacznik.wpis.ksztalt) {
+    case 'kwadrat':
+      return (
+        <rect {...wspolne} x={x - r} y={y - r} width={2 * r} height={2 * r} fill={barwa} stroke={palette.canvasBackground} strokeWidth={kreska} />
+      );
+    case 'romb':
+      return (
+        <path {...wspolne} d={`M ${x} ${y - r} L ${x + r} ${y} L ${x} ${y + r} L ${x - r} ${y} Z`} fill={barwa} stroke={palette.canvasBackground} strokeWidth={kreska} />
+      );
+    case 'kolo':
+      return <circle {...wspolne} cx={x} cy={y} r={r} fill={barwa} stroke={palette.canvasBackground} strokeWidth={kreska} />;
+    case 'pierscien':
+      return <circle {...wspolne} cx={x} cy={y} r={r} fill="none" stroke={barwa} strokeWidth={2 * kreska} />;
+    case 'trojkat':
+      return (
+        <path {...wspolne} d={`M ${x} ${y - r} L ${x + r} ${y + r} L ${x - r} ${y + r} Z`} fill={barwa} stroke={palette.canvasBackground} strokeWidth={kreska} />
+      );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC — pozycja
 // końcowa zaczepu + liczba przełączeń NA glifie transformatora, PO obliczeniu
@@ -1760,6 +1804,72 @@ function aggregateBlockSize(count: number): { readonly width: number; readonly h
 }
 
 /**
+ * Kotwice etykiet wyników per ownerRef — JEDNA rozdzielczość dla warstwy liczbowych etykiet
+ * (`layoutResultLabels`) i warstwy znaczników stanu przekroczeń (`canvas/znacznikiStanu.ts`).
+ * Symbol (TR/źródło/DER) lub odcinek (szyna/przęsło), pierwsze wystąpienie w scenie.
+ */
+export function kotwiceWynikow(
+  scene: SceneV3,
+  resultLabelsByOwnerRef: Readonly<Record<string, ResultLabelEntry>>,
+): ReadonlyMap<string, ResultLabelAnchor> {
+  // Kotwice: symbol (TR/źródło/DER) lub odcinek (szyna/przęsło) — indeks po
+  // ownerRef, pierwsze wystąpienie w scenie (tożsamość modelu).
+  const symbolAnchor = new Map<string, { cx: number; cy: number; halfW: number; halfH: number }>();
+  for (const s of scene.symbols) {
+    const ref = s.meta?.ownerRef;
+    if (!ref || symbolAnchor.has(ref)) continue;
+    const g = gabarytSymbolu(s);
+    symbolAnchor.set(ref, { cx: g.x + g.width / 2, cy: g.y + g.height / 2, halfW: g.width / 2, halfH: g.height / 2 });
+  }
+  const segmentAnchor = new Map<string, { cx: number; cy: number; horizontal: boolean }>();
+  for (const seg of scene.segments) {
+    const ref = seg.meta?.ownerRef;
+    if (!ref || segmentAnchor.has(ref)) continue;
+    const geom = flowOverlayGeometry(seg.points, true);
+    if (!geom) continue;
+    segmentAnchor.set(ref, { cx: geom.runMidX, cy: geom.runMidY, horizontal: geom.horizontal });
+  }
+
+  const out = new Map<string, ResultLabelAnchor>();
+  for (const ref of Object.keys(resultLabelsByOwnerRef).sort()) {
+    const entry = resultLabelsByOwnerRef[ref];
+    // S9-2: kotwica dobierana PREFERENCJĄ klasy, ale z zejściem do drugiego
+    // rejestru. Powód: ta sama tożsamość wynikowa bywa narysowana raz odcinkiem,
+    // raz symbolem (szyna stacji odcinkiem, transformator i źródło symbolem); bez
+    // zejścia wpis bez kotwicy preferowanej nie dostałby etykiety wcale.
+    const preferSymbol = entry.kind === 'transformer' || entry.kind === 'source';
+    const symbolCandidate = symbolAnchor.get(ref);
+    const segmentCandidate = segmentAnchor.get(ref);
+    let anchor: ResultLabelAnchor | null = null;
+    if (preferSymbol && symbolCandidate) {
+      anchor = { ...symbolCandidate, horizontal: true, symbol: true };
+    } else if (!preferSymbol && segmentCandidate) {
+      anchor = {
+        cx: segmentCandidate.cx,
+        cy: segmentCandidate.cy,
+        halfW: 0,
+        halfH: 0,
+        horizontal: segmentCandidate.horizontal,
+        symbol: false,
+      };
+    } else if (symbolCandidate) {
+      anchor = { ...symbolCandidate, horizontal: true, symbol: true };
+    } else if (segmentCandidate) {
+      anchor = {
+        cx: segmentCandidate.cx,
+        cy: segmentCandidate.cy,
+        halfW: 0,
+        halfH: 0,
+        horizontal: segmentCandidate.horizontal,
+        symbol: false,
+      };
+    }
+    if (anchor) out.set(ref, anchor);
+  }
+  return out;
+}
+
+/**
  * R2 — pełne rozmieszczenie warstwy liczbowych etykiet wynikowych dla sceny.
  * Rozbudowa R1 o: (wym. 12) PRIORYTETY kolizji (klasa właściciela ze sceny —
  * `RESULT_LABEL_PRIORITY`), (wym. 14) AGREGACJĘ bliskich kotwic w marker
@@ -1816,23 +1926,9 @@ export function layoutResultLabels(
     ...scene.symbols.map(gabarytSymbolu),
     ...extraObstacles,
   ];
-  // Kotwice: symbol (TR/źródło/DER) lub odcinek (szyna/przęsło) — indeks po
-  // ownerRef, pierwsze wystąpienie w scenie (tożsamość modelu).
-  const symbolAnchor = new Map<string, { cx: number; cy: number; halfW: number; halfH: number }>();
-  for (const s of scene.symbols) {
-    const ref = s.meta?.ownerRef;
-    if (!ref || symbolAnchor.has(ref)) continue;
-    const g = gabarytSymbolu(s);
-    symbolAnchor.set(ref, { cx: g.x + g.width / 2, cy: g.y + g.height / 2, halfW: g.width / 2, halfH: g.height / 2 });
-  }
-  const segmentAnchor = new Map<string, { cx: number; cy: number; horizontal: boolean }>();
-  for (const seg of scene.segments) {
-    const ref = seg.meta?.ownerRef;
-    if (!ref || segmentAnchor.has(ref)) continue;
-    const geom = flowOverlayGeometry(seg.points, true);
-    if (!geom) continue;
-    segmentAnchor.set(ref, { cx: geom.runMidX, cy: geom.runMidY, horizontal: geom.horizontal });
-  }
+  // Kotwice z JEDNEJ rozdzielczości (`kotwiceWynikow`) — ta sama, z której warstwa znaczników
+  // stanu bierze kotwicę przekroczenia (R5): etykieta i jej znacznik stoją w tym samym punkcie.
+  const kotwice = kotwiceWynikow(scene, resultLabelsByOwnerRef);
 
   // Jednostki o rozwiązanej kotwicy i niepustych liniach, uporządkowane
   // wg (priorytet klasy, ownerRef) — wym. 12 + determinizm.
@@ -1841,39 +1937,7 @@ export function layoutResultLabels(
     const entry = resultLabelsByOwnerRef[ref];
     const lines = resultLabelLines(entry.lines);
     if (lines.length === 0) continue;
-    // S9-2: kotwica dobierana PREFERENCJĄ klasy, ale z zejściem do drugiego
-    // rejestru. Powód: ta sama tożsamość wynikowa bywa narysowana raz odcinkiem,
-    // raz symbolem — szyna SN stacji to odcinek na L1/L2, a na poziomie
-    // przeglądu (L0) TEN SAM punkt niesie zwinięty blok stacji (symbol).
-    // Bez zejścia wpis nie miałby kotwicy na L0 i wartość stacyjna nigdy by się
-    // nie pokazała.
-    const preferSymbol = entry.kind === 'transformer' || entry.kind === 'source';
-    const symbolCandidate = symbolAnchor.get(ref);
-    const segmentCandidate = segmentAnchor.get(ref);
-    let anchor: ResultLabelAnchor | null = null;
-    if (preferSymbol && symbolCandidate) {
-      anchor = { ...symbolCandidate, horizontal: true, symbol: true };
-    } else if (!preferSymbol && segmentCandidate) {
-      anchor = {
-        cx: segmentCandidate.cx,
-        cy: segmentCandidate.cy,
-        halfW: 0,
-        halfH: 0,
-        horizontal: segmentCandidate.horizontal,
-        symbol: false,
-      };
-    } else if (symbolCandidate) {
-      anchor = { ...symbolCandidate, horizontal: true, symbol: true };
-    } else if (segmentCandidate) {
-      anchor = {
-        cx: segmentCandidate.cx,
-        cy: segmentCandidate.cy,
-        halfW: 0,
-        halfH: 0,
-        horizontal: segmentCandidate.horizontal,
-        symbol: false,
-      };
-    }
+    const anchor = kotwice.get(ref) ?? null;
     if (!anchor) continue;
     units.push({ ownerRef: ref, kind: entry.kind, lines, anchor, rank: RESULT_LABEL_PRIORITY[entry.kind], severity: entry.severity });
   }
@@ -2313,6 +2377,13 @@ function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }
   );
 }
 
+/** R4: grubość otoczki napisu tożsamości [px ekranu]. */
+const OTOCZKA_TOZSAMOSCI_PX = 3;
+
+function bezpiecznaSkalaOtoczki(scale: number): number {
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
 /** KD-11: węzeł etykiety rysowany WEDŁUG PLANU (`canvas/labelLegibility.ts`) —
  *  tekst (być może skrócony), rozmiar pisma (być może powiększony do minimum
  *  czytelnego) i prostokąt efektywny pochodzą z planu, a nie wprost ze sceny.
@@ -2330,6 +2401,7 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
   // `dane`, podpisy aparatów, wiersze bloku przekaźnika) — strona z planu renderu.
   const strona = planned.strona ?? label.placement;
   const zaczep = zaczepTekstuEtykiety(planned.rect, wyrownanieEtykiety(label, strona), label.rotated === true);
+  const otoczka = klasaInformacjiEtykiety(label) === 'tozsamosc';
   return (
     <g
       data-testid={`sld-v3-label-${index}`}
@@ -2360,6 +2432,20 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
         fontFamily={SLD_FONT_FAMILY}
         fontSize={planned.fontSize}
         fontWeight={typo.fontWeight}
+        // R4: OTOCZKA tożsamości — obrys glifów w kolorze tła o stałej grubości
+        // ekranowej (`OTOCZKA_TOZSAMOSCI_PX`), malowany POD wypełnieniem
+        // (`paint-order: stroke`). Napis w stałym rozmiarze ekranowym bywa większy
+        // od otoczenia rysunku; otoczka oddziela go od kresek bez zasłaniania
+        // aparatów (plan nie kładzie napisu na rysunku).
+        {...(otoczka
+          ? {
+              stroke: palette.canvasBackground,
+              strokeWidth: OTOCZKA_TOZSAMOSCI_PX / bezpiecznaSkalaOtoczki(props.cameraScale),
+              strokeLinejoin: 'round' as const,
+              paintOrder: 'stroke',
+              'data-otoczka': 'true',
+            }
+          : {})}
       >
         <TekstSvgZWzorami tekst={planned.text} />
       </text>
@@ -2648,7 +2734,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       return;
     }
     const { cel, przeszkody, tuszEtykiet } = prostokatyZakresu(scene, zadanie.zakres, sceneBoxToCameraWorld);
-    dispatch({ type: 'kadruj', anchor: cel, przeszkody, tuszEtykiet, viewportSize, safeInsets: effectiveSafeInsets });
+    // Kadr rozdzielnicy (stacja, sekcja, pole) ma podłogę czytelności nazw pól.
+    const rozdzielnica = zadanie.zakres.cel === 'stacja' || zadanie.zakres.cel === 'sekcja' || zadanie.zakres.cel === 'pole';
+    dispatch({
+      type: 'kadruj',
+      anchor: cel,
+      przeszkody,
+      tuszEtykiet,
+      viewportSize,
+      safeInsets: effectiveSafeInsets,
+      ...(rozdzielnica ? { podlogaSkali: SKALA_PODLOGI_ROZDZIELNICY } : {}),
+    });
     // Zależność wyłącznie od `seq` (dyscyplina `fitSignal`/`centerRequest`).
   }, [props.zadanieKadru?.seq]);
 
@@ -2781,6 +2877,39 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       ),
     [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles, wynikiWidoczne],
   );
+  // R5 (karta SLD-SKALA-I-NAWIGACJA): znaczniki stanu o stałym rozmiarze ekranowym — znak
+  // rozstrzygający o topologii i uwadze projektanta (łącznik otwarty, punkt N.O., zaznaczenie,
+  // miejsce zwarcia, przekroczenie) zostaje na rysunku, gdy jego nośnik jest poniżej progu
+  // rozpoznawalności. Przekroczenie: te same wpisy i kotwice co liczbowe etykiety wyników
+  // (warstwa `resultLabels` widoczna, wyniki aktualne — nieaktualny bieg nie „krzyczy”).
+  const przekroczeniaWynikow = useMemo(() => {
+    const wpisy = resultLabelsVisible && overlay?.resultsStale !== true ? overlay?.resultLabelsByOwnerRef : undefined;
+    if (!wpisy) return [];
+    const kotwice = kotwiceWynikow(scene, wpisy);
+    const out: { ref: string; x: number; y: number; severity: string }[] = [];
+    for (const ref of Object.keys(wpisy).sort()) {
+      const severity = wpisy[ref].severity;
+      const kotwica = kotwice.get(ref);
+      if (!kotwica || !isExceedanceSeverity(severity)) continue;
+      out.push({ ref, x: kotwica.cx, y: kotwica.cy, severity });
+    }
+    return out;
+  }, [scene, resultLabelsVisible, overlay?.resultsStale, overlay?.resultLabelsByOwnerRef]);
+  const nosnikiStanu = useMemo(
+    () =>
+      nosnikiZnacznikowStanu({
+        scene,
+        zaznaczenia: obrysy,
+        punktyZwarcia: faultPointMarkerPlacements,
+        srednicaKropkiZwarcia: 2 * FAULT_POINT_MARKER_DOT_RADIUS,
+        przekroczenia: przekroczeniaWynikow,
+      }),
+    [scene, obrysy, faultPointMarkerPlacements, przekroczeniaWynikow],
+  );
+  const znacznikiStanuPlan = useMemo(
+    () => znacznikiStanu(nosnikiStanu, { skala: camera.transform.scale, wynikiCzytelne: wynikiWidoczne }),
+    [nosnikiStanu, camera.transform.scale, wynikiWidoczne],
+  );
   // R2 (wym. 8): status ważności wyników KONSUMOWANY z nakładki (workspace
   // liczy go predykatem świeżości biegu nakładki, karta K8 — zero równoległego trackera).
   // Nieaktualne ⇒ etykiety wyszarzone + baner „⚠ wyniki nieaktualne" (nie znikają).
@@ -2811,12 +2940,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     if (p.swiezoscLabel) parts.push(`Świeżość: ${p.swiezoscLabel}`);
     return parts.length > 0 ? parts.join(' · ') : undefined;
   }, [effectiveOverlay?.provenance]);
-  // KD-11: PLAN ETYKIET dla bieżącej skali — jedna prawda o tym, co się rysuje
-  // (tekst, rozmiar pisma, prostokąt) i co zostało ukryte. Tożsamość elementów
-  // (nazwa, napięcie szyny, oznaczenie pola, nazwa źródła) NIE znika przy
-  // oddaleniu: jest renderowana pismem powiększonym do minimum czytelnego, bez
-  // kolizji (`canvas/labelLegibility.ts`). Ukrywane są WYŁĄCZNIE dane
-  // szczegółowe — i to one stoją we wskaźniku „Ukryto N opisów".
+  // PLAN ETYKIET dla bieżącej skali (`canvas/labelLegibility.ts`) — jedna prawda
+  // o tym, co się rysuje (tekst, rozmiar pisma, prostokąt). Tożsamość elementów
+  // (nazwa GPZ i stacji, sekcja szyny, oznaczenie pola) nie znika przy oddaleniu:
+  // stały rozmiar ekranowy, ranga przy kolizji, przegrana — w podpowiedzi uchwytu
+  // (karta SLD-SKALA-I-NAWIGACJA, R4). Dane znikają poniżej progu czytelności (R3).
   const labelObstacles = useMemo(() => sceneObstacleRects(scene), [scene]);
   // RAMKA-TNIE-PODPISY: plan dostaje TEN SAM obrys arkusza (`sheetSize`), który
   // dostaje `SheetFrame` niżej — jedna wartość, jedna prawda o krawędzi
@@ -2834,13 +2962,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     (ownerRef: string | undefined | null): boolean => zbiorKadru !== null && !nalezyDoZakresu(ownerRef, zbiorKadru),
     [zbiorKadru],
   );
-  const labelPlan = useMemo(
-    () =>
-      isLayerVisible('labels', layerVisibility)
-        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale, sheetSize, podlogaCelu)
-        : { drawn: [], hiddenDetail: [], droppedIdentity: [] },
-    [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize, podlogaCelu],
-  );
+  // R3 — HISTEREZA progu czytelności danych: plan dostaje indeksy etykiet
+  // narysowanych w poprzedniej klatce TEJ SAMEJ sceny (nowa scena = brak historii).
+  const poprzedniPlanRef = useRef<{ readonly scene: SceneV3; readonly narysowane: ReadonlySet<number> } | null>(null);
+  const labelPlan = useMemo((): LabelRenderPlan => {
+    if (!isLayerVisible('labels', layerVisibility)) return { drawn: [], tozsamosciWPodpowiedzi: [] };
+    const poprzedni = poprzedniPlanRef.current;
+    const poprzednio = poprzedni !== null && poprzedni.scene === scene ? poprzedni.narysowane : undefined;
+    return planSceneLabels(scene.labels, labelObstacles, camera.transform.scale, sheetSize, podlogaCelu, poprzednio);
+  }, [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize, podlogaCelu]);
+  const obrysArkusza = useMemo(() => obrysArkuszaPlanu(labelPlan, sheetSize), [labelPlan, sheetSize]);
+  useEffect(() => {
+    poprzedniPlanRef.current = { scene, narysowane: new Set(labelPlan.drawn.map((p) => p.index)) };
+  }, [scene, labelPlan]);
   // Obrysy etykiet (ramka bloku przekaźnika, tło pola GPZ) z prostokątów NARYSOWANYCH etykiet
   // planu — plan powiększa pismo celu kadru ponad slot sceny, więc obrys ze slotu nie obejmował
   // tuszu (`canvas/obrysyWgPlanu.ts`).
@@ -2849,106 +2983,21 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     const adn = scene.meta.gpzAdnotacje;
     return adn ? { ...adn, panele: paneleWgPlanu(adn.panele, scene.symbols, ramkiBlokow, labelPlan.drawn) } : null;
   }, [scene, ramkiBlokow, labelPlan]);
-  // K2b §0.2 (b): opisy CELU ukryte przez plan (próg czytelności, sufit
-  // proporcji, brak miejsca) i najmniejsza wysokość narysowanego opisu celu na
-  // ekranie — kanał audytu (`data-ukryte-opisy-celu`, `data-min-opis-celu-px`)
-  // i podstawa jawnego komunikatu, gdy cel jest zbyt rozległy.
-  //
-  // K2b×K3: drugi sposób niespełnienia (b) — opis celu NARYSOWANY pismem poniżej
-  // podłogi (sufit proporcji klasy albo brak miejsca na pismo podłogi). Liczony
-  // tym samym obiektem podłogi, który dostał plan (`podlogaCelu.screenPx`), żeby
-  // komunikat „opisy celu widoczne w całości" nie mógł skłamać.
+  // K2b §0.2 (b): najmniejsza wysokość narysowanego opisu celu kadru na ekranie —
+  // kanał audytu (`data-min-opis-celu-px`) liczony tym samym obiektem podłogi, który
+  // dostał plan. Licznik ukrytych opisów nie istnieje (karta SLD-SKALA-I-NAWIGACJA:
+  // gęstość informacji jest funkcją skali, a tożsamość celu stoi w całości albo
+  // w podpowiedzi uchwytu).
   const opisyCelu = useMemo(() => {
-    if (!zbiorKadru || !podlogaCelu) return { ukryte: 0, ponizejPodlogi: 0, minPx: null as number | null };
-    const naleza = (ownerRef: string) => nalezyDoZakresu(ownerRef, zbiorKadru);
-    const ukryte =
-      labelPlan.hiddenDetail.filter((l) => naleza(l.ownerRef)).length +
-      labelPlan.droppedIdentity.filter((l) => naleza(l.ownerRef)).length;
+    if (!zbiorKadru || !podlogaCelu) return { minPx: null as number | null };
     let minPx: number | null = null;
-    let ponizejPodlogi = 0;
     for (const p of labelPlan.drawn) {
-      if (!naleza(p.label.ownerRef)) continue;
+      if (!nalezyDoZakresu(p.label.ownerRef, zbiorKadru)) continue;
       const px = p.fontSize * camera.transform.scale;
-      if (px < podlogaCelu.screenPx - 1e-6) ponizejPodlogi += 1;
       if (minPx === null || px < minPx) minPx = px;
     }
-    return { ukryte, ponizejPodlogi, minPx };
+    return { minPx };
   }, [zbiorKadru, podlogaCelu, labelPlan, camera.transform.scale]);
-  // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
-  // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
-  //
-  const hiddenUnreadableLabels = labelPlan.hiddenDetail.length;
-  // S9-7 (audyt C-4): KOMUNIKAT na ekranie liczy TAKŻE tożsamości PORZUCONE
-  // przez plan. Do tej karty plan miał stopień awaryjny „rysuj pismem
-  // naturalnym", więc tożsamość nigdy formalnie nie wypadała — ale przy dolnym
-  // krańcu zoomu (skala 0,05) lądowała na ekranie jako 1,4-pikselowy pyłek,
-  // czyli znikała FAKTYCZNIE, nie będąc nigdzie policzoną. Po usunięciu tego
-  // stopnia (patrz `canvas/labelLegibility.ts`) napis albo jest czytelny, albo
-  // go nie ma — a skoro go nie ma, użytkownik MUSI się o tym dowiedzieć.
-  // Pomiar na sieci fixturowej: 7 (referencyjna) / 36 (długi ciąg) tożsamości
-  // przy skali 0,05; zero przy skalach, w których kamera realnie utrzymuje dany
-  // poziom szczegółu.
-  //
-  // Kanały AUDYTU w DOM zostają ROZDZIELONE (`data-hidden-unreadable` =
-  // wyłącznie dane szczegółowe, `data-dropped-identity` = tożsamości), żeby
-  // bilans „narysowane + ukryte + porzucone == etykiety sceny" dało się
-  // sprawdzić bez podwójnego liczenia — komunikat jest SUMĄ tych dwóch, a nie
-  // trzecią, niezależną liczbą.
-  //
-  // T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN"):
-  // „licznik »Ukryto N opisów« liczy WYŁĄCZNIE L1/L2" dotyczy
-  // `labelPlan.hiddenDetail` (`hiddenUnreadableLabels` wyżej) — TEN zbiór, z
-  // KONSTRUKCJI, nigdy nie niesie klasy `'L0'` (`layout/labels.ts`
-  // `lodClassOf`, wyrocznia `canvas/labelLegibility.ts`
-  // `hiddenDetailContainsL0`). `labelPlan.droppedIdentity` jest ZAWSZE `'L0'`/
-  // `unresolved` (nigdy zwykłe L1/L2 — ta sama wyrocznia), więc nie jest
-  // „ukrytym opisem" w sensie polityki LOD: to sygnał T3 (kolizja layoutu, nie
-  // decyzja o ukryciu przez zoom — patrz plan §4), który S9-7 świadomie
-  // dokłada do JEDNEGO komunikatu ekranowego, żeby żaden zniknięty napis nie
-  // został niepoliczony przed użytkownikiem. Zmiana wymagałaby nowego,
-  // osobnego wskaźnika ekranowego dla kolizji layoutu — poza zakresem tej
-  // karty (T3, „dopiero po zieleni T0–T2 i re-werdykcie").
-  const niewidoczneOpisy = hiddenUnreadableLabels + labelPlan.droppedIdentity.length;
-
-  // RAMKA-TNIE-PODPISY (drugi objaw): DOLNY PAS CHROMU liczony JEDNĄ funkcją
-  // (`canvas/chromeLayout.ts`). Podpisy arkusza („Widok: …", „Skala …") jadą z
-  // ramką, wskaźnik ekranowy im USTĘPUJE — wcześniej obie rodziny liczyły swoje
-  // miejsce osobno i przy kadrze „Dopasuj widok" descendery „Skala wg kamery"
-  // wchodziły w wersaliki „Ukryto N opisów" (pomiar: 12 na 12 kadrów).
-  // K2b §0.2 (b): w kadrze celu komunikat mówi, CZYJE opisy są ukryte — celu
-  // (cel zbyt rozległy, pierwszeństwo kompletności) albo wyłącznie obiektów spoza
-  // celu (cel czytelny w całości). Liczba zawsze ta sama: bilans planu etykiet.
-  const celNiespelniaCzytelnosci = opisyCelu.ukryte > 0 || opisyCelu.ponizejPodlogi > 0;
-  const hintTekst = !zbiorKadru
-    ? hiddenLabelsHintText(niewidoczneOpisy)
-    : celNiespelniaCzytelnosci
-      ? hiddenLabelsHintTextKadru(
-          niewidoczneOpisy,
-          opisyCelu.ukryte,
-          opisyCelu.ponizejPodlogi,
-          podlogaCelu?.screenPx ?? 0,
-        )
-      : hiddenLabelsHintTextPozaCelem(niewidoczneOpisy);
-  // Komunikat jest widoczny, gdy cokolwiek ukryto ALBO gdy opis celu stoi poniżej
-  // podłogi — inaczej drugi przypadek nie miałby na ekranie żadnego śladu.
-  const pokazKomunikat = niewidoczneOpisy > 0 || (zbiorKadru !== null && opisyCelu.ponizejPodlogi > 0);
-  const hintScreenRect = useMemo(() => {
-    const captions = sheetCaptionScreenRects(
-      {
-        sheet: sheetSize,
-        frameMargin: FRAME_MARGIN,
-        camera: camera.transform,
-        // Podpisy arkusza mają STAŁY rozmiar EKRANOWY (S9-7) — wyprowadzony, nie
-        // wpisany: `screenFixedFontSize` × skala to z definicji rozmiar naturalny
-        // klasy, więc zmiana tamtej reguły przechodzi tu sama.
-        captionFontPx: screenFixedFontSize('t2', camera.transform.scale) * camera.transform.scale,
-        captionFontWeight: LABEL_TYPOGRAPHY.t2.fontWeight,
-        scaleLabel: SHEET_SCALE_LABEL,
-      },
-      { measure: measureTextWidth },
-    );
-    return hiddenLabelsHintScreenRect({ width, height }, hintTekst, captions, { measure: measureTextWidth });
-  }, [sheetSize, camera.transform, hintTekst, width, height]);
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
   // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
@@ -3016,17 +3065,26 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [resultLabelLayout],
   );
 
+  // R6 (karta SLD-SKALA-I-NAWIGACJA): hierarchia aparat → pole → stacja z tych samych zbiorów
+  // refów co kadr pola i stacji (`zakresKadru`); cel kliku rozstrzyga `celTrafienia`.
+  const hierarchiaCelow = useMemo(
+    () => hierarchiaCelowTrafienia(snapshot, scene),
+    [snapshot, scene],
+  );
+
   const hitAreas = useMemo<readonly CanvasHitArea[]>(
     () =>
       buildCanvasHitAreas({
         symbols: scene.symbols,
         segments: scene.segments,
         labels: labelPlan.drawn,
+        tozsamosciWPodpowiedzi: labelPlan.tozsamosciWPodpowiedzi,
         resultMarkers: resultMarkerHits,
         scale: camera.transform.scale,
         ukryteTestId,
+        hierarchiaCelow,
       }),
-    [scene, labelPlan, resultMarkerHits, camera.transform.scale, ukryteTestId],
+    [scene, labelPlan, resultMarkerHits, camera.transform.scale, ukryteTestId, hierarchiaCelow],
   );
 
   /** Meta kliku per obiekt sceny — TA SAMA treść, którą przed kartą S9-4
@@ -3069,18 +3127,25 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     });
     // Etykieta jest UCHWYTEM swojego właściciela (audyt P-2) — klik w napis
     // „Q1"/„S08 · 15 kV"/nazwę stacji zaznacza TEN element, nie tło.
-    labelPlan.drawn.forEach((planned) => {
-      mapa.set(`sld-v3-label-${planned.index}`, {
-        ownerRef: planned.label.ownerRef,
-        elementKind: LABEL_OWNER_ELEMENT_KIND[planned.label.ownerKind],
+    // Tożsamość w podpowiedzi (R4) jest uchwytem tak samo jak narysowana.
+    for (const { label, index } of [...labelPlan.drawn, ...labelPlan.tozsamosciWPodpowiedzi]) {
+      mapa.set(`sld-v3-label-${index}`, {
+        ownerRef: label.ownerRef,
+        elementKind: LABEL_OWNER_ELEMENT_KIND[label.ownerKind],
         // KARTA KLIK-ETYKIETA-KOTWICA: kanoniczny ref obiektu, którego napis jest
         // uchwytem — ten sam kanał `busRef`, którym dysponuje kreska szyny, więc
         // uchwyt i jego szyna rozstrzygają się na TEN SAM obiekt modelu.
-        busRef: kanonicznyRefSzynyUchwytu(planned.label, kanonicznyRefSzynyWgBazy),
+        busRef: kanonicznyRefSzynyUchwytu(label, kanonicznyRefSzynyWgBazy),
       });
-    });
+    }
+    // R6: obszar celu pola/stacji — tożsamość wprost z hierarchii (ref pola albo stacji).
+    for (const area of hitAreas) {
+      if (area.klasa === 'pole' || area.klasa === 'stacja') {
+        mapa.set(area.testId, { ownerRef: area.ownerRef, elementKind: area.elementKind });
+      }
+    }
     return mapa;
-  }, [scene, labelPlan]);
+  }, [scene, labelPlan, hitAreas]);
 
   /** Aktywacja znacznika wynikowego po `testId` (etykieta → `onResultLabelActivate`,
    *  marker skupiska → rozwinięcie popovera) — te same wywołania co węzły
@@ -3353,8 +3418,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       // od niej niezależna (R1). Testy e2e czekają na skalę, nie na „poziom”.
       data-skala-kamery={camera.transform.scale.toFixed(4)}
       data-kadr-aktywny={zbiorKadru ? 'true' : undefined}
-      data-ukryte-opisy-celu={zbiorKadru ? opisyCelu.ukryte : undefined}
-      data-opisy-celu-ponizej-podlogi={zbiorKadru ? opisyCelu.ponizejPodlogi : undefined}
       data-min-opis-celu-px={zbiorKadru && opisyCelu.minPx !== null ? opisyCelu.minPx.toFixed(2) : undefined}
       width={width}
       height={height}
@@ -3409,8 +3472,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
        *  więc jeden atrybut zamyka klasę, a nie listę znanych dekoracji. */}
       <g data-testid="sld-v3-rysunek" pointerEvents="none">
       <SheetFrame
-        width={sheetSize.width}
-        height={sheetSize.height}
+        // R4: ramka po planie etykiet — nazwy GPZ/stacji i sekcji o stałym rozmiarze
+        // ekranowym wystające w prawo i w dół poszerzają arkusz, zamiast być przecięte.
+        width={obrysArkusza.width}
+        height={obrysArkusza.height}
         legend={SLD_V3_CANVAS_LEGEND}
         scaleLabel={SHEET_SCALE_LABEL}
         // S9-7 (audyt C-4): aparat arkusza (strefy, podziałka, poziom
@@ -3549,23 +3614,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             );
           })}
         </g>
-        {/* WARSTWA ETYKIET WEDŁUG PLANU (V12K-218 declutter ekranowy + KD-11
-         *  tożsamość elementów). `layout/declutter.ts` rozstrzyga kolizje w
-         *  przestrzeni ARKUSZA i na sieci wzorcowej jest tożsamością — arkusz
-         *  jest ogromny, więc kolizji faktycznie nie ma. Czytelność jest jednak
-         *  własnością EKRANU: przy wpasowaniu 52 stacji w kadr skala spada do
-         *  ≈0,17 i całe pismo ma ~2 px (pomiar audytu R2). Dlatego plan
-         *  (`labelLegibility.ts`) liczony jest tu, w renderze — scena musi
-         *  zostać deterministyczna, a skala kamery do sceny nie należy.
-         *  ROZSTRZYGNIĘCIE KD-11: znika WYŁĄCZNIE klasa DANE SZCZEGÓŁOWE
-         *  (`data-hidden-unreadable` = licznik „Ukryto N opisów"), a TOŻSAMOŚĆ
-         *  elementów jest rysowana pismem powiększonym do minimum czytelnego,
-         *  bez kolizji; `data-dropped-identity` mówi, ile tożsamości nie
-         *  zmieściło się mimo skracania (na sieciach kanonicznych: 0). */}
+        {/* WARSTWA ETYKIET WEDŁUG PLANU (`labelLegibility.ts`) — liczona tu, w renderze:
+         *  scena jest jedna i deterministyczna, a skala kamery do sceny nie należy.
+         *  Dane znikają poniżej progu czytelności (R3, bez licznika ukrytych opisów),
+         *  tożsamość rysuje się w stałym rozmiarze ekranowym z otoczką (R4);
+         *  `data-tozsamosci-w-podpowiedzi` mówi, ile tożsamości przegrało kolizję
+         *  i stoi w podpowiedzi swojego uchwytu. */}
         <g
           data-testid="sld-v3-labels"
-          data-hidden-unreadable={hiddenUnreadableLabels}
-          data-dropped-identity={labelPlan.droppedIdentity.length}
+          data-tozsamosci-w-podpowiedzi={labelPlan.tozsamosciWPodpowiedzi.length}
+          // Kanał audytu (nie komunikat dla użytkownika): etykiety DANYCH, których pismo jest
+          // przy tej skali nieczytelne (R3 — gęstość jest funkcją skali). Bilans:
+          // narysowane + tożsamości w podpowiedzi + dane nieczytelne = etykiety sceny.
+          data-dane-nieczytelne={scene.labels.length - labelPlan.drawn.length - labelPlan.tozsamosciWPodpowiedzi.length}
         >
           {labelPlan.drawn.map((planned) =>
             pozaKadrem(planned.label.ownerRef) ? (
@@ -3629,6 +3690,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
            * zero wpisu = zero węzła (§14.2 „overlay wyłączony bez wyniku"). */}
           {faultPointMarkerPlacements.map((placement) => (
             <SceneFaultPointMarkerNode key={`fault-point-${placement.ownerRef}`} placement={placement} />
+          ))}
+        </g>
+        {/* R5 (karta SLD-SKALA-I-NAWIGACJA): znaczniki stanu o stałym rozmiarze ekranowym
+         * w kotwicy świata nośnika — tylko dla nośników poniżej progu rozpoznawalności
+         * (`canvas/znacznikiStanu.ts`); warstwa nie przechwytuje wskaźnika (trafienie
+         * należy do obiektu, `canvas/hitAreas.ts`). */}
+        <g data-testid="sld-v3-znaczniki-stanu" pointerEvents="none">
+          {znacznikiStanuPlan.map((znacznik) => (
+            <SceneZnacznikStanuNode
+              key={`znacznik-${znacznik.rodzaj}-${znacznik.ref}`}
+              znacznik={znacznik}
+              cameraScale={camera.transform.scale}
+            />
           ))}
         </g>
         {/* F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC NAD
@@ -3738,77 +3812,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           );
         })()}
       </SheetFrame>
-      {/* WSKAŹNIK UKRYTYCH OPISÓW W PRZESTRZENI EKRANU (V12K-222).
-       *
-       * Pierwsza wersja (V12K-218) umieszczała go w ramce ARKUSZA — i wpadał w tę
-       * samą pułapkę, którą sam opisuje: przy skali, przy której etykiety
-       * przestają być czytelne, komunikat o ich ukryciu też miał ~2 px i był
-       * nieczytelny. Zobaczyłem to dopiero na zrzucie, bo pomiar liczbowy tego
-       * nie pokazywał.
-       *
-       * Komunikat systemowy NIE jest treścią rysunku technicznego — należy do
-       * warstwy ekranu. Kompensujemy skalę kamery: rozmiar pisma i marginesy
-       * dzielimy przez `scale`, a kotwiczymy w rogu WIDOKU (prawy dolny róg
-       * viewBoxu), nie arkusza. Efekt: stała wielkość na ekranie niezależnie od
-       * zoomu, dokładnie jak pasek stanu.
-       *
-       * K11-B: odsunięty od dolnej krawędzi o WYSOKOŚĆ PASA DOKÓW
-       * (`HIDDEN_LABELS_HINT_BOTTOM_PX`). Dawne 12 px kotwiczyło komunikat
-       * DOKŁADNIE pod przyciskiem „Warstwy" (dok prawy-dolny: `bottom-3` +
-       * przycisk h-7 ⇒ pas 40 px) — na zrzucie odbiorczym K11-B połowa zdania
-       * była zasłonięta. Komunikat o UKRYTEJ treści, który sam jest zasłonięty,
-       * nie informuje o niczym. */}
-      {pokazKomunikat && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
-        <g data-testid="sld-v3-hidden-labels-hint-grupa">
-        {/* PODKŁADKA (RAMKA-TNIE-PODPISY): komunikat systemowy leży NAD
-         *  rysunkiem, więc bez własnego tła przecinała go pierwsza lepsza
-         *  kreska — na zrzucie odbiorczym prawa krawędź ramki szła przez
-         *  środek zdania. Ten sam wzorzec, co tabliczka pochodzenia wyniku. */}
-        {(() => {
-          const plyta = hiddenLabelsHintPlateRect(hintScreenRect);
-          const lewyGorny = screenToWorld({ x: plyta.x, y: plyta.y }, camera.transform);
-          return (
-            <rect
-              data-testid="sld-v3-hidden-labels-hint-plyta"
-              x={lewyGorny.x}
-              y={lewyGorny.y}
-              width={plyta.width / camera.transform.scale}
-              height={plyta.height / camera.transform.scale}
-              rx={3 / camera.transform.scale}
-              fill={palette.canvasBackground}
-              stroke={palette.baseStroke}
-              strokeWidth={1 / camera.transform.scale}
-            />
-          );
-        })()}
-        <text
-          data-testid="sld-v3-hidden-labels-hint"
-          data-hidden-count={niewidoczneOpisy}
-          data-opisy-celu={opisyCelu.ukryte > 0 ? opisyCelu.ukryte : undefined}
-          data-opisy-celu-ponizej-podlogi={opisyCelu.ponizejPodlogi > 0 ? opisyCelu.ponizejPodlogi : undefined}
-          x={
-            screenToWorld(
-              { x: hintScreenRect.x + hintScreenRect.width, y: hintScreenRect.y + HIDDEN_LABELS_HINT_FONT_PX },
-              camera.transform,
-            ).x
-          }
-          y={
-            screenToWorld(
-              { x: hintScreenRect.x + hintScreenRect.width, y: hintScreenRect.y + HIDDEN_LABELS_HINT_FONT_PX },
-              camera.transform,
-            ).y
-          }
-          textAnchor="end"
-          fontFamily={SLD_FONT_FAMILY}
-          fontSize={HIDDEN_LABELS_HINT_FONT_PX / camera.transform.scale}
-          fontWeight={HIDDEN_LABELS_HINT_FONT_WEIGHT}
-          fill={palette.baseStroke}
-          opacity={0.75}
-        >
-          {hintTekst}
-        </text>
-        </g>
-      )}
       </g>
     </svg>
     </SldPaletteContext.Provider>

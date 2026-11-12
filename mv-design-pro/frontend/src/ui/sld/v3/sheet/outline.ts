@@ -26,9 +26,11 @@
  *
  * ROZSTRZYGNIĘCIE: obrys arkusza mieszka TUTAJ i jest czytany przez OBIE
  * strony pary — `sheet/Frame.tsx` (rysuje ramkę) i `canvas/labelLegibility.ts`
- * (plan malowania nie wypuszcza tuszu poza obrys, a napis, który się nie
- * mieści, trafia do licznika „Ukryto N opisów" — tak samo jak napis odrzucony
- * przez sufit proporcji). Moduł jest CZYSTY (bez React/DOM), żeby mógł go
+ * (plan malowania nie wypuszcza tuszu poza obrys; tożsamość, która się nie
+ * mieści, trafia do podpowiedzi uchwytu — tak samo jak odrzucona przez sufit
+ * proporcji). Obrys obejmuje pełne brzmienie tożsamości
+ * (`layout/labels.ts` `prostokatArkuszaEtykiety`), więc przy krawędzi arkusza
+ * tożsamość nie jest skracana. Moduł jest CZYSTY (bez React/DOM), żeby mógł go
  * importować zarówno plan etykiet, jak i tor eksportu, bez cyklu przez
  * komponent kanwy.
  */

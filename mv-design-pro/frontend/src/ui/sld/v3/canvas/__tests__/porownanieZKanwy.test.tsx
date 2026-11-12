@@ -37,6 +37,7 @@ import { useExecutionRunsStore } from '../../../../study-cases/runStore';
 import type { ExecutionRun } from '../../../../study-cases/types';
 import { useShellStore } from '../../../../../ui2/shell/useShellStore';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { SKALA_WYNIKOW, powiekszKolkiemDoSkali } from './kameraTestowa';
 import {
   useRawResultOverlayStore,
   type RawOverlayElement,
@@ -266,6 +267,9 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
     } as unknown as Response);
 
     const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
+    // R3 (karta SLD-SKALA-I-NAWIGACJA): etykiety Δ są rysowane, gdy pismo wyników (t4) jest czytelne
+    // na ekranie — projektant powiększa natywnym kółkiem do skali, przy której się pojawiają.
+    powiekszKolkiemDoSkali(container, SKALA_WYNIKOW);
     otworzPanelFiltrow();
 
     expect(screen.getByTestId('sld-v3-result-ab').getAttribute('data-ab-stan')).toBe('gotowe');

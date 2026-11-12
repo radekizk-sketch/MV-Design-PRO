@@ -77,9 +77,7 @@ export const TOOLBAR_ROW_HEIGHT_PX = 28;
  * jednolitym marginesem 40 px, a nad kanwą pływają doki: pas narzędzi u góry
  * (`left-3 right-3 top-3`, rząd 28 px) oraz pas kontrolek u dołu (`bottom-3`,
  * rząd 28 px — po obu stronach i pośrodku). Treść wpasowana „na styk" wchodziła
- * pod nie: dokładnie ten sam mechanizm, przez który komunikat „Ukryto N opisów"
- * musiał już wcześniej dostać własne odsunięcie (`HIDDEN_LABELS_HINT_BOTTOM_PX`,
- * `canvas/SldCanvasV3.tsx`) — łatka na jeden napis zamiast reguły na całą kanwę.
+ * pod nie.
  *
  * ROZSTRZYGNIĘCIE: kadr liczony w PROSTOKĄCIE BEZPIECZNYM, wprost przez
  * `SafeInsets` kamery v2 (`v2/viewport/ViewportController.ts` — mechanizm

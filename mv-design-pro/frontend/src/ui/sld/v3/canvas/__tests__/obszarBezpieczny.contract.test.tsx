@@ -26,7 +26,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
 import { MIN_SCALE } from '../../../v2/viewport/ViewportController';
-import { SldCanvasV3, contentBoundingBoxOf, scenePointToCameraWorld } from '../SldCanvasV3';
+import { SldCanvasV3, scenePointToCameraWorld } from '../SldCanvasV3';
 import { SLD_CANVAS_DOCK_INSETS, stationInternalPanelWidthPx } from '../toolbarLayout';
 
 afterEach(() => cleanup());
@@ -127,14 +127,12 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
     expect(m.prawo).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
   });
 
-  // Iloczyn: kanwa, na której fit MIEŚCI treść obok panelu (1920×1080: panel
-  // 1200 px, kontekst 720 px) × kanwa, na której fit opiera się o PODŁOGĘ
-  // skali `MIN_SCALE` (1200×800: kontekst SN_CONTEXT_MIN_WIDTH_PX = 440 px, a
-  // fikstura 52 stacji ma po wpięciu bloku zabezpieczeń w każde pole stacji
-  // ~9250 jednostek szerokości — pomiar 2026-11-05; potrzebna skala 0,039 <
-  // 0,05). Na podłodze treść nie może się zmieścić w żadnym prostokącie, więc
-  // orzeczeniem jest WYŚRODKOWANIE w prostokącie bezpiecznym (nadmiar dzielony
-  // po równo), nie „nic pod panelem"; poza podłogą — „nic pod panelem".
+  // Iloczyn kanwa {1200×800 (kontekst SN_CONTEXT_MIN_WIDTH_PX = 440 px), 1920×1080 (panel 1200 px,
+  // kontekst 720 px)} × zasłona stanowa wołającego. Karta SLD-SKALA-I-NAWIGACJA (R1): dolna
+  // granica skali kamery jest techniczna (`MIN_SCALE`), a nie podłogą czytelności, więc dopasowanie
+  // całej sieci mieści treść w prostokącie bezpiecznym na KAŻDEJ kanwie — dawna gałąź „kanwa wąska
+  // opiera się o podłogę skali, treść wyśrodkowana pod panelem” nie ma już podstawy. Orzeczenie
+  // jest jedno: nic pod panelem.
   for (const kanwa of [CANVAS, { width: 1920, height: 1080 }] as const) {
     it(`ZASŁONA STANOWA wołającego (panel boczny) przesuwa kadr — inset nie jest stały (kanwa ${kanwa.width}×${kanwa.height})`, () => {
       const zPanelem = {
@@ -142,25 +140,10 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
         right: SLD_CANVAS_DOCK_INSETS.right + stationInternalPanelWidthPx(kanwa.width),
       };
       const m = marginesy(zPanelem, kanwa);
-      if (m.skala > MIN_SCALE + 1e-9) {
-        // ORZECZENIE WŁAŚCIWE: treść nie wchodzi pod panel. Marginesu NIE mierzymy
-        // jako „padding + pas" — przy bardzo wąskim prostokącie bezpiecznym o osi
-        // ograniczającej decyduje proporcja treści, a nie sam pas; wymaganie
-        // brzmi „nic pod panelem", nie „dokładnie tyle a tyle luzu".
-        expect(kanwa.width, 'kanwa szeroka mieści treść bez podłogi skali').toBe(1920);
-        expect(m.prawo).toBeGreaterThanOrEqual(zPanelem.right - 1e-6);
-      } else {
-        expect(kanwa.width, 'kanwa wąska opiera się o podłogę skali').toBe(CANVAS.width);
-        expect(m.skala).toBeCloseTo(MIN_SCALE, 9);
-        // Środek celu fitu (rezerwacje etykiet, `contentBoundingBoxOf`) leży na
-        // środku prostokąta bezpiecznego — nadmiar ponad podłogą dzielony po równo.
-        const cel = contentBoundingBoxOf(buildSceneV3(enm))!;
-        const a = scenePointToCameraWorld({ x: cel.minX, y: cel.minY });
-        const b = scenePointToCameraWorld({ x: cel.maxX, y: cel.maxY });
-        const srodekEkranu = ((a.x + b.x) / 2 - m.vx) * m.skala;
-        const srodekBezpieczny = zPanelem.left + (kanwa.width - zPanelem.left - zPanelem.right) / 2;
-        expect(srodekEkranu).toBeCloseTo(srodekBezpieczny, 3);
-      }
+      // Marginesu NIE mierzymy jako „padding + pas" — przy wąskim prostokącie bezpiecznym o osi
+      // ograniczającej decyduje proporcja treści; wymaganie brzmi „nic pod panelem".
+      expect(m.skala, 'dopasowanie nie opiera się o techniczną dolną granicę skali').toBeGreaterThan(MIN_SCALE);
+      expect(m.prawo).toBeGreaterThanOrEqual(zPanelem.right - 1e-6);
       // Dowód, że to NIE jest to samo, co bez panelu: bez zasłony margines prawy
       // byłby mniejszy o szerokość panelu.
       cleanup();

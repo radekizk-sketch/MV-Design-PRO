@@ -838,3 +838,63 @@ export function zakresNarysowany(scena: SceneV3, zakresKadru: ZakresKadru): bool
   if (zakresKadru.cel === 'siec') return true;
   return prostokatRefowWScenie(scena, zakresKadru.refy) !== null;
 }
+
+// ---------------------------------------------------------------------------
+// Karta SLD-SKALA-I-NAWIGACJA, R6 — hierarchia celów trafienia aparat → pole → stacja
+// ---------------------------------------------------------------------------
+
+/** Obszar pola w scenie z refem jego stacji (`Bay.substation_ref`). */
+export interface ObszarPolaCelu {
+  readonly rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  readonly stacjaRef: string;
+}
+
+/**
+ * Hierarchia celów trafienia (`canvas/hitAreas.ts` `celTrafienia`) z TYCH SAMYCH zbiorów refów,
+ * którymi kanwa kadruje pole i stację (`refyPola`, `refyStacji`) i tego samego prostokąta sceny
+ * (`prostokatRefowWScenie`) — cel kliku i cel kadru „Dopasuj do: pole/stacja” to jeden obszar
+ * (predykaty parami). Stacje w kolejności refów; obiekt należący do kilku stacji (łącznik
+ * międzystacyjny) przypisany pierwszej — deterministycznie.
+ */
+export interface HierarchiaCelowTrafienia {
+  readonly pola: ReadonlyMap<string, ObszarPolaCelu>;
+  readonly stacje: ReadonlyMap<string, ObszarPolaCelu['rect']>;
+  /** Ref obiektu stacji (szyna, pole, urządzenie pola, transformator, źródło…) → stacja. */
+  readonly stacjaObiektu: ReadonlyMap<string, string>;
+}
+
+const HIERARCHIE_CELOW = new WeakMap<SceneV3, WeakMap<EnergyNetworkModel, HierarchiaCelowTrafienia>>();
+
+function prostokatZPudla(box: BoundingBox): ObszarPolaCelu['rect'] {
+  return { x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY };
+}
+
+export function hierarchiaCelowTrafienia(
+  snapshot: EnergyNetworkModel,
+  scena: SceneV3,
+): HierarchiaCelowTrafienia {
+  const naScene = HIERARCHIE_CELOW.get(scena);
+  const zapamietana = naScene?.get(snapshot);
+  if (zapamietana) return zapamietana;
+  const ix = indeksModelu(snapshot);
+  const pola = new Map<string, ObszarPolaCelu>();
+  const stacje = new Map<string, ObszarPolaCelu['rect']>();
+  const stacjaObiektu = new Map<string, string>();
+  for (const stacjaRef of [...ix.stacje.keys()].sort()) {
+    const box = prostokatRefowWScenie(scena, refyStacji(ix, stacjaRef));
+    if (!box) continue;
+    stacje.set(stacjaRef, prostokatZPudla(box));
+    for (const ref of refyStacji(ix, stacjaRef)) {
+      if (!stacjaObiektu.has(ref)) stacjaObiektu.set(ref, stacjaRef);
+    }
+    for (const pole of ix.polaStacji.get(stacjaRef) ?? []) {
+      const boxPola = prostokatRefowWScenie(scena, refyPola(ix, pole.ref_id));
+      if (boxPola && !pola.has(pole.ref_id)) pola.set(pole.ref_id, { rect: prostokatZPudla(boxPola), stacjaRef });
+    }
+  }
+  const wynik: HierarchiaCelowTrafienia = { pola, stacje, stacjaObiektu };
+  const mapa = naScene ?? new WeakMap<EnergyNetworkModel, HierarchiaCelowTrafienia>();
+  mapa.set(snapshot, wynik);
+  if (!naScene) HIERARCHIE_CELOW.set(scena, mapa);
+  return wynik;
+}

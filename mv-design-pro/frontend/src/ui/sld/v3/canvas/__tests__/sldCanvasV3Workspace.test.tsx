@@ -31,6 +31,8 @@ import { resultRefForSegment } from '../resultLabels';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import { pierwszaStacjaZUchwytem } from './uchwytStacji';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
+import { DARK_SCADA_SLD_PALETTE } from '../../theme/palette';
 import type {
   ShortCircuitBranchFlowV1,
   ShortCircuitFlowOverlayInput,
@@ -86,15 +88,6 @@ function uchwytTrafienia(container: HTMLElement, testId: string): Element | null
   return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
 }
 
-/** Uchwyt symbolu po indeksie sceny (testId ze sceny albo fallback indeksowy). */
-function uchwytSymbolu(
-  container: HTMLElement,
-  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
-  index: number,
-): Element | null {
-  return uchwytTrafienia(container, scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`);
-}
-
 describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
   it('brak snapshot w store: nie renderuje kanwy (brak sieci = brak rysunku, nie crash)', () => {
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
@@ -113,6 +106,9 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     useSnapshotStore.setState({ snapshot: enm });
     const scene = buildSceneV3(enm);
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    // R6 (karta SLD-SKALA-I-NAWIGACJA): symbol aparatu/źródła jest celem kliku na kadrze
+    // roboczym — z kadru całej sieci klik trafia stację; natywne kółko do skali czytania.
+    powiekszKolkiemDoSkali(container, 1);
     const firstSymbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.firstElementChild;
     expect(firstSymbolGroup).toBeTruthy();
     const testId = firstSymbolGroup!.getAttribute('data-testid')!;
@@ -191,6 +187,9 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       const source = scene.symbols.find((s) => s.symbolId === 'gridSource');
       expect(source, 'glif sieci zewnętrznej w scenie (§13.1)').toBeTruthy();
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+      // R6 (karta SLD-SKALA-I-NAWIGACJA): symbol aparatu/źródła jest celem kliku na kadrze
+      // roboczym — z kadru całej sieci klik trafia stację; natywne kółko do skali czytania.
+      powiekszKolkiemDoSkali(container, 1);
       const sourceGroup = uchwytTrafienia(container, source!.meta!.testId!);
       expect(sourceGroup, 'symbol sieci zewnętrznej ma uchwyt trafienia').toBeTruthy();
       fireEvent.click(sourceGroup!);
@@ -207,22 +206,25 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
     expect(container.querySelector('[data-testid="sld-canvas-v3"]')).toBeNull();
   });
 
-  it('GPZ + stacje ciągu głównego są energizowane (topologia od źródła przez zamknięte łączniki) → aparat pola stacji ma nakładkę koloru (stroke != base)', () => {
+  it('GPZ + stacje ciągu głównego są energizowane (topologia od źródła przez zamknięte łączniki) → tor SN stacji ma nakładkę koloru (stroke != base)', () => {
     useSnapshotStore.setState({ snapshot: enm });
     const scene = buildSceneV3(enm);
-    // Jedna scena: nakładka siedzi na aparatach pól stacji (dawniej na zwiniętym symbolu L0).
-    const aparat = scene.symbols.find((s) => s.meta?.elementKind === 'apparatus' && (s.meta?.ownerRef ?? '').startsWith('stn/') && s.meta?.testId);
-    expect(aparat, 'scena niesie aparat pola stacji').toBeDefined();
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = [...(container.querySelector('[data-testid="sld-v3-symbols"]')?.querySelectorAll('[data-testid]') ?? [])].find(
-      (n) => n.getAttribute('data-testid') === aparat!.meta!.testId,
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): dawny zwinięty symbol stacji L0 nie istnieje.
+    // Nakładka energizacji z definicji (`OVERLAY_ELIGIBLE_KINDS` = szyna i odcinek,
+    // `SldCanvasV3Workspace.tsx`) siedzi na TORZE stacji — aparat ma `ownerRef` pola, którego
+    // `SupplyPathHighlight` nie zna, więc koloru energizacji nie dostaje (brak stanu ≠ stan).
+    // Intencja bez zmian: rysunek stacji ciągu głównego niesie kolor energizacji, nie bazowy.
+    const overlay = buildEnergizationOverlayForTest(enm);
+    const tor = scene.segments.find(
+      (s) => (s.meta?.ownerRef ?? '').startsWith('stn/') && overlay.energizedByOwnerRef?.[s.meta!.ownerRef!] === true,
     );
-    // Nakładka rysuje stroke NA GLIFIE (potomek grupy), nie na samej grupie —
-    // wystarczy, że jakiś potomek ma stroke ustawiony na kolor akcentu (nie
-    // wartość bazową V3_STROKE_BASE '#E8EEF4') LUB wygaszenia ('#5B6B76') —
-    // dowód, że nakładka faktycznie coś wpisała (nie mono-only).
-    const strokedDescendant = stationGroup!.querySelector('[stroke="#2ECC71"], [stroke="#5B6B76"]');
-    expect(strokedDescendant).toBeTruthy();
+    expect(tor, 'scena niesie energizowany tor SN stacji').toBeDefined();
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const sciezka = container.querySelector(`[data-testid="sld-v3-segments"] [data-owner-ref="${CSS.escape(tor!.meta!.ownerRef!)}"]`)
+      ?? [...container.querySelectorAll('path[data-owner-ref]')].find((n) => n.getAttribute('data-owner-ref') === tor!.meta!.ownerRef);
+    expect(sciezka, 'tor stacji narysowany na kanwie').toBeTruthy();
+    expect(sciezka!.getAttribute('data-energized')).toBe('true');
+    expect(sciezka!.getAttribute('stroke')).toBe(DARK_SCADA_SLD_PALETTE.highlight.energized);
   });
 
   it('F8b-1 FIX (recenzja): nakładka kluczowana LOD-niezależnym ownerRef — indeksowy fallback testId kolidował między LOD-ami (odcinek LOD0 #5 dostawał stan odcinka LOD2 #5); wpis per ownerRef jest identyczny niezależnie od LOD-u, z którego liczony', () => {

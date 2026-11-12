@@ -37,7 +37,6 @@ import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-eleme
 import { sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { opisToru } from '../useKadrowanieWidoku';
-import { hiddenLabelsHintTextPozaCelem } from '../chromeLayout';
 import { prostokatRefowWScenie } from '../viewAnchor';
 import { prostokatyZakresu, zakresCelu } from '../zakresKadru';
 
@@ -733,16 +732,15 @@ describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wp
     expect(zaznaczone()).toEqual([]);
   });
 
-  it('kadr stacji (dwuklik, kamera kadru): zero ukrytych opisów celu; komunikat, jeśli jest, mówi o opisach POZA celem', () => {
+  // Karta SLD-SKALA-I-NAWIGACJA, R4: licznik „Ukryto N opisów” zniknął — tożsamość nie jest
+  // ukrywana (narysowana albo w podpowiedzi celu). Intencja testu zostaje: w kadrze stacji
+  // najmniejszy opis celu ma na ekranie co najmniej próg czytelności, a kanwa nie niesie licznika.
+  it('kadr stacji (dwuklik, kamera kadru): opisy celu czytelne, bez licznika ukrytych opisów', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
     dwuklikNatywny(container, STACJA);
-    expect(kanwa(container).getAttribute('data-ukryte-opisy-celu')).toBe('0');
+    expect(kanwa(container).hasAttribute('data-ukryte-opisy-celu')).toBe(false);
     expect(Number(kanwa(container).getAttribute('data-min-opis-celu-px'))).toBeGreaterThanOrEqual(13 - 0.01);
-    const hint = container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]');
-    if (hint && Number(hint.getAttribute('data-hidden-count')) > 0) {
-      expect(hint.getAttribute('data-opisy-celu')).toBeNull();
-      expect(hint.textContent).toBe(hiddenLabelsHintTextPozaCelem(Number(hint.getAttribute('data-hidden-count'))));
-    }
+    expect(container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]')).toBeNull();
   });
 
   it('kadr stacji przyciemnia sąsiadów (kurtyna), powrót do sieci ją zdejmuje', () => {

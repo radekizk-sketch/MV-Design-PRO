@@ -149,6 +149,15 @@ export default defineConfig(({ mode }) => {
       // w puli wątków doliczałyby pracę plików wykonywanych obok — pomocnik odmawia pomiaru poza
       // wątkiem głównym procesu, a `src/test/__tests__/pulaTestow.test.ts` przypina ten warunek.
       pool: 'forks',
+      // Karta SLD-SKALA-I-NAWIGACJA (R1, jedna scena w każdej skali): kanwa sieci referencyjnej
+      // 52 stacji ma przy dopasowaniu całej sieci 21 844 węzły SVG zamiast 1 867 dawnego zwiniętego
+      // widoku (pomiar 2026-11-12, kanwa 1200×800) — pełny rysunek pól jest rysowany zawsze (R3:
+      // skala nie ukrywa toru). Pliki renderujące żywy workspace wielokrotnie (np.
+      // `kadrowanieWidoku.workspace.test.tsx`, 50 testów) przekraczały w jsdom domyślny limit
+      // sterty V8 ~2 GB (pomiar: szczyt 1 832 MB i zakończenie procesu przy 2 019 MB; ten sam plik
+      // na drzewie sprzed karty — szczyt 1 528 MB). Limit 4 GB na proces testów; budżety węzłów
+      // DOM produktu przypina R8 karty (`sld-v3` budżety na trzech sieciach), nie ten limit.
+      poolOptions: { forks: { execArgv: ['--max-old-space-size=4096'] } },
       // Liczba procesów zostaje DOMYŚLNA (rdzenie − 1) — rozstrzygnięcie z pomiaru 2026-10-15 na
       // 4 vCPU, to samo drzewo: 3 procesy 777,2 s; 4 procesy 702,6 s i 30,7 s czasu procesora
       // w testach budżetu `buildScene.p1Recenzja`/`buildScene.schemat10s7p6` (budżet 30 s, przy

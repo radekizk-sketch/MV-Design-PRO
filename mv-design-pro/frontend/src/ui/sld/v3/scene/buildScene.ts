@@ -122,6 +122,7 @@ import {
 import { czyZakonczenieToruKablowego, symboleRodzajuAparatu, zwisAparatuBocznego } from '../compose/apparatusSequence';
 import { RODZAJE_LACZNIKOW_POLA, RODZAJE_LACZNIKOW_TORU } from '../compose/rodzajeAparatuPola';
 import { createUnikalnyTestId } from '../compose/unikalnyTestId';
+import type { PanelPolaGpz } from '../compose/gpzAdnotacje';
 import {
   bayMainPathHeight,
   bayStackCenterX,
@@ -158,6 +159,7 @@ import {
 import {
   resolveLabels,
   labelReservationRect,
+  prostokatArkuszaEtykiety,
   LABEL_ROLE_BY_OWNER_KIND,
   type OwnedLabel,
   type SegmentSpanOwnerInput,
@@ -5176,7 +5178,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel): SceneV3 {
   // rozstrzygnięcia rezerwacją w kolejnej iteracji, nie cichy dług.
   // Blok zabezpieczeń: przeszkodą napisów jest obrys ramki, nie wnętrze z jego wierszami kodów.
   const declutter = declutterLabels(rawLabels, allSymbols.flatMap(przeszkodySymbolu));
-  const labels: readonly OwnedLabel[] = declutter.kept;
+  // Karta SLD-SKALA-I-NAWIGACJA: członkowie tła pola GPZ niosą kolumnę tła swojego pola
+  // (`OwnedLabel.granicaTlaPola`) — plan etykiet nie powiększy ich poza nią w żadnej skali.
+  const labels: readonly OwnedLabel[] = zGranicamiTlaPol(declutter.kept, gpzComposition?.adnotacje?.panele ?? []);
   if (declutter.dropped.length > 0) {
     stopNotes.push(
       `label.declutter: ${declutter.dropped.length} etykiet(y) odrzucono z powodu kolizji ` +
@@ -5252,9 +5256,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel): SceneV3 {
   const bbox = unionRects([
     ...allSymbols.map(symbolRect),
     ...allSegments.map(segmentRect),
-    // BLOK-PUSTY: arkusz obejmuje REZERWACJĘ etykiety, nie sam jej tusz. Patrz
-    // `layout/labels.ts` `labelReservationRect` — tam wyprowadzenie i pomiar.
-    ...labels.map(labelReservationRect),
+    // BLOK-PUSTY: arkusz obejmuje REZERWACJĘ etykiety, nie sam jej tusz; tożsamość —
+    // także tusz pełnego brzmienia (R4, `layout/labels.ts` `prostokatArkuszaEtykiety`).
+    ...labels.map(prostokatArkuszaEtykiety),
     // F13.1: rama strefy GPZ to dekoracja (nie symbol/segment/etykieta) — bbox
     // sceny musi ją objąć jawnie, inaczej kamera/arkusz przycinają jej krawędzie.
     ...(gpzComposition?.zone ? [gpzComposition.zone] : []),
@@ -7482,6 +7486,55 @@ export function noLabelWireCollisions(scene: SceneV3): boolean {
  * może zasłonić": powiększone pismo tożsamości omija DOKŁADNIE to samo, co
  * declutter sceny i wyrocznie odbioru.
  */
+/** Zasięg kolumny tła pola bez sąsiada po danej stronie [świat] — skończony, żeby test
+ *  zawierania był zwykłym porównaniem liczb. */
+const ZASIEG_KOLUMNY_BEZ_SASIADA = 1e7;
+
+/**
+ * KOLUMNY TŁA PÓL GPZ (karta SLD-SKALA-I-NAWIGACJA, R1 × R4): dla każdego pola prostokąt, poza
+ * który tło pola nie może wyrosnąć przy żadnej skali kamery. Dla każdej pary pól, których tła
+ * sceny są rozłączne, oba pola tną swoją kolumnę TĄ SAMĄ prostą w połowie odstępu (pionową, gdy
+ * pola leżą obok siebie, poziomą, gdy jedno nad drugim) — kolumny są więc rozłączne parami,
+ * a tło sceny każdego pola leży w jego kolumnie. Pola, których tła sceny już zachodzą (defekt
+ * kompozycji, pilnowany testem tła w piśmie naturalnym), nie tną się wzajemnie.
+ */
+export function kolumnyTlaPolGpz(panele: readonly PanelPolaGpz[]): ReadonlyMap<string, V3Rect> {
+  const wynik = new Map<string, V3Rect>();
+  for (const p of panele) {
+    let x0 = -ZASIEG_KOLUMNY_BEZ_SASIADA;
+    let y0 = -ZASIEG_KOLUMNY_BEZ_SASIADA;
+    let x1 = ZASIEG_KOLUMNY_BEZ_SASIADA;
+    let y1 = ZASIEG_KOLUMNY_BEZ_SASIADA;
+    const a = p.rect;
+    for (const q of panele) {
+      if (q === p) continue;
+      const b = q.rect;
+      if (b.x >= a.x + a.width) x1 = Math.min(x1, (a.x + a.width + b.x) / 2);
+      else if (b.x + b.width <= a.x) x0 = Math.max(x0, (b.x + b.width + a.x) / 2);
+      else if (b.y >= a.y + a.height) y1 = Math.min(y1, (a.y + a.height + b.y) / 2);
+      else if (b.y + b.height <= a.y) y0 = Math.max(y0, (b.y + b.height + a.y) / 2);
+    }
+    wynik.set(p.bayRef, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 });
+  }
+  return wynik;
+}
+
+/** Etykiety-członkowie tła pola (lista członków `PanelPolaGpz.etykiety` — ta sama, z której
+ *  kanwa poszerza tło) dostają kolumnę tła swojego pola; pozostałe bez zmian. */
+function zGranicamiTlaPol(labels: readonly OwnedLabel[], panele: readonly PanelPolaGpz[]): readonly OwnedLabel[] {
+  if (panele.length === 0) return labels;
+  const kolumny = kolumnyTlaPolGpz(panele);
+  const granicaCzlonka = new Map<string, V3Rect>();
+  for (const panel of panele) {
+    const kolumna = kolumny.get(panel.bayRef)!;
+    for (const ref of panel.etykiety) granicaCzlonka.set(ref, kolumna);
+  }
+  return labels.map((l) => {
+    const granica = granicaCzlonka.get(l.ownerRef);
+    return granica === undefined ? l : { ...l, granicaTlaPola: granica };
+  });
+}
+
 export function sceneObstacleRects(scene: SceneV3): readonly V3Rect[] {
   const rects: V3Rect[] = scene.symbols.flatMap(przeszkodySymbolu);
   for (const segment of scene.segments) {

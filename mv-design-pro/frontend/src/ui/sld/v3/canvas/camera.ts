@@ -95,6 +95,22 @@ export const KADR_MAX_SCALE = 2 * SKALA_KOMFORTU_CZYTANIA;
  */
 export const SKALE_ODBIORU_PLANU_ETYKIET: readonly number[] = [0.5, 0.69, SKALA_CZYTANIA, SKALA_KOMFORTU_CZYTANIA, 2];
 
+/**
+ * PODŁOGA CZYTELNOŚCI KADRU ROZDZIELNICY (karta SLD-SKALA-I-NAWIGACJA, zgłoszenie
+ * koordynatora): kadr stacji, sekcji albo pola nie schodzi poniżej skali czytania
+ * (`SKALA_CZYTANIA`). Kolumny pól są wymiarowane pod pismo NATURALNE, a tożsamość
+ * poniżej progu czytelności ma stały rozmiar ekranowy, więc jej tusz w świecie rośnie
+ * jak 1/skala i przy skali mniejszej od czytania przestaje mieścić się w kolumnie —
+ * nazwa pola trafia wtedy do podpowiedzi uchwytu. Pomiar 2026-11-12 (plan etykiet na
+ * 14 fiksturach scen): przy skali 0,69 tożsamości w podpowiedzi 0–171 na fiksturę
+ * (sieć 52 stacji: 171), przy 0,8 — 0–4, przy skali czytania 1 — zero na 13 fiksturach
+ * (wyjątek: nazwa łącznika sekcyjnego toru szersza od slotu sceny, fikstura
+ * `elementyCiagu-lacznik`). Rozdzielnica, która przy tej skali nie mieści się w kanwie,
+ * jest pokazana od początku (lewy górny róg celu), a resztę projektant przewija —
+ * nazwy pól nie są poświęcane za „cały kadr”.
+ */
+export const SKALA_PODLOGI_ROZDZIELNICY = SKALA_CZYTANIA;
+
 /** Oddech dopasowania od krawędzi prostokąta bezpiecznego [px] — ten sam, którego
  *  używa `fitToView` (domyślny padding refitu), więc kadr i „Dopasuj widok”
  *  zostawiają identyczny oddech. */
@@ -234,6 +250,9 @@ export interface AkcjaKadru {
    *  skali — kamera dokłada go do prostokątów przed ułożeniem kadru
    *  (`zTuszemEtykiet`). Brak = same prostokąty. */
   readonly tuszEtykiet?: (scale: number) => TuszEtykietKadru;
+  /** Najmniejsza skala kadru (podłoga czytelności, `SKALA_PODLOGI_ROZDZIELNICY`).
+   *  Gdy cel przy tej skali się nie mieści — kadr od początku celu. Brak = bez podłogi. */
+  readonly podlogaSkali?: number;
 }
 
 /** Zasięg narysowanych etykiet celu i przeszkód (kolejność jak `przeszkody`). */
@@ -456,9 +475,26 @@ function applyKadr(state: CameraState, action: AkcjaKadru): CameraState {
   const { cel, przeszkody } = zTuszemEtykiet(state, action);
   if (!cel) return state;
   const istotne = przeszkody.filter((p) => !przecinaja(p, cel));
-  const scale = skalaKadru(state, cel, viewportSize, safeInsets);
+  const mieszczaca = skalaKadru(state, cel, viewportSize, safeInsets);
+  const scale =
+    action.podlogaSkali !== undefined && mieszczaca < action.podlogaSkali
+      ? wZakresie({ ...state, viewportSize, safeInsets }, action.podlogaSkali)
+      : mieszczaca;
   const srodekCelu = { x: (cel.minX + cel.maxX) / 2, y: (cel.minY + cel.maxY) / 2 };
-  const srodek = srodekKadru(cel, istotne, scale, viewportSize, safeInsets) ?? srodekCelu;
+  let srodek: Punkt;
+  if (scale > mieszczaca + 1e-12) {
+    // Podłoga czytelności: cel większy od okna — początek celu (lewa i górna krawędź)
+    // przy krawędzi prostokąta bezpiecznego z oddechem, oś mieszcząca się — środek.
+    const ins = safeInsets ?? ZERO_INSETS;
+    const oknoW = Math.max(viewportSize.width - ins.left - ins.right - 2 * KADR_PADDING_PX, 1) / scale;
+    const oknoH = Math.max(viewportSize.height - ins.top - ins.bottom - 2 * KADR_PADDING_PX, 1) / scale;
+    srodek = {
+      x: cel.maxX - cel.minX > oknoW ? cel.minX + oknoW / 2 : srodekCelu.x,
+      y: cel.maxY - cel.minY > oknoH ? cel.minY + oknoH / 2 : srodekCelu.y,
+    };
+  } else {
+    srodek = srodekKadru(cel, istotne, scale, viewportSize, safeInsets) ?? srodekCelu;
+  }
   return {
     transform: centerOnPoint(srodek, viewportSize, scale, safeInsets),
     viewportSize,

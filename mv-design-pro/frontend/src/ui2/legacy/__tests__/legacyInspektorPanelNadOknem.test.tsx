@@ -97,8 +97,9 @@ const PRZYPADKI: readonly Przypadek[] = [
     nazwa: 'stacja',
     // Jedna scena (karta SLD-SKALA-I-NAWIGACJA): stację wskazuje jej napis identyfikacji — obrys
     // trafienia etykiety `<ref>#name-row-0` (dawniej zwinięty symbol stacji widoku ogólnego).
+    // Pierwsza stacja obchodu z wierszem pasa nazw — GPZ (pierwszy w obchodzie) ma nagłówek strefy.
     uchwyt: (scena) => {
-      const ref = scena.meta.stationTraversalOrder[0];
+      const ref = scena.meta.stationTraversalOrder.find((r) => scena.labels.some((l) => l.ownerRef === `${r}#name-row-0`));
       expect(ref, 'stacja w scenie').toBeDefined();
       return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
     },

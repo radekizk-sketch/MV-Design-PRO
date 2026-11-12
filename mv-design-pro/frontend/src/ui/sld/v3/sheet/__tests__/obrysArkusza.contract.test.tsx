@@ -37,38 +37,18 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buildScene';
 import { appendUnitToTrunk, loadEnm } from '../../scene/__tests__/syntheticNetworks';
 import {
+  obrysArkuszaPlanu,
   planSceneLabels,
   plannedLabelCollisions,
   plannedLabelsOutsideSheet,
+  rangaTozsamosci,
 } from '../../canvas/labelLegibility';
-import {
-  chromeCaptionCollisions,
-  hiddenLabelsHintPlateRect,
-  hiddenLabelsHintScreenRect,
-  hiddenLabelsHintText,
-  sheetCaptionScreenRects,
-  zachodza,
-  HIDDEN_LABELS_HINT_PLATE_PADDING_X_PX,
-  HIDDEN_LABELS_HINT_PLATE_PADDING_Y_PX,
-  SHEET_CAPTION_OFFSET_SCREEN_PX,
-} from '../../canvas/chromeLayout';
+import { klasaInformacjiEtykiety } from '../../canvas/gestoscInformacji';
+import type { OwnedLabel } from '../../layout/labels';
 import { rectWithinSheet, sheetSizeFor } from '../outline';
-import { FRAME_MARGIN } from '../Frame';
-import {
-  LABEL_TYPOGRAPHY,
-  measureTextWidth,
-  MIN_READABLE_LABEL_SCREEN_PX,
-  screenFixedFontSize,
-} from '../../core/text';
+import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX } from '../../core/text';
 import { labelReservationRect } from '../../layout/labels';
-import {
-  boundingBoxOfRect,
-  computeInitialCameraState,
-  MAX_SCALE,
-  MIN_SCALE,
-} from '../../canvas/camera';
-import { SLD_CANVAS_DOCK_INSETS } from '../../canvas/toolbarLayout';
-import { contentBoundingBoxOf, sceneBoxToCameraWorld } from '../../canvas/SldCanvasV3';
+import { MAX_SCALE, MIN_SCALE } from '../../canvas/camera';
 
 const KATALOG = dirname(fileURLToPath(import.meta.url));
 const FIXTURA = resolve(
@@ -189,11 +169,15 @@ describe('OBRYS ARKUSZA — arkusz jest wyprowadzony z rezerwacji, więc malowan
       const przeszkody = sceneObstacleRects(scene);
       const sheet = sheetSizeFor(scene);
       for (const skala of SKALE) {
-        for (const p of planSceneLabels(scene.labels, przeszkody, skala.v, sheet).drawn) {
+        // R4: ramka rysuje się po obrysie planu (tożsamość rangi ≥ 2 poszerza arkusz w prawo
+        // i w dół, `obrysArkuszaPlanu`) — luz liczony do krawędzi, którą widzi projektant.
+        const plan = planSceneLabels(scene.labels, przeszkody, skala.v, sheet);
+        const obrys = obrysArkuszaPlanu(plan, sheet);
+        for (const p of plan.drawn) {
           luzy.gora = Math.min(luzy.gora, p.rect.y);
           luzy.lewo = Math.min(luzy.lewo, p.rect.x);
-          luzy.dol = Math.min(luzy.dol, sheet.height - (p.rect.y + p.rect.height));
-          luzy.prawo = Math.min(luzy.prawo, sheet.width - (p.rect.x + p.rect.width));
+          luzy.dol = Math.min(luzy.dol, obrys.height - (p.rect.y + p.rect.height));
+          luzy.prawo = Math.min(luzy.prawo, obrys.width - (p.rect.x + p.rect.width));
         }
       }
     }
@@ -206,54 +190,56 @@ describe('OBRYS ARKUSZA — arkusz jest wyprowadzony z rezerwacji, więc malowan
   it('INIEKCJA (+): plan z etykietą przesuniętą pod ramkę MUSI zapalić wyrocznię', () => {
     const scene = scenaDla('referencyjna', REFERENCYJNA);
     const sheet = sheetSizeFor(scene);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 0.181, sheet);
+    // Skala czytania: rysują się dane i tożsamość rangi pola (przy 0,181 dane są poniżej
+    // progu czytelności, a tożsamość rangi pola — poza sufitem proporcji).
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheet);
     expect(plannedLabelsOutsideSheet(plan, sheet)).toEqual([]);
+    // Etykieta danych albo tożsamości rangi pola — jej krawędzią jest obrys sceny (R4:
+    // nazwy bloków wolno wysunąć w prawo i w dół, ramka rośnie razem z nimi).
+    const ofiara = plan.drawn.find((p) => rangaTozsamosci(p.label) < 2)!;
     const sabotaz = {
       ...plan,
-      drawn: [{ ...plan.drawn[0], rect: { ...plan.drawn[0].rect, y: sheet.height - 1 } }],
+      drawn: [{ ...ofiara, rect: { ...ofiara.rect, y: sheet.height - 1 } }],
     };
     const zgloszone = plannedLabelsOutsideSheet(sabotaz, sheet);
     expect(zgloszone).toHaveLength(1);
     expect(zgloszone[0].overflow).toBeGreaterThan(0);
   });
 
-  it('INIEKCJA (−): usunięcie granicy arkusza z planu przywraca ZMIERZONY defekt (40,5 j.św. pod ramką)', () => {
-    // Dowód w drugą stronę: gdyby naprawa była pozorna (np. defekt zniknął
-    // przez przypadek, a nie przez granicę), plan liczony z arkuszem
-    // NIESKOŃCZONYM dałby ten sam wynik. Daje inny — i to jest dokładnie ten
-    // przelew, który właściciel zobaczył na zrzucie.
-    // Karta SLD-SKALA-I-NAWIGACJA (R1): jedna scena — przelew zmierzony na niej przy skali
-    // 0,08 (4 wiersze nazw stacji ostatniego wiersza, maks. 40,5 j.św.); dawniej 36,7 j.św.
-    // na zwiniętym przeglądzie przy 0,181.
+  it('INIEKCJA (−): ramka bez obrysu planu przecina nazwy stacji ostatniego wiersza (ZMIERZONY defekt, > 30 j.św.)', () => {
+    // Dowód w drugą stronę: gdyby naprawa była pozorna, ramka rysowana po obrysie sceny
+    // (pismo naturalne) nie cięłaby niczego. Tnie — to dokładnie przelew, który właściciel
+    // zobaczył na zrzucie („dolna krawędź ramki przechodzi przez środek liter oznaczeń
+    // stacji"). Karta SLD-SKALA-I-NAWIGACJA (R4): nazwa stacji ma stały rozmiar ekranowy,
+    // więc przy skali 0,08 jej tusz wychodzi pod obrys sceny; plan jej nie odbiera ani nie
+    // skraca, a ramka rośnie (`obrysArkuszaPlanu`). Dawniej: przesunięcie pasma w górę,
+    // 36,7 j.św. na zwiniętym przeglądzie przy 0,181, 40,5 j.św. na jednej scenie przy 0,08.
     const SKALA_PRZELEWU = 0.08;
     const scene = scenaDla('referencyjna', REFERENCYJNA);
     const przeszkody = sceneObstacleRects(scene);
     const sheet = sheetSizeFor(scene);
-    const bezGranicy = planSceneLabels(scene.labels, przeszkody, SKALA_PRZELEWU, {
-      width: Number.MAX_SAFE_INTEGER,
-      height: Number.MAX_SAFE_INTEGER,
-    });
-    const przelewy = plannedLabelsOutsideSheet(bezGranicy, sheet);
-    expect(przelewy.length).toBeGreaterThan(0);
-    expect(Math.max(...przelewy.map((p) => p.overflow))).toBeGreaterThan(30);
-
-    // …a z granicą tych samych etykiet NIE ubywa: tożsamość stacji ostatniego
-    // wiersza jest PRZESUNIĘTA, nie porzucona (kanon KD-11).
-    const zGranica = planSceneLabels(scene.labels, przeszkody, SKALA_PRZELEWU, sheet);
-    expect(plannedLabelsOutsideSheet(zGranica, sheet)).toEqual([]);
-    expect(zGranica.drawn.length).toBe(bezGranicy.drawn.length);
-    expect(zGranica.droppedIdentity.length).toBe(bezGranicy.droppedIdentity.length);
-    // SLD-LOC (2026-09-05): kody stacji fallback (`S51`/`S52`/`S53`) ZALEŻĄ od
-    // numeracji fallback ciągów — naprawa lokalności pionowej kotwic zmienia
-    // ich WARTOŚCI (patrz `enmToSldAdapter.ts` `fallbackSequenceBaseByRunId`).
-    // Zmierzone na tej fixturze PO naprawie: stacje najbliżej dolnej krawędzi
-    // arkusza (największy `rect.y` w planie tej sceny/skali) to S109-S112 i
-    // S145-S148 (ranga ostatnich dwóch ciągów) — trzy z nich zastępują dawne
-    // S51/S52/S53, ta sama rola testowa (kod przy dolnej krawędzi PRZESUNIĘTY,
-    // nie porzucony).
+    const plan = planSceneLabels(scene.labels, przeszkody, SKALA_PRZELEWU, sheet);
+    const tniePrzezRamkeSceny = plan.drawn
+      .filter((p) => !rectWithinSheet(p.rect, sheet))
+      .map((p) => Math.max(p.rect.x + p.rect.width - sheet.width, p.rect.y + p.rect.height - sheet.height));
+    expect(tniePrzezRamkeSceny.length).toBeGreaterThan(0);
+    expect(Math.max(...tniePrzezRamkeSceny)).toBeGreaterThan(30);
+    // …a ramka po obrysie planu obejmuje każdy narysowany napis.
+    const obrys = obrysArkuszaPlanu(plan, sheet);
+    expect(plan.drawn.filter((p) => !rectWithinSheet(p.rect, obrys)).map((p) => p.label.text)).toEqual([]);
+    expect(plannedLabelsOutsideSheet(plan, sheet)).toEqual([]);
+    // Nazwy stacji przy dolnej krawędzi są narysowane w pełnym brzmieniu (SLD-LOC: kody
+    // S109–S111 to stacje najbliżej dolnej krawędzi tej fikstury).
+    // Opis sekcji tych stacji („S109 · Sekcja 1 · 15 kV") dawniej stał w postaci skróconej
+    // do kodu („S109"); R4: pełne brzmienie albo — gdy przegrywa kolizję przy piśmie 112 j.św.
+    // (skala 0,08) — podpowiedź uchwytu. Nigdy nie znika ani nie jest skracany.
     for (const kod of ['S109', 'S110', 'S111']) {
-      expect(zGranica.drawn.some((p) => p.text === kod), `nazwa ${kod} musi zostać narysowana`).toBe(true);
+      const opis = `${kod} · Sekcja 1 · 15 kV`;
+      const naRysunku = plan.drawn.some((p) => p.text === opis);
+      const wPodpowiedzi = plan.tozsamosciWPodpowiedzi.some((t) => t.label.text === opis);
+      expect(naRysunku || wPodpowiedzi, `opis sekcji ${kod} narysowany albo w podpowiedzi`).toBe(true);
     }
+    expect(plan.drawn.filter((p) => rangaTozsamosci(p.label) >= 2 && p.text !== p.label.text)).toEqual([]);
   });
 
   it('granica arkusza NIE tworzy kolizji etykieta↔etykieta (przesunięcie pasma jest blokiem, nie rozrywaniem)', () => {
@@ -274,8 +260,8 @@ describe('OBRYS ARKUSZA — arkusz jest wyprowadzony z rezerwacji, więc malowan
     expect(sprawdzonych).toBe(SIECI.length * SKALE.length);
   });
 
-  it('tekst SKRÓCONY do slotu niesie znak skrócenia — skrót bez znaku udaje kompletną daną (S9-7/C-6)', () => {
-    let skroconych = 0;
+  it('tekst SKRÓCONY niesie znak skrócenia i jest wyłącznie DANĄ — tożsamość stoi w całości (S9-7/C-6, R4)', () => {
+    let skroconychTozsamosci = 0;
     for (const siec of SIECI) {
       const scene = scenaDla(siec.klucz, siec.enm);
       const przeszkody = sceneObstacleRects(scene);
@@ -283,184 +269,45 @@ describe('OBRYS ARKUSZA — arkusz jest wyprowadzony z rezerwacji, więc malowan
       for (const skala of SKALE) {
         for (const p of planSceneLabels(scene.labels, przeszkody, skala.v, sheet).drawn) {
           if (p.text === p.label.text) continue;
-          skroconych += 1;
+          if (klasaInformacjiEtykiety(p.label) === 'tozsamosc') skroconychTozsamosci += 1;
           expect(p.text, `${siec.klucz} @${skala.nazwa}: „${p.label.text}"`).toContain('…');
         }
       }
     }
-    // Zapadka: gdyby skracanie przestało działać, licznik byłby zerowy, a test
-    // zielony — dokładnie ten rodzaj fałszywej pewności zamyka reguła KLASA §4.
-    expect(skroconych).toBeGreaterThan(0);
-  });
-});
-
-describe('DOLNY PAS CHROMU — podpisy arkusza i wskaźnik ekranowy są rozłączne z konstrukcji', () => {
-  const KADRY = [
-    { width: 1400, height: 900 },
-    { width: 1800, height: 1100 },
-    { width: 1322, height: 696 },
-    { width: 2000, height: 1180 },
-  ] as const;
-  const MNOZNIKI = [0.5, 1, 2, 5] as const;
-  const KAMERY = ['dopasowanie', 'krawedz-w-slocie'] as const;
-  type Kamera = (typeof KAMERY)[number];
-  const METRYKA = { measure: measureTextWidth };
-
-  function ukladDla(
-    scene: SceneV3,
-    kadr: { readonly width: number; readonly height: number },
-    mnoznik: number,
-    liczbaUkrytych: number,
-    kamera: Kamera = 'dopasowanie',
-  ) {
-    const cel = sceneBoxToCameraWorld(contentBoundingBoxOf(scene) ?? boundingBoxOfRect(scene.bbox));
-    const fit = computeInitialCameraState(cel, kadr, null, SLD_CANVAS_DOCK_INSETS);
-    const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, fit.transform.scale * mnoznik));
-    const sheet = sheetSizeFor(scene);
-    const captionFontPx = screenFixedFontSize('t2', scale) * scale;
-    // `krawedz-w-slocie`: projektant przesunął widok tak, że dolna krawędź arkusza stoi w pasie
-    // wskaźnika „Ukryto N opisów", a prawa — przy prawej krawędzi kadru (podpis „Skala" wpada
-    // w slot bazowy wskaźnika). Przesunięcie widoku jest zwykłą czynnością użytkownika, więc ten
-    // układ jest cechą iloczynu, nie przypadkiem z fikstury.
-    const slot = hiddenLabelsHintScreenRect(kadr, hiddenLabelsHintText(liczbaUkrytych), [], METRYKA);
-    const camera =
-      kamera === 'dopasowanie'
-        ? { ...fit.transform, scale }
-        : {
-            ...fit.transform,
-            scale,
-            translateX: slot.x + slot.width - (FRAME_MARGIN + sheet.width) * scale,
-            translateY: slot.y + captionFontPx - SHEET_CAPTION_OFFSET_SCREEN_PX - (FRAME_MARGIN + sheet.height) * scale,
-          };
-    const captions = sheetCaptionScreenRects(
-      {
-        sheet,
-        frameMargin: FRAME_MARGIN,
-        camera,
-        captionFontPx,
-        captionFontWeight: LABEL_TYPOGRAPHY.t2.fontWeight,
-        scaleLabel: 'wg kamery',
-      },
-      METRYKA,
-    );
-    const hint = hiddenLabelsHintScreenRect(kadr, hiddenLabelsHintText(liczbaUkrytych), captions, METRYKA);
-    return { aparat: captions, hint };
-  }
-
-
-  it('ILOCZYN {sieć × kadr × zoom × kamera}: zero kolizji „Skala …" × „Ukryto N opisów"', () => {
-    const kolizje: string[] = [];
-    let ukladow = 0;
-    for (const siec of SIECI) {
-      const scena = scenaDla(siec.klucz, siec.enm);
-      for (const kadr of KADRY) {
-        for (const mnoznik of MNOZNIKI) {
-          for (const kamera of KAMERY) {
-            const { aparat, hint } = ukladDla(scena, kadr, mnoznik, 1, kamera);
-            // Dolny aparat arkusza = KRAWĘDŹ RAMKI + oba podpisy. Krawędź jest w
-            // tym zbiorze dlatego, że napis przecięty linią ramki jest tak samo
-            // nieczytelny jak napis pod drugim napisem — to jedna klasa.
-            expect(aparat.map((a) => a.id)).toEqual(['ramka', 'skala']);
-            const znalezione = chromeCaptionCollisions([...aparat, { id: 'ukryto', ...hint }]);
-            for (const k of znalezione) {
-              kolizje.push(`${siec.klucz} ${kamera} ${kadr.width}×${kadr.height} ×${mnoznik}: ${k.a}↔${k.b}`);
-            }
-            ukladow += 1;
-          }
-        }
-      }
-    }
-    expect(kolizje).toEqual([]);
-    expect(ukladow).toBe(SIECI.length * KADRY.length * MNOZNIKI.length * KAMERY.length);
-  });
-
-  it('INIEKCJA: bez ustąpienia wskaźnika kolizja WRACA — czyli test mierzy naprawę, a nie przypadek', () => {
-    const bezUstapienia: Record<Kamera, number> = { dopasowanie: 0, 'krawedz-w-slocie': 0 };
-    let par = 0;
-    for (const siec of SIECI) {
-      const scena = scenaDla(siec.klucz, siec.enm);
-      for (const kadr of KADRY) {
-        for (const mnoznik of MNOZNIKI) {
-          for (const kamera of KAMERY) {
-            // Slot BAZOWY (bez znajomości aparatu arkusza) = stan sprzed karty.
-            const { aparat } = ukladDla(scena, kadr, mnoznik, 1, kamera);
-            const surowy = hiddenLabelsHintScreenRect(kadr, hiddenLabelsHintText(1), [], METRYKA);
-            const znalezione = chromeCaptionCollisions([...aparat, { id: 'ukryto-surowy', ...surowy }]);
-            if (znalezione.some((k) => k.a === 'ukryto-surowy' || k.b === 'ukryto-surowy')) bezUstapienia[kamera] += 1;
-            par += 1;
-          }
-        }
-      }
-    }
-    // Pomiar karty: kolizja w 12 na 12 par {kadr × LOD} przy kadrze dopasowania.
-    // LV Domain Projection (po B-02): kolumny stacji z transformatorem
-    // poszerzone o portal domeny nN ⇒ arkusz szerszy, inna skala dopasowania i
-    // inny podpis skali — zmierzone ponownie: kolizja w 3 na 12 par.
-    // UX-04/POLE-LINIOWE-WZORZEC (tablica szerokości znaków kroju, 2026-10-30): przy kadrze
-    // dopasowania 0 na 96 układów {sieć × kadr × LOD × zoom} (od karty SLD-SKALA-I-NAWIGACJA
-    // jedna scena: 32 układy {sieć × kadr × zoom}) — dolna krawędź arkusza
-    // dopasowanego nie sięga już pasa wskaźnika, więc dawna iniekcja zależała od przypadku
-    // geometrii fikstury. Cechą iloczynu jest teraz PRZESUNIĘCIE WIDOKU (`krawedz-w-slocie`:
-    // dolna krawędź arkusza w pasie wskaźnika, czynność użytkownika): bez ustąpienia kolizja
-    // w KAŻDYM z 96 takich układów, z ustąpieniem — w żadnym (test iloczynu wyżej).
-    expect(par).toBe(2 * SIECI.length * KADRY.length * MNOZNIKI.length);
-    expect(bezUstapienia['krawedz-w-slocie']).toBe(SIECI.length * KADRY.length * MNOZNIKI.length);
-  });
-
-  it('wskaźnik zachowuje slot bazowy tam, gdzie podpis arkusza jest daleko (ustępuje TYLKO gdy trzeba)', () => {
-    const kadr = { width: 1400, height: 900 };
-    const daleko = hiddenLabelsHintScreenRect(
-      kadr,
-      hiddenLabelsHintText(3),
-      [{ x: 0, y: 0, width: 120, height: 17 }],
-      METRYKA,
-    );
-    expect(daleko.y).toBe(kadr.height - 52 - 12);
-  });
-
-  it('ustępowanie liczy się dla PODKŁADKI, nie dla gołego napisu (pin dołożony przy odbiorze)', () => {
-    /*
-     * DLACZEGO TEN PIN ISTNIEJE. Podkładka wskaźnika powstała z OGLĘDZIN zrzutu —
-     * napis systemowy, ustąpiwszy podpisom arkusza, lądował na treści rysunku i na
-     * linii ramki, więc dostał nieprzezroczyste tło. Docstring `hiddenLabelsHintPlateRect`
-     * nazywa to koniecznością, ale przy odbiorze karty zmierzono, że NIC tego nie
-     * pilnowało: przestawienie warunku kolizji z podkładki na sam napis zostawiało
-     * 675 testów na zielono. Skutek takiego przestawienia jest dokładnie tą klasą,
-     * którą karta zamykała — nieprzezroczyste tło nachodzi na podpis arkusza i
-     * ZASŁANIA go, czyli informacja ginie tak samo, tylko w drugą stronę.
-     *
-     * Wyrocznia bierze przeszkodę stojącą w PASIE PODKŁADKI, ale POZA prostokątem
-     * napisu: goły napis jej nie dotyka, podkładka owszem. Bez naprawy wskaźnik
-     * zostaje w slocie bazowym; z naprawą ustępuje.
-     */
-    const kadr = { width: 1400, height: 900 };
-    const tekst = hiddenLabelsHintText(1);
-    const slotBazowy = hiddenLabelsHintScreenRect(kadr, tekst, [], METRYKA);
-    const podkladka = hiddenLabelsHintPlateRect(slotBazowy);
-
-    // Zapadka na przypadek zdegenerowany: pas podkładki poza napisem MUSI istnieć,
-    // inaczej przeszkoda poniżej byłaby pusta i test przechodziłby bez treści.
-    expect(HIDDEN_LABELS_HINT_PLATE_PADDING_X_PX).toBeGreaterThan(0);
-    expect(HIDDEN_LABELS_HINT_PLATE_PADDING_Y_PX).toBeGreaterThan(0);
-
-    const przeszkodaTylkoPodPodkladka = {
-      x: podkladka.x,
-      y: podkladka.y,
-      width: HIDDEN_LABELS_HINT_PLATE_PADDING_X_PX,
-      height: podkladka.height,
+    expect(skroconychTozsamosci).toBe(0);
+    // Zapadka mechanizmu skracania (bez niej licznik zero byłby zielony także po wyłączeniu
+    // skracania): dana szersza od swojego slotu jest skracana ze znakiem skrócenia.
+    const dana: OwnedLabel = {
+      ownerRef: 'odcinek/1',
+      ownerKind: 'segment-span',
+      labelClass: 't2',
+      labelRole: 'dane',
+      text: 'XRUHAKXS 3×120/50 mm² · 1,25 km · 12 kV',
+      slotIndex: 1,
+      rect: { x: 100, y: 100, width: 60, height: 17 },
     };
-    expect(zachodza(przeszkodaTylkoPodPodkladka, podkladka)).toBe(true);
-    expect(zachodza(przeszkodaTylkoPodPodkladka, slotBazowy)).toBe(false);
+    const plan = planSceneLabels([dana], [], 1, { width: 1000, height: 1000 });
+    expect(plan.drawn[0]?.text).toContain('…');
+  });
 
-    const poUstapieniu = hiddenLabelsHintScreenRect(
-      kadr,
-      tekst,
-      [przeszkodaTylkoPodPodkladka],
-      METRYKA,
-    );
-    expect(poUstapieniu.y).toBeLessThan(slotBazowy.y);
-    expect(zachodza(hiddenLabelsHintPlateRect(poUstapieniu), przeszkodaTylkoPodPodkladka)).toBe(
-      false,
-    );
+  it('obrys planu: rośnie wyłącznie od tożsamości rangi ≥ 2, a od skali czytania równa się obrysowi sceny', () => {
+    for (const siec of SIECI) {
+      const scene = scenaDla(siec.klucz, siec.enm);
+      const przeszkody = sceneObstacleRects(scene);
+      const sheet = sheetSizeFor(scene);
+      for (const skala of SKALE) {
+        const plan = planSceneLabels(scene.labels, przeszkody, skala.v, sheet);
+        const obrys = obrysArkuszaPlanu(plan, sheet);
+        expect(obrys.width).toBeGreaterThanOrEqual(sheet.width);
+        expect(obrys.height).toBeGreaterThanOrEqual(sheet.height);
+        const doObrysuSceny = obrysArkuszaPlanu({ ...plan, drawn: plan.drawn.filter((p) => rangaTozsamosci(p.label) < 2) }, sheet);
+        expect(doObrysuSceny, `${siec.klucz} @${skala.nazwa}`).toEqual(sheet);
+        if (skala.v >= 1) expect(obrys, `${siec.klucz} @${skala.nazwa}`).toEqual(sheet);
+      }
+    }
   });
 });
+
+// Karta SLD-SKALA-I-NAWIGACJA (R3): blok „DOLNY PAS CHROMU” (rozłączność podpisów arkusza
+// i wskaźnika „Ukryto N opisów”) usunięty razem ze wskaźnikiem — na kanwie nie ma już drugiego
+// właściciela dolnego pasa, a stałe podpisów arkusza pilnuje `canvas/chromeLayout.ts`.

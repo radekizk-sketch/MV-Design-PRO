@@ -2,7 +2,7 @@
  * Zrzuty ŻYWEJ aplikacji dla karty KD-11 (bramka 6, dyrektywa właściciela #8):
  *  - `kd11-tozsamosc-rozwiniecie-{dark,light}.png` — kadr rozwiniętego GPZ,
  *    DOKŁADNIE ten sam co zrzuty odbioru KD-8 (`kd8-motyw-gpz-*`), na których
- *    rysunek nie niósł ani jednego podpisu („Ukryto 35 opisów") — porównanie 1:1,
+ *    rysunek nie niósł ani jednego podpisu (dawny licznik „Ukryto 35 opisów") — porównanie 1:1,
  *  - `kd11-tozsamosc-dopasowany-{dark,light}.png` — kadr „Dopasuj widok" z
  *    WIDOCZNYMI podpisami tożsamości,
  *  - `kd11-tozsamosc-blisko-{dark,light}.png` — kadr przybliżony (skala komfortu
@@ -247,7 +247,8 @@ test.describe('kd11:zrzuty', () => {
       // jednego podpisu. Porównywalny 1:1.
       const tozsamosciRozwiniecie = await etykiety.locator('g[data-label-role="tozsamosc"]').count();
       expect(tozsamosciRozwiniecie, 'kadr rozwiniecia bez podpisow tozsamosci').toBeGreaterThan(0);
-      await expect(etykiety).toHaveAttribute('data-dropped-identity', '0');
+      // Karta SLD-SKALA-I-NAWIGACJA (R4): tożsamość nie jest skracana ani porzucana.
+      expect(await etykiety.locator('g[data-label-role="tozsamosc"] text').allTextContents()).not.toContainEqual(expect.stringContaining('…'));
       await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd11-tozsamosc-rozwiniecie-${id}.png`) });
 
@@ -256,8 +257,9 @@ test.describe('kd11:zrzuty', () => {
       await page.waitForTimeout(1000);
       const tozsamosci = await etykiety.locator('g[data-label-role="tozsamosc"]').count();
       expect(tozsamosci, 'kadr dopasowany bez podpisow tozsamosci').toBeGreaterThan(0);
-      await expect(etykiety).toHaveAttribute('data-dropped-identity', '0');
-      const ukryteDopasowany = Number(await etykiety.getAttribute('data-hidden-unreadable'));
+      expect(await etykiety.locator('g[data-label-role="tozsamosc"] text').allTextContents()).not.toContainEqual(expect.stringContaining('…'));
+      await expect(page.getByTestId('sld-v3-hidden-labels-hint')).toHaveCount(0);
+      const ukryteDopasowany = Number(await etykiety.getAttribute('data-dane-nieczytelne'));
       await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd11-tozsamosc-dopasowany-${id}.png`) });
 
@@ -267,7 +269,7 @@ test.describe('kd11:zrzuty', () => {
       const kursor = (await kotwica.count()) > 0 ? await srodekRamki(kotwica) : srodek;
       await przyblizDoSkali(page, canvas, kursor, SKALA_KOMFORTU_CZYTANIA);
       await page.waitForTimeout(800);
-      const ukryteBlisko = Number(await etykiety.getAttribute('data-hidden-unreadable'));
+      const ukryteBlisko = Number(await etykiety.getAttribute('data-dane-nieczytelne'));
       expect(ukryteBlisko, 'po przyblizeniu opisy szczegolowe musza wracac').toBeLessThan(ukryteDopasowany);
       expect(await etykiety.locator('g[data-label-role="dane"]').count()).toBeGreaterThan(0);
       expect(await etykiety.locator('g[data-label-role="tozsamosc"]').count()).toBeGreaterThan(0);

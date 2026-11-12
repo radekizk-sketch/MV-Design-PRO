@@ -275,6 +275,9 @@ describe('S9-5 — iloczyn cech {klasa} × {kotwica}: tabela ZAMKNIĘTA', () => 
     'portal-nn': [],
     etykieta: ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
     'znacznik-wyniku': ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
+    // R6 (karta SLD-SKALA-I-NAWIGACJA): obszar celu pola i stacji wskazuje wyłącznie swój obiekt.
+    pole: ['pole'],
+    stacja: ['stacja'],
   };
 
   it('lista klas obiektów kanwy jest kompletna względem warstwy trafień', () => {

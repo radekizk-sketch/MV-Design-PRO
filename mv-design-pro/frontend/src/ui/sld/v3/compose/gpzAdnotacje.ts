@@ -509,11 +509,16 @@ export interface ElementPolaGpz {
  * lewa i górna krawędź tła leżą na półsiatce). Kolejność wyjścia = kolejność pól na wejściu (deterministyczna).
  * Pola bez żadnego narysowanego elementu nie dostają tła (nie ma czego podświetlić).
  */
+/** Margines tła pola GPZ wokół obrysu jego elementów — jedno źródło dla tła sceny
+ *  (`panelePolGpz`), tła wg planu kanwy (`canvas/obrysyWgPlanu.ts`) i granicy kolumny tła
+ *  w planie etykiet (`OwnedLabel.granicaTlaPola`). */
+export const MARGINES_TLA_POLA_GPZ = GRID / 2;
+
 export function panelePolGpz(
   pola: readonly { readonly bayRef: string; readonly rola: RolaPolaGpz }[],
   elementy: readonly ElementPolaGpz[],
 ): readonly PanelPolaGpz[] {
-  const margines = GRID / 2;
+  const margines = MARGINES_TLA_POLA_GPZ;
   const wynik: PanelPolaGpz[] = [];
   pola.forEach((pole) => {
     const wlasne = elementy.filter((e) => e.bayRef === pole.bayRef);

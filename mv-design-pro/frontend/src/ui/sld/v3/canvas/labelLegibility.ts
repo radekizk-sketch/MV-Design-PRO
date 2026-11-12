@@ -9,13 +9,17 @@
  * dwie klasy znaczeniowe z osobnymi regułami widoczności (`core/text.ts`
  * `LabelRole`):
  *
- *   - `'dane'`      — próg czytelności jak dotąd: poniżej progu etykieta ZNIKA
- *                     i liczy się do wskaźnika „Ukryto N opisów";
- *   - `'tozsamosc'` — NIE znika: poniżej progu jest renderowana pismem
- *                     powiększonym do rozmiaru MINIMALNEGO CZYTELNEGO
- *                     (`minReadableFontSize`), czyli skalowanym NIEZALEŻNIE od
- *                     kamery — dokładnie tak, jak K11-B traktuje minimalny
- *                     rozmiar symboli (`MIN_SYMBOL_SCREEN_PX`).
+ *   - `'dane'`      — widoczne, gdy pismo jest czytelne na ekranie (próg
+ *                     z histerezą, `canvas/gestoscInformacji.ts`, karta
+ *                     SLD-SKALA-I-NAWIGACJA R3); poniżej progu ich nie ma —
+ *                     bez licznika ukrytych opisów;
+ *   - `'tozsamosc'` — NIE znika z powodu skali: poniżej progu rysuje się
+ *                     w stałym rozmiarze ekranowym (`minReadableFontSize`;
+ *                     ranga pola — w granicy sufitu proporcji), w CAŁOŚCI, bez
+ *                     wielokropka (R4). Kolizję rozstrzyga ranga: GPZ > stacja
+ *                     > sekcja > pole, remis — ref (`kolejnoscRozstrzygania`);
+ *                     przegrana trafia do podpowiedzi uchwytu
+ *                     (`tozsamosciWPodpowiedzi`).
  *
  * DLACZEGO W WARSTWIE RENDERU, NIE W SCENIE. Plan zależy od SKALI KAMERY,
  * a scena musi zostać deterministyczna (te same wejścia = ta sama geometria i
@@ -32,7 +36,8 @@
  *       przestawiane od góry pasma z powiększonymi wysokościami, więc nie
  *       nachodzą na siebie nawzajem (wiersze ukryte nie zajmują miejsca);
  *   (c) SKRACANIE ZACHOWUJĄCE CZŁON ROZRÓŻNIAJĄCY (`shortenPreservingIdentity`,
- *       `core/text.ts`, S9-7/audyt C-6) — gdy powiększona etykieta koliduje,
+ *       `core/text.ts`, S9-7/audyt C-6) — WYŁĄCZNIE dla danych (R4: tożsamość
+ *       stoi w całości albo ustępuje) — gdy powiększona etykieta koliduje,
  *       jest skracana do NAJDŁUŻSZEJ postaci, która kolizji nie ma
  *       (wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI, nie po liczbie
  *       glifów: całe człony odpadają od końca, a ostatnią formą jest skrót
@@ -42,16 +47,14 @@
  *       PRZECIWNEJ (napis znad szyny idzie pod szynę). Prześwit od kotwicy
  *       zostaje ten sam, bo prostokąt nadal rośnie OD niej — zmienia się
  *       tylko zwrot. To stopień swobody TAŃSZY niż utrata tożsamości;
- *   (e) PIERWSZEŃSTWO — rozstrzyganie w porządku `labelResolutionOrder`
- *       (`layout/declutter.ts`, ta sama reguła co declutter sceny): symbol
- *       zawsze wygrywa z etykietą, etykieta o wyższym priorytecie wygrywa z
- *       niższą. Etykieta, dla której nawet najkrótsza postać koliduje po
- *       OBU stronach, NIE jest rysowana — plan zwraca ją jawnie
- *       (`droppedIdentity`), żeby wyrocznia odbioru mogła pilnować, że na
- *       skalach produkcyjnych ten zbiór jest PUSTY (a nie żeby cicho zgubić
- *       tożsamość);
+ *   (e) PIERWSZEŃSTWO — rozstrzyganie w porządku `kolejnoscRozstrzygania`
+ *       (ranga tożsamości, priorytet rodzaju z `layout/declutter.ts`, ref):
+ *       symbol zawsze wygrywa z etykietą, tożsamość wyższej rangi wygrywa
+ *       z niższą. Tożsamość, która nie mieści się po ŻADNEJ stronie, NIE jest
+ *       rysowana — plan zwraca ją jawnie (`tozsamosciWPodpowiedzi`), kanwa
+ *       wpisuje ją do podpowiedzi uchwytu;
  *   (f) USTĄPIENIE SKRACALNEGO SĄSIADA (karta GPZ-MODEL, `ustapSasiadow`) —
- *       zanim tożsamość trafi do `droppedIdentity`, plan sprawdza, czy jej
+ *       zanim tożsamość trafi do podpowiedzi, plan sprawdza, czy jej
  *       stronę zajmują wyłącznie etykiety, które po odsunięciu znów znajdą
  *       miejsce (zwykle skrócone); jeśli tak, oddają je. Liczba narysowanych
  *       etykiet rośnie, żadna nie wypada.
@@ -66,7 +69,7 @@
  * sąsiadów w declutterze i FAŁSZUJE deklarację „tożsamość jest czytelna
  * wszędzie". Ten stopień został USUNIĘTY — plan albo rysuje napis nie mniejszy
  * niż `MIN_READABLE_LABEL_SCREEN_PX` na ekranie, albo go nie rysuje i mówi o
- * tym wprost (`droppedIdentity` + wskaźnik „Ukryto N opisów"). Własność ma
+ * tym wprost (`tozsamosciWPodpowiedzi`). Własność ma
  * PRZYPIĘTĄ wyrocznię: `plannedLabelsBelowScreenFloor` niżej.
  *
  * PROPORCJE (zgłoszenie właściciela 2026-08-07 „brak proporcji, grubości") —
@@ -78,7 +81,7 @@
  * **3,75×** zwiniętego bloku przy `MIN_SCALE`). Od tej karty rozmiar pisma
  * wychodzi z JEDNEJ funkcji spełniającej OBIE granice naraz
  * (`core/text.ts` `enlargedFontSizeWithinProportion`), a etykieta, dla której
- * spełnić obu się nie da, trafia do `droppedIdentity` — tak samo jak ta, dla
+ * spełnić obu się nie da, trafia do podpowiedzi — tak samo jak ta, dla
  * której zabrakło miejsca. Wyrocznia: `plannedLabelsAboveProportionCeiling`.
  *
  * RAMKA-TNIE-PODPISY (zgłoszenie właściciela 2026-08-08 „ramka przecina
@@ -96,7 +99,7 @@
  * Od tej karty obrys arkusza jest przeszkodą w `wolne()` — tej samej rangi co
  * symbol i tor — więc przelew rozwiązują ISTNIEJĄCE stopnie swobody (zmiana
  * strony kotwicy, skracanie), a napis, którego zmieścić się nie da, trafia do
- * `droppedIdentity` i do licznika „Ukryto N opisów". Wyrocznia:
+ * podpowiedzi uchwytu (tożsamość) albo nie jest rysowany (dane). Wyrocznia:
  * `plannedLabelsOutsideSheet`.
  *
  * Czysta funkcja: brak DOM/Date/losowości (P7) — ten sam wynik w renderze,
@@ -107,19 +110,21 @@ import { rectsOverlap, type V3Rect } from '../core/grid';
 import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
 import { buildRectIndex, createRectIndex, createRectItemIndex, type RectIndex } from '../core/rectIndex';
 import { blokKrawedzi, zasiegWierszaWRamce } from '../symbols/blokZabezpieczen';
+import { MARGINES_TLA_POLA_GPZ } from '../compose/gpzAdnotacje';
 import {
   enlargedFontSizeWithinProportion,
   fontSizeForScreenFloorWithinProportion,
-  isLabelHiddenAtScale,
   isLabelReadableAtScale,
   LABEL_TYPOGRAPHY,
   measureTextWidth,
+  minReadableFontSize,
   MIN_READABLE_LABEL_SCREEN_PX,
   shortenPreservingIdentity,
 } from '../core/text';
 import { labelPriority, labelResolutionOrder } from '../layout/declutter';
-import { lodClassOf, wyrownanieEtykiety, type OwnedLabel, type SimpleAnchorPlacement, type WyrownanieTekstu } from '../layout/labels';
+import { wyrownanieEtykiety, type OwnedLabel, type SimpleAnchorPlacement, type WyrownanieTekstu } from '../layout/labels';
 import { rectWithinSheet, type SheetOutline } from '../sheet/outline';
+import { czytelnyNaEkranie, klasaInformacjiEtykiety } from './gestoscInformacji';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
  *  powiększeniu pisma i skróceniu tekstu), nie surowa z sceny. */
@@ -156,14 +161,20 @@ export interface PlannedLabel {
 export interface LabelRenderPlan {
   /** Do narysowania, w ORYGINALNEJ kolejności sceny (stabilność `key`/testId). */
   readonly drawn: readonly PlannedLabel[];
-  /** Etykiety klasy `'dane'` NIEnarysowane — próg czytelności albo brak
-   *  miejsca po powiększeniu sąsiadów. Dokładnie ta liczba stoi we wskaźniku
-   *  „Ukryto N opisów — przybliż, aby zobaczyć". */
-  readonly hiddenDetail: readonly OwnedLabel[];
-  /** Etykiety klasy `'tozsamosc'`, dla których nie znalazło się miejsce nawet
-   *  po skróceniu — zbiór, który na sieciach kanonicznych MUSI być pusty
-   *  (wyrocznia `accept:sld-v3`). Ostatnia deska ratunku przed kolizją. */
-  readonly droppedIdentity: readonly OwnedLabel[];
+  /** Tożsamości NIEnarysowane w tej skali (R4): przegrały kolizję z tożsamością
+   *  wyższej rangi albo z rysunkiem, albo (ranga pola) ich pismo przekroczyłoby
+   *  sufit proporcji. Nie giną — kanwa wpisuje je do podpowiedzi uchwytu
+   *  w miejscu slotu sceny (`canvas/hitAreas.ts`), a nawigator czyta je z tej
+   *  samej listy. Dane poniżej progu czytelności nie są tu wymieniane: ich brak
+   *  jest regułą gęstości informacji (R3), nie stratą. */
+  readonly tozsamosciWPodpowiedzi: readonly TozsamoscWPodpowiedzi[];
+}
+
+/** Tożsamość nienarysowana w tej skali — etykieta sceny i jej indeks (`data-testid`
+ *  uchwytu `sld-v3-label-⟨indeks⟩`, ten sam co dla etykiety narysowanej). */
+export interface TozsamoscWPodpowiedzi {
+  readonly label: OwnedLabel;
+  readonly index: number;
 }
 
 /** Prostokąt etykiety o zadanej szerokości/wysokości, zakotwiczony jak slot
@@ -406,7 +417,47 @@ function blokWiersza(label: OwnedLabel): string | null {
  *  dla jednego kandydata — wiersz bloku nie widzi krawędzi własnej ramki). */
 type ZbiorKolizji = Pick<RectIndex, 'anyOverlap'>;
 
-function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map<number, V3Rect> {
+/** Wynik przestawienia pasm: slot po przesunięciu pasma o przelew pod arkusz oraz slot bez
+ *  tego przesunięcia (pasmo od swojej góry w scenie). */
+interface PrzestawionePasma {
+  readonly zKorekta: Map<number, V3Rect>;
+  readonly bezKorekty: Map<number, V3Rect>;
+}
+
+/**
+ * Karta SLD-SKALA-I-NAWIGACJA (R4, zgłoszenie z karty pól SN „obrys arkusza ucina opis
+ * przy prawej krawędzi”) — czy prostokąt TUSZU mieści się w arkuszu dla tej etykiety.
+ * Dane i tożsamość rangi pola — w obrysie sceny (`rectWithinSheet`): ich pismo ma
+ * sufit proporcji, a obrys obejmuje ich pełne brzmienie (`prostokatArkuszaEtykiety`).
+ * Nazwa GPZ, nazwa stacji i oznaczenie sekcji (ranga ≥ 2) mają stały rozmiar ekranowy
+ * bez sufitu, więc ich tusz w świecie rośnie jak 1/skala i przy oddaleniu wychodzi poza
+ * obrys wyznaczony pismem naturalnym; krawędź prawa i dolna jej nie odbiera — arkusz
+ * rośnie razem z nią (`obrysArkuszaPlanu`, ramka `sheet/Frame.tsx`). Krawędź lewa
+ * i górna (początek układu arkusza) obowiązuje każdą etykietę.
+ */
+function wArkuszu(rect: V3Rect, sheet: SheetOutline, label: OwnedLabel): boolean {
+  if (rangaTozsamosci(label) < 2) return rectWithinSheet(rect, sheet);
+  return rect.x >= -1e-9 && rect.y >= -1e-9;
+}
+
+/**
+ * Obrys arkusza po planie (R4): obrys sceny powiększony w prawo i w dół o tusz
+ * narysowanych tożsamości rangi ≥ 2 (`wArkuszu`). Ramka arkusza rysuje się po nim,
+ * więc żaden napis tożsamości nie jest przecięty krawędzią. Przy skali, przy której
+ * nic nie wystaje (eksport w skali rysunku, praca z bliska), równy obrysowi sceny.
+ */
+export function obrysArkuszaPlanu(plan: LabelRenderPlan, sheet: SheetOutline): SheetOutline {
+  let width = sheet.width;
+  let height = sheet.height;
+  for (const p of plan.drawn) {
+    if (rangaTozsamosci(p.label) < 2) continue;
+    width = Math.max(width, p.rect.x + p.rect.width);
+    height = Math.max(height, p.rect.y + p.rect.height);
+  }
+  return width === sheet.width && height === sheet.height ? sheet : { width, height };
+}
+
+function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): PrzestawionePasma {
   const pasma = new Map<string, Kandydat[]>();
   for (const k of kandydaci) {
     const klucz = kluczPasma(k.label);
@@ -416,6 +467,7 @@ function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map
     else pasma.set(klucz, [k]);
   }
   const wynik = new Map<number, V3Rect>();
+  const bezKorekty = new Map<number, V3Rect>();
   for (const [klucz, wiersze] of pasma) {
     // Karta UX-04/POLE-LINIOWE-WZORZEC (blok przekaźnika): wiersze bloku stoją w odstępie
     // `ODSTEP_WIERSZY_KODOW_EAZ` od siebie; pismo podłogi celu kadru (13 px → wiersz 19 j.św.)
@@ -464,9 +516,10 @@ function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map
     const korekta = Math.min(przelew, Math.max(0, gora));
     for (const { index, rect } of pas) {
       wynik.set(index, korekta === 0 ? rect : { ...rect, y: rect.y - korekta });
+      bezKorekty.set(index, rect);
     }
   }
-  return wynik;
+  return { zKorekta: wynik, bezKorekty };
 }
 
 interface Dopasowanie {
@@ -553,6 +606,7 @@ function najlepszeDopasowanie(
 ): Dopasowanie | null {
   const { label, fontSize, slot, tekstBazowy } = kandydat;
   const rotated = label.rotated === true;
+  const wzdluzSzyny = label.ownerKind === 'busbar-voltage';
   // S9-9: ten sam predykat co dotąd (`rectsOverlap` na obu zbiorach), tylko
   // liczony indeksem przestrzennym zamiast przeglądem liniowym — patrz
   // `core/rectIndex.ts`. Wynik bajtowo identyczny; koszt planu na sieci 160
@@ -566,7 +620,7 @@ function najlepszeDopasowanie(
   // kotwicy, skracanie) rozwiązują przelew SAME — napis znad dolnej krawędzi
   // idzie nad slot zamiast wyjść pod ramkę.
   const wolne = (rect: V3Rect): boolean =>
-    rectWithinSheet(rect, sheet) && !obstacles.anyOverlap(rect) && !zajete.anyOverlap(rect);
+    wArkuszu(rect, sheet, label) && !obstacles.anyOverlap(rect) && !zajete.anyOverlap(rect);
 
   if (!kandydat.enlarged) {
     // Etykiety NIEpowiększone nie mają gdzie się przestawiać — ich slot jest
@@ -608,7 +662,11 @@ function najlepszeDopasowanie(
     readonly prostokatDla: (text: string, wyrownanie: WyrownaniePrzySymbolu | null) => V3Rect;
   } => {
     const obrys = label.obrysKotwicy;
-    const przySymbolu = przyObrysie && obrys !== undefined && placement !== undefined && placement !== label.placement;
+    // Napis szyny (`busbar-voltage`): obrysem jest ODCINEK SZYNY, więc strona zadeklarowana
+    // też ma wyrównania wzdłuż obrysu — napis przesuwa się wzdłuż własnej szyny (początek,
+    // środek, koniec), zanim przejdzie na jej drugą stronę (R4: bez wielokropka).
+    const przySymbolu =
+      przyObrysie && obrys !== undefined && placement !== undefined && (placement !== label.placement || wzdluzSzyny);
     return {
       wyrownania: przySymbolu ? WYROWNANIA_PRZY_SYMBOLU : [null],
       prostokatDla: (text, wyrownanie) =>
@@ -664,6 +722,8 @@ function najlepszeDopasowanie(
       const dopasowanie = probojPelny(strona, przyObrysie);
       if (dopasowanie) return dopasowanie;
     }
+    // R4: tożsamość nie dostaje wielokropka — pełny tekst albo ustąpienie.
+    if (klasaInformacjiEtykiety(label) === 'tozsamosc') return null;
     for (const strona of kolejnosc) {
       const dopasowanie = probojSkrocony(strona, przyObrysie);
       if (dopasowanie) return dopasowanie;
@@ -683,7 +743,7 @@ function najlepszeDopasowanie(
   // „pełny tekst po każdej stronie przed skrótem" obowiązuje też tutaj.
   if (label.obrysKotwicy !== undefined) {
     return przejscie(
-      strony.filter((strona) => strona !== label.placement),
+      wzdluzSzyny ? [label.placement, ...strony.filter((strona) => strona !== label.placement)] : strony.filter((strona) => strona !== label.placement),
       true,
     );
   }
@@ -737,7 +797,7 @@ function ustapSasiadow(
   for (const strona of strony.length === 0 ? [label.placement] : strony) {
     const rect = prostokatTuszu(slot, tekstBazowy, fontSize, wagaPisma(label), rotated, strona);
     // Ramka dorysowana do powiększonych wierszy bloku zabezpieczeń jest rysunkiem — nie ustępuje.
-    if (!rectWithinSheet(rect, sheet) || obstacles.anyOverlap(rect) || ramkiZajete.anyOverlap(rect)) continue;
+    if (!wArkuszu(rect, sheet, label) || obstacles.anyOverlap(rect) || ramkiZajete.anyOverlap(rect)) continue;
     const blokujace = [...zaplanowane.values()].filter((p) => rectsOverlap(p.rect, rect));
     if (blokujace.length === 0) continue;
     // Wiersz bloku zabezpieczeń nie ustępuje: blok to ramka z wierszami (jedna notacja), wiersz
@@ -759,7 +819,7 @@ function ustapSasiadow(
         break;
       }
       zajeteBez.add(d.rect);
-      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.enlarged, ...(d.strona !== undefined ? { strona: d.strona } : {}) });
+      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.fontSize > LABEL_TYPOGRAPHY[p.label.labelClass].fontSize + 1e-9, ...(d.strona !== undefined ? { strona: d.strona } : {}) });
     }
     if (!wszystkieMieszcza) continue;
     for (const p of nowe) zaplanowane.set(p.index, p);
@@ -769,7 +829,7 @@ function ustapSasiadow(
       text: tekstBazowy,
       fontSize,
       rect,
-      enlarged: true,
+      enlarged: fontSize > LABEL_TYPOGRAPHY[label.labelClass].fontSize + 1e-9,
       ...(strona !== undefined ? { strona } : {}),
     });
     uzyteKandydaty.set(kandydat.index, kandydat);
@@ -779,38 +839,127 @@ function ustapSasiadow(
 }
 
 /**
+ * KARTA SLD-SKALA-I-NAWIGACJA (R4) — RANGA TOŻSAMOŚCI w rozstrzyganiu kolizji:
+ * GPZ (4) > stacja (3) > sekcja szyny (2) > pole (1: oznaczenie aparatu, rola
+ * pola, źródło, punkt rozcięcia, łącznik toru, zabezpieczenie), dane — 0.
+ *
+ * Nazwa bloku to PIERWSZY wiersz pasma nazw (`layout/labels.ts`
+ * `resolveStationNameBand`: `${blok}#name-row-0`) bloku stacji (`…/station`)
+ * albo GPZ (`gpz/…/substation`) — rozpoznanie po strukturze refu modelu, nie po
+ * treści napisu (ten sam kontrakt refów, którym posługują się `scene/crossings.ts`
+ * i panel kontekstowy schematu). Pozostałe wiersze tożsamości pasma nazw (szyna
+ * nN stacji, oznaczenie transformatora i nazwa źródła w paśmie GPZ) opisują
+ * zawartość bloku bez własnego małego kształtu — ranga sekcji, tak jak napięcie
+ * szyny (`busbar-voltage`).
+ */
+export function rangaTozsamosci(label: OwnedLabel): number {
+  if (klasaInformacjiEtykiety(label) !== 'tozsamosc') return 0;
+  if (label.ownerKind === 'station-name') {
+    const [blok, wiersz] = label.ownerRef.split('#');
+    if (wiersz === 'name-row-0' && blok !== undefined) {
+      if (blok.startsWith('gpz/') && blok.endsWith('/substation')) return 4;
+      if (blok.endsWith('/station')) return 3;
+    }
+    return 2;
+  }
+  if (label.ownerKind === 'busbar-voltage') return 2;
+  return 1;
+}
+
+/**
+ * Porządek rozstrzygania planu (R4): nazwy GPZ, nazwy stacji i oznaczenia sekcji
+ * (ranga ≥ 2) malejąco wg rangi, przed całą resztą; tożsamość rangi pola i dane
+ * dzielą jeden poziom, na którym rozstrzyga priorytet rodzaju właściciela
+ * (`layout/declutter.ts` `labelPriority` — ta sama tabela co declutter sceny:
+ * marker stanu NO, numer zabezpieczenia, moc źródła przed oznacznikiem aparatu,
+ * przed opisem kierunku i parametrami przęsła), a dalej położenie slotu i ref —
+ * porządek declutteru sceny (`labelResolutionOrder`). Remis rangi ≥ 2 — priorytet
+ * rodzaju, potem ref właściciela rosnąco; na końcu indeks etykiety w scenie (pełny porządek liniowy, warunek
+ * determinizmu: wynik nie zależy od kolejności wejścia ani od położenia na arkuszu).
+ */
+function poziomRozstrzygania(label: OwnedLabel): number {
+  return Math.max(1, rangaTozsamosci(label));
+}
+
+export function kolejnoscRozstrzygania(
+  a: { readonly label: OwnedLabel; readonly index: number },
+  b: { readonly label: OwnedLabel; readonly index: number },
+): number {
+  const poziomA = poziomRozstrzygania(a.label);
+  const ranga = poziomRozstrzygania(b.label) - poziomA;
+  if (ranga !== 0) return ranga;
+  if (poziomA === 1) {
+    // Poziom pola i danych: porządek declutteru sceny (`labelResolutionOrder` — priorytet,
+    // położenie, ref), ten sam, którym scena rozstrzygnęła sloty (predykaty parami).
+    const scena = labelResolutionOrder(
+      { priority: labelPriority(a.label), rect: a.label.rect, ownerRef: a.label.ownerRef },
+      { priority: labelPriority(b.label), rect: b.label.rect, ownerRef: b.label.ownerRef },
+    );
+    return scena !== 0 ? scena : a.index - b.index;
+  }
+  const priorytet = labelPriority(b.label) - labelPriority(a.label);
+  if (priorytet !== 0) return priorytet;
+  if (a.label.ownerRef !== b.label.ownerRef) return a.label.ownerRef < b.label.ownerRef ? -1 : 1;
+  return a.index - b.index;
+}
+
+/**
+ * Rozmiar pisma tożsamości [px ŚWIATA] dla skali kamery (R4). Nazwa GPZ, nazwa
+ * stacji i oznaczenie sekcji (ranga ≥ 2) — STAŁY rozmiar ekranowy poniżej progu
+ * czytelności, bez sufitu proporcji (`minReadableFontSize`). Tożsamość rangi pola
+ * — w granicy sufitu proporcji klasy (`enlargedFontSizeWithinProportion`); `null`
+ * ⇒ napisu nie da się narysować proporcjonalnie i trafia do podpowiedzi.
+ */
+function pismoTozsamosci(label: OwnedLabel, scale: number): number | null {
+  return rangaTozsamosci(label) >= 2
+    ? minReadableFontSize(label.labelClass, scale)
+    : enlargedFontSizeWithinProportion(label.labelClass, scale);
+}
+
+/**
  * Plan renderu etykiet sceny dla skali kamery. `obstacles` to prostokąty
- * SYMBOLI i ODCINKÓW TORU tego poziomu szczegółu (`sceneObstacleRects`,
- * `scene/buildScene.ts`) — „tor elektryczny nie znika", więc rysunek ZAWSZE
- * wygrywa z etykietą (ta sama zasada, co `declutterLabels`).
+ * SYMBOLI i ODCINKÓW TORU sceny (`sceneObstacleRects`, `scene/buildScene.ts`) —
+ * „tor elektryczny nie znika", więc rysunek ZAWSZE wygrywa z etykietą (ta sama
+ * zasada, co `declutterLabels`).
+ *
+ * `poprzednio` — indeksy etykiet narysowanych w poprzedniej klatce tej samej
+ * sceny (histereza progu czytelności danych, R3, `czytelnyNaEkranie`);
+ * `undefined` = brak historii (sam próg).
  *
  * Skala niewiarygodna (≤0/NaN — np. viewport 0×0 przed pierwszym pomiarem
- * układu) ⇒ plan tożsamościowy: wszystko rysowane naturalnie, nic nie ukryte
- * (brak pomiaru nie jest dowodem nieczytelności — parytet z
- * `isLabelReadableAtScale`).
+ * układu) ⇒ plan tożsamościowy: wszystko rysowane naturalnie (brak pomiaru nie
+ * jest dowodem nieczytelności — parytet z `isLabelReadableAtScale`).
  */
+/** Obrys tła wyrosłego z `r` (z marginesem tła pola) mieści się w kolumnie tła pola. */
+function wKolumnieTla(r: V3Rect, kolumna: V3Rect): boolean {
+  const m = MARGINES_TLA_POLA_GPZ;
+  const eps = 1e-9;
+  return (
+    r.x - m >= kolumna.x - eps &&
+    r.y - m >= kolumna.y - eps &&
+    r.x + r.width + m <= kolumna.x + kolumna.width + eps &&
+    r.y + r.height + m <= kolumna.y + kolumna.height + eps
+  );
+}
+
 export function planSceneLabels(
   labels: readonly OwnedLabel[],
   obstacles: readonly V3Rect[],
   scale: number,
   sheet: SheetOutline,
   podlogaCelu?: PodlogaOpisowCelu,
+  poprzednio?: ReadonlySet<number>,
 ): LabelRenderPlan {
   if (!Number.isFinite(scale) || scale <= 0) {
     return {
       drawn: labels.map((label, index) => {
         const fontSize = LABEL_TYPOGRAPHY[label.labelClass].fontSize;
         const rotated = label.rotated === true;
-        // Skrócenie do slotu jest NIEZALEŻNE od skali (wynika z tego, że tekst
-        // nie mieści się we własnej rezerwacji), więc obowiązuje także tutaj —
-        // inaczej ścieżka „brak wiarygodnego pomiaru" malowałaby napis poza
-        // arkuszem dokładnie tak, jak robiła to ścieżka zwykła przed tą kartą.
-        const text = shortenPreservingIdentity(
-          label.text,
-          fontSize,
-          wagaPisma(label),
-          rozciagloscWzdluzTekstu(label.rect, rotated),
-        );
+        // Dane skracane do slotu (granica niezależna od skali); tożsamość w całości.
+        const text =
+          klasaInformacjiEtykiety(label) === 'tozsamosc'
+            ? label.text
+            : shortenPreservingIdentity(label.text, fontSize, wagaPisma(label), rozciagloscWzdluzTekstu(label.rect, rotated));
         return {
           label,
           index,
@@ -820,154 +969,83 @@ export function planSceneLabels(
           enlarged: false,
         };
       }),
-      hiddenDetail: [],
-      droppedIdentity: [],
+      tozsamosciWPodpowiedzi: [],
     };
   }
 
-  const hiddenDetail: OwnedLabel[] = [];
-  const droppedIdentity: OwnedLabel[] = [];
+  const tozsamosciWPodpowiedzi: TozsamoscWPodpowiedzi[] = [];
   const kandydaci: Kandydat[] = [];
-  /** Kandydat bez podłogi celu albo kubełek, do którego etykieta trafia. */
-  const kandydatStandardowy = (label: OwnedLabel, index: number): Kandydat | 'ukryta' | 'utracona' => {
-    const czytelna = isLabelReadableAtScale(label.labelClass, scale);
-    // T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
-    // wyjątek bezwzględny): `unresolved` OMIJA próg czytelności wprost —
-    // etykieta elementu w stanie błędu/UNRESOLVED nigdy nie trafia do
-    // `hiddenDetail`, niezależnie od klasy LOD, którą miałaby z konstrukcji
-    // (`lodClassOf`). Reszta logiki (progi, powiększanie, kolizje) bez zmiany
-    // — od tego miejsca w dół etykieta „unresolved" idzie tą samą ścieżką co
-    // etykieta klasy `'tozsamosc'`/`'L0'` zawsze szła.
-    if (label.unresolved !== true && isLabelHiddenAtScale(label.labelRole, label.labelClass, scale)) {
-      return 'ukryta';
-    }
-    // PROPORCJE: rozmiar pisma z JEDNEGO źródła obu granic (`core/text.ts`
-    // `enlargedFontSizeWithinProportion`) — `null` znaczy „czytelnie już się
-    // nie da, a nieproporcjonalnie nie wolno". Do tej karty ten sam plan pytał
-    // wyłącznie o granicę DOLNĄ (`minReadableFontSize`), więc powiększenie
-    // rosło bez sufitu i przy oddaleniu napis przygniatał symbol (pomiar
-    // 2,82× / 7,50×, patrz `LabelTypography.maxEnlargement`).
-    const fontSize = czytelna
-      ? LABEL_TYPOGRAPHY[label.labelClass].fontSize
-      : enlargedFontSizeWithinProportion(label.labelClass, scale);
-    if (fontSize === null) {
-      // Tożsamość, której nie da się narysować proporcjonalnie — uczciwy brak,
-      // policzony we wskaźniku „Ukryto N opisów" (`SldCanvasV3`), a nie napis
-      // wielkości trzech aparatów obok siebie.
-      return 'utracona';
-    }
-    // (c) skracanie w PIERWSZEJ kolejności do REZERWACJI właściciela: wiersz
-    // pasma nazw ma slot szerokości kolumny stacji, więc powiększone pismo
-    // musi zmieścić się w tej kolumnie (inaczej wchodzi w kolumnę sąsiada).
-    // Etykiety zakotwiczone punktowo (napięcie szyny, oznaczenie pola, DER)
-    // rezerwacji z zapasem NIE mają — ich slot to sama szerokość tekstu w
-    // rozmiarze naturalnym — więc ograniczeniem jest dla nich dopiero
-    // rozstrzyganie kolizji niżej.
-    // BLOK-PUSTY: rezerwacja jest teraz WŁASNYM polem etykiety
-    // (`rezerwacjaSzerokosci`), a `rect` niesie sam TUSZ — do tej karty jedno
-    // pole grało obie role, więc rama bloku stacji płaciła pełną szerokość
-    // kolumny (716 j.św.) za napis szerokości 95 j.św. Sufit powiększania
-    // ZOSTAJE dokładnie ten sam: dla wiersza pasma nazw to nadal szerokość
-    // kolumny stacji. Brak rezerwacji ⇒ granicą jest sam tusz (etykieta
-    // kotwiczona punktowo nie ma zapasu z definicji).
-    //
-    // RAMKA-TNIE-PODPISY — DRUGA gałąź pary: pismo NATURALNE też ma granicę, i
-    // jest nią WŁASNY SLOT etykiety. Do tej karty gałąź `: label.text` nie
-    // skracała niczego, więc napis szerszy od slotu był malowany „na wylot":
-    // opis zbiorczy GPZ (`t3`, tusz 391 j.św., slot 296 j.św.) wychodził
-    // 39,5 j.św. na lewo POZA ARKUSZ przy każdej skali roboczej. Scena o tym
-    // WIEDZIAŁA — `tuszWSlocie` (`layout/labels.ts`) zostawia slot bez zmian,
-    // gdy tekst się w nim nie mieści — ale nikt tej wiedzy nie konsumował.
+  /** Kandydat bez podłogi celu; `null` — etykiety nie ma w tej skali (dane poniżej
+   *  progu czytelności) albo tożsamość rangi pola ponad sufitem proporcji. */
+  const kandydatStandardowy = (label: OwnedLabel, index: number): Kandydat | null => {
+    const naturalny = LABEL_TYPOGRAPHY[label.labelClass].fontSize;
     const rotated = label.rotated === true;
-    const granicaTekstu =
-      !czytelna && label.ownerKind === 'station-name'
-        ? label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated)
-        : rozciagloscWzdluzTekstu(label.rect, rotated);
-    // Etykiety zakotwiczone punktowo (napięcie szyny, oznaczenie pola, DER)
-    // rezerwacji z zapasem NIE mają — ich slot to sama szerokość tekstu w
-    // rozmiarze NATURALNYM — więc skracanie POWIĘKSZONEGO pisma do slotu
-    // cofnęłoby całe powiększenie. Dla nich granicą zostaje dopiero
-    // rozstrzyganie kolizji (razem z obrysem arkusza) niżej.
-    const tekstBazowy =
-      !czytelna && label.ownerKind !== 'station-name'
-        ? label.text
-        : shortenPreservingIdentity(label.text, fontSize, wagaPisma(label), granicaTekstu);
-    return { label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy };
+    if (klasaInformacjiEtykiety(label) !== 'tozsamosc') {
+      // R3: dane widoczne, gdy ich pismo naturalne jest czytelne na ekranie (z histerezą).
+      const czytelnaEtykieta = czytelnyNaEkranie(naturalny, scale, poprzednio === undefined ? undefined : poprzednio.has(index));
+      if (!czytelnaEtykieta) return null;
+      // RAMKA-TNIE-PODPISY: pismo naturalne ma granicę — własny slot etykiety.
+      const tekstBazowy = shortenPreservingIdentity(label.text, naturalny, wagaPisma(label), rozciagloscWzdluzTekstu(label.rect, rotated));
+      return { label, index, fontSize: naturalny, enlarged: false, slot: label.rect, tekstBazowy };
+    }
+    const fontSize = isLabelReadableAtScale(label.labelClass, scale) ? naturalny : pismoTozsamosci(label, scale);
+    if (fontSize === null) return null;
+    // R4: tożsamość w CAŁOŚCI (bez wielokropka). Gdy pełny tekst wychodzi poza slot
+    // sceny (pismo powiększone albo tekst szerszy od slotu), etykieta przechodzi
+    // przez rozstrzyganie kolizji — slot sceny był rozstrzygnięty declutterem dla
+    // tuszu wpisanego w slot, nie dla tuszu pełnego tekstu.
+    const powiekszona = fontSize > naturalny;
+    const szerszaOdSlotu = measureTextWidth(label.text, fontSize, wagaPisma(label)) > rozciagloscWzdluzTekstu(label.rect, rotated) + 1e-9;
+    return { label, index, fontSize, enlarged: powiekszona || szerszaOdSlotu, slot: label.rect, tekstBazowy: label.text };
   };
   labels.forEach((label, index) => {
     const standardowy = kandydatStandardowy(label, index);
+    const tozsamosc = klasaInformacjiEtykiety(label) === 'tozsamosc';
     const fontCelu =
       podlogaCelu !== undefined && podlogaCelu.nalezy(label)
         ? fontSizeForScreenFloorWithinProportion(label.labelClass, scale, podlogaCelu.screenPx)
         : null;
-    if (fontCelu !== null && fontCelu > LABEL_TYPOGRAPHY[label.labelClass].fontSize) {
-      // Postać celu: pismo powiększone do podłogi celu, tekst jak w gałęzi
-      // powiększenia awaryjnego (pasmo nazw skracane do rezerwacji kolumny).
-      const rotated = label.rotated === true;
-      const tekstBazowy =
-        label.ownerKind === 'station-name'
-          ? shortenPreservingIdentity(
-              label.text,
-              fontCelu,
-              wagaPisma(label),
-              label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated),
-            )
-          : label.text;
+    if (fontCelu !== null && fontCelu > LABEL_TYPOGRAPHY[label.labelClass].fontSize && (standardowy === null || fontCelu > standardowy.fontSize)) {
+      // Postać celu: pismo powiększone do podłogi celu. Tożsamość w całości, dane —
+      // pełny tekst (rozstrzyganie kolizji skraca je w razie potrzeby).
       kandydaci.push({
         label,
         index,
         fontSize: fontCelu,
         enlarged: true,
         slot: label.rect,
-        tekstBazowy,
-        zapasowy: typeof standardowy === 'string' ? null : standardowy,
+        tekstBazowy: label.text,
+        zapasowy: standardowy,
       });
       return;
     }
-    if (standardowy === 'ukryta') hiddenDetail.push(label);
-    else if (standardowy === 'utracona') droppedIdentity.push(label);
-    else kandydaci.push(standardowy);
+    if (standardowy !== null) kandydaci.push(standardowy);
+    else if (tozsamosc) tozsamosciWPodpowiedzi.push({ label, index });
   });
 
-  // ŚCIEŻKA SZYBKA I ZACHOWAWCZA: gdy ŻADNA etykieta nie wymaga powiększenia
-  // (skala powyżej progu dla wszystkich klas), plan jest DOKŁADNIE tym, co
-  // rysowano przed KD-11 — scena jest już rozstrzygnięta declutterem przy
-  // budowie (`scene/buildScene.ts`), więc nie ma czego rozstrzygać ponownie.
-  // Zero zmiany zachowania przy zoomie roboczym i zero kosztu O(n²) na kadrach
-  // z tysiącem etykiet.
+  // ŚCIEŻKA SZYBKA: gdy ŻADNA etykieta nie wymaga rozstrzygania (pismo naturalne,
+  // tekst w slocie), scena jest już rozstrzygnięta declutterem przy budowie.
   if (kandydaci.every((k) => !k.enlarged)) {
     return {
       drawn: kandydaci.map((k) => ({
         label: k.label,
         index: k.index,
-        // RAMKA-TNIE-PODPISY: `k.tekstBazowy`, nie `k.label.text` — ścieżka
-        // szybka pomijała skrócenie do slotu, więc dokładnie tu ginęła jedyna
-        // granica pisma naturalnego (i tędy uciekał opis zbiorczy GPZ).
         text: k.tekstBazowy,
         fontSize: k.fontSize,
         rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, wagaPisma(k.label), k.label.rotated === true, undefined, wyrownanieEtykiety(k.label)),
         enlarged: false,
       })),
-      hiddenDetail,
-      // NIE `[]`: tożsamości odrzucone przez SUFIT PROPORCJI odpadają jeszcze
-      // przed rozstrzyganiem kolizji, więc ścieżka szybka musi je przenieść
-      // (inaczej wskaźnik „Ukryto N opisów" milczałby dokładnie tam, gdzie
-      // napisy znikają z powodu proporcji).
-      droppedIdentity,
+      tozsamosciWPodpowiedzi,
     };
   }
 
   // (b) pasmo etykiet — wiersze pasma nazw przestawione przed rozstrzyganiem.
-  const przestawione = przestawPasma(kandydaci, sheet);
+  const pasmaPrzestawione = przestawPasma(kandydaci, sheet);
+  const przestawione = pasmaPrzestawione.zKorekta;
   const zeSlotami = kandydaci.map((k) => ({ ...k, slot: przestawione.get(k.index) ?? k.slot }));
 
-  // (d) pierwszeństwo — ta sama reguła, co declutter sceny.
-  const kolejnosc = [...zeSlotami].sort((a, b) =>
-    labelResolutionOrder(
-      { priority: labelPriority(a.label), rect: a.slot, ownerRef: a.label.ownerRef },
-      { priority: labelPriority(b.label), rect: b.slot, ownerRef: b.label.ownerRef },
-    ),
-  );
+  // (d) pierwszeństwo — ranga tożsamości, priorytet rodzaju, ref (R4).
+  const kolejnosc = [...zeSlotami].sort(kolejnoscRozstrzygania);
 
   // S9-9: przeszkody sceny indeksowane RAZ na plan (zbiór stały), „zajęte"
   // przyrostowo — jak w `declutterLabels`, jedna maszyneria dla obu.
@@ -999,9 +1077,15 @@ export function planSceneLabels(
   const przeszkodyDla = (k: Kandydat): ZbiorKolizji => {
     const blok = blokWiersza(k.label);
     const rozszerz = blok !== null && k.enlarged;
+    const granicaTla = k.label.granicaTlaPola;
     return {
       anyOverlap: (r) => {
         const probe = rozszerz ? zasiegWierszaWRamce(r) : r;
+        // Kolumna tła pola GPZ (`OwnedLabel.granicaTlaPola`): tło rośnie za narysowanym tuszem
+        // członka (wiersz bloku — za ramką dorysowaną do wiersza) z marginesem tła, więc ten
+        // obrys musi zostać w kolumnie pola. Para z `canvas/obrysyWgPlanu.ts::paneleWgPlanu`:
+        // ta sama lista członków, ten sam margines (`MARGINES_TLA_POLA_GPZ`).
+        if (granicaTla !== undefined && !wKolumnieTla(blok !== null ? zasiegWierszaWRamce(r) : r, granicaTla)) return true;
         if (obstacleIndex.anyOverlap(probe)) return true;
         return krawedzieWgBloku.someCandidate(probe, (blokKrawedziR) => blokKrawedziR !== blok);
       },
@@ -1049,11 +1133,7 @@ export function planSceneLabels(
       // Podłoga celu bez miejsca: postać standardowa (albo kubełek bez podłogi).
       const zapasowy = kandydat.zapasowy;
       if (zapasowy === null) {
-        if (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) {
-          droppedIdentity.push(kandydat.label);
-        } else {
-          hiddenDetail.push(kandydat.label);
-        }
+        if (klasaInformacjiEtykiety(kandydat.label) === 'tozsamosc') tozsamosciWPodpowiedzi.push({ label: kandydat.label, index: kandydat.index });
         continue;
       }
       // Pasmo nazw przestawiono pod postać celu; postać standardowa pisma
@@ -1061,9 +1141,27 @@ export function planSceneLabels(
       kandydat = zapasowy.enlarged ? { ...zapasowy, slot: przestawione.get(zapasowy.index) ?? zapasowy.slot } : zapasowy;
       dopasowanie = najlepszeDopasowanie(kandydat, zajeteDla(kandydat), przeszkodyDla(kandydat), sheet);
     }
+    if ((!dopasowanie || dopasowanie.text.length === 0) && rangaTozsamosci(kandydat.label) >= 2) {
+      // R4: pasmo przesunięte w górę o przelew pod arkusz (żeby zmieściły się WSZYSTKIE
+      // wiersze) może wejść w rysunek nad pasmem. Wiersz tożsamości rangi bloku nie oddaje
+      // wtedy swojego miejsca wierszom niższej rangi z tego samego pasma: próbuje slotu bez
+      // przesunięcia (pasmo od swojej góry w scenie), a wiersze, które pod nim nie zmieszczą
+      // się w arkuszu, ustępują jemu (pomiar 2026-11-12: sieć 52 stacji przy dopasowaniu
+      // całej sieci — cztery nazwy stacji ostatniego wiersza arkusza przegrywały z wierszem
+      // „Szyna nN" własnego pasma).
+      const slotBezKorekty = pasmaPrzestawione.bezKorekty.get(kandydat.index);
+      if (slotBezKorekty !== undefined && slotBezKorekty.y !== kandydat.slot.y) {
+        const bezKorekty = { ...kandydat, slot: slotBezKorekty };
+        const proba = najlepszeDopasowanie(bezKorekty, zajeteDla(bezKorekty), przeszkodyDla(bezKorekty), sheet);
+        if (proba && proba.text.length > 0) {
+          kandydat = bezKorekty;
+          dopasowanie = proba;
+        }
+      }
+    }
     if (
       (!dopasowanie || dopasowanie.text.length === 0) &&
-      (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) &&
+      klasaInformacjiEtykiety(kandydat.label) === 'tozsamosc' &&
       ustapSasiadow(kandydat, zaplanowane, uzyteKandydaty, przeszkodyDla, ramkiZajete, sheet)
     ) {
       zajete = createRectIndex();
@@ -1073,16 +1171,9 @@ export function planSceneLabels(
       continue;
     }
     if (!dopasowanie || dopasowanie.text.length === 0) {
-      // T2-LOD: `unresolved` idzie do `droppedIdentity`, NIGDY do
-      // `hiddenDetail` — nawet gdy przyczyną braku miejsca jest KOLIZJA (nie
-      // próg zoomu). Ten sam kubełek co `'tozsamosc'`/`'L0'`: licznik „Ukryto
-      // N opisów" liczy WYŁĄCZNIE L1/L2 (`layout/labels.ts` `lodClassOf`), w
-      // KAŻDEJ gałęzi planu, nie tylko w gałęzi progu czytelności wyżej.
-      if (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) {
-        droppedIdentity.push(kandydat.label);
-      } else {
-        hiddenDetail.push(kandydat.label);
-      }
+      // Tożsamość bez miejsca (R4): ustępuje wyższej randze i trafia do podpowiedzi
+      // uchwytu (`tozsamosciWPodpowiedzi`); dane bez miejsca po prostu nie są rysowane.
+      if (klasaInformacjiEtykiety(kandydat.label) === 'tozsamosc') tozsamosciWPodpowiedzi.push({ label: kandydat.label, index: kandydat.index });
       continue;
     }
     const zaplanowana: PlannedLabel = {
@@ -1091,7 +1182,7 @@ export function planSceneLabels(
       text: dopasowanie.text,
       fontSize: dopasowanie.fontSize,
       rect: dopasowanie.rect,
-      enlarged: dopasowanie.enlarged,
+      enlarged: dopasowanie.fontSize > LABEL_TYPOGRAPHY[kandydat.label.labelClass].fontSize + 1e-9,
       ...(dopasowanie.strona !== undefined ? { strona: dopasowanie.strona } : {}),
     };
     zajmij(zaplanowana);
@@ -1099,12 +1190,43 @@ export function planSceneLabels(
     zaplanowane.set(kandydat.index, zaplanowana);
   }
 
+  // DRUGA SZANSA POSTACI CELU (K2b §0.2 (b) × R4): opis celu kadru, który w swojej kolejce
+  // nie zmieścił się w piśmie celu i stanął w postaci standardowej (albo — dana — wcale),
+  // próbuje postaci celu jeszcze raz wobec KOŃCOWEGO rozmieszczenia. Ustąpienie sąsiadów (f)
+  // przestawia napisy już zaplanowane, więc miejsce zajęte w chwili jego kolejki bywa na
+  // końcu wolne (pomiar 2026-11-12: oznacznik „TR” pola transformatorowego stacji T1 przy
+  // skali 1 — pismo 9 zamiast 13 px, choć postać celu miała miejsce w planie końcowym).
+  // Kolejność ta sama co w pętli głównej; każda próba widzi wszystkie pozostałe napisy.
+  for (const kandydatPierwotny of kolejnosc) {
+    if (kandydatPierwotny.zapasowy === undefined) continue;
+    const obecna = zaplanowane.get(kandydatPierwotny.index);
+    if (obecna !== undefined && obecna.fontSize >= kandydatPierwotny.fontSize - 1e-9) continue;
+    zajete = createRectIndex();
+    ramkiZajete = createRectIndex();
+    zaplanowaneWgMiejsca = createRectItemIndex<PlannedLabel>();
+    for (const [index, p] of zaplanowane) if (index !== kandydatPierwotny.index) zajmij(p);
+    const proba = najlepszeDopasowanie(kandydatPierwotny, zajeteDla(kandydatPierwotny), przeszkodyDla(kandydatPierwotny), sheet);
+    if (!proba || proba.text.length === 0) continue;
+    zaplanowane.set(kandydatPierwotny.index, {
+      label: kandydatPierwotny.label,
+      index: kandydatPierwotny.index,
+      text: proba.text,
+      fontSize: proba.fontSize,
+      rect: proba.rect,
+      enlarged: proba.fontSize > LABEL_TYPOGRAPHY[kandydatPierwotny.label.labelClass].fontSize + 1e-9,
+      ...(proba.strona !== undefined ? { strona: proba.strona } : {}),
+    });
+    uzyteKandydaty.set(kandydatPierwotny.index, kandydatPierwotny);
+    const wPodpowiedzi = tozsamosciWPodpowiedzi.findIndex((t) => t.index === kandydatPierwotny.index);
+    if (wPodpowiedzi >= 0) tozsamosciWPodpowiedzi.splice(wPodpowiedzi, 1);
+  }
+
   const drawn: PlannedLabel[] = [];
   labels.forEach((_, index) => {
     const p = zaplanowane.get(index);
     if (p) drawn.push(p);
   });
-  return { drawn, hiddenDetail, droppedIdentity };
+  return { drawn, tozsamosciWPodpowiedzi };
 }
 
 /** Skrót używany przez wyrocznie: pary etykiet NARYSOWANYCH, których
@@ -1176,7 +1298,10 @@ export function plannedLabelsAboveProportionCeiling(
   scale: number,
 ): readonly { readonly ownerRef: string; readonly enlargement: number }[] {
   if (!Number.isFinite(scale) || scale <= 0) return [];
+  // R4: nazwa GPZ, nazwa stacji i oznaczenie sekcji (ranga ≥ 2) mają stały
+  // rozmiar ekranowy bez sufitu — sufit obowiązuje tożsamość rangi pola i dane.
   return plan.drawn
+    .filter((p) => rangaTozsamosci(p.label) < 2)
     .map((p) => ({
       ownerRef: p.label.ownerRef,
       enlargement: p.fontSize / LABEL_TYPOGRAPHY[p.label.labelClass].fontSize,
@@ -1192,7 +1317,8 @@ export function plannedLabelsAboveProportionCeiling(
  * rysuje jako `sld-sheet-border`).
  *
  * Na poprawnym planie ZAWSZE pusta — plan albo mieści napis w arkuszu, albo go
- * nie rysuje. Istnieje dlatego, że zdanie „ramka nie przecina podpisów" bez
+ * nie rysuje. Tożsamość rangi ≥ 2 może wystawać w prawo i w dół — ramka rośnie
+ * razem z nią (`obrysArkuszaPlanu`); wyrocznia sprawdza wtedy krawędź lewą i górną. Istnieje dlatego, że zdanie „ramka nie przecina podpisów" bez
  * PRZYPIĘTEGO strażnika jest fałszywą pewnością (reguła KLASA §4): defekt żył
  * w repozytorium mimo kompletu wyroczni czytelności, proporcji i kolizji, bo
  * ŻADNA z nich nie pytała o krawędź rysunku.
@@ -1205,7 +1331,7 @@ export function plannedLabelsOutsideSheet(
   sheet: SheetOutline,
 ): readonly { readonly ownerRef: string; readonly overflow: number }[] {
   return plan.drawn
-    .filter((p) => !rectWithinSheet(p.rect, sheet))
+    .filter((p) => !wArkuszu(p.rect, sheet, p.label))
     .map((p) => ({
       ownerRef: p.label.ownerRef,
       overflow: Math.max(
@@ -1226,41 +1352,4 @@ export function plannedLabelObstacleCollisions(
   return plan.drawn
     .filter((p) => obstacles.some((r) => rectsOverlap(p.rect, r)))
     .map((p) => p.label.ownerRef);
-}
-
-/**
- * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN") —
- * WYROCZNIA POLITYKI LOD (1/2): etykiety klasy `'L0'` (`layout/labels.ts`
- * `lodClassOf`) obecne w `hiddenDetail` — czyli policzone we wskaźniku
- * „Ukryto N opisów". Na poprawnym planie ZAWSZE pusta, z KONSTRUKCJI:
- * `hiddenDetail` powyżej rośnie WYŁĄCZNIE gdy `isLabelHiddenAtScale` zwróci
- * `true`, a ta funkcja jest `true` WYŁĄCZNIE dla `labelRole==='dane'`
- * (`core/text.ts`) — a `lodClassOf` mapuje `role==='tozsamosc'` na `'L0'`
- * 1:1 i `unresolved===true` na `'L0'` z pominięciem `hiddenDetail` wprost.
- * Wyrocznia istnieje po to, żeby ta własność była MIERZONA (reguła KLASA §4:
- * „deklaracja bez testu = fałszywa pewność"), nie deklarowana w komentarzu.
- */
-export function hiddenDetailContainsL0(plan: LabelRenderPlan): readonly string[] {
-  return plan.hiddenDetail.filter((label) => lodClassOf(label) === 'L0').map((label) => label.ownerRef);
-}
-
-/**
- * T2-LOD — WYROCZNIA POLITYKI LOD (2/2): etykiety NARYSOWANE, których
- * `lodClassOf` jest `'L0'`, ale które są `unresolved !== true` I nie mają
- * `labelRole==='tozsamosc'` — czyli L0 „przez przypadek" (klasyfikacja
- * niespójna z tabelą `LOD_CLASS_BY_OWNER_KIND`/regułą pasma nazw). Na
- * poprawnym planie ZAWSZE pusta; strażnik przed CICHYM rozjazdem dwóch źródeł
- * prawdy (`labelRole` vs `lodClassOf`), których param KLASA §3 zabrania mieć
- * niezależnie — patrz `layout/labels.ts` `lodClassOf`.
- */
-export function labelsWithInconsistentL0Classification(
-  labels: readonly OwnedLabel[],
-): readonly string[] {
-  return labels
-    .filter((label) => {
-      const lod = lodClassOf(label);
-      const oczekiwane = label.unresolved === true || label.labelRole === 'tozsamosc';
-      return (lod === 'L0') !== oczekiwane;
-    })
-    .map((label) => label.ownerRef);
 }

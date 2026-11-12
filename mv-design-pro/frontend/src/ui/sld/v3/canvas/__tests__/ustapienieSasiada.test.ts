@@ -9,6 +9,10 @@
  * pola GPZ, a trzy pozostałe strony zajmował symbol wyłącznika. Plan zachłanny
  * gubił tożsamość od kolizji, choć sąsiad mógł się skrócić.
  *
+ * Karta SLD-SKALA-I-NAWIGACJA (R4): tożsamość nie jest skracana, więc ustąpienie (f)
+ * oznacza PRZENIESIENIE sąsiada pełnym tekstem na jego wolną stronę; sąsiad bez wolnej
+ * strony zostaje, a przegrana kolizji trafia do podpowiedzi uchwytu.
+ *
  * Geometria syntetyczna odtwarza tamten układ (symbol i kotwice z pomiaru sceny). Szerokości
  * slotów liczy `measureLabelWidth` — ten sam pomiar co scena i plan (od 2026-10-30 tabela
  * posuwów kroju, karta UX-04/POLE-LINIOWE-WZORZEC §11.7 pkt 7; szacunek 0,62 em dawał
@@ -105,7 +109,7 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     // swoją lewą stronę — obie tożsamości bez skrótu. Bez ustąpienia Q1 ginie (iniekcja:
     // wyłączenie `ustapSasiadow` czerwieni ten przypadek i następny).
     const plan = planSceneLabels([OZNACZENIE_GPZ, Q1], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ);
-    expect(plan.droppedIdentity).toEqual([]);
+    expect(plan.tozsamosciWPodpowiedzi).toEqual([]);
     const q1 = narysowana(plan, Q1.ownerRef);
     const gpz = narysowana(plan, OZNACZENIE_GPZ.ownerRef);
     expect(q1?.text).toBe('Q1');
@@ -116,11 +120,14 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     bezKolizji(plan, [WYLACZNIK]);
   });
 
-  it('sąsiad POWIĘKSZONY i skracalny ustępuje: obie tożsamości narysowane, sąsiad skrócony z członem rozróżniającym', () => {
-    // Lewą stronę slotu oznaczenia GPZ zajmuje rysunek, więc pełny tekst nie ma drugiej
-    // strony (reguła W2C nie pomaga) i dopiero ustąpienie (f) ratuje tożsamość Q1. Rysunek
-    // sięga też pod lewą część stron „nad" i „pod" slotu (x 150…310): przy węższym pomiarze
-    // tabelą kroju pełny tekst mieścił się nad slotem, co omijało mechanizm (f).
+  it('sąsiad POWIĘKSZONY bez wolnej drugiej strony NIE jest skracany (R4): przegrana kolizji → podpowiedź, oba napisy w pełnym brzmieniu', () => {
+    // Karta SLD-SKALA-I-NAWIGACJA (R4) zmienia ten przypadek: dawniej ustąpienie (f)
+    // skracało oznaczenie GPZ („Pole…1.2”), żeby zrobić miejsce Q1. Tożsamość nie jest
+    // już skracana — stoi w całości albo ustępuje do podpowiedzi uchwytu. Lewą stronę
+    // slotu oznaczenia GPZ zajmuje rysunek (także pod lewą częścią stron „nad” i „pod”),
+    // więc oznaczenie nie ma dokąd się przenieść; remis poziomu (oba rangi pola) rozstrzyga
+    // porządek declutteru sceny — priorytet rodzaju, potem położenie (oznaczenie GPZ wyżej,
+    // y = 568) — więc w podpowiedzi jest Q1.
     const rysunekZLewej: V3Rect = { x: 150, y: 540, width: 160, height: 80 };
     const przeszkody = [WYLACZNIK, rysunekZLewej];
     const samoQ1 = planSceneLabels([Q1], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
@@ -128,20 +135,13 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     const samoGpz = planSceneLabels([OZNACZENIE_GPZ], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
     expect(narysowana(samoGpz, OZNACZENIE_GPZ.ownerRef)?.text).toBe(OZNACZENIE_GPZ.text);
     const plan = planSceneLabels([OZNACZENIE_GPZ, Q1], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
-    expect(plan.droppedIdentity).toEqual([]);
-    const q1 = narysowana(plan, Q1.ownerRef);
-    const gpz = narysowana(plan, OZNACZENIE_GPZ.ownerRef);
-    expect(q1?.text).toBe('Q1');
-    expect(q1?.enlarged).toBe(true);
-    expect(gpz?.enlarged).toBe(true);
-    // Sąsiad skrócony (nie zniknął) i nadal niesie człon rozróżniający „1.2".
-    expect(gpz!.text).not.toBe(OZNACZENIE_GPZ.text);
-    expect(gpz!.text.endsWith('1.2')).toBe(true);
-    expect(gpz!.rect.x + gpz!.rect.width).toBeLessThanOrEqual(q1!.rect.x);
+    expect(plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef)).toEqual([Q1.ownerRef]);
+    expect(narysowana(plan, OZNACZENIE_GPZ.ownerRef)?.text).toBe(OZNACZENIE_GPZ.text);
+    expect(plan.drawn.every((p) => p.text === p.label.text)).toBe(true);
     bezKolizji(plan, przeszkody);
   });
 
-  it('kolejność wejścia nie zmienia wyniku (pierwszeństwo z `labelResolutionOrder`, nie z tablicy)', () => {
+  it('kolejność wejścia nie zmienia wyniku (pierwszeństwo z `kolejnoscRozstrzygania`, nie z tablicy)', () => {
     const a = planSceneLabels([OZNACZENIE_GPZ, Q1], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ);
     const b = planSceneLabels([Q1, OZNACZENIE_GPZ], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ);
     const klucz = (plan: LabelRenderPlan) =>
@@ -155,7 +155,7 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     expect(JSON.stringify(b)).toBe(JSON.stringify(a));
   });
 
-  it('sąsiad w piśmie NATURALNYM nie ustępuje (jego slot rozstrzygnął declutter sceny) — tożsamość jawnie w `droppedIdentity`', () => {
+  it('sąsiad w piśmie NATURALNYM nie ustępuje (jego slot rozstrzygnął declutter sceny) — tożsamość jawnie w `tozsamosciWPodpowiedzi`', () => {
     // Skala, przy której t3 jest czytelne naturalnie (9 px × 1,05 ≥ 9 px), a t4 już
     // nie (8 px × 1,05 < 9 px) — rośnie wyłącznie Q1.
     const skala = 1.05;
@@ -175,11 +175,11 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     const gpz = narysowana(plan, blisko.ownerRef);
     expect(gpz?.enlarged).toBe(false);
     expect(gpz?.text).toBe(blisko.text);
-    expect(plan.droppedIdentity.map((l) => l.ownerRef)).toEqual([Q1.ownerRef]);
+    expect(plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef)).toEqual([Q1.ownerRef]);
     bezKolizji(plan, [symbolBlisko]);
   });
 
-  it('sąsiad, który po odsunięciu nie ma gdzie wrócić, zostaje — plan bez zmian, tożsamość jawnie w `droppedIdentity`', () => {
+  it('sąsiad, który po odsunięciu nie ma gdzie wrócić, zostaje — plan bez zmian, tożsamość jawnie w `tozsamosciWPodpowiedzi`', () => {
     // „Q2" (nieskracalny) stoi tak, że jego JEDYNA wolna strona (z prawej) leży
     // na lewej stronie Q1; pozostałe trzy strony Q2 zajmuje słupek toru.
     const q2 = etykieta({
@@ -197,19 +197,22 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     const samoQ1 = planSceneLabels([Q1], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
     expect(narysowana(samoQ1, Q1.ownerRef)?.text).toBe('Q1');
 
+    // Remis rangi i priorytetu rozstrzyga porządek declutteru sceny (`labelResolutionOrder`:
+    // priorytet, położenie, ref): Q2 (y = 590) przed Q1 (y = 592), więc Q2 zajmuje lewą
+    // stronę Q1. Q1 sprawdza ustąpienie: Q2 nie ma dokąd wrócić — zostaje, Q1 w podpowiedzi.
     const plan = planSceneLabels([q2, Q1], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
     expect(narysowana(plan, q2.ownerRef)?.rect).toEqual(q2Sam!.rect);
     expect(narysowana(plan, q2.ownerRef)?.text).toBe('Q2');
-    expect(plan.droppedIdentity.map((l) => l.ownerRef)).toEqual([Q1.ownerRef]);
+    expect(plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef)).toEqual([Q1.ownerRef]);
     bezKolizji(plan, przeszkody);
   });
 
   it('strona zajęta RYSUNKIEM nie jest zdobywana ustąpieniem — symbol zawsze wygrywa', () => {
     // Lewą stronę Q1 zajmuje tor (przeszkoda), a nie sąsiad: ustąpienie nie ma
-    // czego odsunąć, więc Q1 trafia jawnie do `droppedIdentity`.
+    // czego odsunąć, więc Q1 trafia jawnie do `tozsamosciWPodpowiedzi`.
     const tor: V3Rect = { x: 527, y: 595, width: 4, height: 20 };
     const plan = planSceneLabels([OZNACZENIE_GPZ, Q1], [WYLACZNIK, tor], SKALA_FIT_GPZ, ARKUSZ);
-    expect(plan.droppedIdentity.map((l) => l.ownerRef)).toEqual([Q1.ownerRef]);
+    expect(plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef)).toEqual([Q1.ownerRef]);
     expect(narysowana(plan, OZNACZENIE_GPZ.ownerRef)?.text).toBe(OZNACZENIE_GPZ.text);
     bezKolizji(plan, [WYLACZNIK, tor]);
   });

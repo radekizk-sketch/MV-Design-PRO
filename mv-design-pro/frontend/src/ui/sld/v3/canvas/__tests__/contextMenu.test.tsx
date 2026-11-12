@@ -23,6 +23,8 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { pierwszyObszarStacji } from './uchwytStacji';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 
 afterEach(() => {
@@ -89,16 +91,15 @@ function wezelRysunku(
 }
 
 describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
-  it('(a) prawy klik w symbol stacji otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', async () => {
+  // Karta SLD-SKALA-I-NAWIGACJA (R1, R6): jedna scena nie ma symbolu stacji; z przeglądu sieci
+  // celem trafienia jest OBSZAR stacji (najmniejszy rozpoznawalny obiekt hierarchii
+  // aparat → pole → stacja). Intencja bez zmian: prawy klik w stację otwiera menu stacji.
+  it('(a) prawy klik w obszar stacji (przegląd sieci) otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', async () => {
     const scene = buildSceneV3(enm);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
-    expect(stationIndex).toBeGreaterThanOrEqual(0);
-
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = uchwytSymbolu(container, scene, stationIndex);
-    expect(stationGroup).toBeTruthy();
+    const { el } = pierwszyObszarStacji(container, scene);
 
-    await userEvent.pointer({ keys: '[MouseRight]', target: stationGroup! });
+    await userEvent.pointer({ keys: '[MouseRight]', target: el });
 
     expect(screen.getByRole('menu')).toBeTruthy();
     expect(screen.getByTestId('sld-menu-open-station-config')).toBeTruthy();
@@ -119,7 +120,9 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
   // `meta.derKind` (realny rodzaj), więc menu kontekstowe wybiera kategorię
   // PODTYPU (der_pv/der_bess/der_fw) dla rodzajów rozpoznanych, a generyczne
   // `der` WYŁĄCZNIE dla generator/unknown (uczciwa degradacja). Scena jest jedna
-  // (karta SLD-SKALA-I-NAWIGACJA, R1), więc symbole DER są na niej zawsze.
+  // (karta SLD-SKALA-I-NAWIGACJA, R1), więc symbole DER są na niej zawsze; celem kliku jest
+  // jednak najmniejszy ROZPOZNAWALNY obiekt (R6) — z przeglądu sieci stacja, więc test
+  // przybliża kółkiem (ścieżka użytkownika) do skali, przy której symbol DER jest celem.
 
   it('(a) DER-MENU-V3: prawy klik w symbol PV otwiera menu PODTYPU der_pv (open-pv-config + show-frt-hvrt + delete-pv + show-ncrfg)', async () => {
     const scene = buildSceneV3(enm);
@@ -127,6 +130,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(pvIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    powiekszKolkiemDoSkali(container, 1);
     const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     expect(pvGroup).toBeTruthy();
     // Sanity: atrybut DOM diagnostyczny niesie realny rodzaj (nie zgadywany) —
@@ -157,6 +161,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(scene.symbols[genIndex].meta?.derKind).toBe('generator');
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    powiekszKolkiemDoSkali(container, 1);
     const genGroup = uchwytSymbolu(container, scene, genIndex);
     expect(genGroup).toBeTruthy();
     expect(wezelRysunku(container, scene, genIndex)!.getAttribute('data-der-kind')).toBe('generator');
@@ -185,6 +190,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     const pvRef = scene.symbols[pvIndex].meta!.ownerRef!;
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    powiekszKolkiemDoSkali(container, 1);
     const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     await userEvent.pointer({ keys: '[MouseRight]', target: pvGroup! });
     expect(screen.getByRole('menu')).toBeTruthy();

@@ -51,7 +51,7 @@
  */
 
 import { GRID, rectsOverlap, snapDown, snapToGrid, type V3Rect } from '../core/grid';
-import { labelLineHeight, measureLabelWidth, type LabelClass, type LabelRole, type LodClass } from '../core/text';
+import { labelLineHeight, measureLabelWidth, type LabelClass, type LabelRole } from '../core/text';
 
 /** Właściciel etykiety (spec §4, tabela slotów). */
 export type OwnerKind =
@@ -140,45 +140,6 @@ export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = 
   'segment-endpoint': 'dane',
   'lv-load': 'dane',
 };
-
-/**
- * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN") —
- * KLASA LOD z RODZAJU WŁAŚCICIELA: jedno źródło prawdy OBOK
- * `LABEL_ROLE_BY_OWNER_KIND` powyżej, ta sama zasada wyprowadzenia (dana
- * sceny, nigdy treść tekstu). `'station-name'` jest DOMYŚLNE — pasmo jest
- * MIESZANE (jak dla `LabelRole`), więc rozstrzyga WIERSZ; patrz `lodClassOf`.
- *
- * REGUŁA WYPROWADZENIA (KLASA §1/§3 — jedno kryterium, JEDNO ŹRÓDŁO, nie
- * druga tabela, która „dziś się zgadza" z pierwszą): `role==='tozsamosc'` ⇒
- * zawsze `'L0'` — wyprowadzone STRUKTURALNIE Z `LABEL_ROLE_BY_OWNER_KIND`
- * powyżej (nie przepisane ręcznie drugi raz), więc te dwie tabele fizycznie
- * NIE MOGĄ się rozjechać — BEZ ŻADNEJ zmiany istniejącej gwarancji KD-11
- * „tożsamość nigdy nie znika" (`canvas/labelLegibility.ts`). `role==='dane'`
- * dzieli się na `'L1'`/`'L2'` wg KLASY TYPOGRAFICZNEJ (`DANE_LOD_TIER_BY_
- * OWNER_KIND` niżej): `t2` (typ·przekrój·długość przęsła — dosłowny przykład
- * L1 z planu: „przekroje/długości kabli") = `'L1'`; `t3`/`t4` (adnotacje
- * drugorzędne: kierunek pola, koniec odcinka, nastawy zabezpieczeń, odbiór
- * zagregowany nN) = `'L2'`. Podział NIE zmienia ŻADNEGO progu zoomu
- * (`isLabelHiddenAtScale` w `core/text.ts` bez zmian) — `lodClass` jest dziś
- * WYŁĄCZNIE klasyfikacją (dowód wyroczniami w `canvas/__tests__/
- * politykaLodNn.contract.test.ts`), nie nowym mechanizmem ukrywania: zero
- * regresji na pinach bajtowych sceny/planu (`scene/__tests__/kosztSceny.test.ts`).
- */
-const DANE_LOD_TIER_BY_OWNER_KIND: Partial<Record<OwnerKind, 'L1' | 'L2'>> = {
-  'segment-span': 'L1',
-  'segment-lateral': 'L1',
-  'segment-endpoint': 'L2',
-  'port-caption': 'L2',
-  protection: 'L2',
-  'lv-load': 'L2',
-};
-
-export const LOD_CLASS_BY_OWNER_KIND: Readonly<Record<OwnerKind, LodClass>> = Object.fromEntries(
-  (Object.keys(LABEL_ROLE_BY_OWNER_KIND) as OwnerKind[]).map((kind) => [
-    kind,
-    LABEL_ROLE_BY_OWNER_KIND[kind] === 'tozsamosc' ? 'L0' : (DANE_LOD_TIER_BY_OWNER_KIND[kind] ?? 'L2'),
-  ]),
-) as Readonly<Record<OwnerKind, LodClass>>;
 
 export interface LabelPoint {
   readonly x: number;
@@ -291,10 +252,10 @@ export interface OwnedLabel {
    * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
    * wyjątek bezwzględny) — element w stanie błędu/UNRESOLVED (walidacja grafu
    * elektrycznego T0/T1: aparat nierozwiązywalny na model, status SLD
-   * INVALID/MODEL INCOMPLETE). `true` wymusza `lodClassOf(label) === 'L0'`
-   * niezależnie od `ownerKind`/`labelRole` — etykieta NIGDY nie trafia do
-   * `hiddenDetail` (`canvas/labelLegibility.ts`), więc licznik „Ukryto N
-   * opisów" jej nie policzy jako zwykłej danej ukrytej progiem zoomu.
+   * INVALID/MODEL INCOMPLETE). `true` daje etykiecie klasę informacji
+   * `'tozsamosc'` niezależnie od `ownerKind`/`labelRole`
+   * (`canvas/gestoscInformacji.ts` `klasaInformacjiEtykiety`) — nie znika
+   * z powodu skali, jak każda tożsamość.
    * Geometrycznie NEUTRALNE (nie wchodzi do `rect`).
    *
    * `undefined`/`false` = zachowanie BEZ ZMIANY. Domyślnie `undefined` — dziś
@@ -309,6 +270,19 @@ export interface OwnedLabel {
    *  `poleLinioweGpz.test.tsx`). `undefined` = tekst wyśrodkowany w prostokącie.
    *  Geometrycznie NEUTRALNE (`rect` bez zmian). */
   readonly wyrownanieTekstu?: WyrownanieTekstu;
+  /**
+   * Karta SLD-SKALA-I-NAWIGACJA (R1 × R4): KOLUMNA TŁA POLA GPZ, w której musi zmieścić się
+   * tusz etykiety-członka tła pola (`PanelPolaGpz.etykiety`) razem z marginesem tła
+   * (`MARGINES_TLA_POLA_GPZ`) [świat]. Jedna scena jest rysowana przy każdej skali, a plan
+   * etykiet powiększa pismo tożsamości do podłogi czytelności i rysuje nazwy w całości — tło
+   * pola rośnie za narysowanym tuszem (`canvas/obrysyWgPlanu.ts`) i bez granicy wchodziło na tło
+   * sąsiedniego pola (pomiar 2026-11-12: cztery fikstury pól GPZ przy skali 0,5 i 0,35).
+   * Kolumny pól są rozłączne parami (cięcie w połowie odstępu tła sceny, `scene/buildScene.ts`
+   * `kolumnyTlaPolGpz`). Napis, który w piśmie planu nie mieści się w kolumnie, idzie postacią
+   * mniejszą albo — tożsamość — do podpowiedzi uchwytu. `undefined` = etykieta poza tłami pól.
+   * Geometrycznie NEUTRALNE dla sceny (`rect` bez zmian).
+   */
+  readonly granicaTlaPola?: V3Rect;
 }
 
 /**
@@ -373,27 +347,6 @@ export function zaczepTekstuEtykiety(
   return wyrownanie === 'poczatek'
     ? { x: rect.x, y, textAnchor: 'start' }
     : { x: rect.x + rect.width, y, textAnchor: 'end' };
-}
-
-/**
- * T2-LOD — KLASA LOD EFEKTYWNA etykiety (jedno źródło prawdy dla warstwy
- * renderu i dla wyroczni; patrz `LodClass` w `core/text.ts`). Kolejność
- * rozstrzygania:
- *  1. `unresolved === true` ⇒ zawsze `'L0'` (wyjątek bezwzględny planu —
- *     nadpisuje WSZYSTKO poniżej);
- *  2. `ownerKind === 'station-name'` ⇒ pasmo MIESZANE, rozstrzyga WIERSZ
- *     (`label.labelRole`): `'tozsamosc'` → `'L0'`, `'dane'` → `'L1'`/`'L2'`
- *     wg tej samej reguły klasy typograficznej co `LOD_CLASS_BY_OWNER_KIND`
- *     (dokumentacja tam);
- *  3. w pozostałych przypadkach — `LOD_CLASS_BY_OWNER_KIND[ownerKind]`.
- */
-export function lodClassOf(label: OwnedLabel): LodClass {
-  if (label.unresolved === true) return 'L0';
-  if (label.ownerKind === 'station-name') {
-    if (label.labelRole === 'tozsamosc') return 'L0';
-    return label.labelClass === 't2' ? 'L1' : 'L2';
-  }
-  return LOD_CLASS_BY_OWNER_KIND[label.ownerKind];
 }
 
 /**
@@ -657,7 +610,8 @@ export interface StationNameBandRow {
   /** T2-LOD passthrough 1:1 na `OwnedLabel.unresolved` — wyjątek bezwzględny
    *  LOD dla wiersza pasma opisującego element w stanie błędu/UNRESOLVED
    *  (np. transformator nierozwiązywalny na model). `undefined` = bez zmiany
-   *  (klasa LOD wiersza wynika wtedy z `role`, patrz `lodClassOf`). */
+   *  (klasa informacji wiersza wynika wtedy z `role`, patrz
+   *  `canvas/gestoscInformacji.ts` `klasaInformacjiEtykiety`). */
   readonly unresolved?: boolean;
 }
 
@@ -1036,6 +990,41 @@ export function labelReservationRect(label: OwnedLabel): V3Rect {
   if (rezerwacja <= label.rect.width) return label.rect;
   const cx = label.rect.x + label.rect.width / 2;
   return { x: cx - rezerwacja / 2, y: label.rect.y, width: rezerwacja, height: label.rect.height };
+}
+
+/**
+ * KARTA SLD-SKALA-I-NAWIGACJA (R4, zgłoszenie z karty pól SN): prostokąt, który
+ * etykieta zajmuje NA ARKUSZU — rezerwacja (`labelReservationRect`) powiększona dla
+ * TOŻSAMOŚCI o tusz PEŁNEGO tekstu w piśmie naturalnym. Tożsamość nie jest skracana
+ * (plan renderu `canvas/labelLegibility.ts`), więc arkusz musi objąć jej pełne
+ * brzmienie: bez tego opis przy prawej krawędzi („pole WN TR poza modelem” przy TR2
+ * w GPZ) wychodził poza obrys i plan go skracał albo odrzucał. Tusz kotwiczony jak
+ * w planie: wyśrodkowany w slocie, a przy `wyrownanieTekstu` — od krawędzi zaczepu.
+ * Dane zostają przy rezerwacji (skraca je plan do slotu).
+ */
+export function prostokatArkuszaEtykiety(label: OwnedLabel): V3Rect {
+  const rezerwacja = labelReservationRect(label);
+  if (label.labelRole !== 'tozsamosc' && label.unresolved !== true) return rezerwacja;
+  const pelny = measureLabelWidth(label.text, label.labelClass);
+  const r = label.rect;
+  const rotated = label.rotated === true;
+  if (pelny <= (rotated ? r.height : r.width) + 1e-9) return rezerwacja;
+  let tusz: V3Rect;
+  if (rotated) {
+    tusz = { x: r.x, y: r.y + r.height / 2 - pelny / 2, width: r.width, height: pelny };
+  } else {
+    const wyr = wyrownanieEtykiety(label);
+    const x = wyr === 'poczatek' ? r.x : wyr === 'koniec' ? r.x + r.width - pelny : r.x + r.width / 2 - pelny / 2;
+    tusz = { x, y: r.y, width: pelny, height: r.height };
+  }
+  const minX = Math.min(rezerwacja.x, tusz.x);
+  const minY = Math.min(rezerwacja.y, tusz.y);
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(rezerwacja.x + rezerwacja.width, tusz.x + tusz.width) - minX,
+    height: Math.max(rezerwacja.y + rezerwacja.height, tusz.y + tusz.height) - minY,
+  };
 }
 
 /** BLOK-PUSTY: etykieta, której PROSTOKĄT jest szerszy niż narysowany tekst. */

@@ -29,6 +29,7 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { scenariusz } from '../../lv-domain/fixtures/scenariusze';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { uchwytNazwyStacji } from './uchwytStacji';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 
 /** Projekcja z backendu (kontrakt 3.0.0) — atrapa odpowiada NIĄ z tożsamością żądania. */
@@ -138,6 +139,9 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
     const scene = buildSceneV3(enm);
     const trIndex = indexOf(scene, (s) => s.meta?.elementKind === 'transformer');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    // R6 (karta SLD-SKALA-I-NAWIGACJA): transformator i aparat są celem kliku dopiero na kadrze
+    // roboczym (z kadru całej sieci klik trafia stację) — natywne kółko do skali czytania.
+    powiekszKolkiemDoSkali(container, 1);
 
     fireEvent.click(uchwyt(container, scene, trIndex));
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
@@ -150,6 +154,9 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
     const scene = buildSceneV3(enm);
     const apparatusIndex = indexOf(scene, (s) => s.meta?.elementKind === 'apparatus');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    // R6 (karta SLD-SKALA-I-NAWIGACJA): transformator i aparat są celem kliku dopiero na kadrze
+    // roboczym (z kadru całej sieci klik trafia stację) — natywne kółko do skali czytania.
+    powiekszKolkiemDoSkali(container, 1);
     fireEvent.doubleClick(uchwyt(container, scene, apparatusIndex));
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();

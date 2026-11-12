@@ -1837,6 +1837,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         },
         placement: 'above',
         clearance: BUSBAR_LABEL_PATH_CLEARANCE,
+        // Karta SLD-SKALA-I-NAWIGACJA (R4): obrys kotwicy = rozpiętość sekcji na wysokości
+        // kotwicy — plan etykiet przesuwa pełny napis wzdłuż sekcji zamiast go skracać.
+        obrysKotwicy: { x: span.left, y: busAxisY - stationPortCaptionHeight(station), width: span.right - span.left, height: 0 },
       });
     });
     if (unresolvedTaps.length > 0) {
@@ -1908,6 +1911,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         x: column.x + column.width / 2,
         y: busAxisY - stationPortCaptionHeight(station),
       },
+      // R4: obrys kotwicy = pełna szerokość kolumny na wysokości kotwicy (pole, w którym
+      // napis wolno przesuwać wzdłuż szyny).
+      obrysKotwicy: { x: column.x, y: busAxisY - stationPortCaptionHeight(station), width: column.width, height: 0 },
       placement: 'above',
       // KD-8 poz. 5: prześwit toru (etykieta zakotwiczona na osi szyny).
       clearance: BUSBAR_LABEL_PATH_CLEARANCE,

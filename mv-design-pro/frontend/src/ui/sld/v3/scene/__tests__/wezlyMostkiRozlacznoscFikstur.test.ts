@@ -41,7 +41,6 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { PreviewSegment } from '../../compose/preview';
-import { GRID } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3, sceneSegmentEndpointGaps, sourceConnectivityGaps, type SceneV3 } from '../buildScene';
 import {

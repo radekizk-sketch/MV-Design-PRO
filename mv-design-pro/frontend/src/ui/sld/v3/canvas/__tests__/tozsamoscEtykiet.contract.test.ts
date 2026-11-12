@@ -11,8 +11,13 @@
  *
  * Kontrakt (rozstrzygnięcie karty KD-11):
  *  1. klasa TOŻSAMOŚĆ nie znika — poniżej progu jest renderowana pismem
- *     powiększonym do rozmiaru minimalnego czytelnego;
- *  2. wskaźnik „Ukryto N opisów" liczy WYŁĄCZNIE klasę DANE SZCZEGÓŁOWE;
+ *     powiększonym do rozmiaru minimalnego czytelnego (karta
+ *     SLD-SKALA-I-NAWIGACJA R4: w całości, bez wielokropka; przegrana kolizji
+ *     albo sufitu proporcji trafia do podpowiedzi uchwytu);
+ *  2. poza planem zostają WYŁĄCZNIE dane (karta SLD-SKALA-I-NAWIGACJA R3:
+ *     wskaźnik „Ukryto N opisów" usunięty — gęstość danych jest funkcją skali,
+ *     a intencja punktu, „brak na rysunku dotyczy tylko danych", jest mierzona
+ *     wprost na planie);
  *  3. zero kolizji: etykieta↔etykieta i etykieta↔rysunek (symbol/tor);
  *  4. klasyfikacja pochodzi z DANYCH SCENY (rodzaj właściciela / rola wiersza
  *     pasma), nigdy z treści tekstu.
@@ -35,7 +40,10 @@ import {
   planSceneLabels,
   plannedLabelCollisions,
   plannedLabelObstacleCollisions,
+  rangaTozsamosci,
+  type LabelRenderPlan,
 } from '../labelLegibility';
+import { klasaInformacjiEtykiety } from '../gestoscInformacji';
 import {
   enlargedFontSizeWithinProportion,
   isLabelReadableAtScale,
@@ -81,6 +89,13 @@ function skalaDopasowania(scene: SceneV3): number {
  * (`SKALE_ODBIORU_PLANU_ETYKIET`). Dawniej skale zależały od poziomu szczegółu
  * aktywnego w kamerze; scena jest jedna, więc zbiór jest wspólny.
  */
+/** Indeksy etykiet sceny, których plan nie rysuje ani nie oddaje do podpowiedzi
+ *  (R3: wyłącznie dane poniżej progu czytelności). */
+function pozaPlanem(scene: SceneV3, plan: LabelRenderPlan): readonly number[] {
+  const obecne = new Set([...plan.drawn.map((p) => p.index), ...plan.tozsamosciWPodpowiedzi.map((t) => t.index)]);
+  return scene.labels.map((_, i) => i).filter((i) => !obecne.has(i));
+}
+
 function skaleProdukcyjne(skalaFit: number): readonly number[] {
   return [skalaFit, ...SKALE_ODBIORU_PLANU_ETYKIET];
 }
@@ -138,53 +153,55 @@ describe('KD-11 §1 — klasyfikacja etykiet pochodzi z DANYCH SCENY', () => {
 describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwiniętym GPZ', () => {
   const scena = buildSceneV3(GPZ_ENM);
 
-  it(`KAŻDA etykieta tożsamości jest narysowana, licznik ukrytych to WYŁĄCZNIE dane szczegółowe`, () => {
+  it(`KAŻDA etykieta tożsamości jest narysowana albo w podpowiedzi, poza planem zostają WYŁĄCZNIE dane`, () => {
     const scene = scena;
     const scale = skalaDopasowania(scena);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
 
-    // Karta GPZ-MODEL: GPZ fikstury to odtąd model obliczeniowo prawdziwy (równoważnik
-    // sieci po stronie 110 kV, transformator 110/15 kV) — źródło wieńczy kolumnę WN.
-    // Pomiar na drzewie scalonym z GEOMETRIA-STACJI (baza `f7235700e`): skala
-    // dopasowania L2 = 0,4034, czyli POWYŻEJ sufitu proporcji klasy t4
-    // (9 px / (8 × 3) = 0,375, `LabelTypography.maxEnlargement`) — oznaczniki aparatów
-    // t4 mają proporcjonalny rozmiar i MUSZĄ się narysować. Blok GPZ jest węższy po
-    // stronie SN (źródło przeszło do kolumny WN), więc pierwsze pole S01 stoi tuż za
-    // ostatnim polem GPZ; oznacznik „Q1" tego pola rysuje się dzięki regule (f) planu
-    // (ustąpienie skracalnego sąsiada, `labelLegibility.ts` `ustapSasiadow`), bez niej
-    // ginął od kolizji z powiększonym „Pole liniowe GPZ 1.2". Gdy skala spada poniżej
-    // sufitu klasy, plan odrzuca tożsamość JAWNIE (`droppedIdentity`, wskaźnik
-    // „Ukryto N opisów"), zgodnie z kontraktem PROPORCJE. Kontrakt KD-11 bez zmian intencji: KAŻDA tożsamość,
-    // którą da się narysować proporcjonalnie, JEST narysowana, a odrzucone są
-    // DOKŁADNIE te, których klasa przekracza sufit (jedno źródło prawdy:
-    // `enlargedFontSizeWithinProportion`) — żadna nie ginie od kolizji ani progu.
-    const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc');
-    const ponadSufitem = (l: (typeof tozsamosci)[number]): boolean =>
-      enlargedFontSizeWithinProportion(l.labelClass, scale) === null;
-    const narysowaneTozsamosci = new Set(
-      plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc').map((p) => p.label.ownerRef),
-    );
-    expect(tozsamosci.filter((l) => !ponadSufitem(l)).length).toBeGreaterThan(0);
-    const brakujace = tozsamosci.filter((l) => !ponadSufitem(l) && !narysowaneTozsamosci.has(l.ownerRef));
-    expect(brakujace.map((l) => `${l.ownerKind}:${l.text}`)).toEqual([]);
-    expect(plan.droppedIdentity.map((l) => l.ownerRef).sort()).toEqual(
-      tozsamosci.filter(ponadSufitem).map((l) => l.ownerRef).sort(),
-    );
+    // Karta GPZ-MODEL: GPZ fikstury to model obliczeniowo prawdziwy (równoważnik sieci
+    // po stronie 110 kV, transformator 110/15 kV). Kontrakt KD-11 po karcie
+    // SLD-SKALA-I-NAWIGACJA (R4): nazwy GPZ/stacji i oznaczenia sekcji (ranga ≥ 2) rysują
+    // się w stałym rozmiarze ekranowym bez sufitu proporcji — przy kadrze dopasowania
+    // WSZYSTKIE; tożsamość rangi pola, której klasa przekracza sufit proporcji
+    // (`enlargedFontSizeWithinProportion` = null), albo która przegrała kolizję z wyższą
+    // rangą, trafia do podpowiedzi uchwytu. Żadna tożsamość nie ginie.
+    const tozsamosci = scene.labels.map((l, i) => [l, i] as const).filter(([l]) => klasaInformacjiEtykiety(l) === 'tozsamosc');
+    const narysowane = new Set(plan.drawn.map((p) => p.index));
+    const wPodpowiedzi = new Set(plan.tozsamosciWPodpowiedzi.map((t) => t.index));
+    expect(tozsamosci.length).toBeGreaterThan(0);
+    for (const [l, i] of tozsamosci) {
+      expect(narysowane.has(i) !== wPodpowiedzi.has(i), `${l.ownerKind}:${l.text}`).toBe(true);
+    }
+    const bloki = tozsamosci.filter(([l]) => rangaTozsamosci(l) >= 2);
+    expect(bloki.length).toBeGreaterThan(0);
+    // Nazwy GPZ i stacji (ranga ≥ 3) — wszystkie narysowane. Oznaczenie sekcji GPZ „Sekcja 1 ·
+    // 15 kV" przy skali 0,336 (pismo 26,8 j.św., tusz ~150 j.św.) nie ma miejsca na pełne
+    // brzmienie: nad szyną sekcji (288 j.św.) stoi zejście transformatora (x 191), pod szyną —
+    // pola GPZ co 136 j.św.; trafia do podpowiedzi uchwytu (pomiar 2026-11-12; pin w dół).
+    expect(bloki.filter(([l, i]) => rangaTozsamosci(l) >= 3 && !narysowane.has(i)).map(([l]) => l.text)).toEqual([]);
+    expect(bloki.filter(([, i]) => !narysowane.has(i)).length).toBeLessThanOrEqual(1);
+    // Tożsamość rangi pola (oznaczenie i rola pola, oznacznik aparatu) przy kadrze całej sieci
+    // (skala 0,336, pismo 26,8 j.św. — trzykrotność naturalnego) nie mieści się w kolumnie pola
+    // zwymiarowanej pod pismo naturalne i trafia do podpowiedzi uchwytu, nigdy w postaci
+    // skróconej (asercje niżej). Pełne nazwy pól daje kadr rozdzielnicy z podłogą skali
+    // czytania (`SKALA_PODLOGI_ROZDZIELNICY`, `camera.kadr.test.ts`).
+    for (const t of plan.tozsamosciWPodpowiedzi) expect(t.label.text.length).toBeGreaterThan(0);
 
-    // Licznik „Ukryto N opisów" = wyłącznie dane szczegółowe.
-    expect(plan.hiddenDetail.every((l) => l.labelRole === 'dane')).toBe(true);
+    // Poza planem — wyłącznie dane.
+    const ukryte = pozaPlanem(scene, plan);
+    expect(ukryte.every((i) => klasaInformacjiEtykiety(scene.labels[i]!) !== 'tozsamosc')).toBe(true);
 
     // POMIAR REGRESJI KD-8 (dowód, że kontrakt dotyczy realnego defektu):
     // przy TEJ SAMEJ skali reguła sprzed KD-11 (próg dla WSZYSTKICH klas)
-    // ukrywała także tożsamości — i to WIĘCEJ niż dziś licznik danych.
+    // ukrywała także tożsamości — i to WIĘCEJ niż dziś plan.
     const ukryteRegulaKD8 = scene.labels.filter(
       (l) => !isLabelReadableAtScale(l.labelClass, scale),
     ).length;
-    expect(ukryteRegulaKD8).toBeGreaterThan(plan.hiddenDetail.length);
+    expect(ukryteRegulaKD8).toBeGreaterThan(ukryte.length);
     expect(ukryteRegulaKD8).toBe(scene.labels.length); // kadr, na którym NIE BYŁO żadnego podpisu
   });
 
-  it('LOD 1: podpisy tożsamości są rysowane pismem o rozmiarze ekranowym ≥ próg czytelności', () => {
+  it('kadr dopasowania: podpisy tożsamości są rysowane pismem o rozmiarze ekranowym ≥ próg czytelności', () => {
     const scene = scena;
     const scale = skalaDopasowania(scena);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
@@ -197,6 +214,8 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
       expect(p.fontSize * scale, `${p.label.ownerRef}`).toBeGreaterThanOrEqual(
         Math.min(MIN_READABLE_LABEL_SCREEN_PX, LABEL_TYPOGRAPHY[p.label.labelClass].fontSize * scale),
       );
+      // R4: tożsamość w pełnym brzmieniu.
+      expect(p.text, `${p.label.ownerRef}`).toBe(p.label.text);
     }
   });
 
@@ -205,7 +224,8 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
     const scale = skalaDopasowania(scena);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const skrocone = plan.drawn.filter((p) => p.text !== p.label.text);
-    expect(skrocone.length).toBeGreaterThan(0); // kadr faktycznie ćwiczy skracanie
+    // R4: skracane bywają wyłącznie DANE — tożsamość stoi w całości albo ustępuje.
+    expect(skrocone.filter((p) => klasaInformacjiEtykiety(p.label) === 'tozsamosc').map((p) => p.label.text)).toEqual([]);
     for (const p of skrocone) {
       // S9-7 (audyt C-6): znak skrócenia może stać w ŚRODKU („Szy…WN",
       // „Źródło…15 kV"), a nie tylko na końcu — od tej karty skracanie
@@ -234,14 +254,19 @@ describe('KD-11 §3 (bramka 2) — wyrocznia braku kolizji na golden sieci wielo
     });
   }
 
-  it(`w stanach kamery PRODUKCYJNYCH żadna tożsamość nie jest porzucana`, () => {
+  it(`w stanach kamery PRODUKCYJNYCH żadna tożsamość nie znika (narysowana albo w podpowiedzi)`, () => {
     const scene = scena;
     const obstacles = sceneObstacleRects(scene);
     for (const scale of skaleProdukcyjne(skalaFit)) {
       const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
-      expect(
-        plan.droppedIdentity.map((l) => `${scale.toFixed(4)}:${l.ownerKind}:${l.text}`),
-      ).toEqual([]);
+      const ukryteTozsamosci = pozaPlanem(scene, plan).filter((i) => klasaInformacjiEtykiety(scene.labels[i]!) === 'tozsamosc');
+      expect(ukryteTozsamosci.map((i) => `${scale.toFixed(4)}:${scene.labels[i]!.text}`)).toEqual([]);
+      // Nazwy bloków przegrywające kolizję z nazwą sąsiada (kadr dopasowania 53 stacji w oknie
+      // 1000×560: skala 0,066, nazwa stacji 136 j.św. wysokości) trafiają do podpowiedzi —
+      // nigdy nie znikają. Kadr dopasowania w oknie roboczym 1800×1100 rysuje wszystkie nazwy
+      // (`gestoscInformacji.contract.test.ts`, „sieci referencyjne przy dopasowaniu”).
+      const narysowaneNazwy = plan.drawn.filter((p) => rangaTozsamosci(p.label) >= 3).length;
+      expect(narysowaneNazwy, `@${scale.toFixed(4)}`).toBeGreaterThan(0);
     }
   });
 });
@@ -264,10 +289,11 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
         enlargedFontSizeWithinProportion(l.labelClass, scale) !== null,
     );
     expect(ukryteTozsamosci.length).toBeGreaterThan(0);
-    // …a kontrakt wyżej wymaga, żeby po naprawie było ich ZERO w planie.
+    // …a kontrakt wyżej wymaga, żeby po naprawie żadna nie zniknęła (narysowana albo w
+    // podpowiedzi uchwytu — R4).
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
-    const narysowane = new Set(plan.drawn.map((p) => p.label.ownerRef));
-    for (const l of ukryteTozsamosci) expect(narysowane.has(l.ownerRef)).toBe(true);
+    const obecne = new Set([...plan.drawn.map((p) => p.label), ...plan.tozsamosciWPodpowiedzi.map((t) => t.label)]);
+    for (const l of ukryteTozsamosci) expect(obecne.has(l), l.text).toBe(true);
   });
 
   it('wyrocznia kolizji GRYZIE: sztuczny plan z nachodzącymi etykietami jest zgłaszany', () => {
@@ -285,7 +311,7 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
     for (const scale of [0, -1, Number.NaN]) {
       const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
       expect(plan.drawn.length).toBe(scene.labels.length);
-      expect(plan.hiddenDetail).toEqual([]);
+      expect(plan.tozsamosciWPodpowiedzi).toEqual([]);
       expect(plan.drawn.every((p) => !p.enlarged)).toBe(true);
     }
   });
@@ -294,7 +320,7 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
     const scene = scena;
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 2, sheetSizeFor(scene));
     expect(plan.drawn.length).toBe(scene.labels.length);
-    expect(plan.hiddenDetail).toEqual([]);
+    expect(plan.tozsamosciWPodpowiedzi).toEqual([]);
     for (const p of plan.drawn) {
       expect(p.text).toBe(p.label.text);
       expect(p.rect).toEqual(p.label.rect);

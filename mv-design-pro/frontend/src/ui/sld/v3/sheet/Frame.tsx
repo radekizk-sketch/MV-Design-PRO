@@ -63,11 +63,7 @@ const ZONE_LABEL_OFFSET_SCREEN_PX = 10;
 const ZONE_TICK_SCREEN_PX = 6;
 /** S9-7: odsunięcie liter wierszy od lewej krawędzi ramki [px EKRANU]. */
 const ZONE_ROW_LABEL_OFFSET_SCREEN_PX = 16;
-/* S9-7: odstęp podpisów dolnych (skala, poziom szczegółu) od ramki mieszka od
- * karty RAMKA-TNIE-PODPISY w `canvas/chromeLayout.ts` — RAZEM z układem
- * całego dolnego pasa chromu, żeby wskaźnik ekranowy „Ukryto N opisów" liczył
- * ustąpienie z TEJ SAMEJ liczby, z której ramka liczy położenie podpisu
- * (wcześniej: dwie prawdy, kolizja w 12 na 12 zmierzonych kadrów). */
+/* S9-7: odstęp podpisu skali od ramki mieszka w `canvas/chromeLayout.ts`. */
 /** Margines ramki na oznaczenia stref (litery/cyfry) NA ZEWNĄTRZ obszaru rysunku.
  *  SCHEMAT-10 S4 (V12K-135/136, D12 reszta): eksportowany (dawniej lokalny) —
  *  `v3/export/exportFrame.ts` reużywa TĘ SAMĄ stałą dla kadru fit-do-treści
@@ -182,14 +178,6 @@ export interface SheetFrameProps {
   readonly height: number;
   /** Etykieta skali (spec §10, np. „1:1000"). */
   readonly scaleLabel: string;
-  /* KD-11 (Zero-Debt, znalezisko uboczne): pole `hiddenLabelCount` USUNIĘTE.
-   * Komunikat „Ukryto N opisów" mieszka od V12K-222 w WARSTWIE EKRANU
-   * (`canvas/SldCanvasV3.tsx`, `data-testid="sld-v3-hidden-labels-hint"`) — na
-   * arkuszu wpadał we własną pułapkę (przy skali ukrywającej opisy sam miał
-   * ~2 px). Prop został tu jako martwa gałąź: NIKT go nie podawał, a po KD-11
-   * niósłby STARE znaczenie licznika (dziś liczy wyłącznie DANE SZCZEGÓŁOWE —
-   * tożsamość elementów nie znika). Druga, nieużywana implementacja tego samego
-   * komunikatu to gotowa rozbieżność, więc znika razem z gałęzią renderu. */
   /** Opcjonalny slot na title block — Frame NIE duplikuje jego zawartości,
    *  tylko pozycjonuje jako blok w rogu arkusza (patrz nagłówek pliku: w
    *  produkcji v3 nieużywany, realna tabliczka to `SheetTitleBlock`). */

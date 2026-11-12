@@ -21,7 +21,13 @@
  * ({QE}, {TV,QE}, {QE,F}, {TV,QE,F}) × kolejność aparatów w danych (posortowana,
  * surowa z przeplotem) × każda skala odbioru planu etykiet
  * (`SKALE_ODBIORU_PLANU_ETYKIET`, jedna scena — karta SLD-SKALA-I-NAWIGACJA). Dla każdego punktu:
- * zero porzuconych tożsamości, zero kolizji etykieta↔etykieta i etykieta↔rysunek,
+ * zero kolizji etykieta↔etykieta i etykieta↔rysunek, każda tożsamość narysowana albo
+ * w podpowiedzi uchwytu (R4), a od skali czytania (`SKALA_CZYTANIA`, podłoga kadru
+ * rozdzielnicy — `SKALA_PODLOGI_ROZDZIELNICY`) zero tożsamości w podpowiedzi. Poniżej
+ * skali czytania tożsamość rangi pola ma stały rozmiar ekranowy, więc jej tusz w świecie
+ * rośnie ponad kolumnę pola zwymiarowaną pod pismo naturalne — przegrana trafia do
+ * podpowiedzi (dawniej ten zakres skali należał do zgrubnego poziomu szczegółu, w którym
+ * pól nie rysowano wcale);
  * zero napisów poza arkuszem, zero identyfikatorów aparatów narysowanych w
  * postaci skróconej (plan kanwy wolał „T…" po stronie zadeklarowanej od pełnego
  * „TV1" po stronie wolnej — `canvas/labelLegibility.ts` `najlepszeDopasowanie`); każdy aparat boczny ma narysowany
@@ -33,8 +39,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { BayPrimaryDevice, BayPrimaryDeviceKind, BayPrimaryPlacement, EnergyNetworkModel } from '../../../../../types/enm';
 import {
+  SKALA_PODLOGI_ROZDZIELNICY,
   SKALE_ODBIORU_PLANU_ETYKIET,
 } from '../../canvas/camera';
+import { klasaInformacjiEtykiety } from '../../canvas/gestoscInformacji';
 import {
   planSceneLabels,
   plannedLabelCollisions,
@@ -152,6 +160,21 @@ function scenario(role: string, laterals: readonly LateralKind[], order: Order):
   return { role, enm, fieldRef: spec.ref_id, lateralCount: laterals.length };
 }
 
+/** R4: każda tożsamość narysowana albo w podpowiedzi uchwytu (nigdy obie, nigdy żadna);
+ *  od podłogi kadru rozdzielnicy — wszystkie narysowane. */
+function expectTozsamosciKompletne(scene: SceneV3, plan: ReturnType<typeof planSceneLabels>, scale: number, at: string): void {
+  const narysowane = new Set(plan.drawn.map((p) => p.index));
+  const wPodpowiedzi = new Set(plan.tozsamosciWPodpowiedzi.map((t) => t.index));
+  const niekompletne = scene.labels
+    .map((l, i) => [l, i] as const)
+    .filter(([l, i]) => klasaInformacjiEtykiety(l) === 'tozsamosc' && narysowane.has(i) === wPodpowiedzi.has(i))
+    .map(([l]) => l.ownerRef);
+  expect(niekompletne, `${at}: tożsamości bez miejsca i bez podpowiedzi`).toEqual([]);
+  if (scale >= SKALA_PODLOGI_ROZDZIELNICY) {
+    expect(plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef), `${at}: tożsamości w podpowiedzi od skali czytania`).toEqual([]);
+  }
+}
+
 function lateralSymbols(scene: SceneV3, fieldRef: string) {
   return scene.symbols.filter((s) => s.meta?.ownerRef === fieldRef && LATERAL_APPARATUS_SYMBOLS.has(s.symbolId));
 }
@@ -184,7 +207,7 @@ describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych
           for (const scale of SKALE_ODBIORU_PLANU_ETYKIET) {
             const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
             const at = `@${scale}`;
-            expect(plan.droppedIdentity.map((l) => l.ownerRef), `${at}: porzucone tożsamości`).toEqual([]);
+            expectTozsamosciKompletne(scene, plan, scale, at);
             expect(plannedLabelCollisions(plan), `${at}: etykieta↔etykieta`).toEqual([]);
             expect(plannedLabelObstacleCollisions(plan, obstacles), `${at}: etykieta↔symbol/tor`).toEqual([]);
             expect(plannedLabelsOutsideSheet(plan, sheet), `${at}: poza arkuszem`).toEqual([]);
@@ -195,7 +218,9 @@ describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych
               `${at}: identyfikatory aparatów skrócone`,
             ).toEqual([]);
             const drawn = new Set(plan.drawn.map((p) => p.label.ownerRef));
-            expect(lateralIdRefs.filter((ref) => !drawn.has(ref)), `${at}: identyfikatory boczne nienarysowane`).toEqual([]);
+            if (scale >= SKALA_PODLOGI_ROZDZIELNICY) {
+              expect(lateralIdRefs.filter((ref) => !drawn.has(ref)), `${at}: identyfikatory boczne nienarysowane`).toEqual([]);
+            }
           }
         });
       }
@@ -235,7 +260,7 @@ describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych
     const sheet = sheetSizeFor(scene);
     for (const scale of SKALE_ODBIORU_PLANU_ETYKIET) {
       const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
-      expect(plan.droppedIdentity, `@${scale}`).toEqual([]);
+      expectTozsamosciKompletne(scene, plan, scale, `@${scale}`);
       expect(plannedLabelCollisions(plan), `@${scale}`).toEqual([]);
       expect(plannedLabelObstacleCollisions(plan, obstacles), `@${scale}`).toEqual([]);
       expect(

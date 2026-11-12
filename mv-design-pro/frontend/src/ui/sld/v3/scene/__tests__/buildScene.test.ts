@@ -1528,9 +1528,12 @@ describe(
       };
       expect(secondaryLinkDualityGaps(synthetic)).toEqual([]);
       expect(allSecondaryLinksValid(synthetic)).toBe(true);
-      // Dwie linie o RÓŻNYCH ownerRef (§20.1a dosłownie) — kontrola jawna.
+      // Dwie linie o RÓŻNYCH ownerRef (§20.1a dosłownie) — kontrola jawna. Liczone na liniach
+      // SYNTETYCZNEGO pola `bay-z`: scena jednej skali (karta SLD-SKALA-I-NAWIGACJA R1) niesie
+      // własne linie pomiarowe i wyzwalania pól sieci referencyjnej (dawniej test liczył całą
+      // scenę poziomu, na którym ich nie było).
       const secondary = synthetic.segments.filter(
-        (s) => s.meta?.kind === 'measurementLink' || s.meta?.kind === 'protectionTrip',
+        (s) => (s.meta?.kind === 'measurementLink' || s.meta?.kind === 'protectionTrip') && (s.meta?.ownerRef ?? '').startsWith('bay-z#'),
       );
       expect(secondary).toHaveLength(2);
       expect(new Set(secondary.map((s) => s.meta?.ownerRef)).size).toBe(2);
