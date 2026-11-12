@@ -52,7 +52,12 @@ import {
   LABEL_OWNER_ELEMENT_KIND,
   atrybutObrysu,
   buildCanvasHitAreas,
+  bezWezlaPrzegladu,
+  celTrafienia,
   rozstrzygnijTrafienieWezla,
+  stacjePrzegladu,
+  stopnieCeluSymbolu,
+  szynySnPrzegladu,
   type CanvasHitArea,
   type HitObjectClass,
   type ResultMarkerHitInput,
@@ -97,6 +102,21 @@ import {
   przecinaOkno,
   symbolBezWnetrza,
 } from './oknoRenderu';
+import {
+  najgorszyStanStacji,
+  liniaPunktu,
+  przerwyWNogach,
+  rombPunktu,
+  xZawieszeniaZnaku,
+  sciezkaNog,
+  symboleStacji,
+  znacznikPrzerwyToru,
+  znakOze,
+  znakPrzegladowyTransformatora,
+  type SymbolStacji,
+  type StanAlarmowyStacji,
+} from './glifZbiorczy';
+import { przerwaToru } from './torMocy';
 import { hierarchiaCelowTrafienia, nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
@@ -566,8 +586,12 @@ function SceneSymbolNode(props: {
    *  progu wnętrza (`PROG_WNETRZA_SYMBOLU_PX`) — rysowany jest sam obrys w kolorze stanu, bez
    *  wnętrza glifu; węzeł, ref, atrybuty stanu i cel kliku bez zmian. `undefined` = pełny glif. */
   readonly obrysBezWnetrza?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** R8: znak przeglądowy transformatora (gabaryt) — klik przejmuje stacja (`glifZbiorczy.ts`). */
+  readonly znakPrzegladowy?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** R8: znacznik □ łącznika otwartego w środku nogi symbolu stacji (`glifZbiorczy.przerwyWNogach`). */
+  readonly przerwaWNodze?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 }): JSX.Element {
-  const { symbol, index, overlay, cameraScale, obrysBezWnetrza } = props;
+  const { symbol, index, overlay, cameraScale, obrysBezWnetrza, znakPrzegladowy, przerwaWNodze } = props;
   const palette = useSldPalette();
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
@@ -599,6 +623,40 @@ function SceneSymbolNode(props: {
   };
   // R8 (karta SLD-SKALA-I-NAWIGACJA): symbol poniżej progu wnętrza — JEDEN węzeł: obrys
   // gabarytu w kolorze stanu z tymi samymi atrybutami (ref, stan) co grupa glifu.
+  // R8 × wymaganie właściciela „tor mocy zawsze widoczny”: łącznik otwarty (punkt NO, otwarty
+  // wyłącznik/rozłącznik/odłącznik) bez czytelnego wnętrza jest PRZERWĄ toru ze znacznikiem —
+  // kwadrat stałego rozmiaru ekranowego w tle kanwy, obrysowany kolorem stanu. Zamknięty zlewa
+  // się z linią (sam obrys gabarytu).
+  if (znakPrzegladowy) {
+    return (
+      <path
+        {...atrybuty}
+        data-znak-przegladowy="true"
+        d={znakPrzegladowyTransformatora(znakPrzegladowy)}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={apparatusStrokeWidthForScale(cameraScale)}
+      />
+    );
+  }
+  if ((obrysBezWnetrza || przerwaWNodze) && przerwaToru(symbol)) {
+    // R8: łącznik otwarty w nodze symbolu stacji — □ w środku nogi (`glifZbiorczy.przerwyWNogach`).
+    const z = przerwaWNodze ?? znacznikPrzerwyToru(obrysBezWnetrza!, cameraScale);
+    return (
+      <rect
+        {...atrybuty}
+        data-bez-wnetrza="true"
+        data-przerwa-toru="true"
+        x={z.x}
+        y={z.y}
+        width={z.width}
+        height={z.height}
+        fill={palette.canvasBackground}
+        stroke={stroke}
+        strokeWidth={apparatusStrokeWidthForScale(cameraScale)}
+      />
+    );
+  }
   if (obrysBezWnetrza) {
     return (
       <rect
@@ -854,6 +912,128 @@ function SceneSegmentNode(props: {
       strokeWidth={strokeWidth}
       strokeDasharray={strokeDasharray}
     />
+  );
+}
+
+/**
+ * R8 (karta SLD-SKALA-I-NAWIGACJA, decyzje właściciela 2026-11-12) — SYMBOL STACJI kadru
+ * przeglądowego (`glifZbiorczy.ts`): szyna SN (gruba, barwa szyny; czerwona wyłącznie przy alarmie
+ * stacji) i nogi toru jedną ścieżką na wygląd kreski odcinka toru, do którego noga dochodzi (stan
+ * zasilenia, waga, wzór kabel/napowietrzna — te same reguły co `SceneSegmentNode`); stacja z OZE
+ * — znak B1 w barwie rysunku. Kurtyna kadru jak dla węzłów pojedynczych.
+ */
+function SymbolStacjiNode(props: {
+  readonly stacja: SymbolStacji;
+  readonly scene: SceneV3;
+  readonly overlay: SldV3Overlay | undefined;
+  readonly cameraScale: number;
+  readonly poza: boolean;
+  readonly alarm: StanAlarmowyStacji | undefined;
+}): JSX.Element {
+  const { stacja, scene, overlay, cameraScale, poza, alarm } = props;
+  const palette = useSldPalette();
+  const barwaAlarmu =
+    alarm === undefined
+      ? undefined
+      : alarm.rodzaj === 'miejsce-zwarcia'
+        ? palette.highlight.fault
+        : resultSeverityColor(alarm.severity, palette) ?? palette.highlight.fault;
+  // Szyna: wygląd odcinka szyny SN sceny (barwa szyny, stan zasilenia, waga), geometria — rozpiętość
+  // nóg (`SymbolStacji.szynaPrzegladu`).
+  const szynaSceny = stacja.szyny.length > 0 ? stacja.szyny[0] : undefined;
+  const szyny =
+    szynaSceny === undefined || stacja.szynaPrzegladu === undefined
+      ? []
+      : [
+          (() => {
+            const odcinek = scene.segments[szynaSceny];
+            const w = wygladOdcinka(odcinek, segmentTestId(odcinek, szynaSceny), overlay, palette, cameraScale);
+            const sz = stacja.szynaPrzegladu;
+            return { d: `M ${sz.x0} ${sz.y} H ${sz.x1}`, stroke: barwaAlarmu ?? w.stroke, strokeWidth: w.strokeWidth };
+          })(),
+        ];
+  const nogi = new Map<string, { stroke: string; strokeWidth: number; dash: string | undefined; nogi: SymbolStacji['nogi'][number][] }>();
+  for (const noga of stacja.nogi) {
+    const odcinek = scene.segments[noga.odcinekToru];
+    const w = wygladOdcinka(odcinek, segmentTestId(odcinek, noga.odcinekToru), overlay, palette, cameraScale);
+    // Nogi stacji zawsze ciągłe (decyzja właściciela) — z odcinka toru tylko barwa stanu i waga.
+    const klucz = `${w.stroke}|${w.strokeWidth}`;
+    const g = nogi.get(klucz) ?? { stroke: w.stroke, strokeWidth: w.strokeWidth, dash: undefined as string | undefined, nogi: [] };
+    g.nogi.push(noga);
+    nogi.set(klucz, g);
+  }
+  const atrybutAlarmu = alarm === undefined ? undefined : alarm.rodzaj === 'miejsce-zwarcia' ? alarm.rodzaj : alarm.severity;
+  if (stacja.rodzaj === 'punkt-rozlacznikowy') {
+    // R1: linia przez porty toru i romb — wypełniony zamknięty, pusty (tło kanwy) otwarty.
+    // Linia punktu jest linią toru: wzór kreski (kabel/napowietrzna) i barwa stanu z odcinka toru
+    // pierwszej nogi.
+    const n0 = stacja.nogi[0];
+    const g =
+      n0 === undefined
+        ? undefined
+        : (() => {
+            const w = wygladOdcinka(scene.segments[n0.odcinekToru], segmentTestId(scene.segments[n0.odcinekToru], n0.odcinekToru), overlay, palette, cameraScale);
+            return { stroke: w.stroke, strokeWidth: w.strokeWidth, dash: w.strokeDasharray };
+          })();
+    const barwa = g?.stroke ?? palette.baseStroke;
+    return (
+      <g
+        data-testid={`sld-v3-symbol-stacji:${stacja.stacjaRef}`}
+        data-owner-ref={stacja.stacjaRef}
+        data-symbol-stacji="true"
+        data-rodzaj-stacji={stacja.rodzaj}
+        data-stan-punktu={stacja.stanPunktu}
+        data-kadr={poza ? 'poza' : undefined}
+        opacity={poza ? KURTYNA_KADRU_OPACITY : undefined}
+      >
+        <path data-linia-punktu="true" d={liniaPunktu(stacja.nogi)} fill="none" stroke={barwa} strokeWidth={g?.strokeWidth} strokeDasharray={g?.dash} />
+        <path
+          data-romb-punktu="true"
+          data-stan-alarmowy={atrybutAlarmu}
+          d={rombPunktu(stacja.nogi, cameraScale)}
+          fill={stacja.stanPunktu === 'otwarty' ? palette.canvasBackground : barwaAlarmu ?? barwa}
+          stroke={barwaAlarmu ?? barwa}
+          strokeWidth={apparatusStrokeWidthForScale(cameraScale)}
+        />
+      </g>
+    );
+  }
+  let znak: string | undefined;
+  const xZnaku = xZawieszeniaZnaku(stacja);
+  if (stacja.rodzaj === 'oze' && stacja.szynaPrzegladu !== undefined && xZnaku !== undefined) {
+    const kierunek = stacja.nogi.length > 0 && stacja.nogi[0].yToru < stacja.nogi[0].ySzyny ? -1 : 1;
+    znak = znakOze(stacja.szynaPrzegladu.y, xZnaku, kierunek, cameraScale);
+  }
+  const tresc = (
+    <>
+      {[...nogi.values()].map((g, i) => (
+        <path key={`noga-${i}`} data-nogi-stacji={g.nogi.length} d={sciezkaNog(g.nogi)} fill="none" stroke={g.stroke} strokeWidth={g.strokeWidth} strokeDasharray={g.dash} />
+      ))}
+      {szyny.map((s, i) => (
+        <path
+          key={`szyna-${i}`}
+          data-szyna-stacji="true"
+          data-stan-alarmowy={atrybutAlarmu}
+          d={s.d}
+          fill="none"
+          stroke={s.stroke}
+          strokeWidth={s.strokeWidth}
+        />
+      ))}
+      {znak && <path data-znak-oze="true" d={znak} fill="none" stroke={palette.baseStroke} strokeWidth={apparatusStrokeWidthForScale(cameraScale)} />}
+    </>
+  );
+  return (
+    <g
+      data-testid={`sld-v3-symbol-stacji:${stacja.stacjaRef}`}
+      data-owner-ref={stacja.stacjaRef}
+      data-symbol-stacji="true"
+      data-rodzaj-stacji={stacja.rodzaj}
+      data-kadr={poza ? 'poza' : undefined}
+      opacity={poza ? KURTYNA_KADRU_OPACITY : undefined}
+    >
+      {tresc}
+    </g>
   );
 }
 
@@ -3062,13 +3242,37 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   );
   // R3 — HISTEREZA progu czytelności danych: plan dostaje indeksy etykiet
   // narysowanych w poprzedniej klatce TEJ SAMEJ sceny (nowa scena = brak historii).
+  // R6 (karta SLD-SKALA-I-NAWIGACJA): hierarchia aparat → pole → stacja z tych samych zbiorów
+  // refów co kadr pola i stacji (`zakresKadru`); cel kliku rozstrzyga `celTrafienia`.
+  const hierarchiaCelow = useMemo(
+    () => hierarchiaCelowTrafienia(snapshot, scene),
+    [snapshot, scene],
+  );
+  // R8: szyna punktu rozłącznikowego nie jest rysowana w kadrze przeglądowym (romb R1 na linii),
+  // więc jej opis też nie — baza refu szyny SN punktu (`hitAreas.szynySnPrzegladu`).
+  const szynyPunktowBezRysunku = useMemo(() => {
+    const out = new Set<string>();
+    if (trybDokumentu) return out;
+    const przeglad = stacjePrzegladu(scene.symbols, hierarchiaCelow, skalaRysunku);
+    for (const [index, stacja] of szynySnPrzegladu(scene.segments, hierarchiaCelow, przeglad)) {
+      if (przeglad.get(stacja) === 'punkt-rozlacznikowy') out.add((scene.segments[index].meta?.ownerRef ?? '').split('#')[0]);
+    }
+    return out;
+  }, [trybDokumentu, scene, hierarchiaCelow, skalaRysunku]);
   const poprzedniPlanRef = useRef<{ readonly scene: SceneV3; readonly narysowane: ReadonlySet<number> } | null>(null);
   const labelPlan = useMemo((): LabelRenderPlan => {
     if (!isLayerVisible('labels', layerVisibility)) return { drawn: [], tozsamosciWPodpowiedzi: [] };
     const poprzedni = poprzedniPlanRef.current;
     const poprzednio = poprzedni !== null && poprzedni.scene === scene ? poprzedni.narysowane : undefined;
-    return planSceneLabels(scene.labels, labelObstacles, skalaPlanu, sheetSize, podlogaCelu, poprzednio);
-  }, [scene, labelObstacles, skalaPlanu, layerVisibility, sheetSize, podlogaCelu]);
+    const plan = planSceneLabels(scene.labels, labelObstacles, skalaPlanu, sheetSize, podlogaCelu, poprzednio);
+    if (szynyPunktowBezRysunku.size === 0) return plan;
+    const opisRysowany = (ownerRef: string | undefined) => !szynyPunktowBezRysunku.has((ownerRef ?? '').split('#')[0]);
+    return {
+      ...plan,
+      drawn: plan.drawn.filter((p) => opisRysowany(p.label.ownerRef)),
+      tozsamosciWPodpowiedzi: plan.tozsamosciWPodpowiedzi.filter((t) => opisRysowany(t.label.ownerRef)),
+    };
+  }, [scene, labelObstacles, skalaPlanu, layerVisibility, sheetSize, podlogaCelu, szynyPunktowBezRysunku]);
   const obrysArkusza = useMemo(() => obrysArkuszaPlanu(labelPlan, sheetSize), [labelPlan, sheetSize]);
   useEffect(() => {
     poprzedniPlanRef.current = { scene, narysowane: new Set(labelPlan.drawn.map((p) => p.index)) };
@@ -3163,12 +3367,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [resultLabelLayout],
   );
 
-  // R6 (karta SLD-SKALA-I-NAWIGACJA): hierarchia aparat → pole → stacja z tych samych zbiorów
-  // refów co kadr pola i stacji (`zakresKadru`); cel kliku rozstrzyga `celTrafienia`.
-  const hierarchiaCelow = useMemo(
-    () => hierarchiaCelowTrafienia(snapshot, scene),
-    [snapshot, scene],
-  );
 
   const hitAreas = useMemo<readonly CanvasHitArea[]>(
     () =>
@@ -3275,6 +3473,52 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [scene],
   );
   const gabarytySymboli = useMemo(() => scene.symbols.map(gabarytSymbolu), [scene]);
+  // R8: stacje rysowane w kadrze przeglądowym symbolem stacji (szyna i nogi, `glifZbiorczy.ts`);
+  // tryb dokumentu rysuje każdy obiekt własnym węzłem (skala rysunku 1).
+  const symboleStacjiRenderu = useMemo(
+    () => (trybDokumentu ? [] : symboleStacji(scene.symbols, scene.segments, hierarchiaCelow, skalaRysunku)),
+    [trybDokumentu, scene, hierarchiaCelow, skalaRysunku],
+  );
+  // R8: obiekty stacji kadru przeglądowego bez własnego węzła — TEN SAM predykat co warstwa
+  // trafień (`hitAreas.bezWezlaPrzegladu`).
+  const przerwyNog = useMemo(
+    () => przerwyWNogach(scene.symbols, symboleStacjiRenderu, hierarchiaCelow, skalaRysunku),
+    [scene, symboleStacjiRenderu, hierarchiaCelow, skalaRysunku],
+  );
+  const bezWezlaPrzegladuRenderu = useMemo(
+    () =>
+      symboleStacjiRenderu.length === 0
+        ? { symbole: new Map<number, string>(), odcinki: new Map<number, string>() }
+        : bezWezlaPrzegladu(scene.symbols, scene.segments, hierarchiaCelow, stacjePrzegladu(scene.symbols, hierarchiaCelow, skalaRysunku)),
+    [symboleStacjiRenderu, scene, hierarchiaCelow, skalaRysunku],
+  );
+  // R8: stan łącznika, który w kadrze przeglądowym niesie symbol stacji (□ w nodze, romb R1,
+  // obiekt bez węzła), nie dostaje drugiego znacznika R5 — ref nośnika z tej samej formuły co
+  // `znacznikiStanu.nosnikiZnacznikowStanu`.
+  const refyStanuWSymboluStacji = useMemo(() => {
+    const out = new Set<string>();
+    const dodaj = (i: number) => {
+      const s = scene.symbols[i];
+      out.add(s.meta?.ownerRef ?? s.meta?.deviceRef ?? `symbol-${i}`);
+    };
+    for (const i of przerwyNog.keys()) dodaj(i);
+    for (const i of bezWezlaPrzegladuRenderu.symbole.keys()) dodaj(i);
+    return out;
+  }, [scene, przerwyNog, bezWezlaPrzegladuRenderu]);
+  const transformatoryPrzegladowe = useMemo(() => {
+    const wynik = new Set<number>();
+    if (trybDokumentu) return wynik;
+    scene.symbols.forEach((symbol, index) => {
+      if (symbol.symbolId !== 'transformer2W') return;
+      const stopnie = stopnieCeluSymbolu(hierarchiaCelow, symbol);
+      if (stopnie && celTrafienia(stopnie, skalaRysunku).poziom !== 'aparat') wynik.add(index);
+    });
+    return wynik;
+  }, [trybDokumentu, scene, hierarchiaCelow, skalaRysunku]);
+  const alarmyStacji = useMemo(
+    () => najgorszyStanStacji(hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements),
+    [hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements],
+  );
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
   // AKTUALNYM transformie kamery — jedyny sposób uzyskania go z zewnątrz
@@ -3689,8 +3933,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-segments">
           {scene.segments.map((segment, index) => {
             if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) return null;
-            // R8: odcinek poza oknem renderu nie dostaje węzła (`oknoRenderu.ts`).
+            // R8: odcinek poza oknem renderu nie dostaje węzła (`oknoRenderu.ts`); odcinek pola
+            // stacji rysowanej glifem zbiorczym jest w ścieżce stacji (`sld-v3-glify-zbiorcze`).
             if (!przecinaOkno(obwiednieOdcinkow[index], oknoRenderu)) return null;
+            if (bezWezlaPrzegladuRenderu.odcinki.has(index)) return null;
             const wezel = (
               <SceneSegmentNode
                 key={`segment-${index}`}
@@ -3710,6 +3956,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             );
           })}
         </g>
+        <g data-testid="sld-v3-symbole-stacji">
+          {symboleStacjiRenderu.map((stacja) => (
+            <SymbolStacjiNode
+              key={stacja.stacjaRef}
+              stacja={stacja}
+              scene={scene}
+              overlay={effectiveOverlay}
+              cameraScale={skalaRysunku}
+              poza={pozaKadrem(stacja.stacjaRef)}
+              alarm={alarmyStacji.get(stacja.stacjaRef)}
+            />
+          ))}
+        </g>
         <g data-testid="sld-v3-symbols">
           {scene.symbols.map((symbol, index) => {
             if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
@@ -3717,6 +3976,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             // rysuje sam obrys (`oknoRenderu.symbolBezWnetrza`).
             const gabaryt = gabarytySymboli[index];
             if (!przecinaOkno(gabaryt, oknoRenderu)) return null;
+            if (bezWezlaPrzegladuRenderu.symbole.has(index)) return null;
             const wezel = (
               <SceneSymbolNode
                 key={`symbol-${index}`}
@@ -3726,6 +3986,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 cameraScale={skalaRysunku}
                 ramkaBloku={ramkiBlokow.get(index)}
                 obrysBezWnetrza={symbolBezWnetrza(gabaryt, skalaRysunku) ? gabaryt : undefined}
+                znakPrzegladowy={transformatoryPrzegladowe.has(index) ? gabaryt : undefined}
+                przerwaWNodze={przerwyNog.get(index)}
               />
             );
             return pozaKadrem(symbol.meta?.ownerRef) ? (
@@ -3820,7 +4082,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
          * (`canvas/znacznikiStanu.ts`); warstwa nie przechwytuje wskaźnika (trafienie
          * należy do obiektu, `canvas/hitAreas.ts`). */}
         <g data-testid="sld-v3-znaczniki-stanu" pointerEvents="none">
-          {znacznikiStanuPlan.map((znacznik) => (
+          {znacznikiStanuPlan
+            .filter((z) => !((z.rodzaj === 'lacznik-otwarty' || z.rodzaj === 'punkt-rozciecia') && refyStanuWSymboluStacji.has(z.ref)))
+            .map((znacznik) => (
             <SceneZnacznikStanuNode
               key={`znacznik-${znacznik.rodzaj}-${znacznik.ref}`}
               znacznik={znacznik}

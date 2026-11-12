@@ -23,6 +23,8 @@ import fxGpz from '../../../../../harness-fixtures/generated/geometria_stacji_gp
 import { nazwaStanuObiektuPl } from '../../../../shared/stanObiektu';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3 } from '../SldCanvasV3';
+import { bezWezlaPrzegladu, stacjePrzegladu } from '../hitAreas';
+import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { kameraNadSrodkiemSceny } from './kameraTestowa';
 
 afterEach(cleanup);
@@ -114,11 +116,24 @@ describe('stan obiektu na kanwie — iloczyn kompozycja × pochodzenie × stan',
     // Kadr całego rysunku (kamera początkowa kanwy): okno renderu R8 obejmuje każdy symbol, więc
     // KAŻDY symbol bez rekordu ma węzeł — przy skali czytania nad środkiem sceny część z nich
     // leży poza oknem i nie ma czego sprawdzić. Symbol z obrysem bez wnętrza niesie te same
-    // atrybuty co glif (`SceneSymbolNode`).
+    // atrybuty co glif (`SceneSymbolNode`). Obiekt stacji rysowanej symbolem stacji w kadrze
+    // przeglądowym (R8, `hitAreas.bezWezlaPrzegladu`) nie ma węzła własnego — sprawdza się symbol
+    // jego stacji (bez atrybutu stanu).
     const dom = render(<SldCanvasV3 snapshot={enm} width={WIDOK.width} height={WIDOK.height} />).container;
+    const scena = buildSceneV3(enm);
+    const skala = Number(dom.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-skala-kamery'));
+    const h = hierarchiaCelowTrafienia(enm, scena);
+    const glifSymbolu = new Map<string, string>();
+    for (const [i, stacja] of bezWezlaPrzegladu(scena.symbols, scena.segments, h, stacjePrzegladu(scena.symbols, h, skala)).symbole) {
+      glifSymbolu.set(scena.symbols[i].meta?.testId ?? '', stacja);
+    }
     for (const s of bezRekordu) {
       expect(s.meta?.stanObiektu).toBeUndefined();
-      const wezel = dom.querySelector(`[data-testid="${s.meta!.testId}"]`);
+      const stacjaGlifu = glifSymbolu.get(s.meta!.testId!);
+      const wezel =
+        stacjaGlifu === undefined
+          ? dom.querySelector(`[data-testid="${s.meta!.testId}"]`)
+          : [...dom.querySelectorAll('[data-symbol-stacji="true"]')].find((g) => g.getAttribute('data-owner-ref') === stacjaGlifu) ?? null;
       expect(wezel, s.meta?.testId).not.toBeNull();
       expect(wezel!.hasAttribute('data-stan-obiektu'), s.meta?.testId).toBe(false);
       expect(dom.querySelector(`[data-hit-for="${s.meta!.testId}"] title`)?.textContent ?? '').not.toContain('Stan obiektu');

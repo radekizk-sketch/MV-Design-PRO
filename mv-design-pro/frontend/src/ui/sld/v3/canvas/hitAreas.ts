@@ -52,7 +52,7 @@
  * renderu i uruchamialny w skrypcie odbioru `scripts/sld_v3_acceptance.mjs`.
  */
 import type { RouteVertex } from '../layout/route';
-import type { V3Rect } from '../core/grid';
+import { GRID, type V3Rect } from '../core/grid';
 import { SEGMENT_STROKE_WIDTH, type PreviewElementKind, type PreviewSegment, type PreviewSymbol } from '../compose/preview';
 import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { OwnerKind } from '../layout/labels';
@@ -61,6 +61,7 @@ import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../layout/measu
 import { MIN_SYMBOL_SCREEN_PX } from '../symbols/defs';
 import { kluczePrzynaleznosci } from './viewAnchor';
 import { podpowiedzStanuObiektuPl } from '../../../shared/stanObiektu';
+import { przerwaToru } from './torMocy';
 
 /**
  * Najmniejszy dopuszczalny wymiar obszaru trafienia w pikselach EKRANU.
@@ -397,6 +398,218 @@ function poleIStacja(
   return { pole, stacja };
 }
 
+/** Pole i stacja obiektu o `ownerRef` w hierarchii celów — to samo rozstrzygnięcie, z którego cel
+ *  kliku R6 bierze stopnie „pole” i „stacja” (glif zbiorczy stacji R8, `glifZbiorczy.ts`). */
+export function poleIStacjaObiektu(
+  hierarchia: HierarchiaCelowWejscie,
+  ownerRef: string | undefined,
+): { readonly pole: string | undefined; readonly stacja: string | undefined } {
+  return ownerRef ? poleIStacja(hierarchia, ownerRef) : { pole: undefined, stacja: undefined };
+}
+
+/** Stopnie hierarchii celu SYMBOLU (prostokąt tuszu); `null` — portal nN i adnotacje nie są
+ *  obiektami pola i zostają własnymi celami. Jedno źródło dla warstwy trafień i glifu
+ *  zbiorczego stacji (R8, `glifZbiorczy.ts`). */
+export function stopnieCeluSymbolu(hierarchia: HierarchiaCelowWejscie, symbol: PreviewSymbol): readonly StopienCelu[] | null {
+  const kind = symbol.meta?.elementKind;
+  if (kind === 'lvPortal' || kind === 'protectionAnnotation') return null;
+  return stopnieCeluObiektu(hierarchia, symbol.meta?.ownerRef, symbolInkRect(symbol));
+}
+
+/**
+ * R8 (decyzja właściciela 2026-11-12) — RODZAJ STACJI z modelu (symbole sceny należące do stacji),
+ * nigdy z nazwy: `gpz` — stacja ze źródłem sieciowym; `punkt-rozlacznikowy` — stacja bez
+ * transformatora (w kadrze przeglądowym romb R1 na linii, bez nóg i szyny); `oze` — stacja ze
+ * źródłem OZE (znak B1 pod szyną); `zwykla` — stacja SN/nN.
+ */
+export type RodzajStacji = 'gpz' | 'punkt-rozlacznikowy' | 'oze' | 'zwykla';
+
+/** Rodzaj stacji rysowanej w kadrze przeglądowym symbolem (GPZ — zawsze pełnym rysunkiem). */
+export type RodzajStacjiPrzegladu = Exclude<RodzajStacji, 'gpz'>;
+
+/** Stacja obiektu: stacja wprost albo stacja pola (klucz hierarchii celów R6). */
+function stacjaObiektu(hierarchia: HierarchiaCelowWejscie, ownerRef: string | undefined): string | undefined {
+  const { pole, stacja } = poleIStacjaObiektu(hierarchia, ownerRef);
+  return stacja ?? (pole === undefined ? undefined : hierarchia.pola.get(pole)?.stacjaRef);
+}
+
+const ZRODLA_OZE: ReadonlySet<string> = new Set(['derPv', 'derBess', 'derGenerator', 'derWind', 'derUnknown']);
+
+/** Rodzaj każdej stacji hierarchii (`RodzajStacji`), z symboli sceny tej stacji. */
+export function rodzajeStacji(
+  symbols: readonly PreviewSymbol[],
+  hierarchia: HierarchiaCelowWejscie,
+): ReadonlyMap<string, RodzajStacji> {
+  const cechy = new Map<string, { siec: boolean; tr: boolean; oze: boolean }>();
+  for (const stacja of hierarchia.stacje.keys()) cechy.set(stacja, { siec: false, tr: false, oze: false });
+  for (const symbol of symbols) {
+    const stacja = stacjaObiektu(hierarchia, symbol.meta?.ownerRef);
+    const c = stacja === undefined ? undefined : cechy.get(stacja);
+    if (!c) continue;
+    if (symbol.symbolId === 'gridSource') c.siec = true;
+    if (symbol.symbolId === 'transformer2W') c.tr = true;
+    if (ZRODLA_OZE.has(symbol.symbolId)) c.oze = true;
+  }
+  const out = new Map<string, RodzajStacji>();
+  for (const [stacja, c] of cechy) out.set(stacja, c.siec ? 'gpz' : !c.tr ? 'punkt-rozlacznikowy' : c.oze ? 'oze' : 'zwykla');
+  return out;
+}
+
+/**
+ * R8: stacje rysowane w kadrze przeglądowym SYMBOLEM STACJI (`glifZbiorczy.ts`: szyna i nogi
+ * toru, a punkt rozłącznikowy — romb R1 na linii) przy skali `scale`: stacja SN/nN albo punkt
+ * rozłącznikowy, której KAŻDE pole z aparaturą ma przy tej skali cel trafienia wyższy niż aparat
+ * (żaden aparat stacji nie jest rozpoznawalny na ekranie). GPZ rysuje się zawsze pełnym rysunkiem.
+ * Jedno źródło dla rysunku i trafienia.
+ */
+export function stacjePrzegladu(
+  symbols: readonly PreviewSymbol[],
+  hierarchia: HierarchiaCelowWejscie,
+  scale: number,
+): ReadonlyMap<string, RodzajStacjiPrzegladu> {
+  const zAparatem = new Map<string, boolean>();
+  for (const symbol of symbols) {
+    const stacja = stacjaObiektu(hierarchia, symbol.meta?.ownerRef);
+    if (stacja === undefined) continue;
+    const stopnie = stopnieCeluSymbolu(hierarchia, symbol);
+    if (stopnie === null || stopnie.length < 2) continue;
+    const czytelny = celTrafienia(stopnie, scale).poziom === 'aparat';
+    zAparatem.set(stacja, (zAparatem.get(stacja) ?? false) || czytelny);
+  }
+  const out = new Map<string, RodzajStacjiPrzegladu>();
+  for (const [stacja, rodzaj] of rodzajeStacji(symbols, hierarchia)) {
+    if (rodzaj === 'gpz') continue;
+    const czytelna = zAparatem.get(stacja);
+    if (czytelna === false) out.set(stacja, rodzaj);
+  }
+  return out;
+}
+
+/** Stacja symbolu przeglądowego, do którego należy obiekt (`undefined` — poza takim symbolem). */
+export function stacjaPrzegladuObiektu(
+  hierarchia: HierarchiaCelowWejscie,
+  przeglad: ReadonlyMap<string, unknown>,
+  ownerRef: string | undefined,
+): string | undefined {
+  const stacja = stacjaObiektu(hierarchia, ownerRef);
+  return stacja !== undefined && przeglad.has(stacja) ? stacja : undefined;
+}
+
+const EPS_TRASY = 1e-6;
+
+/** Czy punkt leży na łamanej osiowej (krawędzie poziome i pionowe sceny). */
+export function punktNaLamanej(p: { readonly x: number; readonly y: number }, points: readonly { readonly x: number; readonly y: number }[]): boolean {
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1];
+    const b = points[i];
+    const wX = p.x >= Math.min(a.x, b.x) - EPS_TRASY && p.x <= Math.max(a.x, b.x) + EPS_TRASY;
+    const wY = p.y >= Math.min(a.y, b.y) - EPS_TRASY && p.y <= Math.max(a.y, b.y) + EPS_TRASY;
+    if (wX && wY && (Math.abs(a.x - b.x) < EPS_TRASY || Math.abs(a.y - b.y) < EPS_TRASY)) return true;
+  }
+  return false;
+}
+
+/**
+ * Szyny SN stacji kadru przeglądowego (indeks odcinka → stacja): odcinek szyny stacji (bez pola),
+ * do którego dochodzi koniec odcinka któregoś POLA stacji — z topologii rysunku, nie z poziomu
+ * napięcia w meta (szyna nN stacji nie ma tej cechy w scenie). Jedno źródło dla symbolu stacji
+ * (`glifZbiorczy.symboleStacji`) i warstwy trafień (szyna SN zostaje własnym celem).
+ */
+export function szynySnPrzegladu(
+  segments: readonly PreviewSegment[],
+  hierarchia: HierarchiaCelowWejscie,
+  przeglad: ReadonlyMap<string, RodzajStacjiPrzegladu>,
+): ReadonlyMap<number, string> {
+  const kandydaci: [number, string][] = [];
+  const koncePol = new Map<string, { x: number; y: number }[]>();
+  segments.forEach((segment, index) => {
+    if (segment.points.length < 2) return;
+    const stacja = stacjaPrzegladuObiektu(hierarchia, przeglad, segment.meta?.ownerRef);
+    if (stacja === undefined) return;
+    const { pole } = poleIStacjaObiektu(hierarchia, segment.meta?.ownerRef);
+    if (pole === undefined) {
+      if (segment.meta?.elementKind === 'bus') kandydaci.push([index, stacja]);
+      return;
+    }
+    const pts = segment.points;
+    koncePol.set(stacja, [...(koncePol.get(stacja) ?? []), pts[0], pts[pts.length - 1]]);
+  });
+  const out = new Map<number, string>();
+  for (const [index, stacja] of kandydaci) {
+    if ((koncePol.get(stacja) ?? []).some((p) => punktNaLamanej(p, segments[index].points))) out.set(index, stacja);
+  }
+  return out;
+}
+
+/** Obiekty sceny bez własnego węzła w kadrze przeglądowym (indeksy sceny) i stacja każdego z nich. */
+export interface BezWezlaPrzegladu {
+  readonly symbole: ReadonlyMap<number, string>;
+  readonly odcinki: ReadonlyMap<number, string>;
+}
+
+/**
+ * R8 — obiekty stacji kadru przeglądowego, które NIE mają własnego węzła (rysunek stacji to symbol
+ * stacji: szyna i nogi toru albo romb R1), przypisane stacji. Jedno źródło dla rysunku kanwy
+ * i warstwy trafień (klik takiego obiektu przejmuje cel pola albo stacji).
+ *
+ * - Odcinek: każdy odcinek stacji (szynę SN i nogi rysuje symbol stacji z ich geometrii).
+ * - Symbol z przynależnością w hierarchii: każdy symbol stacji poza łącznikiem przerywającym tor
+ *   (`torMocy.przerwaToru` — przerwa ze znacznikiem w nodze, także punkt NO). Transformator,
+ *   źródła OZE, adnotacje, portal nN i aparatura pól są w symbolu stacji (decyzja właściciela: bez
+ *   symbolu TR w tym oddaleniu). Punkt rozłącznikowy nie ma żadnego węzła własnego — stan
+ *   łączników niesie romb R1 (pusty = otwarty, także punkt NO).
+ * - Symbol bez przynależności (kropka odczepu w polu, strzałka odbioru nN — scena nie nadaje im
+ *   `ownerRef`): z TOPOLOGII rysunku — należy do stacji, gdy każdy wierzchołek trasy w jego
+ *   gabarycie (wierzchołki leżą w rastrze GRID) należy do odcinka bez węzła tej samej stacji
+ *   i jest co najmniej jeden taki wierzchołek. Kropka odczepu magistrali dotyka odcinka toru
+ *   i zostaje węzłem.
+ */
+export function bezWezlaPrzegladu(
+  symbols: readonly PreviewSymbol[],
+  segments: readonly PreviewSegment[],
+  hierarchia: HierarchiaCelowWejscie,
+  przeglad: ReadonlyMap<string, RodzajStacjiPrzegladu>,
+): BezWezlaPrzegladu {
+  const symbole = new Map<number, string>();
+  const odcinki = new Map<number, string>();
+  if (przeglad.size === 0) return { symbole, odcinki };
+  /** Wierzchołek trasy → stacja odcinka bez węzła albo `null` (wierzchołek odcinka z węzłem). */
+  const wierzcholki = new Map<string, string | null>();
+  segments.forEach((segment, index) => {
+    if (segment.points.length < 2) return;
+    const stacja = stacjaPrzegladuObiektu(hierarchia, przeglad, segment.meta?.ownerRef);
+    if (stacja !== undefined) odcinki.set(index, stacja);
+    for (const p of segment.points) {
+      const klucz = `${p.x},${p.y}`;
+      const dotychczas = wierzcholki.get(klucz);
+      if (stacja === undefined) wierzcholki.set(klucz, null);
+      else if (dotychczas === undefined) wierzcholki.set(klucz, stacja);
+      else if (dotychczas !== stacja) wierzcholki.set(klucz, null);
+    }
+  });
+  symbols.forEach((symbol, index) => {
+    const ownerRef = symbol.meta?.ownerRef;
+    if (ownerRef !== undefined) {
+      const stacja = stacjaPrzegladuObiektu(hierarchia, przeglad, ownerRef);
+      if (stacja !== undefined && (przeglad.get(stacja) === 'punkt-rozlacznikowy' || !przerwaToru(symbol))) symbole.set(index, stacja);
+      return;
+    }
+    const g = gabarytSymbolu(symbol);
+    let stacja: string | null | undefined;
+    for (let x = Math.ceil(g.x / GRID) * GRID; x <= g.x + g.width; x += GRID) {
+      for (let y = Math.ceil(g.y / GRID) * GRID; y <= g.y + g.height; y += GRID) {
+        const w = wierzcholki.get(`${x},${y}`);
+        if (w === undefined) continue;
+        stacja = stacja === undefined && w !== null ? w : stacja === w ? w : null;
+        if (stacja === null) break;
+      }
+      if (stacja === null) break;
+    }
+    if (typeof stacja === 'string' && !przerwaToru(symbol)) symbole.set(index, stacja);
+  });
+  return { symbole, odcinki };
+}
+
 /** Stopnie hierarchii obiektu o obszarze `rect` (od najmniejszego). */
 export function stopnieCeluObiektu(
   hierarchia: HierarchiaCelowWejscie | undefined,
@@ -483,11 +696,8 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
   };
   if (hierarchia) {
     symbols.forEach((symbol, index) => {
-      const ownerRef = symbol.meta?.ownerRef;
-      // Portal nN i adnotacje nie są obiektami pola — zostają własnymi celami.
-      const kind = symbol.meta?.elementKind;
-      if (kind === 'lvPortal' || kind === 'protectionAnnotation') return;
-      rozstrzygnij(testIdSymbolu(symbol, index), stopnieCeluObiektu(hierarchia, ownerRef, symbolInkRect(symbol)));
+      const stopnie = stopnieCeluSymbolu(hierarchia, symbol);
+      if (stopnie) rozstrzygnij(testIdSymbolu(symbol, index), stopnie);
     });
     segments.forEach((segment, index) => {
       if (segment.points.length < 2) return;
@@ -501,6 +711,26 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
       const dlugosc = dlugoscLamanej(segment.points);
       rozstrzygnij(testIdOdcinka(segment, index), stopnieCeluObiektu(hierarchia, ownerRef, { x: 0, y: 0, width: dlugosc, height: dlugosc }));
     });
+    // R8: obiekt stacji rysowanej w kadrze przeglądowym symbolem stacji (szyna i nogi) nie ma
+    // własnego rysunku — jego klik przejmuje cel pola albo stacji (obiekt nierozpoznawalny).
+    // Szyna SN zostaje własnym celem (rysowana grubą kreską symbolu stacji), łącznik otwarty
+    // w nodze — własnym węzłem z przerwą toru.
+    const przeglad = stacjePrzegladu(symbols, hierarchia, scale);
+    const ZERO = { x: 0, y: 0, width: 0, height: 0 };
+    const bezWezla = bezWezlaPrzegladu(symbols, segments, hierarchia, przeglad);
+    for (const [index, stacja] of bezWezla.symbole) {
+      // Obiekt bez przynależności w hierarchii przejmuje cel swojej stacji (z topologii rysunku).
+      const ref = symbols[index].meta?.ownerRef ?? stacja;
+      rozstrzygnij(testIdSymbolu(symbols[index], index), stopnieCeluObiektu(hierarchia, ref, ZERO));
+    }
+    const szynySn = szynySnPrzegladu(segments, hierarchia, przeglad);
+    for (const index of bezWezla.odcinki.keys()) {
+      const segment = segments[index];
+      // Szyna SN stacji zostaje własnym celem — symbol stacji rysuje ją grubą kreską (punkt
+      // rozłącznikowy szyny nie rysuje: jej klik przejmuje stacja).
+      if (szynySn.has(index) && przeglad.get(bezWezla.odcinki.get(index)!) !== 'punkt-rozlacznikowy') continue;
+      rozstrzygnij(testIdOdcinka(segment, index), stopnieCeluObiektu(hierarchia, segment.meta?.ownerRef, ZERO));
+    }
     (input.tozsamosciWPodpowiedzi ?? []).forEach(({ label, index }) => {
       const stopnie = stopnieCeluObiektu(hierarchia, label.ownerRef, label.rect);
       if (stopnie.length < 2) return;
