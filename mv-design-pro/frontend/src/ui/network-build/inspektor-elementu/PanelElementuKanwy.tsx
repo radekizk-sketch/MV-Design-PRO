@@ -170,14 +170,17 @@ export function SekcjaWynikowElementu({
  * Kolumna liczbowa zestawienia: wartość z jednostką w JEDNEJ linii („18,5 kA”), z odstępem od
  * sąsiedniej kolumny. Oględziny zrzutu `wejscie-z-wynikow-zwarc` (2026-11-12): w wąskim panelu
  * liczba i jednostka łamały się na dwie linie („18,5 / kA”), a kolumny MAKS. i MIN. sklejały się
- * („12,8110,44”). Zawija się etykieta wielkości, nigdy liczba.
+ * („12,8110,44”). Zawija się etykieta wielkości (komórka wiersza z `white-space: normal`
+ * wbrew klasie wiersza karty), nigdy liczba.
  */
 const KOLUMNA_LICZBOWA = { textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: '0.75rem' } as const;
 
 function ZestawienieZwarcia({ zestawienie }: { readonly zestawienie: ZestawienieZwarciaElementu }): JSX.Element {
   const wiersz = (w: WierszZwarciaElementu, grupa: string) => (
     <tr key={w.kod} data-testid={`inspektor-zwarcie-${grupa}-${w.kod}`}>
-      <th scope="row" className="mvd-kt-etykieta" style={{ fontWeight: 'normal', textAlign: 'left' }}>
+      {/* Etykieta wielkości ZAWIJA się (klasa wiersza karty ma `nowrap`, które w tabeli
+          wypychało kolumnę MIN. poza panel — zrzut 2026-11-12), liczby nie. */}
+      <th scope="row" className="mvd-kt-etykieta" style={{ fontWeight: 'normal', textAlign: 'left', whiteSpace: 'normal' }}>
         <TekstZWzorami tekst={w.symbol ? `${w.etykieta} ${w.symbol}` : w.etykieta} />
       </th>
       <td className="mvd-num" data-testid="inspektor-zwarcie-maks" style={KOLUMNA_LICZBOWA}>{w.maks ?? '—'}</td>

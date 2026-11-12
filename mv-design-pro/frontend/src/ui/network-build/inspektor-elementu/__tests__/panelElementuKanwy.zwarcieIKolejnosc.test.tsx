@@ -107,6 +107,9 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
         expect(kom.style.whiteSpace).toBe('nowrap');
         expect(kom.style.paddingLeft).not.toBe('');
       }
+      // Etykieta wielkości zawija się (klasa wiersza karty ma `nowrap`, które wypychało MIN.
+      // poza panel): jawne `white-space: normal` na komórce etykiety.
+      for (const etykieta of within(zestawienie).getAllByRole('rowheader')) expect(etykieta.style.whiteSpace).toBe('normal');
       expect(komorka('warunek', 'c', 'maks')).toBe('1,10');
       expect(komorka('warunek', 'tk', 'maks')).toBe('1,00 s');
       expect(within(zestawienie).getByTestId('inspektor-zwarcie-podstawa-c').textContent).toContain('IEC 60909-0 tab. 1');
