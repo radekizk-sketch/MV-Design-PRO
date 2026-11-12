@@ -166,14 +166,22 @@ export function SekcjaWynikowElementu({
 }
 
 /** Sekcja zwarć (karta INSPEKTOR-I-NAWIGACJA): rodzaj, wielkości MAKS./MIN. osobno, warunki. */
+/**
+ * Kolumna liczbowa zestawienia: wartość z jednostką w JEDNEJ linii („18,5 kA”), z odstępem od
+ * sąsiedniej kolumny. Oględziny zrzutu `wejscie-z-wynikow-zwarc` (2026-11-12): w wąskim panelu
+ * liczba i jednostka łamały się na dwie linie („18,5 / kA”), a kolumny MAKS. i MIN. sklejały się
+ * („12,8110,44”). Zawija się etykieta wielkości, nigdy liczba.
+ */
+const KOLUMNA_LICZBOWA = { textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: '0.75rem' } as const;
+
 function ZestawienieZwarcia({ zestawienie }: { readonly zestawienie: ZestawienieZwarciaElementu }): JSX.Element {
   const wiersz = (w: WierszZwarciaElementu, grupa: string) => (
     <tr key={w.kod} data-testid={`inspektor-zwarcie-${grupa}-${w.kod}`}>
       <th scope="row" className="mvd-kt-etykieta" style={{ fontWeight: 'normal', textAlign: 'left' }}>
         <TekstZWzorami tekst={w.symbol ? `${w.etykieta} ${w.symbol}` : w.etykieta} />
       </th>
-      <td className="mvd-num" data-testid="inspektor-zwarcie-maks" style={{ textAlign: 'right' }}>{w.maks ?? '—'}</td>
-      <td className="mvd-num" data-testid="inspektor-zwarcie-min" style={{ textAlign: 'right' }}>{w.min ?? '—'}</td>
+      <td className="mvd-num" data-testid="inspektor-zwarcie-maks" style={KOLUMNA_LICZBOWA}>{w.maks ?? '—'}</td>
+      <td className="mvd-num" data-testid="inspektor-zwarcie-min" style={KOLUMNA_LICZBOWA}>{w.min ?? '—'}</td>
     </tr>
   );
   return (
@@ -188,8 +196,8 @@ function ZestawienieZwarcia({ zestawienie }: { readonly zestawienie: Zestawienie
         <thead>
           <tr style={{ color: 'var(--mvd-muted)' }}>
             <th scope="col" style={{ textAlign: 'left', fontWeight: 'normal' }}>Wielkość</th>
-            <th scope="col" style={{ textAlign: 'right', fontWeight: 'normal' }}>Maks.</th>
-            <th scope="col" style={{ textAlign: 'right', fontWeight: 'normal' }}>Min.</th>
+            <th scope="col" style={{ ...KOLUMNA_LICZBOWA, fontWeight: 'normal' }}>Maks.</th>
+            <th scope="col" style={{ ...KOLUMNA_LICZBOWA, fontWeight: 'normal' }}>Min.</th>
           </tr>
         </thead>
         <tbody>

@@ -101,6 +101,12 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
         'inspektor-zwarcie-warunek-tk',
       ]);
       expect(komorka('wielkosc', 'IK_3F_A', 'maks')).toBe('18,5 kA');
+      // Liczba z jednostką w jednej linii, kolumny rozdzielone (oględziny 2026-11-12: „18,5 / kA”,
+      // „12,8110,44”) — każda komórka i nagłówek kolumny liczbowej.
+      for (const kom of within(zestawienie).getAllByTestId(/^inspektor-zwarcie-(maks|min)$/)) {
+        expect(kom.style.whiteSpace).toBe('nowrap');
+        expect(kom.style.paddingLeft).not.toBe('');
+      }
       expect(komorka('warunek', 'c', 'maks')).toBe('1,10');
       expect(komorka('warunek', 'tk', 'maks')).toBe('1,00 s');
       expect(within(zestawienie).getByTestId('inspektor-zwarcie-podstawa-c').textContent).toContain('IEC 60909-0 tab. 1');
