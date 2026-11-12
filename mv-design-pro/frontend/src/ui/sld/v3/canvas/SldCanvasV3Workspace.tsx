@@ -2283,6 +2283,18 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `LvDomainProjectionV1` przychodzi z backendu wraz z wynikami i SWZ.
   const [lvDomainStationRef, setLvDomainStationRef] = useState<string | null>(null);
   const closeLvDomainPortal = useCallback(() => setLvDomainStationRef(null), []);
+  // Wejścia na schemat (karta INSPEKTOR-I-NAWIGACJA P1, `WskazanieSld.projekcja`): cel rysowany
+  // w projekcji nN stacji (szyna nN, odpływ, odbiór) otwiera portal nN TEJ stacji — ten sam
+  // skutek co klik w portal nN na zacisku transformatora; kadr SN prowadzi reguła wskazania
+  // (efekt wyżej, rzut szyny nN na kompozyt `stacja#lv-bus`). Wskazanie ciche („kotwicz”) nie
+  // otwiera paneli. Każde wskazanie obsłużone raz (numer sekwencji).
+  const wskazanieNnObsluzone = useRef(0);
+  useEffect(() => {
+    if (!sldWskazanie || sldWskazanie.seq <= wskazanieNnObsluzone.current) return;
+    wskazanieNnObsluzone.current = sldWskazanie.seq;
+    if (sldWskazanie.tryb === 'kotwicz') return;
+    if (sldWskazanie.projekcja === 'nn' && sldWskazanie.stacjaRef) setLvDomainStationRef(sldWskazanie.stacjaRef);
+  }, [sldWskazanie]);
   const lvDomainPortalOpen = lvDomainStationRef !== null && activeCaseId !== null;
   const lvDomainPortalWidth = stationInternalPanelWidthPx(size.width);
   const lvDomainPortalHeight = Math.max(240, size.height - 24);
@@ -2749,7 +2761,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             eksportu SVG — button + dropdown „SVG (light_technical)" powyżej
             współdzielą TĘ SAMĄ implementację), zero wpływu na kanwę ekranową. */}
         <label
-          className="flex h-7 cursor-pointer items-center gap-1 whitespace-nowrap rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
+          className="flex h-7 cursor-pointer items-center gap-1 whitespace-nowrap rounded border border-scada-border bg-scada-panel/95 px-2 font-sans-eng text-[11px] font-medium text-scada-text shadow-lg"
           title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
         >
           <input

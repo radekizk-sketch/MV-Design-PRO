@@ -114,7 +114,7 @@ const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   // jasny druk (widoczny, ale wyraźnie mniej dominujący niż `resultLabel`).
   resultStale: '#8A7A9E',
   // Selekcja — TA SAMA wartość co v2 `LIGHT_TECHNICAL_COLOR_SELECTION`.
-  selection: '#0066CC',
+  selection: '#086678',
   // T2-WYNIKI (§0 pkt 2) — odznaka SWZ drukowana: TA SAMA para dark/light co
   // `colorTokens.ts`/`palette.ts` (`swzOk`/`swzFail`/`swzUnknown`), wartości
   // ODRĘBNE od `energized`/`fault`/`standby` (jeden odcień = jedno znaczenie

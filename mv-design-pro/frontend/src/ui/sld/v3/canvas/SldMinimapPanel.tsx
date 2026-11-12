@@ -78,7 +78,7 @@ export function SldMinimapPanel(props: SldMinimapPanelProps): JSX.Element {
       data-testid="sld-v3-minimap-panel"
       aria-label="Nawigator schematu — podgląd całej sieci z bieżącym kadrem"
     >
-      <header className="font-mono-eng text-[10px] font-semibold uppercase tracking-wider text-scada-muted">
+      <header className="font-sans-eng text-[11px] font-semibold uppercase tracking-wider text-scada-muted">
         Nawigator
       </header>
       <svg

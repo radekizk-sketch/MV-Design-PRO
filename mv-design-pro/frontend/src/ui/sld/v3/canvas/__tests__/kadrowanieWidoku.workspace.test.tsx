@@ -144,6 +144,8 @@ describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
     dwuklikStacji(container, STACJA);
     const i = porzadek.indexOf(STACJA);
     expect(screen.getByTestId('sld-v3-stacja-licznik').textContent).toBe(`${i + 1}/${porzadek.length}`);
+    // Licznik ma opis (podpowiedź i nazwa dostępna) — „3/5” bez słowa nie mówi, co liczy.
+    expect(screen.getByTestId('sld-v3-stacja-licznik').getAttribute('title')).toMatch(new RegExp(`^Stacja ${i + 1} z ${porzadek.length} w porządku magistrali`));
 
     fireEvent.click(screen.getByTestId('sld-v3-stacja-nastepna'));
     expect(etykietySciezki()).toEqual(['Sieć', nazwa(porzadek[i + 1])]);

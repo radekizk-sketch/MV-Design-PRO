@@ -117,7 +117,7 @@ import {
   type StanAlarmowyStacji,
 } from './glifZbiorczy';
 import { przerwaToru } from './torMocy';
-import { hierarchiaCelowTrafienia, nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
+import { hierarchiaCelowTrafienia, nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, zakresCelu, type ZakresKadru } from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
@@ -3065,9 +3065,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     dispatch({ type: 'resize', viewportSize, safeInsets: effectiveSafeInsets, odslon });
   }, [width, height, kluczZaslon]);
 
+  // Wejścia na schemat: cel bez własnego rysunku (stacja, GPZ, szyna nN) obrysowany RZUTEM — tą
+  // samą regułą zakresu, którą kadruje go wskazanie kamery (`zakresCelu('zaznaczenie', …)`).
   const obrysy = useMemo(
-    () => obrysyZaznaczenia(scene, zaznaczenieRefy ?? []),
-    [scene, zaznaczenieRefy],
+    () =>
+      obrysyZaznaczenia(scene, zaznaczenieRefy ?? [], (ref) => {
+        const wynik = zakresCelu('zaznaczenie', snapshot, [ref], scene);
+        return wynik.dostepny ? wynik.zakres.refy : [];
+      }),
+    [scene, snapshot, zaznaczenieRefy],
   );
   // F13.2 (spec §22.1, D3-3): przecięcia toru mocy TEJ sceny — jedna prawda
   // dla mostków wszystkich odcinków (deterministyczne, memoizowane per scena).
@@ -3231,10 +3237,16 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // refów, jedna relacja przynależności (`nalezyDoZakresu`).
   const refyKadru = props.refyKadru;
   // Tryb dokumentu (R9): bez kurtyny kadru — dokument nie zależy od kadru ekranu.
-  const zbiorKadru = useMemo(
-    () => (!trybDokumentu && refyKadru && refyKadru.length > 0 ? new Set(refyKadru) : null),
-    [trybDokumentu, refyKadru],
-  );
+  // Kurtyna przygasza wyłącznie OTOCZENIE narysowanego celu: cel, z którego nic nie jest
+  // narysowane na scenie, nie przygasza niczego (inaczej cały schemat gaśnie, a celu nie ma).
+  const zbiorKadru = useMemo(() => {
+    if (trybDokumentu || !refyKadru || refyKadru.length === 0) return null;
+    const zbior = new Set(refyKadru);
+    const narysowany =
+      scene.symbols.some((x) => nalezyDoZakresu(x.meta?.ownerRef, zbior)) ||
+      scene.segments.some((x) => nalezyDoZakresu(x.meta?.ownerRef, zbior));
+    return narysowany ? zbior : null;
+  }, [trybDokumentu, refyKadru, scene]);
   const podlogaCelu = useMemo(() => (zbiorKadru ? podlogaOpisowCelu(zbiorKadru) : undefined), [zbiorKadru]);
   const pozaKadrem = useCallback(
     (ownerRef: string | undefined | null): boolean => zbiorKadru !== null && !nalezyDoZakresu(ownerRef, zbiorKadru),
@@ -4030,6 +4042,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             <rect
               key={`zaznaczenie-${obrys.ref}`}
               data-zaznaczenie-ref={obrys.ref}
+              data-rzut-celu={obrys.rzut ? 'true' : undefined}
               x={obrys.rect.x}
               y={obrys.rect.y}
               width={obrys.rect.width}

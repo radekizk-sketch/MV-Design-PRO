@@ -38,8 +38,11 @@ export function LassoSelector({ visible, rect, className, style }: LassoSelector
       y={rect.y}
       width={rect.width}
       height={rect.height}
-      fill="rgba(53, 199, 255, 0.10)"
-      stroke="#35C7FF"
+      // Akcent aplikacji BIEŻĄCEGO motywu (`--mvd-accent`) — zaznaczenie obszarem ma barwę
+      // zaznaczenia schematu w obu motywach (dawny literał był barwą wyłącznie motywu ciemnego).
+      fill="var(--mvd-accent, #38BDD8)"
+      fillOpacity={0.1}
+      stroke="var(--mvd-accent, #38BDD8)"
       strokeWidth={1}
       strokeDasharray="4 4"
       pointerEvents="none"

@@ -178,8 +178,8 @@ test('GEOMETRIA-STACJI — stacje pięciu rodzajów z topologii, sekcje i sprzę
   const kanwa = page.getByTestId('sld-canvas-v3');
 
   for (const motyw of [
-    { klucz: 'ciemny', theme: 'dark_scada' as const, zaznaczenie: '#35C7FF' },
-    { klucz: 'jasny', theme: 'light_technical' as const, zaznaczenie: '#0066CC' },
+    { klucz: 'ciemny', theme: 'dark_scada' as const, zaznaczenie: '#38BDD8' },
+    { klucz: 'jasny', theme: 'light_technical' as const, zaznaczenie: '#086678' },
   ]) {
     await ustawMotyw(page, motyw.theme);
     for (const opis of STACJE_PIECIU_RODZAJOW) {

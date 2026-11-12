@@ -15,8 +15,11 @@ import { CELE_MENU_KADRU, ETYKIETA_CELU_KADRU, type CelKadru, type PoziomSciezki
  *  `whitespace-nowrap`: tekst przycisku nie łamie się na dwa wiersze (zasada właściciela —
  *  ta sama co dla stanowiska EAZ; zrzut wejścia z wyników zwarć 2026-11-11 pokazał
  *  „Drzewo / układu” i „Dopasuj / widok” w dwóch wierszach). */
+// Pismo interfejsu (`font-sans-eng`), nie pismo o stałej szerokości: etykiety przycisków to
+// słowa („Drzewo układu”, „Widok: roboczy”), a pismo o stałej szerokości przy 10 px czytało się
+// jak kod (oględziny architekta 2026-11-12). Bez zawijania — jedna linia na przycisk.
 export const KLASA_PRZYCISKU_DOKU =
-  'whitespace-nowrap h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40';
+  'whitespace-nowrap h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-sans-eng text-[11px] font-medium text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40';
 
 export function MenuDopasujDo(props: {
   readonly dostepnosc: Readonly<Record<CelKadru, DostepnoscCelu>>;
@@ -155,7 +158,13 @@ export function PasekKontekstuKadru(props: {
           >
             ◀
           </button>
-          <span className="font-mono-eng" data-testid="sld-v3-stacja-licznik">
+          <span
+            className="font-mono-eng"
+            data-testid="sld-v3-stacja-licznik"
+            // Licznik bez opisu był zagadką („3/5”): podpowiedź i nazwa dostępna mówią, co liczy.
+            title={`Stacja ${indeksStacji + 1} z ${stacje.length} w porządku magistrali${stacje[indeksStacji] ? `: ${stacje[indeksStacji].nazwa}` : ''}`}
+            aria-label={`Stacja ${indeksStacji + 1} z ${stacje.length} w porządku magistrali`}
+          >
             {indeksStacji + 1}/{stacje.length}
           </span>
           <button

@@ -125,6 +125,9 @@ describe('przyciski pasa kanwy — tekst w jednym wierszu, jedna klasa', () => {
   it('klasa przycisku doku zakazuje łamania tekstu', async () => {
     const { KLASA_PRZYCISKU_DOKU } = await import('../KontekstKadru');
     expect(KLASA_PRZYCISKU_DOKU.split(/\s+/)).toContain('whitespace-nowrap');
+    // Etykiety przycisków pismem interfejsu, nie o stałej szerokości (czytelność słów).
+    expect(KLASA_PRZYCISKU_DOKU.split(/\s+/)).toContain('font-sans-eng');
+    expect(KLASA_PRZYCISKU_DOKU.split(/\s+/)).not.toContain('font-mono-eng');
   });
 
   it('moduł kanwy nie niesie własnej kopii klasy przycisku (jedno źródło)', async () => {

@@ -45,7 +45,7 @@ export const COLOR_TEXT_PRIMARY = '#F4F6F8' as const; // tekst główny
 export const COLOR_TEXT_SECONDARY = '#B9C0C7' as const; // tekst pomocniczy
 export const COLOR_TEXT_MUTED = '#7E8790' as const; // tekst przygaszony
 export const COLOR_VALUE = '#FFFFFF' as const; // wartość liczbowa
-export const COLOR_SELECTION = '#35C7FF' as const; // zaznaczenie
+export const COLOR_SELECTION = '#38BDD8' as const; // zaznaczenie = akcent aplikacji (--mvd-accent, motyw ciemny)
 
 export const COLOR_WARN = '#FFB020' as const; // ostrzeżenie
 export const COLOR_PARTIAL = '#FFC857' as const; // wynik częściowy
@@ -308,7 +308,7 @@ export const LIGHT_TECHNICAL_COLOR_TEXT_PRIMARY = '#000000' as const;
 export const LIGHT_TECHNICAL_COLOR_TEXT_SECONDARY = '#4A4A4A' as const;
 export const LIGHT_TECHNICAL_COLOR_TEXT_MUTED = '#808080' as const;
 export const LIGHT_TECHNICAL_COLOR_VALUE = '#000000' as const;
-export const LIGHT_TECHNICAL_COLOR_SELECTION = '#0066CC' as const;
+export const LIGHT_TECHNICAL_COLOR_SELECTION = '#086678' as const; // akcent aplikacji (--mvd-accent, motyw jasny)
 
 export const LIGHT_TECHNICAL_COLOR_WARN = '#E08400' as const;
 export const LIGHT_TECHNICAL_COLOR_PARTIAL = '#B57E00' as const;

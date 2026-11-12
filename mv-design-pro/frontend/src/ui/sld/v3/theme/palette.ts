@@ -69,7 +69,8 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     faultOk: '#7E7000',
     resultLabel: '#6A3FB5',
     resultStale: '#6E6182',
-    selection: '#0066CC',
+    /** Akcent aplikacji motywu jasnego (`--mvd-accent`, `ui2/theme/tokens.css`). */
+    selection: '#086678',
     /** T2-WYNIKI (§0 pkt 2) — odznaka SWZ, para z `colorTokens.ts`
      *  `HIGHLIGHT_COLOR.swzOk/swzFail/swzUnknown` (kontrast tekstu ≥ 4,5:1 na
      *  bieli — patrz `palette.test.ts`), wartości ODRĘBNE od `energized`/

@@ -333,8 +333,11 @@ export const HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
    *  własnej nakładki stroke dla selekcji, ta wchodzi przez `useSelectionStore`
    *  w warstwie wyższej; GAP do S4/S5: podłączenie tego tokenu jako realnej
    *  nakładki na kanwie, dziś poza zakresem S3 — nowa funkcja renderu, nie
-   *  tokenizacja istniejącej). Wartość zgodna z v2 `COLOR_SELECTION`. */
-  selection: '#35C7FF',
+   *  tokenizacja istniejącej). Wartość zgodna z v2 `COLOR_SELECTION`.
+   *  Wejścia na schemat (zlecenie architekta 2026-11-12): zaznaczenie na schemacie = AKCENT
+   *  aplikacji motywu (`ui2/theme/tokens.css`, `--mvd-accent` motywu ciemnego) — jedno
+   *  wyróżnienie w całym produkcie; zgodność pilnowana testem `akcentZaznaczenia.test.ts`. */
+  selection: '#38BDD8',
   /** T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 2) — odznaka SWZ
    *  (samoczynne wyłączenie zasilania, IEC 60364-4-41) przy aparacie odpływu
    *  nN: WERDYKT 3-tonowy, token ODRĘBNY od `energized`/`fault`/`standby` —
