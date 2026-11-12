@@ -376,7 +376,7 @@ test('K8 — jeden kontekst biegu: A, B, zmiana modelu, C; przełączanie z pane
     if (!ref || (await wierszePanelu.nth(i).getAttribute('aria-selected')) === 'true') continue;
     // Pole trafienia elementu, które naprawdę przyjmuje klik (etykieta wyniku tego samego
     // elementu bywa narysowana nad środkiem toru) — próba klikiem `trial`, potem klik natywny.
-    const kandydaci = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${ref}"]`);
+    const kandydaci = page.locator(`[data-hit-owner-ref^="${ref}"]`);
     let obrys: Locator | null = null;
     for (let k = 0; k < (await kandydaci.count()) && !obrys; k += 1) {
       const kandydat = kandydaci.nth(k);

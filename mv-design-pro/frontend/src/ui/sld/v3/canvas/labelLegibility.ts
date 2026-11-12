@@ -108,7 +108,7 @@
 
 import { rectsOverlap, type V3Rect } from '../core/grid';
 import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
-import { buildRectIndex, createRectIndex, createRectItemIndex, type RectIndex } from '../core/rectIndex';
+import { buildRectIndex, createRectIndex, createRectItemIndex, type RectIndex, type RectItemIndex } from '../core/rectIndex';
 import { blokKrawedzi, zasiegWierszaWRamce } from '../symbols/blokZabezpieczen';
 import { MARGINES_TLA_POLA_GPZ } from '../compose/gpzAdnotacje';
 import {
@@ -778,8 +778,9 @@ function najlepszeDopasowanie(
  * plan dotąd rysował każdą tożsamość, ta gałąź nie jest nawet wywoływana —
  * wynik bajtowo ten sam. Przypięte: `__tests__/ustapienieSasiada.test.ts`.
  *
- * Mutuje `zaplanowane`/`uzyteKandydaty` tylko przy powodzeniu; wołający
- * przebudowuje wtedy indeks zajętych prostokątów.
+ * Mutuje `zaplanowane`/`uzyteKandydaty` tylko przy powodzeniu i zwraca wtedy etykiety
+ * zmienione (sąsiedzi i nowa tożsamość); wołający dokłada je do indeksu, a wpisy
+ * nieaktualne odpadają porównaniem z `zaplanowane` (`zajeteDlaBez`). Brak zmiany — `null`.
  */
 function ustapSasiadow(
   kandydat: Kandydat,
@@ -788,9 +789,11 @@ function ustapSasiadow(
   przeszkodyDla: (k: Kandydat) => ZbiorKolizji,
   ramkiZajete: ZbiorKolizji,
   sheet: SheetOutline,
-): boolean {
+  zaplanowaneWgMiejsca: RectItemIndex<PlannedLabel>,
+  pozycjaWKolejnosci: ReadonlyMap<number, number>,
+): readonly PlannedLabel[] | null {
   const { label, slot, tekstBazowy, fontSize } = kandydat;
-  if (!kandydat.enlarged || tekstBazowy.length === 0) return false;
+  if (!kandydat.enlarged || tekstBazowy.length === 0) return null;
   const rotated = label.rotated === true;
   const strony = stronyWKolejnosci(label.placement);
   const obstacles = przeszkodyDla(kandydat);
@@ -798,16 +801,37 @@ function ustapSasiadow(
     const rect = prostokatTuszu(slot, tekstBazowy, fontSize, wagaPisma(label), rotated, strona);
     // Ramka dorysowana do powiększonych wierszy bloku zabezpieczeń jest rysunkiem — nie ustępuje.
     if (!wArkuszu(rect, sheet, label) || obstacles.anyOverlap(rect) || ramkiZajete.anyOverlap(rect)) continue;
-    const blokujace = [...zaplanowane.values()].filter((p) => rectsOverlap(p.rect, rect));
+    // Karta SLD-SKALA-I-NAWIGACJA (budżet klatki, `kosztSceny.test.ts`): sąsiedzi z indeksu
+    // przestrzennego zamiast przeglądu wszystkich zaplanowanych — przegląd liniowy przy każdej
+    // tożsamości bez miejsca dawał koszt kwadratowy (pomiar 2026-11-12: plan 673 ms przy skali
+    // 0,4 na sieci podwojonej). Kolejność sąsiadów = kolejność wstawienia do planu (pozycja
+    // w porządku rozstrzygania), więc wynik bajtowo ten sam co przy przeglądzie mapy.
+    const znalezione = new Map<number, PlannedLabel>();
+    zaplanowaneWgMiejsca.someCandidate(rect, (p) => {
+      if (rectsOverlap(p.rect, rect) && zaplanowane.get(p.index) === p) znalezione.set(p.index, p);
+      return false;
+    });
+    const blokujace = [...znalezione.values()].sort(
+      (a, b) => (pozycjaWKolejnosci.get(a.index) ?? 0) - (pozycjaWKolejnosci.get(b.index) ?? 0),
+    );
     if (blokujace.length === 0) continue;
     // Wiersz bloku zabezpieczeń nie ustępuje: blok to ramka z wierszami (jedna notacja), wiersz
     // przeniesiony na inną stronę wyszedłby z ramki.
     if (blokujace.some((p) => blokWiersza(p.label) !== null)) continue;
     const odsuniete = new Set(blokujace.map((p) => p.index));
-    const zajeteBez = buildRectIndex([
-      ...[...zaplanowane.values()].filter((p) => !odsuniete.has(p.index)).map((p) => p.rect),
-      rect,
-    ]);
+    // Zbiór zajęty BEZ odsuniętych: zaplanowane z indeksu (bez odsuniętych) + nowa tożsamość
+    // + kolejno dopasowani sąsiedzi — ten sam zbiór co dawny indeks budowany od zera.
+    const dodane = createRectIndex();
+    dodane.add(rect);
+    const zajeteBez = {
+      anyOverlap: (r: V3Rect): boolean =>
+        dodane.anyOverlap(r) ||
+        zaplanowaneWgMiejsca.someCandidate(
+          r,
+          (p) => !odsuniete.has(p.index) && zaplanowane.get(p.index) === p && rectsOverlap(r, p.rect),
+        ),
+      add: (r: V3Rect): void => dodane.add(r),
+    };
     const nowe: PlannedLabel[] = [];
     let wszystkieMieszcza = true;
     for (const p of blokujace) {
@@ -823,7 +847,7 @@ function ustapSasiadow(
     }
     if (!wszystkieMieszcza) continue;
     for (const p of nowe) zaplanowane.set(p.index, p);
-    zaplanowane.set(kandydat.index, {
+    const wlasna: PlannedLabel = {
       label,
       index: kandydat.index,
       text: tekstBazowy,
@@ -831,11 +855,12 @@ function ustapSasiadow(
       rect,
       enlarged: fontSize > LABEL_TYPOGRAPHY[label.labelClass].fontSize + 1e-9,
       ...(strona !== undefined ? { strona } : {}),
-    });
+    };
+    zaplanowane.set(kandydat.index, wlasna);
     uzyteKandydaty.set(kandydat.index, kandydat);
-    return true;
+    return [...nowe, wlasna];
   }
-  return false;
+  return null;
 }
 
 /**
@@ -1046,6 +1071,7 @@ export function planSceneLabels(
 
   // (d) pierwszeństwo — ranga tożsamości, priorytet rodzaju, ref (R4).
   const kolejnosc = [...zeSlotami].sort(kolejnoscRozstrzygania);
+  const pozycjaWKolejnosci = new Map(kolejnosc.map((k, i) => [k.index, i] as const));
 
   // S9-9: przeszkody sceny indeksowane RAZ na plan (zbiór stały), „zajęte"
   // przyrostowo — jak w `declutterLabels`, jedna maszyneria dla obu.
@@ -1070,10 +1096,9 @@ export function planSceneLabels(
     const blokR = blokKrawedzi(r);
     if (blokR !== null) krawedzieWgBloku.add(r, blokR);
   }
-  let zajete = createRectIndex();
-  let ramkiZajete = createRectIndex();
+  const ramkiZajete = createRectIndex();
   /** Napisy zaplanowane pod tuszem i — wiersz bloku powiększony — pod zasięgiem ramki. */
-  let zaplanowaneWgMiejsca = createRectItemIndex<PlannedLabel>();
+  const zaplanowaneWgMiejsca = createRectItemIndex<PlannedLabel>();
   const przeszkodyDla = (k: Kandydat): ZbiorKolizji => {
     const blok = blokWiersza(k.label);
     const rozszerz = blok !== null && k.enlarged;
@@ -1096,20 +1121,31 @@ export function planSceneLabels(
    *  przejściu na postać zapasową) — potrzebny `ustapSasiadow`, żeby sąsiada
    *  ustępującego miejsca dopasować TĄ SAMĄ postacią, którą plan go rysuje. */
   const uzyteKandydaty = new Map<number, Kandydat>();
-  const zajeteDla = (k: Kandydat): ZbiorKolizji => {
+  // Zbiór zajęty dla kandydata: wszystkie AKTUALNE etykiety planu (`zajeteDlaBez` bez
+  // wyłączenia) — indeks z elementem pozwala odrzucić wpisy przestawione ustąpieniem sąsiadów
+  // bez przebudowy indeksów (karta SLD-SKALA-I-NAWIGACJA, budżet klatki).
+  const zajeteDla = (k: Kandydat): ZbiorKolizji => zajeteDlaBez(k, -1);
+  /**
+   * Zbiór zajęty dla `k` z WYŁĄCZENIEM etykiety `wyl` — ten sam predykat co `zajeteDla` na
+   * indeksach przebudowanych bez `wyl`, ale bez przebudowy: `zaplanowaneWgMiejsca` niesie te same
+   * prostokąty co `zajete` (tusz) i `ramkiZajete` (zasięg ramki wiersza), a wpisy nieaktualne
+   * (etykieta przestawiona później) odpadają porównaniem z `zaplanowane`. Karta
+   * SLD-SKALA-I-NAWIGACJA (budżet klatki): przebudowa indeksów przy każdej próbie drugiej szansy
+   * dawała koszt kwadratowy.
+   */
+  const zajeteDlaBez = (k: Kandydat, wyl: number): ZbiorKolizji => {
+    const aktualny = (p: PlannedLabel): boolean => p.index !== wyl && zaplanowane.get(p.index) === p;
+    const cokolwiek = (r: V3Rect): boolean => zaplanowaneWgMiejsca.someCandidate(r, (p) => aktualny(p));
     const blok = blokWiersza(k.label);
-    if (blok === null) return { anyOverlap: (r) => zajete.anyOverlap(r) || ramkiZajete.anyOverlap(r) };
+    if (blok === null) return { anyOverlap: cokolwiek };
     const rozszerz = k.enlarged;
     return {
       anyOverlap: (r) => {
         const probe = rozszerz ? zasiegWierszaWRamce(r) : r;
-        if (!zajete.anyOverlap(probe) && !ramkiZajete.anyOverlap(probe)) return false;
-        // Kandydaci: napisy, których tusz albo zasięg ramki zachodzi na `probe` (`probe` zawiera
-        // `r` — zasięg ramki wiersza jest jego rozszerzeniem), więc żaden napis spełniający
-        // predykat niżej nie zostaje pominięty.
+        if (!cokolwiek(probe)) return false;
         return zaplanowaneWgMiejsca.someCandidate(probe, (p) => {
+          if (!aktualny(p)) return false;
           const blokP = blokWiersza(p.label);
-          // Wiersze własnego bloku: ramka jest wspólna, więc liczy się tylko ich tusz.
           if (blokP === blok) return rectsOverlap(r, p.rect);
           if (rectsOverlap(probe, p.rect)) return true;
           return blokP !== null && p.enlarged && rectsOverlap(probe, zasiegWierszaWRamce(p.rect));
@@ -1118,7 +1154,6 @@ export function planSceneLabels(
     };
   };
   const zajmij = (p: PlannedLabel): void => {
-    zajete.add(p.rect);
     zaplanowaneWgMiejsca.add(p.rect, p);
     if (p.enlarged && blokWiersza(p.label) !== null) {
       const zasieg = zasiegWierszaWRamce(p.rect);
@@ -1126,6 +1161,7 @@ export function planSceneLabels(
       zaplanowaneWgMiejsca.add(zasieg, p);
     }
   };
+  let zmienione: readonly PlannedLabel[] | null = null;
   for (const kandydatPierwotny of kolejnosc) {
     let kandydat = kandydatPierwotny;
     let dopasowanie = najlepszeDopasowanie(kandydat, zajeteDla(kandydat), przeszkodyDla(kandydat), sheet);
@@ -1162,12 +1198,9 @@ export function planSceneLabels(
     if (
       (!dopasowanie || dopasowanie.text.length === 0) &&
       klasaInformacjiEtykiety(kandydat.label) === 'tozsamosc' &&
-      ustapSasiadow(kandydat, zaplanowane, uzyteKandydaty, przeszkodyDla, ramkiZajete, sheet)
+      (zmienione = ustapSasiadow(kandydat, zaplanowane, uzyteKandydaty, przeszkodyDla, ramkiZajete, sheet, zaplanowaneWgMiejsca, pozycjaWKolejnosci)) !== null
     ) {
-      zajete = createRectIndex();
-      ramkiZajete = createRectIndex();
-      zaplanowaneWgMiejsca = createRectItemIndex<PlannedLabel>();
-      for (const p of zaplanowane.values()) zajmij(p);
+      for (const p of zmienione) zajmij(p);
       continue;
     }
     if (!dopasowanie || dopasowanie.text.length === 0) {
@@ -1201,13 +1234,14 @@ export function planSceneLabels(
     if (kandydatPierwotny.zapasowy === undefined) continue;
     const obecna = zaplanowane.get(kandydatPierwotny.index);
     if (obecna !== undefined && obecna.fontSize >= kandydatPierwotny.fontSize - 1e-9) continue;
-    zajete = createRectIndex();
-    ramkiZajete = createRectIndex();
-    zaplanowaneWgMiejsca = createRectItemIndex<PlannedLabel>();
-    for (const [index, p] of zaplanowane) if (index !== kandydatPierwotny.index) zajmij(p);
-    const proba = najlepszeDopasowanie(kandydatPierwotny, zajeteDla(kandydatPierwotny), przeszkodyDla(kandydatPierwotny), sheet);
+    const proba = najlepszeDopasowanie(
+      kandydatPierwotny,
+      zajeteDlaBez(kandydatPierwotny, kandydatPierwotny.index),
+      przeszkodyDla(kandydatPierwotny),
+      sheet,
+    );
     if (!proba || proba.text.length === 0) continue;
-    zaplanowane.set(kandydatPierwotny.index, {
+    const nowa: PlannedLabel = {
       label: kandydatPierwotny.label,
       index: kandydatPierwotny.index,
       text: proba.text,
@@ -1215,7 +1249,9 @@ export function planSceneLabels(
       rect: proba.rect,
       enlarged: proba.fontSize > LABEL_TYPOGRAPHY[kandydatPierwotny.label.labelClass].fontSize + 1e-9,
       ...(proba.strona !== undefined ? { strona: proba.strona } : {}),
-    });
+    };
+    zaplanowane.set(kandydatPierwotny.index, nowa);
+    zajmij(nowa);
     uzyteKandydaty.set(kandydatPierwotny.index, kandydatPierwotny);
     const wPodpowiedzi = tozsamosciWPodpowiedzi.findIndex((t) => t.index === kandydatPierwotny.index);
     if (wPodpowiedzi >= 0) tozsamosciWPodpowiedzi.splice(wPodpowiedzi, 1);

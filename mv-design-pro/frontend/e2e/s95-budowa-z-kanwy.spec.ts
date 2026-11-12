@@ -129,7 +129,7 @@ async function otworzAplikacje(page: Page, request: APIRequestContext): Promise<
 
 /** Uchwyt trafienia (warstwa S9-4) pierwszego obiektu danej klasy na kanwie. */
 function uchwytKlasy(page: Page, klasa: string) {
-  return page.locator(`[data-hit-klasa="${klasa}"][data-hit-role="obrys"]`).first();
+  return page.locator(`[data-hit-klasa="${klasa}"]`).first();
 }
 
 /** Natywny prawy klik w uchwyt obiektu kanwy; zwraca otwarte menu. */
@@ -277,7 +277,7 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     expect(galazRef, 'model ma gałąź terenową po zapisie magistrali').toBeTruthy();
     await wrocNaSchemat(page);
     const uchwytOdcinka = page.locator(
-      `[data-hit-klasa="tor"][data-hit-role="obrys"][data-hit-owner-ref="${galazRef}"]`,
+      `[data-hit-klasa="tor"][data-hit-owner-ref="${galazRef}"]`,
     ).first();
     const menuOdcinka = await prawyKlikWUchwyt(page, uchwytOdcinka);
     await expect(menuOdcinka.getByTestId('sld-menu-insert-station')).toBeEnabled();
@@ -308,7 +308,7 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     );
     expect(stacja?.ref_id, 'model ma stację SN/nN po ogniwie 3').toBeTruthy();
     const uchwytStacji = page.locator(
-      `[data-hit-role="obrys"][data-hit-owner-ref^="${stacja!.ref_id}#name-row"]`,
+      `[data-hit-owner-ref^="${stacja!.ref_id}#name-row"]`,
     ).first();
     const menuStacji = await prawyKlikWUchwyt(page, uchwytStacji);
     const kontynuujZeStacji = menuStacji.getByTestId('sld-menu-continue-trunk');
@@ -330,7 +330,7 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     expect(dalszaPolowka, 'dalsza połówka wychodzi z zacisku pola stacji').toBeTruthy();
     const galezieprzedOgniwem4 = (enmPoStacji.branches ?? []).length;
     const uchwytPolowki = page.locator(
-      `[data-hit-klasa="tor"][data-hit-role="obrys"][data-hit-owner-ref="${dalszaPolowka!.ref_id}"]`,
+      `[data-hit-klasa="tor"][data-hit-owner-ref="${dalszaPolowka!.ref_id}"]`,
     ).first();
     const menuPolowki = await prawyKlikWUchwyt(page, uchwytPolowki);
     // Menu odcinka: „Kontynuuj ciąg główny" od wolnego końca odcinka
@@ -397,7 +397,7 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     await wrocNaSchemat(page);
     await czekajNaWarstweTrafien(page);
     const uchwytPola = page.locator(
-      `[data-hit-role="obrys"][data-hit-owner-ref="${poleRef}"]`,
+      `[data-hit-owner-ref="${poleRef}"]`,
     ).first();
     const menuPola = await prawyKlikWUchwyt(page, uchwytPola);
     await menuPola.getByTestId('sld-menu-configure-equipment').click();
@@ -432,10 +432,10 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     await czekajNaWarstweTrafien(page);
     const galezieprzed = (await pobierzEnm(request, caseId)).branches?.length ?? 0;
     await expect(
-      page.locator(`[data-hit-role="obrys"][data-hit-owner-ref="${poleRef}"][data-hit-for*="cableHead"]`),
+      page.locator(`[data-hit-owner-ref="${poleRef}"][data-hit-for*="cableHead"]`),
     ).not.toHaveCount(0);
     const uchwytGlowicy = page.locator(
-      `[data-hit-role="obrys"][data-hit-owner-ref="${poleRef}"][data-hit-for*="bayReserve"]`,
+      `[data-hit-owner-ref="${poleRef}"][data-hit-for*="bayReserve"]`,
     ).first();
     const menuGlowicy = await prawyKlikWUchwyt(page, uchwytGlowicy);
     const wyprowadz = menuGlowicy.getByTestId('sld-menu-extend-trunk');

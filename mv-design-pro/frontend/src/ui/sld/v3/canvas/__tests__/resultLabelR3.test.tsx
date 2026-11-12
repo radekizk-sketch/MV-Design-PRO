@@ -242,7 +242,7 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
     // zdarzenia jest UCHWYT znacznika w warstwie `sld-v3-trafienia` — ten sam
     // węzeł, w który trafia mysz użytkownika (rysunek kanwy jest bierny).
     const uchwyt = container.querySelector(
-      `[data-hit-for="${label!.getAttribute('data-testid')}"][data-hit-role="obrys"]`,
+      `[data-hit-for="${label!.getAttribute('data-testid')}"]`,
     );
     expect(uchwyt, 'etykieta wynikowa ma uchwyt trafienia').toBeTruthy();
     fireEvent.click(uchwyt!);

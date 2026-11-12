@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta SZABLONY-POL (rozszerzenie sesji głównej 2026-11-11, werdykt właściciela 0/10 widoku
  * stacji): pole stacji SN rysuje KAŻDY aparat z modelu — liczba glifów aparatów pola na scenie

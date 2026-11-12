@@ -12,7 +12,7 @@ import type { SceneV3 } from '../../scene/buildScene';
 export const WIERSZ_NAZWY_STACJI = '#name-row-0';
 
 function obrysyEtykiet(container: ParentNode): readonly Element[] {
-  return [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="etykieta"]')];
+  return [...container.querySelectorAll('[data-hit-klasa="etykieta"]')];
 }
 
 /** Obrys trafienia napisu identyfikacji stacji `ref` albo `null`, gdy kadr go nie rysuje. */
@@ -50,7 +50,7 @@ export function pierwszaStacjaZUchwytem(container: ParentNode, scene: SceneV3): 
  */
 export function uchwytObszaruStacjiLubNull(container: ParentNode, ref: string): Element | null {
   return (
-    [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="stacja"]')].find(
+    [...container.querySelectorAll('[data-hit-klasa="stacja"]')].find(
       (n) => n.getAttribute('data-hit-owner-ref') === ref,
     ) ?? null
   );

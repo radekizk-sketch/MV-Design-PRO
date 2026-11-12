@@ -163,7 +163,7 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
     await page.keyboard.press('Escape');
 
     for (const wpis of KLASY) {
-      const uchwyty = page.locator(`[data-hit-klasa="${wpis.klasa}"][data-hit-role="obrys"]`);
+      const uchwyty = page.locator(`[data-hit-klasa="${wpis.klasa}"]`);
       const liczba = await uchwyty.count();
       if (liczba === 0) {
         // Uczciwie: klasa nieobecna na tej scenie nie dostaje zrzutu-atrapy.

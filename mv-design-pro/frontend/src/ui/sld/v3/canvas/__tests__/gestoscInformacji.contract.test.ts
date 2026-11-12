@@ -35,7 +35,7 @@ import {
   PASMO_HISTEREZY_CZYTELNOSCI,
 } from '../gestoscInformacji';
 import type { OwnedLabel, OwnerKind } from '../../layout/labels';
-import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX, type LabelClass } from '../../core/text';
+import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX, PISMO_WYNIKOW, type LabelClass } from '../../core/text';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -130,14 +130,15 @@ describe('R3 — próg czytelności z histerezą (rozmiar ekranowy, nie skala)',
     expect(czytelnyNaEkranie(h, (prog / h) * 0.999)).toBe(false);
   });
 
-  it.each([8, 9, 11, 13])('pismo %i j.św.: widoczny trzyma się do −10 %, niewidoczny wraca od +10 %', (h) => {
+  // Pasmo jednostronne (decyzja architekta 2026-11-12): wejście przy progu, wyjście −10 %.
+  it.each([8, 9, 11, 13])('pismo %i j.św.: widoczny trzyma się do −10 %, niewidoczny wraca od progu', (h) => {
     const dol = (prog * (1 - PASMO_HISTEREZY_CZYTELNOSCI)) / h;
-    const gora = (prog * (1 + PASMO_HISTEREZY_CZYTELNOSCI)) / h;
+    const gora = prog / h;
     const srodek = (prog * 0.95) / h;
     expect(czytelnyNaEkranie(h, srodek, true)).toBe(true);
     expect(czytelnyNaEkranie(h, dol * 0.999, true)).toBe(false);
     expect(czytelnyNaEkranie(h, srodek, false)).toBe(false);
-    expect(czytelnyNaEkranie(h, (prog * 1.05) / h, false)).toBe(false);
+    expect(czytelnyNaEkranie(h, gora * 0.999, false)).toBe(false);
     expect(czytelnyNaEkranie(h, gora, false)).toBe(true);
     // Para predykatów: skala pojawienia się (`skalaPojawieniaSie`, z niej testy dojeżdżają do
     // wyników) jest DOKŁADNIE progiem wejścia w widoczność.
@@ -146,8 +147,13 @@ describe('R3 — próg czytelności z histerezą (rozmiar ekranowy, nie skala)',
     expect(czytelnyNaEkranie(h, skalaPojawieniaSie(h) * (1 - 1e-12), false)).toBe(false);
   });
 
-  it('wyniki (pismo t4) pojawiają się dopiero powyżej skali czytania — 8 px nominalnie < 9 px progu', () => {
-    expect(skalaPojawieniaSie(LABEL_TYPOGRAPHY.t4.fontSize)).toBeCloseTo(1.2375, 12);
+  it('wyniki (pismo 9 px) są widoczne od skali czytania 1,0 — w każdej ścieżce wejścia', () => {
+    expect(PISMO_WYNIKOW.fontSize).toBe(9);
+    expect(skalaPojawieniaSie(PISMO_WYNIKOW.fontSize)).toBeCloseTo(1, 12);
+    for (const poprzednio of [undefined, false, true]) {
+      expect(czytelnyNaEkranie(PISMO_WYNIKOW.fontSize, 1, poprzednio), String(poprzednio)).toBe(true);
+    }
+    // Dawne pismo t4 (8 px) przy skali 1 byłoby nieczytelne — dlatego wyniki mają własny krój.
     expect(czytelnyNaEkranie(LABEL_TYPOGRAPHY.t4.fontSize, 1, false)).toBe(false);
   });
 

@@ -58,6 +58,9 @@ export function buildDxfInput(drawing: ExportDrawing, title: string): DxfExportI
         height: primitive.fontSize,
         layer: DXF_LAYER_OPISY,
         align: anchorToAlign(primitive.anchor),
+        // DXF ma oś Y w górę (generator odwraca Y), kąt TEXT liczony przeciwnie do ruchu
+        // wskazówek zegara — kąt SVG (oś Y w dół) zmienia znak.
+        rotation: primitive.rotation === 0 ? 0 : -primitive.rotation,
       });
     }
   }

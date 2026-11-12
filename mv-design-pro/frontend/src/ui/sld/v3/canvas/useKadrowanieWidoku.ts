@@ -118,7 +118,7 @@ export function opisToru(tor: TorElementuOdpowiedz): KomunikatKadru {
 }
 
 export interface KadrowanieWidoku {
-  readonly zadanieKadru: { readonly zakres: ZakresKadru; readonly seq: number } | null;
+  readonly zadanieKadru: { readonly zakres: ZakresKadru; readonly seq: number; readonly wskazanie?: boolean } | null;
   readonly przywrocenieKamery: (StanKameryWorkspace & { readonly seq: number }) | null;
   readonly sciezka: readonly PoziomSciezki[];
   readonly historia: readonly WpisHistoriiKadru[];
@@ -137,6 +137,11 @@ export interface KadrowanieWidoku {
   kadrujPoziom(poziom: PoziomSciezki): void;
   dopasujZakres(): void;
   poprzedniWidok(): void;
+  /** Karta SLD-SKALA-I-NAWIGACJA R7: historia kadrów w OBIE strony (`Alt+→`) — widok zdjęty
+   *  „Poprzednim widokiem" wraca; nowe polecenie widoku kasuje drogę naprzód (jak przeglądarka). */
+  nastepnyWidok(): void;
+  /** Liczba widoków dostępnych naprzód. */
+  readonly historiaNaprzod: number;
   /** Polecenie widoku spoza kadrowania (np. „Cały arkusz") — odkłada kadr do historii. */
   zapamietajPrzedPoleceniem(): void;
   zamknijKomunikat(): void;
@@ -149,6 +154,13 @@ export interface OpcjeKadru {
   /** Przeglądanie stacji (poprzednia/następna) — bez nowego wpisu historii, gdy
    *  bieżący kadr jest już kadrem stacji. */
   readonly przeglad?: boolean;
+  /** Wskazanie z zewnątrz (`centerSldOnElement`): kamera dobiera kadr jedną regułą wskazania
+   *  (`camera.ts`, `applyWskazanie`) zamiast kadru celu. */
+  readonly wskazanie?: boolean;
+  /** Wskazanie CICHE (tryb „kotwicz" — skutek uboczny edycji, wybór w drzewie): kamera jak przy
+   *  wskazaniu, ale bez wpisu historii, bez zmiany ścieżki i kurtyny, bez komunikatu o celu
+   *  nienarysowanym. */
+  readonly cichy?: boolean;
 }
 
 export function useKadrowanieWidoku(opcje: {
@@ -181,6 +193,8 @@ export function useKadrowanieWidoku(opcje: {
   const sciezkaRef = useRef(sciezka);
   sciezkaRef.current = sciezka;
   const historiaRef = useRef(historia);
+  const [naprzod, setNaprzod] = useState<readonly WpisHistoriiKadru[]>([]);
+  const naprzodRef = useRef(naprzod);
   historiaRef.current = historia;
 
   const scena = useMemo(() => (snapshot ? scenaSld(snapshot) : null), [snapshot]);
@@ -219,27 +233,43 @@ export function useKadrowanieWidoku(opcje: {
   }, [wynikCelu, zaznaczenie, caseId]);
 
   /** Wpis historii z BIEŻĄCEGO widoku (kamera, ścieżka, zaznaczenie, kurtyna). */
-  const odlozWidok = useCallback((zaznaczeniePrzed?: ZaznaczenieWidoku) => {
+  /** Bieżący widok jako wpis historii (`null`: kamera jeszcze nie zgłoszona). */
+  const biezacyWpis = useCallback((zaznaczeniePrzed?: ZaznaczenieWidoku): WpisHistoriiKadru | null => {
     const teraz = kameraRef.current;
-    if (!teraz) return;
-    const stos = dolozDoHistorii(historiaRef.current, {
+    if (!teraz) return null;
+    return {
       transform: teraz.transform,
       viewportSize: teraz.viewportSize,
       sciezka: sciezkaRef.current,
       zaznaczenie: zaznaczeniePrzed ?? zaznaczenieWidokuRef.current.pobierz(),
       kurtyna: refyKurtynyRef.current,
-    });
+    };
+  }, []);
+  const ustawNaprzod = useCallback((stos: readonly WpisHistoriiKadru[]) => {
+    naprzodRef.current = stos;
+    setNaprzod(stos);
+  }, []);
+  const odlozWidok = useCallback((zaznaczeniePrzed?: ZaznaczenieWidoku) => {
+    const wpis = biezacyWpis(zaznaczeniePrzed);
+    if (!wpis) return;
+    const stos = dolozDoHistorii(historiaRef.current, wpis);
     historiaRef.current = stos;
     setHistoria(stos);
-  }, []);
+    // Nowe polecenie widoku kasuje drogę naprzód (jedna liniowa historia, jak przeglądarka).
+    if (naprzodRef.current.length > 0) ustawNaprzod([]);
+  }, [biezacyWpis, ustawNaprzod]);
 
   const wykonajKadr = useCallback(
     (zakres: ZakresKadru, nowyKomunikat: KomunikatKadru | null, opcjeKadru?: OpcjeKadru) => {
+      seq.current += 1;
+      if (opcjeKadru?.cichy) {
+        setZadanieKadru({ zakres, seq: seq.current, wskazanie: true });
+        return;
+      }
       const biezacy = sciezkaRef.current[sciezkaRef.current.length - 1];
       const wPrzegladzieStacji = opcjeKadru?.przeglad === true && biezacy?.cel === 'stacja';
       if (!wPrzegladzieStacji) odlozWidok(opcjeKadru?.zaznaczeniePrzed);
-      seq.current += 1;
-      setZadanieKadru({ zakres, seq: seq.current });
+      setZadanieKadru({ zakres, seq: seq.current, ...(opcjeKadru?.wskazanie ? { wskazanie: true } : {}) });
       const nowaSciezka = zakres.cel === 'siec' ? [] : zakres.sciezka;
       sciezkaRef.current = nowaSciezka;
       setSciezka(nowaSciezka);
@@ -300,7 +330,7 @@ export function useKadrowanieWidoku(opcje: {
       }
       const wynik = wynikCelu(cel, kontekst);
       if (!wynik.dostepny) {
-        setKomunikat({ rodzaj: 'ostrzezenie', tekst: wynik.przyczyna, szczegoly: [] });
+        if (!opcjeKadru?.cichy) setKomunikat({ rodzaj: 'ostrzezenie', tekst: wynik.przyczyna, szczegoly: [] });
         return;
       }
       wykonajKadr(wynik.zakres, null, opcjeKadru);
@@ -328,13 +358,15 @@ export function useKadrowanieWidoku(opcje: {
         if (wejscie) {
           historiaRef.current = wejscie.stos;
           setHistoria(wejscie.stos);
+          // Wyjście okruszkiem jest poleceniem widoku — droga naprzód przestaje istnieć.
+          ustawNaprzod([]);
           przywrocWpis(wejscie.wpis);
           return;
         }
       }
       kadrujCel(poziom.cel, poziom.kontekst);
     },
-    [kadrujCel, przywrocWpis],
+    [kadrujCel, przywrocWpis, ustawNaprzod],
   );
 
   const dopasujZakres = useCallback(() => {
@@ -344,10 +376,25 @@ export function useKadrowanieWidoku(opcje: {
   const poprzedniWidok = useCallback(() => {
     const zdjety = zdejmijZHistorii(historiaRef.current);
     if (!zdjety) return;
+    const teraz = biezacyWpis();
+    if (teraz) ustawNaprzod(dolozDoHistorii(naprzodRef.current, teraz));
     historiaRef.current = zdjety.stos;
     setHistoria(zdjety.stos);
     przywrocWpis(zdjety.wpis);
-  }, [przywrocWpis]);
+  }, [przywrocWpis, biezacyWpis, ustawNaprzod]);
+
+  const nastepnyWidok = useCallback(() => {
+    const zdjety = zdejmijZHistorii(naprzodRef.current);
+    if (!zdjety) return;
+    const teraz = biezacyWpis();
+    if (teraz) {
+      const stos = dolozDoHistorii(historiaRef.current, teraz);
+      historiaRef.current = stos;
+      setHistoria(stos);
+    }
+    ustawNaprzod(zdjety.stos);
+    przywrocWpis(zdjety.wpis);
+  }, [przywrocWpis, biezacyWpis, ustawNaprzod]);
 
   const zapamietajPrzedPoleceniem = useCallback(() => {
     odlozWidok();
@@ -386,6 +433,8 @@ export function useKadrowanieWidoku(opcje: {
     kadrujPoziom,
     dopasujZakres,
     poprzedniWidok,
+    nastepnyWidok,
+    historiaNaprzod: naprzod.length,
     zapamietajPrzedPoleceniem,
     zamknijKomunikat,
   };

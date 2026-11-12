@@ -15,11 +15,12 @@
  * SŁOWNIK WEJŚCIA JEST ZMIERZONY, NIE ZGADYWANY (reguła KLASA, NIE INSTANCJA):
  * pomiar realnego markupu eksportu fixtury goldenowej (53 stacje) na L0/L1/L2
  * dał komplet znaczników `svg,g,line,rect,circle,path,polygon,text,animate`,
- * komendy ścieżek `M L Z h q A` i wyłącznie `transform="translate(x, y)"`
+ * komendy ścieżek `M L Z h q A` i transformacje `translate(x, y)` oraz `rotate(kąt, cx, cy)`
  * (`A` — mostek §22.1 na pionie przecinającym kabel bez węzła modelu,
  * `polylinePathWithBridges`, rozstrzygnięcie S7-P2 2026-10-30). Obsługiwany
  * jest ten zbiór POSZERZONY o warianty tej samej klasy
- * (`m l h v H V Z Q q C c a`, `polygon`) — a wszystko poza nim RZUCA WYJĄTEK z
+ * (`m l h v H V Z Q q C c a`, `polygon`; lista transformacji sztywnych `translate`/`rotate`
+ * w dowolnej kolejności) — a wszystko poza nim RZUCA WYJĄTEK z
  * nazwą nieobsłużonej konstrukcji. Ciche pominięcie byłoby dokładnie tym
  * defektem, który karta zamyka (plik „udany", a w CAD-zie pusty arkusz).
  *
@@ -30,6 +31,13 @@
  *    (nie widać go na ekranie ⇒ nie ma go w pliku), pozostałe rysowane pełnym
  *    kryciem;
  *  - `<animate>` (SMIL) — dokument statyczny nie animuje.
+ *
+ * Obrót (karta SLD-SKALA-I-NAWIGACJA, R9): dokument niesie pełną scenę niezależnie od skali
+ * kamery, więc także napisy pionowe (`label.rotated` → `rotate(-90, cx, cy)` na `<text>`,
+ * `SldCanvasV3.tsx`) i obrócone części glifów (`rotate(kąt cx cy)` noża odłącznika,
+ * `symbols/glyphs.tsx`). Transformacja jest sztywna (obrót + przesunięcie), więc punkty idą
+ * przez macierz, okrąg zachowuje promień, a tekst niesie kąt (`ExportText.rotation`). Skala,
+ * pochylenie i `matrix(…)` nadal RZUCAJĄ wyjątek — zmieniłyby geometrię po cichu.
  */
 
 export interface ExportPoint {
@@ -69,6 +77,9 @@ export interface ExportText {
   /** `middle` = `dominant-baseline="middle"` (wyśrodkowanie pionowe). */
   readonly baseline: 'alphabetic' | 'middle';
   readonly fill: string;
+  /** Kąt obrotu pisma [°] w konwencji SVG (oś Y w dół — dodatni zgodnie z ruchem wskazówek
+   *  zegara) wokół punktu (`x`, `y`); 0 = pismo poziome. */
+  readonly rotation: number;
 }
 
 export type ExportPrimitive = ExportPolyline | ExportCircle | ExportText;
@@ -96,9 +107,48 @@ const ARC_SEGMENTS_PER_HALF_TURN = 8;
  *  interpretacja, którą stosuje przeglądarka do pliku .svg). */
 const SVG_DEFAULT_FILL = '#000000';
 
-interface InheritedState {
+/** Sztywne przekształcenie układu: punkt (x, y) → (cos·x − sin·y + tx, sin·x + cos·y + ty);
+ *  `kat` [°] w konwencji SVG. Złożenie obrotów i przesunięć jest znowu tej postaci. */
+interface Przeksztalcenie {
+  readonly kat: number;
+  readonly cos: number;
+  readonly sin: number;
   readonly tx: number;
   readonly ty: number;
+}
+
+const TOZSAMOSC: Przeksztalcenie = { kat: 0, cos: 1, sin: 0, tx: 0, ty: 0 };
+
+function obrot(kat: number): Przeksztalcenie {
+  // Kąty wielokrotne 90° dokładnie (bez −0 i reszty 6e-17) — pliki deterministyczne i czytelne.
+  const r = (((kat % 360) + 360) % 360);
+  const dokladne: Record<number, readonly [number, number]> = { 0: [1, 0], 90: [0, 1], 180: [-1, 0], 270: [0, -1] };
+  const [cos, sin] = dokladne[r] ?? [Math.cos((kat * Math.PI) / 180), Math.sin((kat * Math.PI) / 180)];
+  return { kat, cos, sin, tx: 0, ty: 0 };
+}
+
+/** `zewn ∘ wewn` — najpierw `wewn`, potem `zewn`. */
+function zloz(zewn: Przeksztalcenie, wewn: Przeksztalcenie): Przeksztalcenie {
+  return {
+    kat: zewn.kat + wewn.kat,
+    cos: zewn.cos * wewn.cos - zewn.sin * wewn.sin,
+    sin: zewn.sin * wewn.cos + zewn.cos * wewn.sin,
+    tx: zewn.cos * wewn.tx - zewn.sin * wewn.ty + zewn.tx,
+    ty: zewn.sin * wewn.tx + zewn.cos * wewn.ty + zewn.ty,
+  };
+}
+
+function przesuniecie(tx: number, ty: number): Przeksztalcenie {
+  return { ...TOZSAMOSC, tx, ty };
+}
+
+function zastosuj(m: Przeksztalcenie, p: ExportPoint): ExportPoint {
+  return { x: m.cos * p.x - m.sin * p.y + m.tx, y: m.sin * p.x + m.cos * p.y + m.ty };
+}
+
+interface InheritedState {
+  /** Wypadkowe przekształcenie układu elementu do układu arkusza. */
+  readonly m: Przeksztalcenie;
   /** Rozmiar bieżącego viewportu — baza dla wartości PROCENTOWYCH. Tor
    *  eksportu spotyka je realnie: `injectExportBackground` (`exportPalette.ts`)
    *  wstrzykuje tło jako `<rect width="100%" height="100%">`. Bez rozwiązania
@@ -117,8 +167,7 @@ interface InheritedState {
 }
 
 const ROOT_STATE: InheritedState = {
-  tx: 0,
-  ty: 0,
+  m: TOZSAMOSC,
   viewportWidth: 0,
   viewportHeight: 0,
   fill: null,
@@ -166,16 +215,44 @@ function length(value: string | null, fallback: number, viewport: number): numbe
   return num(trimmed, fallback);
 }
 
-function parseTranslate(transform: string | null): { readonly tx: number; readonly ty: number } {
-  if (!transform || transform.trim() === '') return { tx: 0, ty: 0 };
-  const match = /^\s*translate\(\s*(-?[\d.]+)\s*[, ]\s*(-?[\d.]+)\s*\)\s*$/.exec(transform);
-  if (!match) {
-    throw new Error(
-      `Eksport schematu: nieobsługiwana transformacja „${transform}". Tor eksportu zna wyłącznie translate(x, y) — ` +
-        'rozszerzenie słownika wymaga świadomej zmiany konwertera, nie cichego pominięcia.',
+const LICZBA = String.raw`-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?`;
+const POLECENIE_TRANSFORMACJI = new RegExp(String.raw`^\s*(translate|rotate)\(\s*(${LICZBA}(?:\s*[,\s]\s*${LICZBA})*)\s*\)\s*,?`);
+
+/**
+ * Atrybut `transform` → przekształcenie sztywne. Lista poleceń SVG w dowolnej kolejności:
+ * `translate(x[, y])` i `rotate(kąt[, cx, cy])` (składane od lewej, jak w SVG). Każde inne
+ * polecenie (skala, pochylenie, `matrix`) albo niepoprawna liczba argumentów RZUCA wyjątek.
+ */
+function parseTransform(transform: string | null): Przeksztalcenie {
+  if (!transform || transform.trim() === '') return TOZSAMOSC;
+  let reszta = transform;
+  let wynik = TOZSAMOSC;
+  const blad = () =>
+    new Error(
+      `Eksport schematu: nieobsługiwana transformacja „${transform}". Tor eksportu zna wyłącznie przekształcenia ` +
+        'sztywne translate(x, y) i rotate(kąt, cx, cy) — rozszerzenie słownika wymaga świadomej zmiany konwertera, ' +
+        'nie cichego pominięcia.',
     );
+  while (reszta.trim() !== '') {
+    const m = POLECENIE_TRANSFORMACJI.exec(reszta);
+    if (!m) throw blad();
+    const args = m[2].split(/[\s,]+/).filter((a) => a !== '').map(Number);
+    let krok: Przeksztalcenie;
+    if (m[1] === 'translate') {
+      if (args.length < 1 || args.length > 2) throw blad();
+      krok = przesuniecie(args[0], args[1] ?? 0);
+    } else if (args.length === 1) {
+      krok = obrot(args[0]);
+    } else if (args.length === 3) {
+      // rotate(a, cx, cy) = translate(cx, cy) rotate(a) translate(−cx, −cy)
+      krok = zloz(przesuniecie(args[1], args[2]), zloz(obrot(args[0]), przesuniecie(-args[1], -args[2])));
+    } else {
+      throw blad();
+    }
+    wynik = zloz(wynik, krok);
+    reszta = reszta.slice(m[0].length);
   }
-  return { tx: Number.parseFloat(match[1]), ty: Number.parseFloat(match[2]) };
+  return wynik;
 }
 
 function parseStyleColor(style: string | null): string | null {
@@ -451,13 +528,12 @@ function pointsAttribute(raw: string | null): readonly ExportPoint[] {
 }
 
 function childState(el: Element, parent: InheritedState): InheritedState {
-  const { tx, ty } = parseTranslate(el.getAttribute('transform'));
+  const wlasne = parseTransform(el.getAttribute('transform'));
   const styleColor = parseStyleColor(el.getAttribute('style'));
   const fillRaw = el.getAttribute('fill');
   const strokeRaw = el.getAttribute('stroke');
   return {
-    tx: parent.tx + tx,
-    ty: parent.ty + ty,
+    m: zloz(parent.m, wlasne),
     // Viewport dziedziczy się nienaruszony — zmienia go WYŁĄCZNIE wejście w
     // element `<svg>` (gałąź `case 'svg'`).
     viewportWidth: parent.viewportWidth,
@@ -491,7 +567,7 @@ function collect(el: Element, parent: InheritedState, out: ExportPrimitive[]): v
 
   const state = childState(el, parent);
   if (state.opacity <= OPACITY_EPSILON) return;
-  const shift = (p: ExportPoint): ExportPoint => ({ x: p.x + state.tx, y: p.y + state.ty });
+  const shift = (p: ExportPoint): ExportPoint => zastosuj(state.m, p);
 
   switch (tag) {
     case 'svg': {
@@ -500,15 +576,15 @@ function collect(el: Element, parent: InheritedState, out: ExportPrimitive[]): v
       // tak przy odwzorowaniu TOŻSAMOŚCIOWYM LUB czystej TRANSLACJI
       // (viewBox „minX minY w h" o wymiarach RÓWNYCH rozmiarowi viewportu —
       // ramka arkusza S9-7/8 przesuwa początek układu na margines formatu,
-      // nie skaluje). Translacja jest odwzorowana przesunięciem tx/ty
+      // nie skaluje). Translacja jest składana z przekształceniem
       // dziedziczonym przez dzieci. SKALUJĄCY viewBox (wymiary różne od
       // viewportu) nadal jest twardym błędem — po cichu rozjechałby
       // geometrię DXF/PDF.
       const vb = (el.getAttribute('viewBox') ?? '').trim();
       const w = num(el.getAttribute('width'), state.viewportWidth);
       const h = num(el.getAttribute('height'), state.viewportHeight);
-      let tx = state.tx + num(el.getAttribute('x'), 0);
-      let ty = state.ty + num(el.getAttribute('y'), 0);
+      let tx = num(el.getAttribute('x'), 0);
+      let ty = num(el.getAttribute('y'), 0);
       if (vb !== '') {
         const parts = vb.replace(/[\s,]+/g, ' ').split(' ').map(Number);
         const [minX, minY, vbW, vbH] = parts;
@@ -526,7 +602,7 @@ function collect(el: Element, parent: InheritedState, out: ExportPrimitive[]): v
         tx -= minX;
         ty -= minY;
       }
-      const viewportState: InheritedState = { ...state, tx, ty, viewportWidth: w, viewportHeight: h };
+      const viewportState: InheritedState = { ...state, m: zloz(state.m, przesuniecie(tx, ty)), viewportWidth: w, viewportHeight: h };
       for (const child of Array.from(el.children)) collect(child, viewportState, out);
       return;
     }
@@ -603,6 +679,7 @@ function collect(el: Element, parent: InheritedState, out: ExportPrimitive[]): v
         anchor,
         baseline: el.getAttribute('dominant-baseline') === 'middle' ? 'middle' : 'alphabetic',
         fill: resolveColor(el.getAttribute('fill'), state.fill ?? SVG_DEFAULT_FILL, state.currentColor) ?? SVG_DEFAULT_FILL,
+        rotation: state.m.kat,
       });
       return;
     }

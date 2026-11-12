@@ -116,7 +116,7 @@ async function kadrStacji(page: Page, st: Stacja): Promise<void> {
   await page.keyboard.press('Shift+F');
   await expect(page.getByTestId('sld-v3-sciezka-kadru')).toHaveCount(0);
   await kadrUstalony(page);
-  const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${st.ref_id}#name-row"]`).first();
+  const uchwyt = page.locator(`[data-hit-owner-ref^="${st.ref_id}#name-row"]`).first();
   await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
   await uchwyt.dblclick();
   await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(st.name ?? '', { timeout: 10000 });

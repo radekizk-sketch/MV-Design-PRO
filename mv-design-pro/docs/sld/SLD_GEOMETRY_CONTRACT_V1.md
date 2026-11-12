@@ -22,6 +22,13 @@ na zmyślonych pozycjach (7.6.C).
 
 Silnik layoutu zwraca pełną warstwę geometrii; adapter/renderer tylko ją czyta.
 
+> Stan 2026-11-12 (karta SLD-SKALA-I-NAWIGACJA, pomiar grepem): kontrakt niżej i silnik
+> `engine/sld-layout/layoutEngine.ts` nie mają konsumenta produkcyjnego — czytają je wyłącznie
+> testy substratu (`v2/geometry/__tests__/*.substrate.test.ts`, krok workflowa SLD Determinism).
+> Pole `lod` / typ `LodLevel` oznacza tu poziom hierarchii węzła (stacja / pole / aparat), nie
+> poziom renderu zależny od skali; jedyny renderer `SldCanvasV3` rysuje jedną scenę w każdej skali
+> (§7). Zgłoszone architektowi jako dług „funkcja tylko w testach".
+
 ```ts
 // frontend/src/ui/sld/v2/geometry/layoutContract.ts (NOWY)
 export type LayoutMode = 'topological' | 'geo';
@@ -117,47 +124,33 @@ Topologiczny: drzewo (nie grzebień), ≥75% kadru, port→port (zero wiszących
 czytelność na ≥50 stacjach, wszystkie łańcuchy OZE, tryb prezentacyjny. Geo: dopiero po
 dostarczeniu współrzędnych (inaczej jawny dług). Werdykt eksperta ≥8/10 na zrzucie PO.
 
-**Rozszerzony próg §7.3 (LOD, dodane 2026-05-29):** 12) **L0 czytelny dla ≥50 stacji** —
-stacje rozróżnialne, zero mikro-znaczków, kadr ≥75%; 13) **L2** pełna aparatura + głowice +
-wyniki bez nachodzenia; 14) **przejścia LOD płynne** (sekwencja zrzutów / nagranie, bez
-migotania); 15) **etykiety/wyniki widoczne tylko na poziomie, gdzie się mieszczą** (zero
-nachodzenia przez LOD, nie wyłącznie przez collision-avoidance); 16) **klik nawiguje
-blok→stacja→pole**, hit-box=symbol na każdym poziomie. Werdykt ≥8/10 (B-02) oceniany na
-WSZYSTKICH trzech poziomach (L0/L1/L2), nie jednym.
+**Rozszerzony próg §7.3 (skala, wersja 2026-11-12 — karta SLD-SKALA-I-NAWIGACJA; zastępuje próg
+poziomów L0/L1/L2 z 2026-05-29):** 12) **kadr całej sieci ≥50 stacji czytelny** — każda stacja
+i GPZ ma napis tożsamości albo dymek, tor kompletny, kadr ≥75 %; 13) **skala czytania (1,0)** —
+pełna aparatura, głowice i wyniki bez nachodzenia; 14) **ciągłość kółka** — pozycja ekranowa
+wskazanego aparatu ciągła w poprzek całego zakresu skali, bez skoku geometrii; 15) **napisy
+danych widoczne tylko tam, gdzie są czytelne** (reguła gęstości R3) i bez nachodzenia;
+16) **nawigacja jawna** — dwuklik w głąb, okruszki w górę, wskazanie jedną regułą. Werdykt
+≥8/10 (B-02) oceniany w kadrze całej sieci, w skali pośredniej i w skali czytania.
 
-## 7. Level of Detail (LOD) — trzy poziomy, JEDNA prawda geometrii (rozszerzenie 2026-05-29)
+## 7. Skala i gęstość informacji — JEDNA geometria (wersja 2026-11-12)
 
-LOD = dwie SPRZĘŻONE warstwy (obie wymagane): **graficzny** (zoom geometryczny — ten sam
-obiekt, różny detal wizualny) + **danych** (semantyczny — ILE informacji; sprzężony z 4
-warstwami §7.1 topologia/wyniki/stan/chrome i etykietami-slotami §7.2). Bez LOD schemat
-≥50 stacji jest nieczytelny niezależnie od jakości layoutu (dowód: 52 stacje jako
-mikro-znaczki). **JEDNA prawda:** geometria jest ZAGNIEŻDŻONA (`NodeGeometry.children`) —
-stacja (L0) zawiera pola (L1) zawierają aparaty (L2); LOD wybiera GŁĘBOKOŚĆ renderu +
-widoczność warstw, NIE liczy trzech osobnych prawd o pozycjach.
+Kontrakt wiążący: `SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0 „Skala, gęstość informacji i nawigacja"
+(R1–R9). Wersja z 2026-05-29 tego paragrafu opisywała trzy poziomy L0/L1/L2 (stacja jako blok
+przeglądowy, rozwinięcie w pola, pełna aparatura), moduł `engine/sld-layout/lodController.ts`,
+wymuszanie poziomu i przenikanie warstw — skasowane razem z modułem; konflikt w
+`docs/v12xx/REJESTR_KONFLIKTOW.md`.
 
-| Poziom | Topologia | Wyniki | Etykiety | Porty / krawędzie |
-|--------|-----------|--------|----------|-------------------|
-| **L0** przegląd | stacje jako BLOKI (bbox dzieci), magistrala + laterale | brak / agregat per ciąg | nazwa stacji + status gotowości | brzegowe stacja→stacja, zakotwiczone |
-| **L1** stacja/ciąg | pola, transformatory, sprzęgła (rozwinięcie bloku) | kluczowe (Ik″ szyna, obciążenie ciągu) | nazwa pola, rola IN/OUT/TR/FEEDER, stan łącznika | brzegowe pole→pole, zakotwiczone |
-| **L2** pole/szczegół | pełna aparatura (CB/DS/ES, przekładniki, GŁOWICE) | pełne (Ik″/ip/Ith, prądy, spadki) | katalogowe (typ/przekrój/długość), wynik per węzeł | głowica→terminal (V-07 pełne) |
-
-**Reguły wiążące:**
-- **Widoczność warstw sterowana LOD** rozwiązuje nachodzenie etykiet (A-01/A-03)
-  STRUKTURALNIE: etykiety/wyniki nie istnieją tam, gdzie i tak by się nachodziły (L0 =
-  topologia + stan; wyniki i większość etykiet dopiero L1/L2). NIE polegamy wyłącznie na
-  collision-avoidance.
-- **Port-anchoring (V-07) na KAŻDYM poziomie:** L2 głowica→terminal; L0/L1 uproszczone, ale
-  WCIĄŻ zakotwiczone do portów brzegowych (zero wiszących na każdym poziomie).
-- **Klikalność (V-08) na KAŻDYM poziomie:** klik blok L0 → zoom L1; klik pole L1 → L2 +
-  inspektor. Hit-box = symbol na każdym poziomie.
-- **Przejścia PŁYNNE:** fade/interpolacja zoom→LodLevel, bez migotania/skoku.
-- **Override:** użytkownik może wymusić poziom (jak warstwy §7.6).
-- **Wydajność/wirtualizacja:** L0 dla ≥50 stacji NIE renderuje pełnej aparatury (to cała
-  poanta); render TYLKO widocznego viewportu (>100 węzłów płynnie, §7B.7).
-
-**`lod-controller`** (nowy moduł, `engine/sld-layout/lodController.ts`): progi
-zoom→`LodLevel`, płynne przejścia, polityka widoczności warstw per poziom, wirtualizacja
-viewportu. Czyta z `LayoutResult` (NIE liczy pozycji — jedna prawda geometrii).
+**Reguły wiążące (zgodne z v2.0):**
+- **Jedna geometria w każdej skali.** Scena (`buildSceneV3`) nie zna skali; kamera jest czystym
+  przekształceniem. Elementy toru są rysowane w każdej skali; skala steruje wyłącznie widocznością
+  NAPISÓW wg ich rozmiaru na ekranie (R3) — nachodzenie etykiet rozwiązuje plan etykiet z regułą
+  gęstości, a nie zmiana postaci obiektu.
+- **Port-anchoring (V-07) w każdej skali** — geometria jest jedna, więc zakotwiczenie też.
+- **Klikalność (V-08) w każdej skali:** cel kliku to najmniejszy obiekt hierarchii aparat → pole →
+  stacja rozpoznawalny na ekranie (R6); dwuklik kadruje o poziom głębiej (R7).
+- **Wydajność:** render tylko okna kamery z zapasem; symbol poniżej 3 px jako obrys bez wnętrza
+  (R8); budżety węzłów DOM przypięte testem.
 
 ---
 *Kontrakt wiążący dla przebudowy SLD. Implementacja iteruje na substracie 52 stacji,

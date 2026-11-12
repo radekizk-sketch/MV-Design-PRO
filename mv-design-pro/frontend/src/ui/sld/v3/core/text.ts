@@ -621,6 +621,24 @@ export function measureTextWidth(text: string, fontSize: number, fontWeight: num
   return Math.ceil(em * fontSize - 1e-9);
 }
 
+/**
+ * Pismo liczbowych etykiet WYNIKÓW na schemacie (wartości rozpływu, zwarć, znaczniki OLTC,
+ * skupiska wyników, baner nieaktualności): 9 px świata, typografia SLD rozstrzygnięta
+ * 2026-11-12 (parametry i wyniki 9 px). Przy progu czytelności 9 px (`MIN_READABLE_LABEL_SCREEN_PX`)
+ * wyniki są czytelne od skali 1,0 (karta SLD-SKALA-I-NAWIGACJA, R3).
+ */
+export const PISMO_WYNIKOW = { fontSize: 9, fontWeight: 600 } as const;
+
+/** Szerokość tekstu wyniku [px świata] w piśmie `PISMO_WYNIKOW`. */
+export function szerokoscTekstuWyniku(text: string): number {
+  return measureTextWidth(text, PISMO_WYNIKOW.fontSize, PISMO_WYNIKOW.fontWeight);
+}
+
+/** Wysokość wiersza wyniku [px świata] (fontSize + ta sama interlinia co etykiety). */
+export function wysokoscWierszaWyniku(): number {
+  return PISMO_WYNIKOW.fontSize + 6;
+}
+
 /** Deterministyczna szerokość etykiety [px świata]. */
 export function measureLabelWidth(text: string, cls: LabelClass): number {
   return measureTextWidth(text, LABEL_TYPOGRAPHY[cls].fontSize, LABEL_TYPOGRAPHY[cls].fontWeight);

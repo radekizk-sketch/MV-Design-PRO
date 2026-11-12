@@ -153,7 +153,7 @@ describe('funkcja tylko w rejestrze — karta pola, edytor nastaw, blok przekaź
 
   it.each([true, false])('karta pola po natywnym kliku w ramkę bloku zabezpieczeń × funkcja włączona=%s', (wlaczona) => {
     const { container } = renderKanwyZInspektorem(model(zFunkcjaRejestru(wlaczona)));
-    const ramka = [...container.querySelectorAll('[data-hit-for][data-hit-role="obrys"][data-hit-klasa="adnotacja"]')].find(
+    const ramka = [...container.querySelectorAll('[data-hit-for][data-hit-klasa="adnotacja"]')].find(
       (el) => el.getAttribute('data-hit-owner-ref') === POLE,
     );
     expect(ramka, 'uchwyt ramki bloku zabezpieczeń pola').toBeDefined();

@@ -52,7 +52,7 @@ import { useNetworkBuildStore } from '../../../../network-build/networkBuildStor
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { hierarchiaCelowTrafienia } from '../zakresKadru';
-import { powiekszKolkiemDoSkali } from './kameraTestowa';
+import { dojedzDoObiektu, powiekszKolkiemDoSkali } from './kameraTestowa';
 import { maStartOperacjiCiagu } from '../../../../../ui2/kreatory/magistrala/magistralaModel';
 import { stacjeWgRoli, stacjeZWejsciemKontynuacji, type WejscieObszaru } from './pomiarWejscBudowy';
 
@@ -109,6 +109,10 @@ interface Kanwa {
    *  tematu żywy `SldCanvasV3` (`klikMeta.busRef = resultRefForSegment(meta)`). */
   readonly busRefy: ReadonlyMap<string, string | undefined>;
   readonly derKindy: ReadonlyMap<string, DerSourceKind | undefined>;
+  /** Model w store i skala kadru — do dojazdu do obiektu poza oknem renderu (`uchwyt`). */
+  readonly model: EnergyNetworkModel;
+  readonly kadr: KadrKanwy;
+  readonly skala: number;
 }
 
 /** Kanwa żywego workspace'u nad modelem ze store'u; `model` MUSI być tym samym modelem, który
@@ -165,7 +169,7 @@ function renderKanwe(model: EnergyNetworkModel = enm, kadr: KadrKanwy = 'roboczy
   scene.symbols.forEach((symbol, index) => {
     derKindy.set(symbol.meta?.testId ?? `sld-v3-symbol-${index}`, symbol.meta?.derKind);
   });
-  return { container, obszary, busRefy, derKindy };
+  return { container, obszary, busRefy, derKindy, model, kadr, skala: scale };
 }
 
 /** Wejście rozstrzygania tematu ZŁOŻONE tak samo jak w żywej kanwie. */
@@ -180,9 +184,12 @@ function wejscieTematu(kanwa: Kanwa, area: CanvasHitArea) {
 }
 
 function uchwyt(kanwa: Kanwa, testId: string): Element {
-  const node = kanwa.container.querySelector(
-    `[${HIT_ATTR.for}="${CSS.escape(testId)}"][${HIT_ATTR.role}="obrys"]`,
-  );
+  const szukaj = () => kanwa.container.querySelector(`[${HIT_ATTR.for}="${CSS.escape(testId)}"]`);
+  // Karta SLD-SKALA-I-NAWIGACJA, R8: na kadrze roboczym uchwyty stoją tylko w oknie renderu.
+  // Obiekt spoza okna projektant przeciąga pod środek kanwy (gest natywny, skala bez zmian);
+  // inwentarz obszarów (`obszary`) jest pełny, bo liczony z całej sceny tej skali.
+  if (!szukaj() && kanwa.kadr === 'roboczy') dojedzDoObiektu(kanwa.container, kanwa.model, testId, kanwa.skala);
+  const node = szukaj();
   expect(node, `obiekt ${testId} ma uchwyt trafienia`).toBeTruthy();
   return node!;
 }
@@ -802,7 +809,7 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
   it('NATYWNY prawy klik w etykietę stacji BEZ wolnego pola: pozycja ZABLOKOWANA z powodem', async () => {
     const kanwa = renderKanwe();
     const etykietaStacji = kanwa.container.querySelector(
-      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}*="#name-row"][${HIT_ATTR.klasa}="etykieta"]`,
+      `[${HIT_ATTR.ownerRef}*="#name-row"][${HIT_ATTR.klasa}="etykieta"]`,
     );
     expect(etykietaStacji, 'kanwa ma etykietę nazwy stacji').toBeTruthy();
     await userEvent.pointer({ keys: '[MouseRight]', target: etykietaStacji! });
@@ -819,7 +826,7 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
     useSnapshotStore.setState({ snapshot: zPolem, logicalViews: widoki });
     const { container } = render(<SldCanvasV3Workspace width={W} height={H} />);
     const etykieta = container.querySelector(
-      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(stationRef)}#name-row"]`,
+      `[${HIT_ATTR.ownerRef}^="${CSS.escape(stationRef)}#name-row"]`,
     );
     expect(etykieta, `etykieta stacji ${stationRef} ma uchwyt`).toBeTruthy();
     await userEvent.pointer({ keys: '[MouseRight]', target: etykieta! });

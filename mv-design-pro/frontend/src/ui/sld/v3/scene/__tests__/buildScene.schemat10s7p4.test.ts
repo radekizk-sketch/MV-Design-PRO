@@ -165,6 +165,30 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy
     expect(gaps.some((g) => g.ownerRef === 'obcy/rola/nieznana')).toBe(true);
     expect(allVerticalsAttributed(mystery)).toBe(false);
   });
+
+  // ILOCZYN: rodzaj odcinka obwodu wtórnego/przewodu pola {linia wyłączania, linia pomiarowa,
+  // przewód toru pola, przewód odgałęzienia pola, dojście do węzła odczepu} × przyczyna. Fikstury
+  // regenerowane przy scaleniu ZU-JEDEN-NOSNIK (8068d366d) niosą linie wyłączania pól stacji
+  // (171 pionów po 8 px na sieci referencyjnej) i przewody toru z portów — wszystkie w obrysie
+  // pola, więc przyczyną jest `footprint`, nie kosz `nieuzasadniony` ani „jog-trasy".
+  it('obwody wtórne i przewody toru pola ⇒ footprint (każdy rodzaj), obca rola nadal w koszu', () => {
+    const base = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm);
+    const pion = (x: number) => [{ x, y: 5000 }, { x, y: 5016 }];
+    const syntetyczne: SceneV3 = {
+      ...base,
+      segments: [
+        { points: pion(9001), meta: { kind: 'protectionTrip', ownerRef: 'stn/x/sn_field/000#trip-line' } },
+        { points: pion(9002), meta: { kind: 'measurementLink', ownerRef: 'stn/x/sn_field/000#measurement-link-1' } },
+        { points: pion(9003), meta: { kind: 'sn', ownerRef: 'stn/x/sn_field/000#wire-2' } },
+        { points: pion(9004), meta: { kind: 'sn', ownerRef: 'stn/x/sn_field/000#odgalezienie-1-wire-0' } },
+        { points: pion(9005), meta: { kind: 'sn', ownerRef: 'stn/x/sn_field/000#wezel-odczepu-0' } },
+        { points: pion(9006), meta: { kind: 'leader', ownerRef: 'stn/x/sn_field/000#wire-2-obcy' } },
+      ],
+    };
+    const wgX = new Map(auditVerticalSegments(syntetyczne).map((v) => [v.x, v.cause]));
+    expect([9001, 9002, 9003, 9004, 9005].map((x) => wgX.get(x))).toEqual(Array(5).fill('footprint'));
+    expect(wgX.get(9006)).toBe('nieuzasadniony');
+  });
   // Dawny test „węzeł T (#tee-N): pion dziedziczy przyczynę pierwotnego kabla" skasowany
   // razem z rozcinaniem kabla w punktach przecięć (rozstrzygnięcie S7-P2, 2026-10-30):
   // scena nie tworzy już kawałków `#tee-N`, więc każdy pion jest kablem pod własnym

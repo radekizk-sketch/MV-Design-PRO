@@ -471,8 +471,11 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
     expect(svg.querySelectorAll('polyline').length).toBe(
       sceneL0.segments.filter((s) => s.points.length >= 2).length,
     );
-    // Prostokąty: symbole sceny + prostokąt przycięcia (clipPath) + kadr.
-    expect(svg.querySelectorAll('rect').length).toBe(sceneL0.symbols.length + 2);
+    // Prostokąty: symbole sceny + obrys każdej narysowanej stacji (w tym GPZ — nawigator jednej
+    // sceny, karta SLD-SKALA-I-NAWIGACJA etap 1: dawny przegląd L0 dawał stacje jako symbole)
+    // + prostokąt przycięcia (clipPath) + kadr.
+    expect(sceneL0.meta.drawnStationIds.length).toBeGreaterThan(0);
+    expect(svg.querySelectorAll('rect').length).toBe(sceneL0.symbols.length + sceneL0.meta.drawnStationIds.length + 2);
     expect(within(panel).getByTestId('sld-v3-minimap-frame')).toBeInTheDocument();
   });
 

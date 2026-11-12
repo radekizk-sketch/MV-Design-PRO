@@ -122,7 +122,7 @@ function wady(scene: SceneV3, enm: EnergyNetworkModel) {
 }
 
 describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłączność toru na każdej fiksturze', () => {
-  it('kontrola wejścia: 66 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
+  it('kontrola wejścia: 67 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 58 → 59 — fikstura harnessu
     // `pola_gpz_szablonow.json` (pola GPZ z szablonów Z.7, Z.12, Z.16, Z.17).
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 59 → 63 — sceny generatora
@@ -131,7 +131,9 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // `stacjeKonstrukcjiPol.enm.json` (public/test-fixtures i sceny; dopisane na gałęzi szablonów
     // pól po poprzednim pomiarze, pin go nie objął) oraz `glowice_kablowe_pol_gpz.json`
     // (harness, gałąź integracji — scena głowic kablowych pól GPZ).
-    expect(FIKSTURY).toHaveLength(66);
+    // Pomiar 2026-11-12 (karta SLD-SKALA-I-NAWIGACJA, etap 3–4): 66 → 67 — sieć pomiarowa karty
+    // `public/test-fixtures/gpzDwusekcyjny40.enm.json` (GPZ dwusekcyjny z 40 stacjami).
+    expect(FIKSTURY).toHaveLength(67);
     for (const katalog of KATALOGI) expect(FIKSTURY.some(([n]) => n.startsWith(`${katalog}/`))).toBe(true);
     // Migawki biegu (model pod `snapshot`) i fikstury kanwy (model pod `enm`) są w zbiorze.
     expect(FIKSTURY.some(([n]) => n.endsWith('pulpit_scena_migawka.json'))).toBe(true);
@@ -188,7 +190,10 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // liczona dawniej po TRZECH scenach fikstury (L0/L1/L2), teraz po jednej scenie pełnej;
     // pomiar tym testem na 66 fiksturach 2026-11-12. Intencja bez zmian: zbiór przecięć
     // z mostkiem nie jest pusty, więc wyrocznia (c) ma na czym gryźć.
-    expect(przeciecia).toBe(46);
+    // AKTUALIZACJA ŚWIADOMA 46 → 54 (karta SLD-SKALA-I-NAWIGACJA, etap 3–4): nowa sieć
+    // pomiarowa `gpzDwusekcyjny40.enm.json` wnosi 8 przecięć z mostkiem (czubek karty bez tej
+    // fikstury: 46, zmierzone tym testem na archiwum `b4bc1b3ad`).
+    expect(przeciecia).toBe(54);
     // AKTUALIZACJA ŚWIADOMA kropek 83 → 95 (następca 7, oględziny zrzutu Z.14): rozgałęzienia
     // przewodu punktu neutralnego pola ZU bez kropki (ogranicznik i zejście dławika przy
     // gałęzi równoległej — rysunek ENEA s.93–95 ma kropki) — predykat `ODCZEP_WEZLA_POLA` zna

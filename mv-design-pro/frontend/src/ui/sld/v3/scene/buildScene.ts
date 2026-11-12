@@ -6638,6 +6638,15 @@ function verticalCauseOfRole(
   if (kind === 'lv' || r.includes('#lv-') || r.includes('#der-row') || r.endsWith('#grid-source-drop')) return 'footprint';
   // Kolumna GPZ (pola WN-SN, transformator, kotwica pola, mostki WN).
   if (r.startsWith('gpz/') || r.includes('#hv-') || r.includes('#tr-') || r.endsWith('#field-anchor')) return 'footprint';
+  // Obwody wtórne pola: linia wyłączania blok zabezpieczeń → łącznik (`#trip-line`,
+  // `compose/blokZabezpieczenPola.ts`) i linie pomiarowe przekładnik → blok
+  // (`#measurement-link[-n]`) leżą w obrysie pola — długość pionu = odległość ramki bloku od
+  // aparatu w stosie pola. Rozpoznanie po RODZAJU odcinka (oba rodzaje jedną regułą).
+  if (kind === 'protectionTrip' || kind === 'measurementLink') return 'footprint';
+  // Przewody toru pola port → port między aparatami stosu (`#wire-n`, `#odgalezienie-k-wire-n`,
+  // dojście `#wezel-odczepu-n`; `compose/station.ts`, `compose/gpz.ts`) — długość = odstęp
+  // portów sąsiednich aparatów w stosie pola, czyli wysokość obrysu, nie trasa.
+  if (/#(odgalezienie-\d+-)?wire-\d+$/.test(r) || /#wezel-odczepu-\d+$/.test(r)) return 'footprint';
   // Zejścia lateralne (packer): `#descent` strip + segmenty gałęzi/pierwszych
   // hopów lateralu (`*branch_segment*`, `*segment_L`/`_R` i ich zagnieżdżenia).
   if (r.includes('#descent') || r.includes('branch_segment') || /segment_[LR](_[LR]+)*(_S[LR])?$/.test(r)) return 'rezerwacja-kanalu';

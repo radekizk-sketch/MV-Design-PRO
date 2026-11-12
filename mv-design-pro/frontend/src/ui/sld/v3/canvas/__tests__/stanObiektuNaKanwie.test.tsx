@@ -111,10 +111,16 @@ describe('stan obiektu na kanwie — iloczyn kompozycja × pochodzenie × stan',
     const enm = zeStanem(model('stacja'), 'ISTNIEJACY');
     const bezRekordu = buildSceneV3(enm).symbols.filter((s) => s.meta?.apparatusOrigin == null && s.meta?.testId);
     expect(bezRekordu.length).toBeGreaterThan(0);
-    const dom = kanwa(enm);
+    // Kadr całego rysunku (kamera początkowa kanwy): okno renderu R8 obejmuje każdy symbol, więc
+    // KAŻDY symbol bez rekordu ma węzeł — przy skali czytania nad środkiem sceny część z nich
+    // leży poza oknem i nie ma czego sprawdzić. Symbol z obrysem bez wnętrza niesie te same
+    // atrybuty co glif (`SceneSymbolNode`).
+    const dom = render(<SldCanvasV3 snapshot={enm} width={WIDOK.width} height={WIDOK.height} />).container;
     for (const s of bezRekordu) {
       expect(s.meta?.stanObiektu).toBeUndefined();
-      expect(dom.querySelector(`[data-testid="${s.meta!.testId}"]`)?.hasAttribute('data-stan-obiektu')).toBe(false);
+      const wezel = dom.querySelector(`[data-testid="${s.meta!.testId}"]`);
+      expect(wezel, s.meta?.testId).not.toBeNull();
+      expect(wezel!.hasAttribute('data-stan-obiektu'), s.meta?.testId).toBe(false);
       expect(dom.querySelector(`[data-hit-for="${s.meta!.testId}"] title`)?.textContent ?? '').not.toContain('Stan obiektu');
     }
   });

@@ -134,7 +134,7 @@ function uchwytyWgKlasy(container: HTMLElement, enm: EnergyNetworkModel): Map<Kl
     ...scena.labels.filter((x) => x.ownerKind === 'protection').map((x) => x.ownerRef),
   ]);
   const wynik = new Map<KlasaObiektu, Element>();
-  for (const el of Array.from(container.querySelectorAll('[data-hit-for][data-hit-role="obrys"]'))) {
+  for (const el of Array.from(container.querySelectorAll('[data-hit-for]'))) {
     const owner = el.getAttribute('data-hit-owner-ref') ?? '';
     if (!refyWarstwy.has(owner) || !polaZKodami.has(owner.split('#')[0])) continue;
     // Ramka bloku niesie ref POLA — ten sam co aparaty pola; rozróżnia ją klasa trafienia.

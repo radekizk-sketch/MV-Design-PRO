@@ -89,16 +89,32 @@ function colorOperator(color: string, stroking: boolean): string | null {
   return `${fmt(rgb.r)} ${fmt(rgb.g)} ${fmt(rgb.b)} ${stroking ? 'RG' : 'rg'}`;
 }
 
+/** cos/sin kąta pisma [°]; wielokrotności 90° dokładnie (plik deterministyczny, bez −0). */
+function obrotPisma(kat: number): { readonly cos: number; readonly sin: number } {
+  const r = ((kat % 360) + 360) % 360;
+  if (r === 0) return { cos: 1, sin: 0 };
+  if (r === 90) return { cos: 0, sin: 1 };
+  if (r === 180) return { cos: -1, sin: 0 };
+  if (r === 270) return { cos: 0, sin: -1 };
+  return { cos: Math.cos((kat * Math.PI) / 180), sin: Math.sin((kat * Math.PI) / 180) };
+}
+
 function primitiveToContent(primitive: ExportPrimitive): string {
   if (primitive.kind === 'text') {
     const bold = primitive.fontWeight >= 600;
     const width = pdfTextWidth(primitive.text, primitive.fontSize, bold);
-    const x = primitive.anchor === 'middle' ? primitive.x - width / 2 : primitive.anchor === 'end' ? primitive.x - width : primitive.x;
-    // `dominant-baseline="middle"` ⇒ linia pisma przesunięta o ~0,35 wysokości
-    // pisma (wartość z metryki AFM: połowa wysokości wersalika Helvetiki,
-    // `CapHeight` 718/1000, więc 0,359 em) — bez tego etykiety wyśrodkowane
+    // Przesunięcie punktu pisma w układzie WŁASNYM napisu (wzdłuż linii pisma i w poprzek):
+    // wyrównanie poziome o szerokość z metryk, `dominant-baseline="middle"` ⇒ linia pisma
+    // przesunięta o ~0,35 wysokości pisma (wartość z metryki AFM: połowa wysokości wersalika
+    // Helvetiki, `CapHeight` 718/1000, więc 0,359 em) — bez tego etykiety wyśrodkowane
     // pionowo (legenda, opisy pól) siedziałyby o pół wiersza wyżej.
-    const y = primitive.baseline === 'middle' ? primitive.y + primitive.fontSize * 0.359 : primitive.y;
+    const du = primitive.anchor === 'middle' ? -width / 2 : primitive.anchor === 'end' ? -width : 0;
+    const dv = primitive.baseline === 'middle' ? primitive.fontSize * 0.359 : 0;
+    // Obrót napisu (karta SLD-SKALA-I-NAWIGACJA, R9: napisy pionowe sceny) — kąt SVG w układzie
+    // rysunku (oś Y w dół). Kąt 0 daje dokładnie dawny zapis `1 0 0 -1 x y Tm`.
+    const { cos, sin } = obrotPisma(primitive.rotation);
+    const x = primitive.x + cos * du - sin * dv;
+    const y = primitive.y + sin * du + cos * dv;
     const fill = colorOperator(primitive.fill, false);
     return [
       'q',
@@ -106,8 +122,9 @@ function primitiveToContent(primitive: ExportPrimitive): string {
       'BT',
       `/${bold ? 'F2' : 'F1'} ${fmt(primitive.fontSize)} Tf`,
       // Odbicie osi Y w macierzy tekstu odwraca odbicie strony (CTM), więc
-      // pismo jest czytelne, a współrzędne pozostają w układzie rysunku.
-      `1 0 0 -1 ${fmt(x)} ${fmt(y)} Tm`,
+      // pismo jest czytelne, a współrzędne pozostają w układzie rysunku; obrót R(θ) składany
+      // z odbiciem: (u, v) → (u·cos + v·sin, u·sin − v·cos).
+      `${fmt(cos)} ${fmt(sin)} ${fmt(sin)} ${fmt(-cos)} ${fmt(x)} ${fmt(y)} Tm`,
       `(${pdfEncodeText(primitive.text)}) Tj`,
       'ET',
       'Q',

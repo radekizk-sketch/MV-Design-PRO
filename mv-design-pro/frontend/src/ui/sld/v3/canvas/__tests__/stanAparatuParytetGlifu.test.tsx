@@ -42,6 +42,7 @@ import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-eleme
 import { BRAK_POLOZENIA_W_MODELU } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
 import { OPIS_POLOZENIA_PL } from '../../../v2/model/stanAparatowPola';
 import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
+import { dojedzDoObiektu } from './kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = resolve(here, '..', '..', '..', '..', '..');
@@ -154,7 +155,11 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
         for (const [klucz, index] of [...reprezentanci].sort(([a], [b]) => a.localeCompare(b))) {
           const symbol = scene.symbols[index];
           const testId = symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
-          const uchwyt = container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+          // Karta SLD-SKALA-I-NAWIGACJA: łącznik jest własnym celem kliku na kadrze roboczym
+          // (R6), a uchwyty stoją w oknie renderu (R8) — projektant dojeżdża do symbolu kółkiem
+          // z kursorem nad nim i przeciąga go pod środek kanwy.
+          dojedzDoObiektu(container, enm, testId);
+          const uchwyt = container.querySelector(`[data-hit-for="${testId}"]`);
           expect(uchwyt, `uchwyt trafienia ${klucz}`).not.toBeNull();
           fireEvent.click(uchwyt!);
           expect(
@@ -190,7 +195,8 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
       </>,
     );
     const testId = symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
-    const uchwyt = container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+    dojedzDoObiektu(container, bezRekordow, testId);
+    const uchwyt = container.querySelector(`[data-hit-for="${testId}"]`);
     expect(uchwyt, 'uchwyt trafienia sylwetki').not.toBeNull();
     fireEvent.click(uchwyt!);
     expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([symbol.meta!.ownerRef]);

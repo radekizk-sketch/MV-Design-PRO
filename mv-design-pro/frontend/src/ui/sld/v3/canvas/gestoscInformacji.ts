@@ -11,10 +11,13 @@
  * „pasm” widoczności wynika z rozmiarów pisma klas (t1 13 px, t2 11 px,
  * t3 9 px, t4 8 px świata — `core/text.ts` `LABEL_TYPOGRAPHY`), nie z konfiguracji.
  *
- * Pasmo histerezy: napis, który był widoczny, znika dopiero poniżej progu
- * pomniejszonego o `PASMO_HISTEREZY_CZYTELNOSCI`; napis niewidoczny pojawia się
- * dopiero powyżej progu powiększonego o to samo pasmo. Drganie skali kółka lub
- * szczypania wokół progu nie przełącza więc napisu tam i z powrotem.
+ * Pasmo histerezy (jednostronne, POD progiem): napis niewidoczny pojawia się przy progu
+ * czytelności, a napis widoczny znika dopiero poniżej progu pomniejszonego
+ * o `PASMO_HISTEREZY_CZYTELNOSCI`. Drganie skali kółka lub szczypania wokół progu nie
+ * przełącza więc napisu tam i z powrotem, a napis czytelny (≥ 9 px) jest widoczny zawsze —
+ * także po wejściu z kadru, na którym był niewidoczny (decyzja architekta 2026-11-12: wyniki
+ * pismem 9 px są widoczne od skali 1,0; dawne pasmo nad progiem odsuwało je do 1,1).
+ * Próg czytelności bez zmian.
  *
  * Czysta arytmetyka, bez DOM i bez stanu — stan „poprzednio widoczny” podaje
  * wołający (kanwa trzyma go między klatkami).
@@ -57,11 +60,10 @@ export const PASMO_HISTEREZY_CZYTELNOSCI = 0.1;
 /**
  * Najmniejsza skala, przy której napis o wysokości nominalnej `wysokoscSwiata` POJAWIA SIĘ przy
  * powiększaniu z kadru, na którym był niewidoczny (`czytelnyNaEkranie(…, poprzednio = false)`):
- * próg czytelności podniesiony o pasmo histerezy. Dla wyników (pismo t4, 8 j.św.) to 1,2375 —
- * wyniki są czytelne powyżej skali czytania, bo t4 w rozmiarze nominalnym ma 8 px < 9 px.
+ * sam próg czytelności. Dla wyników (pismo 9 j.św., `PISMO_WYNIKOW`) to 1,0.
  */
 export function skalaPojawieniaSie(wysokoscSwiata: number): number {
-  return (MIN_READABLE_LABEL_SCREEN_PX * (1 + PASMO_HISTEREZY_CZYTELNOSCI)) / wysokoscSwiata;
+  return MIN_READABLE_LABEL_SCREEN_PX / wysokoscSwiata;
 }
 
 /**

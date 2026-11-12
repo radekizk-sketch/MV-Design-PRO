@@ -29,7 +29,7 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { scenariusz } from '../../lv-domain/fixtures/scenariusze';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { uchwytNazwyStacji } from './uchwytStacji';
-import { powiekszKolkiemDoSkali } from './kameraTestowa';
+import { powiekszKolkiemDoSkali, punktCeluTrafienia, testIdSymboluSceny } from './kameraTestowa';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 
 /** Projekcja z backendu (kontrakt 3.0.0) — atrapa odpowiada NIĄ z tożsamością żądania. */
@@ -53,7 +53,7 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as {
 
 function uchwyt(container: HTMLElement, scene: SceneV3, index: number): Element {
   const testId = scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`;
-  const el = container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+  const el = container.querySelector(`[data-hit-for="${testId}"]`);
   if (!el) throw new Error(`brak obszaru trafienia dla ${testId}`);
   return el;
 }
@@ -141,7 +141,8 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     // R6 (karta SLD-SKALA-I-NAWIGACJA): transformator i aparat są celem kliku dopiero na kadrze
     // roboczym (z kadru całej sieci klik trafia stację) — natywne kółko do skali czytania.
-    powiekszKolkiemDoSkali(container, 1);
+    // R8: kółko z kursorem NAD obiektem — uchwyty stoją tylko w oknie renderu.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, trIndex)));
 
     fireEvent.click(uchwyt(container, scene, trIndex));
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
@@ -156,7 +157,8 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     // R6 (karta SLD-SKALA-I-NAWIGACJA): transformator i aparat są celem kliku dopiero na kadrze
     // roboczym (z kadru całej sieci klik trafia stację) — natywne kółko do skali czytania.
-    powiekszKolkiemDoSkali(container, 1);
+    // R8: kółko z kursorem NAD obiektem — uchwyty stoją tylko w oknie renderu.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, apparatusIndex)));
     fireEvent.doubleClick(uchwyt(container, scene, apparatusIndex));
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();

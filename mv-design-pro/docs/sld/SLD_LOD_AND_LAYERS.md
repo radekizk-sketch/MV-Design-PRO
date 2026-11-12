@@ -1,85 +1,21 @@
-# LOD i warstwy widoczności SLD — kontrakt kanoniczny
+# Warstwy widoczności SLD — kontrakt kanoniczny
 
-**Status:** kanon BINDING
-**Wersja:** v1.0
+**Status:** kanon BINDING (warstwy); część o poziomach szczegółu USUNIĘTA
+**Wersja:** v2.0 (2026-11-12, karta SLD-SKALA-I-NAWIGACJA)
 
 ---
 
 ## 1. Definicja
 
-**LOD (Level of Detail)** — poziom szczegółowości renderingu zależny od skali zoomu i woli użytkownika. Steruje co jest widoczne, NIE steruje topologią.
+**Warstwy** — niezależne kanały informacyjne włączane i wyłączane ręcznie. Sterują tym, co jest renderowane, NIE sterują geometrią ani topologią.
 
-**Warstwy** — niezależne kanały informacyjne włączane/wyłączane ręcznie. Steruje co jest renderowane, NIE steruje geometrią.
+**Poziomy szczegółu (LOD 0–4) nie istnieją.** Wersja 1.0 tego dokumentu opisywała pięć poziomów zależnych od skali (progi 0,3 / 0,7 / 1,5 / 3,0, wymuszanie poziomu, wyższy poziom dla zaznaczenia) i silnik `SldLevelOfDetailEngine.ts`, którego w kodzie nie ma. Kontrakt skali jest jeden: `SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0 „Skala, gęstość informacji i nawigacja" — jedna geometria w każdej skali, skala steruje wyłącznie gęstością informacji wg czytelności napisu na ekranie (R3), tożsamość zawsze czytelna (R4). Konflikt wpisany w `docs/v12xx/REJESTR_KONFLIKTOW.md`.
 
-Engine: `frontend/src/ui/sld/SldLevelOfDetailEngine.ts` (istnieje, wymaga doprecyzowania w PR-12).
-
----
-
-## 2. Poziomy LOD (5)
-
-### LOD 0 — overview (skala mapy)
-
-| Widoczne | Ukryte |
-|---|---|
-| GPZ jako blok | Pola SN |
-| Główne ciągi jako linie | Aparaty |
-| Stacje jako kompaktowe bloki | Pomiary |
-| PV/BESS/FW jako małe znaczniki | Etykiety Q |
-| Statusy ogólne (energized / dead / alarm) | Q labels |
-
-### LOD 1 — sieć
-
-| Widoczne | Ukryte |
-|---|---|
-| GPZ + rozdzielnia uproszczona | Aparaty wewnątrz pól |
-| Ciąg główny + odgałęzienia | Pomiary szczegółowe |
-| Stacje z typem topologicznym (końcowa/przelotowa/odgałęźna/sekcyjna) | Q labels |
-| PV/BESS/FW jako obiekty przyłączeniowe | |
-| NOP, łączniki sekcyjne | |
-| Status zasilania | |
-
-### LOD 2 — obiekty
-
-| Widoczne | Ukryte |
-|---|---|
-| Pola SN (kontur + nazwa) | Pełna aparatura |
-| Aparaty główne (CB) | Pomiary szczegółowe |
-| Kable/linie z nazwami | Pełne pomiary I/U/P/Q |
-| Stacje z typem topologicznym | |
-| Wybrane pomiary tylko dla zaznaczonego obiektu | |
-
-### LOD 3 — szczegół techniczny
-
-| Widoczne | Ukryte |
-|---|---|
-| Pełna aparatura pola (Q_szynowy, Q_główny, ES, CT, VT, głowica) | — |
-| Q labels | |
-| Pomiary pola (jeśli warstwa pomiarów włączona) | |
-| Parametry odcinka | |
-| Status kompletności | |
-| Etykiety wynikowe | |
-
-### LOD 4 — inspekcja / diagnostyka
-
-| Widoczne | Ukryte |
-|---|---|
-| Wszystkie szczegóły techniczne | — |
-| Braki danych (znaczniki) | |
-| Blokady, ostrzeżenia | |
-| Skrócone uzasadnienie inżynierskie | |
-| Status raportu | |
-
----
-
-## 3. Reguły LOD (BINDING)
-
-1. Zmiana zoomu zmienia LOD płynnie albo progowo (granice progu zoom 0.3 / 0.7 / 1.5 / 3.0).
-2. Użytkownik może wymusić wyższy LOD niż wynika z zoomu (override).
-3. **Selected object może mieć LOD wyższy niż globalny.** Zaznaczona stacja w LOD 1 pokazuje pola jak w LOD 3.
-4. Zmiana LOD **nie zmienia** world coordinates ani topologii.
-5. Ukrycie szczegółu **nie usuwa** danych z modelu.
-6. **NIE wolno** masowo renderować pomiarów `I1/I2/I3/P/Q` pod każdym polem przy LOD 0/1.
-7. **NIE wolno** renderować wartości jako `0.00` w miejscu braku obliczeń (kontrakt `formatPolishValue`).
+Reguły, które z dawnej części o poziomach zostają w mocy (teraz jako reguły skali):
+1. Zmiana skali nie zmienia współrzędnych świata ani topologii.
+2. Ukrycie informacji nie usuwa danych z modelu.
+3. Nie wolno masowo renderować pomiarów `I1/I2/I3/P/Q` pod każdym polem, gdy ich pismo jest nieczytelne na ekranie (reguła gęstości R3, nie próg poziomu).
+4. Nie wolno renderować wartości jako `0.00` w miejscu braku obliczeń (kontrakt `formatPolishValue`).
 
 ---
 
@@ -117,13 +53,7 @@ Każda warstwa to checkbox w lewym panelu. Stan startowy: warstwy aparatury, ety
 
 ## 6. Test kontraktowy
 
-Test: `frontend/src/ui/sld/__tests__/SldLevelOfDetailEngine.test.ts` (istnieje).
-
-Rozszerzenie w PR-12: `lod-policy.test.ts`:
-- LOD 0/1: brak pomiarów per pole.
-- LOD 3: pełne pomiary, jeśli warstwa pomiarów włączona.
-- Selected obiekt: LOD wyższy niż globalny.
-- Toggle warstwy: world coordinates niezmienione.
+Warstwy: przełączenie warstwy nie zmienia współrzędnych świata (`frontend/src/ui/sld/v3/canvas/__tests__/layers.test.ts`). Skala i gęstość informacji: testy wymienione w `SLD_LOD_SPEC_OPERATOR_GRADE.md` §3.
 
 ---
 

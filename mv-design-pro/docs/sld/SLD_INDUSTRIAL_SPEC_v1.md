@@ -25,10 +25,10 @@ System osiąga „klasę przemysłową" gdy spełnia wszystkie sześć filarów 
 |---|-------|---------------|--------|----------|
 | F1 | Biblioteka symboli IEC 60617 | 58% parity, 32 symbole, brak ring/double busbar | ≥ 90% IEC 60617 parity + ANSI 315 alt mode | § 3 |
 | F2 | Layout & routing (port-based, CAD) | A* obstacle avoidance OK, ale routing łączy współrzędne nie porty | Port-based routing 100%, grid snap, busbar-first | § 4 |
-| F3 | LOD + warstwy + typografia | brak LOD, 13 ról fontów OK, brak warstw toggle | 5 poziomów LOD, 13 warstw toggle, hierarchia wizualna | § 5 |
+| F3 | Skala + warstwy + typografia | brak LOD, 13 ról fontów OK, brak warstw toggle | jedna geometria w każdej skali, gęstość informacji wg czytelności (v2.0 `SLD_LOD_SPEC_OPERATOR_GRADE.md`), 13 warstw toggle, hierarchia wizualna | § 5 |
 | F4 | Overlay wyników + dark SCADA + light technical | overlay istnieje, dark SCADA OK, brak light technical | 2 motywy, overlay z strzałkami przepływu, kolory severity, fault current | § 6 |
 | F5 | Eksport (SVG / PDF / DXF) | BRAK | SVG (vector-clean) + PDF (vector) + DXF (roadmap) | § 7 |
-| F6 | Visual regression w CI | BRAK | Playwright `toHaveScreenshot` dla 15 fixtures × 4 LOD = 60 snapshotów | § 8 |
+| F6 | Visual regression w CI | BRAK | Playwright `toHaveScreenshot` dla 15 fixtures × 3 skale kamery = 45 snapshotów | § 8 |
 
 ## 3. F1 — Biblioteka symboli IEC 60617
 
@@ -170,21 +170,17 @@ Snapshot / TopologyInput
 `frontend/src/ui/sld/core/layoutEngine.ts` — strategia `hierarchical-port-based` (NOWA).
 `frontend/src/ui/sld/v2/builder/PortBasedLayout.ts` (NOWY) — implementacja.
 
-## 5. F3 — LOD + warstwy + typografia + grid
+## 5. F3 — Skala + warstwy + typografia + grid
 
-### 5.1 Level-of-Detail (5 poziomów) — zgodne z `frontend/src/ui/sld/v2/lod/LodPolicy.ts`
+### 5.1 Skala i gęstość informacji (wersja 2026-11-12 — zastępuje „Level-of-Detail, 5 poziomów")
 
-| LOD | Zoom range | Nazwa | Co renderuje |
-|-----|------------|-------|--------------|
-| LOD-0 | < 0.3× | overview (mapa) | tylko outline GPZ, magistrala — bez pól |
-| LOD-1 | 0.3–0.7× | sieć (planview) | + pola GPZ jako prostokąty z nazwą, mini-RMU compact |
-| LOD-2 | 0.7–1.5× | obiekty (standard) | + CB, DS w polach, główne pomiary, mini-RMU detail |
-| LOD-3 | 1.5–3.0× | szczegół techniczny | + CT/VT, badge'e SPZ/SCO/OWG, DER sub-tree |
-| LOD-4 | > 3.0× | diagnostyka | wszystko + footnoty, snapshot info, źródła |
-
-Source of truth thresholds: `LOD_ZOOM_THRESHOLDS` w
-`frontend/src/ui/sld/v2/lod/LodPolicy.ts`. Wnioskowanie LOD z scale:
-`inferLodFromScale(scale: number): LodLevel`.
+Poziomy LOD-0…LOD-4 (progi 0,3 / 0,7 / 1,5 / 3,0, `ui/sld/v2/lod/LodPolicy.ts`,
+`inferLodFromScale`) są skasowane razem z modułem (karta SLD-SKALA-I-NAWIGACJA, wymaganie
+właściciela 2026-11-11; konflikt w `docs/v12xx/REJESTR_KONFLIKTOW.md`). Kontrakt wiążący:
+`SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0 — jedna geometria w każdej skali (R1), kamera jako czyste
+przekształcenie (R2), widoczność napisów wg ich rozmiaru na ekranie względem progu 9 px (R3),
+tożsamość zawsze czytelna (R4), podłogi toru i znaki stanu (R5), cel kliku wg rozmiaru ekranowego
+(R6), nawigacja jawna (R7), render odcinany do okna kamery (R8).
 
 ### 5.2 Warstwy (13 toggle'ach)
 
@@ -300,14 +296,16 @@ Theme switch via CSS variables `--sld-*`. Eksport zawsze w `light_technical` (W1
 
 ### 8.1 Playwright fixtures
 
-15 visual fixtures × 4 LOD = 60 snapshotów:
+15 fikstur wizualnych × 3 skale kamery (cała sieć, skala pośrednia, skala czytania 1,0) — poziomów
+szczegółu nie ma (`SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0), więc zrzut na skalę zastępuje zrzut na
+poziom:
 
 - Sieci referencyjne (4): `leaf`, `pass`, `branch`, `ring+NOP`
-- GPZ stand-alone (1): GPZ 110/15 kV 12-bay
+- GPZ stand-alone (1): GPZ 110/15 kV 12-bay; sieć pomiarowa GPZ dwusekcyjnego z 40 stacjami
+  (`public/test-fixtures/gpzDwusekcyjny40.enm.json`)
 - Stacje (4): GPZ, RMU, MV/LV przelotowa, MV/LV odgałęźna
 - DER (3): PV (1 MWp), BESS (500 kWh), FW (2 MW)
 - Edge cases (3): missing-data, no-calc, empty-project
-- LOD per fixture: 0, 1, 2, 3 (LOD-4 testowane manualnie)
 
 ### 8.2 Toleancja
 
@@ -325,7 +323,7 @@ System SLD osiąga „klasa przemysłowa" gdy:
 
 - [ ] **F1:** ≥ 50 symboli SVG z ports.json, IEC 60617 parity ≥ 90% (audit checklist `docs/sld/SLD_IEC_60617_PARITY.md`)
 - [ ] **F2:** 100% edges port-based (guard: `port_binding_guard.py` rozszerzony)
-- [ ] **F3:** 5 poziomów LOD przełączane, 13 warstw toggle'owalnych, typografia z `FONT_SIZES`
+- [ ] **F3:** jedna geometria w każdej skali z gęstością informacji wg czytelności, 13 warstw toggle'owalnych, typografia z `FONT_SIZES`
 - [ ] **F4:** 2 motywy (dark_scada, light_technical), overlay SC/PF/Protection w pełni funkcjonalne
 - [ ] **F5:** SVG + PDF eksport działa dla 4 referencyjnych sieci, deterministyczny
 - [ ] **F6:** 60 visual snapshots w CI, < 0.5% pixel diff tolerance

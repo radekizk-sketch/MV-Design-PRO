@@ -27,7 +27,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
@@ -38,6 +38,7 @@ import { useThemeModeStore, type ThemeMode } from '../../../../../ui2/theme/them
 import { useNotificationStore } from '../../../../notifications/store';
 import { SldCanvasV3Workspace } from '../../canvas/SldCanvasV3Workspace';
 import { SLD_EXPORT_FORMATS, type SldExportFormat } from '../formats';
+import { buildSceneV3 } from '../../scene/buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -343,4 +344,40 @@ describe('S9-6 odbiór: tabliczka rysunkowa z danymi REALNYMI', () => {
     expect(plik.tresc).not.toContain('ENEA');
     expect(plik.tresc).not.toContain('1:1000');
   }, LIMIT_EKSPORTU_MS);
+});
+
+/**
+ * Karta SLD-SKALA-I-NAWIGACJA R9 — eksport to PEŁNA scena i wszystkie klasy informacji, niezależnie
+ * od skali kanwy. Kanwa ekranu odcina render do okna kamery i dawkuje napisy wg czytelności (R3,
+ * R8); eksport rysuje się w trybie dokumentu. ILOCZYN: kamera {kadr całej sieci, przybliżenie
+ * klawiszami w głąb jednej stacji} × format SVG — plik bajt w bajt ten sam, każdy symbol sceny
+ * ma węzeł, żaden symbol nie jest obrysem bez wnętrza, każda etykieta sceny jest narysowana.
+ * Iniekcja (meldunek karty): klon kanwy ekranu bez trybu dokumentu — plik zależy od kamery.
+ */
+describe('R9: eksport niezależny od skali kamery', () => {
+  it('kadr całej sieci i przybliżenie dają ten sam plik SVG z pełną sceną', async () => {
+    const zKadruSieci = (await eksportuj('svg', 'light_technical')).plik.tresc;
+    // Ta sama ścieżka, ale przed eksportem kamera w głąb jednej stacji (wskazanie + klawisze).
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    const { pliki } = przechwycPobranie();
+    podstawSerwer(serwerOddajePlik());
+    render(<SldCanvasV3Workspace width={900} height={700} />);
+    const stacja = enm.substations.find((s) => s.station_type !== 'gpz')!;
+    act(() => useSelectionStore.getState().centerSldOnElement(stacja.ref_id));
+    fireEvent.keyDown(window, { key: '+' });
+    fireEvent.keyDown(window, { key: '+' });
+    rozwinZwinieteNarzedzia();
+    fireEvent.click(screen.getByTestId('sld-export-menu-toggle'));
+    fireEvent.click(screen.getByTestId('sld-export-format-svg'));
+    await waitFor(() => expect(pliki).toHaveLength(1));
+    const zPrzyblizenia = (await pliki[0]).tresc;
+    expect(zPrzyblizenia).toBe(zKadruSieci);
+    const dokument = new DOMParser().parseFromString(zKadruSieci, 'image/svg+xml');
+    const scena = buildSceneV3(enm);
+    expect(dokument.querySelectorAll('[data-testid="sld-v3-symbols"] > [data-testid]').length).toBe(scena.symbols.length);
+    expect(dokument.querySelectorAll('[data-bez-wnetrza]').length).toBe(0);
+    expect(dokument.querySelectorAll('[data-testid^="sld-v3-label-"]').length).toBeGreaterThanOrEqual(scena.labels.length);
+  }, LIMIT_EKSPORTU_MS * 2);
 });

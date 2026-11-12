@@ -162,11 +162,14 @@ import {
   MIN_HIT_SCREEN_PX,
   buildCanvasHitAreas,
   hitAreasFromDom,
-  hitLayerOrderingInDom,
+  HIT_ATTR,
   pointerBlockersInDom,
   sondaSiatkowaTrafien,
   HIT_OBJECT_CLASSES,
 } from '../src/ui/sld/v3/canvas/hitAreas.ts';
+import { hierarchiaCelowTrafienia } from '../src/ui/sld/v3/canvas/zakresKadru.ts';
+import { obwiedniaKsztaltu, oknoRenderuSceny, przecinaOkno } from '../src/ui/sld/v3/canvas/oknoRenderu.ts';
+import { FRAME_MARGIN } from '../src/ui/sld/v3/sheet/Frame.tsx';
 // Karta S9-5 (menu kontekstowe i operacje budowy na kanwie): temat menu ma
 // KOTWICĘ zweryfikowaną w modelu — patrz nagłówek `canvas/canvasMenuSubject.ts`.
 import {
@@ -631,7 +634,11 @@ const EXPECTED_STATION_COUNT = 53;
 // „jog-trasy" 88/160/160 → 152/176/176; „slupek-terminalny" bez zmian.
 // Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
 // przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
-const VERTICAL_LENGTH_BASELINE = 46432;
+// Scalenie ZU-JEDEN-NOSNIK (8068d366d — regeneracja fikstury referencyjnej): 46432 → 54408,
+// zmierzone: ten sam kod na fiksturze sprzed regeneracji daje 46432; atrybucja per rodzaj
+// odcinka w `buildScene.schemat10s7p6.test.ts` (przewody toru pól z portów +5472, linie
+// wyłączania pól stacji +1368, zejścia odgałęzień +1888, jog magistrali +96, dołączenia nN −848).
+const VERTICAL_LENGTH_BASELINE = 54408;
 
 // Rozstrzygnięcie architekta S7-P2 (2026-10-30): skrzyżowania toru mocy z mostkiem §22.1
 // na fiksturze referencyjnej, zmierzone po skasowaniu rozcinania kabli „węzłem T" (dawniej
@@ -712,7 +719,11 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
   // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (2026-11-05): atrybucja przy `VERTICAL_LENGTH_BASELINE`.
   // Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena — wartości dawnej L2.
-  footprint: 2784, 'rezerwacja-kanalu': 43264, 'jog-trasy': 176, 'slupek-terminalny': 208,
+  // Scalenie ZU-JEDEN-NOSNIK (regeneracja fikstury) + klasyfikacja obwodów wtórnych i przewodów
+  // toru pola jako `footprint` (`verticalCauseOfRole`): footprint 2784 → 8776 (1936 dawnych
+  // rodzajów + 5472 przewodów `#wire-n` + 1368 linii `#trip-line`), „rezerwacja-kanalu"
+  // 43264 → 45152, „jog-trasy" 176 → 272; „slupek-terminalny" bez zmian. Zmierzone.
+  footprint: 8776, 'rezerwacja-kanalu': 45152, 'jog-trasy': 272, 'slupek-terminalny': 208,
 };
 
 /**
@@ -810,10 +821,15 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // rośnie razem z nimi. Załamania bez zmian (43/171/171).
 // Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
 // przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
-const HORIZONTAL_LENGTH_BASELINE = 82560;
-// Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
-// przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
-const BEND_COUNT_BASELINE = 171;
+// Integracja 2026-11 (scalenie ZU-JEDEN-NOSNIK, `8068d366d`): fikstura referencyjna
+// zregenerowana (symboli 528 → 1 501; przewody toru pola z portów, odgałęzienia uziemników
+// pól) — 82 560 → 100 256 poziomów, 171 → 513 rogów. Atrybucja zmierzona sondą 2×1: kod karty
+// (etapy 1–4) na fiksturze sprzed regeneracji (`d78c67925`) daje dokładnie 82 560 / 171 / piony
+// 46 432, ten sam kod na fiksturze po regeneracji 100 256 / 513 / 54 408 — przyrost w całości
+// z fikstury, kod karty geometrii nie zmienia (etapy 3–4 dotykają wyłącznie klasyfikacji pionów,
+// patrz `VERTICAL_LENGTH_BASELINE`).
+const HORIZONTAL_LENGTH_BASELINE = 100256;
+const BEND_COUNT_BASELINE = 513;
 
 /**
  * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza
@@ -2326,6 +2342,17 @@ if (scene) {
 // (c) zero nachodzeń etykieta↔rysunek (symbol/tor).
 line('');
 line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===');
+// Karta SLD-SKALA-I-NAWIGACJA (R3, R4): plan etykiet nie ma list „porzuconych tożsamości" ani
+// „ukrytych opisów". Tożsamość nienarysowana idzie do podpowiedzi uchwytu
+// (`tozsamosciWPodpowiedzi`), a poza planem zostają WYŁĄCZNIE dane poniżej progu czytelności.
+// Intencja sond bez zmian: zero zgubionych tożsamości, ukryte są tylko dane.
+function etykietyPozaPlanem(scene, plan) {
+  const obecne = new Set([...plan.drawn.map((p) => p.index), ...plan.tozsamosciWPodpowiedzi.map((t) => t.index)]);
+  return scene.labels.filter((_, i) => !obecne.has(i));
+}
+function zgubioneTozsamosci(scene, plan) {
+  return etykietyPozaPlanem(scene, plan).filter((l) => l.labelRole === 'tozsamosc');
+}
 {
   const SKALE_PRODUKCYJNE = SKALE_ODBIORU_PLANU_ETYKIET;
   {
@@ -2342,9 +2369,9 @@ line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===
       const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
       const narysowaneTozsamosci = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc').length;
       check(
-        `identity_label_probe (KD-11) @ ${scale}: 0 porzuconych tożsamości`,
-        plan.droppedIdentity.length === 0,
-        `${narysowaneTozsamosci}/${tozsamosci} narysowanych, porzucone: ${plan.droppedIdentity
+        `identity_label_probe (KD-11, R4) @ ${scale}: 0 zgubionych tożsamości (narysowane albo w podpowiedzi)`,
+        zgubioneTozsamosci(scene, plan).length === 0,
+        `${narysowaneTozsamosci}/${tozsamosci} narysowanych, w podpowiedzi ${plan.tozsamosciWPodpowiedzi.length}, zgubione: ${zgubioneTozsamosci(scene, plan)
           .slice(0, 3)
           .map((l) => l.text)
           .join(', ')}`,
@@ -2362,9 +2389,9 @@ line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===
         `${naRysunku.length} etykiet`,
       );
       check(
-        `identity_label_probe (KD-11) @ ${scale}: licznik „Ukryto N opisów" liczy WYŁĄCZNIE dane szczegółowe`,
-        plan.hiddenDetail.every((l) => l.labelRole === 'dane'),
-        `${plan.hiddenDetail.length} ukrytych opisów`,
+        `identity_label_probe (KD-11, R3) @ ${scale}: poza planem WYŁĄCZNIE dane szczegółowe`,
+        etykietyPozaPlanem(scene, plan).every((l) => l.labelRole === 'dane'),
+        `${etykietyPozaPlanem(scene, plan).length} danych poza planem`,
       );
     }
   }
@@ -2407,7 +2434,7 @@ line('=== screen_text_floor_probe (S9-7, C-4: zero napisów < 8 px ekranu) ===')
         ponizej.length === 0,
         `narysowanych=${plan.drawn.length} poniżej=${ponizej.length}` +
           (ponizej.length > 0 ? ` np. ${ponizej[0].ownerRef} @${ponizej[0].screenPx.toFixed(2)}px` : '') +
-          ` ukrytych=${plan.hiddenDetail.length} porzuconych=${plan.droppedIdentity.length}`,
+          ` poza planem=${etykietyPozaPlanem(scene, plan).length} zgubionych tożsamości=${zgubioneTozsamosci(scene, plan).length}`,
       );
     }
   }
@@ -2481,15 +2508,20 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
   // Test negatywny OBOWIĄZKOWY — plan liczony z arkuszem NIESKOŃCZONYM musi
   // przywrócić zmierzony przelew (dowód, że sonda mierzy naprawę, a nie zbieg
   // okoliczności), a etykiet przy tym NIE ubywa (tożsamość jest PRZESUWANA).
-  // Skala 0,08 (karta SLD-SKALA-I-NAWIGACJA, 2026-11): na jednej scenie (dawna
-  // L2) powiększone nazwy stacji ostatniego wiersza przelewają się poza dolną
-  // krawędź przy 0,08 (40,5 j.św., pomiar sondy) — dawne 0,181 dotyczyło sceny
-  // zwiniętej L0, której już nie ma.
-  const SKALA_PRZELEWU = 0.08;
+  // Integracja 2026-11 (fikstura zregenerowana przy scaleniu ZU-JEDEN-NOSNIK) i karta
+  // SLD-SKALA-I-NAWIGACJA (podpowiedź tożsamości R4): na fiksturze referencyjnej ŻADEN plan
+  // nie przelewa się poza arkusz, także bez granicy (pomiar sondy w skalach 0,001…0,25 i 1:
+  // 0 przelewów) — dawny przypadek 0,08 przestał istnieć, więc test na samej fiksturze nie
+  // gryzłby niczego. Granica jest więc ćwiczona na arkuszu POMNIEJSZONYM o 80 j.św. w każdym
+  // wymiarze przy skali czytania 1 (pomiar: bez granicy 4 napisy poza arkuszem, przelew do
+  // 38,0 j.św.; z granicą 0 poza i ta sama liczba napisów 1 595 / 0 w podpowiedzi).
+  const SKALA_PRZELEWU = 1;
+  const POMNIEJSZENIE_ARKUSZA = 80;
   {
     const scene = buildSceneV3(enm);
     const obstacles = sceneObstacleRects(scene);
-    const sheet = sheetSizeFor(scene);
+    const pelny = sheetSizeFor(scene);
+    const sheet = { width: pelny.width - POMNIEJSZENIE_ARKUSZA, height: pelny.height - POMNIEJSZENIE_ARKUSZA };
     const bezGranicy = planSceneLabels(scene.labels, obstacles, SKALA_PRZELEWU, {
       width: Number.MAX_SAFE_INTEGER,
       height: Number.MAX_SAFE_INTEGER,
@@ -2502,11 +2534,16 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
     );
     const zGranica = planSceneLabels(scene.labels, obstacles, SKALA_PRZELEWU, sheet);
     check(
+      'sheet_outline_probe: plan z granicą arkusza nie zostawia napisu poza nią',
+      plannedLabelsOutsideSheet(zGranica, sheet).length === 0,
+      `poza=${plannedLabelsOutsideSheet(zGranica, sheet).length}`,
+    );
+    check(
       'sheet_outline_probe: granica arkusza NIE zabiera tożsamości — ta sama liczba napisów co bez granicy',
       zGranica.drawn.length === bezGranicy.drawn.length
-        && zGranica.droppedIdentity.length === bezGranicy.droppedIdentity.length,
-      `z granicą ${zGranica.drawn.length}/${zGranica.droppedIdentity.length}`
-        + ` bez granicy ${bezGranicy.drawn.length}/${bezGranicy.droppedIdentity.length}`,
+        && zGranica.tozsamosciWPodpowiedzi.length === bezGranicy.tozsamosciWPodpowiedzi.length,
+      `z granicą ${zGranica.drawn.length}/${zGranica.tozsamosciWPodpowiedzi.length}`
+        + ` bez granicy ${bezGranicy.drawn.length}/${bezGranicy.tozsamosciWPodpowiedzi.length}`,
     );
   }
 }
@@ -2652,10 +2689,20 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
       // Te same reguły co kanwa: warstwa wyników jest na rysunku, gdy pismo t4
       // jest czytelne na ekranie (gęstość informacji R3, `gestoscInformacji.ts`).
       const layoutWynikow = layoutResultLabels(scene, rlByRef, [], czytelnyNaEkranie(LABEL_TYPOGRAPHY.t4.fontSize, scale));
+      // Karta SLD-SKALA-I-NAWIGACJA (predykaty parami): oczekiwanie z TYCH SAMYCH wejść co
+      // warstwa trafień kanwy — hierarchia celów R6 (aparat nierozpoznawalny na ekranie należy
+      // do pola albo stacji), tożsamości w podpowiedzi R4 i okno renderu R8 (uchwytu spoza okna
+      // kamery nie ma w drzewie). Dawniej sonda liczyła każdy symbol, odcinek i napis jako
+      // własny cel w każdej skali — mierzyła kontrakt sprzed R6, więc „0 px" dawały obiekty,
+      // których kanwa świadomie nie czyni celem przy tej skali.
+      const kamera = { scale, translateX: -viewBox[0] * scale, translateY: -viewBox[1] * scale };
+      const okno = oknoRenderuSceny(kamera, widok, FRAME_MARGIN);
       const oczekiwane = buildCanvasHitAreas({
         symbols: scene.symbols,
         segments: scene.segments,
         labels: labelPlan.drawn,
+        tozsamosciWPodpowiedzi: labelPlan.tozsamosciWPodpowiedzi,
+        hierarchiaCelow: hierarchiaCelowTrafienia(enm, scene),
         resultMarkers: [
           ...layoutWynikow.placements.map((p, i) => ({
             testId: `sld-v3-result-label-${i}`, ownerRef: p.ownerRef, x: p.x, y: p.y, width: p.width, height: p.height,
@@ -2665,17 +2712,21 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
           })),
         ],
         scale,
-      });
+      }).filter((a) => przecinaOkno(obwiedniaKsztaltu(a.obszar), okno));
       const zDrzewa = hitAreasFromDom(svg);
       const wynik = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: zDrzewa, minEkranPx: PROG_MIN_PX_EKRANU });
       const etykieta = `zoom ${widok.nazwa} (skala ${scale.toFixed(4)})`;
 
-      // (a) Kolejność warstw uchwytów — bez niej rozszerzenie kradnie klik obrysowi.
-      const porzadek = hitLayerOrderingInDom(svg);
+      // (a) R8: jeden węzeł na obiekt niesie OBA kształty (obszar — geometria węzła, obrys —
+      // `data-hit-obrys`), więc kanwa rozstrzyga obrys przed rozszerzeniem sąsiada
+      // (`rozstrzygnijTrafienieWezla`). Węzeł bez obrysu byłby uchwytem bez pierwszeństwa.
+      const bezObrysu = Array.from(svg.querySelectorAll(`[${HIT_ATTR.for}]`)).filter(
+        (n) => !(n.getAttribute(HIT_ATTR.for) ?? '').startsWith('sld-v3-result-aggregate-member-') && n.getAttribute(HIT_ATTR.obrys) === null,
+      );
       check(
-        `hit_layer_order_probe (S9-4) ${etykieta}: wszystkie obszary rozszerzone LEŻĄ POD obrysami rysunku`,
-        porzadek !== null && porzadek.poprawna,
-        porzadek === null ? 'brak warstwy trafień' : `maks(obszar)=${porzadek.maksZObszaru} < min(obrys)=${porzadek.minZObrysu}`,
+        `hit_obrys_probe (S9-4, R8) ${etykieta}: każdy uchwyt niesie obrys obiektu`,
+        bezObrysu.length === 0,
+        bezObrysu.length === 0 ? 'komplet' : `bez obrysu: ${bezObrysu.length}`,
       );
 
       // (b) Nic poza uchwytami nie łapie kliku — napis bez obsługi nie połyka zdarzenia.

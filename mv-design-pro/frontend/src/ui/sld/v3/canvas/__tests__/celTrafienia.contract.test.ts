@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta SLD-SKALA-I-NAWIGACJA, R6 — cel trafienia w hierarchii aparat → pole → stacja.
  *

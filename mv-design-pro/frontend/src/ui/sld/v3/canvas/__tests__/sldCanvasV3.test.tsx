@@ -36,7 +36,7 @@ import {
 } from '../overlay';
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState, type CameraState } from '../camera';
-import { kameraNaPunkcieSceny } from './kameraTestowa';
+import { kameraNadSymbolem, kameraNaPunkcieSceny } from './kameraTestowa';
 import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { LABEL_ROLE_BY_OWNER_KIND } from '../../layout/labels';
@@ -158,12 +158,27 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     const { container: duzy } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH * 6} height={CANVAS_HEIGHT * 6} />);
     const skala = (c: ParentNode) => Number(c.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
     expect(skala(duzy)).toBeGreaterThan(skala(maly) * 3);
-    for (const warstwa of ['sld-v3-symbols', 'sld-v3-segments']) {
-      const a = maly.querySelector(`[data-testid="${warstwa}"]`);
-      const b = duzy.querySelector(`[data-testid="${warstwa}"]`);
-      expect(a, warstwa).toBeTruthy();
-      expect(bezGruboscKreski(a!.innerHTML), warstwa).toBe(bezGruboscKreski(b!.innerHTML));
-    }
+    // Odcinki: identyczne co do węzła (oba kadry pokazują całą sieć, więc okno renderu R8
+    // niczego nie odcina; różni się tylko grubość kreski z podłogą ekranową).
+    const odcinki = (c: ParentNode) => c.querySelector('[data-testid="sld-v3-segments"]');
+    expect(odcinki(maly), 'sld-v3-segments').toBeTruthy();
+    expect(bezGruboscKreski(odcinki(maly)!.innerHTML)).toBe(bezGruboscKreski(odcinki(duzy)!.innerHTML));
+    // Symbole: te same obiekty w tej samej kolejności. Jedyna dozwolona różnica to reguła R8
+    // obrysu bez wnętrza (symbol < 3 px ekranu rysuje sam gabaryt) — a symbol narysowany
+    // pełnym glifem na obu kanwach ma ten sam rysunek.
+    const symbole = (c: ParentNode) => [...c.querySelector('[data-testid="sld-v3-symbols"]')!.children];
+    const a = symbole(maly);
+    const b = symbole(duzy);
+    expect(a.map((n) => n.getAttribute('data-testid'))).toEqual(b.map((n) => n.getAttribute('data-testid')));
+    let pelnychNaObu = 0;
+    a.forEach((n, i) => {
+      if (n.hasAttribute('data-bez-wnetrza') || b[i].hasAttribute('data-bez-wnetrza')) return;
+      pelnychNaObu += 1;
+      expect(bezGruboscKreski(n.outerHTML), n.getAttribute('data-testid') ?? '').toBe(bezGruboscKreski(b[i].outerHTML));
+    });
+    expect(pelnychNaObu, 'część symboli ma pełny glif na obu kanwach (porównanie nie jest puste)').toBeGreaterThan(0);
+    expect(a.some((n) => n.hasAttribute('data-bez-wnetrza')), 'mała kanwa ma symbole poniżej progu wnętrza').toBe(true);
+    expect(b.filter((n) => n.hasAttribute('data-bez-wnetrza')).length).toBeLessThan(a.filter((n) => n.hasAttribute('data-bez-wnetrza')).length);
   });
 
   it('kanwa nie niesie atrybutu poziomu szczegółu — jedynym parametrem widoku jest skala kamery', () => {
@@ -178,10 +193,19 @@ describe('SldCanvasV3 — klik w symbol', () => {
   it('klik w pierwszy symbol woła onElementClick z jego testId', () => {
     const scene = buildSceneV3(enm);
     const onElementClick = vi.fn();
+    // R6/R8 (karta SLD-SKALA-I-NAWIGACJA): aparat jest celem kliku na kadrze roboczym — kamera
+    // przy skali czytania nad pierwszym symbolem sceny.
+    const pierwszy = scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0';
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        onElementClick={onElementClick}
+        cameraOverride={kameraNadSymbolem(scene, pierwszy, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT })}
+      />,
     );
-    const firstSymbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.firstElementChild;
+    const firstSymbolGroup = container.querySelector(`[data-testid="sld-v3-symbols"] [data-testid="${pierwszy}"]`);
     expect(firstSymbolGroup).toBeTruthy();
     const expectedTestId = firstSymbolGroup!.getAttribute('data-testid');
     expect(expectedTestId).toBe(scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0');
@@ -191,7 +215,7 @@ describe('SldCanvasV3 — klik w symbol', () => {
     // ten węzeł, który w przeglądarce byłby celem zdarzenia — intencja testu
     // („klik w pierwszy symbol woła onElementClick z jego testId") bez zmian.
     const firstSymbolHit = container.querySelector(
-      `[data-hit-for="${expectedTestId}"][data-hit-role="obrys"]`,
+      `[data-hit-for="${expectedTestId}"]`,
     );
     expect(firstSymbolHit, 'pierwszy symbol ma uchwyt trafienia').toBeTruthy();
     fireEvent.click(firstSymbolHit!);
@@ -217,7 +241,7 @@ describe('SldCanvasV3 — klik w symbol', () => {
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH * 4} height={CANVAS_HEIGHT * 4} onElementClick={onElementClick} />,
     );
-    const uchwyt = [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="etykieta"]')].find(
+    const uchwyt = [...container.querySelectorAll('[data-hit-klasa="etykieta"]')].find(
       (n) => (n.getAttribute('data-hit-owner-ref') ?? '').startsWith(stacja),
     );
     expect(uchwyt, 'napis nazwy stacji ma uchwyt trafienia').toBeTruthy();
@@ -229,7 +253,7 @@ describe('SldCanvasV3 — klik w symbol', () => {
 
   it('bez onElementClick klik nie rzuca (brak handlera to no-op bezpieczny)', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
-    const firstHit = container.querySelector('[data-hit-role="obrys"]');
+    const firstHit = container.querySelector('[data-hit-for]');
     expect(firstHit).toBeTruthy();
     expect(() => fireEvent.click(firstHit!)).not.toThrow();
   });
@@ -241,9 +265,14 @@ describe('SldCanvasV3 — nakładka energizacji (spec §6: KOLOR, nie geometria)
     const testId = scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0';
     const overlay: SldV3Overlay = { energizedByTestId: { [testId]: true } };
 
-    const { container: without } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+    // Kadr roboczy nad oznaczonym symbolem (oba rendery, ta sama kamera): na kadrze całej
+    // sieci symbol jest poniżej progu wnętrza (R8) i nie ma kresek glifu do porównania.
+    const kamera = kameraNadSymbolem(scene, testId, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+    const { container: without } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} cameraOverride={kamera} />,
+    );
     const { container: withOverlay } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={kamera} />,
     );
 
     const symbolsWithout = without.querySelector('[data-testid="sld-v3-symbols"]')!;
@@ -1166,14 +1195,21 @@ describe('SldCanvasV3 — NOP: znacznik funkcji, stan z kafla łącznika (bez os
       const { container } = render(
         <SldCanvasV3 snapshot={enmWithNop} width={w} height={h} />,
       );
-      const nopGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[nopIndex];
-      // Karta S9-4: patrz wyżej — grupa symbolu nie niesie już transparentnego
-      // hit-rectu, więc pierwszy descendant ze `stroke` to rysunek glifu.
-      const strokedDescendant = nopGroup?.querySelector('[stroke]');
-      expect(strokedDescendant?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.sn);
-      expect(Object.values(STATE_COLOR)).not.toContain(strokedDescendant?.getAttribute('stroke'));
-      expect(nopGroup?.querySelector('circle')).not.toBeNull();
-      expect(nopGroup?.querySelectorAll('[data-kafel-stanu]')).toHaveLength(0);
+      const nopTestId = scene.symbols[nopIndex].meta?.testId ?? `sld-v3-symbol-${nopIndex}`;
+      const nopGroup = container.querySelector(`[data-testid="sld-v3-symbols"] [data-testid="${nopTestId}"]`);
+      expect(nopGroup, 'symbol NO narysowany').toBeTruthy();
+      // R8: poniżej progu wnętrza (mała kanwa, kadr całej sieci) symbol jest samym obrysem
+      // gabarytu — ta sama reguła koloru co glif (`kolorKreskiSymbolu`), bez kafla stanu.
+      // Od progu wzwyż (kanwa czytania) — pełny glif z okręgiem znacznika.
+      // Karta S9-4: grupa symbolu nie niesie transparentnego hit-rectu, więc pierwszy
+      // descendant ze `stroke` to rysunek glifu.
+      const bezWnetrza = nopGroup!.hasAttribute('data-bez-wnetrza');
+      const kreska = bezWnetrza ? nopGroup!.getAttribute('stroke') : nopGroup!.querySelector('[stroke]')?.getAttribute('stroke');
+      expect(kreska).toBe(VOLTAGE_COLOR.sn);
+      expect(Object.values(STATE_COLOR)).not.toContain(kreska);
+      if (!bezWnetrza) expect(nopGroup!.querySelector('circle')).not.toBeNull();
+      expect(nopGroup!.querySelectorAll('[data-kafel-stanu]')).toHaveLength(0);
+      if (w === KANWA_CZYTANIA.width) expect(bezWnetrza, 'na kanwie czytania pełny glif').toBe(false);
     }
   });
 });
@@ -1231,23 +1267,41 @@ describe('SldCanvasV3 — S8: ciągłość widoku przy zmianie skali', () => {
       if (sym.meta?.ownerRef) energizedByOwnerRef[sym.meta.ownerRef] = true;
     }
     const overlay: SldV3Overlay = { energizedByTestId: {}, energizedByOwnerRef };
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
-    );
+    // Po powiększeniu okno renderu (R8) odcina obiekty poza kadrem, a symbol, który przekroczył
+    // próg wnętrza, zamienia obrys na pełny glif — każdy węzeł, który ZOSTAŁ i był pełnym
+    // glifem przed gestem, jest co do znaku tym samym rysunkiem (bez grubości kreski z podłogą
+    // ekranową), z tą samą nakładką; każdy odcinek, który został, — tym samym odcinkiem.
+    const W = CANVAS_WIDTH * 3;
+    const H = CANVAS_HEIGHT * 3;
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={W} height={H} overlay={overlay} />);
     const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
-    const symbole = () => bezGruboscKreski(container.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML);
-    const odcinki = () => bezGruboscKreski(container.querySelector('[data-testid="sld-v3-segments"]')!.innerHTML);
-    const energizedCount = () =>
-      container.querySelectorAll('[data-testid="sld-v3-symbols"] [data-energized="true"]').length;
-    const przed = { skala: skalaOf(container), symbole: symbole(), odcinki: odcinki(), zasilone: energizedCount() };
-    expect(przed.zasilone).toBeGreaterThan(0);
-    for (let i = 0; i < 20; i += 1) {
-      fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: -140 });
+    const wezly = (warstwa: string) =>
+      new Map(
+        // Dzieci warstwy wprost (`children`) — selektor `:scope >` w jsdom tego repo nie dopasowuje
+        // niczego (pomiar: 0 dzieci przy 1 277 zasilonych potomkach), więc mapa byłaby pusta.
+        [...container.querySelector(`[data-testid="${warstwa}"]`)!.children].filter((n) => n.hasAttribute('data-testid')).map(
+          (n) => [n.getAttribute('data-testid')!, bezGruboscKreski(n.outerHTML)] as const,
+        ),
+      );
+    const przed = { skala: skalaOf(container), symbole: wezly('sld-v3-symbols'), odcinki: wezly('sld-v3-segments') };
+    expect([...przed.symbole.values()].some((h) => h.includes('data-energized="true"'))).toBe(true);
+    for (let i = 0; i < 2; i += 1) {
+      fireEvent.wheel(svg, { clientX: W / 2, clientY: H / 2, deltaY: -700 });
     }
     expect(skalaOf(container)).toBeGreaterThan(przed.skala * 2);
-    expect(symbole()).toBe(przed.symbole);
-    expect(odcinki()).toBe(przed.odcinki);
-    expect(energizedCount()).toBe(przed.zasilone);
+    let porownanych = 0;
+    for (const [warstwa, przedWarstwy] of [['sld-v3-symbols', przed.symbole], ['sld-v3-segments', przed.odcinki]] as const) {
+      const po = wezly(warstwa);
+      expect(po.size, `${warstwa}: kadr po powiększeniu nie jest pusty`).toBeGreaterThan(0);
+      for (const [id, html] of po) {
+        const wczesniej = przedWarstwy.get(id);
+        expect(wczesniej, `${warstwa} ${id}: obiekt był na rysunku przed gestem`).toBeDefined();
+        if (wczesniej!.includes('data-bez-wnetrza')) continue;
+        porownanych += 1;
+        expect(html, `${warstwa} ${id}`).toBe(wczesniej);
+      }
+    }
+    expect(porownanych, 'porównanie przed/po nie jest puste').toBeGreaterThan(0);
   });
 
   it('REALNA ścieżka: oddalenie zatrzymuje się na dopasowaniu całej sieci (R2 — dolna granica kamery)', () => {

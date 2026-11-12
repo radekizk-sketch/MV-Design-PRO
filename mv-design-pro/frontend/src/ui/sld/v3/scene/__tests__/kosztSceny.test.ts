@@ -666,32 +666,50 @@ interface OdciskiSceny {
  * jedna scena, porównanie drzewa JSON pole po polu): JEDYNA różnica to brak pola `meta.lod`
  * (6d5d4e2a… → 71ebdc2f…, 29ac00d2… → ec3ff0cb…); `declutter` i 7 `plany` obu sieci bajtowo
  * równe dawnemu L2 bez przeliczania.
+ *
+ * AKTUALIZACJA ŚWIADOMA (karta SLD-SKALA-I-NAWIGACJA etapy 2–4 na drzewie po scaleniu
+ * ZU-JEDEN-NOSNIK, 2026-11-12) — z 18 wpisów zmienione 18. Test biegnie wyłącznie w kroku
+ * budżetów i był CZERWONY już na czubku integracji `8068d366d` (8 z 8 przypadków tożsamości).
+ * Pomiar sondą (te same funkcje co ten test, archiwa `git archive`, fikstura podana jawnie):
+ *  · fikstura: `sldSubstrate52s` zregenerowana w `8068d366d` (przewody toru pól z portów ENM,
+ *    bloki zabezpieczeń pól stacji) — symboli 528 → 1501, odcinków 582 → 1608, etykiet
+ *    1639 → 2612 (sieć referencyjna); sama ta zmiana przestawia wszystkie 18 wpisów;
+ *  · kod karty na fiksturze sprzed regeneracji wobec etapu 1 (`d78c67925`, na którym test był
+ *    zielony): scena i declutter różnią się WYŁĄCZNIE nowymi metadanymi etykiet etapu 2 —
+ *    `obrysKotwicy` na 55 opisach napięcia szyn i `granicaTlaPola` na 1 oznaczeniu aparatu
+ *    (cel trafienia i obrys wg planu); po zdjęciu tych pól oba zrzuty są CO DO BAJTU równe
+ *    etapowi 1. Plany zmienia celowo etap 2 (tożsamość bez ukrywania — `tozsamosciWPodpowiedzi`
+ *    zamiast `droppedIdentity`/`hiddenDetail`, pismo wyników);
+ *  · TA SAMA tablica przed i po naprawie złożoności `ustapSasiadow` i drugiej szansy w
+ *    `canvas/labelLegibility.ts` (zapytania indeksu przestrzennego zamiast przeglądu kolejki
+ *    i przebudowy indeksu): 14 planów (7 skal × 2 sieci) bajtowo równych, sha256 zrzutu planu
+ *    w każdej parze identyczny; najgorszy plan sieci podwojonej 564 → 86 ms.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', OdciskiSceny>> = {
   referencyjna: {
-    scena: '71ebdc2fb3fe8c1f7069b778099423d7',
-    declutter: 'bcaa6be0760df0889dc3e81c97f67f9a',
+    scena: '810dfeb4bb2f915029fce537185737b3',
+    declutter: '5b942a5b35283925f8051581402ce960',
     plany: [
-      '76ebd0ac1a038878c3cacfc743c888dc',
-      'a8c9bf6563f00a8db581ff57362e5d66',
-      'c60b8a4909e2298afed89404cf902ce5',
-      'ac7afa29bf1e16feb559f0a9edbc6a93',
-      '7a741b709250b21bdb3a1b3a298c8b37',
-      'dfec652ce9633634ab3067375f9217d3',
-      'dfec652ce9633634ab3067375f9217d3',
+      '5bdfe085afa1fb43e5642bf9ad684cf5',
+      'ff1a6fbf58eb7825e3f29bf6251254c1',
+      'ccd4454e483f12fb06ec7a0c4190e4af',
+      '7b26ba12e0e06a865370c9ac480ccbe5',
+      '77a4e028a3bfb977bedbf8d7d1aa8583',
+      '60317dae1803112e790883e55ca945f3',
+      '60317dae1803112e790883e55ca945f3',
     ],
   },
   podwojona: {
-    scena: 'ec3ff0cb93297cf9953a8f87503baea2',
-    declutter: 'f4f498f9818cb42875d812634df634fa',
+    scena: '9037245ba5c2f6946a70a37e71a5cdbd',
+    declutter: '667a2a96d9be76a48921cf9af3cb7047',
     plany: [
-      '40b050aa9e446483fce939d194c09269',
-      '9d38aaca7c11ba7907c2c96d35e3c7ba',
-      '203c1d947e7aef5ae99e446af809c407',
-      '16b902c8db7f25e901cd1318af7e54b6',
-      '3bbe5f08dc9b986a9f62b9d9ebc95e42',
-      'b325a705988eea2109e245698e6b45d4',
-      'b325a705988eea2109e245698e6b45d4',
+      '83a2b2d4f432328a326f9404082ec4e6',
+      '04c9ca49af434506ee363e20c01937c5',
+      '2b80912f182b98f07413c65341184295',
+      'e110a66d680b97694785f8e35307de28',
+      '04a3c843a4ca4c36e2e05aab2372bc26',
+      '4be5e2e5042916a2a554f1232d1a87f7',
+      '4be5e2e5042916a2a554f1232d1a87f7',
     ],
   },
 };

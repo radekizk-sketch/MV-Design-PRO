@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * OBRYS ARKUSZA — wyrocznie LICZBOWE (karta RAMKA-TNIE-PODPISY, zgłoszenie
  * właściciela 2026-08-08 „dolna krawędź ramki przechodzi przez środek liter

@@ -67,7 +67,9 @@ from fastapi.testclient import TestClient
 from tests.golden.zapis_fikstur import json_fikstury, tresc_z_kotwica, zaokraglij_liczby
 from tests.reference_networks.budowa_przez_api import (
     APARAT_POLA_SN,
+    KABEL_SN,
     TRANSFORMATOR_630,
+    TRANSFORMATOR_WN_SN,
     KlientBudowy,
     normalizuj_migawke,
     pole_gpz,
@@ -532,6 +534,106 @@ def _stacja_b2(b: KlientBudowy, segment_ref: str, nazwa: str) -> dict[str, Any]:
     )
 
 
+#: Sieć pomiarowa karty SLD-SKALA-I-NAWIGACJA (R8, zrzuty przed/po): GPZ dwusekcyjny, po dwa
+#: pola liniowe na sekcję, cztery ciągi po dziewięć stacji przelotowych z jedną stacją
+#: odgałęźną i jedną sekcyjną na ciągu oraz odgałęzienie ze stacją końcową — 40 stacji SN/nN.
+_GPZ2S40_CIAGI = 4
+_GPZ2S40_STACJE_CIAGU = 9
+
+
+def _gpz_dwusekcyjny_40_stacji(b: KlientBudowy) -> dict[str, Any]:
+    """GPZ dwusekcyjny z 40 stacjami (sieć pomiarowa skali i nawigacji schematu)."""
+    b.operacja(
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "manual_equivalent": {
+                "short_circuit_input_side": "HV_110",
+                "hv_voltage_kv": 110.0,
+                "sk3_hv_mva": 3000.0,
+                "rx_ratio": 0.1,
+            },
+            "sections_count": 2,
+            "line_fields_per_section": 2,
+            "transformer_count": 2,
+            "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
+        },
+    )
+    for ciag in range(_GPZ2S40_CIAGI):
+        pole = pole_gpz(b.migawka(), ciag)
+        b.operacja(
+            "continue_trunk_segment_sn",
+            {"field_ref": pole, "segment": _odcinek_kablowy(300, f"Ciąg {ciag + 1} odcinek 1")},
+        )
+        for numer in range(1, _GPZ2S40_STACJE_CIAGU):
+            koniec = [x for x in b.migawka()["branches"] if x.get("type") == "cable"][-1]
+            b.operacja(
+                "continue_trunk_segment_sn",
+                {
+                    "from_terminal_id": koniec["to_bus_ref"],
+                    "segment": _odcinek_kablowy(
+                        220 + 20 * numer, f"Ciąg {ciag + 1} odcinek {numer + 1}"
+                    ),
+                },
+            )
+    for ciag in range(_GPZ2S40_CIAGI):
+        for numer in range(_GPZ2S40_STACJE_CIAGU):
+            segment = segmenty_korytarza(b.migawka(), ciag)[2 * numer]
+            nazwa = f"Stacja {ciag + 1}.{numer + 1:02d}"
+            if numer == 2:
+                _stacja_b2(b, segment, nazwa)
+            elif numer == 5:
+                b.operacja(
+                    "insert_station_on_segment_sn",
+                    {
+                        "segment_id": segment,
+                        "field_apparatus_catalog_ref": APARAT_POLA_SN,
+                        "insert_at": {"mode": "RATIO", "value": 0.5},
+                        "station": {
+                            "station_type": "D",
+                            "station_name": nazwa,
+                            "sn_voltage_kv": 15.0,
+                            "nn_voltage_kv": 0.4,
+                        },
+                        "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
+                        "sn_fields": [
+                            {"field_role": "LINIA_IN"},
+                            {"field_role": "LINIA_OUT"},
+                            {"field_role": "SPRZEGLO"},
+                            {"field_role": "TRANSFORMATOROWE"},
+                        ],
+                        "transformer": {
+                            "create": True,
+                            "transformer_catalog_ref": TRANSFORMATOR_630,
+                        },
+                    },
+                )
+            else:
+                b.stacja_b(segment, nazwa, nn_odplywy=1)
+    # Odgałęzienie z pola odgałęźnego stacji odgałęźnej każdego ciągu ze stacją końcową.
+    for ciag in range(_GPZ2S40_CIAGI):
+        enm = b.migawka()
+        stacja = next(s for s in enm["substations"] if s.get("name") == f"Stacja {ciag + 1}.03")
+        pole_odg = next(
+            x["ref_id"]
+            for x in enm["bays"]
+            if x.get("substation_ref") == stacja["ref_id"] and x.get("bay_role") == "FEEDER"
+        )
+        b.odgalezienie(pole_odg, 260)
+        odcinek_odg = [x for x in b.migawka()["branches"] if x.get("type") == "cable"][-1]
+        b.stacja_b(odcinek_odg["ref_id"], f"Stacja {ciag + 1}.03-K", ratio=0.7, nn_odplywy=1)
+    return b.migawka()
+
+
+def _odcinek_kablowy(dlugosc_m: float, nazwa: str) -> dict[str, Any]:
+    return {
+        "rodzaj": "KABEL",
+        "dlugosc_m": dlugosc_m,
+        "catalog_binding": wiazanie("KABEL_SN", KABEL_SN),
+        "name": nazwa,
+    }
+
+
 def _odpowiedz_operacji(wynik: dict[str, Any]) -> dict[str, Any]:
     """Wskazanie i zmiany odpowiedzi operacji — to, co czyta kotwica kamery."""
     return {"selection_hint": wynik["selection_hint"], "changes": wynik["changes"]}
@@ -837,6 +939,10 @@ def render_fikstur_enm_sld() -> dict[str, str]:
             tresci[f"{PUBLICZNE}/gpz110kvPoleZu{wariant}.enm.json"] = _plik_enm(
                 zbuduj_gpz_pole_zespolu(wariant), f"GPZ z polem zespołu uziemiającego {wariant}"
             )
+        tresci[f"{PUBLICZNE}/gpzDwusekcyjny40.enm.json"] = _plik_enm(
+            _gpz_dwusekcyjny_40_stacji(KlientBudowy(klient, "GPZ dwusekcyjny z 40 stacjami")),
+            "GPZ dwusekcyjny z 40 stacjami",
+        )
         tresci[f"{PUBLICZNE}/nnBoardDemo.enm.json"] = _plik_enm(
             _nn_board_demo(KlientBudowy(klient, "Stacja z rozdzielnicą nN")),
             "Stacja z rozdzielnicą nN",

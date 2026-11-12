@@ -33,6 +33,7 @@ import { buildCanvasModelIndex, elementTypeForKind } from '../../../sld/v3/canva
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
 import { wskazanieAparatuPola } from '../stanPaneluElementu';
 import { InspektorKanwyTestowy } from './inspektorKanwyTestowy';
+import { powiekszKolkiemDoSkali, punktCeluTrafienia } from '../../../sld/v3/canvas/__tests__/kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = resolve(here, '..', '..', '..', '..');
@@ -124,7 +125,10 @@ describe('karta pola — wiersz aparatu otwiera kartę aparatu jak klik w symbol
       act(() => useAppStateStore.setState({ activeMode: tryb }));
       const kontener = montuj(enm);
 
-      // Ścieżka 1: klik w symbol aparatu na kanwie.
+      // Ścieżka 1: klik w symbol aparatu na kanwie. Karta SLD-SKALA-I-NAWIGACJA: aparat jest
+      // własnym celem kliku na kadrze roboczym (R6), a uchwyty stoją w oknie renderu (R8) —
+      // projektant dojeżdża do aparatu kółkiem z kursorem nad nim.
+      powiekszKolkiemDoSkali(kontener, 1, punktCeluTrafienia(enm, testId));
       const uchwyt = kontener.querySelector(`[data-hit-for="${testId}"]`);
       expect(uchwyt, `uchwyt ${testId}`).not.toBeNull();
       fireEvent.click(uchwyt!, { detail: 1 });

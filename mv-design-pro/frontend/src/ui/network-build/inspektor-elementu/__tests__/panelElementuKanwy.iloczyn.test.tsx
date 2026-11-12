@@ -41,7 +41,11 @@ import { POWOD_BRAK_PRZEBIEGU_PL } from '../stanPaneluElementu';
 import { useExecutionRunsStore } from '../../../study-cases/runStore';
 import { REWIZJA_BIEGU, biegRejestru, wyczyscRejestrBiegow } from '../../../../test/biegNieaktualny';
 import { wyczyscKontekstWyniku, zasiejWynikWczytany } from '../../../../test/kontekstBiegu';
-import { powiekszKolkiemDoSkali } from '../../../sld/v3/canvas/__tests__/kameraTestowa';
+import {
+  powiekszKolkiemDoSkali,
+  punktCeluTrafienia,
+  testIdZSelektoraUchwytu,
+} from '../../../sld/v3/canvas/__tests__/kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 function wczytaj(...czesci: string[]): EnergyNetworkModel {
@@ -156,7 +160,7 @@ function stacja(scena: SceneV3): string {
   // w nieistniejący uchwyt.
   const ref = scena.meta.stationTraversalOrder.find((r) => scena.labels.some((l) => l.ownerRef === `${r}#name-row-0`));
   expect(ref, 'stacja w scenie').toBeDefined();
-  return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
+  return `[data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
 }
 
 function symbol(predykat: (s: SceneV3['symbols'][number]) => boolean) {
@@ -255,7 +259,9 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
     // Karta SLD-SKALA-I-NAWIGACJA, R6: obiekt rysunku (aparat, pole, transformator, źródło) jest
     // własnym celem kliku na kadrze roboczym — z kadru całej sieci klik w jego obręb trafia pole albo
     // stację. Projektant dojeżdża tam natywnym kółkiem; napis stacji jest uchwytem w każdej skali.
-    if (selektor.includes('data-hit-for')) powiekszKolkiemDoSkali(container, 1);
+    // R8: uchwyty stoją tylko w oknie renderu — kółko z kursorem NAD obiektem trzyma go w kadrze.
+    const celUchwytu = testIdZSelektoraUchwytu(selektor);
+    if (celUchwytu) powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(przypadek.enm, celUchwytu));
     const uchwyt = container.querySelector(selektor);
     expect(uchwyt, `uchwyt trafienia ${selektor}`).not.toBeNull();
     fireEvent.click(uchwyt!, { detail: 1 });

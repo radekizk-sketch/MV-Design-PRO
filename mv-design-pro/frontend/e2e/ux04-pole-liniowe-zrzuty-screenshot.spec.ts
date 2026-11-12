@@ -1375,7 +1375,7 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
 
   // ---- 2. Ciąg główny z GPZ (prawy klik w symbol GPZ) — pole sekcji 1 zajęte kablem ---------
   await wrocNaSchemat(page);
-  const uchwytGpz = page.locator('[data-hit-klasa="zrodlo"][data-hit-role="obrys"]').first();
+  const uchwytGpz = page.locator('[data-hit-klasa="zrodlo"]').first();
   await klikZWeryfikacja(
     page,
     'prawy klik GPZ',
@@ -1407,7 +1407,7 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
   );
   await jednoPrzewijanieInspektora(page, 'okno GPZ z selekcji', false);
   const odcinekRef = ((await pobierzEnm(request, caseId)).branches ?? []).find((b) => b.type === 'cable')!.ref_id;
-  const uchwytOdcinka = page.locator(`[data-hit-klasa="tor"][data-hit-role="obrys"][data-hit-owner-ref="${odcinekRef}"]`).first();
+  const uchwytOdcinka = page.locator(`[data-hit-klasa="tor"][data-hit-owner-ref="${odcinekRef}"]`).first();
   await klikZWeryfikacja(page, 'klik odcinka kablowego', uchwytOdcinka, () => punktNaTrasie(uchwytOdcinka), 'left', async () =>
     page.getByTestId('sn-segment-surface').isVisible(),
   );

@@ -69,7 +69,7 @@ beforeEach(() => {
  *  `sld-v3-trafienia`, czyli ten, w który w przeglądarce faktycznie trafia
  *  kursor (rysunek kanwy jest bierny, karta S9-4). */
 function uchwytNapisu(container: HTMLElement, fragmentRefu: string): Element | null {
-  const wezly = container.querySelectorAll('[data-hit-klasa="etykieta"][data-hit-role="obrys"][data-hit-owner-ref]');
+  const wezly = container.querySelectorAll('[data-hit-klasa="etykieta"][data-hit-owner-ref]');
   for (const wezel of Array.from(wezly)) {
     if ((wezel.getAttribute('data-hit-owner-ref') ?? '').includes(fragmentRefu)) return wezel;
   }

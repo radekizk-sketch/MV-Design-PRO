@@ -316,7 +316,11 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
     return ref;
   }
 
-  it("tryb 'kotwicz' (skutek uboczny edycji, drzewo): kadr przesuwa się na stację i ją centruje", () => {
+  // Karta SLD-SKALA-I-NAWIGACJA R7: intencja zostaje — wskazanie „kotwicz" przenosi kadr na
+  // stację — ale kamerę obu trybów dobiera jedna reguła wskazania (`applyWskazanie`): z kadru
+  // całej sieci cel nie jest rozpoznawalny, więc kadr celu w skali czytania (środek może ustąpić
+  // sąsiadom w granicach luzu, jak każdy kadr celu).
+  it("tryb 'kotwicz' (skutek uboczny edycji, drzewo): kadr przenosi się na stację w skali czytania", () => {
     const { container } = render(<SldCanvasV3Workspace />);
     const kadrPrzed = kadrZDom(container);
     const refStacji = refOstatniejStacji();
@@ -328,10 +332,11 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
     const kadrPo = kadrZDom(container);
     expect(kadrPo).not.toEqual(kadrPrzed);
     const box = prostokatWskazanego(enmDuza, refStacji)!;
-    // Wskazany element jest w kadrze i wyśrodkowany w poziomie.
+    // Wskazany element jest w kadrze, kadr w skali czytania.
+    expect(Number(container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-skala-kamery'))).toBeCloseTo(1, 3);
     expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
-    expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
-    expect((box.minX + box.maxX) / 2).toBeCloseTo(kadrPo.x + kadrPo.width / 2, 3);
+    expect(box.minY).toBeGreaterThanOrEqual(kadrPo.y);
+    if (box.maxX - box.minX <= kadrPo.width) expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
   });
 
   // K2 (UI-04, §0.5–0.6): intencja testu B-2 zostaje — wskazanie z wyników albo

@@ -49,7 +49,7 @@ async function uspokoj(page: Page): Promise<void> {
 }
 
 async function uchwytStacji(page: Page, ref: string) {
-  const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${ref}#name-row"]`).first();
+  const uchwyt = page.locator(`[data-hit-owner-ref^="${ref}#name-row"]`).first();
   await expect(uchwyt, `uchwyt nazwy stacji ${ref}`).toHaveCount(1, { timeout: 30_000 });
   return uchwyt;
 }

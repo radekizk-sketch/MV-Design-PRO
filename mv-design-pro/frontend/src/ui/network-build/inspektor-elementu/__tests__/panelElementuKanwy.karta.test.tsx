@@ -28,7 +28,11 @@ import { buildSceneV3, type SceneV3 } from '../../../sld/v3/scene/buildScene';
 import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspace';
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from './inspektorKanwyTestowy';
-import { powiekszKolkiemDoSkali } from '../../../sld/v3/canvas/__tests__/kameraTestowa';
+import {
+  powiekszKolkiemDoSkali,
+  punktCeluTrafienia,
+  testIdZSelektoraUchwytu,
+} from '../../../sld/v3/canvas/__tests__/kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SIEC = (
@@ -61,7 +65,7 @@ function stacja(scena: SceneV3): string {
   // w nieistniejący uchwyt.
   const ref = scena.meta.stationTraversalOrder.find((r) => scena.labels.some((l) => l.ownerRef === `${r}#name-row-0`));
   expect(ref, 'stacja w scenie').toBeDefined();
-  return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
+  return `[data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
 }
 
 function selektorSymbolu(scena: SceneV3, predykat: (s: SceneV3['symbols'][number]) => boolean): string {
@@ -120,7 +124,9 @@ function kliknij(przypadek: Przypadek, siec: EnergyNetworkModel = SIEC): HTMLEle
   // Karta SLD-SKALA-I-NAWIGACJA, R6: obiekt rysunku (aparat, pole, transformator, źródło) jest
   // własnym celem kliku na kadrze roboczym — z kadru całej sieci klik w jego obręb trafia pole albo
   // stację. Projektant dojeżdża tam natywnym kółkiem; napis stacji jest uchwytem w każdej skali.
-  if (selektor.includes('data-hit-for')) powiekszKolkiemDoSkali(container, 1);
+  // R8: uchwyty stoją tylko w oknie renderu — kółko z kursorem NAD obiektem trzyma go w kadrze.
+  const celUchwytu = testIdZSelektoraUchwytu(selektor);
+  if (celUchwytu) powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(siec, celUchwytu));
   const uchwyt = container.querySelector(selektor);
   expect(uchwyt, `uchwyt trafienia ${selektor}`).not.toBeNull();
   fireEvent.click(uchwyt!, { detail: 1 });

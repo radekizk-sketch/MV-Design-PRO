@@ -115,7 +115,7 @@ type Przypadek = {
  *  (`<ref>#name-row-0`, karta SLD-SKALA-I-NAWIGACJA R1; dawniej zwinięty symbol L0). */
 function selektorStacji(): string {
   const ref = buildSceneV3(enm52).meta.stationTraversalOrder[0];
-  return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}${WIERSZ_NAZWY_STACJI}"]`;
+  return `[data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}${WIERSZ_NAZWY_STACJI}"]`;
 }
 
 function poleWylacznika() {

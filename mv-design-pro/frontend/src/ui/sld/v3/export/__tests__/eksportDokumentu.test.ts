@@ -21,12 +21,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSldDxf, buildDxfInput, DXF_LAYER_OPISY, DXF_LAYER_RYSUNEK } from '../exportDxfV3';
+import { generateDxf } from '../../../v2/export/exportDxf';
 import { buildSldPdf, fitDrawingToPage, PDF_A3_LANDSCAPE_PT } from '../exportPdfV3';
 import { pdfEncodeText, pdfTextWidth, pdfUnsupportedCharacters } from '../pdfFont';
 import { buildSheetTitleBlockData, dataMetrykiPl, wersjaModeluPl, BRAK_DANEJ } from '../sheetTitleBlock';
 import { buildSldExportFileName } from '../exportNames';
 import { SLD_EXPORT_FORMATS, sldExportFormatDescriptor } from '../formats';
-import { svgMarkupToDrawing, parsePathData, geometryPrimitiveCount, type ExportDrawing } from '../svgPrimitives';
+import { svgMarkupToDrawing, parsePathData, geometryPrimitiveCount, type ExportDrawing, type ExportPrimitive as ExportPrimitiveT } from '../svgPrimitives';
 import { buildSldExportFile, type SldExportContext } from '../sldExport';
 import { adresEksportuCgmes, pobierzEksportCgmes } from '../eksportCgmesApi';
 import { BRIDGE_RADIUS, polylinePathWithBridges } from '../../scene/crossings';
@@ -141,6 +142,11 @@ function sprawdzPdf(pdf: string): { readonly objectCount: number; readonly strea
   return { objectCount: offsets.length, streamLength: declared };
 }
 
+/** Treść DXF samego rysunku (bez bramki pustych encji — test obrotu ma jeden tekst). */
+function generujDxfTekstu(d: ExportDrawing): string {
+  return generateDxf(buildDxfInput(d, 'T'));
+}
+
 describe('S9-6 · konwerter markupu na prymitywy', () => {
   it('czyta wszystkie konstrukcje arkusza i składa transformację grup', () => {
     const drawing = svgMarkupToDrawing(MARKUP_ARKUSZA);
@@ -193,9 +199,78 @@ describe('S9-6 · konwerter markupu na prymitywy', () => {
     expect(() => svgMarkupToDrawing(zNieznanym)).toThrow(/nieobsługiwany element „<use>"/);
   });
 
-  it('transformacja inna niż translate RZUCA wyjątek (skala zmieniłaby geometrię po cichu)', () => {
-    const zeSkala = MARKUP_ARKUSZA.replace('translate(10, 20)', 'scale(2)');
-    expect(() => svgMarkupToDrawing(zeSkala)).toThrow(/nieobsługiwana transformacja/);
+  it('transformacja niesztywna (skala, pochylenie, macierz, zła liczba argumentów) RZUCA wyjątek — zmieniłaby geometrię po cichu', () => {
+    for (const t of ['scale(2)', 'skewX(10)', 'matrix(1 0 0 1 0 0)', 'rotate(10, 5)', 'translate(1, 2, 3)', 'translate(10, 20) scale(2)']) {
+      const zla = MARKUP_ARKUSZA.replace('translate(10, 20)', t);
+      expect(() => svgMarkupToDrawing(zla), t).toThrow(/nieobsługiwana transformacja/);
+    }
+  });
+
+  /**
+   * Karta SLD-SKALA-I-NAWIGACJA, R9: dokument niesie pełną scenę, więc także napisy pionowe
+   * (`rotate(-90, cx, cy)` na `<text>`) i obrócone części glifów (`rotate(kąt cx cy)` na `<g>`).
+   * ILOCZYN: element {odcinek, prostokąt, okrąg, tekst} × postać obrotu {z punktem obrotu,
+   * bez punktu, złożony z przesunięciem przodka}.
+   */
+  describe('obrót sztywny (napisy pionowe i obrócone części glifów)', () => {
+    const owin = (wnetrze: string, transform: string) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><g transform="translate(100, 0)"><g transform="${transform}">${wnetrze}</g></g></svg>`;
+    const postaci = [
+      // [opis, transform, odwzorowanie punktu (x, y) w układzie grupy → arkusz]
+      ['rotate(-90, 10, 20)', (x: number, y: number) => ({ x: 100 + 10 + (y - 20), y: 20 - (x - 10) })],
+      ['rotate(90)', (x: number, y: number) => ({ x: 100 - y, y: x })],
+      ['translate(5, 5) rotate(180)', (x: number, y: number) => ({ x: 100 + 5 - x, y: 5 - y })],
+    ] as const;
+    for (const [transform, odwz] of postaci) {
+      it(`${transform}: punkty odcinka, prostokąta i środek okręgu przez to samo przekształcenie, promień bez zmian`, () => {
+        const d = svgMarkupToDrawing(
+          owin('<line x1="10" y1="20" x2="30" y2="20" stroke="#000"/><rect x="0" y="0" width="4" height="2" fill="#000"/><circle cx="7" cy="3" r="2" fill="#000"/>', transform),
+        );
+        const [linia, prostokat, okrag] = d.primitives as readonly ExportPrimitiveT[];
+        const blisko = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+          expect(a.x).toBeCloseTo(b.x, 9);
+          expect(a.y).toBeCloseTo(b.y, 9);
+        };
+        if (linia.kind !== 'polyline' || prostokat.kind !== 'polyline' || okrag.kind !== 'circle') throw new Error('kolejność prymitywów');
+        blisko(linia.points[0], odwz(10, 20));
+        blisko(linia.points[1], odwz(30, 20));
+        [[0, 0], [4, 0], [4, 2], [0, 2]].forEach(([x, y], i) => blisko(prostokat.points[i], odwz(x, y)));
+        blisko({ x: okrag.cx, y: okrag.cy }, odwz(7, 3));
+        expect(okrag.r).toBe(2);
+      });
+      it(`${transform}: tekst niesie punkt po przekształceniu i kąt obrotu`, () => {
+        const [tekst] = svgMarkupToDrawing(owin('<text x="10" y="20" font-size="9" text-anchor="middle">Q1</text>', transform)).primitives;
+        if (tekst.kind !== 'text') throw new Error('brak tekstu');
+        const oczek = odwz(10, 20);
+        expect(tekst.x).toBeCloseTo(oczek.x, 9);
+        expect(tekst.y).toBeCloseTo(oczek.y, 9);
+        expect(tekst.rotation).toBe(transform.includes('-90') ? -90 : transform.includes('180') ? 180 : 90);
+      });
+    }
+
+    it('tekst bez obrotu ma kąt 0 i ten sam zapis PDF co przed obrotem (`1 0 0 -1 x y Tm`), DXF bez grupy 50', () => {
+      const d = svgMarkupToDrawing(MARKUP_ARKUSZA);
+      expect(d.primitives.find((p) => p.kind === 'text')).toMatchObject({ rotation: 0 });
+      expect(buildSldPdf(d, 'T')).toMatch(/\n1 0 0 -1 [\d.-]+ [\d.-]+ Tm\n/);
+      expect(generujDxfTekstu(d)).not.toContain('\n50\n');
+    });
+
+    it('napis pionowy: PDF z macierzą obrotu (cos sin sin −cos), DXF z kątem 90° przeciwnie do wskazówek zegara', () => {
+      // Odcinek obok napisu: bramka „rysunek bez geometrii" PDF słusznie odrzuca sam tekst.
+      const d = svgMarkupToDrawing(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><line x1="0" y1="0" x2="200" y2="100" stroke="#000"/><g transform="translate(100, 0)"><g transform="rotate(-90, 10, 20)"><text x="10" y="20" font-size="9" text-anchor="middle" dominant-baseline="middle">Q1</text></g></g></svg>`,
+      );
+      const pdf = buildSldPdf(d, 'T');
+      // θ = −90°: cos 0, sin −1 ⇒ Tm „0 -1 -1 0 x y"; punkt pisma przesunięty wzdłuż linii pisma
+      // (w górę rysunku) o pół szerokości i w poprzek o 0,359 wysokości pisma.
+      const szer = pdfTextWidth('Q1', 9, false);
+      const m = /\n0 -1 -1 0 ([\d.-]+) ([\d.-]+) Tm\n/.exec(pdf);
+      expect(m, 'macierz tekstu obróconego').not.toBeNull();
+      expect(Number(m![1])).toBeCloseTo(110 + 9 * 0.359, 2);
+      expect(Number(m![2])).toBeCloseTo(20 + szer / 2, 2);
+      const dxf = generujDxfTekstu(d);
+      expect(dxf).toMatch(/\n1\nQ1\n50\n90\n/);
+    });
   });
 
   it('element praktycznie niewidoczny (opacity 0) nie trafia do pliku', () => {

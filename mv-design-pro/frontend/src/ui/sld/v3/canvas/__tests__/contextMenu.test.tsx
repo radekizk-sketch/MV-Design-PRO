@@ -24,7 +24,7 @@ import { useSelectionStore } from '../../../../selection';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { pierwszyObszarStacji } from './uchwytStacji';
-import { powiekszKolkiemDoSkali } from './kameraTestowa';
+import { powiekszKolkiemDoSkali, punktCeluTrafienia, testIdSymboluSceny } from './kameraTestowa';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 
 afterEach(() => {
@@ -74,7 +74,7 @@ function uchwytSymbolu(
   index: number,
 ): Element | null {
   const testId = scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`;
-  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+  return container.querySelector(`[data-hit-for="${testId}"]`);
 }
 
 /** Węzeł RYSUNKU tego samego symbolu — nosi diagnostyczne `data-*` sceny
@@ -130,7 +130,8 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(pvIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    powiekszKolkiemDoSkali(container, 1);
+    // R8: kółko z kursorem NAD obiektem — uchwyty stoją tylko w oknie renderu.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, pvIndex)));
     const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     expect(pvGroup).toBeTruthy();
     // Sanity: atrybut DOM diagnostyczny niesie realny rodzaj (nie zgadywany) —
@@ -161,7 +162,8 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(scene.symbols[genIndex].meta?.derKind).toBe('generator');
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    powiekszKolkiemDoSkali(container, 1);
+    // R8: kółko z kursorem NAD obiektem — uchwyty stoją tylko w oknie renderu.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(snapshot, testIdSymboluSceny(scene, genIndex)));
     const genGroup = uchwytSymbolu(container, scene, genIndex);
     expect(genGroup).toBeTruthy();
     expect(wezelRysunku(container, scene, genIndex)!.getAttribute('data-der-kind')).toBe('generator');
@@ -190,7 +192,8 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     const pvRef = scene.symbols[pvIndex].meta!.ownerRef!;
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    powiekszKolkiemDoSkali(container, 1);
+    // R8: kółko z kursorem NAD obiektem — uchwyty stoją tylko w oknie renderu.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, pvIndex)));
     const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     await userEvent.pointer({ keys: '[MouseRight]', target: pvGroup! });
     expect(screen.getByRole('menu')).toBeTruthy();

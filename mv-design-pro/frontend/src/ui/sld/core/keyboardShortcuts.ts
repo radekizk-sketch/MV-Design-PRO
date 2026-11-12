@@ -53,6 +53,24 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
     action_id: 'poprzedni_widok',
   },
   {
+    keys: 'Alt+→',
+    description_pl: 'Schemat: przejdź do następnego widoku (po powrocie do poprzedniego)',
+    category: 'NAWIGACJA',
+    action_id: 'nastepny_widok',
+  },
+  {
+    keys: '+ / −',
+    description_pl: 'Schemat: przybliż albo oddal wokół środka kadru',
+    category: 'NAWIGACJA',
+    action_id: 'skala_klawiszem',
+  },
+  {
+    keys: 'Strzałki',
+    description_pl: 'Schemat: przesuń kadr',
+    category: 'NAWIGACJA',
+    action_id: 'przesun_kadr',
+  },
+  {
     keys: 'Shift+przeciągnij',
     description_pl: 'Schemat: zaznacz elementy w prostokącie',
     category: 'NAWIGACJA',
@@ -66,7 +84,8 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
   },
   {
     keys: 'Escape',
-    description_pl: 'Zamknij wyszukiwanie albo panel dolny; na schemacie zdejmij zaznaczenie',
+    description_pl:
+      'Zamknij wyszukiwanie albo panel dolny; na schemacie zdejmij zaznaczenie, a bez zaznaczenia przejdź poziom wyżej w kadrze',
     category: 'NAWIGACJA',
     action_id: 'anuluj',
   },

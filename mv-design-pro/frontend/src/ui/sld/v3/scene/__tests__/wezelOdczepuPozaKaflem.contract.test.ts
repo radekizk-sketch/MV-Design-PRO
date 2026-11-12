@@ -147,14 +147,16 @@ function naruszenia(scena: SceneV3): string[] {
 const SCENY = FIKSTURY.map(([nazwa, enm]) => [nazwa, enm] as const);
 
 describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstura', () => {
-  it('kontrola wejścia: 66 fikstur i macierz W1c', () => {
+  it('kontrola wejścia: 67 fikstur i macierz W1c', () => {
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 60 → 64 — sceny generatora
     // `gpz110kvPolaSzablonow`, `gpz110kvPoleZu{Z13,Z14,Z15}` (public/test-fixtures).
     // Pomiar 2026-11-11 (karta ZU-JEDEN-NOSNIK, scalenie z gałęzią integracji): 64 → 67 —
     // `stacjeKonstrukcjiPol.enm.json` (public/test-fixtures i sceny; dopisane na gałęzi szablonów
     // pól po poprzednim pomiarze) oraz `glowice_kablowe_pol_gpz.json` (harness, gałąź
     // integracji); 66 plików z modelem ENM + macierz W1c.
-    expect(FIKSTURY).toHaveLength(67);
+    // Pomiar 2026-11-12 (karta SLD-SKALA-I-NAWIGACJA, etap 3–4): 67 → 68 — sieć pomiarowa karty
+    // `public/test-fixtures/gpzDwusekcyjny40.enm.json` (GPZ dwusekcyjny z 40 stacjami).
+    expect(FIKSTURY).toHaveLength(68);
   });
 
   it.each(SCENY)('%s', (_nazwa, enm) => {

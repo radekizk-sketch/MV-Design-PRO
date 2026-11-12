@@ -70,7 +70,7 @@ test('POLA-W-TORZE — kadry stacji odgałęźnej, sekcyjnej, końcowej i końco
         await sciezkaSieci.click();
         await expect(page.getByTestId('sld-v3-sciezka-kadru')).toHaveCount(0);
       }
-      const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${ref}#name-row"]`).first();
+      const uchwyt = page.locator(`[data-hit-owner-ref^="${ref}#name-row"]`).first();
       await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
       await uchwyt.dblclick();
       await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(stacja.nazwa, { timeout: 10000 });

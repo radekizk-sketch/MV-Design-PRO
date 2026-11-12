@@ -195,16 +195,35 @@ describe('obrys kotwicy w scenie — para z symbolem sceny (jedno źródło)', (
       // `symbols.length` przeszkód sceny — założenie „jedna przeszkoda na symbol" przestało być
       // prawdą, gdy blok zabezpieczeń daje cztery krawędzie ramki (`przeszkodySymbolu`).
       const prostokatySymboli = new Set(scena.symbols.map((s) => JSON.stringify(gabarytSymbolu(s))));
+      // Karta SLD-SKALA-I-NAWIGACJA (R4): podpis szyny sekcji ma obrys kotwicy = ROZPIĘTOŚĆ sekcji
+      // (wysokość 0) — plan przesuwa pełny napis wzdłuż szyny. Para: rozpiętość OBEJMUJE poziomy
+      // odcinek szyny tego samego elementu (ref bez przyrostka `#…`; w stacji rozpiętość sekcji
+      // jest szersza niż narysowana szyna — kolumny skrajnych pól) i leży na wysokości szyny
+      // albo nad nią (podpis stoi nad szyną).
+      const elementu = (ref: string | undefined) => (ref ?? '').split('#')[0];
+      const szyny = scena.segments
+        .filter((g) => g.meta?.kind === 'bus' || g.meta?.kind === 'busGpz')
+        .filter((g) => g.points.length >= 2 && g.points.every((p) => p.y === g.points[0].y))
+        .map((g) => ({ ref: elementu(g.meta?.ownerRef), minX: Math.min(...g.points.map((p) => p.x)), maxX: Math.max(...g.points.map((p) => p.x)), y: g.points[0].y }));
+      const naOsiSzyny = (ownerRef: string, r: { x: number; y: number; width: number; height: number }) =>
+        r.height === 0 &&
+        r.width > 0 &&
+        szyny.some((g) => g.ref === elementu(ownerRef) && g.minX >= r.x && g.maxX <= r.x + r.width && g.y >= r.y);
       let zObrysem = 0;
+      let rozpietosci = 0;
       for (const l of scena.labels) {
         if (l.ownerKind === 'der' || l.ownerKind === 'no-point') {
           expect(l.obrysKotwicy, `${l.ownerRef}: podpis przy symbolu bez obrysu kotwicy`).toBeDefined();
+          expect(prostokatySymboli.has(JSON.stringify(l.obrysKotwicy)), `${l.ownerRef}: obrys nie jest symbolem sceny`).toBe(true);
         }
         if (l.obrysKotwicy === undefined) continue;
         zObrysem += 1;
-        expect(prostokatySymboli.has(JSON.stringify(l.obrysKotwicy)), `${l.ownerRef}: obrys nie jest symbolem sceny`).toBe(true);
+        const symbol = prostokatySymboli.has(JSON.stringify(l.obrysKotwicy));
+        if (!symbol) rozpietosci += 1;
+        expect(symbol || naOsiSzyny(l.ownerRef, l.obrysKotwicy), `${l.ownerRef}: obrys nie jest ani symbolem sceny, ani osią szyny`).toBe(true);
       }
       expect(zObrysem).toBeGreaterThan(0);
+      expect(rozpietosci, 'iloczyn: obie postaci obrysu kotwicy występują').toBeGreaterThan(0);
     });
   }
 });

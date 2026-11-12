@@ -1,4 +1,3 @@
-// @vitest-environment node
 /**
  * KD-8 poz. 2, bramka 2 — KONTRAKT ROZŁĄCZNOŚCI GRUP PASA NARZĘDZI.
  *

@@ -254,7 +254,7 @@ test('UI-02 — panel dolny: stan przed biegiem, wyniki → zaznaczenie z zachow
 
   // ── Otwórz sieć → wybierz stację na schemacie → przybliż kółkiem nad stacją. ──
   const kanwa = page.getByTestId('sld-canvas-v3');
-  const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${refStacji}#name-row"]`).first();
+  const uchwyt = page.locator(`[data-hit-owner-ref^="${refStacji}#name-row"]`).first();
   await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
   for (let i = 0; i < 12; i += 1) {
     if ((await skalaKamery(kanwa)) >= SKALA_CZYTANIA) break;
@@ -334,7 +334,7 @@ test('UI-02 — panel dolny: stan przed biegiem, wyniki → zaznaczenie z zachow
     .poll(async () => {
       const kanwaBox = await kanwa.boundingBox();
       const obrysy = await page
-        .locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${refWiersza}"]`)
+        .locator(`[data-hit-owner-ref^="${refWiersza}"]`)
         .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect));
       if (!kanwaBox || obrysy.length === 0) return false;
       return obrysy.every(

@@ -253,6 +253,9 @@ export interface AkcjaKadru {
   /** Najmniejsza skala kadru (podłoga czytelności, `SKALA_PODLOGI_ROZDZIELNICY`).
    *  Gdy cel przy tej skali się nie mieści — kadr od początku celu. Brak = bez podłogi. */
   readonly podlogaSkali?: number;
+  /** WSKAZANIE z zewnątrz (`centerSldOnElement`, karta SLD-SKALA-I-NAWIGACJA R7) — jedna reguła
+   *  doboru kadru dla każdego wołającego (`applyWskazanie`). Brak = zwykły kadr celu. */
+  readonly wskazanie?: boolean;
 }
 
 /** Zasięg narysowanych etykiet celu i przeszkód (kolejność jak `przeszkody`). */
@@ -471,11 +474,59 @@ function zTuszemEtykiet(
  * ponawia ją na nowym viewporcie, dopóki projektant nie ruszy kamery.
  */
 function applyKadr(state: CameraState, action: AkcjaKadru): CameraState {
+  if (action.wskazanie) return applyWskazanie(state, action);
+  return applyKadrCelu(state, action);
+}
+
+/**
+ * WSKAZANIE z zewnątrz (karta SLD-SKALA-I-NAWIGACJA R7: „skala zostaje, jeśli cel jest w niej
+ * rozpoznawalny; inaczej kadr celu z kontekstem"). Jedna reguła dla wszystkich wołających
+ * `centerSldOnElement` (wyniki, gotowość, drzewo, kreatory) — dawne tryby „kadruj”/„kotwicz”
+ * różniły się kamerą, teraz różnią się wyłącznie skutkami poza kamerą (ścieżka, kurtyna,
+ * historia — `SldCanvasV3Workspace`).
+ *
+ *  1. ROZPOZNAWALNY w bieżącej skali = skala co najmniej `SKALA_CZYTANIA` (aparaty w rozmiarze
+ *     nominalnym, napisy wyników od 1,0 — `PISMO_WYNIKOW`) ORAZ cel mieści się w prostokącie
+ *     bezpiecznym w tej skali. Wtedy skala zostaje bit w bit; cel już w całości widoczny ⇒
+ *     kamera stoi, inaczej przesunięcie środka na cel.
+ *  2. W przeciwnym razie KADR CELU W SKALI CZYTANIA: podłoga i sufit skali = `SKALA_CZYTANIA`,
+ *     więc cel jest czytelny, a obiekt nadrzędny (pole, stacja) widać wokół niego w tej samej
+ *     skali; cel większy od okna przy 1,0 — kadr od początku celu (`applyKadrCelu`).
+ * Kadr wskazania nie jest pamiętany do ponowienia przy zmianie rozmiaru kanwy w gałęzi 1
+ * (kamera nie zmieniła skali — to nie jest kadr celu).
+ */
+function applyWskazanie(state: CameraState, action: AkcjaKadru): CameraState {
+  const { viewportSize, safeInsets } = action;
+  const cel = action.anchor;
+  if (!cel) return state;
+  const s = state.transform.scale;
+  const mieszczaca = dopasowanie(cel, viewportSize, safeInsets).scale;
+  if (s >= SKALA_CZYTANIA - 1e-12 && mieszczaca >= s - 1e-12) {
+    const bazowy: CameraState = withoutKadr({ ...state, viewportSize, safeInsets: safeInsets ?? state.safeInsets });
+    const ins = safeInsets ?? ZERO_INSETS;
+    const { translateX, translateY } = state.transform;
+    const widoczny =
+      cel.minX * s + translateX >= ins.left &&
+      cel.maxX * s + translateX <= viewportSize.width - ins.right &&
+      cel.minY * s + translateY >= ins.top &&
+      cel.maxY * s + translateY <= viewportSize.height - ins.bottom;
+    if (widoczny) return bazowy;
+    return {
+      ...bazowy,
+      transform: centerOnPoint({ x: (cel.minX + cel.maxX) / 2, y: (cel.minY + cel.maxY) / 2 }, viewportSize, s, safeInsets),
+    };
+  }
+  return applyKadrCelu(state, { ...action, podlogaSkali: SKALA_CZYTANIA, sufitSkali: SKALA_CZYTANIA });
+}
+
+function applyKadrCelu(state: CameraState, action: AkcjaKadru & { readonly sufitSkali?: number }): CameraState {
   const { viewportSize, safeInsets } = action;
   const { cel, przeszkody } = zTuszemEtykiet(state, action);
   if (!cel) return state;
   const istotne = przeszkody.filter((p) => !przecinaja(p, cel));
-  const mieszczaca = skalaKadru(state, cel, viewportSize, safeInsets);
+  const mieszczacaBezSufitu = skalaKadru(state, cel, viewportSize, safeInsets);
+  const mieszczaca =
+    action.sufitSkali !== undefined ? Math.min(mieszczacaBezSufitu, wZakresie({ ...state, viewportSize, safeInsets }, action.sufitSkali)) : mieszczacaBezSufitu;
   const scale =
     action.podlogaSkali !== undefined && mieszczaca < action.podlogaSkali
       ? wZakresie({ ...state, viewportSize, safeInsets }, action.podlogaSkali)

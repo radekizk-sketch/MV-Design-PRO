@@ -21,7 +21,8 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { KURTYNA_KADRU_OPACITY, SldCanvasV3, segmentTestId, symbolTestId } from '../SldCanvasV3';
 import { MIN_READABLE_LABEL_SCREEN_PX } from '../../core/text';
-import { nalezyDoZakresu, zakresCelu } from '../zakresKadru';
+import { hierarchiaCelowTrafienia, nalezyDoZakresu, zakresCelu } from '../zakresKadru';
+import { stopnieCeluObiektu, testIdObszaruCelu } from '../hitAreas';
 import { klasaInformacjiEtykiety } from '../gestoscInformacji';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ const zakres = zakresCelu('stacja', enm, [stacja], scena);
 if (!zakres.dostepny) throw new Error(zakres.przyczyna);
 const refy = zakres.zakres.refy;
 const zbior = new Set(refy);
+const hierarchia = hierarchiaCelowTrafienia(enm, scena);
 
 afterEach(() => cleanup());
 
@@ -121,13 +123,31 @@ describe('tożsamość celu kadru nie znika i nie ma licznika ukrytych opisów',
     expect(container.textContent ?? '').not.toContain('Ukryto');
     const zbiorCelu = new Set(refyCelu);
     const uchwyty = new Set(
-      [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="etykieta"]')].map((n) => n.getAttribute('data-hit-owner-ref')),
+      [...container.querySelectorAll('[data-hit-klasa="etykieta"]')].map((n) => n.getAttribute('data-hit-owner-ref')),
+    );
+    // R4 × R8: tożsamość, której slot jest na ekranie nierozpoznawalny, stoi w podpowiedzi celu
+    // wyższego (pole albo stacja z hierarchii R6), który przejmuje jej klik — uchwyt celu
+    // (`sld-v3-cel-pole:…`/`sld-v3-cel-stacja:…`) z `<title>` niosącym pełny tekst tożsamości.
+    const podpowiedziCelow = new Map(
+      [...container.querySelectorAll('[data-hit-klasa="pole"], [data-hit-klasa="stacja"]')].map(
+        (n) => [n.getAttribute('data-hit-for')!, (n.querySelector('title')?.textContent ?? '').split('\n')] as const,
+      ),
     );
     const tozsamosciCelu = scena.labels.filter(
       (l) => klasaInformacjiEtykiety(l) === 'tozsamosc' && nalezyDoZakresu(l.ownerRef, zbiorCelu),
     );
     expect(tozsamosciCelu.length, 'cel ma tożsamości').toBeGreaterThan(0);
-    for (const l of tozsamosciCelu) expect(uchwyty.has(l.ownerRef), `${l.ownerRef} „${l.text}"`).toBe(true);
+    let wPodpowiedziCelu = 0;
+    for (const l of tozsamosciCelu) {
+      const wyzsze = stopnieCeluObiektu(hierarchia, l.ownerRef, l.rect)
+        .slice(1)
+        .map((s) => testIdObszaruCelu(s.poziom as 'pole' | 'stacja', s.ref));
+      const wPodpowiedzi = wyzsze.some((id) => podpowiedziCelow.get(id)?.includes(l.text) ?? false);
+      if (wPodpowiedzi) wPodpowiedziCelu += 1;
+      expect(uchwyty.has(l.ownerRef) || wPodpowiedzi, `${l.ownerRef} „${l.text}"`).toBe(true);
+    }
+    // Skala przeglądu sieci (pełna sieć na kanwie) — obie drogi muszą być ćwiczone.
+    expect(wPodpowiedziCelu, 'część tożsamości celu stoi w podpowiedzi pola/stacji').toBeGreaterThan(0);
     const svg = container.querySelector('svg[data-kadr-aktywny="true"]')!;
     const minPx = Number(svg.getAttribute('data-min-opis-celu-px'));
     expect(minPx).toBeGreaterThanOrEqual(MIN_READABLE_LABEL_SCREEN_PX - 0.01);

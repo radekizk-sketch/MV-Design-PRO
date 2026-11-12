@@ -85,7 +85,7 @@ function refyStacji(enm: Enm): Record<string, { readonly refy: readonly string[]
 
 /**
  * Pomiar kadru w przeglądarce: prostokąt stacji z obrysów trafień
- * (`data-hit-role="obrys"`), obszar widoczny (kanwa pod paskiem narzędzi i mini-ścieżką)
+ * (`data-hit-obrys`), obszar widoczny (kanwa pod paskiem narzędzi i mini-ścieżką)
  * oraz zbiór stacji i `ownerRef` WIDOCZNYCH: element rysunku warstw odcinków, symboli
  * i etykiet z `data-owner-ref`, o niezerowym prostokącie przecinającym obszar, bez
  * przodka `data-kadr="poza"`.
@@ -114,7 +114,7 @@ async function zmierzKadr(page: Page, enm: Enm, stacjaRef: string): Promise<Pomi
       const przecina = (r: DOMRect) =>
         r.width + r.height > 0 && r.right > obszar.left && r.left < obszar.right && r.bottom > obszar.top && r.top < obszar.bottom;
       let stacja: { left: number; top: number; right: number; bottom: number } | null = null;
-      for (const el of Array.from(document.querySelectorAll('[data-hit-role="obrys"][data-hit-owner-ref]'))) {
+      for (const el of Array.from(document.querySelectorAll('[data-hit-owner-ref]'))) {
         if (wlascicielStacji(el.getAttribute('data-hit-owner-ref') ?? '') !== cel) continue;
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) continue;
@@ -201,7 +201,7 @@ async function wrocDoSieci(page: Page): Promise<void> {
 }
 
 async function dwuklikStacji(page: Page, ref: string): Promise<void> {
-  const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${ref}#name-row"]`).first();
+  const uchwyt = page.locator(`[data-hit-owner-ref^="${ref}#name-row"]`).first();
   await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
   await uchwyt.dblclick();
 }
@@ -314,7 +314,7 @@ for (const motyw of [
     await wrocDoSieci(page);
     const odcinek2 = (enm.branches ?? []).find((b) => b.name === 'Odcinek 2')!;
     expect(odcinek2, 'Odcinek 2 magistrali').toBeTruthy();
-    const obrysOdcinka = page.locator(`[data-hit-role="obrys"][data-hit-klasa="tor"][data-hit-owner-ref^="${odcinek2.ref_id}"]`).first();
+    const obrysOdcinka = page.locator(`[data-hit-klasa="tor"][data-hit-owner-ref^="${odcinek2.ref_id}"]`).first();
     await expect(obrysOdcinka).toHaveCount(1, { timeout: 30000 });
     // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
     await czekajNaStabilnaGeometrie(obrysOdcinka);

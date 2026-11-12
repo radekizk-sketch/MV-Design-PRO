@@ -39,12 +39,17 @@ import {
   MIN_HIT_SCREEN_PX,
   buildCanvasHitAreas,
   hitAreasFromDom,
-  hitLayerOrderingInDom,
+  pickCanvasHitArea,
   pointerBlockersInDom,
+  rozstrzygnijTrafienieWezla,
+  type CanvasHitArea,
   type HitDomNode,
   type HitObjectClass,
 } from '../hitAreas';
 import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
+import { hierarchiaCelowTrafienia } from '../zakresKadru';
+import { FRAME_MARGIN } from '../../sheet/Frame';
+import { kameraNadSymbolem } from './kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -79,26 +84,43 @@ function scaleOf(container: HTMLElement, szerokosc: number = CANVAS_WIDTH): numb
   return szerokosc / viewBox[2];
 }
 
-function hitNode(container: HTMLElement, testId: string, rola: 'obrys' | 'obszar'): Element | null {
-  return container.querySelector(`[${HIT_ATTR.for}="${CSS.escape(testId)}"][${HIT_ATTR.role}="${rola}"]`);
+/** Uchwyt obiektu — R8: jeden węzeł na obiekt (kształt obszaru, obrys w `data-hit-obrys`). */
+function hitNode(container: HTMLElement, testId: string): Element | null {
+  return container.querySelector(`[${HIT_ATTR.for}="${CSS.escape(testId)}"]`);
+}
+
+/** Obszary, które render buduje dla tej sceny i skali (hierarchia celów i podpowiedzi — R6, R4). */
+function oczekiwaneObszary(scale: number): readonly CanvasHitArea[] {
+  const scene = buildSceneV3(enm);
+  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
+  return buildCanvasHitAreas({
+    symbols: scene.symbols,
+    segments: scene.segments,
+    labels: plan.drawn,
+    tozsamosciWPodpowiedzi: plan.tozsamosciWPodpowiedzi,
+    resultMarkers: [],
+    scale,
+    hierarchiaCelow: hierarchiaCelowTrafienia(enm, scene),
+  });
 }
 
 describe('S9-4 — nazwy atrybutów kanału trafień', () => {
   it('stałe `HIT_ATTR` są DOKŁADNIE tymi atrybutami, które renderuje kanwa (jedno źródło nazw)', () => {
     expect(HIT_ATTR).toEqual({
       for: 'data-hit-for',
-      role: 'data-hit-role',
       klasa: 'data-hit-klasa',
       ownerRef: 'data-hit-owner-ref',
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref pojedynczego aparatu.
       deviceRef: 'data-hit-device-ref',
+      // R8 (karta SLD-SKALA-I-NAWIGACJA): obrys na jedynym węźle obiektu.
+      obrys: 'data-hit-obrys',
     });
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
     );
     const dowolny = container.querySelector(`[${HIT_ATTR.for}]`);
     expect(dowolny, 'warstwa trafień renderuje węzły z kanałem audytu').toBeTruthy();
-    expect(dowolny!.getAttribute(HIT_ATTR.role)).toMatch(/^(obrys|obszar)$/);
+    expect(dowolny!.getAttribute(HIT_ATTR.obrys)).toMatch(/^-?[\d.]/);
     expect(dowolny!.getAttribute(HIT_ATTR.klasa)).toBeTruthy();
   });
 });
@@ -113,16 +135,8 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
           onElementClick={() => {}}
         />,
       );
-      const scene = buildSceneV3(enm);
       const scale = scaleOf(container);
-      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
-      const oczekiwane = buildCanvasHitAreas({
-        symbols: scene.symbols,
-        segments: scene.segments,
-        labels: plan.drawn,
-        resultMarkers: [],
-        scale,
-      });
+      const oczekiwane = oczekiwaneObszary(scale);
       const zDrzewa = hitAreasFromDom(svgOf(container) as unknown as HitDomNode);
       expect(zDrzewa.length).toBe(oczekiwane.length);
       const wgTestId = new Map(zDrzewa.map((a) => [a.testId, a]));
@@ -149,6 +163,16 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
           expect(wDom!.obszar.ksztalt).toBe('lamana');
           expect((wDom!.obszar as { halfWidth: number }).halfWidth).toBeCloseTo(area.obszar.halfWidth, 6);
         }
+        // R8: obrys niesie atrybut jedynego węzła — ta sama geometria co w funkcji.
+        if (area.obrys.ksztalt === 'prostokat') {
+          const o = wDom!.obrys as { x: number; y: number; width: number; height: number };
+          expect(o.x).toBeCloseTo(area.obrys.x, 6);
+          expect(o.y).toBeCloseTo(area.obrys.y, 6);
+          expect(o.width).toBeCloseTo(area.obrys.width, 6);
+          expect(o.height).toBeCloseTo(area.obrys.height, 6);
+        } else {
+          expect((wDom!.obrys as { halfWidth: number }).halfWidth).toBeCloseTo(area.obrys.halfWidth, 6);
+        }
       }
     },
   );
@@ -162,16 +186,8 @@ describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
     );
-    const scene = buildSceneV3(enm);
     const scale = scaleOf(container);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
-    const oczekiwane = buildCanvasHitAreas({
-      symbols: scene.symbols,
-      segments: scene.segments,
-      labels: plan.drawn,
-      resultMarkers: [],
-      scale,
-    });
+    const oczekiwane = oczekiwaneObszary(scale);
     const obecneRodzaje = new Set<HitObjectClass>(oczekiwane.map((a) => a.klasa));
     // Sanity: scena referencyjna niesie WIĘCEJ NIŻ JEDEN rodzaj (inaczej test
     // przechodziłby na pustym zbiorze cech).
@@ -211,13 +227,73 @@ describe('S9-4 — rysunek jest bierny (nic poza uchwytami nie łapie kliku)', (
     expect(pointerBlockersInDom(svgOf(container) as unknown as HitDomNode)).toEqual([]);
   });
 
-  it('obszary rozszerzone leżą POD obrysami — rozszerzenie nie kradnie kliku obrysowi sąsiada', () => {
+  // R8 (karta SLD-SKALA-I-NAWIGACJA): dawne dwa piętra (obszary pod obrysami) zastąpił jeden
+  // węzeł na obiekt; pierwszeństwo obrysu przed rozszerzeniem sąsiada rozstrzyga
+  // `rozstrzygnijTrafienieWezla` w punkcie kursora. Intencja testu bez zmian: rozszerzenie
+  // nie kradnie kliku obiektowi, nad którego tuszem stoi kursor.
+  it('rozszerzenie nie kradnie kliku obrysowi sąsiada: funkcja czysta na obszarach sceny', () => {
+    const obszary = oczekiwaneObszary(0.3);
+    let sprawdzone = 0;
+    for (const wezel of obszary) {
+      if (wezel.obrys.ksztalt !== 'prostokat' || wezel.obszar.ksztalt !== 'prostokat') continue;
+      if (wezel.obszar.width === wezel.obrys.width && wezel.obszar.height === wezel.obrys.height) continue;
+      // Punkt w ROZSZERZENIU węzła (poza jego obrysem), ale na obrysie INNEGO obiektu — cel to
+      // obiekt z obrysem.
+      const sasiad = obszary.find((a) => a !== wezel && a.obrys.ksztalt === 'prostokat' && (() => {
+        const o = a.obrys as { x: number; y: number; width: number; height: number };
+        const cx = o.x + o.width / 2;
+        const cy = o.y + o.height / 2;
+        const s2 = wezel.obszar as { x: number; y: number; width: number; height: number };
+        const w2 = wezel.obrys as { x: number; y: number; width: number; height: number };
+        const wObszarze = cx >= s2.x && cx <= s2.x + s2.width && cy >= s2.y && cy <= s2.y + s2.height;
+        const wObrysie = cx >= w2.x && cx <= w2.x + w2.width && cy >= w2.y && cy <= w2.y + w2.height;
+        return wObszarze && !wObrysie;
+      })());
+      if (!sasiad || sasiad.obrys.ksztalt !== 'prostokat') continue;
+      const p = { x: sasiad.obrys.x + sasiad.obrys.width / 2, y: sasiad.obrys.y + sasiad.obrys.height / 2 };
+      const wybor = pickCanvasHitArea(obszary, p.x, p.y)!;
+      expect(rozstrzygnijTrafienieWezla(obszary, wezel.testId, p), `${wezel.testId} → ${sasiad.testId}`).toBe(wybor.testId);
+      expect(wybor.testId).not.toBe(wezel.testId);
+      sprawdzone += 1;
+    }
+    expect(sprawdzone, 'scena niesie nałożenia rozszerzeń na obrysy sąsiadów').toBeGreaterThan(0);
+    // Bez punktu kursora (render bez układu) cel jest węzłem zdarzenia.
+    expect(rozstrzygnijTrafienieWezla(obszary, obszary[0].testId, null)).toBe(obszary[0].testId);
+  });
+
+  it('klik natywny z geometrią ekranu: węzeł rozszerzenia oddaje cel obiektowi pod kursorem (iniekcja: bez rozstrzygania — chybienie)', async () => {
+    const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
     );
-    const porzadek = hitLayerOrderingInDom(svgOf(container) as unknown as HitDomNode);
-    expect(porzadek).not.toBeNull();
-    expect(porzadek!.poprawna).toBe(true);
+    const svg = svgOf(container);
+    // Przeglądarkowa geometria kanwy (jsdom nie ma układu): prostokąt kanwy = rozmiar widoku.
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: CANVAS_WIDTH, height: CANVAS_HEIGHT, right: CANVAS_WIDTH, bottom: CANVAS_HEIGHT, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    const scale = scaleOf(container);
+    const [vx, vy] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+    const obszary = hitAreasFromDom(svg as unknown as HitDomNode);
+    let para: { wezel: CanvasHitArea; cel: CanvasHitArea; p: { x: number; y: number } } | null = null;
+    for (const wezel of obszary) {
+      if (wezel.obszar.ksztalt !== 'prostokat') continue;
+      const o = wezel.obszar;
+      for (const cel of obszary) {
+        if (cel === wezel || cel.obrys.ksztalt !== 'prostokat') continue;
+        const p = { x: cel.obrys.x + cel.obrys.width / 2, y: cel.obrys.y + cel.obrys.height / 2 };
+        if (p.x < o.x || p.x > o.x + o.width || p.y < o.y || p.y > o.y + o.height) continue;
+        if (pickCanvasHitArea(obszary, p.x, p.y)?.testId !== cel.testId) continue;
+        para = { wezel, cel, p };
+        break;
+      }
+      if (para) break;
+    }
+    expect(para, 'kadr niesie rozszerzenie nad obrysem sąsiada').not.toBeNull();
+    const { wezel, cel, p } = para!;
+    const clientX = (p.x + FRAME_MARGIN - vx) * scale;
+    const clientY = (p.y + FRAME_MARGIN - vy) * scale;
+    const user = userEvent.setup();
+    await user.pointer({ keys: '[MouseLeft]', target: hitNode(container, wezel.testId)!, coords: { clientX, clientY } });
+    expect(onElementClick).toHaveBeenCalledTimes(1);
+    expect(onElementClick.mock.calls[0][0]).toBe(cel.testId);
   });
 
   it('REGRESJA WSTRZYKNIĘTA: zdjęcie bierności z warstwy rysunku MUSI dać blokery', () => {
@@ -235,15 +311,22 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
   it('klik w APARAT POLA zaznacza TEN aparat (ownerRef aparatu, elementKind=apparatus)', async () => {
     const user = userEvent.setup();
     const onElementClick = vi.fn();
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
-    );
     const scene = buildSceneV3(enm);
     const aparat = scene.symbols.find(
       (s) => s.meta?.elementKind === 'apparatus' && s.meta?.ownerRef && s.meta?.testId,
     )!;
     expect(aparat, 'scena zawiera aparat pola z realnym refem').toBeTruthy();
-    const wezel = hitNode(container, aparat.meta!.testId!, 'obrys');
+    // R6 (karta SLD-SKALA-I-NAWIGACJA): aparat jest własnym celem kliku na kadrze roboczym.
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        onElementClick={onElementClick}
+        cameraOverride={kameraNadSymbolem(scene, aparat.meta!.testId!, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT })}
+      />,
+    );
+    const wezel = hitNode(container, aparat.meta!.testId!);
     expect(wezel, 'aparat ma uchwyt obrysu').toBeTruthy();
     await user.click(wezel!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
@@ -274,10 +357,14 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
     );
     const scene = buildSceneV3(enm);
-    const index = scene.segments.findIndex((s) => s.meta?.elementKind === 'segment' && s.meta?.ownerRef);
+    // R6: odcinek będący na tym kadrze własnym celem kliku (krótszy niż próg należy do pola).
+    const index = scene.segments.findIndex(
+      (s, i) => s.meta?.elementKind === 'segment' && s.meta?.ownerRef && hitNode(container, s.meta?.testId ?? `sld-v3-segment-${i}`) !== null,
+    );
+    expect(index, 'kadr niesie odcinek z własnym uchwytem').toBeGreaterThanOrEqual(0);
     const odcinek = scene.segments[index];
     const testId = odcinek.meta?.testId ?? `sld-v3-segment-${index}`;
-    const wezel = hitNode(container, testId, 'obrys');
+    const wezel = hitNode(container, testId);
     expect(wezel, 'odcinek ma uchwyt obrysu').toBeTruthy();
     await user.click(wezel!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
@@ -296,7 +383,7 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     const index = scene.segments.findIndex((s) => s.meta?.elementKind === 'bus');
     const szyna = scene.segments[index];
     const testId = szyna.meta?.testId ?? `sld-v3-segment-${index}`;
-    await user.click(hitNode(container, testId, 'obrys')!);
+    await user.click(hitNode(container, testId)!);
     expect(onElementClick.mock.calls[0][1]).toEqual({
       ownerRef: szyna.meta!.ownerRef,
       elementKind: 'bus',
@@ -317,7 +404,7 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const etykieta = plan.drawn.find((p) => p.label.ownerKind === 'apparatus')
       ?? plan.drawn.find((p) => p.label.ownerKind === 'station-name')!;
-    await user.click(hitNode(container, `sld-v3-label-${etykieta.index}`, 'obrys')!);
+    await user.click(hitNode(container, `sld-v3-label-${etykieta.index}`)!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
     expect(onElementClick.mock.calls[0][1].ownerRef).toBe(etykieta.label.ownerRef);
     expect(onElementClick.mock.calls[0][1].elementKind).toBeTruthy();
@@ -380,9 +467,10 @@ describe('S9-4 — klik w tło (audyt P-6)', () => {
     );
     // Obiekt: pierwszy aparat sceny (dawniej zwinięty symbol stacji widoku L0 — jedna scena,
     // karta SLD-SKALA-I-NAWIGACJA R1).
-    const scene = buildSceneV3(enm);
-    const aparat = scene.symbols.find((s) => s.meta?.elementKind === 'apparatus' && s.meta?.testId)!;
-    await user.click(hitNode(container, aparat.meta!.testId!, 'obrys')!);
+    // R6: na kadrze całej sieci aparat należy do pola albo stacji — obiektem jest cel z uchwytem.
+    const uchwyt = container.querySelector(`[${HIT_ATTR.for}][${HIT_ATTR.klasa}="stacja"]`)!;
+    expect(uchwyt, 'kadr sieci niesie obszar stacji').toBeTruthy();
+    await user.click(uchwyt);
     expect(onElementClick).toHaveBeenCalledTimes(1);
     expect(onBackgroundClick).not.toHaveBeenCalled();
   });

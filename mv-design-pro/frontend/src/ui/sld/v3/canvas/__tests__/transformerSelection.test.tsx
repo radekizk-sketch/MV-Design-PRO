@@ -53,7 +53,7 @@ describe('SldCanvasV3Workspace — selekcja transformatora stacji (adaptacja fle
     // rysunku. Intencja testu (klik w transformator stacji niesie REALNY ref
     // transformatora, nie ref pola) bez zmian.
     const hit = container.querySelector(
-      `[data-hit-for="${group!.getAttribute('data-testid')}"][data-hit-role="obrys"]`,
+      `[data-hit-for="${group!.getAttribute('data-testid')}"]`,
     );
     expect(hit, 'transformator stacji ma uchwyt trafienia').toBeTruthy();
     fireEvent.click(hit!);

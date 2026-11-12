@@ -83,7 +83,7 @@ function uchwyt(container: HTMLElement, scene: SceneV3, predykat: (s: SceneV3['s
   const index = scene.symbols.findIndex(predykat);
   expect(index).toBeGreaterThanOrEqual(0);
   const testId = scene.symbols[index].meta?.testId ?? `sld-v3-symbol-${index}`;
-  const el = container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+  const el = container.querySelector(`[data-hit-for="${testId}"]`);
   if (!el) throw new Error(`brak obszaru trafienia dla ${testId}`);
   return el;
 }
@@ -94,7 +94,7 @@ function uchwyt(container: HTMLElement, scene: SceneV3, predykat: (s: SceneV3['s
  * jednej scenie stację reprezentuje napis tożsamości, widoczny przy każdej skali.
  */
 function uchwytStacji(container: HTMLElement, ref: string): Element {
-  const el = [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="etykieta"]')].find(
+  const el = [...container.querySelectorAll('[data-hit-klasa="etykieta"]')].find(
     (n) => n.getAttribute('data-hit-owner-ref') === `${ref}#name-row-0`,
   );
   if (!el) throw new Error(`brak uchwytu napisu stacji ${ref}`);
@@ -645,7 +645,7 @@ describe.each(TRYBY_PLANISTY)('tor zasilania (odpowiedź backendu, bez wyróżni
 describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wpis powrotu', () => {
   const zaznaczone = () => useSelectionStore.getState().selectedElements.map((e) => e.id);
   const odcinekToru = (c: HTMLElement): Element => {
-    const el = c.querySelector('[data-hit-klasa="tor"][data-hit-role="obrys"]');
+    const el = c.querySelector('[data-hit-klasa="tor"]');
     if (!el) throw new Error('brak obszaru trafienia odcinka toru');
     return el;
   };

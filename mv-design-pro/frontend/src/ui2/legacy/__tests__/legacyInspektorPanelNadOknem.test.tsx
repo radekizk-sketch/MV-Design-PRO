@@ -101,7 +101,7 @@ const PRZYPADKI: readonly Przypadek[] = [
     uchwyt: (scena) => {
       const ref = scena.meta.stationTraversalOrder.find((r) => scena.labels.some((l) => l.ownerRef === `${r}#name-row-0`));
       expect(ref, 'stacja w scenie').toBeDefined();
-      return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
+      return `[data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
     },
     okno: 'station-configurator-surface',
     pary: [

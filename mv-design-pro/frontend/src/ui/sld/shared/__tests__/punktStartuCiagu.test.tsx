@@ -515,7 +515,7 @@ describe('S95-START — natywny prawy klik w etykietę stacji na kanwie', () => 
     useSnapshotStore.setState({ snapshot, logicalViews: widoki });
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} />);
     const etykieta = container.querySelector(
-      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(STACJA_REF)}#name-row"]`,
+      `[${HIT_ATTR.ownerRef}^="${CSS.escape(STACJA_REF)}#name-row"]`,
     );
     expect(etykieta, 'etykieta nazwy stacji ma uchwyt trafienia').toBeTruthy();
     await userEvent.pointer({ keys: '[MouseRight]', target: etykieta! });
@@ -595,7 +595,7 @@ describe('S95-START — pasek działań inspektora czyta TO SAMO rozstrzygnięci
 describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajętość × rodzaj)', () => {
   function uchwytSymbolu(container: HTMLElement, bayRef: string, symbol: string): Element {
     const uchwyt = container.querySelector(
-      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(bayRef)}"][${HIT_ATTR.for}*="${symbol}"]`,
+      `[${HIT_ATTR.ownerRef}="${CSS.escape(bayRef)}"][${HIT_ATTR.for}*="${symbol}"]`,
     );
     expect(uchwyt, `uchwyt symbolu ${symbol} pola ${bayRef}`).toBeTruthy();
     return uchwyt!;
@@ -616,7 +616,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} />);
     const uchwyt = (pole: string, symbol: string) =>
       container.querySelector(
-        `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(pole)}"][${HIT_ATTR.for}*="${symbol}"]`,
+        `[${HIT_ATTR.ownerRef}="${CSS.escape(pole)}"][${HIT_ATTR.for}*="${symbol}"]`,
       );
     expect(uchwyt(POLE_GPZ_WOLNE, 'cableHead')).toBeTruthy();
     expect(uchwyt(POLE_GPZ_WOLNE, 'bayReserve')).toBeTruthy();

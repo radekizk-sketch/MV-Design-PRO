@@ -338,7 +338,7 @@ describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
     // Karta S9-4: marker skupiska jest rysunkiem, a jego uchwyt (rozwijanie
     // popovera) siedzi w warstwie trafień pod tym samym `testId` — klikamy
     // węzeł, który w przeglądarce faktycznie łapie zdarzenie.
-    const toggleHit = container.querySelector('[data-hit-for="sld-v3-result-aggregate-0"][data-hit-role="obrys"]');
+    const toggleHit = container.querySelector('[data-hit-for="sld-v3-result-aggregate-0"]');
     expect(toggleHit, 'marker skupiska ma uchwyt trafienia').toBeTruthy();
     expect(container.querySelector('[data-testid="sld-v3-result-aggregate-0"]')!.textContent).toContain('wyniki');
     // Popover domyślnie zwinięty.

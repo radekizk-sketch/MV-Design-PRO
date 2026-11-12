@@ -27,18 +27,18 @@
  *     wymiar na EKRANIE wynosił co najmniej `MIN_HIT_SCREEN_PX`. Rozstrzyga
  *     DOPIERO, gdy klik nie trafił w żaden obrys — czyli „prawie trafiłem".
  *
- * Kolejność ma znaczenie i jest odwzorowana W DOM: warstwa trafień
- * (`sld-v3-trafienia`) ma DWA piętra — najpierw `sld-v3-trafienia-obszar`
- * (rozszerzenia), nad nim `sld-v3-trafienia-obrys` (ślady rysunku). Przeglądarka
- * wybiera węzeł malowany najwyżej, więc rozstrzyga dokładnie tak, jak
- * `pickCanvasHitArea` niżej: rozszerzenie NIGDY nie kradnie kliku obiektowi, nad
- * którego tuszem stoi kursor (to była pułapka „jednego grubego hitboxa":
- * poszerzony cel symbolu zjadał kliki w szynę przechodzącą pod nim). Niezmiennik
- * kolejności pięter pilnuje `hitLayerOrderingInDom` — bramka odbioru, nie
- * obietnica w komentarzu.
+ * Karta SLD-SKALA-I-NAWIGACJA, R8 (budżet DOM): warstwa trafień (`sld-v3-trafienia`) ma
+ * JEDEN węzeł na obiekt — kształt OBSZARU (łapie zdarzenie), a obrys niesie atrybutem
+ * `data-hit-obrys` (kanał audytu i rozstrzygania). Dawne dwa piętra (obszar pod obrysem)
+ * podwajały warstwę. Pierwszeństwo obrysu przed rozszerzeniem sąsiada rozstrzyga
+ * `rozstrzygnijTrafienieWezla`: węzeł, który dostał zdarzenie, oddaje cel funkcji
+ * `pickCanvasHitArea` w punkcie świata kursora — rozszerzenie NIGDY nie kradnie kliku
+ * obiektowi, nad którego tuszem stoi kursor (pułapka „jednego grubego hitboxa": poszerzony cel
+ * symbolu zjadał kliki w szynę pod nim). Bez geometrii ekranu (render bez układu) cel jest
+ * węzłem zdarzenia.
  *
  * Cały RYSUNEK kanwy jest przy tym BIERNY (`pointer-events="none"` na korzeniu
- * arkusza): łapią wyłącznie te dwa piętra. Jeden atrybut zamyka klasę „napis bez
+ * arkusza): łapie wyłącznie warstwa trafień. Jeden atrybut zamyka klasę „napis bez
  * obsługi połyka klik", bo własność jest dziedziczona — każda przyszła nakładka
  * jest bierna z konstrukcji, a nie dlatego, że ktoś pamiętał ją wypisać.
  *
@@ -436,6 +436,12 @@ export interface CanvasHitAreaInput {
   readonly hierarchiaCelow?: HierarchiaCelowWejscie;
 }
 
+function dlugoscLamanej(points: readonly RouteVertex[]): number {
+  let suma = 0;
+  for (let i = 1; i < points.length; i += 1) suma += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  return suma;
+}
+
 /** `data-testid` symbolu — TA SAMA formuła co render (`symbolTestId`). */
 function testIdSymbolu(symbol: PreviewSymbol, index: number): string {
   return symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
@@ -463,13 +469,17 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
   // celu), a obszar celu powstaje wyłącznie wtedy, gdy jest celem choć jednego obiektu.
   const celeWyzsze = new Map<string, StopienCelu>();
   const pominiete = new Set<string>();
-  const rozstrzygnij = (testId: string, stopnie: readonly StopienCelu[]): void => {
-    if (ukryte?.has(testId)) return;
+  /** R4 × R8: tożsamości w podpowiedzi, których slot jest na ekranie nierozpoznawalny, stoją
+   *  w podpowiedzi celu (pola albo stacji), który przejmuje ich klik — nazwa nie znika. */
+  const podpowiedziCelu = new Map<string, string[]>();
+  const rozstrzygnij = (testId: string, stopnie: readonly StopienCelu[]): string | null => {
+    if (ukryte?.has(testId)) return null;
     const cel = celTrafienia(stopnie, scale);
-    if (cel.poziom === 'aparat') return;
+    if (cel.poziom === 'aparat') return null;
     pominiete.add(testId);
     const klucz = testIdObszaruCelu(cel.poziom, cel.ref);
     if (!celeWyzsze.has(klucz)) celeWyzsze.set(klucz, cel);
+    return klucz;
   };
   if (hierarchia) {
     symbols.forEach((symbol, index) => {
@@ -482,15 +492,23 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
     segments.forEach((segment, index) => {
       if (segment.points.length < 2) return;
       const ownerRef = segment.meta?.ownerRef;
-      // Odcinek pola (zejście, tor pola): jego pierwszym celem jest POLE (kreska nie ma
-      // „gabarytu aparatu”); szyny, magistrale i odcinki spoza pól zostają własnymi celami.
+      // Odcinek pola (zejście, tor pola) jest własnym celem, gdy jego DŁUGOŚĆ na ekranie
+      // osiąga próg rozpoznawalności (kreska nie ma szerokości gabarytu — rozpoznaje się ją
+      // po długości); krótszy należy do pola albo stacji jak aparat. Szyny, magistrale
+      // i odcinki spoza pól zostają własnymi celami.
       const { pole } = poleIStacja(hierarchia, ownerRef);
       if (pole === undefined) return;
-      const stopnie = stopnieCeluObiektu(hierarchia, ownerRef, { x: 0, y: 0, width: 0, height: 0 }).slice(1);
-      if (stopnie.length === 0) return;
-      const cel = celTrafienia(stopnie, scale);
-      if (cel.poziom !== 'stacja') return;
-      rozstrzygnij(testIdOdcinka(segment, index), [cel]);
+      const dlugosc = dlugoscLamanej(segment.points);
+      rozstrzygnij(testIdOdcinka(segment, index), stopnieCeluObiektu(hierarchia, ownerRef, { x: 0, y: 0, width: dlugosc, height: dlugosc }));
+    });
+    (input.tozsamosciWPodpowiedzi ?? []).forEach(({ label, index }) => {
+      const stopnie = stopnieCeluObiektu(hierarchia, label.ownerRef, label.rect);
+      if (stopnie.length < 2) return;
+      const klucz = rozstrzygnij(`sld-v3-label-${index}`, stopnie);
+      if (klucz === null) return;
+      const lista = podpowiedziCelu.get(klucz) ?? [];
+      lista.push(label.text);
+      podpowiedziCelu.set(klucz, lista);
     });
   }
   // Obszary celów najniżej w kolejności malowania: tusz każdego innego obiektu (szyna, tor,
@@ -504,6 +522,7 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
       ownerRef: cel.ref,
       elementKind: cel.poziom === 'stacja' ? 'station' : 'apparatus',
       klasa: cel.poziom,
+      tytul: podpowiedziCelu.get(testId)?.join('\n'),
       z: z++,
       obrys: { ksztalt: 'prostokat', x: cel.rect.x, y: cel.rect.y, width: cel.rect.width, height: cel.rect.height },
       obszar: expandRectToMinHit(cel.rect, scale),
@@ -574,7 +593,7 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
 
   (input.tozsamosciWPodpowiedzi ?? []).forEach(({ label, index }) => {
     const testId = `sld-v3-label-${index}`;
-    if (ukryte?.has(testId)) return;
+    if (ukryte?.has(testId) || pominiete.has(testId)) return;
     areas.push({
       testId,
       ownerRef: label.ownerRef,
@@ -708,12 +727,52 @@ export function pickCanvasHitArea(
 /** Nazwy atrybutów kanału audytu trafień (jedno miejsce dla renderu i sondy). */
 export const HIT_ATTR = {
   for: 'data-hit-for',
-  role: 'data-hit-role',
   klasa: 'data-hit-klasa',
   ownerRef: 'data-hit-owner-ref',
   /** S9-10: ref pojedynczego aparatu (patrz `CanvasHitArea.deviceRef`). */
   deviceRef: 'data-hit-device-ref',
+  /** R8: obrys obiektu na węźle obszaru (`atrybutObrysu`). */
+  obrys: 'data-hit-obrys',
 } as const;
+
+/** Obrys w atrybucie węzła obszaru: prostokąt „x y szer wys”, łamana „połowa grubości”
+ *  (punkty łamanej obrysu = punkty obszaru — ten sam przebieg, inna grubość). */
+export function atrybutObrysu(obrys: HitShape): string {
+  return obrys.ksztalt === 'prostokat'
+    ? `${obrys.x} ${obrys.y} ${obrys.width} ${obrys.height}`
+    : `${obrys.halfWidth}`;
+}
+
+function obrysZAtrybutu(wartosc: string | null, obszar: HitShape): HitShape | null {
+  if (wartosc === null) return null;
+  const liczby = wartosc.trim().split(/\s+/).map(Number);
+  if (!liczby.every(Number.isFinite)) return null;
+  if (obszar.ksztalt === 'prostokat') {
+    if (liczby.length !== 4) return null;
+    const [x, y, width, height] = liczby;
+    return { ksztalt: 'prostokat', x, y, width, height };
+  }
+  if (liczby.length !== 1) return null;
+  return { ksztalt: 'lamana', points: obszar.points, halfWidth: liczby[0] };
+}
+
+/**
+ * Cel zdarzenia, które trafiło węzeł `testIdWezla`: obiekt, który `pickCanvasHitArea` wybiera
+ * w punkcie świata kursora (obrys przed rozszerzeniem). `punkt === null` (brak geometrii
+ * ekranu) albo punkt poza obszarem węzła (zdarzenie bez współrzędnych kursora) — cel jest
+ * węzłem zdarzenia. Węzeł zdarzenia nigdy nie przegrywa z obiektem, którego obszar nie zawiera
+ * punktu: `pickCanvasHitArea` zwraca wyłącznie obiekt zawierający punkt.
+ */
+export function rozstrzygnijTrafienieWezla(
+  areas: readonly CanvasHitArea[],
+  testIdWezla: string,
+  punkt: { readonly x: number; readonly y: number } | null,
+): string {
+  if (punkt === null) return testIdWezla;
+  const wezel = areas.find((a) => a.testId === testIdWezla);
+  if (!wezel || !pointInHitShape(wezel.obszar, punkt.x, punkt.y)) return testIdWezla;
+  return pickCanvasHitArea(areas, punkt.x, punkt.y)?.testId ?? testIdWezla;
+}
 
 /** Minimalny kontrakt węzła drzewa, którego potrzebuje odczyt — pozwala czytać
  *  zarówno `Element` przeglądarki/jsdom, jak i dowolną strukturę zgodną. */
@@ -783,9 +842,10 @@ export function hitAreasFromDom(root: HitDomNode): readonly CanvasHitArea[] {
     if (effectivePointerEvents(node) === 'none') continue;
     const shape = shapeFromNode(node);
     if (!shape) continue;
-    const rola = node.getAttribute(HIT_ATTR.role) === 'obrys' ? 'obrys' : 'obszar';
     const wpis = wgTestId.get(testId) ?? { z: i };
-    wpis[rola] = shape;
+    wpis.obszar = shape;
+    const obrys = obrysZAtrybutu(node.getAttribute(HIT_ATTR.obrys), shape);
+    if (obrys) wpis.obrys = obrys;
     wpis.z = i;
     wpis.ownerRef = node.getAttribute(HIT_ATTR.ownerRef) ?? wpis.ownerRef;
     wpis.deviceRef = node.getAttribute(HIT_ATTR.deviceRef) ?? wpis.deviceRef;
@@ -810,31 +870,6 @@ export function hitAreasFromDom(root: HitDomNode): readonly CanvasHitArea[] {
   }
   areas.sort((a, b) => a.z - b.z);
   return areas;
-}
-
-/**
- * Sprawdzenie NIEZMIENNIKA WARSTW: wszystkie węzły roli `obszar` (rozszerzenie
- * do minimum ekranowego) leżą w drzewie PRZED wszystkimi węzłami roli `obrys`
- * (ślad rysunku). Tylko przy tym porządku przeglądarka rozstrzyga trafienie tak
- * samo jak `pickCanvasHitArea` (najpierw obrys, potem rozszerzenie) — bez niego
- * poszerzony cel symbolu znów zjadałby kliki w szynę pod nim.
- * `null` = warstwa pusta (brak którejkolwiek roli), więc nie ma czego naruszyć.
- */
-export function hitLayerOrderingInDom(root: HitDomNode): {
-  readonly maksZObszaru: number;
-  readonly minZObrysu: number;
-  readonly poprawna: boolean;
-} | null {
-  const wezly = root.querySelectorAll(`[${HIT_ATTR.for}]`);
-  let maksZObszaru = -1;
-  let minZObrysu = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < wezly.length; i += 1) {
-    const rola = wezly[i].getAttribute(HIT_ATTR.role);
-    if (rola === 'obszar') maksZObszaru = Math.max(maksZObszaru, i);
-    else if (rola === 'obrys') minZObrysu = Math.min(minZObrysu, i);
-  }
-  if (maksZObszaru < 0 || !Number.isFinite(minZObrysu)) return null;
-  return { maksZObszaru, minZObrysu, poprawna: maksZObszaru < minZObrysu };
 }
 
 /**

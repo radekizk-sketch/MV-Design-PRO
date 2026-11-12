@@ -27,7 +27,7 @@ import { HIT_ATTR } from '../hitAreas';
 import { SldCanvasV3 } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
-import { kameraNadSymbolem, powiekszKolkiemDoSkali } from './kameraTestowa';
+import { kameraNadSymbolem, powiekszKolkiemDoSkali, punktCeluTrafienia } from './kameraTestowa';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const gpzDataPathEnm = (
@@ -70,7 +70,7 @@ function paraAparatowJednegoPola(scene: SceneV3) {
 }
 
 function uchwytObrysu(container: HTMLElement, testId: string): Element {
-  const wezel = container.querySelector(`[${HIT_ATTR.for}="${CSS.escape(testId)}"][${HIT_ATTR.role}="obrys"]`);
+  const wezel = container.querySelector(`[${HIT_ATTR.for}="${CSS.escape(testId)}"]`);
   expect(wezel, `uchwyt obrysu ${testId}`).toBeTruthy();
   return wezel!;
 }
@@ -147,8 +147,10 @@ describe('S9-10 — inspektor pokazuje KLIKNIĘTY aparat (Workspace, realna ści
     useSnapshotStore.setState({ snapshot: enm });
     const user = userEvent.setup();
     const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} /><InspektorKanwyTestowy /></>);
-    // R6: aparat jest celem kliku na kadrze roboczym — natywne kółko do skali czytania.
-    powiekszKolkiemDoSkali(container, 1);
+    // R6: aparat jest celem kliku na kadrze roboczym — natywne kółko do skali czytania,
+    // z kursorem nad pierwszym aparatem pary (R8: uchwyty stoją tylko w oknie renderu; drugi
+    // aparat jest w tym samym polu, więc w tym samym kadrze).
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, para!.a.testId));
 
     const inspektor = (): { tresc: string; ref: string } => {
       const panel = container.querySelector('[data-testid="inspektor-element-kanwy"]');
@@ -189,7 +191,7 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
     const user = userEvent.setup();
     const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} /><InspektorKanwyTestowy /></>);
     const etykieta = container.querySelector(
-      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.klasa}="etykieta"][${HIT_ATTR.ownerRef}*="#name-row"]`,
+      `[${HIT_ATTR.klasa}="etykieta"][${HIT_ATTR.ownerRef}*="#name-row"]`,
     );
     expect(etykieta, 'kanwa ma uchwyt etykiety nazwy stacji').toBeTruthy();
     const wlascicielRef = (etykieta!.getAttribute(HIT_ATTR.ownerRef) ?? '').split('#')[0];
@@ -221,7 +223,7 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
     // Etykieta, której temat menu kotwiczy się na POLU (aparat) — bierzemy
     // pierwszą etykietę o refie kompozytowym wskazującym pole sn_field.
     const etykieta = Array.from(
-      container.querySelectorAll(`[${HIT_ATTR.role}="obrys"][${HIT_ATTR.klasa}="etykieta"]`),
+      container.querySelectorAll(`[${HIT_ATTR.klasa}="etykieta"]`),
     ).find((el) => (el.getAttribute(HIT_ATTR.ownerRef) ?? '').match(/\/sn_field\/\d+#/));
     expect(etykieta, 'kanwa ma etykietę zakotwiczoną w polu SN').toBeTruthy();
     await user.click(etykieta!);

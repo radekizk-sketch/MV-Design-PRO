@@ -94,7 +94,7 @@ export const WIERSZ_NAZWY_STACJI = '#name-row-0';
  * (`data-element-kind="station"`, `sld-v3-l0-<ref>`) nie istnieje.
  */
 export function selektorUchwytuStacji(stationRef: string): string {
-  return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${stationRef}${WIERSZ_NAZWY_STACJI}"]`;
+  return `[data-hit-klasa="etykieta"][data-hit-owner-ref="${stationRef}${WIERSZ_NAZWY_STACJI}"]`;
 }
 
 /** Selektor napisu identyfikacji stacji w warstwie rysunku (`data-owner-ref` etykiety). */
@@ -104,4 +104,4 @@ export function selektorNapisuStacji(stationRef: string): string {
 
 /** Uchwyt GPZ jednej sceny: obrys napisu identyfikacji GPZ (`gpz/…#name-row-0`). */
 export const SELEKTOR_UCHWYTU_GPZ =
-  `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref^="gpz/"][data-hit-owner-ref$="${WIERSZ_NAZWY_STACJI}"]`;
+  `[data-hit-klasa="etykieta"][data-hit-owner-ref^="gpz/"][data-hit-owner-ref$="${WIERSZ_NAZWY_STACJI}"]`;

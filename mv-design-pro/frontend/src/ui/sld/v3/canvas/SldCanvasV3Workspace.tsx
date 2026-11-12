@@ -168,7 +168,18 @@ import type { V3Rect } from '../core/grid';
 import type { SceneV3 } from '../scene/buildScene';
 import { scenaSld } from '../scene/scenaSld';
 import type { PreviewElementKind } from '../compose/preview';
-import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
+import { SldCanvasV3, type PolecenieKamery, type SldElementClickMeta } from './SldCanvasV3';
+
+/** `Omit` rozdzielany po członach unii (polecenie kamery bez numeru). */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+/** Strzałki → kierunek przesunięcia kadru (karta SLD-SKALA-I-NAWIGACJA R7). */
+const KIERUNKI_STRZALEK: Readonly<Record<string, readonly [-1 | 0 | 1, -1 | 0 | 1]>> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
 import { applyContentFitFrame, computeContentFitFrame } from '../export/exportFrame';
@@ -269,6 +280,7 @@ import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // scena), rysunek eksportu reużywa `SheetLegend` (`sheet/Frame.tsx`) przez
 // `renderToStaticMarkup` — JEDNO źródło renderu legendy dla arkusza/eksportu.
 import { renderToStaticMarkup } from 'react-dom/server';
+import { flushSync } from 'react-dom';
 import { FRAME_MARGIN, LegendStateTile, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
 import { atrybucjaSymboliSceny, computeProjectLegendEntries } from '../sheet/projectLegend';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
@@ -1817,7 +1829,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // (polecenie projektanta) — akcją kadru z przybliżeniem.
   const sldWskazanie = useSelectionStore((state) => state.sldWskazanie);
   const sldWskazanieObsluzone = useSelectionStore((state) => state.sldWskazanieObsluzone);
-  const [pokazElement, setPokazElement] = useState<{ readonly ref: string; readonly seq: number } | null>(null);
   const zaznaczoneElementy = useSelectionStore((state) => state.selectedElements);
   const zaznaczenieRefy = useMemo(() => zaznaczoneElementy.map((element) => element.id), [zaznaczoneElementy]);
   // K2b §0.3: zaznaczenie należy do kontekstu widoku — wpis historii niesie
@@ -1865,15 +1876,43 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // K2b §0.4: tryb widoku kanwy — wspólny stan powłoki (pasek kanwy + menu Widok).
   const trybWidokuSchematu = useShellStore((state) => state.trybWidokuSchematu);
   const przelaczTrybWidokuSchematu = useShellStore((state) => state.przelaczTrybWidokuSchematu);
-  const { kadrujCel, dopasujZakres, poprzedniWidok } = kadrowanie;
+  const { kadrujCel, dopasujZakres, poprzedniWidok, nastepnyWidok, kadrujPoziom, sciezka: sciezkaKadru } = kadrowanie;
+  // Karta SLD-SKALA-I-NAWIGACJA R7: polecenie kamery z klawiatury (`+`/`−`, strzałki).
+  const [polecenieKamery, setPolecenieKamery] = useState<PolecenieKamery | null>(null);
+  // Karta SLD-SKALA-I-NAWIGACJA R9: kanwa w trybie dokumentu wyłącznie na czas budowy eksportu.
+  const [trybDokumentu, setTrybDokumentu] = useState(false);
+  const polecenieKameryNr = useRef(0);
+  const wydajPolecenieKamery = useCallback((polecenie: DistributiveOmit<PolecenieKamery, 'seq'>) => {
+    polecenieKameryNr.current += 1;
+    setPolecenieKamery({ ...polecenie, seq: polecenieKameryNr.current } as PolecenieKamery);
+  }, []);
+  // `Esc` przy PUSTYM zaznaczeniu = poziom wyżej w hierarchii kadru (okruszek przedostatni).
+  // Zaznaczenie niepuste zdejmuje najpierw zaznaczenie (efekt K11-A wyżej) — jedno `Esc`, jeden
+  // skutek: stan zaznaczenia czytany w fazie przechwytywania, zanim efekt K11-A go wyczyści.
+  const sciezkaKadruRef = useRef(sciezkaKadru);
+  sciezkaKadruRef.current = sciezkaKadru;
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (useSelectionStore.getState().selectedElements.length > 0) return;
+      const cel = event.target;
+      if (cel instanceof HTMLElement && cel.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="menu"]')) return;
+      const sciezkaTeraz = sciezkaKadruRef.current;
+      if (sciezkaTeraz.length < 2) return;
+      kadrujPoziom(sciezkaTeraz[sciezkaTeraz.length - 2]!);
+    }
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [kadrujPoziom]);
   useEffect(() => {
     if (!snapshot || !sldWskazanie || sldWskazanie.seq <= sldWskazanieObsluzone) return;
     useSelectionStore.getState().potwierdzWskazanieSld(sldWskazanie.seq);
-    if (sldWskazanie.tryb === 'kotwicz') {
-      setPokazElement({ ref: sldWskazanie.ref, seq: sldWskazanie.seq });
-      return;
-    }
-    kadrujCel('zaznaczenie', [sldWskazanie.ref]);
+    // Karta SLD-SKALA-I-NAWIGACJA R7: oba tryby idą JEDNĄ drogą — ten sam zakres celu
+    // (`zakresKadru.ts`) i ta sama reguła wskazania kamery (`camera.ts`, `applyWskazanie`).
+    // Tryb różni wyłącznie skutki poza kamerą: „kotwicz" (skutek uboczny edycji, drzewo) jest
+    // CICHY — nie zmienia ścieżki kadru, kurtyny ani historii i nie melduje celu nienarysowanego;
+    // „kadruj" (wyniki, gotowość) wchodzi w cel jak polecenie kadru.
+    kadrujCel('zaznaczenie', [sldWskazanie.ref], { wskazanie: true, cichy: sldWskazanie.tryb === 'kotwicz' });
   }, [snapshot, sldWskazanie, sldWskazanieObsluzone, kadrujCel]);
   // Kadr całej sieci przywraca cel fitu „treść" (refit po zmianie sieci albo
   // poziomu szczegółu celuje wtedy w sieć, nie w arkusz).
@@ -1897,6 +1936,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         if (event.key === 'ArrowLeft') {
           event.preventDefault();
           poprzedniWidok();
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          nastepnyWidok();
         }
         return;
       }
@@ -1904,11 +1946,29 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         event.preventDefault();
         if (event.shiftKey) kadrujCel('siec', []);
         else dopasujZakres();
+        return;
+      }
+      // Karta SLD-SKALA-I-NAWIGACJA R7: `+`/`−` wokół środka kadru, strzałki = przesunięcie.
+      // `=` to `+` bez Shift na układzie US; `_` to `−` z Shift.
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        wydajPolecenieKamery({ rodzaj: 'przybliz' });
+        return;
+      }
+      if (event.key === '-' || event.key === '_' || event.key === '−') {
+        event.preventDefault();
+        wydajPolecenieKamery({ rodzaj: 'oddal' });
+        return;
+      }
+      const strzalka = KIERUNKI_STRZALEK[event.key];
+      if (strzalka) {
+        event.preventDefault();
+        wydajPolecenieKamery({ rodzaj: 'przesun', kierunekX: strzalka[0], kierunekY: strzalka[1] });
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [kadrujCel, dopasujZakres, poprzedniWidok]);
+  }, [kadrujCel, dopasujZakres, poprzedniWidok, nastepnyWidok, wydajPolecenieKamery]);
   const stacjeNawigacji = useMemo(() => {
     const nazwy = new Map((snapshot?.substations ?? []).map((st) => [st.ref_id, st.name]));
     // Stacja bez nazwy w modelu: polska etykieta rodzaju z referencji (most nazw wyników), nie
@@ -1993,13 +2053,27 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `export/svgPrimitives.ts`). Zapis pliku i wybór formatu robi
   // `handleExport` (`export/sldExport.ts`).
   const buildExportSheetMarkup = useCallback((): string | null => {
-    const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
     // K11-B: TA SAMA scena co legenda (`scenaMigawki` wyżej) —
     // dawniej ta funkcja budowała ją drugi raz TĄ SAMĄ formułą; scalone w jedno
     // źródło (dyrektywa właściciela 7 „reużycie zamiast duplikacji").
     const scene = scenaMigawki;
-    if (!svgEl || !scene) return null;
-    const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    if (!scene || !containerRef.current?.querySelector('svg[data-testid="sld-canvas-v3"]')) return null;
+    // Karta SLD-SKALA-I-NAWIGACJA R9: dokument to PEŁNA scena i wszystkie klasy informacji
+    // niezależnie od skali kamery. Kanwa ekranu odcina render do okna kamery i dawkuje napisy
+    // wg czytelności (R3, R8), więc klon węzła ekranu w bieżącej skali gubiłby obiekty poza
+    // kadrem i napisy danych. Kanwa rysuje się na chwilę w TRYBIE DOKUMENTU (synchronicznie,
+    // `flushSync`), klon powstaje z tego rysunku, po czym kanwa wraca do trybu ekranu — kamera
+    // projektanta nietknięta.
+    let svgEl: SVGSVGElement | null = null;
+    let clone: SVGSVGElement;
+    try {
+      flushSync(() => setTrybDokumentu(true));
+      svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]') ?? null;
+      if (!svgEl) return null;
+      clone = svgEl.cloneNode(true) as SVGSVGElement;
+    } finally {
+      flushSync(() => setTrybDokumentu(false));
+    }
     // Karta S9-4: warstwa TRAFIEŃ (`sld-v3-trafienia`) jest wyłącznie
     // powierzchnią zdarzeń ekranu — przezroczyste kształty bez treści
     // rysunkowej. Do dokumentu nie należy: usuwana z klonu, żeby plik SVG
@@ -2714,8 +2788,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           fitTarget={fitTarget}
           centerRequest={centerRequest}
           viewAnchor={viewAnchor}
-          pokazElement={pokazElement}
           zadanieKadru={kadrowanie.zadanieKadru}
+          polecenieKamery={polecenieKamery}
+          trybDokumentu={trybDokumentu}
           przywrocenieKamery={kadrowanie.przywrocenieKamery}
           refyKadru={kadrowanie.refyKurtyny}
           trybWidoku={trybWidokuSchematu}

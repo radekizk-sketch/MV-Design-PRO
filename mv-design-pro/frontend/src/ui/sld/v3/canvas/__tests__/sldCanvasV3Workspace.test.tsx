@@ -31,7 +31,7 @@ import { resultRefForSegment } from '../resultLabels';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import { pierwszaStacjaZUchwytem } from './uchwytStacji';
-import { powiekszKolkiemDoSkali } from './kameraTestowa';
+import { powiekszKolkiemDoSkali, punktCeluTrafienia, testIdSymboluSceny } from './kameraTestowa';
 import { DARK_SCADA_SLD_PALETTE } from '../../theme/palette';
 import type {
   ShortCircuitBranchFlowV1,
@@ -85,7 +85,7 @@ function rawPayload(elements: Record<string, RawOverlayElement>): RawOverlayPayl
  *  (rysunek kanwy jest bierny, `pointer-events="none"`). Adresowany tym samym
  *  `testId`, co węzeł rysunku, więc intencja testów zostaje bez zmian. */
 function uchwytTrafienia(container: HTMLElement, testId: string): Element | null {
-  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+  return container.querySelector(`[data-hit-for="${testId}"]`);
 }
 
 describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
@@ -108,7 +108,8 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     // R6 (karta SLD-SKALA-I-NAWIGACJA): symbol aparatu/źródła jest celem kliku na kadrze
     // roboczym — z kadru całej sieci klik trafia stację; natywne kółko do skali czytania.
-    powiekszKolkiemDoSkali(container, 1);
+    // R8: kółko z kursorem NAD pierwszym symbolem sceny — uchwyty stoją tylko w oknie renderu.
+    powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, testIdSymboluSceny(scene, 0)));
     const firstSymbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.firstElementChild;
     expect(firstSymbolGroup).toBeTruthy();
     const testId = firstSymbolGroup!.getAttribute('data-testid')!;
@@ -189,7 +190,7 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
       // R6 (karta SLD-SKALA-I-NAWIGACJA): symbol aparatu/źródła jest celem kliku na kadrze
       // roboczym — z kadru całej sieci klik trafia stację; natywne kółko do skali czytania.
-      powiekszKolkiemDoSkali(container, 1);
+      powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(enm, source!.meta!.testId!));
       const sourceGroup = uchwytTrafienia(container, source!.meta!.testId!);
       expect(sourceGroup, 'symbol sieci zewnętrznej ma uchwyt trafienia').toBeTruthy();
       fireEvent.click(sourceGroup!);

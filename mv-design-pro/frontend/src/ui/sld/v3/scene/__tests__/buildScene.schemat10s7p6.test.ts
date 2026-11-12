@@ -197,7 +197,14 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // wyrównuje go do tej samej, zmierzonej wartości (drzewo scalone: 20616/46432/46432).
     // SLD-SKALA-I-NAWIGACJA R1 (2026-11-11): jedna scena = dawny pełny szczegół (L2) —
     // jedna wartość 46432 (L0 20616 znika razem z widokiem zwiniętym).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm))).toBe(46432);
+    // SCALENIE ZU-JEDEN-NOSNIK (8068d366d, regeneracja fikstury referencyjnej): 46432 → 54408
+    // (+7976). Przyczyna ZMIERZONA, nie oszacowana: ten sam kod na fiksturze sprzed regeneracji
+    // (`git show 88d1ec1e2:…/sldSubstrate52s.enm.json`) daje dokładnie 46432; nowa treść
+    // fikstury niesie przewody toru pól z portów ENM (`#wire-n`, +5472), linie wyłączania pól
+    // stacji (`#trip-line`, 171 × 8 = +1368), dłuższe zejścia odgałęzień (+1888 w
+    // „rezerwacja-kanalu") i jeden dłuższy jog magistrali (+96); dołączenia nN −848. Kompresja
+    // pasm (przedmiot testu) nietknięta — asercje względne niżej.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm))).toBe(54408);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna)', () => {

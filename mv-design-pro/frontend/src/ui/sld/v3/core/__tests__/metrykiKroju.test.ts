@@ -201,7 +201,9 @@ describe('pokrycie: każdy znak etykiet sceny na każdej fiksturze repozytorium 
     // Pomiar 2026-11-12 (karta SLD-SKALA-I-NAWIGACJA, czerwień odziedziczona): 63 → 66 —
     // `stacjeKonstrukcjiPol.enm.json` w public/test-fixtures i scene/__tests__/fixtures (3945dad1c)
     // oraz `glowice_kablowe_pol_gpz.json` (de8419487); ta sama liczba co test mostków i węzłów.
-    expect(FIKSTURY.length).toBe(66);
+    // Pomiar 2026-11-12 (karta SLD-SKALA-I-NAWIGACJA, etap 3–4): +1 — sieć pomiarowa karty
+    // `public/test-fixtures/gpzDwusekcyjny40.enm.json` (GPZ dwusekcyjny z 40 stacjami).
+    expect(FIKSTURY.length).toBe(67);
   });
 
   it('LOD 2 (pełna treść etykiet): zero znaków poza tabelą', () => {

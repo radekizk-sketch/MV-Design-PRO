@@ -29,6 +29,9 @@ export interface DxfTextEntity {
   /** S9-6: wyrównanie poziome (`text-anchor` sceny). Brak = do lewej —
    *  zachowanie sprzed karty dla dotychczasowych wołających. */
   readonly align?: 'left' | 'center' | 'right';
+  /** Kąt obrotu tekstu [°] przeciwnie do ruchu wskazówek zegara (grupa 50 encji TEXT, oś Y
+   *  w górę). Brak albo 0 = tekst poziomy (grupa 50 pominięta — plik jak przed obrotem). */
+  readonly rotation?: number;
 }
 
 /** S9-6 (audyt E-2): okrąg — scena v3 rysuje nim m.in. węzły rozgałęzień i
@@ -137,6 +140,7 @@ export function generateDxf(input: DxfExportInput): string {
     push(30, 0);
     push(40, text.height ?? 12);
     push(1, text.text);
+    if (text.rotation !== undefined && text.rotation !== 0) push(50, text.rotation);
     // S9-6: wyrównanie poziome — grupa 72 (0 lewo / 1 środek / 2 prawo).
     // Dla wyrównania innego niż lewe DXF wymaga punktu dopasowania (11/21),
     // inaczej czytnik ignoruje kod 72 i tekst wraca do lewej.
