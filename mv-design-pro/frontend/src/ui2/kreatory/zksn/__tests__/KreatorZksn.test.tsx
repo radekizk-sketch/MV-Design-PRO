@@ -12,6 +12,13 @@ import type { BranchPointCatalogType } from '../../../../ui/catalog/types';
 import { KreatorZksn } from '../KreatorZksn';
 import { nazwaWartosciKodowej } from '../../../../ui/catalog/wartosciKodoweKarty';
 import { WZORZEC_STRINGS } from '../../../wyniki/wzorzec/strings';
+import { useSelectionStore as sklepSelekcji } from '../../../../ui/selection/store';
+
+// Karta SLD-SKALA-I-NAWIGACJA: zaznaczenie po zapisie idzie jedyną drogą
+// (`zaznaczElementModelu`) do REALNEGO sklepu selekcji — asercje czytają sklep.
+afterEach(() => {
+  sklepSelekcji.getState().clearSelection();
+});
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -27,13 +34,18 @@ const snapshot = {
 const snapshotState = { error: null as string | null, executeDomainOperation: executeDomainOperationMock, snapshot };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return {
+    ...oryginal,
+    useSnapshotStore };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -42,7 +54,8 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationContext: () => context,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 
@@ -118,7 +131,7 @@ describe('KreatorZksn — realna ścieżka', () => {
       );
     });
     expect(closeFormMock).toHaveBeenCalled();
-    expect(selectElementMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'zk/7', type: 'BranchPole' }));
+    expect(sklepSelekcji.getState().selectedElement).toEqual(expect.objectContaining({ id: 'zk/7', type: 'BranchPole' }));
   });
 
   // Iloczyn: każdy rekord serwera rodzaju ZKSN × odczyt parametrów kreatora. Odczyt

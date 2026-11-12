@@ -10,7 +10,7 @@
  * Identyfikatory (input_hash) wyłącznie w trybie eksperckim, jako wyrażenie `{...}`.
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import './dowod.css';
 import type { TraceStep } from '../../../ui/results-inspector/types';
 import { KrokDowodu } from './KrokDowodu';
@@ -19,6 +19,7 @@ import { DOWOD_STRINGS } from './strings';
 import { mapujKroki } from './dowodModel';
 import { InformacjeAudytowe, PrzyciskAkcjiStanu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 /**
  * Wskazany element wywodu (KD-4, ZAMKNIĘCIE luki L-11). Kroki są WYBRANE, nie
@@ -70,7 +71,10 @@ export function PrzegladDowodu({
   // użytkownik, wskazując element); bez kroków zostaje cały przebieg.
   const elementMaKroki = (wskazanyElement?.kroki.length ?? 0) > 0;
   const [zakresElementu, setZakresElementu] = useState(elementMaKroki);
-  const [wybrany, setWybrany] = useState(0);
+  // Krok wybrany wraca po „Wróć do" ze schematu (karta SLD-SKALA-I-NAWIGACJA, pkt 4).
+  const [krokPowrotu, setKrokPowrotu] = useWyborPowrotu('wybor:krok-dowodu');
+  const wybrany = krokPowrotu === null ? 0 : Number(krokPowrotu);
+  const setWybrany = useCallback((n: number) => setKrokPowrotu(String(n)), [setKrokPowrotu]);
 
   // Wskazanie innego elementu (albo jego zniknięcie) przestawia zakres —
   // inaczej okno pokazywałoby wywód poprzedniego wskazania.

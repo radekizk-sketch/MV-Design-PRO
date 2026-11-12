@@ -26,13 +26,18 @@ const activeForm: { op: string; context?: Record<string, unknown> } = { op: 'add
 const snapshotState = { error: null as string | null, snapshot: null, executeDomainOperation: executeDomainOperationMock };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return {
+    ...oryginal,
+    useSnapshotStore };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -41,7 +46,9 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationForm: () => activeForm,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({ navigateToSld: () => undefined }));
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  navigateToSld: () => undefined }));
 
 vi.mock('../../../../ui/selection', () => ({
   useSelectionStore: (selector: (s: { selectElement: () => void; centerSldOnElement: () => void }) => unknown) =>

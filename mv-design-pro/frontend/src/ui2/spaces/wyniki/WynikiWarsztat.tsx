@@ -94,6 +94,9 @@ import {
 } from './obszary';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
+import { useEkranZrodlowy, useStanPowrotu, useWyborPowrotu } from '../../shell/powrotZeSchematu';
+
+const KLUCZ_POWROTU_WYNIKOW = 'wyniki-warsztat';
 import './wynikiWarsztat.css';
 
 export interface WynikiWarsztatProps {
@@ -188,7 +191,12 @@ export function WynikiWarsztat({
   // z poprzednią zakładką, którą efekt dopiero by nadpisał. Ręczny wybór
   // (klik/klawiatura/deep-link/2×klik) wygrywa i od tej chwili rodzaj przebiegu
   // zakładki nie rusza.
-  const [zakladkaWybrana, setZakladkaWybrana] = useState<ZakladkaId | null>(null);
+  // Karta SLD-SKALA-I-NAWIGACJA (część W): „Wróć do" ze schematu przywraca
+  // zakładkę, z której weszło się na schemat (bieg przywraca adres `?run=…`).
+  const stanPowrotu = useStanPowrotu(KLUCZ_POWROTU_WYNIKOW);
+  const [zakladkaWybrana, setZakladkaWybrana] = useState<ZakladkaId | null>(() =>
+    stanPowrotu !== null && jestZakladka(stanPowrotu) ? stanPowrotu : null,
+  );
   // Zakładka bieżąca jest kluczem ponowienia ładowania wyników (magazyn inspektora wyników
   // współdzieli zakładka „Dowód obliczeń" — patrz `useWpiecieWynikow`).
   const { aktywnyRodzaj, rejestrZsynchronizowany, biegOczekujacy } = useWpiecieWynikow(
@@ -197,6 +205,7 @@ export function WynikiWarsztat({
   const zakladkaStartowa: ZakladkaId =
     aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'ocena';
   const zakladka = zakladkaWybrana ?? zakladkaStartowa;
+  useEkranZrodlowy(`Wyniki — ${etykietaZakladki(zakladka)}`, KLUCZ_POWROTU_WYNIKOW, zakladka);
   const rodzinaZakladki = RODZINA_ZAKLADKI[zakladka] ?? null;
   const biegZakladki = useAktywnyBieg(rodzinaZakladki ?? 'rozplyw');
   const runIdEkranu = rodzinaZakladki ? biegZakladki?.id ?? null : null;
@@ -223,12 +232,14 @@ export function WynikiWarsztat({
   const wynikiTab = useShellStore((s) => s.wynikiTab);
   const wynikiTabElement = useShellStore((s) => s.wynikiTabElement);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
-  const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
+  // Kontekst elementu zakładek wraca po „Wróć do" razem z zakładką (karta
+  // SLD-SKALA-I-NAWIGACJA, pkt 4 — ekran w tym samym stanie).
+  const [elementKompensacji, setElementKompensacji] = useWyborPowrotu('kontekst:kompensacja');
   /** KD-4 (L-11): element wskazany 2× klikiem — zawęża wywód do jego kroków. */
-  const [elementDowodu, setElementDowodu] = useState<string | null>(null);
-  const [modulNcRfg, setModulNcRfg] = useState<string | null>(null);
-  const [elementRozplywu, setElementRozplywu] = useState<string | null>(null);
-  const [elementDynamiki, setElementDynamiki] = useState<string | null>(null);
+  const [elementDowodu, setElementDowodu] = useWyborPowrotu('kontekst:dowod-element');
+  const [modulNcRfg, setModulNcRfg] = useWyborPowrotu('kontekst:ncrfg');
+  const [elementRozplywu, setElementRozplywu] = useWyborPowrotu('kontekst:rozplyw');
+  const [elementDynamiki, setElementDynamiki] = useWyborPowrotu('kontekst:dynamika');
   useEffect(() => {
     if (!wynikiTab) return;
     // V126-JEZYK: deep-link nie może obejść bramy trybu — żądanie zakładki

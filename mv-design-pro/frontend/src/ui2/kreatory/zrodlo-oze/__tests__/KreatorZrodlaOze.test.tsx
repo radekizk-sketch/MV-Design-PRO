@@ -48,13 +48,18 @@ const snapshotState = {
 };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return {
+    ...oryginal,
+    useSnapshotStore };
 });
 
 // K6: kontekst wywołania kreatora (preselekcja technologii, wariantu i mocy) — zmienny per test.
@@ -83,7 +88,8 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   stationLabel: () => 'Rozdzielnia ST-1',
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 

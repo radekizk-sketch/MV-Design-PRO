@@ -221,7 +221,7 @@ test('K6 — karta techniczna stacji na pierwszym ekranie, szerokość inspektor
   await page.keyboard.press('ArrowLeft');
   expect(await szerokosc(inspektor)).toBe(420);
 
-  // 3. Tryb szeroki 560 px — przycisk w nagłówku inspektora i powrót tym samym poleceniem.
+  // 3. „Rozszerz panel” (560 px) — przycisk w nagłówku inspektora i powrót tym samym poleceniem.
   const szeroki = inspektor.getByTestId('mvd-inspector-szeroki');
   await expect(szeroki).toHaveAttribute('aria-pressed', 'false');
   // Zwarta tabela pól (§10 kontraktu prezentacji, decyzja architekta 2026-11-04): wszystkie kolumny

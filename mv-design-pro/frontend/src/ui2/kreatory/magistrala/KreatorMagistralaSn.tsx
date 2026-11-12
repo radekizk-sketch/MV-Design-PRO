@@ -16,7 +16,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { fetchCableTypes, fetchLineTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { CableType, LineType } from '../../../ui/catalog/types';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
-import { navigateToSld } from '../../../ui/navigation/routes';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { buildOperationContext } from '../../../ui/network-build/operationContext';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { validateTrunkSegmentOrigin } from '../../../ui/network-build/semanticValidator';
@@ -339,7 +339,7 @@ export function KreatorMagistralaSn() {
       if (!nextSegmentRef || !nextEndpointBusRef) {
         // Odcinek utworzony; brak wskazania końca → wróć na schemat, nie fabrykuj kroku.
         closeForm();
-        navigateToSld();
+        przejdzDoPrzestrzeni('schemat');
         return;
       }
 
@@ -399,7 +399,7 @@ export function KreatorMagistralaSn() {
 
   const onZakonczBudowe = useCallback(() => {
     closeForm();
-    navigateToSld();
+    przejdzDoPrzestrzeni('schemat');
   }, [closeForm]);
 
   const wierszeGotowosci: WierszGotowosci[] = [

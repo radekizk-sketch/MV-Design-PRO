@@ -6,13 +6,13 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { PokazZPrzegladu, przegladajElement } from './wejscieZPrzegladu';
 
 import {
   useProblemyGotowosci,
   usePodsumowanieGotowosci,
 } from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { GOTOWOSC_STRINGS } from '../../../ui2/spaces/gotowosc/strings';
-import { useSelectionStore } from '../../selection';
 import {
   publicElementLabelFromRef,
   sanitizePublicReadinessMessage,
@@ -42,7 +42,6 @@ export function ReadinessBlockersReview() {
   // przygotowana do analizy" dokladnie wtedy, gdy nie wiadomo. Sygnal
   // rozrozniajacy z toru U5, napisy te same, co w panelu brakow danych.
   const { ustalona: gotowoscUstalona } = usePodsumowanieGotowosci();
-  const selectElement = useSelectionStore((state) => state.selectElement);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const blockers = useMemo(() => {
@@ -69,14 +68,9 @@ export function ReadinessBlockersReview() {
 
   const handleNavigate = useCallback(
     (elementRef: string) => {
-      selectElement({ id: elementRef, type: 'Bus', name: elementRef });
-      window.dispatchEvent(
-        new CustomEvent('sld:center-on-element', {
-          detail: { elementId: elementRef },
-        }),
-      );
+      przegladajElement(elementRef);
     },
-    [selectElement],
+    [],
   );
 
   const handleFix = useCallback(
@@ -129,6 +123,7 @@ export function ReadinessBlockersReview() {
             <th className="px-3 py-2 font-medium text-gray-600">Kategoria</th>
             <th className="px-3 py-2 font-medium text-gray-600">Komunikat</th>
             <th className="w-[120px] px-3 py-2 font-medium text-gray-600">Akcja</th>
+            <th className="px-3 py-1.5 text-right font-medium text-gray-500">Schemat</th>
           </tr>
         </thead>
         <tbody>
@@ -165,6 +160,9 @@ export function ReadinessBlockersReview() {
                     Napraw
                   </button>
                 ) : null}
+              </td>
+              <td className="px-3 py-1.5 text-right">
+                <PokazZPrzegladu elementRef={blocker.element_ref} />
               </td>
             </tr>
           ))}

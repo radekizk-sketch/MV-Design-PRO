@@ -999,20 +999,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     [activeCaseId, executeDomainOperation],
   );
 
-  const handleShowOnSld = useCallback(
-    (derId: string) => {
-      // Naprawa hmi.1: przekazujemy derId jako entityRef do SLD aby skupić
-      // kamerę na DER (selection). SldWorkspaceContainer odczytuje
-      // routeState.payload.focusElementRef.
-      openRouteSurface('E-01', {
-        entityRef: derId,
-        subjectKind: 'helper_context',
-        payload: { focusElementRef: derId, stationId: stationRef ?? null },
-      });
-    },
-    [openRouteSurface, stationRef],
-  );
-
   const handleOpenCalculations = useCallback(() => {
     navigateToAnalysis({
       caseId: activeCaseId,
@@ -1247,7 +1233,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         stationLabel: stationName,
         ders,
         onOpenDer: handleOpenDer,
-        onShowOnSld: handleShowOnSld,
         onAddDer: handleAddDer,
         onDetachDer: requestDetach,
         canDetachDer: (derId: string) => localDers.some((der) => der.id === derId),
@@ -1274,7 +1259,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     ders,
     localDers,
     handleOpenDer,
-    handleShowOnSld,
     handleAddDer,
     handleAddTransformer,
     handleAssignTransformerCatalog,

@@ -35,7 +35,7 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { PanelCoSieZmienilo, useSwiezoscNaglowka, type SwiezoscNaglowka } from '../../freshness';
 import { FreshnessBadge, czyNieaktualne } from '../../inspector';
-import { useShellStore } from '../../shell/useShellStore';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { biegiRodziny, useAktywnyRunId, useWybierzBieg } from '../kontekst/kontekstWyniku';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import { InformacjeAudytowe } from '../wzorzec/InformacjeAudytowe';
@@ -61,7 +61,6 @@ import {
 import {
   fmtLiczba,
   pustyFormularz,
-  typZaznaczenia,
   zbudujNastawy,
   type BladFormularza,
   type GotowoscDynamiki,
@@ -97,10 +96,7 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const hashModelu = snapshot?.header?.hash_sha256 ?? null;
   const setSnapshot = useSnapshotStore((s) => s.setSnapshot);
-  const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const zaznaczone = useSelectionStore((s) => s.selectedElements);
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const biegiPrzypadku = useExecutionRunsStore((s) => s.runs);
   const { uruchom: uruchomObliczenie, wToku: rozplywWToku } = useUruchomObliczenie();
 
@@ -221,16 +217,6 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
     return wynikMapy;
   }, [snapshot]);
 
-  const pokazNaSchemacie = useCallback(
-    (ref: string, nazwa?: string, typElementu?: 'Generator' | 'Load') => {
-      const element = wynik?.stan === 'gotowe' ? wynik.dane.opis_wyniku.elementy[ref] : undefined;
-      const typ = typZaznaczenia(element) ?? typElementu ?? 'Generator';
-      selectElement({ id: ref, type: typ, name: nazwa ?? element?.nazwa ?? T.brakNazwy });
-      centerSldOnElement(ref);
-      setActiveSpace('schemat');
-    },
-    [centerSldOnElement, selectElement, setActiveSpace, wynik],
-  );
 
   // Wiązanie modelu dynamicznego: kanoniczna operacja `set_der_catalog_bindings` tym samym
   // kanałem co konfigurator wytwórcy (PATCH wiązań, blokada modelu na cały cykl zapisu);
@@ -365,7 +351,7 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
         <Naglowek />
         <div className="mvd-dynamika-stan" data-testid="mvd-dynamika-bez-przypadku">
           <p>{T.brakPrzypadku}</p>
-          <button type="button" className="mvd-dynamika-akcja" onClick={() => setActiveSpace('obliczenia')}>
+          <button type="button" className="mvd-dynamika-akcja" onClick={() => przejdzDoPrzestrzeni('obliczenia')}>
             {T.brakPrzypadkuAkcja}
           </button>
         </div>
@@ -436,13 +422,6 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
             zapisywanyRef={zapisywanyRef}
             onPowiaz={(ref, profil) => void powiaz(ref, profil)}
             onPowiazOdbior={(ref, profil) => void powiazOdbior(ref, profil)}
-            onPokazNaSchemacie={(ref, nazwa) =>
-              pokazNaSchemacie(
-                ref,
-                nazwa,
-                dane.odbiory.some((o) => o.ref_id === ref) ? 'Load' : 'Generator',
-              )
-            }
           />
 
           <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-punkt-pracy">
@@ -610,7 +589,6 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
           swiezosc={swiezosc}
           szczegolyAudytowe={szczegolyAudytowe}
           zaznaczonyRef={zaznaczonyWWyniku}
-          onPokazNaSchemacie={(ref) => pokazNaSchemacie(ref)}
         />
       )}
     </div>
@@ -632,13 +610,11 @@ function Wynik({
   swiezosc,
   szczegolyAudytowe,
   zaznaczonyRef,
-  onPokazNaSchemacie,
 }: {
   wynik: WynikDynamiki;
   swiezosc: SwiezoscNaglowka;
   szczegolyAudytowe: boolean;
   zaznaczonyRef: string | null;
-  onPokazNaSchemacie: (ref: string) => void;
 }) {
   const w = wynik.wlasnosci_biegu;
   const { rewizjaModelu, rewizjaDanych, caseId, przyczynaSerwera } = swiezosc;
@@ -655,7 +631,7 @@ function Wynik({
         </div>
       )}
       {maSwiezosc && caseId !== undefined && czyNieaktualne(rewizjaDanych, rewizjaModelu) && (
-        <PanelCoSieZmienilo caseId={caseId} rewizjaDanych={rewizjaDanych} onPokazElement={onPokazNaSchemacie} />
+        <PanelCoSieZmienilo caseId={caseId} rewizjaDanych={rewizjaDanych} />
       )}
       <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-oceny">
         <h4>{T.ocenyTytul}</h4>
@@ -690,7 +666,6 @@ function Wynik({
       <PrzegladarkaPrzebiegow
         wynik={wynik}
         zaznaczonyRef={zaznaczonyRef}
-        onPokazNaSchemacie={onPokazNaSchemacie}
       />
       <InformacjeAudytowe
         szczegolyAudytowe={szczegolyAudytowe}

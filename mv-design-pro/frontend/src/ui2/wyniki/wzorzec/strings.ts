@@ -8,6 +8,7 @@
 
 import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../../ui/study-cases/types';
 import type { KierunekSortowania } from './wzorzecModel';
+import { ETYKIETA_POKAZ_NA_SCHEMACIE } from '../../shell/etykietaPokazNaSchemacie';
 
 export const WZORZEC_STRINGS = {
   // Nagłówek
@@ -32,7 +33,8 @@ export const WZORZEC_STRINGS = {
   poprawWModelu: 'Popraw w modelu',
   poprawWModeluOpis: 'Zaznacz element na schemacie i przejdź do modelu, aby dostosować dobór',
   // F-K4: wynik BEZ kryterium naruszenia — wskazanie elementu, nie sugestia naprawy.
-  pokazNaSchemacie: 'Pokaż na schemacie',
+  // Jedna etykieta wejścia na schemat w całej aplikacji (karta SLD-SKALA-I-NAWIGACJA).
+  pokazNaSchemacie: ETYKIETA_POKAZ_NA_SCHEMACIE,
   pokazNaSchemacieOpis: 'Zaznacz element na schemacie i przejdź do przestrzeni Schemat, aby go obejrzeć w modelu',
 
   // Wykres

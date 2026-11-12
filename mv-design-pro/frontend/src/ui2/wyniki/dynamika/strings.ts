@@ -44,7 +44,6 @@ export const DYNAMIKA_STRINGS = {
   profilPozaRdzeniem: '(rodzina bez modelu w rdzeniu)',
   brakProfili:
     'Katalog nie ma profili dynamicznych dla tego rodzaju wytwórcy — potrzebne dane producenta.',
-  pokazNaSchemacie: 'Pokaż na schemacie',
 
   // Modele dynamiczne odbiorów (ta sama sekcja — cel akcji naprawczej odbioru)
   odbioryTytul: 'Modele dynamiczne odbiorów',

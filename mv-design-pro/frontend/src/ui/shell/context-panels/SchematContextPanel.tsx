@@ -11,6 +11,7 @@ import { sanitizePublicReadinessMessage } from '../../shared/publicReadinessMess
 import { navigateToAnalysis } from '../../navigation/routes';
 import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
+import { zaznaczElementModelu } from '../../../ui2/shell/zaznaczElementModelu';
 import type { ElementType } from '../../types';
 import { fieldLabelInSentencePl, fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { podpisStacjiPl, type ModelDlaRodzaju, type StacjaDlaRodzaju } from '../../shared/rodzajStacji';
@@ -118,7 +119,6 @@ export function SchematContextPanel() {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const runIdOgladany = useRunIdOgladany();
   const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
   const setPanelSchematu = useShellStore((s) => s.setPanelSchematu);
@@ -305,10 +305,12 @@ export function SchematContextPanel() {
   const nextActionButtonLabel = designGuidance.buttonLabel;
 
   const handleTreeSelect = (row: TreeRowSpec) => {
-    selectElement({ id: row.id, type: row.target.elementType, name: row.label });
     // K2: wybór w drzewie PRZENOSI kadr na element (kotwica — skala projektanta
-    // zostaje); kadr z przybliżeniem daje jawne „Dopasuj widok" (F).
-    centerSldOnElement(row.id, 'kotwicz');
+    // zostaje); kadr z przybliżeniem daje jawne „Dopasuj widok" (F). Jedna droga
+    // `zaznaczElementModelu` (karta SLD-SKALA-I-NAWIGACJA, część W).
+    if (!zaznaczElementModelu(row.id, 'panel-kontekstu-schematu')) {
+      selectElement({ id: row.id, type: row.target.elementType, name: row.label });
+    }
     if (row.target.elementType === 'LineBranch') {
       clearRouteManagedSurface();
       return;
@@ -371,13 +373,14 @@ export function SchematContextPanel() {
     }
 
     if (designGuidance.target) {
-      selectElement({
-        id: designGuidance.target.ref,
-        type: designGuidance.target.elementType,
-        name: designGuidance.target.label,
-      });
       // K2: wskazanie następnego kroku przenosi kadr bez przybliżania (kotwica).
-      centerSldOnElement(designGuidance.target.ref, 'kotwicz');
+      if (!zaznaczElementModelu(designGuidance.target.ref, 'panel-kontekstu-schematu')) {
+        selectElement({
+          id: designGuidance.target.ref,
+          type: designGuidance.target.elementType,
+          name: designGuidance.target.label,
+        });
+      }
       const operation = 'operation' in designGuidance.target
         ? designGuidance.target.operation
         : null;

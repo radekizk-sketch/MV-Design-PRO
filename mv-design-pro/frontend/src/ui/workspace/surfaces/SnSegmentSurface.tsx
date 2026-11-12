@@ -20,6 +20,7 @@ import { MISSING_DASH } from '../../shared/formatPolishValue';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSelectionStore } from '../../selection/store';
+import { zaznaczElementModelu } from '../../../ui2/shell/zaznaczElementModelu';
 import { isTerrainSnSegment } from '../../shared/enmVisibility';
 import { segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { szynyStacji } from '../../shared/szynyStacji';
@@ -397,7 +398,6 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
-  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const routeState = surface.routeState;
   const [activeCard, setActiveCard] = useState<SegmentCardId>(() => segmentDefaultCard(routeState));
   // Ponowne wejście deep-linkiem (nowy `routeState` tej samej powierzchni) otwiera kartę,
@@ -519,8 +519,9 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     if (!station || !snapshot) return;
     const stationRef = station.ref_id || station.id;
     const identity = stationPublicIdentity(snapshot, station);
-    selectElement({ id: stationRef, type: 'Station', name: identity.displayName });
-    centerSldOnElement(stationRef);
+    if (!zaznaczElementModelu(stationRef, 'okno-odcinka-sn', { tryb: 'kadruj' })) {
+      selectElement({ id: stationRef, type: 'Station', name: identity.displayName });
+    }
     openRouteSurface('E-13', {
       entityRef: stationRef,
       entityType: 'station',

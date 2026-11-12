@@ -75,10 +75,8 @@ export const OCENA_STRINGS = {
   zakresUklad: 'ocena całego układu',
 
   // Działania (powiązania z siecią)
-  pokazNaSchemacie: 'Pokaż na schemacie',
-  pokazNaSchemacieOpis: 'Zaznacz element na schemacie i przejdź do przestrzeni Schemat',
   dowodObliczen: 'Dowód obliczeń',
-  dowodObliczenOpis: 'Otwórz wywód obliczeń tego przebiegu dla wskazanego elementu',
+  dowodObliczenOpis: 'Pokaż obliczenia tego przebiegu dla wskazanego elementu',
 
   // Kryteria bez podstawy do oceny (pozycje bez elementów)
   bezPodstawTytul: 'Kryteria bez podstawy do oceny',

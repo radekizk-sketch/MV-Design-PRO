@@ -13,6 +13,7 @@
  * porządkuje je na ekranie i formatuje.
  */
 
+import { PrzyciskPokazNaSchemacie } from '../../shared/PrzyciskPokazNaSchemacie';
 import { PrzegladDowodu } from '../dowod';
 import { useNazwaObiektu } from '../wzorzec';
 import { MathInline } from '../../../ui/proof/MathRenderer';
@@ -32,8 +33,6 @@ export interface PanelDowoduCieplnegoProps {
   normy: readonly NormaCieplna[];
   szczegolyAudytowe: boolean;
   ladowanie: boolean;
-  /** Prowadzi do gałęzi na schemacie (pętla decyzji wynik → model). */
-  onPokazNaSchemacie: () => void;
 }
 
 function Werdykt({ status }: { status: StatusWarunku }) {
@@ -71,7 +70,6 @@ export function PanelDowoduCieplnego({
   normy,
   szczegolyAudytowe,
   ladowanie,
-  onPokazNaSchemacie,
 }: PanelDowoduCieplnegoProps) {
   const nazwaObiektu = useNazwaObiektu();
   const czas = pozycja.czas_wylaczenia;
@@ -84,14 +82,14 @@ export function PanelDowoduCieplnego({
           {JAKOSC_STRINGS.dowodTytul} — {nazwaObiektu(pozycja.branch_id, pozycja.branch_name)}
         </h3>
         <Werdykt status={pozycja.status} />
-        <button
-          type="button"
+        {/* Prowadzi do gałęzi na schemacie — jedna droga wejścia (karta
+            SLD-SKALA-I-NAWIGACJA, część W). */}
+        <PrzyciskPokazNaSchemacie
+          elementRef={pozycja.branch_id}
+          zrodlo="dowod-cieplny"
           className="mvd-cieplny-akcja"
-          onClick={onPokazNaSchemacie}
-          data-testid="mvd-jakosc-cieplna-pokaz-schemat"
-        >
-          {JAKOSC_STRINGS.pokazNaSchemacie}
-        </button>
+          testId="mvd-jakosc-cieplna-pokaz-schemat"
+        />
       </header>
 
       {/* --- Pełny bilans (uwaga 2) --- */}

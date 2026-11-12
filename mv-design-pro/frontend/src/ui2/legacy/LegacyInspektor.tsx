@@ -13,6 +13,16 @@
  *    elementu (InspectorEngineeringView).
  * 3. W pozostałych przypadkach → inspektor nowej powłoki (fallback, E1.3).
  *
+ * „Pokaż na schemacie" (karta SLD-SKALA-I-NAWIGACJA, część W pkt 3; karta
+ * INSPEKTOR-I-NAWIGACJA): JEDEN predykat dla każdej gałęzi, która pokazuje ZAZNACZONY
+ * obiekt — sekcje obiektu nad oknem z selekcji (1) i karta techniczna (2) — przycisk stoi
+ * wtedy i tylko wtedy, gdy kanwa schematu nie jest zamontowana. Okno otwarte jawnie przez
+ * użytkownika (1 bez sekcji obiektu) i fallback (3) nie pokazują zaznaczenia, więc akcji
+ * nie mają. Pomiar e2e 2026-11-12 (`wejscia-na-schemat.spec.ts`): przejście przestrzeni
+ * z zaznaczeniem otwierało okno techniczne przez synchronizację selekcji, a klik stacji
+ * w drzewie „Model sieci" pokazywał jej sekcje nad oknem BEZ akcji — wejście na schemat
+ * z drzewa znikało zależnie od tego, czy wcześniej otwarto okno.
+ *
  * Świadoma różnica wobec starej ramy (rejestr wygaszania): panel prowadzenia
  * budowy (GuidedBuildActionPanel) nie jest mostkowany — jego funkcje są
  * osiągalne przez menu kontekstowe kanwy SLD i wyszukiwarkę poleceń;
@@ -27,6 +37,8 @@ import { PanelElementuKanwy } from '../../ui/network-build/inspektor-elementu/Pa
 import { usePanelNadOknem } from '../../ui/network-build/inspektor-elementu/panelNadOknem';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../ui/selection/store';
+import { PrzyciskPokazNaSchemacie } from '../shared/PrzyciskPokazNaSchemacie';
+import { useKanwaSchematuWidoczna } from '../shell/widokKanwySchematu';
 
 export interface LegacyInspektorProps {
   /** Inspektor nowej powłoki (E1.3) — renderowany, gdy most nie ma zawartości. */
@@ -38,6 +50,15 @@ export function LegacyInspektor({ fallback }: LegacyInspektorProps) {
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
 
   const panelNadOknem = usePanelNadOknem();
+  const kanwaWidoczna = useKanwaSchematuWidoczna();
+  // Element wybrany poza kanwą (drzewo topologii, powiązania, wiersz wyników) — wejście na
+  // schemat jest JAWNE; na kanwie akcja byłaby pusta, więc jej nie ma.
+  const pokazNaSchemacie =
+    selectedElement && !kanwaWidoczna ? (
+      <div className="mvd-inspektor-pokaz" data-testid="mvd-inspektor-pokaz-na-schemacie">
+        <PrzyciskPokazNaSchemacie elementRef={selectedElement.id} zrodlo="inspektor" />
+      </div>
+    ) : null;
 
   if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
     if (!panelNadOknem) return <WorkspaceSurfaceRouter region="panel" />;
@@ -53,13 +74,19 @@ export function LegacyInspektor({ fallback }: LegacyInspektorProps) {
       // okna. Przypięte: e2e `ux04-pole-liniowe-zrzuty-screenshot.spec.ts`
       // (`jednoPrzewijanieInspektora`) i `legacyInspektorPanelNadOknem.test.tsx`.
       <div data-testid="inspektor-panel-nad-oknem">
+        {pokazNaSchemacie}
         <PanelElementuKanwy stan={panelNadOknem} />
         <WorkspaceSurfaceRouter region="panel" />
       </div>
     );
   }
   if (selectedElement) {
-    return <InspectorEngineeringView />;
+    return (
+      <>
+        {pokazNaSchemacie}
+        <InspectorEngineeringView />
+      </>
+    );
   }
   return <>{fallback}</>;
 }

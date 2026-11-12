@@ -16,6 +16,8 @@ import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { EkranEstymacji } from '../EkranEstymacji';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { widokEstymacjiFixture, wymaganiaFixture } from './fixtures';
 
 const wym = vi.fn();
@@ -56,6 +58,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.clearAllMocks();
+  useSnapshotStore.setState({ snapshot: null });
 });
 
 describe('EkranEstymacji — stany wejściowe', () => {
@@ -235,6 +238,8 @@ describe('EkranEstymacji — pętla decyzji (F-K4, znalezisko Z4)', () => {
     post.mockResolvedValue(widokEstymacjiFixture());
     useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+    // Szyna pomiaru istnieje w modelu (akcja tylko dla elementu na schemacie).
+    ustawMigawkeZElementami([{ kolekcja: 'buses', id: 'BUS-1' }]);
     render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');
     wpiszPomiarV();

@@ -31,12 +31,11 @@ import { useShellStore } from '../../shell/useShellStore';
 import { FreshnessBadge } from '../../inspector';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
-  akcjaNaprawcza,
   SekcjaZalozen,
   useNazwaObiektu,
-  usePoprawWModelu,
   WZORZEC_STRINGS,
 } from '../wzorzec';
+import { PrzyciskPokazNaSchemacie } from '../../shared/PrzyciskPokazNaSchemacie';
 import {
   naBilansPrzebiegu,
   naWierszeIteracji,
@@ -120,7 +119,6 @@ export function EkranZbieznosci() {
   const oltc = sladAktualny?.oltc_control ?? null;
   const wierszeWysp = naWierszeWysp(sladAktualny);
   const wierszeModelu = naWierszeZaczepowModelu(snapshot);
-  const poprawWModelu = usePoprawWModelu();
   const nazwaObiektu = useNazwaObiektu();
   // Karta UI2 p.9: znacznik świeżości NAGŁÓWKA — ten sam hook współdzielony
   // co EkranZwarc/TabelaSzyn (V12K-264), ten ekran wcześniej nie miał go wcale
@@ -345,17 +343,12 @@ export function EkranZbieznosci() {
                           <td>
                             {/* F-K4: zaczepy to nastawa modelu, nie naruszenie kryterium —
                                 akcja INSPEKCYJNA prowadzi do transformatora na schemacie. */}
-                            <button
-                              type="button"
+                            <PrzyciskPokazNaSchemacie
+                              elementRef={w.ref}
+                              zrodlo="ekran-zbieznosci"
                               className="mvd-zbieznosc-popraw"
-                              data-testid="mvd-zbieznosc-popraw"
-                              title={akcjaNaprawcza('inspekcja-elementu').opis}
-                              onClick={() =>
-                                poprawWModelu(w.ref, 'TransformerBranch', w.nazwa, 'inspekcja-elementu')
-                              }
-                            >
-                              {akcjaNaprawcza('inspekcja-elementu').etykieta}
-                            </button>
+                              testId="mvd-zbieznosc-popraw"
+                            />
                           </td>
                         </tr>
                       ))}

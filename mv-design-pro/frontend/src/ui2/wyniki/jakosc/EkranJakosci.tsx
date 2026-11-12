@@ -109,6 +109,7 @@ import {
 } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 // ---------------------------------------------------------------------------
 // Zasób jakości — stan pobierania (brak przebiegu / ładowanie / błąd / gotowe)
@@ -239,7 +240,7 @@ export function SekcjaWiarygodnosci({
   const { stan, dane } = useZasobJakosci<WiarygodnoscResponse>(runId, fetchWiarygodnoscZwarciowa);
   // K6 / H-5: stan zerowy prowadzi do biegu, którego brakuje (zwarcia).
   const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
-  const [wybrany, setWybrany] = useState<string | null>(null);
+  const [wybrany, setWybrany] = useWyborPowrotu('wybor:jakosc-SekcjaWiarygodnosci');
   const nazwaObiektu = useNazwaObiektu();
 
   const items = dane?.items ?? [];
@@ -381,7 +382,7 @@ export function SekcjaWalidacji({ przebieg, szczegolyAudytowe, onOtworzDowod, on
   const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<WalidacjaResponse>(runId, fetchWalidacjaEnergetyczna);
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
-  const [wybrany, setWybrany] = useState<string | null>(null);
+  const [wybrany, setWybrany] = useWyborPowrotu('wybor:jakosc-SekcjaWalidacji');
   const poprawWModelu = usePoprawWModelu();
   const nazwaObiektu = useNazwaObiektu();
 
@@ -758,7 +759,7 @@ export function SekcjaMigotania({
   const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<MigotanieResponse>(runId, fetchMigotanie);
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
-  const [wybrany, setWybrany] = useState<string | null>(null);
+  const [wybrany, setWybrany] = useWyborPowrotu('wybor:jakosc-SekcjaMigotania');
   const poprawWModelu = usePoprawWModelu();
   const nazwaObiektu = useNazwaObiektu();
 
@@ -1020,7 +1021,7 @@ export function SekcjaArcFlash({
   const [obudowa, setObudowa] = useState<TypObudowy>('Typical');
   const [stan, setStan] = useState<'bezliczenia' | 'ladowanie' | 'blad' | 'gotowe'>('bezliczenia');
   const [dane, setDane] = useState<ArcFlashResponse | null>(null);
-  const [wybrany, setWybrany] = useState<string | null>(null);
+  const [wybrany, setWybrany] = useWyborPowrotu('wybor:jakosc-SekcjaArcFlash');
   const nazwaObiektu = useNazwaObiektu();
   // Parametry faktycznie użyte do policzenia widoku — raport MUSI ich użyć,
   // aby dokument był spójny z pokazaną tabelą (nawet po zmianie pól formularza).
@@ -1414,7 +1415,7 @@ export function SekcjaWytrzymaloscCieplna({
     runId,
     fetchWytrzymaloscCieplna,
   );
-  const [wybrany, setWybrany] = useState<string | null>(null);
+  const [wybrany, setWybrany] = useWyborPowrotu('wybor:jakosc-SekcjaWytrzymaloscCieplna');
   const poprawWModelu = usePoprawWModelu();
   const nazwaObiektu = useNazwaObiektu();
 
@@ -1514,7 +1515,6 @@ export function SekcjaWytrzymaloscCieplna({
         pozycja={items.find((it) => it.branch_id === wybrany) ?? null}
         normy={dane.normy ?? []}
         szczegolyAudytowe={szczegolyAudytowe}
-        onPokazNaSchemacie={(branchId, nazwa) => poprawWModelu(branchId, 'LineBranch', nazwa)}
       />
     </section>
   );
@@ -1535,18 +1535,15 @@ function DowodCieplnyGalezi({
   pozycja,
   normy,
   szczegolyAudytowe,
-  onPokazNaSchemacie,
 }: {
   runId: string | null;
   branchId: string | null;
   pozycja: PozycjaCieplna | null;
   normy: readonly NormaCieplna[];
   szczegolyAudytowe: boolean;
-  onPokazNaSchemacie: (branchId: string, nazwa: string) => void;
 }) {
   const [dowod, setDowod] = useState<DowodCieplnyResponse | null>(null);
   const [stan, setStan] = useState<'pusty' | 'ladowanie' | 'gotowe' | 'blad'>('pusty');
-  const nazwaObiektu = useNazwaObiektu();
 
   useEffect(() => {
     if (!runId || !branchId) {
@@ -1597,9 +1594,6 @@ function DowodCieplnyGalezi({
       normy={normy}
       szczegolyAudytowe={szczegolyAudytowe}
       ladowanie={stan === 'ladowanie'}
-      onPokazNaSchemacie={() =>
-        onPokazNaSchemacie(pozycja.branch_id, nazwaObiektu(pozycja.branch_id, pozycja.branch_name))
-      }
     />
   );
 }

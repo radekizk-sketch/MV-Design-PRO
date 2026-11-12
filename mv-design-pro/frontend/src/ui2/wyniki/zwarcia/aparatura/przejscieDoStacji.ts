@@ -9,20 +9,21 @@
 
 import { useCallback } from 'react';
 
-import { navigateToNetworkBuild } from '../../../../ui/navigation/routes';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../../../ui/selection';
+import { pokazElementNaSchemacie } from '../../../shell/zaznaczElementModelu';
 
 export function useOtworzKonfiguracjeStacji(): (stationRef: string) => void {
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
+
   const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
 
   return useCallback(
     (stationRef: string) => {
-      selectElement({ id: stationRef, type: 'Station', name: stationRef });
-      centerSldOnElement(stationRef);
-      navigateToNetworkBuild();
+      // Jedna droga wejścia na schemat (karta SLD-SKALA-I-NAWIGACJA, część W).
+      if (!pokazElementNaSchemacie(stationRef, 'weryfikacja-aparatury')) {
+        selectElement({ id: stationRef, type: 'Station', name: stationRef });
+      }
       openRouteSurface('E-13', {
         entityRef: stationRef,
         entityType: 'station',
@@ -34,6 +35,6 @@ export function useOtworzKonfiguracjeStacji(): (stationRef: string) => void {
         supportsMiniSld: true,
       });
     },
-    [centerSldOnElement, openRouteSurface, selectElement],
+    [openRouteSurface, selectElement],
   );
 }

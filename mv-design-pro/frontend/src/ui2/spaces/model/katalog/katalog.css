@@ -141,15 +141,19 @@
   text-align: left;
 }
 
-.mvd-katalog__uzycie-btn {
-  display: block;
-  width: 100%;
-  text-align: left;
+.mvd-katalog__uzycia {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mvd-katalog__uzycie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 6px 8px;
   border: 1px solid var(--mvd-katalog-obramowanie);
   border-radius: 6px;
   background: var(--mvd-katalog-tlo);
-  color: var(--mvd-katalog-akcent);
-  cursor: pointer;
   margin-bottom: 4px;
 }

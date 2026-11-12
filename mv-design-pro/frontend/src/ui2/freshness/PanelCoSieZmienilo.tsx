@@ -8,8 +8,8 @@
  * a rezygnacją z aktualizacji.
  *
  * Panel pokazuje LISTĘ przyczyn z backendu: operacja (opis z kanonu), kiedy, ilu
- * elementów dotknęła. Każdy element jest klikalny — to jest ten ostatni klik: z
- * werdyktu „nieaktualne" prosto do elementu, który go unieważnił.
+ * elementów dotknęła. Każdy istniejący element ma „Pokaż na schemacie" — to jest
+ * ten ostatni klik: z werdyktu „nieaktualne" prosto do elementu, który go unieważnił.
  *
  * ZERO FIZYKI, ZERO INTERPRETACJI: komponent nie liczy nic poza pozycjami listy
  * i nie tłumaczy operacji — opisy przychodzą z `domain/canonical_operations.py`.
@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react';
 
 import { pobierzDziennikZmian, podsumowaniePl } from './dziennikApi';
 import { useNazwaObiektu } from '../wyniki/wzorzec/useNazwaObiektu';
+import { PrzyciskPokazNaSchemacie } from '../shared/PrzyciskPokazNaSchemacie';
 import type { DziennikZmian } from './dziennikApi';
 
 type Stan = 'ladowanie' | 'gotowe' | 'blad';
@@ -29,8 +30,6 @@ export interface PanelCoSieZmieniloProps {
   readonly caseId: string;
   /** Rewizja modelu, NA KTÓREJ policzono wynik. */
   readonly rewizjaDanych: number;
-  /** Klik w element dotknięty zmianą — prowadzi do niego w modelu/schemacie. */
-  readonly onPokazElement?: (elementRef: string) => void;
 }
 
 function etykietaCzasu(znacznik: string): string {
@@ -43,7 +42,6 @@ function etykietaCzasu(znacznik: string): string {
 export function PanelCoSieZmienilo({
   caseId,
   rewizjaDanych,
-  onPokazElement,
 }: PanelCoSieZmieniloProps): JSX.Element | null {
   // Karta #145: element dotknięty zmianą nazwany mostem nazw wyników (nazwa z modelu;
   // element usunięty — polska etykieta rodzaju), nigdy referencją.
@@ -130,21 +128,18 @@ export function PanelCoSieZmienilo({
                 ...wpis.usuniete.map((ref) => ['usunięto', ref] as const),
               ].map(([rodzaj, ref]) => (
                 <li key={`${rodzaj}-${ref}`}>
-                  {onPokazElement && rodzaj !== 'usunięto' ? (
-                    <button
-                      type="button"
-                      className="mvd-zmiany-element"
-                      data-testid={`mvd-zmiana-element-${ref}`}
-                      onClick={() => onPokazElement(ref)}
-                    >
-                      {rodzaj}: {nazwaObiektu(ref)}
-                    </button>
-                  ) : (
-                    // Element USUNIĘTY nie ma dokąd prowadzić — przycisk byłby
-                    // martwym klikiem, więc go nie ma.
-                    <span className="mvd-zmiany-element" data-nieklikalny="true">
-                      {rodzaj}: {nazwaObiektu(ref)}
-                    </span>
+                  <span className="mvd-zmiany-element" data-testid={`mvd-zmiana-element-${ref}`}>
+                    {rodzaj}: {nazwaObiektu(ref)}
+                  </span>
+                  {/* Jedna droga wejścia na schemat (karta SLD-SKALA-I-NAWIGACJA,
+                      część W). Element USUNIĘTY (albo nieobecny w migawce) nie ma
+                      dokąd prowadzić — przycisku nie ma, zamiast martwego kliku. */}
+                  {rodzaj !== 'usunięto' && (
+                    <PrzyciskPokazNaSchemacie
+                      elementRef={ref}
+                      zrodlo="co-sie-zmienilo"
+                      testId={`mvd-zmiana-pokaz-${ref}`}
+                    />
                   )}
                 </li>
               ))}

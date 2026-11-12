@@ -2,12 +2,15 @@
  * GdzieUzyty — lista elementów modelu używających danego typu katalogowego.
  *
  * Źródłem jest snapshot (tylko odczyt): elementy wiązane przez `catalog_ref`
- * (patrz `ui/catalog/catalogSnapshot.ts`). Kliknięcie elementu wywołuje callback
- * `onPokazElement(ref)` — nawigacja do elementu w modelu (kryterium E4.1 §3.3).
+ * (patrz `ui/catalog/catalogSnapshot.ts`). Każdy element ma akcję „Pokaż na
+ * schemacie" — jedna droga wejścia na schemat (kryterium E4.1 §3.3; karta
+ * SLD-SKALA-I-NAWIGACJA, część W — dawniej własny callback, który emitował samo
+ * zdarzenie `selekcja` i przełączał zakładkę bez zaznaczenia w store selekcji).
  *
  * Zero fizyki, zero mutacji — czysta projekcja snapshotu.
  */
 
+import { PrzyciskPokazNaSchemacie } from '../../../shared/PrzyciskPokazNaSchemacie';
 import { STRINGS } from './strings';
 import type { ElementUzycia } from './types';
 
@@ -22,10 +25,9 @@ export function filtrujUzycia(
 export interface GdzieUzytyProps {
   typId: string;
   uzycia: readonly ElementUzycia[];
-  onPokazElement?: (ref: string) => void;
 }
 
-export function GdzieUzyty({ typId, uzycia, onPokazElement }: GdzieUzytyProps): JSX.Element {
+export function GdzieUzyty({ typId, uzycia }: GdzieUzytyProps): JSX.Element {
   const pasujace = filtrujUzycia(uzycia, typId);
 
   return (
@@ -36,19 +38,17 @@ export function GdzieUzyty({ typId, uzycia, onPokazElement }: GdzieUzytyProps): 
       ) : (
         <>
           <p className="mvd-katalog__param-def">{STRINGS.gdzieUzytyLiczba(pasujace.length)}</p>
-          {pasujace.map((u) => (
-            <button
-              key={u.ref}
-              type="button"
-              className="mvd-katalog__uzycie-btn"
-              onClick={() => onPokazElement?.(u.ref)}
-              disabled={!onPokazElement}
-              title={STRINGS.gdzieUzytyPokaz}
-            >
-              {u.etykieta}
-              {u.rodzaj ? ` · ${u.rodzaj}` : ''}
-            </button>
-          ))}
+          <ul className="mvd-katalog__uzycia">
+            {pasujace.map((u) => (
+              <li key={u.ref} className="mvd-katalog__uzycie" data-testid="mvd-katalog-uzycie">
+                <span>
+                  {u.etykieta}
+                  {u.rodzaj ? ` · ${u.rodzaj}` : ''}
+                </span>
+                <PrzyciskPokazNaSchemacie elementRef={u.ref} zrodlo="katalog" />
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </section>

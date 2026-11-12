@@ -61,10 +61,10 @@ import {
   type ResultLabelLine,
   type ResultLabelLineSpec,
   type ResultLabelQuantity,
-} from './resultLabelTemplates';
+} from '../../shared/resultLabelTemplates';
 
-export type { ResultLabelKind, ResultLabelLine } from './resultLabelTemplates';
-export type { ResultLabelComparisonMode, ResultLabelTrend } from './resultLabelTemplates';
+export type { ResultLabelKind, ResultLabelLine } from '../../shared/resultLabelTemplates';
+export type { ResultLabelComparisonMode, ResultLabelTrend } from '../../shared/resultLabelTemplates';
 
 /**
  * R4 (wym. 10/15) — KONTEKST porównawczy dla buildera etykiet: poprzedni payload
@@ -422,7 +422,7 @@ function severityOf(payload: RawOverlayPayload, ownerRef: string): string {
 // niezależnie od stanu filtrów (inwariant §11, dowód w testach).
 // ---------------------------------------------------------------------------
 
-export type { ResultLabelQuantity } from './resultLabelTemplates';
+export type { ResultLabelQuantity } from '../../shared/resultLabelTemplates';
 
 /** Podpis linii → wielkość filtrowana. Zamknięta tabela BUDOWANA z rejestru szablonów
  *  (`RESULT_LABEL_TEMPLATES`, para `prefix`/`quantity` każdej specyfikacji) — każdy podpis

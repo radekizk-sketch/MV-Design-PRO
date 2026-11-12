@@ -21,7 +21,7 @@
  */
 
 import type { ExecutionRun } from '../../../study-cases/types';
-import { normalizeResultLabelAnalysis } from './resultLabelTemplates';
+import { normalizeResultLabelAnalysis } from '../../shared/resultLabelTemplates';
 
 /** Akcja naprawcza stanu zablokowanego — obie prowadzą w REALNE miejsca
  *  aplikacji (zero martwych klików): `obliczenia` = przestrzeń obliczeń

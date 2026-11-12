@@ -13,6 +13,7 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { pobierzDziennikZmian, type WpisDziennika } from '../../freshness/dziennikApi';
 import { formatCzas } from '../../spaces/obliczenia/przebiegi/strings';
 import type { KontekstPaneluDolnego } from './rejestrZakladek';
+import { ETYKIETA_POKAZ_NA_SCHEMACIE, elementNaSchemacie } from '../zaznaczElementModelu';
 
 type StanDziennika =
   | { rodzaj: 'brak-zakresu' }
@@ -24,6 +25,8 @@ export function ZakladkaDziennik({ onWybierzElement }: KontekstPaneluDolnego) {
   const caseIdMigawki = useSnapshotStore((s) => s.caseId);
   const caseIdAplikacji = useAppStateStore((s) => s.activeCaseId);
   const rewizja = useSnapshotStore((s) => s.snapshot?.header?.revision ?? null);
+  // Subskrypcja migawki: akcja znika razem z elementem usuniętym z modelu.
+  useSnapshotStore((s) => s.snapshot);
   const caseId = caseIdMigawki ?? caseIdAplikacji;
   const [stan, setStan] = useState<StanDziennika>({ rodzaj: 'wczytywanie' });
 
@@ -89,14 +92,14 @@ export function ZakladkaDziennik({ onWybierzElement }: KontekstPaneluDolnego) {
             <span className="mvd-num mvd-dolny-licznik" title="Elementy utworzone / zmienione / usunięte">
               +{wpis.utworzone.length} / ~{wpis.zmienione.length} / −{wpis.usuniete.length}
             </span>
-            {pierwszy ? (
+            {pierwszy && elementNaSchemacie(pierwszy) ? (
               <button
                 type="button"
                 className="mvd-btn mvd-dolny-akcja"
                 onClick={() => onWybierzElement(pierwszy)}
                 data-testid={`mvd-dziennik-pokaz-${wpis.rewizja}`}
               >
-                Pokaż element
+                {ETYKIETA_POKAZ_NA_SCHEMACIE}
               </button>
             ) : null}
           </li>

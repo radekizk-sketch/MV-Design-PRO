@@ -26,9 +26,10 @@ import { useBackendHealth } from './shell/backendHealth';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
 import { pokazElementNaSchemacie, zaznaczElementModelu } from './shell/zaznaczElementModelu';
+import { useStanPrzywracany, type KodekStanuPowrotu } from './shell/powrotZeSchematu';
 import { useThemeModeStore } from './theme/themeMode';
 import { obiektyModeluDoIndeksu } from './search/obiektyModelu';
-import { PrzelacznikPodgladu } from './spaces/schemat';
+import { PowrotDoEkranu, PrzelacznikPodgladu } from './spaces/schemat';
 import { MassReviewPanel } from '../ui/network-build/mass-review';
 import { ProjectMetadataModal, type ProjectMetadata } from '../ui/network-build/ProjectMetadataModal';
 import { navigateToCatalog } from '../ui/navigation/routes';
@@ -38,6 +39,7 @@ import { useSynchronizacjaDerZModelu } from '../ui/network-build/station-der';
 import {
   ContextTree,
   NAV_STRINGS,
+  TRYBY_DRZEWA_TOPOLOGII,
   useCasesTree,
   useRunsTree,
   useTopologyTree,
@@ -123,21 +125,33 @@ function akcjaPustegoDrzewa(space: SpaceId): AkcjaPusty | undefined {
   return undefined;
 }
 
+const KODEK_TRYBU_TOPOLOGII: KodekStanuPowrotu<TrybDrzewaTopologii> = {
+  zapisz: (t) => t,
+  odczytaj: (t) => TRYBY_DRZEWA_TOPOLOGII.find((tryb) => tryb === t) ?? 'zasilania',
+};
+
 function DrzewoPrzestrzeni({
   space,
   zaznaczonyId,
   onZaznacz,
+  onOtworz,
 }: {
   space: SpaceId;
   zaznaczonyId: string | null;
   onZaznacz: (id: string) => void;
+  onOtworz: (id: string) => void;
 }) {
   // KARTA-UI2 §1 p. 11: przełącznik trybu widoczny WYŁĄCZNIE dla drzewa
   // topologii (przestrzeń „Model") — `administracyjny`/`obwodowy` mają teraz
   // realne źródło (`useTopologyStore.structure`, `topologyTreeAdapter.ts`),
   // więc przełącznik `ContextTree` (dotąd nigdy niewpięty — `tryb` zawsze
   // `undefined`) dostaje stan i wybór użytkownika.
-  const [trybTopologii, setTrybTopologii] = useState<TrybDrzewaTopologii>('zasilania');
+  // Tryb drzewa wraca po „Wróć do" ze schematu razem z rozwiniętymi węzłami.
+  const [trybTopologii, setTrybTopologii] = useStanPrzywracany<TrybDrzewaTopologii>(
+    'drzewo:tryb-topologii',
+    () => 'zasilania',
+    KODEK_TRYBU_TOPOLOGII,
+  );
   const topologia = useTopologyTree(trybTopologii);
   const przypadki = useCasesTree();
   const przebiegi = useRunsTree();
@@ -151,7 +165,7 @@ function DrzewoPrzestrzeni({
       wezly={wezly}
       zaznaczonyId={zaznaczonyId}
       onZaznacz={(id) => onZaznacz(id)}
-      onOtworz={(id) => onZaznacz(id)}
+      onOtworz={(id) => onOtworz(id)}
       filtrProblemy={false}
       akcjaPusty={akcjaPustegoDrzewa(space)}
       tryb={space === 'model' ? trybTopologii : undefined}
@@ -246,9 +260,17 @@ export function AppRoot() {
     }
   }, [activeSpace]);
 
+  // Karta SLD-SKALA-I-NAWIGACJA (część W, pkt 3): wybór w drzewie zaznacza TEN SAM
+  // obiekt w store selekcji (jedna droga `zaznaczElementModelu`; dawniej samo
+  // zdarzenie `selekcja` — schemat i inspektor schematu nie wiedziały o wyborze).
+  // Węzeł, który nie jest elementem modelu (grupa, przypadek, bieg), zostaje
+  // zdarzeniem z prawdziwym źródłem. Otwarcie węzła (2× klik / Enter) to jawne
+  // wejście „Pokaż na schemacie".
   const zaznacz = (id: string) => {
-    // Okno emituje selekcję z prawdziwym źródłem; stan lokalny ustawi subskrypcja.
-    emituj({ typ: 'selekcja', obiektId: id, zrodlo: ZRODLO_DRZEWO_KONTEKSTOWE });
+    zaznaczElementModelu(id, ZRODLO_DRZEWO_KONTEKSTOWE);
+  };
+  const otworzWezel = (id: string) => {
+    if (!pokazElementNaSchemacie(id, ZRODLO_DRZEWO_KONTEKSTOWE)) zaznacz(id);
   };
 
   // Wyszukiwarka (E1.5 → integracja E1.4+): indeks z przestrzeni/ekranów/poleceń
@@ -263,7 +285,9 @@ export function AppRoot() {
       // K1 POWLOKA: wybór obiektu zaznacza go na schemacie (store selekcji +
       // centrowanie kanwy) i emituje `selekcja` — zdolność skasowanej drugiej
       // wyszukiwarki („Szukaj" paska metryk) przeszła tutaj w całości.
-      wybierzObiekt: (obiekt) => zaznaczElementModelu(obiekt.id, 'wyszukiwarka'),
+      // Wybór obiektu w wyszukiwarce to jawne „znajdź na schemacie" (wzorzec
+      // PowerFactory „Graphic search"): ta sama droga co „Pokaż na schemacie".
+      wybierzObiekt: (obiekt) => pokazElementNaSchemacie(obiekt.id, 'wyszukiwarka'),
       // Zdolność przeniesiona ze skasowanej palety `ui/network-build`:
       // otwarcie okna E-XX tym samym routerem powierzchni co dotąd.
       otworzEkran: (kod, tytulPl) =>
@@ -392,7 +416,14 @@ export function AppRoot() {
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
       onOpenProject={otworzPulpitProjektow}
       onOpenProjectMetadata={activeProjectId ? () => setMetadaneOtwarte(true) : undefined}
-      przelacznikPodgladu={widokKanwy ? <PrzelacznikPodgladu /> : undefined}
+      przelacznikPodgladu={
+        widokKanwy ? (
+          <>
+            <PowrotDoEkranu />
+            <PrzelacznikPodgladu />
+          </>
+        ) : undefined
+      }
       onKatalog={navigateToCatalog}
       onPrzegladZbiorczy={() => setPrzegladOtwarty(true)}
       onHistoria={otworzHistorie}
@@ -507,7 +538,12 @@ export function AppRoot() {
             obszar={panelSchematu === 'model' ? 'MODEL_SIECI' : obszarDlaTrasy(route)}
           />
         ) : (
-          <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
+          <DrzewoPrzestrzeni
+            space={activeSpace}
+            zaznaczonyId={zaznaczonyId}
+            onZaznacz={zaznacz}
+            onOtworz={otworzWezel}
+          />
         )
       }
       renderSearchDialog={(otwarta, zamknij) => (
@@ -529,7 +565,7 @@ export function AppRoot() {
               rewizjaModelu={rewizjaModelu}
               szczegolyAudytowe={szczegolyAudytowe}
               onOtworzDowod={otworzDowodInspektora}
-              onNawiguj={(cel) => emituj({ typ: 'selekcja', obiektId: cel.id, zrodlo: 'inspektor' })}
+              onNawiguj={(cel) => zaznaczElementModelu(cel.id, 'inspektor')}
               onPrzelicz={() => void handleCalculate()}
             />
           }
@@ -539,6 +575,7 @@ export function AppRoot() {
       <MassReviewPanel
         isOpen={przegladOtwarty}
         onClose={() => setPrzegladOtwarty(false)}
+        onOtworz={() => setPrzegladOtwarty(true)}
         initialTab="readiness"
       />
       <ProjectMetadataModal

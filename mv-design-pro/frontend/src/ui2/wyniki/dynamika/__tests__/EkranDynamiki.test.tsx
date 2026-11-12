@@ -678,8 +678,10 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
       'zadane w harmonogramie scenariusza',
     );
     // Element przekroczenia → schemat (sprzężenie w tę samą stronę co oś zdarzeń).
-    fireEvent.click(within(wiersz).getByRole('button', { name: NAZWA_SZYNY_PV }));
+    // Nazwa szyny jest tekstem; wejście na schemat to jedna akcja „Pokaż na schemacie".
+    fireEvent.click(within(wiersz).getByRole('button', { name: 'Pokaż na schemacie' }));
     await waitFor(() => expect(useSelectionStore.getState().selectedElements[0]?.id).toBe(SZYNA_PV));
+    expect(useSelectionStore.getState().sldWskazanie).toMatchObject({ ref: SZYNA_PV, tryb: 'kadruj' });
   });
 
   it('bieg bez przekroczeń: stan zerowy nazwany wprost', async () => {

@@ -40,8 +40,12 @@ export interface FixActionLike {
 export interface ExecuteFixActionSurfaceDeps {
   snapshot: EnergyNetworkModel | null;
   openOperationForm: (op: CanonicalOpName, context?: Record<string, unknown>) => void;
-  selectElement: (element: SelectedElement | null) => void;
-  centerSldOnElement: (elementId: string | null) => void;
+  /**
+   * Wskazanie elementu na schemacie — JEDNA droga wejścia (karta
+   * SLD-SKALA-I-NAWIGACJA, część W): zaznaczenie + kadr + przestrzeń „Schemat".
+   * `zastepczy` — zaznaczenie opisowe, gdy refu nie ma w migawce sklepu.
+   */
+  pokazNaSchemacie: (ref: string, zastepczy: SelectedElement | null) => void;
   notify: (message: string, level: NotificationLevel) => void;
 }
 
@@ -93,11 +97,7 @@ function navigateToSurfaceTarget(
     return false;
   }
 
-  const selection = buildSelectionElement(deps.snapshot, surface);
-  if (selection) {
-    deps.selectElement(selection);
-  }
-  deps.centerSldOnElement(targetRef);
+  deps.pokazNaSchemacie(targetRef, buildSelectionElement(deps.snapshot, surface));
   return true;
 }
 

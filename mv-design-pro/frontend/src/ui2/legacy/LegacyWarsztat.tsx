@@ -24,16 +24,16 @@ import type { ReactNode } from 'react';
 import { EnmInspectorPage } from '../../ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from '../../ui/fault-scenarios';
 import { featureFlags } from '../../ui/config/featureFlags';
-import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
+import { KanwaSchematu } from './KanwaSchematu';
 import { ProjectDashboardSurface } from '../../ui/workspace/surfaces/ProjectDashboardSurface';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import { SemanticIssuesBanner } from '../../ui/tech-card/SemanticIssuesBanner';
 import { useAppStateStore } from '../../ui/app-state';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
-import { useSelectionStore } from '../../ui/selection/store';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
+import { kanwaSchematuWidocznaDla, powierzchniaRozwinieta } from '../shell/widokKanwySchematu';
 import { LegacySurface } from './LegacySurface';
 
 /** Strona nieznanej trasy — PRZENIESIONA z App.tsx (kasacja ramy E1.7c). */
@@ -115,7 +115,7 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   if (route === ROUTES.SLD_VIEW.hash) {
     return (
       <div data-testid="workspace-surface-main" className="mvd-legacy-host">
-        <SldCanvasV3Workspace readOnly />
+        <KanwaSchematu readOnly />
       </div>
     );
   }
@@ -169,8 +169,8 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
  * narzędzi powłoki.
  */
 function useRozwinietaPowierzchnia(space: SpaceId): boolean {
-  const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
-  return activeSurface?.openMode === 'expand_workspace' && space !== 'wyniki' && space !== 'dokumentacja';
+  const openMode = useNetworkBuildStore((state) => state.activeSurface?.openMode);
+  return powierzchniaRozwinieta(openMode, space);
 }
 
 /**
@@ -181,22 +181,18 @@ function useRozwinietaPowierzchnia(space: SpaceId): boolean {
  */
 export function useWidokKanwySchematu(route: string, space: SpaceId): boolean {
   const rozwinieta = useRozwinietaPowierzchnia(space);
-  return space === 'schemat' && !rozwinieta && (route === '' || route === ROUTES.SLD.hash);
+  return kanwaSchematuWidocznaDla(route, space, rozwinieta);
 }
 
 export function LegacyWarsztat(props: LegacyWarsztatProps) {
   const semanticIssues = useSnapshotStore((state) => state.lastSemanticIssues);
-  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const mainSurfaceExpanded = useRozwinietaPowierzchnia(props.space);
 
   return (
     <div className="mvd-legacy-host">
       {/* Walidacja semantyczna — globalny baner nad warsztatem (dawny AppShellV12). */}
       {(semanticIssues?.length ?? 0) > 0 && (
-        <SemanticIssuesBanner
-          issues={semanticIssues}
-          onSelectElement={(ref) => centerSldOnElement(ref)}
-        />
+        <SemanticIssuesBanner issues={semanticIssues} />
       )}
       <div className="mvd-legacy-warsztat-tresc">
         {mainSurfaceExpanded ? <WorkspaceSurfaceRouter region="main" /> : <TrasaLubPrzestrzen {...props} />}

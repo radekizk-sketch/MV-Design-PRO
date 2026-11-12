@@ -10,7 +10,9 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 vi.mock('../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
 import type { EnergyNetworkModel } from '../../../types/enm';

@@ -7,6 +7,7 @@
 
 import { useMemo } from 'react';
 import { useEnmInspectorStore } from './store';
+import { PrzyciskPokazNaSchemacie } from '../../ui2/shared/PrzyciskPokazNaSchemacie';
 import type {
   DiagnosticIssue,
   DiagnosticReport,
@@ -193,18 +194,24 @@ function IssueRow({
   issue: DiagnosticIssue;
   onClick: () => void;
 }) {
+  // Klik wiersza = przeglądanie (zaznaczenie); wejście na schemat — wspólny
+  // przycisk (karta SLD-SKALA-I-NAWIGACJA). Przycisk nie może leżeć w przycisku.
   return (
-    <button
-      className={`w-full text-left px-3 py-2 hover:bg-slate-50 cursor-pointer border-l-2 ${
+    <div
+      className={`flex items-start gap-2 px-3 py-2 hover:bg-slate-50 border-l-2 ${
         issue.severity === 'BLOCKER'
           ? 'border-l-rose-500'
           : issue.severity === 'WARN'
             ? 'border-l-amber-400'
             : 'border-l-blue-400'
       }`}
-      onClick={onClick}
-      data-testid={`diagnostic-issue-${issue.code}`}
     >
+      <button
+        type="button"
+        className="flex-1 min-w-0 text-left cursor-pointer"
+        onClick={onClick}
+        data-testid={`diagnostic-issue-${issue.code}`}
+      >
       <div className="flex items-center gap-2">
         <span
           className={`text-xs font-mono font-semibold ${SEVERITY_COLORS[issue.severity]}`}
@@ -244,6 +251,12 @@ function IssueRow({
           )}
         </div>
       )}
-    </button>
+      </button>
+      <PrzyciskPokazNaSchemacie
+        elementRef={issue.affected_refs[0]}
+        zrodlo="inspektor-modelu"
+        testId={`diagnostic-issue-pokaz-${issue.code}`}
+      />
+    </div>
   );
 }

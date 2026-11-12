@@ -84,6 +84,7 @@ import {
   wagaPL,
 } from './strings';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 /** Ranking nie ma dowodu per komórka (patrz `EkranPorownania.tsx` — ten sam uzasadnienie). */
 const BEZ_DOWODU = (): void => {};
@@ -143,7 +144,7 @@ export function TrybZabezpieczen({ projektId, szczegolyAudytowe }: TrybZabezpiec
   const [blad, setBlad] = useState<string | null>(null);
 
   const [zakladka, setZakladka] = useState<Zakladka>('stany');
-  const [wybranyProblem, setWybranyProblem] = useState<string | null>(null);
+  const [wybranyProblem, setWybranyProblem] = useWyborPowrotu('wybor:porownanie-zabezpieczen');
   const [tylkoZmiany, setTylkoZmiany] = useState(false);
 
   // Ślad porównania (White Box) — na żądanie, zwinięty domyślnie; zależy od

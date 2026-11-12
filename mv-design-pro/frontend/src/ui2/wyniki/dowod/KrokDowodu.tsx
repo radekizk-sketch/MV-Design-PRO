@@ -8,14 +8,14 @@
  * wyłącznie w „Informacjach audytowych" kroku. Matematyka renderowana blokowo przez
  * reużyty `MathBlock` z `ui/proof` (bez modyfikacji tamtego modułu).
  *
- * Powiązanie z modelem: krok z `element_id` → przycisk „Pokaż na schemacie"
- * emitujący selekcję na magistrali zdarzeń powłoki (`ui2/events`). Read-only,
- * zero fizyki, zero mutacji store'ów.
+ * Powiązanie z modelem: krok z `element_id` obecnym na schemacie → przycisk
+ * „Pokaż na schemacie" (jedna droga wejścia, `pokazElementNaSchemacie`). Zero
+ * fizyki, zero mutacji modelu.
  */
 
 import { TRACE_FIELD_LABELS } from '../../../ui/results-inspector/types';
 import { MathBlock } from '../../../ui/proof';
-import { emituj } from '../../events';
+import { PrzyciskPokazNaSchemacie } from '../../shared/PrzyciskPokazNaSchemacie';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 import { InformacjeAudytowe, useNazwaObiektu } from '../wzorzec';
 import type { WierszInformacjiAudytowych } from '../wzorzec';
@@ -98,12 +98,6 @@ export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
   const uwagiNaPierwszymPlanie = krok.uwagi && !maZapisTechniczny(krok.uwagi) ? krok.uwagi : null;
   const nazwa = (ref: string) => nazwaObiektu(ref);
 
-  const pokazNaSchemacie = () => {
-    if (krok.elementId) {
-      emituj({ typ: 'selekcja', obiektId: krok.elementId, zrodlo: 'dowod' });
-    }
-  };
-
   return (
     <article className="mvd-dowod-krok" data-testid="mvd-dowod-krok">
       <header className="mvd-dowod-krok-head">
@@ -111,17 +105,14 @@ export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
           {krok.numer}
         </span>
         <h3 className="mvd-dowod-krok-tytul">{krok.tytul}</h3>
-        {krok.elementId && (
-          <button
-            type="button"
-            className="mvd-btn"
-            onClick={pokazNaSchemacie}
-            data-mvd-action="selekcja"
-            data-testid="mvd-dowod-pokaz-na-schemacie"
-          >
-            {DOWOD_STRINGS.pokazNaSchemacie}
-          </button>
-        )}
+        {/* Jedna droga wejścia na schemat (karta SLD-SKALA-I-NAWIGACJA, część W);
+            dawniej samo zdarzenie `selekcja` — schemat się nie zmieniał. */}
+        <PrzyciskPokazNaSchemacie
+          elementRef={krok.elementId}
+          zrodlo="dowod"
+          className="mvd-btn"
+          testId="mvd-dowod-pokaz-na-schemacie"
+        />
       </header>
 
       {/* Wzór */}

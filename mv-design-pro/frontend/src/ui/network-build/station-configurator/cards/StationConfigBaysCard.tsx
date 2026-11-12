@@ -12,6 +12,7 @@
  */
 
 import type { HvFuseItem } from '../../station-der/audit2-api';
+import { PrzyciskPokazNaSchemacie } from '../../../../ui2/shared/PrzyciskPokazNaSchemacie';
 import { nazwaZaczynaSieOpisem } from '../../../shared/opisBezPowtorzen';
 import { fieldRoleLabelPl } from '../../../sld/v2/station-rozdzielnia/contract';
 
@@ -38,10 +39,6 @@ export interface StationConfigBayRow {
 
 export interface StationConfigBaysCardProps {
   readonly bays: readonly StationConfigBayRow[];
-  readonly onOpenBay?: (bayId: string) => void;
-  readonly onShowOnSld?: (bayId: string) => void;
-  readonly onCopyConfig?: (bayId: string) => void;
-  readonly onDeleteBay?: (bayId: string) => void;
   /** Karta FAB-M: katalog bezpieczników HV — ze snapshotu audytu 2. */
   readonly hvFuses: readonly HvFuseItem[];
   /** Phase 18: HV fuse onChange (per bay). */
@@ -61,7 +58,7 @@ const STATUS_LABEL: Record<StationConfigBayRow['statusPl'], string> = {
 };
 
 export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.Element {
-  const { bays, hvFuses, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay, onChangeHvFuse } = props;
+  const { bays, hvFuses, onChangeHvFuse } = props;
 
   return (
     <div data-testid="station-config-bays" className="flex flex-col gap-2 text-xs">
@@ -160,44 +157,16 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                   )}
                 </td>
                 <td className="text-right">
-                  <div className="flex justify-end gap-1">
-                    {onOpenBay && (
-                      <button
-                        data-testid={`bay-open-${b.bayId}`}
-                        onClick={() => onOpenBay(b.bayId)}
-                        className="rounded border border-scada-border px-1 py-0.5 text-[10px] hover:bg-scada-active"
-                      >
-                        otwórz
-                      </button>
-                    )}
-                    {onShowOnSld && (
-                      <button
-                        data-testid={`bay-show-sld-${b.bayId}`}
-                        onClick={() => onShowOnSld(b.bayId)}
-                        className="rounded border border-scada-border px-1 py-0.5 text-[10px] hover:bg-scada-active"
-                      >
-                        SLD
-                      </button>
-                    )}
-                    {onCopyConfig && (
-                      <button
-                        data-testid={`bay-copy-${b.bayId}`}
-                        onClick={() => onCopyConfig(b.bayId)}
-                        className="rounded border border-scada-border px-1 py-0.5 text-[10px] hover:bg-scada-active"
-                      >
-                        kopiuj
-                      </button>
-                    )}
-                    {onDeleteBay && (
-                      <button
-                        data-testid={`bay-delete-${b.bayId}`}
-                        onClick={() => onDeleteBay(b.bayId)}
-                        className="rounded border border-scada-border px-1 py-0.5 text-[10px] text-status-error hover:bg-scada-active"
-                      >
-                        usuń
-                      </button>
-                    )}
-                  </div>
+                  {/*
+                    Karta SLD-SKALA-I-NAWIGACJA: wejście na schemat — wspólny przycisk.
+                    Dawne „otwórz/SLD/kopiuj/usuń" nie miały produkcyjnego dostawcy
+                    (żaden montaż nie przekazywał wywołań) — skasowane.
+                  */}
+                  <PrzyciskPokazNaSchemacie
+                    elementRef={b.bayId}
+                    zrodlo="konfigurator-stacji"
+                    testId={`bay-show-sld-${b.bayId}`}
+                  />
                 </td>
               </tr>
             ))}

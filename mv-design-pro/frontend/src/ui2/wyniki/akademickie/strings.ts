@@ -308,8 +308,8 @@ export const AKADEMICKIE_STRINGS = {
 
   // Uczciwy stan niekompletny (solver melduje brak danych)
   danePrzyjeteTytul: 'Dane przyjęte (wartości robocze)',
-  danePrzyjeteNiepelny: 'Wynik policzony na wartościach roboczych albo z brakiem danych — '
-    + 'dowód niepełny; każdą wartość możesz zmienić w modelu i przeliczyć.',
+  danePrzyjeteNiepelny: 'Wynik policzony na wartościach roboczych z wykazu „Dane przyjęte” albo przy '
+    + 'brakujących danych — nie jest potwierdzeniem zgodności; każdą wartość możesz zmienić w modelu i przeliczyć.',
   brakiTytul: 'Brakujące dane wejściowe',
   brakiLista: 'Solver nie wystawił oceny, bo w modelu brakuje:',
 

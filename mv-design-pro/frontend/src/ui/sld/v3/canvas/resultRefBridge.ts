@@ -30,7 +30,7 @@ import {
   kontekstTransformatorowStacji,
   selectStationDistributionTransformers,
 } from '../../../shared/transformatoryStacji';
-import type { ResultLabelKind } from './resultLabelTemplates';
+import type { ResultLabelKind } from '../../shared/resultLabelTemplates';
 
 /** Sufiksy refów rysunkowych szyn stacji (`compose/station.ts`) — jedyne dwa
  *  odcinki szyny, które kompozycja stacji rysuje: strona SN i strona nN. */

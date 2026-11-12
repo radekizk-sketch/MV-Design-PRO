@@ -18,7 +18,7 @@
  * formatowanie prezentacji. Stylowanie wyłącznie tokenami --mvd-*.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import './skladowe.css';
 // Style wspólnego wzorca (SekcjaZalozen, TabelaWynikow) — import jawny, bo ekran
 // nie renderuje ramy `EkranAnalizy`, która normalnie wnosi ten arkusz.
@@ -49,6 +49,7 @@ import {
 } from './model';
 import { SKLADOWE_STRINGS as T } from './strings';
 import { biegiRodziny, useAktywnyBieg, useWybierzBieg } from '../kontekst/kontekstWyniku';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 function Stan({
   tytul,
@@ -114,8 +115,9 @@ export function EkranSkladowych() {
   const dane = useDaneSkladowych(przebieg?.id ?? null);
   const rows = dane?.wynik?.rows ?? [];
 
-  const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
+  const [wybranyPunkt, setWybranyPunkt] = useWyborPowrotu('wybor:skladowe');
   const poprawWModelu = usePoprawWModelu();
+  const refPunktu = (klucz: string): string => rows.find((r) => r.target_id === klucz)?.element_id ?? klucz;
   const aktywnyPunkt = useMemo(() => {
     if (rows.length === 0) return null;
     if (wybranyPunkt && rows.some((r) => r.target_id === wybranyPunkt)) return wybranyPunkt;
@@ -203,9 +205,14 @@ export function EkranSkladowych() {
               nazwaElementuWiersza={(klucz) =>
                 rows.find((r) => r.target_id === klucz)?.target_name ?? undefined
               }
+              // Karta SLD-SKALA-I-NAWIGACJA (część W, predykaty parami): JEDEN ref
+              // punktu (`element_id ?? target_id`) dla zaznaczenia wiersza, dla
+              // widoczności akcji i dla samej akcji „Pokaż na schemacie".
+              elementIdWiersza={refPunktu}
+              refDecyzjiWiersza={refPunktu}
               onPoprawWModelu={(klucz) => {
+                const ref = refPunktu(klucz);
                 const wiersz = rows.find((r) => r.target_id === klucz);
-                const ref = wiersz?.element_id ?? klucz;
                 poprawWModelu(ref, 'Bus', wiersz?.target_name ?? ref, 'inspekcja-elementu');
               }}
               rodzajWiersza={() => 'inspekcja-elementu'}

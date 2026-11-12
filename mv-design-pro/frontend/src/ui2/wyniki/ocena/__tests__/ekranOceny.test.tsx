@@ -20,6 +20,7 @@ import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { migawkaZElementami, type ElementMigawki } from '../../../../test/schematTestowy';
 import { useShellStore } from '../../../shell/useShellStore';
 import ocenaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
 import przekroczeniaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena_przekroczenia.json';
@@ -463,7 +464,28 @@ describe('EkranOceny — powiązania (schemat, identyfikator w modelu, dowód ob
     return { p, e, wiersz: screen.getByTestId(`mvd-ocena-element-${kryterium}-${e.element_id}`) };
   }
 
+  /** Element oceny obecny w migawce modelu (akcja tylko dla elementu na schemacie), pod nazwą z fixtury. */
+  function wModelu(elementy: readonly ElementMigawki[]): void {
+    useSnapshotStore.setState({
+      snapshot: { ...migawkaZElementami(elementy), header: { name: 'CGMES Golden Net', revision: 1 } } as never,
+    });
+  }
+
+  function elementFixtury(fixtura: OdpowiedzOceny, kryterium: string, wynik: OcenaElementu['wynik']): { id: string; name?: string } {
+    const e = fixtura.pozycje.find((x) => x.kryterium_id === kryterium)!.elementy.find((x) => x.wynik === wynik)!;
+    return { id: e.element_id!, name: e.element_nazwa ?? undefined };
+  }
+
+  it('element nieobecny w modelu → brak akcji (nie ma czego pokazać na schemacie)', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_PRZEKROCZENIA));
+    render(<EkranOceny />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    const { wiersz } = wierszElementu(FIXTURA_PRZEKROCZENIA, 'napiecie.odchylenie', 'NIE_SPELNIA');
+    expect(within(wiersz).queryByTestId('mvd-ocena-pokaz')).toBeNull();
+  });
+
   it('element NIE SPEŁNIA napięcia → akcja kontekstowa rodzaju „napiecie" na wskazanym elemencie (klik natywny)', async () => {
+    wModelu([{ kolekcja: 'buses', ...elementFixtury(FIXTURA_PRZEKROCZENIA, 'napiecie.odchylenie', 'NIE_SPELNIA') }]);
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_PRZEKROCZENIA));
     render(<EkranOceny />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
@@ -473,6 +495,9 @@ describe('EkranOceny — powiązania (schemat, identyfikator w modelu, dowód ob
   });
 
   it('element spełniający → akcja inspekcji elementu (bez rodzaju przekroczenia — nie ma czego naprawiać)', async () => {
+    wModelu([
+      { kolekcja: 'branches', ...elementFixtury(FIXTURA_OCENA, 'galaz.obciazenie_dlugotrwale', 'SPELNIA'), pola: { type: 'line_overhead' } },
+    ]);
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
     render(<EkranOceny />);
     await screen.findByTestId('mvd-ocena-podsumowanie');

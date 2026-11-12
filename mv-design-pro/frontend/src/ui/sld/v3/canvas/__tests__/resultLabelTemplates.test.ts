@@ -20,7 +20,7 @@ import {
   resultLabelLines,
   selectResultLabelSpecs,
   type ResultLabelLine,
-} from '../resultLabelTemplates';
+} from '../../../shared/resultLabelTemplates';
 
 function codesOf(specs: readonly { readonly code: string }[]): readonly string[] {
   return specs.map((s) => s.code);

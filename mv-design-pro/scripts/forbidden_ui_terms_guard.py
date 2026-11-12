@@ -82,11 +82,12 @@ EXEMPT_PATTERNS: list[str] = [
     os.path.join("ui", "canon", "labelGuards.ts"),
 ]
 
-# Directories to scan (ui2 = docelowa powierzchnia Programu UI/UX — N-D9)
+# Directories to scan (ui2 = docelowa powierzchnia Programu UI/UX — N-D9). Dawny wpis
+# `frontend/src/designer` zdjęty (karta INSPEKTOR-I-NAWIGACJA): katalog nie istnieje, guard
+# meldował „SKIP” przy każdym biegu — martwy wpis zakresu, pin w self-teście.
 SCAN_DIRS: list[str] = [
     os.path.join("frontend", "src", "ui"),
     os.path.join("frontend", "src", "ui2"),
-    os.path.join("frontend", "src", "designer"),
 ]
 
 
@@ -270,6 +271,59 @@ def naruszenia_komunikatu_zapytania(root: str) -> list[tuple[str, int, str, str]
     return wynik
 
 
+# ---------------------------------------------------------------------------
+# Reguła terminologii inspektora i wyników (karta INSPEKTOR-I-NAWIGACJA, werdykt właściciela
+# B-02). Nazwy techniczne zastąpione nazwami pracy projektanta; ogólnik zamiast przyczyny
+# zakazany. Reguła działa na CAŁEJ treści pliku bez komentarzy — tekst JSX w osobnej linii
+# (`<div>\n  Wywód obliczeń\n</div>`) jest widoczny użytkownikowi, a reguła liniowa
+# `JSX_TEXT_RE` go nie widzi (tak przetrwał „Wywód obliczeń” w panelu obliczeń elementu).
+# ---------------------------------------------------------------------------
+
+TERMINOLOGIA_INSPEKTORA: dict[str, str] = {
+    r"Wywód\s+obliczeń": "„Wywód obliczeń” — nazwa analizy („Obliczenia zwarciowe”, „Rozpływ mocy”)",
+    r"Pełny\s+LaTeX": "„Pełny LaTeX” — użyj „Pokaż obliczenia”",
+    r"\bDziałania\s*\(": "„Działania (n)” — użyj „Dostępne czynności”",
+    r"Tryb\s+szeroki": "„Tryb szeroki” — użyj „Rozszerz panel”",
+    r"Pobieram\s+wynik": "„Pobieram wynik…” — użyj „Wczytywanie wyników …”",
+    r"dowód\s+niepełny": "ogólnik „dowód niepełny” — nazwij przyczynę (wartości robocze, brak danych)",
+}
+
+
+def scan_terminologia_inspektora(filepath: str) -> list[tuple[int, str, str]]:
+    """Naruszenia terminologii inspektora w jednym pliku: [(linia, fragment, powód)]."""
+    try:
+        with open(filepath, encoding="utf-8", errors="ignore") as f:
+            tresc = _bez_komentarzy(f.read())
+    except OSError:
+        return []
+    naruszenia: list[tuple[int, str, str]] = []
+    for wzorzec, powod in TERMINOLOGIA_INSPEKTORA.items():
+        for m in re.finditer(wzorzec, tresc):
+            poczatek = tresc.rfind("\n", 0, m.start()) + 1
+            koniec = tresc.find("\n", m.end())
+            fragment = tresc[poczatek : koniec if koniec >= 0 else len(tresc)].strip()
+            naruszenia.append((tresc.count("\n", 0, m.start()) + 1, fragment[:120], powod))
+    return naruszenia
+
+
+def naruszenia_terminologii_inspektora(root: str) -> list[tuple[str, int, str, str]]:
+    """Reguła terminologii inspektora na całym `frontend/src` (poza testami)."""
+    wynik: list[tuple[str, int, str, str]] = []
+    katalog = os.path.join(root, SKAN_KOMUNIKATU_ZAPYTANIA)
+    for dirpath, dirs, filenames in os.walk(katalog):
+        dirs.sort()
+        for filename in sorted(filenames):
+            if not filename.endswith((".tsx", ".ts")) or filename.endswith(".d.ts"):
+                continue
+            filepath = os.path.join(dirpath, filename)
+            rel_path = os.path.relpath(filepath, root)
+            if any(w in rel_path for w in _WYJATKI_TESTOW):
+                continue
+            for line_no, line, reason in scan_terminologia_inspektora(filepath):
+                wynik.append((rel_path, line_no, line, reason))
+    return wynik
+
+
 def main() -> int:
     print("=" * 60)
     print("GUARD: forbidden_ui_terms_guard")
@@ -300,6 +354,7 @@ def main() -> int:
                     all_violations.append((rel_path, line_no, line, reason))
 
     all_violations.extend(naruszenia_komunikatu_zapytania(root))
+    all_violations.extend(naruszenia_terminologii_inspektora(root))
 
     # Report
     if all_violations:

@@ -14,7 +14,8 @@ import { useMemo, useState } from 'react';
 
 import { EnmInspectorPage } from '../../../ui/enm-inspector';
 import { StationTemplateWizard } from '../../../ui/network-build/station-templates';
-import { SldCanvasV3Workspace } from '../../../ui/sld/v3/canvas/SldCanvasV3Workspace';
+import { KanwaSchematu } from '../../legacy/KanwaSchematu';
+import { useEkranZrodlowy, useStanPowrotu } from '../../shell/powrotZeSchematu';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { PrzegladarkaSzablonow } from './szablony';
@@ -23,7 +24,6 @@ import { KatalogPanel } from './katalog';
 import { PanelKartWidmowych } from './karty-widmowe/PanelKartWidmowych';
 import type { ElementUzycia } from './katalog';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { emituj } from '../../events';
 import { MODEL_WARSZTAT_STRINGS as T } from './strings';
 import './modelWarsztat.css';
 
@@ -67,8 +67,20 @@ function zbierzUzycia(snapshot: unknown): readonly ElementUzycia[] {
   return wynik;
 }
 
+const KLUCZ_POWROTU = 'model-warsztat';
+
 export function ModelWarsztat() {
-  const [zakladka, setZakladka] = useState<ZakladkaId>('schemat');
+  // Karta SLD-SKALA-I-NAWIGACJA (część W): „Wróć do" przywraca zakładkę, z której
+  // weszło się na schemat (np. „Katalog" → „Pokaż na schemacie").
+  const stanPowrotu = useStanPowrotu(KLUCZ_POWROTU);
+  const [zakladka, setZakladka] = useState<ZakladkaId>(() =>
+    ZAKLADKI.some((z) => z.id === stanPowrotu) ? (stanPowrotu as ZakladkaId) : 'schemat',
+  );
+  useEkranZrodlowy(
+    `Model sieci — ${ZAKLADKI.find((z) => z.id === zakladka)?.etykieta ?? ''}`,
+    KLUCZ_POWROTU,
+    zakladka,
+  );
   const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const zakladki = useMemo(
     () => ZAKLADKI.filter((z) => !z.tylkoEkspercki || szczegolyAudytowe),
@@ -109,9 +121,9 @@ export function ModelWarsztat() {
       <div role="tabpanel" className="mvd-model-tresc">
         {/* Wyjście z trybu eksperckiego przy otwartej diagnostyce nie może
             zostawić pustego panelu — wracamy na widok domyślny. */}
-        {zakladka === 'diagnostyka' && !szczegolyAudytowe && <SldCanvasV3Workspace />}
+        {zakladka === 'diagnostyka' && !szczegolyAudytowe && <KanwaSchematu />}
         {zakladka === 'diagnostyka' && szczegolyAudytowe && <EnmInspectorPage />}
-        {zakladka === 'schemat' && <SldCanvasV3Workspace />}
+        {zakladka === 'schemat' && <KanwaSchematu />}
         {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
         {zakladka === 'szablony' && (
           <PrzegladarkaSzablonow
@@ -122,14 +134,7 @@ export function ModelWarsztat() {
           />
         )}
         {zakladka === 'katalog' && (
-          <KatalogPanel
-            uzyciaSnapshot={uzycia}
-            onPokazElement={(ref) => {
-              // Nawigacja z karty typu: selekcja globalna + powrót na schemat.
-              emituj({ typ: 'selekcja', obiektId: ref, zrodlo: 'katalog' });
-              setZakladka('schemat');
-            }}
-          />
+          <KatalogPanel uzyciaSnapshot={uzycia} />
         )}
         {zakladka === 'karty' && <PanelKartWidmowych />}
       </div>

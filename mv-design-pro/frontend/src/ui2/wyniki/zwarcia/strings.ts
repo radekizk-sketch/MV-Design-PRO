@@ -257,9 +257,6 @@ export const ZWARCIA_STRINGS = {
   znacznikWartosciRoboczej: 'wartość robocza',
   zmienWartosc: 'Zmień wartość',
 
-  // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
-  pokazNaSchemacie: 'Pokaż na schemacie',
-
   // Wykres
   wykresTytul: 'Prądy zwarciowe $I_{k}\'\'$ w punktach zwarcia',
   wykresOsY: 'Prąd zwarciowy początkowy $I_{k}\'\'$',

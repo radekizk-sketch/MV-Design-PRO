@@ -20,9 +20,6 @@ export const DOWOD_STRINGS = {
   spisTytul: 'Kroki obliczeń',
   spisEtykieta: 'Spis kroków dowodu',
 
-  // Powiązanie z modelem
-  pokazNaSchemacie: 'Pokaż na schemacie',
-
   // Zakres wywodu (KD-4, luka L-11) — cały przebieg vs wskazany element
   zakresEtykieta: 'Zakres wywodu',
   zakresCaly: 'Cały przebieg',

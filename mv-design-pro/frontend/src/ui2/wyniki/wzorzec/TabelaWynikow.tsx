@@ -21,9 +21,12 @@
  * prawdy, nigdy dwie niezależne liczby.
  */
 
-import { useMemo, useRef, useEffect, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useMemo, useRef, useEffect, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useGlobalSelectionSync } from '../../../ui/selection';
+import { useSelectionStore } from '../../../ui/selection';
+import { zaznaczElementModelu } from '../../shell/zaznaczElementModelu';
+import { useStanPrzywracany, type KodekStanuPowrotu } from '../../shell/powrotZeSchematu';
+import { celDecyzjiOsiagalny } from './usePoprawWModelu';
 import { canonicalizeSelectedElement } from '../../../ui/shared/selectionResolution';
 import { refModeluElementu, useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { usePokazBiegEkranuNaSchemacie } from '../kontekst/kontekstWyniku';
@@ -87,6 +90,14 @@ interface TabelaWynikowProps {
   nazwaElementuWiersza?: (klucz: string) => string | undefined;
   /** Pętla decyzji (F-E6.1): akcja „Popraw w modelu" na wierszach z ostrzeżeniem. */
   onPoprawWModelu?: (klucz: string) => void;
+  /**
+   * Ref elementu modelu, do którego prowadzi akcja kolumny „Decyzja" (karta
+   * SLD-SKALA-I-NAWIGACJA, część W) — gdy różny od `elementIdWiersza ?? klucz`.
+   * Akcja z celem „schemat" renderuje się WYŁĄCZNIE dla elementu obecnego na
+   * schemacie (ten sam predykat co `pokazElementNaSchemacie`) — brak akcji
+   * zamiast martwego kliku.
+   */
+  refDecyzjiWiersza?: (klucz: string) => string | null | undefined;
   /** Predykat naprawialności wiersza (F-E6.2) — brak = każdy wiersz z ostrzeżeniem. */
   wierszDecyzyjny?: (klucz: string) => boolean;
   /** Rodzaj przekroczenia wiersza (K1 / F-E6.3) — etykieta/opis przycisku z rejestru
@@ -146,6 +157,16 @@ function posortuj(
     .map((x) => x.w);
 }
 
+const BEZ_SORTOWANIA = (): StanSortowania | null => null;
+const KODEK_SORTOWANIA: KodekStanuPowrotu<StanSortowania | null> = {
+  zapisz: (w) => (w ? `${w.kierunek}:${w.klucz}` : null),
+  odczytaj: (t) => {
+    const i = t.indexOf(':');
+    const kierunek = t.slice(0, i);
+    return i > 0 && (kierunek === 'rosnaco' || kierunek === 'malejaco') ? { kierunek, klucz: t.slice(i + 1) } : null;
+  },
+};
+
 export function TabelaWynikow({
   kolumny,
   wiersze,
@@ -158,12 +179,19 @@ export function TabelaWynikow({
   elementIdWiersza,
   nazwaElementuWiersza,
   onPoprawWModelu,
+  refDecyzjiWiersza,
   wierszDecyzyjny,
   rodzajWiersza,
   trybDecyzji = 'przy-ostrzezeniu',
 }: TabelaWynikowProps) {
-  const [sort, setSort] = useState<StanSortowania | null>(null);
-  const { selectFromResults } = useGlobalSelectionSync();
+  // Karta INSPEKTOR-I-NAWIGACJA pkt 8: sortowanie wraca po „Wróć do” razem z wierszem, filtrami
+  // i przewinięciem — stan przywracany kluczem kolumn tabeli (ta sama tabela = te same kolumny).
+  const [sort, setSort] = useStanPrzywracany<StanSortowania | null>(
+    `sortowanie:${kolumny.map((k) => k.klucz).join('|')}`,
+    BEZ_SORTOWANIA,
+    KODEK_SORTOWANIA,
+  );
+  const selectElement = useSelectionStore((s) => s.selectElement);
   const snapshot = useSnapshotStore((stan) => stan.snapshot);
   // Karta K8: wiersz ekranu pełnego niesie bieg ekranu — schemat przełącza się na niego.
   const pokazBiegEkranu = usePokazBiegEkranuNaSchemacie();
@@ -184,6 +212,10 @@ export function TabelaWynikow({
   );
   // F-E6.1: kolumna decyzji dokłada się WYŁĄCZNIE gdy wołający ją obsłuży.
   const kolumnaDecyzji = onPoprawWModelu != null;
+  // Cel „zakładka wyników" jest zawsze osiągalny; cel „schemat" — tylko dla
+  // elementu, który na schemacie jest (subskrypcja migawki: `snapshot` wyżej).
+  const celDecyzjiWiersza = (klucz: string): boolean =>
+    celDecyzjiOsiagalny(refDecyzjiWiersza?.(klucz) ?? elementIdWiersza?.(klucz) ?? klucz, rodzajWiersza?.(klucz));
   const liczbaKolumn = kolumnyWidoczne.length + (kolumnaDecyzji ? 1 : 0);
 
   const kluczId = kluczWiersza ?? kolumny[0]?.klucz;
@@ -274,7 +306,7 @@ export function TabelaWynikow({
     // zaznaczenia (SLD ↔ inspektor ↔ drzewo), gdy wiersz mapuje na element
     // sieci — obok istniejącego lokalnego podświetlenia (`onWybierzWiersz`),
     // nie zamiast niego (oba mechanizmy współistnieją, bez drugiego store'u
-    // dla samego zaznaczenia elementu — `selectFromResults` pisze do
+    // dla samego zaznaczenia elementu — `zaznaczElementModelu` pisze do
     // `useSelectionStore`, jedynego źródła prawdy).
     const wybierzWiersz = () => {
       onWybierzWiersz?.(rowKey);
@@ -302,7 +334,14 @@ export function TabelaWynikow({
         });
         if (cel) {
           pokazBiegEkranu();
-          selectFromResults(elementId, typ, nazwa);
+          // Jedna droga przeglądania (karta SLD-SKALA-I-NAWIGACJA, część W):
+          // zaznaczenie; kadr rusza się tylko, gdy kanwa jest na ekranie. Dawne
+          // `selectFromResults` zostawiało ODŁOŻONE wskazanie kamery, które
+          // kadrowało schemat przy późniejszym, niezwiązanym wejściu.
+          // Ref KANONICZNY (`cel.id` — ref modelu), nie identyfikator wyniku: wiersz
+          // rozpływu niesie identyfikator GRAFU, którego migawka nie zna, więc kamera
+          // nie ruszała się nigdy dla takich wierszy.
+          if (!zaznaczElementModelu(cel.id, 'tabela-wynikow')) selectElement(cel);
         }
       }
     };
@@ -347,7 +386,8 @@ export function TabelaWynikow({
         {kolumnaDecyzji && (
           <td className="mvd-wyn-td-decyzja">
             {(trybDecyzji === 'zawsze' || wierszMaOstrzezenie(wiersz)) &&
-              (wierszDecyzyjny == null || wierszDecyzyjny(rowKey)) && (
+              (wierszDecyzyjny == null || wierszDecyzyjny(rowKey)) &&
+              celDecyzjiWiersza(rowKey) && (
               <button
                 type="button"
                 className="mvd-wyn-popraw-btn"

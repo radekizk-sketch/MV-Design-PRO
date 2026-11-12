@@ -31,6 +31,8 @@
  * pozostaje oznaczona przy danej wejściowej (zasada nr 4).
  */
 
+import { PrzyciskPokazNaSchemacie } from '../../../shared/PrzyciskPokazNaSchemacie';
+import { elementNaSchemacie } from '../../../shell/zaznaczElementModelu';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import './aparatura.css';
@@ -871,6 +873,14 @@ function WierszPola({
             <TabelaKryteriow pole={pole} />
             <CzasWylaczenia pole={pole} onZapiszCzas={onZapiszCzas} pracuje={przeliczanie} />
             <div className="mvd-apar-akcje-pola">
+              {/* Jedna droga wejścia na schemat (karta SLD-SKALA-I-NAWIGACJA, część W):
+                  aparat pola — gdy jest na schemacie; inaczej pole (zatoka). */}
+              <PrzyciskPokazNaSchemacie
+                elementRef={elementNaSchemacie(pole.aparat_ref) ? pole.aparat_ref : pole.pole_ref}
+                zrodlo="weryfikacja-aparatury"
+                className="mvd-apar-akcja mvd-apar-akcja--wtorna"
+                testId={`mvd-zwarcia-aparatura-pokaz-${pole.pole}`}
+              />
               {aparatRef !== null && onParametryAparatu && (
                 <button
                   type="button"

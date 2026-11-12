@@ -8,6 +8,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPomiaru } from '../KreatorPomiaru';
+import { useSelectionStore as sklepSelekcji } from '../../../../ui/selection/store';
+
+// Karta SLD-SKALA-I-NAWIGACJA: zaznaczenie po zapisie idzie jedyną drogą
+// (`zaznaczElementModelu`) do REALNEGO sklepu selekcji — asercje czytają sklep.
+afterEach(() => {
+  sklepSelekcji.getState().clearSelection();
+});
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -24,13 +31,18 @@ const snapshotState = {
 };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return {
+    ...oryginal,
+    useSnapshotStore };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -39,7 +51,9 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationForm: () => activeForm,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({ navigateToSld: () => navigateToSldMock() }));
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  navigateToSld: () => navigateToSldMock() }));
 
 vi.mock('../../../../ui/selection', () => ({
   useSelectionStore: (selector: (s: { selectElement: typeof selectElementMock; centerSldOnElement: typeof centerSldOnElementMock }) => unknown) =>
@@ -114,7 +128,7 @@ describe('KreatorPomiaru — realna ścieżka', () => {
       );
     });
     expect(closeFormMock).toHaveBeenCalled();
-    expect(selectElementMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'ct-x', type: 'Measurement' }));
+    expect(sklepSelekcji.getState().selectedElement).toEqual(expect.objectContaining({ id: 'ct-x', type: 'Measurement' }));
   });
 
   it('wariant VT używa operacji add_vt i pól napięciowych', async () => {

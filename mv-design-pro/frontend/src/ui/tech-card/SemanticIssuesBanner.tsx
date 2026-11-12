@@ -5,24 +5,23 @@
  * dotyczące tego elementu (element_id === elementId).
  *
  * BINDING: 100% PL etykiety.
+ *
+ * Wejście na schemat: wspólny przycisk „Pokaż na schemacie" (karta
+ * SLD-SKALA-I-NAWIGACJA). Dawna etykieta „Uzupełnij moc odbioru" obiecywała
+ * naprawę, a wykonywała wyłącznie zaznaczenie — skasowana razem z callbackiem.
  */
 
 import { clsx } from 'clsx';
 import type { SemanticIssue } from '../../types/domainOps';
+import { PrzyciskPokazNaSchemacie } from '../../ui2/shared/PrzyciskPokazNaSchemacie';
 
 interface SemanticIssuesBannerProps {
   issues: SemanticIssue[];
   /** Filtruj tylko issue-y dotyczące tego elementu. Jeśli undefined, pokazuje wszystkie. */
   elementId?: string;
-  onSelectElement?: (ref: string) => void;
 }
 
-function issueActionLabel(issue: SemanticIssue): string {
-  if (issue.code === 'semantic.zero_power_load') return 'Uzupełnij moc odbioru';
-  return 'Pokaż element';
-}
-
-export function SemanticIssuesBanner({ issues, elementId, onSelectElement }: SemanticIssuesBannerProps) {
+export function SemanticIssuesBanner({ issues, elementId }: SemanticIssuesBannerProps) {
   const filtered = elementId
     ? issues.filter((i) => i.element_id === elementId)
     : issues;
@@ -49,15 +48,13 @@ export function SemanticIssuesBanner({ issues, elementId, onSelectElement }: Sem
                 Sugestia: {issue.suggested_fix}
               </div>
             )}
-            {!elementId && issue.element_id && onSelectElement && (
-              <button
-                type="button"
-                onClick={() => onSelectElement(issue.element_id!)}
-                className="text-blue-600 hover:underline mt-0.5"
-                data-testid={`semantic-issue-action-${issue.code}`}
-              >
-                {issueActionLabel(issue)}
-              </button>
+            {!elementId && issue.element_id && (
+              <PrzyciskPokazNaSchemacie
+                elementRef={issue.element_id}
+                zrodlo="baner-problemow-semantycznych"
+                testId={`semantic-issue-action-${issue.code}`}
+                className="mt-0.5"
+              />
             )}
           </li>
         ))}

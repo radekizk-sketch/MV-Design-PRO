@@ -5,7 +5,6 @@
  */
 
 export { EnmInspectorPage } from './EnmInspectorPage';
-export { EnmTree } from './EnmTree';
 export { DiagnosticsPanel } from './DiagnosticsPanel';
 export { PreflightMatrix } from './PreflightMatrix';
 export { useEnmInspectorStore } from './store';

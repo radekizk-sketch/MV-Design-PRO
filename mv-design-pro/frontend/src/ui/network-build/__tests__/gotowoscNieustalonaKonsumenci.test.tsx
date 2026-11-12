@@ -32,6 +32,11 @@
  * `ui/engineering-readiness/DataGapPanel.tsx`) SKASOWANI — pozycje LEGACY_USUNAC
  * E40/E25 inwentarza werdyktów (brak konsumenta produkcyjnego: tylko eksport z
  * barrela). Ich przypadki zeszły razem z nimi; numeracja pozostałych zostaje.
+ *
+ * KARTA SLD-SKALA-I-NAWIGACJA (2026-11-11): konsument 6/7 (pasek kontekstu budowy,
+ * `ui/network-build/TopContextBar.tsx`) SKASOWANY — zero montaży produkcyjnych
+ * (tylko eksport z barrela), a jego wyszukiwarka wysyłała zdarzenie DOM bez
+ * odbiorcy. Przypadki 6/7 zeszły razem z nim; numeracja pozostałych zostaje.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
@@ -46,7 +51,6 @@ import { useAppStateStore } from '../../app-state';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { ProcessPanel } from '../ProcessPanel';
-import { TopContextBar } from '../TopContextBar';
 import { ReadinessBlockersReview } from '../mass-review/ReadinessBlockersReview';
 import { useSelectionStore } from '../../selection/store';
 import { getProject } from '../../projects/api';
@@ -186,7 +190,6 @@ function Probe() {
       <SondaBudowy />
       <KropkaElementu />
       {/* V12K-319 (karta X3): trzej pozostali konsumenci tej samej klasy. */}
-      <TopContextBar />
       <ReadinessBlockersReview />
       <ProcessPanel />
     </>
@@ -345,33 +348,6 @@ describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () 
     });
   });
 
-  describe('6/7 pasek kontekstu budowy', () => {
-    it('NIEUSTALONA → brak zielonej plakietki „Układ bez zagadnień konfiguracji"', async () => {
-      await uruchom('nieustalona');
-
-      expect(await screen.findByTestId('top-context-gotowosc-nieustalona')).toBeInTheDocument();
-      expect(screen.queryByText('Układ bez zagadnień konfiguracji')).toBeNull();
-    });
-
-    it('USTALONA z blokadami → plakietka nazywa liczbę zagadnień', async () => {
-      await uruchom('ustalona-z-blokadami');
-
-      await waitFor(() => {
-        expect(screen.getByText(/zagadnień konfiguracji/)).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('top-context-gotowosc-nieustalona')).toBeNull();
-    });
-
-    it('USTALONA bez uwag → zielona plakietka nadal działa', async () => {
-      await uruchom('ustalona-bez-uwag');
-
-      await waitFor(() => {
-        expect(screen.getByText('Układ bez zagadnień konfiguracji')).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('top-context-gotowosc-nieustalona')).toBeNull();
-    });
-  });
-
   describe('7/7 panel procesu — sterowanie obliczeniami', () => {
     it('NIEUSTALONA → nie twierdzi „0 zagadnień technicznych"', async () => {
       await uruchom('nieustalona');
@@ -432,9 +408,11 @@ describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () 
       return !/readinessUstalona|gotowoscUstalona/.test(tresc);
     });
 
-    // Test miałby wartość zerową, gdyby nie znalazł żadnego czytelnika.
+    // Test miałby wartość zerową, gdyby nie znalazł żadnego czytelnika. Po kasacji
+    // martwego paska kontekstu budowy (`TopContextBar`, karta SLD-SKALA-I-NAWIGACJA)
+    // czytelnikiem w module zostaje panel procesu — skan ma go znaleźć.
     const czytelnicy = pliki.filter((s) => readFileSync(s, 'utf-8').includes('blockersByCategory'));
-    expect(czytelnicy.length).toBeGreaterThanOrEqual(2);
+    expect(czytelnicy.map((s) => s.split('/').pop())).toContain('ProcessPanel.tsx');
     expect(bezOslony).toEqual([]);
   });
 });

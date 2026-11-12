@@ -20,6 +20,11 @@ import type {
   SelectedElement,
 } from '../types';
 import { refModeluElementu, useSnapshotStore } from '../topology/snapshotStore';
+import {
+  celWskazaniaModelu,
+  type ProjekcjaCeluWskazania,
+  type RodzajCeluWskazania,
+} from '../sld/shared/celWskazania';
 
 /**
  * Karta K8 (synchronizacja wynik ↔ schemat): zaznaczenie i wskazanie elementu
@@ -58,6 +63,16 @@ export interface WskazanieSld {
   readonly ref: string;
   readonly seq: number;
   readonly tryb: TrybWskazaniaSld;
+  /**
+   * Karta INSPEKTOR-I-NAWIGACJA (P0 jeden cel, P1 wskazanie celu), pola addytywne: rodzaj obiektu
+   * (stacja / pole / aparat / szyna / transformator…), stacja nadrzędna i projekcja schematu
+   * (`'nn'` — obiekt rysowany w projekcji nN stacji, nie na schemacie SN), z rekordów modelu
+   * (`celWskazaniaModelu` — ta sama reguła co stacja w karcie inspektora). `null` — ref nieznany
+   * migawce albo napięcie szyny nieznane (uczciwy brak, bez zgadywania).
+   */
+  readonly rodzaj: RodzajCeluWskazania | null;
+  readonly stacjaRef: string | null;
+  readonly projekcja: ProjekcjaCeluWskazania | null;
 }
 
 interface SelectionState {
@@ -217,8 +232,17 @@ export const useSelectionStore = create<SelectionState>()(
         set((state) => {
           if (!elementId) return { sldWskazanie: null };
           const seq = state.sldWskazanieSeq + 1;
+          const ref = naRefModelu(elementId);
+          const cel = celWskazaniaModelu(useSnapshotStore.getState().snapshot, ref);
           return {
-            sldWskazanie: { ref: naRefModelu(elementId), seq, tryb },
+            sldWskazanie: {
+              ref,
+              seq,
+              tryb,
+              rodzaj: cel?.rodzaj ?? null,
+              stacjaRef: cel?.stacjaRef ?? null,
+              projekcja: cel?.projekcja ?? null,
+            },
             sldWskazanieSeq: seq,
           };
         }),

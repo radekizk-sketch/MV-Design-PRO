@@ -7,7 +7,7 @@
  * fixtures 1:1 z `build_migotanie_view`.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { SekcjaMigotania } from '../EkranJakosci';
@@ -15,6 +15,8 @@ import { JAKOSC_STRINGS } from '../strings';
 import { MIGOTANIE_FIXTURE, przebiegTestowy } from './fixtures';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 
 vi.mock('../api', () => ({
   fetchWiarygodnoscZwarciowa: vi.fn(),
@@ -37,6 +39,15 @@ function propsMigotanie(over = {}) {
 
 beforeEach(() => {
   mockedMigotanie.mockReset();
+  // Szyny przyłączenia z fixtury istnieją w modelu (akcja tylko dla elementu na schemacie).
+  ustawMigawkeZElementami([
+    { kolekcja: 'buses', id: 'bus-oze-1', name: 'Szyna OZE 1' },
+    { kolekcja: 'buses', id: 'bus-oze-2', name: 'Szyna OZE 2' },
+  ]);
+});
+
+afterEach(() => {
+  useSnapshotStore.setState({ snapshot: null });
 });
 
 describe('SekcjaMigotania — stany', () => {

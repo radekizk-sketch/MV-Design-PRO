@@ -243,7 +243,7 @@ import {
   resultPointsInStationNnBoard,
   type ResultPointCoverage,
 } from './resultRefBridge';
-import { normalizeResultLabelAnalysis } from './resultLabelTemplates';
+import { normalizeResultLabelAnalysis } from '../../shared/resultLabelTemplates';
 // S9-13 (audyt W-8): PORÓWNANIE A/B Z KANWY — jawne wejście w tryb różnic
 // z panelu filtrów warstwy wynikowej (wybór drugiego UKOŃCZONEGO przebiegu
 // tego samego rodzaju i przypadku; stan i powody blokady z JEDNEGO rachunku).

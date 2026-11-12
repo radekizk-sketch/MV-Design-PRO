@@ -9,6 +9,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorTransformatoraSnNn } from '../KreatorTransformatoraSnNn';
+import { useSelectionStore as sklepSelekcji } from '../../../../ui/selection/store';
+
+// Karta SLD-SKALA-I-NAWIGACJA: zaznaczenie po zapisie idzie jedyną drogą
+// (`zaznaczElementModelu`) do REALNEGO sklepu selekcji — asercje czytają sklep.
+afterEach(() => {
+  sklepSelekcji.getState().clearSelection();
+});
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -35,13 +42,17 @@ const snapshotState = {
 };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
   return {
+    ...oryginal,
     useSnapshotStore,
     selectBusOptions: (snap: typeof snapshotState.snapshot | null) =>
       (snap?.buses ?? []).map((b) => ({ ref_id: b.ref_id, name: b.name, voltage_kv: b.voltage_kv })),
@@ -54,7 +65,8 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationContext: () => context,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 
@@ -186,11 +198,13 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     // Wielokierunkowe wiązanie (V12K-073): nowy transformator zaznaczony,
     // SLD wycentrowany, przejście na schemat.
     await waitFor(() => {
-      expect(selectElementMock).toHaveBeenCalledWith(
+      expect(sklepSelekcji.getState().selectedElement).toEqual(
         expect.objectContaining({ id: 'tr-created', type: 'TransformerBranch' }),
       );
     });
-    expect(centerSldOnElementMock).toHaveBeenCalledWith('tr-created', 'kotwicz');
+    // Wskazanie kamery po zapisie idzie tylko dla elementu w migawce SKLEPU (tu sklep
+    // jest podmieniony bez nowego elementu) — reguła przypięta w selekcjaPoOperacji.test.tsx.
+    expect(sklepSelekcji.getState().sldWskazanie).toBeNull();
     expect(navigateToSldMock).toHaveBeenCalled();
   });
 

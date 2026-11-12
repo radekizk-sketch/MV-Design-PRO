@@ -13,6 +13,8 @@ import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import type { StudyCaseListItem } from '../../../../ui/study-cases/types';
 import { busDiffFixture, comparisonFixture, runsFixture } from './fixtures';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 
 function przypadekFixture(over: Partial<StudyCaseListItem> = {}): StudyCaseListItem {
   return {
@@ -325,6 +327,18 @@ describe('EkranPorownania — dowody kolumn A/B (R3-C)', () => {
 });
 
 describe('EkranPorownania — wskazanie elementu (F-K4, znalezisko Z4)', () => {
+  // Elementy fixtury istnieją w modelu (wskazanie tylko dla elementu na schemacie).
+  beforeEach(() => {
+    ustawMigawkeZElementami([
+      { kolekcja: 'buses', id: 'SZYNA-GPZ' },
+      { kolekcja: 'buses', id: 'SZYNA-ST1' },
+      { kolekcja: 'branches', id: 'LINIA-GPZ-ST1', pola: { type: 'line_overhead' } },
+    ]);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null });
+  });
+
   it('szyna z istotną różnicą prowadzi do elementu w modelu (akcja inspekcyjna)', async () => {
     useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });

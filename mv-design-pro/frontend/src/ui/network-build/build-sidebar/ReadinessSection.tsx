@@ -13,8 +13,6 @@ export interface ReadinessItem {
   readonly status: ReadinessStatus;
   readonly missingFieldsPl?: readonly string[];
   readonly blockingObjectsCount?: number;
-  readonly onShowOnSld?: () => void;
-  readonly onFillData?: () => void;
 }
 
 export interface ReadinessSectionProps {
@@ -67,30 +65,6 @@ export function ReadinessSection(props: ReadinessSectionProps): JSX.Element {
             {item.blockingObjectsCount !== undefined && item.blockingObjectsCount > 0 && (
               <div className="mt-1 text-[10px] text-scada-muted">
                 Obiekty do konfiguracji: {item.blockingObjectsCount}
-              </div>
-            )}
-            {(item.onShowOnSld || item.onFillData) && (
-              <div className="mt-1 flex gap-1">
-                {item.onShowOnSld && (
-                  <button
-                    type="button"
-                    data-testid={`readiness-show-sld-${item.id}`}
-                    onClick={item.onShowOnSld}
-                    className="rounded border border-scada-border px-1.5 py-0.5 text-[10px] text-scada-text hover:bg-scada-active"
-                  >
-                    Pokaż na SLD
-                  </button>
-                )}
-                {item.onFillData && (
-                  <button
-                    type="button"
-                    data-testid={`readiness-fill-${item.id}`}
-                    onClick={item.onFillData}
-                    className="rounded border border-scada-border px-1.5 py-0.5 text-[10px] text-scada-text hover:bg-scada-active"
-                  >
-                    Skonfiguruj
-                  </button>
-                )}
               </div>
             )}
           </div>

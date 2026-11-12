@@ -42,6 +42,7 @@ import {
   type WkladZwarciowy,
 } from './zwarciaModel';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 export interface WkladyZwarcioweProps {
   /** Nazwa wybranego punktu zwarcia (nagłówek sekcji, pierwszy plan). */
@@ -129,7 +130,7 @@ export function WkladyZwarciowe({
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
   const [filtr, setFiltr] = useState('');
-  const [wybranyWklad, setWybranyWklad] = useState<string | null>(null);
+  const [wybranyWklad, setWybranyWklad] = useWyborPowrotu('wybor:wklady-zwarciowe');
 
   // Klik wiersza wkładu: ten sam wiersz → zwiń (toggle), inny → rozwiń.
   const przelaczWklad = (klucz: string) =>

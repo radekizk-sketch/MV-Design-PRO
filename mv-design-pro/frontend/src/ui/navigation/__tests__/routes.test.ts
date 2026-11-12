@@ -6,13 +6,14 @@ import {
   isAnalysisRouteAlias,
   navigateToCaseConfig,
   navigateToCompare,
-  navigateToNetworkBuild,
+  navigateToSld,
   navigateToProof,
   navigateToResults,
   navigateToResultsPowerFlow,
   navigateToResultsProtection,
   resolveAnalysisRouteAliasTab,
 } from '../routes';
+import { useSelectionStore } from '../../selection/store';
 
 function getHashParts() {
   const [hash, query = ''] = window.location.hash.split('?');
@@ -24,7 +25,10 @@ function getHashParts() {
 
 describe('routes V12.5', () => {
   beforeEach(() => {
-    window.location.hash = '#analysis?run=run-1&sel=bus-1&tab=compare';
+    // Adres i store selekcji zgodne (stan po synchronizacji selekcji z adresem): przejście
+    // aplikacji pisze do adresu tożsamość BIEŻĄCEJ selekcji (`nawigujHashAplikacji`).
+    useSelectionStore.getState().selectElement({ id: 'bus-1', type: 'Bus', name: 'Szyna 1' });
+    window.location.hash = '#analysis?run=run-1&sel=bus-1&type=Bus&name=Szyna+1&tab=compare';
   });
 
   it('resolves canonical analysis route from hash with query params', () => {
@@ -94,7 +98,7 @@ describe('routes V12.5', () => {
     expect(location.hash).toBe('#case-config');
     expect(location.params.has('tab')).toBe(false);
 
-    navigateToNetworkBuild();
+    navigateToSld();
     location = getHashParts();
     expect(location.hash).toBe('#sld');
     expect(location.params.has('tab')).toBe(false);

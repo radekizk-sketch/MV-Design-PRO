@@ -28,13 +28,11 @@ import {
   podzialNaWykresy,
   pustyFormularz,
   polaScenariuszaDoFormularza,
-  typZaznaczenia,
   wierszeWykresu,
   zakresPola,
   zbudujHarmonogram,
   zbudujNastawy,
   zdarzenieDoFormularza,
-  type OpisElementu,
   type OpisScenariusza,
   type PrzebiegiDynamiki,
   type ScenariuszDynamiki,
@@ -301,37 +299,5 @@ describe('harmonogram z formularza — pole × typ × stan', () => {
       .find((r) => r.rodzaj === 'zwarcie')!
       .pola.find((p) => p.nazwa === 'polozenie_wzgledne')!;
     expect(zakresPola(polozenie)).toBe('(0; 1)');
-  });
-});
-
-describe('typZaznaczenia — kolekcja × dyskryminator', () => {
-  const el = (kolekcja: string | null, typ: string | null): OpisElementu => ({
-    ref_id: 'x',
-    nazwa: 'x',
-    rodzaj_pl: 'x',
-    kolekcja,
-    typ,
-  });
-  it.each([
-    ['buses', null, 'Bus'],
-    ['branches', 'line_overhead', 'LineBranch'],
-    ['branches', 'cable', 'LineBranch'],
-    ['branches', 'switch', 'Switch'],
-    ['branches', 'breaker', 'Switch'],
-    ['branches', 'disconnector', 'Switch'],
-    ['branches', 'fuse', 'Switch'],
-    ['transformers', null, 'TransformerBranch'],
-    ['generators', null, 'Generator'],
-    ['sources', null, 'Source'],
-    ['loads', null, 'Load'],
-    [null, null, null],
-  ] as const)('%s / %s → %s', (kolekcja, typ, oczekiwany) => {
-    expect(typZaznaczenia(el(kolekcja, typ))).toBe(oczekiwany);
-  });
-
-  it('każdy element wyniku sceny ma typ zaznaczenia (schemat → element istnieje)', () => {
-    for (const element of Object.values(WYNIK.opis_wyniku.elementy)) {
-      expect(typZaznaczenia(element)).not.toBeNull();
-    }
   });
 });

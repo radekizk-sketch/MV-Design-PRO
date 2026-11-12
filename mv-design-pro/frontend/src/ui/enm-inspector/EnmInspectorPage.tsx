@@ -2,10 +2,14 @@
  * EnmInspectorPage — Główna strona Inspektora ENM (v4.2).
  *
  * Widoki:
- * - Drzewo ENM (Bus, Branch, Transformer, Source, Load, Generator)
- * - Panel diagnostyki (lista E-Dxx, filtry, severity)
+ * - Panel diagnostyki (lista E-Dxx, filtry, severity) — wiersz zaznacza element,
+ *   „Pokaż na schemacie" wchodzi na schemat (jedna droga, `ui2/shell/zaznaczElementModelu`)
  * - Macierz analiz (pre-flight)
- * - Diff rewizji ENM
+ * - Referencje
+ *
+ * Karta SLD-SKALA-I-NAWIGACJA: zakładka „Drzewo ENM" SKASOWANA — renderowała drzewo
+ * z list zaszytych na sztywno jako puste („Demo data"), więc zawsze była pusta
+ * (fantom). Drzewo modelu żyje w lewym panelu powłoki (`DrzewoPrzestrzeni`).
  *
  * Zasady UX:
  * - PL nazwy i komunikaty
@@ -16,21 +20,19 @@
  * CANONICAL: Inspektor operuje na ENM, nie na canvasie SLD.
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAppStateStore } from '../app-state';
-import { useSelectionStore } from '../selection';
+import { zaznaczElementModelu } from '../../ui2/shell/zaznaczElementModelu';
 import { useEnmInspectorStore } from './store';
-import { EnmTree } from './EnmTree';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { PreflightMatrix } from './PreflightMatrix';
 import { ReferencePanel } from './ReferencePanel';
 import { fetchDiagnostics, fetchPreflight } from './api';
 import type { DiagnosticReport, PreflightReport, DiagnosticIssue } from './types';
 
-type InspectorTab = 'tree' | 'diagnostics' | 'preflight' | 'reference';
+type InspectorTab = 'diagnostics' | 'preflight' | 'reference';
 
 const TABS: { id: InspectorTab; label: string }[] = [
-  { id: 'tree', label: 'Drzewo ENM' },
   { id: 'diagnostics', label: 'Diagnostyka' },
   { id: 'preflight', label: 'Pre-flight' },
   // Reference Engine V1 (REFERENCE_ENGINE_SPEC_V1.md §9): Reference Score +
@@ -40,7 +42,6 @@ const TABS: { id: InspectorTab; label: string }[] = [
 
 export function EnmInspectorPage() {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
-  const selectElement = useSelectionStore((s) => s.selectElement);
   const { activeTab, setActiveTab } = useEnmInspectorStore();
 
   // Data state
@@ -91,48 +92,14 @@ export function EnmInspectorPage() {
     };
   }, [activeCaseId]);
 
-  // Handle issue click → select affected elements in SLD
-  const handleIssueClick = useCallback(
-    (issue: DiagnosticIssue) => {
-      if (issue.affected_refs.length > 0) {
-        // Select the first affected element
-        const firstRef = issue.affected_refs[0];
-        selectElement({
-          id: firstRef,
-          type: 'Bus', // Default — the SLD will resolve the correct type
-          name: firstRef.slice(0, 12),
-        });
-        useEnmInspectorStore.getState().setSelectedElementId(firstRef);
-      }
-    },
-    [selectElement],
-  );
-
-  // Handle tree element selection → highlight in SLD
-  const handleSelectElement = useCallback(
-    (elementId: string, elementType: string) => {
-      selectElement({
-        id: elementId,
-        type: elementType as 'Bus' | 'LineBranch' | 'TransformerBranch' | 'Switch' | 'Source' | 'Load',
-        name: elementId.slice(0, 12),
-      });
-    },
-    [selectElement],
-  );
-
-  // Demo data for tree (in production, this comes from network model API)
-  const treeData = useMemo(
-    () => ({
-      buses: [],
-      lines: [],
-      cables: [],
-      transformers: [],
-      switches: [],
-      sources: [],
-      loads: [],
-    }),
-    [],
-  );
+  // Klik pozycji diagnostyki → przeglądanie pierwszego dotkniętego elementu
+  // (jedna droga: typ z migawki modelu, nie zgadywany).
+  const handleIssueClick = useCallback((issue: DiagnosticIssue) => {
+    const firstRef = issue.affected_refs[0];
+    if (!firstRef) return;
+    zaznaczElementModelu(firstRef, 'inspektor-modelu');
+    useEnmInspectorStore.getState().setSelectedElementId(firstRef);
+  }, []);
 
   return (
     <div
@@ -183,13 +150,6 @@ export function EnmInspectorPage() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'tree' && (
-          <EnmTree
-            {...treeData}
-            issues={diagnosticReport?.issues ?? []}
-            onSelectElement={handleSelectElement}
-          />
-        )}
         {activeTab === 'diagnostics' && (
           <DiagnosticsPanel
             report={diagnosticReport}

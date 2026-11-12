@@ -825,36 +825,3 @@ export function zakresPola(pole: OpisPola): string | null {
   if (lewy === null && prawy === null) return null;
   return `${lewy ?? '(−∞'}; ${prawy ?? '∞)'}`;
 }
-
-/**
- * Typ elementu zaznaczenia na schemacie z kolekcji i dyskryminatora elementu w migawce
- * biegu (`opis_wyniku.elementy[ref].kolekcja/typ`). Łączniki leżą w kolekcji gałęzi.
- */
-export function typZaznaczenia(
-  element: OpisElementu | undefined,
-):
-  | 'Bus'
-  | 'LineBranch'
-  | 'Switch'
-  | 'TransformerBranch'
-  | 'Generator'
-  | 'Source'
-  | 'Load'
-  | null {
-  switch (element?.kolekcja) {
-    case 'buses':
-      return 'Bus';
-    case 'branches':
-      return element.typ === 'line_overhead' || element.typ === 'cable' ? 'LineBranch' : 'Switch';
-    case 'transformers':
-      return 'TransformerBranch';
-    case 'generators':
-      return 'Generator';
-    case 'sources':
-      return 'Source';
-    case 'loads':
-      return 'Load';
-    default:
-      return null;
-  }
-}

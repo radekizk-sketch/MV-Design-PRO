@@ -31,8 +31,10 @@ import {
   RODZAJE_KARTY,
   WYMAGANE_POLA_KARTY,
   buildKartaTechniczna,
+  kluczPradowZnamionowych,
   kluczeKarty,
   type KartaTechniczna,
+  type ObliczeniaKarty,
   type KatalogiKarty,
   type RodzajKarty,
   type WierszKarty,
@@ -438,7 +440,7 @@ const WSKAZANIE: Readonly<Record<RodzajKarty, Pick<DaneElementuKanwy, 'kind' | '
  * decyzja: brak parametru nie usuwa wiedzy o połączeniach.
  */
 const Z_TOPOLOGII: Readonly<Record<RodzajKarty, readonly string[]>> = {
-  stacja: ['rodzaj', 'podstawa_rodzaju', 'sekcje_sn', 'tabela:pola_sn', 'nn_sekcje', 'nn_odplywy', 'nn_odbiory', 'nn_zrodla', 'tabela:przylaczenia', 'nazwa_naglowka'],
+  stacja: ['rodzaj', 'uklad_sn', 'sekcje_sn', 'tabela:pola_sn', 'tabela:tr_karta', 'nn_sekcje', 'nn_odplywy', 'nn_odbiory', 'nn_zrodla', 'tabela:przylaczenia', 'nazwa_naglowka'],
   // „przekladniki" to lista z modelu: pole bez przekładnika to fakt „brak w modelu", nie luka.
   pole: ['rola', 'stacja', 'szyna', 'tabela:aparaty', 'przylaczenie', 'przekladniki'],
   aparat: ['nazwa', 'rodzaj', 'pole', 'stacja', 'stan'],
@@ -447,12 +449,27 @@ const Z_TOPOLOGII: Readonly<Record<RodzajKarty, readonly string[]>> = {
   odcinek: ['rodzaj', 'od', 'do'],
   zrodlo: ['rodzaj', 'stacja', 'wariant', 'szyna_przylaczenia', 'pole_zrodlowe', 'tr_blokowy', 'kabel_sn'],
   siec_zasilajaca: ['stacja', 'szyna'],
-  szyna: ['stacja', 'pola', 'galezie'],
+  szyna: ['stacja', 'sekcja', 'tor_zasilania', 'stan_toru', 'aparaty', 'przylaczenia'],
 };
 
 function karta(rodzaj: RodzajKarty, wariant: Wariant): KartaTechniczna {
   const snapshot = model(wariant);
-  const wynik = buildKartaTechniczna(snapshot, WSKAZANIE[rodzaj] as DaneElementuKanwy, wariant === 'pelne' ? KATALOGI : undefined);
+  // Dane pełne: prądy znamionowe transformatora z obliczeń backendu (`ObliczeniaKarty`) — bez
+  // nich wiersz pokazuje brak z przyczyną, nigdy liczbę policzoną we froncie.
+  const obliczenia: ObliczeniaKarty = {
+    pradyZnamionowe: new Map(
+      (snapshot.transformers ?? [])
+        .map((tr) => kluczPradowZnamionowych(tr))
+        .filter((k): k is string => k !== null)
+        .map((k) => [k, { pierwotnyA: 24.25, wtornyA: 909.3, podstawaPl: 'IEC 60076-1' }] as const),
+    ),
+  };
+  const wynik = buildKartaTechniczna(
+    snapshot,
+    WSKAZANIE[rodzaj] as DaneElementuKanwy,
+    wariant === 'pelne' ? KATALOGI : undefined,
+    wariant === 'pelne' ? obliczenia : undefined,
+  );
   expect(wynik, `karta ${rodzaj} (${wariant})`).not.toBeNull();
   expect(wynik!.rodzaj).toBe(rodzaj);
   return wynik!;
@@ -525,21 +542,19 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
   // (rola ważniejsza dla inżyniera niż rodzaj aparatu głównego — decyzja architekta pkt 1).
   // Aparaty i ich znamiona, zabezpieczenie i przekładniki mówi karta pola, typ katalogowy
   // aparatu — karta aparatu (jedna informacja w jednym miejscu) — przypięte niżej.
-  it('stacja, dane pełne: zwarta tabela pól — pole, nr, rola, stan; reszta na karcie pola i aparatu', () => {
+  it('stacja, dane pełne: zwarta tabela pól — pole, funkcja, sekcja, aparaty; reszta na karcie pola i aparatu', () => {
     const k = karta('stacja', 'pelne');
     const pola = tabele(k).get('tabela:pola_sn')!;
-    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Nr', 'Pole', 'Rola', 'Stan']);
+    // Karta INSPEKTOR-I-NAWIGACJA I.1: bez kolumny „Rola” i bez „stanu pola” — położenie ma
+    // łącznik, podany przy jego oznaczeniu w kolumnie aparatów.
+    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Pole', 'Funkcja', 'Sekcja', 'Aparaty']);
     expect(pola.zrodloPl ?? null).toBeNull();
     const pole01 = pola.wiersze.find((r) => r.klucz === 'bay-in')!;
-    expect(pole01.komorki).toEqual({
-      nr: '01',
-      pole: 'Pole liniowe 01',
-      rola: 'Pole liniowe wejściowe',
-      stan: 'zamknięty',
-    });
-    // Rola słowami kanonu ról pól, także dla pola bez aparatu w modelu.
+    expect(pole01.komorki).toMatchObject({ pole: '01', funkcja: 'Pole liniowe wejściowe', sekcja: 'Sekcja 1' });
+    expect(pole01.komorki.aparaty).toMatch(/ — zamknięty/);
+    // Funkcja słowami kanonu ról pól, także dla pola bez aparatu w modelu.
     const poleTr = pola.wiersze.find((r) => r.klucz === 'bay-tr')!;
-    expect(poleTr.komorki.rola).toBe('Pole transformatorowe');
+    expect(poleTr.komorki.funkcja).toBe('Pole transformatorowe');
     // Znamiona i zabezpieczenie pola z tabeli stacji są na karcie pola.
     const pole = wiersze(karta('pole', 'pelne'));
     expect(pole.get('rola')!.wartosc).toBeTruthy();
@@ -551,8 +566,10 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     const aparaty = tabele(karta('pole', 'pelne')).get('tabela:aparaty')!;
     expect(aparaty.wiersze.find((r) => r.klucz === 'cb-in')!.komorki).toMatchObject({ ur: '24', ir: '630', ik: '20' });
     expect(wiersze(karta('aparat', 'pelne')).get('typ')?.wartosc).toBe('VD4 24 kV 630 A 20 kA');
+    // Transformator: dane znamionowe jednym wierszem, typ i tabliczka na karcie transformatora.
     const tr = wiersze(k);
-    expect(tr.get('tr_typ')!.wartosc).toBe('TNOSCT 630 kVA 15/0,4 kV');
+    expect(tr.has('tr_typ')).toBe(false);
+    expect(wiersze(karta('transformator', 'pelne')).get('tr_typ')!.wartosc).toBe('TNOSCT 630 kVA 15/0,4 kV');
     expect(k.sekcje.find((s) => s.id === 'transformator')!.zrodloPl).toBe('katalog: TNOSCT 630 kVA 15/0,4 kV');
   });
 

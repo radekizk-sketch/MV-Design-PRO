@@ -3,7 +3,10 @@
  *
  *   rodzaj obiektu {stacja · pole · aparat · transformator · źródło OZE · odcinek · węzeł SN}
  *   × działanie {dostępne (klik ma skutek) · niedostępne z przyczyną (klik bez skutku)}
- *   × wyniki {brak · nieaktualne · wartość}.
+ *   × wyniki {brak · nieaktualne · wartość}
+ *   × analiza {rozpływ mocy · obliczenia zwarciowe} (karta INSPEKTOR-I-NAWIGACJA, P0 (b):
+ *     wykaz wielkości z rejestru wspólnego z etykietami kanwy; obiekt, dla którego analiza
+ *     nie wyznacza wielkości, dostaje przyczynę nazywającą analizę i obiekt).
  *
  * Ścieżka natywna: obiekt wskazuje KLIK w uchwyt trafienia kanwy (`data-hit-for`), nie
  * wymuszony stan selekcji — kanwa pisze selekcję i kontekst kliknięcia, inspektor czyta je
@@ -19,256 +22,18 @@
  *  - węzeł SN: brak tematu menu kanwy (punkt odgałęźny świadomie bez menu,
  *    `canvasMenuSubject.ts`), działaniem jest wejście do karty węzła.
  */
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
-import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
-import { useSnapshotStore } from '../../../topology/snapshotStore';
-import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
-import { useNetworkBuildStore } from '../../networkBuildStore';
-import { buildSceneV3, type SceneV3 } from '../../../sld/v3/scene/buildScene';
-import { buildW1MatrixFixture } from '../../../sld/v3/scene/__tests__/fixtures/w1MatrixVariants';
-import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspace';
-import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
-import { InspektorKanwyTestowy } from './inspektorKanwyTestowy';
 import { POWOD_BRAK_PRZEBIEGU_PL } from '../stanPaneluElementu';
-import { useExecutionRunsStore } from '../../../study-cases/runStore';
-import { REWIZJA_BIEGU, biegRejestru, wyczyscRejestrBiegow } from '../../../../test/biegNieaktualny';
-import { wyczyscKontekstWyniku, zasiejWynikWczytany } from '../../../../test/kontekstBiegu';
-import {
-  powiekszKolkiemDoSkali,
-  punktCeluTrafienia,
-  testIdZSelektoraUchwytu,
-} from '../../../sld/v3/canvas/__tests__/kameraTestowa';
+import { PRZYPADKI, kliknijObiekt, otworzPowierzchnie, przygotujIloczyn, ustawWyniki } from './iloczynInspektora';
 
-const here = dirname(fileURLToPath(import.meta.url));
-function wczytaj(...czesci: string[]): EnergyNetworkModel {
-  return (JSON.parse(readFileSync(resolve(here, ...czesci), 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
-}
-const SIEC = wczytaj('..', '..', '..', 'sld', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
-const SIEC_ZKSN = wczytaj('..', '..', '..', 'sld', 'v3', 'scene', '__tests__', 'fixtures', 'elementyCiagu-zksn.enm.json');
-const SIEC_APARATOW = buildW1MatrixFixture().enm;
-
-/** Nakładka wyników z wielkościami dla KAŻDEGO refu modelu (i szyny SN stacji). */
-function nakladkaDlaModelu(enm: EnergyNetworkModel): RawOverlayPayload {
-  const refy = new Set<string>();
-  const zbierz = (wartosc: unknown): void => {
-    if (Array.isArray(wartosc)) wartosc.forEach(zbierz);
-    else if (wartosc && typeof wartosc === 'object') {
-      for (const [klucz, w] of Object.entries(wartosc)) {
-        if ((klucz === 'ref_id' || klucz === 'device_ref') && typeof w === 'string') refy.add(w);
-        else zbierz(w);
-      }
-    }
-  };
-  zbierz(enm);
-  for (const stacja of enm.substations ?? []) refy.add(`${stacja.ref_id.replace(/\/station$/, '')}/sn_bus`);
-  const metryka = (code: string, value: number, unit: string) => ({ code, value, unit });
-  const elements: RawOverlayPayload['elements'] = {};
-  for (const ref of refy) {
-    elements[ref] = {
-      ref_id: ref,
-      kind: 'element',
-      badges: [],
-      severity: 'INFO',
-      metrics: {
-        U_kV: metryka('U_kV', 15.12, 'kV'),
-        U_pu: metryka('U_pu', 1.008, 'p.u.'),
-        P_MW: metryka('P_MW', 0.42, 'MW'),
-        Q_Mvar: metryka('Q_Mvar', 0.11, 'Mvar'),
-        I_A: metryka('I_A', 17.3, 'A'),
-      },
-    };
-  }
-  return { run_id: 'run-iloczyn', analysis_type: 'LOAD_FLOW', elements };
-}
-
-type StanWynikow = 'brak' | 'nieaktualne' | 'wartosc';
-
-/**
- * Wyniki realną ścieżką karty K8: bieg w rejestrze biegów przypadku (bieg oglądany =
- * najnowszy zakończony), jego `results/v1` wczytany do magazynu kontekstu wyniku, a
- * świeżość z JEDNEGO predykatu (`swiezoscBiegu`: rewizja biegu ≠ rewizja modelu ⇒
- * nieaktualny). Nakładka kanwy (`rawResultOverlayStore`) dostaje ten sam payload — w
- * aplikacji pisze ją orkiestrator z tej samej pamięci.
- */
-function ustawWyniki(enm: EnergyNetworkModel, stan: StanWynikow): void {
-  act(() => {
-    // Status wyników PRZYPADKU (serwer) zostaje źródłem dostępności akcji „Pokaż wyniki"
-    // (`kontekstDostepnosciAkcji`) — to werdykt przypadku, nie wybór biegu.
-    useAppStateStore.setState({
-      activeCaseResultStatus: stan === 'brak' ? 'NONE' : stan === 'nieaktualne' ? 'OUTDATED' : 'FRESH',
-    });
-    if (stan === 'brak') {
-      wyczyscRejestrBiegow();
-      wyczyscKontekstWyniku();
-      useRawResultOverlayStore.getState().setPayload(null);
-      return;
-    }
-    const payload = nakladkaDlaModelu(enm);
-    useExecutionRunsStore.setState({ runs: [biegRejestru(payload.run_id, 'LOAD_FLOW')] });
-    useSnapshotStore.setState({
-      rewizjaBiezacegoModelu: stan === 'nieaktualne' ? REWIZJA_BIEGU + 1 : REWIZJA_BIEGU,
-    });
-    zasiejWynikWczytany({
-      runId: payload.run_id,
-      analysisType: payload.analysis_type,
-      elementy: payload.elements,
-      qualityStatus: null,
-      proofStatus: null,
-      runFinishedAt: null,
-    });
-    useRawResultOverlayStore.getState().setPayload(payload);
-  });
-}
-
-
-/**
- * K3 × K6: klik adresujący POLE (nie pojedyncze urządzenie). Aparatura pola pochodzi wyłącznie
- * z rekordów modelu, więc symbol bez `deviceRef` istnieje już tylko jako sylwetka
- * `bayNoEquipment` („brak danych wyposażenia pola") pola, które ma rekord `Bay` w modelu.
- * Dawny predykat szukał łącznika pola stacji z konwencji (bez `deviceRef`) — po K3 takiego
- * symbolu nie ma: łącznik pola stacji niesie ref urządzenia i otwiera kartę aparatu.
- */
-function jestPoleBezRekorduAparatu(s: SceneV3['symbols'][number]): boolean {
-  return (
-    s.symbolId === 'bayNoEquipment' &&
-    s.meta?.elementKind === 'apparatus' &&
-    !s.meta?.deviceRef &&
-    (SIEC.bays ?? []).some((b) => b.ref_id === s.meta?.ownerRef)
-  );
-}
-interface Przypadek {
-  readonly nazwa: string;
-  readonly enm: EnergyNetworkModel;
-  /** Selektor uchwytu trafienia obiektu na kanwie. */
-  readonly uchwyt: (scena: SceneV3) => string;
-  readonly rodzaj: string;
-}
-
-/** Uchwyt stacji jednej sceny (karta SLD-SKALA-I-NAWIGACJA R1): obrys trafienia napisu
- *  identyfikacji `<ref>#name-row-0` — dawniej zwinięty symbol stacji widoku ogólnego. */
-function stacja(scena: SceneV3): string {
-  // Pierwsza stacja obchodu, która MA napis identyfikacji w pasie nazw — GPZ (pierwszy w obchodzie)
-  // ma nagłówek strefy GPZ, nie wiersz `#name-row-0`, więc wskazanie „pierwszy w obchodzie” celowało
-  // w nieistniejący uchwyt.
-  const ref = scena.meta.stationTraversalOrder.find((r) => scena.labels.some((l) => l.ownerRef === `${r}#name-row-0`));
-  expect(ref, 'stacja w scenie').toBeDefined();
-  return `[data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
-}
-
-function symbol(predykat: (s: SceneV3['symbols'][number]) => boolean) {
-  return (scena: SceneV3): string => {
-    const i = scena.symbols.findIndex(predykat);
-    expect(i, 'symbol w scenie').toBeGreaterThanOrEqual(0);
-    return `[data-hit-for="${scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`}"]`;
-  };
-}
-
-const PRZYPADKI: readonly Przypadek[] = [
-  {
-    nazwa: 'stacja',
-    enm: SIEC,
-    uchwyt: stacja,
-    rodzaj: 'station',
-  },
-  {
-    nazwa: 'pole',
-    enm: SIEC,
-    uchwyt: symbol((s) => jestPoleBezRekorduAparatu(s)),
-    rodzaj: 'apparatus',
-  },
-  {
-    nazwa: 'aparat',
-    enm: SIEC_APARATOW,
-    uchwyt: symbol((s) => s.meta?.elementKind === 'apparatus' && Boolean(s.meta?.deviceRef)),
-    rodzaj: 'apparatus',
-  },
-  {
-    nazwa: 'transformator',
-    enm: SIEC,
-    uchwyt: symbol((s) => s.meta?.elementKind === 'transformer'),
-    rodzaj: 'transformer',
-  },
-  {
-    nazwa: 'źródło OZE',
-    enm: SIEC,
-    uchwyt: symbol((s) => s.meta?.elementKind === 'der'),
-    // K6: źródło OZE ma własny rodzaj danych panelu (karta techniczna źródła z torem
-    // przyłączenia) — dawniej panel nie rozpoznawał rodzaju (pusty atrybut).
-    rodzaj: 'generator',
-  },
-  {
-    nazwa: 'odcinek',
-    enm: SIEC,
-    uchwyt: (scena) => {
-      const i = scena.segments.findIndex(
-        (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
-      );
-      expect(i).toBeGreaterThanOrEqual(0);
-      return `[data-hit-for="${scena.segments[i].meta?.testId ?? `sld-v3-segment-${i}`}"]`;
-    },
-    rodzaj: 'cable_run',
-  },
-  {
-    nazwa: 'węzeł SN',
-    enm: SIEC_ZKSN,
-    uchwyt: symbol((s) => s.meta?.elementKind === 'branchPoint'),
-    rodzaj: 'node',
-  },
-];
-
-const otworzPowierzchnie = vi.fn();
-const pierwotneOtwarcie = useNetworkBuildStore.getState().openRouteSurface;
-
-beforeEach(() => {
-  useSnapshotStore.getState().reset();
-  useSelectionStore.getState().clearSelection();
-  useRawResultOverlayStore.getState().clear();
-  useAppStateStore.setState({ activeCaseId: 'case-iloczyn', activeCaseResultStatus: 'NONE' });
-  wyczyscRejestrBiegow();
-  wyczyscKontekstWyniku();
-  useNetworkBuildStore.setState({ openRouteSurface: otworzPowierzchnie });
-  otworzPowierzchnie.mockClear();
-  act(() => useShellStore.getState().setActiveSpace('model'));
-});
-afterEach(() => {
-  cleanup();
-  useKontekstElementuKanwy.getState().wyczysc();
-  useRawResultOverlayStore.getState().clear();
-  useNetworkBuildStore.setState({ openRouteSurface: pierwotneOtwarcie });
-  useAppStateStore.setState({ activeCaseId: null, activeCaseResultStatus: 'NONE' });
-});
+przygotujIloczyn();
 
 describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
-  function kliknij() {
-    useSnapshotStore.setState({ snapshot: przypadek.enm });
-    const { container } = render(
-      <>
-        <SldCanvasV3Workspace width={1322} height={696} />
-        <InspektorKanwyTestowy />
-      </>,
-    );
-    const selektor = przypadek.uchwyt(buildSceneV3(przypadek.enm));
-    // Karta SLD-SKALA-I-NAWIGACJA, R6: obiekt rysunku (aparat, pole, transformator, źródło) jest
-    // własnym celem kliku na kadrze roboczym — z kadru całej sieci klik w jego obręb trafia pole albo
-    // stację. Projektant dojeżdża tam natywnym kółkiem; napis stacji jest uchwytem w każdej skali.
-    // R8: uchwyty stoją tylko w oknie renderu — kółko z kursorem NAD obiektem trzyma go w kadrze.
-    const celUchwytu = testIdZSelektoraUchwytu(selektor);
-    if (celUchwytu) powiekszKolkiemDoSkali(container, 1, punktCeluTrafienia(przypadek.enm, celUchwytu));
-    const uchwyt = container.querySelector(selektor);
-    expect(uchwyt, `uchwyt trafienia ${selektor}`).not.toBeNull();
-    fireEvent.click(uchwyt!, { detail: 1 });
-    const panel = screen.getByTestId('inspektor-element-kanwy');
-    expect(panel).toHaveAttribute('data-rodzaj', przypadek.rodzaj);
-    return panel;
-  }
+  const kliknij = () => kliknijObiekt(przypadek);
 
   for (const stan of ['brak', 'nieaktualne', 'wartosc'] as const) {
     it(`wyniki: ${stan}`, () => {
@@ -283,12 +48,40 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
         const wiersze = within(sekcja).getAllByTestId(/^inspektor-wynik-/);
         expect(wiersze.length).toBeGreaterThan(0);
         // Liczby z nakładki wyników (format polski), nigdy wartość zastępcza.
-        expect(wiersze.map((w) => w.textContent).join(' ')).toMatch(/\d+,\d+ (kV|MW|Mvar|A|p\.u\.)/);
+        expect(wiersze.map((w) => w.textContent).join(' ')).toMatch(/\d+,\d+ (kV|MW|Mvar|MVA|A|%|p\.u\.)/);
         expect(wiersze.map((w) => w.textContent).join(' ')).not.toContain('—');
         expect(within(sekcja).queryByTestId('inspektor-wyniki-nieaktualne') !== null).toBe(stan === 'nieaktualne');
       }
     });
   }
+
+  // Obliczenia zwarciowe: wielkości węzłowe (Ik″, ip, Ith, Sk″) tylko dla punktów zwarcia
+  // (stacja → jej szyna SN, węzeł SN); gałąź, transformator, aparat i źródło dostają przyczynę
+  // z nazwą analizy i obiektu. Dawniej inspektor znał tylko kody rozpływu — szyna z Ik″ w
+  // tabeli zwarć i na kanwie miała w inspektorze „brak wielkości”.
+  it('obliczenia zwarciowe: wykaz z rejestru kanwy albo przyczyna z analizą i obiektem', () => {
+    kliknij();
+    ustawWyniki(przypadek.enm, 'wartosc', 'SC_3F');
+    const sekcja = screen.getByTestId('inspektor-wyniki');
+    expect(sekcja).toHaveAttribute('data-analiza', 'short_circuit');
+    expect(within(sekcja).getByTestId('inspektor-wyniki-tytul').textContent).toBe('Obliczenia zwarciowe');
+    const punktZwarcia = przypadek.rodzaj === 'station' || przypadek.rodzaj === 'node';
+    if (punktZwarcia) {
+      expect(sekcja).toHaveAttribute('data-stan', 'wartosc');
+      const kody = within(sekcja).getAllByTestId(/^inspektor-wynik-/).map((w) => w.getAttribute('data-testid'));
+      expect(kody).toEqual(['inspektor-wynik-IK_3F_A', 'inspektor-wynik-IP_A', 'inspektor-wynik-ITH_A', 'inspektor-wynik-SK_MVA']);
+      expect(within(sekcja).getByTestId('inspektor-wynik-IK_3F_A').textContent).toContain('18,5 kA');
+      expect(within(sekcja).getByTestId('inspektor-wynik-IK_3F_A').textContent).toContain('Prąd zwarciowy początkowy');
+    } else {
+      expect(sekcja).toHaveAttribute('data-stan', 'brak');
+      const powod = within(sekcja).getByTestId('inspektor-wyniki-brak').textContent ?? '';
+      expect(powod).toMatch(/^Obliczenia zwarciowe/);
+      expect(powod).not.toBe(POWOD_BRAK_PRZEBIEGU_PL);
+      // Przyczyna nazywa TEN obiekt — tą samą nazwą co nagłówek inspektora.
+      expect(powod).toContain(screen.getByTestId('inspektor-element-etykieta').textContent ?? '∅');
+    }
+  });
+
 
   if (przypadek.rodzaj === 'node') {
     it('działanie dostępne: wejście do karty węzła otwiera kartę ZK SN z refem węzła; brak paska działań (węzeł bez menu kanwy)', () => {

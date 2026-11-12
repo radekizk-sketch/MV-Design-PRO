@@ -67,13 +67,45 @@ export function usePoprawWModelu() {
 """
 
 
+JEDNA_DROGA_TS = """
+export function pokazElementNaSchemacie(ref) {
+  useSelectionStore.getState().centerSldOnElement(ref, 'kadruj');
+}
+"""
+
+PRZEJSCIA_TS = """
+export function przejdzDoPrzestrzeni(space) {
+  if (space === 'schemat') navigateToSld();
+}
+"""
+
+KANWA_TSX = """
+export function KanwaSchematu(props) {
+  useRejestracjaKanwySchematu();
+  return <SldCanvasV3Workspace {...props} />;
+}
+"""
+
+STORE_SELEKCJI_TS = """
+export const useSelectionStore = create((set) => ({
+  centerSldOnElement: (elementId, tryb = 'kadruj') => set({ cel: celWskazaniaModelu(null, elementId) }),
+}));
+"""
+
+CEL_TS = """
+export function celWskazaniaModelu(model, ref) { return null; }
+"""
+
+
 def zbuduj_front(tmp_path: Path) -> Path:
     """Minimalne, POPRAWNE drzewo frontu — punkt wyjscia kazdego przypadku."""
     src = tmp_path / "frontend" / "src"
     (src / "ui" / "navigation").mkdir(parents=True)
     (src / "ui" / "navigation" / "routes.ts").write_text(ROUTES_TS, encoding="utf-8")
     (src / "ui2" / "search").mkdir(parents=True)
-    (src / "ui2" / "search" / "CommandPalette.tsx").write_text(PALETA_TSX, encoding="utf-8")
+    (src / "ui2" / "search" / "CommandPalette.tsx").write_text(
+        PALETA_TSX, encoding="utf-8"
+    )
     (src / "ui2" / "legacy").mkdir(parents=True)
     (src / "ui2" / "legacy" / "mostObszarow.ts").write_text(MOST_TS, encoding="utf-8")
     (src / "ui2" / "AppRoot.tsx").write_text(APPROOT_TSX, encoding="utf-8")
@@ -88,6 +120,24 @@ def zbuduj_front(tmp_path: Path) -> Path:
     (src / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts").write_text(
         PETLA_TS, encoding="utf-8"
     )
+    (src / "ui2" / "shell").mkdir(parents=True)
+    (src / "ui2" / "shell" / "zaznaczElementModelu.ts").write_text(
+        JEDNA_DROGA_TS, encoding="utf-8"
+    )
+    (src / "ui2" / "shell" / "przejsciaPrzestrzeni.ts").write_text(
+        PRZEJSCIA_TS, encoding="utf-8"
+    )
+    (src / "ui2" / "legacy" / "KanwaSchematu.tsx").write_text(
+        KANWA_TSX, encoding="utf-8"
+    )
+    (src / "ui" / "selection").mkdir(parents=True)
+    (src / "ui" / "selection" / "store.ts").write_text(
+        STORE_SELEKCJI_TS, encoding="utf-8"
+    )
+    (src / "ui" / "sld" / "shared").mkdir(parents=True)
+    (src / "ui" / "sld" / "shared" / "celWskazania.ts").write_text(
+        CEL_TS, encoding="utf-8"
+    )
     return src
 
 
@@ -96,15 +146,47 @@ def przypnij(monkeypatch, src: Path) -> None:
     monkeypatch.setattr(guard, "FRONTEND_SRC", src)
     monkeypatch.setattr(guard, "PLIK_TRAS", src / "ui" / "navigation" / "routes.ts")
     monkeypatch.setattr(guard, "PLIK_MOSTU", src / "ui2" / "legacy" / "mostObszarow.ts")
-    monkeypatch.setattr(guard, "PLIK_PALETY", src / "ui2" / "search" / "CommandPalette.tsx")
+    monkeypatch.setattr(
+        guard, "PLIK_PALETY", src / "ui2" / "search" / "CommandPalette.tsx"
+    )
     monkeypatch.setattr(guard, "PLIK_APPROOT", src / "ui2" / "AppRoot.tsx")
     gotowosc = src / "ui2" / "spaces" / "gotowosc"
     monkeypatch.setattr(guard, "PLIK_AKCJI_NAPRAWCZYCH", gotowosc / "akcjeNaprawcze.ts")
-    monkeypatch.setattr(guard, "PLIK_WYKONAWCY", gotowosc / "fixActionSurfaceExecutor.ts")
+    monkeypatch.setattr(
+        guard, "PLIK_WYKONAWCY", gotowosc / "fixActionSurfaceExecutor.ts"
+    )
     monkeypatch.setattr(
         guard,
         "PLIK_PETLI_WYNIK_MODEL",
         src / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts",
+    )
+    monkeypatch.setattr(
+        guard, "PLIK_JEDNEJ_DROGI", src / "ui2" / "shell" / "zaznaczElementModelu.ts"
+    )
+    monkeypatch.setattr(
+        guard, "PLIK_PRZEJSC", src / "ui2" / "shell" / "przejsciaPrzestrzeni.ts"
+    )
+    monkeypatch.setattr(
+        guard, "PLIK_KANWY", src / "ui2" / "legacy" / "KanwaSchematu.tsx"
+    )
+    monkeypatch.setattr(
+        guard, "PLIK_STORE_SELEKCJI", src / "ui" / "selection" / "store.ts"
+    )
+    monkeypatch.setattr(guard, "KATALOG_INFRASTRUKTURY_TESTOW", src / "test")
+    monkeypatch.setattr(guard, "KATALOG_UI2", src / "ui2")
+    monkeypatch.setattr(guard, "PLIK_ADRESU", src / "ui" / "navigation" / "urlState.ts")
+    monkeypatch.setattr(
+        guard, "PLIK_CELU", src / "ui" / "sld" / "shared" / "celWskazania.ts"
+    )
+    monkeypatch.setattr(
+        guard,
+        "PLIK_KARTY",
+        src / "ui" / "sld" / "shared" / "kartaTechnicznaElementu.ts",
+    )
+    monkeypatch.setattr(
+        guard,
+        "PLIK_WORKSPACE",
+        src / "ui" / "sld" / "v3" / "canvas" / "SldCanvasV3Workspace.tsx",
     )
     monkeypatch.setattr(
         guard,
@@ -120,7 +202,6 @@ def przypnij(monkeypatch, src: Path) -> None:
 
 def test_regula_a_czysto_gdy_trasy_tylko_w_routes(tmp_path, monkeypatch) -> None:
     src = zbuduj_front(tmp_path)
-    (src / "ui2" / "shell").mkdir(parents=True)
     (src / "ui2" / "shell" / "most.ts").write_text(
         "import { ROUTES } from '../../ui/navigation';\nconst a = ROUTES.SLD.hash;\n",
         encoding="utf-8",
@@ -292,7 +373,9 @@ def test_regula_d_lapie_druga_definicje_palety(tmp_path, monkeypatch) -> None:
 
     naruszenia = guard.regula_d_jedna_paleta()
 
-    assert any("[paleta-duplikat]" in wpis and "2 definicje" in wpis for wpis in naruszenia)
+    assert any(
+        "[paleta-duplikat]" in wpis and "2 definicje" in wpis for wpis in naruszenia
+    )
 
 
 def test_regula_d_lapie_duplikat_zapisany_jako_stala(tmp_path, monkeypatch) -> None:
@@ -392,7 +475,9 @@ def test_regula_f_lapie_druga_implementacje_w_approot(tmp_path, monkeypatch) -> 
     )
     przypnij(monkeypatch, src)
 
-    assert any("[naprawa-druga-implementacja]" in w for w in guard.regula_f_akcja_naprawcza())
+    assert any(
+        "[naprawa-druga-implementacja]" in w for w in guard.regula_f_akcja_naprawcza()
+    )
 
 
 def test_regula_f_lapie_niewpieta_droge_naprawy(tmp_path, monkeypatch) -> None:
@@ -430,5 +515,267 @@ def test_regula_f_lapie_drugiego_wolajacego_wykonawce(tmp_path, monkeypatch) -> 
     assert any("[naprawa-wolajacy]" in w for w in guard.regula_f_akcja_naprawcza())
 
 
+# --------------------------------------------------------------------------
+# REGULA G — jedna droga wejscia na schemat
+# --------------------------------------------------------------------------
+
+
+def test_regula_g_czysto_na_minimalnym_drzewie(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Komponent.tsx").write_text(
+        "// dawniej: dispatchEvent('sld:center-on-element') — komentarz to nie kod\n"
+        "export const x = () => pokazElementNaSchemacie(ref, 'tabela');\n",
+        encoding="utf-8",
+    )
+    (src / "test").mkdir()
+    (src / "test" / "schematTestowy.ts").write_text(
+        "export const z = () => renderHook(() => useRejestracjaKanwySchematu());\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_g_jedna_droga_na_schemat() == []
+
+
+def test_regula_g_lapie_martwe_zdarzenie_takze_w_tescie(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "x" / "__tests__").mkdir(parents=True)
+    (src / "ui" / "x" / "__tests__" / "a.test.tsx").write_text(
+        "window.dispatchEvent(new CustomEvent('sld:center-on-element', { detail }));\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-martwe-zdarzenie]" in w
+        for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_wlasna_nawigacje_na_schemat(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "Wiersz.tsx").write_text(
+        "export const klik = () => { selectElement(e); navigateToSld(); };\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-wlasna-nawigacja]" in w
+        for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_przepuszcza_definicje_nawigacji_w_routes(
+    tmp_path, monkeypatch
+) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "navigation" / "routes.ts").write_text(
+        ROUTES_TS + "\nexport function navigateToSld(): void {}\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_g_jedna_droga_na_schemat() == []
+
+
+def test_regula_g_lapie_gole_wskazanie_kamery(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "Drzewo.tsx").write_text(
+        "export const klik = () => useSelectionStore.getState().centerSldOnElement(id);\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-gole-wskazanie]" in w for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_montaz_kanwy_poza_rejestrem(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Warsztat.tsx").write_text(
+        'export const W = () => <SldCanvasV3Workspace mode="edit" />;\n',
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-montaz-poza-rejestrem]" in w
+        for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_druga_rejestracje_montazu(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "InnaKanwa.tsx").write_text(
+        "export const K = () => { useRejestracjaKanwySchematu(); return null; };\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-druga-rejestracja]" in w
+        for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_kanwe_bez_rejestracji(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "legacy" / "KanwaSchematu.tsx").write_text(
+        "export const K = (p) => <SldCanvasV3Workspace {...p} />;\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-kanwa-bez-rejestracji]" in w
+        for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_droge_bez_kamery(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "shell" / "zaznaczElementModelu.ts").write_text(
+        "export function pokazElementNaSchemacie(ref) { selectElement(ref); }\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-droga-pusta]" in w for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_wybor_wiersza_bez_powrotu(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Ekran.tsx").write_text(
+        "const [wybrany, setWybrany] = useState<string | null>(null);\n"
+        "export const E = () => <TabelaWynikow wybranyWiersz={wybrany} />;\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-wybor-bez-powrotu]" in w
+        for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_przepuszcza_wybor_przez_powrot(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Ekran.tsx").write_text(
+        "const [wybrany, setWybrany] = useWyborPowrotu('wybor:ekran');\n"
+        "export const E = () => <TabelaWynikow wybranyWiersz={wybrany} />;\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_g_jedna_droga_na_schemat() == []
+
+
 def test_guard_zielony_na_repozytorium() -> None:
     assert guard.main() == 0
+
+
+def test_regula_g_przepuszcza_zapis_hasha_w_jedynej_funkcji(
+    tmp_path, monkeypatch
+) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "navigation" / "urlState.ts").write_text(
+        "export function nawigujHashAplikacji(t: string) { window.location.hash = t; }\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert not any(
+        "[schemat-zapis-adresu]" in w for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_zapis_hasha_poza_jedyna_funkcja(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Menu.tsx").write_text(
+        "export function idz() { window.location.hash = '#sld'; }\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    naruszenia = guard.regula_g_jedna_droga_na_schemat()
+    assert any("[schemat-zapis-adresu]" in w and "Menu.tsx:1" in w for w in naruszenia)
+
+
+def test_regula_g_porownanie_hasha_nie_jest_zapisem(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Czyt.tsx").write_text(
+        "export const czy = window.location.hash === '#sld';\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert not any(
+        "[schemat-zapis-adresu]" in w for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+# --------------------------------------------------------------------------
+# REGULA G — wybor projekcji (karta INSPEKTOR-I-NAWIGACJA, P0 jedna droga)
+# --------------------------------------------------------------------------
+
+
+def test_regula_g_czysto_gdy_cel_tylko_w_store_i_karcie(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "sld" / "shared" / "kartaTechnicznaElementu.ts").write_text(
+        "const s = celWskazaniaModelu(model, ref);\n", encoding="utf-8"
+    )
+    (src / "ui" / "sld" / "v3" / "canvas").mkdir(parents=True)
+    (src / "ui" / "sld" / "v3" / "canvas" / "SldCanvasV3Workspace.tsx").write_text(
+        "const p = <LvDomainPortal stationRef={s} />;\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert not any("projekcj" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_lapie_drugie_wyprowadzenie_celu(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Wyniki.tsx").write_text(
+        "const cel = celWskazaniaModelu(model, ref);\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    naruszenia = guard.regula_g_jedna_droga_na_schemat()
+    assert any(
+        "[schemat-druga-projekcja]" in w and "Wyniki.tsx:1" in w for w in naruszenia
+    )
+
+
+def test_regula_g_lapie_projekcje_nn_poza_workspace(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Nn.tsx").write_text(
+        "const p = <LvDomainPortal stationRef={s} />;\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    naruszenia = guard.regula_g_jedna_droga_na_schemat()
+    assert any("[schemat-druga-projekcja]" in w and "Nn.tsx:1" in w for w in naruszenia)
+
+
+def test_regula_g_lapie_wskazanie_bez_projekcji(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "selection" / "store.ts").write_text(
+        "export const s = { centerSldOnElement: (id) => set({ ref: id }) };\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    naruszenia = guard.regula_g_jedna_droga_na_schemat()
+    assert any("[schemat-wskazanie-bez-projekcji]" in w for w in naruszenia)
+
+
+def test_regula_g_lapie_brak_definicji_celu(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "sld" / "shared" / "celWskazania.ts").write_text(
+        "export {};\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-brak-celu]" in w for w in guard.regula_g_jedna_droga_na_schemat()
+    )

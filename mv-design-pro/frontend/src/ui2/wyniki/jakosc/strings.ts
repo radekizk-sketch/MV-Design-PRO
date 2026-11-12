@@ -125,7 +125,6 @@ export const JAKOSC_STRINGS = {
   kolumnaDocelowo: 'Docelowo',
   kolumnaSkutek: 'Skutek',
   brakUzasadnieniaK: 'Niepełne uzasadnienie k — brak: ',
-  pokazNaSchemacie: 'Pokaż na schemacie',
   dowodWybierzGalaz: 'Wybierz gałąź w tabeli, aby zobaczyć dowód kryterium.',
   dowodBlad: 'Nie udało się pobrać dowodu dla tej gałęzi.',
   kolStatusWalidacji: 'Status',

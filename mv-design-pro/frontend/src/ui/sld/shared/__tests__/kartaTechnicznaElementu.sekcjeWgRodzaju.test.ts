@@ -5,7 +5,9 @@
  *   rodzaj stacji (9 wartości `station_type`)
  *   × treść modelu {same szyny SN · transformator SN/nN ze stroną nN · odbiór SN na szynie stacji}
  *   → zestaw i kolejność sekcji karty (identyfikacja, zasilanie, transformator, sekcje szyn,
- *     rozdzielnica SN, strona nN, przyłączenia) oraz wiersz „Podstawa rodzaju”;
+ *     rozdzielnica SN, strona nN, przyłączenia) oraz wiersz „Podstawa rodzaju” (karta
+ *     INSPEKTOR-I-NAWIGACJA I.1: przyczynę rodzaju mówi „Układ rozdzielnicy SN”, więc wiersz
+ *     stoi tylko, gdy niesie więcej — rodzaj nierozpoznany albo deklaracja inna, W043);
  *
  *   GPZ × {sieć zasilająca przypisana do GPZ · sieć tylko na szynie GPZ · brak sieci}
  *       × {transformator 110 kV/SN w modelu · brak} × {stan minimalny sieci w modelu · brak};
@@ -26,6 +28,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Substation } from '../../../../types/enm';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
 import { buildKartaTechniczna, KATALOGI_PUSTE, kluczeKarty, type KartaTechniczna, type KatalogiKarty } from '../kartaTechnicznaElementu';
+import { rodzajStacji } from '../../../shared/rodzajStacji';
 
 type RodzajStacji = Substation['station_type'];
 type Tresc = 'szyny_sn' | 'transformator_nn' | 'odbior_sn';
@@ -150,11 +153,15 @@ describe('karta stacji — rodzaj stacji × treść modelu → sekcje', () => {
       expect(odbiory?.lista ?? []).toEqual([]);
     });
 
-    it(`${rodzaj}: wiersz „Podstawa rodzaju” ${BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj) ? 'nieobecny (rodzaj topologiczny nie dotyczy)' : 'obecny'}`, () => {
-      const klucze = kluczeKarty(kartaStacji(model(rodzaj, 'szyny_sn')));
-      expect(klucze.includes('podstawa_rodzaju')).toBe(!BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj));
-      const tekst = JSON.stringify(kartaStacji(model(rodzaj, 'szyny_sn')));
-      expect(tekst).not.toContain('nie dotyczy');
+    it(`${rodzaj}: wiersz „Podstawa rodzaju” tylko z informacją ponad układ rozdzielnicy`, () => {
+      const m = model(rodzaj, 'szyny_sn');
+      const k = kartaStacji(m);
+      const wynik = BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj) ? null : rodzajStacji(m, ST);
+      const potrzebny = !BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj) && (wynik === null || !wynik.zgodnyZDeklaracja);
+      expect(kluczeKarty(k).includes('podstawa_rodzaju')).toBe(potrzebny);
+      const podstawa = k.sekcje.flatMap((sek) => sek.wiersze).find((w) => w.klucz === 'podstawa_rodzaju');
+      if (potrzebny && wynik) expect(podstawa?.wartosc).toMatch(/walidator W043/);
+      expect(JSON.stringify(k)).not.toContain('nie dotyczy');
     });
   }
 
@@ -305,48 +312,35 @@ describe('przyłączenia × rodzaj stacji × położenie odcinka', () => {
   }
 });
 
-describe('tabela pól stacji × numer pola', () => {
-  it.each([
-    ['żadne pole nie ma numeru', null, ['Pole', 'Rola', 'Stan']],
-    ['pole ma numer', '07', ['Nr', 'Pole', 'Rola', 'Stan']],
-  ] as const)('%s → kolumny %j', (_opis, numer, kolumny) => {
-    const k = kartaStacji(model('mv_lv', 'szyny_sn', { numerPola: numer }));
-    const tabela = k.sekcje.find((s) => s.id === 'rozdzielnica_sn')!.tabele!.find((t) => t.klucz === 'pola_sn')!;
-    expect(tabela.kolumny.map((c) => c.etykieta)).toEqual(kolumny);
-    expect(tabela.wiersze[0].komorki.nr).toBe(numer ?? 'bez numeru');
-    // Rola słowami kanonu ról pól (`FIELD_ROLE_LABEL_PL`), nie kodem modelu.
-    expect(tabela.wiersze[0].komorki.rola).toBe('Pole liniowe wyjściowe');
-  });
-});
-
-// Opis bez powtórzeń (decyzja architekta pkt 1): nazwa pola zaczynająca się etykietą roli niesie
-// rolę — komórka nazwy obejmuje kolumnę roli (`polaczone`). Iloczyn: nazwa {zaczyna się rolą,
-// inna, rola bez granicy słowa} × rodzaj stacji {GPZ, SN/nN} × numer {jest, brak}; kolumna „Nr”
-// zawsze przed „Pole”, więc scalane kolumny sąsiadują.
-describe('tabela pól stacji × nazwa pola × rola (opis bez powtórzeń)', () => {
-  const przypadki = [
-    ['Pole liniowe wyjściowe 1', true],
-    ['pole liniowe wyjściowe', true],
-    ['Pole liniowe wyjściowe2', false],
-    ['Pole liniowe L1', false],
-  ] as const;
+// Karta INSPEKTOR-I-NAWIGACJA I.1 (werdykt właściciela B-02): tabela pól to oznaczenie, funkcja,
+// sekcja i powiązane aparaty — bez kolumny „Rola” (scalanej z nazwą, przez co wyglądała na pustą)
+// i bez „stanu pola” (położenie ma łącznik). Intencja dawnych testów (rola słowami kanonu, numer
+// pola z modelu) zostaje. Iloczyn: rodzaj stacji {GPZ, SN/nN} × numer {jest, brak} × nazwa pola
+// {zaczyna się rolą, inna}.
+describe('tabela pól stacji × rodzaj stacji × numer pola × nazwa pola', () => {
   for (const rodzaj of ['gpz', 'mv_lv'] as const) {
     for (const numer of ['07', null] as const) {
-      for (const [nazwa, scalona] of przypadki) {
-        it(`${rodzaj} · nr ${numer ?? 'brak'} · „${nazwa}” → rola ${scalona ? 'scalona z nazwą' : 'osobno'}`, () => {
+      for (const nazwa of ['Pole liniowe wyjściowe 1', 'Pole liniowe L1'] as const) {
+        it(`${rodzaj} · nr ${numer ?? 'brak'} · „${nazwa}”`, () => {
           const k = kartaStacji(model(rodzaj, 'szyny_sn', { numerPola: numer, nazwaPola: nazwa }));
           const tabela = k.sekcje.find((s) => s.id === 'rozdzielnica_sn')!.tabele!.find((t) => t.klucz === 'pola_sn')!;
+          expect(tabela.kolumny.map((c) => c.etykieta)).toEqual(
+            rodzaj === 'gpz' ? ['Pole', 'Funkcja', 'Aparaty'] : ['Pole', 'Funkcja', 'Sekcja', 'Aparaty'],
+          );
           const [wiersz] = tabela.wiersze;
-          expect(wiersz.komorki.pole).toBe(nazwa);
-          expect(wiersz.komorki.rola).toBe('Pole liniowe wyjściowe');
-          expect(wiersz.polaczone ?? []).toEqual(scalona ? ['rola'] : []);
-          const klucze = tabela.kolumny.map((c) => c.klucz);
-          expect(klucze.indexOf('rola')).toBe(klucze.indexOf('pole') + 1);
+          // Oznaczenie: numer pola z modelu, inaczej pozycja (F01) — jak identyfikator globalny.
+          expect(wiersz.komorki.pole).toBe(numer ?? 'F01');
+          // Funkcja słowami kanonu ról pól (`FIELD_ROLE_LABEL_PL`), nie kodem modelu.
+          expect(wiersz.komorki.funkcja).toBe('Pole liniowe wyjściowe');
+          expect(wiersz.polaczone ?? []).toEqual([]);
+          expect(Object.keys(wiersz.komorki)).not.toContain('stan');
+          expect(Object.keys(wiersz.komorki)).not.toContain('rola');
         });
       }
     }
   }
 });
+
 
 describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
   function gpz(siec: 'przypisana' | 'na_szynie' | 'brak', tr110: boolean, zMin = false): KartaTechniczna {
@@ -401,10 +395,12 @@ describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
         if (siec === 'brak') expect(zasilanie.pustaPl).toBe('GPZ nie ma w modelu sieci zasilającej.');
         const tr = k.sekcje.find((s) => s.id === 'transformator');
         if (tr110) {
+          // Karta stacji: dane znamionowe jednym wierszem i przejście do karty transformatora;
+          // tabliczka (uₖ, straty, zaczepy) jest na karcie transformatora, nie powtarzana tu.
           const w = new Map(tr!.wiersze.map((x) => [x.klucz, x.wartosc]));
-          expect(w.get('tr_sn')).toBe('25 MVA');
-          expect(w.get('tr_uk')).toBe('11 %');
-          expect(w.get('tr_napiecia')).toContain('110 kV');
+          expect(w.get('tr_dane')).toMatch(/^25 000 kVA · 110\/15 kV/);
+          expect(w.has('tr_uk')).toBe(false);
+          expect(tr!.tabele?.[0].wiersze[0].cel).toMatchObject({ rodzaj: 'transformator' });
         } else {
           expect(tr).toBeUndefined();
         }

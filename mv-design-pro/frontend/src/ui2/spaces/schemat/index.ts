@@ -6,3 +6,4 @@
 
 export { PrzelacznikPodgladu } from './PrzelacznikPodgladu';
 export { SCHEMAT_STRINGS } from './strings';
+export { PowrotDoEkranu } from './PowrotDoEkranu';

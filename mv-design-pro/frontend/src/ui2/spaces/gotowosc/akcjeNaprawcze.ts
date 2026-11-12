@@ -41,10 +41,11 @@ import { useSelectionStore } from '../../../ui/selection/store';
 import { resolveSelectedElementFromSnapshot } from '../../../ui/shared/selectionResolution';
 import { getOperationSurfaceByOp } from '../../../ui/topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import type { FixAction } from '../../../ui/types';
+import type { FixAction, SelectedElement } from '../../../ui/types';
 import { OPERATION_FORM_REGISTRY } from '../../../ui/workspace/operationFormRegistry';
 import { emituj } from '../../events';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+import { pokazElementNaSchemacie } from '../../shell/zaznaczElementModelu';
 import { SPACES, type SpaceId } from '../../shell/spaces';
 import { useShellStore } from '../../shell/useShellStore';
 import type { ZakladkaId } from '../wyniki/obszary';
@@ -643,7 +644,11 @@ export function wykonajAkcjeNaprawcza(problem: ProblemGotowosci): void {
   }
 
   if (!akcja) {
-    przejdzDoPrzestrzeni('schemat');
+    // Bez rozwiązanej akcji: sam element na schemacie (jedna droga), a bez
+    // elementu — przestrzeń „Schemat".
+    if (!problem.elementRef || !pokazElementNaSchemacie(problem.elementRef, 'panel-gotowosci')) {
+      przejdzDoPrzestrzeni('schemat');
+    }
     return;
   }
   if (akcja.rodzaj === 'odmowa') {
@@ -664,13 +669,23 @@ export function wykonajAkcjeNaprawcza(problem: ProblemGotowosci): void {
     return;
   }
 
-  przejdzDoPrzestrzeni('schemat');
-  const selekcja = useSelectionStore.getState();
+  // Jedna droga wejścia na schemat (karta SLD-SKALA-I-NAWIGACJA, część W) PRZED
+  // formularzem: `pokazElementNaSchemacie` zapisuje „Wróć do: Gotowość" i przełącza
+  // przestrzeń, a ref spoza migawki dostaje zaznaczenie opisowe i samo przejście.
+  let naSchemacie = false;
+  const pokazNaSchemacie = (ref: string, zastepczy: SelectedElement | null): void => {
+    naSchemacie = true;
+    if (pokazElementNaSchemacie(ref, 'panel-gotowosci')) return;
+    if (zastepczy) useSelectionStore.getState().selectElement(zastepczy);
+    przejdzDoPrzestrzeni('schemat');
+  };
+  const przygotuj = { snapshot, pokazNaSchemacie, notify };
   executeFixActionSurface(akcja.akcja, {
-    snapshot,
-    openOperationForm: useNetworkBuildStore.getState().openOperationForm,
-    selectElement: selekcja.selectElement,
-    centerSldOnElement: selekcja.centerSldOnElement,
-    notify,
+    ...przygotuj,
+    openOperationForm: (op, kontekst) => {
+      // Akcja bez celu na schemacie: formularz i tak żyje nad kanwą schematu.
+      if (!naSchemacie) przejdzDoPrzestrzeni('schemat');
+      useNetworkBuildStore.getState().openOperationForm(op, kontekst);
+    },
   });
 }

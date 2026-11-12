@@ -1,12 +1,14 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { KrokDowodu } from '../KrokDowodu';
 import { mapujKroki } from '../dowodModel';
-import { DOWOD_STRINGS } from '../strings';
+import { ETYKIETA_POKAZ_NA_SCHEMACIE } from '../../../shell/zaznaczElementModelu';
 import { subskrybuj } from '../../../events';
 import { traceStepsFixture } from './fixtures';
 import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 
 function model() {
   return mapujKroki(traceStepsFixture());
@@ -99,6 +101,21 @@ describe('KrokDowodu — klucze nieznane a tryb zaawansowania', () => {
 });
 
 describe('KrokDowodu — powiązanie krok → element (magistrala zdarzeń)', () => {
+  // Przycisk istnieje wyłącznie dla elementu obecnego w migawce modelu (jeden
+  // predykat z akcją: `elementNaSchemacie`) — migawka realnego sklepu.
+  beforeEach(() => {
+    ustawMigawkeZElementami([{ kolekcja: 'buses', id: 'BUS-GPZ' }]);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null });
+  });
+
+  it('element kroku nieobecny w modelu: brak przycisku (nie ma czego pokazać)', () => {
+    useSnapshotStore.setState({ snapshot: null });
+    render(<KrokDowodu krok={model()[0]} szczegolyAudytowe={false} />);
+    expect(screen.queryByTestId('mvd-dowod-pokaz-na-schemacie')).not.toBeInTheDocument();
+  });
+
   it('krok z element_id ma przycisk „Pokaż na schemacie" emitujący selekcję ze źródłem „dowod"', () => {
     const handler = vi.fn();
     const odsub = subskrybuj('selekcja', handler);
@@ -116,7 +133,7 @@ describe('KrokDowodu — powiązanie krok → element (magistrala zdarzeń)', ()
   it('przycisk używa etykiety PL', () => {
     render(<KrokDowodu krok={model()[0]} szczegolyAudytowe={false} />);
     expect(
-      screen.getByRole('button', { name: DOWOD_STRINGS.pokazNaSchemacie }),
+      screen.getByRole('button', { name: ETYKIETA_POKAZ_NA_SCHEMACIE }),
     ).toBeInTheDocument();
   });
 });

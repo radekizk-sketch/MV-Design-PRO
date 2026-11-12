@@ -9,7 +9,3 @@ export {
   useMultiSelection,
   useBlockedActionMessage,
 } from './store';
-
-export {
-  useGlobalSelectionSync,
-} from './hooks';

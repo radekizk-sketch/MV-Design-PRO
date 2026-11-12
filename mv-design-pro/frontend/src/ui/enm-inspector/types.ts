@@ -60,36 +60,6 @@ export interface PreflightReport {
 }
 
 // ---------------------------------------------------------------------------
-// ENM Diff API response types
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ENM Tree types
-// ---------------------------------------------------------------------------
-
-export type EnmEntityType =
-  | 'bus'
-  | 'line'
-  | 'cable'
-  | 'transformer'
-  | 'switch'
-  | 'source'
-  | 'load'
-  | 'station';
-
-export interface EnmTreeNode {
-  id: string;
-  label: string;
-  entityType: EnmEntityType;
-  entityId: string;
-  children?: EnmTreeNode[];
-  voltageLevelKv?: number;
-  stationName?: string;
-  issueCount?: number;
-  issueSeverity?: DiagnosticSeverity;
-}
-
-// ---------------------------------------------------------------------------
 // Severity display helpers
 // ---------------------------------------------------------------------------
 

@@ -25,22 +25,28 @@ vi.mock('../../app-state', () => ({
 // JEDNA prawda gotowości (KD-1 / V12K-286): przegląd blokad czyta problemy
 // przez `gotowoscAdapter` z `useSnapshotStore.readiness` — scena zasila TO pole
 // (dawna atrapa `readinessLiveStore` była osobnym, nigdy nieodświeżanym źródłem).
-vi.mock('../../topology/snapshotStore', () => ({
-  useSnapshotStore: (
-    selector: (state: { snapshot: unknown; fixActions: []; readiness: ReadinessInfo | null }) => unknown,
-  ) =>
-    selector({
-      snapshot: {
-        sources: [{ ref_id: 'src-1' }],
-        branches: [{ type: 'cable' }],
-        substations: [],
-        transformers: [],
-        generators: [],
-      },
-      fixActions: [],
-      readiness: readinessZListy(scena.problemy),
-    }),
-}));
+vi.mock('../../topology/snapshotStore', async (importOriginal) => {
+  const stan = (): { snapshot: unknown; fixActions: never[]; readiness: ReadinessInfo | null } => ({
+    snapshot: {
+      sources: [{ ref_id: 'src-1' }],
+      branches: [{ type: 'cable' }],
+      substations: [],
+      transformers: [],
+      generators: [],
+    },
+    fixActions: [],
+    readiness: readinessZListy(scena.problemy),
+  });
+  return {
+    ...(await importOriginal<Record<string, unknown>>()),
+    // `getState` czyta przycisk „Pokaż na schemacie" wiersza (predykat obecności elementu).
+    useSnapshotStore: Object.assign(
+      (selector: (state: ReturnType<typeof stan>) => unknown) =>
+        selector(stan()),
+      { getState: stan },
+    ),
+  };
+});
 
 vi.mock('../../selection', () => ({
   useSelectionStore: (

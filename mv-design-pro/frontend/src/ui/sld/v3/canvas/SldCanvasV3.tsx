@@ -130,7 +130,7 @@ import {
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import { isExceedanceSeverity, resultRefForSegment } from './resultLabels';
 import { nosnikiZnacznikowStanu, znacznikiStanu, type ZnacznikStanu } from './znacznikiStanu';
-import { resultLabelLines, RESULT_LABEL_TREND_GLYPH } from './resultLabelTemplates';
+import { resultLabelLines, RESULT_LABEL_TREND_GLYPH } from '../../shared/resultLabelTemplates';
 import { czytelnyNaEkranie, klasaInformacjiEtykiety } from './gestoscInformacji';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';

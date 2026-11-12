@@ -11,12 +11,13 @@
  * Zmiana wartości wyłącznie operacją domenową (kreator edycji parametrów),
  * a przycisk „Zmień" pojawia się tylko w trybie edycji modelu.
  */
-import { useEffect, useRef, type JSX } from 'react';
+import { useEffect, useRef, type JSX, type ReactNode } from 'react';
 
 import { TekstZWzorami, tekstBezWzorow } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import {
   BRAK_DANYCH_PL,
+  ID_SEKCJI_KATALOGU,
   type AkcjaWiersza,
   type AkcjaWierszaKarty,
   type CelAkcjiKarty,
@@ -351,8 +352,12 @@ export function KartaTechnicznaElementu({
   onAkcja,
   onAkcjaKarty = null,
   sekcjaWyrozniona = null,
+  przedKatalogiem = null,
 }: {
   readonly karta: KartaTechniczna;
+  /** Stany i wyniki obiektu — renderowane po parametrach i połączeniach, przed sekcją „Katalog”
+   *  (karta INSPEKTOR-I-NAWIGACJA, kolejność paneli 1–6). */
+  readonly przedKatalogiem?: ReactNode;
   /** `null` — tryb bez edycji modelu (wyniki, tylko do odczytu): przyciski „Zmień" ukryte. */
   readonly onEdytuj: ((edycja: EdycjaWiersza) => void) | null;
   /** Otwarcie karty obiektu z wiersza tabeli (aparat pola); brak — wiersze bez przejścia. */
@@ -365,19 +370,29 @@ export function KartaTechnicznaElementu({
   /** Id sekcji, do której prowadzi kliknięty obiekt rysunku (`null` — żadna). */
   readonly sekcjaWyrozniona?: string | null;
 }): JSX.Element {
+  const sekcja = (s: SekcjaKarty) => (
+    <Sekcja
+      key={s.id}
+      sekcja={s}
+      onEdytuj={onEdytuj}
+      onOtworz={onOtworz ?? null}
+      onAkcja={onEdytuj ? onAkcja ?? null : null}
+      onAkcjaKarty={onAkcjaKarty}
+      wyrozniona={s.id === sekcjaWyrozniona}
+    />
+  );
   return (
-    <div className="mvd-kt" data-testid="inspektor-karta" data-rodzaj-karty={karta.rodzaj}>
-      {karta.sekcje.map((s) => (
-        <Sekcja
-          key={s.id}
-          sekcja={s}
-          onEdytuj={onEdytuj}
-          onOtworz={onOtworz ?? null}
-          onAkcja={onEdytuj ? onAkcja ?? null : null}
-          onAkcjaKarty={onAkcjaKarty}
-          wyrozniona={s.id === sekcjaWyrozniona}
-        />
-      ))}
+    <div
+      className="mvd-kt"
+      data-testid="inspektor-karta"
+      data-rodzaj-karty={karta.rodzaj}
+      data-element-ref={karta.elementRef}
+      data-stacja-ref={karta.stacjaRef ?? undefined}
+      data-stacja-nazwa={karta.stacjaNazwa ?? undefined}
+    >
+      {karta.sekcje.filter((s) => s.id !== ID_SEKCJI_KATALOGU).map(sekcja)}
+      {przedKatalogiem}
+      {karta.sekcje.filter((s) => s.id === ID_SEKCJI_KATALOGU).map(sekcja)}
     </div>
   );
 }

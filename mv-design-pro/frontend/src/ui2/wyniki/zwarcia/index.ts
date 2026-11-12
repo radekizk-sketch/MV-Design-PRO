@@ -13,7 +13,7 @@ export { SladZrodelSieciowych } from './SladZrodelSieciowych';
 export type { SladZrodelSieciowychProps } from './SladZrodelSieciowych';
 export { PasmoMinMax } from './PasmoMinMax';
 export type { PasmoMinMaxProps } from './PasmoMinMax';
-export { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
+export { refPunktuZwarcia, useNakladkaZwarciaNaSchemacie } from './pokazNaSchemacie';
 export { WykresIkssChart } from './WykresIkssChart';
 export { WykresZwarc } from './WykresZwarc';
 export { WykresUdzialowChart } from './WykresUdzialowChart';

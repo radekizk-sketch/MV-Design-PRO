@@ -17,6 +17,8 @@ import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildS
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import type {
   WierszStanuFazowego,
@@ -287,6 +289,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  useSnapshotStore.setState({ snapshot: null });
 });
 
 // Realna ścieżka wejścia (karta B-02 / W3-E): hub „Analizy techniczne" ZSZEDŁ z
@@ -485,6 +488,8 @@ describe('EkranStanuFazowego — wartości fazowe i werdykty z flag solvera', ()
 describe('EkranStanuFazowego — pętla decyzji (F-K4, znalezisko Z4)', () => {
   it('przekroczona asymetria prowadzi do SZYNY w modelu (realna ścieżka, bez mocka hooka)', async () => {
     ustawKompletnyKontekst();
+    // Szyna przekroczenia istnieje w modelu (akcja tylko dla elementu na schemacie).
+    ustawMigawkeZElementami([{ kolekcja: 'buses', id: 'BUS-SN-01' }]);
     // Fixture ma flagę current_unbalance_alert = true, czyli REALNE przekroczenie
     // z solvera — nie wymuszony stan UI.
     mockFetchStanuFazowego({ run_id: 'run-ps-1', rows: [wierszFixture()] } as WynikiStanuFazowego);

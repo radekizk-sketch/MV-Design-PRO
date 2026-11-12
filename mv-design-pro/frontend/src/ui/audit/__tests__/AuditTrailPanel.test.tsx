@@ -1,11 +1,14 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AuditTrailPanel } from '../AuditTrailPanel';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useSelectionStore } from '../../selection/store';
+import type { EnergyNetworkModel } from '../../../types/enm';
 
 describe('AuditTrailPanel', () => {
   beforeEach(() => {
     useSnapshotStore.getState().reset();
+    useSelectionStore.getState().clearSelection();
   });
 
   it('renderuje empty state gdy brak historii', () => {
@@ -104,9 +107,22 @@ describe('AuditTrailPanel', () => {
     expect(screen.getByText(/Operacje dla elementu \(1\)/)).toBeInTheDocument();
   });
 
-  it('wywołuje onSelectElement po kliknięciu', () => {
-    const onSelect = vi.fn();
+  it('„Pokaż na schemacie" zaznacza element modelu (wspólna droga wejścia)', () => {
     useSnapshotStore.setState({
+      snapshot: {
+        buses: [{ id: 'gpz-1', ref_id: 'gpz-1', name: 'GPZ', voltage_kv: 15 }],
+        branches: [],
+        transformers: [],
+        sources: [],
+        loads: [],
+        generators: [],
+        substations: [],
+        bays: [],
+        junctions: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      } as unknown as EnergyNetworkModel,
       operationHistory: [
         {
           id: 'op-1',
@@ -118,9 +134,30 @@ describe('AuditTrailPanel', () => {
         },
       ],
     });
-    render(<AuditTrailPanel onSelectElement={onSelect} />);
-    fireEvent.click(screen.getByTestId('audit-trail-show-element-op-1'));
-    expect(onSelect).toHaveBeenCalledWith('gpz-1');
+    render(<AuditTrailPanel />);
+    const przycisk = screen.getByTestId('audit-trail-show-element-op-1');
+    expect(przycisk).toHaveTextContent('Pokaż na schemacie');
+    fireEvent.click(przycisk);
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('gpz-1');
+    expect(useSelectionStore.getState().sldWskazanie?.ref).toBe('gpz-1');
+  });
+
+  it('element usunięty z modelu nie ma przycisku (bez martwego kliku)', () => {
+    useSnapshotStore.setState({
+      snapshot: { buses: [], branches: [], transformers: [], sources: [], loads: [], generators: [] } as unknown as EnergyNetworkModel,
+      operationHistory: [
+        {
+          id: 'op-9',
+          timestamp: '2026-05-22T10:30:00Z',
+          operation: 'add_grid_source_sn',
+          elementRef: 'usuniety-1',
+          elementName: 'Usunięty',
+          status: 'success',
+        },
+      ],
+    });
+    render(<AuditTrailPanel />);
+    expect(screen.queryByTestId('audit-trail-show-element-op-9')).toBeNull();
   });
 
   it('search filtruje po nazwie elementu', () => {

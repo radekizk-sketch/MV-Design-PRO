@@ -34,7 +34,7 @@ import { useEffect, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { akcjaNaprawcza, SekcjaZalozen, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
+import { akcjaNaprawcza, SekcjaZalozen, useCelDecyzjiOsiagalny, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
 import {
   fetchWynikiRozplywuNiesymetrycznego,
   fetchWynikiStanuFazowego,
@@ -144,6 +144,7 @@ export function EkranStanuFazowego() {
   const proofRef = zrodlo === 'stan_fazowy' ? wiersz?.proof_ref : rn?.proof_ref;
 
   const poprawWModelu = usePoprawWModelu();
+  const celOsiagalny = useCelDecyzjiOsiagalny();
   const nazwaObiektu = useNazwaObiektu();
 
   const otworzDowod = () => {
@@ -420,7 +421,8 @@ export function EkranStanuFazowego() {
                 modelu — projektant widzi problem i ma stąd drogę do jego
                 przyczyny. Przycisk pojawia się WYŁĄCZNIE przy realnym
                 przekroczeniu (flaga solvera), nigdy „na wszelki wypadek". */}
-            {naPozycjeAsymetrii(wiersz).some((p) => p.werdykt === 'przekroczenie') && (
+            {naPozycjeAsymetrii(wiersz).some((p) => p.werdykt === 'przekroczenie') &&
+              celOsiagalny(wiersz.element_id || wiersz.target_id, 'asymetria-fazowa') && (
               <button
                 type="button"
                 className="mvd-fazowy-popraw"

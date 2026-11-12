@@ -11,14 +11,15 @@
  *  - węzeł SN (ZK SN, słup rozgałęźny) i stan aparatu z rekordu źródła runtime modelu;
  *  - w trybie edycji modelu: stan obiektu (istniejący / projektowany) pola, aparatu pola albo
  *    łącznika poza polem — edytor operacji `set_object_state` (`ui/field/EdytorStanuObiektuPola`);
- *  - „Wyniki" — wielkości elementu z nakładki wyników: brak / nieaktualne / wartość;
+ *  - wyniki oglądanego przebiegu pod nazwą analizy („Obliczenia zwarciowe”, „Rozpływ mocy”) —
+ *    wielkości z rejestru wspólnego z etykietami kanwy: brak z przyczyną / nieaktualne / wartość;
  *  - wejście do pełnej konfiguracji odcinka (E-12) i karty węzła (E-14 / E-15);
  *  - na końcu, ZWINIĘTE, działania z TEGO SAMEGO rejestru i kontekstu dostępności co menu
  *    kontekstowe kanwy (`akcjeElementu`), wykonywane tym samym wykonawcą; pozycja niedostępna
  *    jest nieaktywna (`aria-disabled`) z przyczyną w opisie przycisku.
  * Zero fizyki: każda liczba pochodzi z modelu albo z wyniku backendu.
  */
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 
 import {
   BRAK_TELEMETRII,
@@ -30,43 +31,25 @@ import { SEKCJE_MENU_SLD, type SldMenuAction } from '../../sld/v2/command/SldCom
 import { OPIS_POLOZENIA_PL } from '../../sld/v2/model/stanAparatowPola';
 import { stanKaflaPolozenia } from '../../sld/v3/symbols/glyphs';
 import { STATE_COLOR } from '../../sld/v3/theme/colorTokens';
-import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
+import type { DaneElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { StanObiektuWInspektorze } from '../../field/EdytorStanuObiektuPola';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
-import type { StanPaneluElementu, StanWynikowElementu } from './stanPaneluElementu';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
+import {
+  NAZWA_RODZAJU,
+  TYTUL_WYNIKOW_PL,
+  etykietaElementuKanwy,
+  type StanPaneluElementu,
+  type StanWynikowElementu,
+} from './stanPaneluElementu';
+import type { StanZwarciaElementu, WierszZwarciaElementu, ZestawienieZwarciaElementu } from './zwarcieElementu';
 
 const STYL_SEKCJI = {
   borderColor: 'var(--mvd-line)',
   fontSize: 'var(--mvd-font-size-data)',
   color: 'var(--mvd-ink)',
 } as const;
-
-const NAZWA_RODZAJU: Readonly<Record<NonNullable<RodzajElementuKanwy>, string>> = {
-  station: 'Stacja SN/nN',
-  bay: 'Pole',
-  apparatus: 'Aparat',
-  transformer: 'Transformator',
-  der: 'Źródło rozproszone',
-  cable_run: 'Ciąg SN',
-  node: 'Węzeł sieci SN',
-  generator: 'Źródło OZE',
-  grid_source: 'Sieć zasilająca',
-  bus: 'Szyna',
-};
-
-const REF_WEWNETRZNY = /\b(?:stn|seg|gpz|bus|bay|pv|bess|fw|source)\/[^\s]+/i;
-
-function etykietaPubliczna(wartosc: string | null | undefined): wartosc is string {
-  return Boolean(wartosc && !REF_WEWNETRZNY.test(wartosc));
-}
-
-/** Nazwa obiektu na schemacie — publiczna etykieta, kod stacji albo nazwa rodzaju. */
-export function etykietaElementuKanwy(dane: DaneElementuKanwy): string {
-  if (etykietaPubliczna(dane.label)) return dane.label;
-  if (dane.kind === 'station' && dane.stationCode) return dane.stationCode;
-  return dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element schematu';
-}
 
 export function PasekDzialanElementu({
   akcje,
@@ -82,8 +65,8 @@ export function PasekDzialanElementu({
     .map((grupa) => ({ grupa, pozycje: akcje.filter((akcja) => akcja.section === grupa) }))
     .filter((wpis) => wpis.pozycje.length > 0);
   return (
-    <section data-testid="inspektor-dzialania" aria-label="Działania elementu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
-      <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Działania</h4>
+    <section data-testid="inspektor-dzialania" aria-label="Dostępne czynności" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
+      <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Dostępne czynności</h4>
       {grupy.map(({ grupa, pozycje }) => (
         <div key={grupa} role="group" aria-label={grupa} data-testid={`inspektor-dzialania-${grupa}`} className="flex flex-col gap-1">
           <span style={{ color: 'var(--mvd-muted)' }}>{grupa}</span>
@@ -122,11 +105,18 @@ export function PasekDzialanElementu({
   );
 }
 
-export function SekcjaWynikowElementu({ wyniki }: { readonly wyniki: StanWynikowElementu }): JSX.Element {
+export function SekcjaWynikowElementu({
+  wyniki,
+  zwarcie = { rodzaj: 'nie-dotyczy' },
+}: {
+  readonly wyniki: StanWynikowElementu;
+  readonly zwarcie?: StanZwarciaElementu;
+}): JSX.Element {
+  const tytul = wyniki.analiza ? TYTUL_WYNIKOW_PL[wyniki.analiza] : 'Wyniki obliczeń';
   return (
-    <section data-testid="inspektor-wyniki" data-stan={wyniki.stan} data-run-id={wyniki.runId ?? undefined} data-swiezosc={wyniki.swiezosc ?? undefined} aria-label="Wyniki elementu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
+    <section data-testid="inspektor-wyniki" data-stan={wyniki.stan} data-analiza={wyniki.analiza ?? undefined} data-run-id={wyniki.runId ?? undefined} data-swiezosc={wyniki.swiezosc ?? undefined} aria-label={tytul} className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
       <div className="flex items-center justify-between gap-2">
-        <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Wyniki</h4>
+        <h4 className="font-semibold" data-testid="inspektor-wyniki-tytul" style={{ fontSize: 'var(--mvd-font-size-data)' }}>{tytul}</h4>
         {wyniki.stan === 'nieaktualne' && (
           <span className="mvd-tag mvd-tag-warn" data-testid="inspektor-wyniki-nieaktualne">Nieaktualne</span>
         )}
@@ -140,17 +130,104 @@ export function SekcjaWynikowElementu({ wyniki }: { readonly wyniki: StanWynikow
               Model zmieniono po obliczeniach — wartości dotyczą poprzedniego stanu sieci. Uruchom obliczenia ponownie.
             </p>
           )}
+          {zwarcie.rodzaj === 'gotowe' ? (
+            <ZestawienieZwarcia zestawienie={zwarcie.zestawienie} />
+          ) : (
           <dl className="flex flex-col gap-1">
             {wyniki.metryki.map((metryka) => (
               <div key={metryka.code} className="mvd-kt-wiersz" data-testid={`inspektor-wynik-${metryka.code}`}>
-                <dt className="mvd-kt-etykieta">{metryka.label}</dt>
+                <dt className="mvd-kt-etykieta">
+                  <TekstZWzorami tekst={metryka.symbol ? `${metryka.label} ${metryka.symbol}` : metryka.label} />
+                </dt>
                 <dd className="mvd-kt-wartosc mvd-num">{metryka.value}</dd>
               </div>
             ))}
           </dl>
+          )}
+          {zwarcie.rodzaj === 'wczytywanie' && (
+            <p data-testid="inspektor-zwarcie-stan" data-stan="wczytywanie" style={{ color: 'var(--mvd-muted)' }}>
+              Wczytywanie scenariuszy maksymalnego i minimalnego…
+            </p>
+          )}
+          {zwarcie.rodzaj === 'blad' && (
+            <p data-testid="inspektor-zwarcie-stan" data-stan="blad" style={{ color: 'var(--mvd-warn)' }}>
+              Nie udało się pobrać scenariuszy maksymalnego i minimalnego z serwera — pokazano wartości oglądanego biegu.
+            </p>
+          )}
+          {zwarcie.rodzaj === 'brak-punktu' && (
+            <p data-testid="inspektor-zwarcie-stan" data-stan="brak-punktu" style={{ color: 'var(--mvd-muted)' }}>
+              Scenariusze maksymalny i minimalny nie zawierają tego punktu zwarcia — pokazano wartości oglądanego biegu.
+            </p>
+          )}
         </>
       )}
     </section>
+  );
+}
+
+/** Sekcja zwarć (karta INSPEKTOR-I-NAWIGACJA): rodzaj, wielkości MAKS./MIN. osobno, warunki. */
+/**
+ * Kolumna liczbowa zestawienia: wartość z jednostką w JEDNEJ linii („18,5 kA”), z odstępem od
+ * sąsiedniej kolumny. Oględziny zrzutu `wejscie-z-wynikow-zwarc` (2026-11-12): w wąskim panelu
+ * liczba i jednostka łamały się na dwie linie („18,5 / kA”), a kolumny MAKS. i MIN. sklejały się
+ * („12,8110,44”). Zawija się etykieta wielkości (komórka wiersza z `white-space: normal`
+ * wbrew klasie wiersza karty), nigdy liczba.
+ */
+const KOLUMNA_LICZBOWA = { textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: '0.75rem' } as const;
+
+function ZestawienieZwarcia({ zestawienie }: { readonly zestawienie: ZestawienieZwarciaElementu }): JSX.Element {
+  const wiersz = (w: WierszZwarciaElementu, grupa: string) => (
+    <tr key={w.kod} data-testid={`inspektor-zwarcie-${grupa}-${w.kod}`}>
+      {/* Etykieta wielkości ZAWIJA się (klasa wiersza karty ma `nowrap`, które w tabeli
+          wypychało kolumnę MIN. poza panel — zrzut 2026-11-12), liczby nie. */}
+      <th scope="row" className="mvd-kt-etykieta" style={{ fontWeight: 'normal', textAlign: 'left', whiteSpace: 'normal' }}>
+        <TekstZWzorami tekst={w.symbol ? `${w.etykieta} ${w.symbol}` : w.etykieta} />
+      </th>
+      <td className="mvd-num" data-testid="inspektor-zwarcie-maks" style={KOLUMNA_LICZBOWA}>{w.maks ?? '—'}</td>
+      <td className="mvd-num" data-testid="inspektor-zwarcie-min" style={KOLUMNA_LICZBOWA}>{w.min ?? '—'}</td>
+    </tr>
+  );
+  return (
+    <div data-testid="inspektor-zwarcie" className="flex flex-col gap-1.5">
+      <dl className="flex flex-col gap-1">
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Rodzaj zwarcia</dt>
+          <dd className="mvd-kt-wartosc" data-testid="inspektor-zwarcie-rodzaj">{zestawienie.rodzajPl}</dd>
+        </div>
+      </dl>
+      <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ color: 'var(--mvd-muted)' }}>
+            <th scope="col" style={{ textAlign: 'left', fontWeight: 'normal' }}>Wielkość</th>
+            <th scope="col" style={{ ...KOLUMNA_LICZBOWA, fontWeight: 'normal' }}>Maks.</th>
+            <th scope="col" style={{ ...KOLUMNA_LICZBOWA, fontWeight: 'normal' }}>Min.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {zestawienie.wielkosci.map((w) => wiersz(w, 'wielkosc'))}
+          {zestawienie.warunki.map((w) => wiersz(w, 'warunek'))}
+        </tbody>
+      </table>
+      <dl className="flex flex-col gap-1">
+        {zestawienie.podstawaCPl && (
+          <div className="mvd-kt-wiersz">
+            <dt className="mvd-kt-etykieta">Podstawa współczynnika <TekstZWzorami tekst="$c$" /></dt>
+            <dd className="mvd-kt-wartosc" data-testid="inspektor-zwarcie-podstawa-c">{zestawienie.podstawaCPl}</dd>
+          </div>
+        )}
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Konfiguracja sieci</dt>
+          <dd className="mvd-kt-wartosc" data-testid="inspektor-zwarcie-konfiguracja">{zestawienie.konfiguracjaPl}</dd>
+        </div>
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Model</dt>
+          <dd className="mvd-kt-wartosc" data-testid="inspektor-zwarcie-rewizja">{zestawienie.rewizjaPl}</dd>
+        </div>
+      </dl>
+      {zestawienie.brakStronyPl && (
+        <p data-testid="inspektor-zwarcie-brak-strony" style={{ color: 'var(--mvd-muted)' }}>{zestawienie.brakStronyPl}</p>
+      )}
+    </div>
   );
 }
 
@@ -288,7 +365,7 @@ export function DzialaniaZwiniete({
         className="cursor-pointer px-4 py-2 font-semibold"
         style={{ fontSize: 'var(--mvd-font-size-data)', color: 'var(--mvd-ink)' }}
       >
-        Działania ({liczba})
+        Dostępne czynności ({liczba})
       </summary>
       <PasekDzialanElementu akcje={akcje} onAkcja={onAkcja} />
       {operacje.length > 0 && (
@@ -324,13 +401,29 @@ export function DzialaniaZwiniete({
 export function PanelElementuKanwy({
   stan,
   dzialaniaPoza = false,
+  schematPola = null,
+  dowod = null,
 }: {
   readonly stan: StanPaneluElementu;
+  /** Schemat pola (połączenia i stany aparatów) — w grupie 3, przed wynikami. */
+  readonly schematPola?: ReactNode;
+  /** Dowód obliczeń elementu — w grupie 4, zaraz po sekcji wyników, przed katalogiem. */
+  readonly dowod?: ReactNode;
   /** `true` — działania renderuje wołający na samym końcu inspektora (widok inżynierski, który
    *  pod tym panelem ma jeszcze dowód obliczeń i schemat pola). */
   readonly dzialaniaPoza?: boolean;
 }): JSX.Element {
   const { dane, akcje, wykonajAkcje, wyniki, szkicDer, daneSzkicuDer, konfiguracja, karta, edytuj } = stan;
+  const stanyIWyniki = (
+    <>
+      {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
+      {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}
+      {stan.stanObiektuRef !== null && <StanObiektuWInspektorze elementRef={stan.stanObiektuRef} />}
+      {schematPola}
+      {(dane || stan.temat) && <SekcjaWynikowElementu wyniki={wyniki} zwarcie={stan.zwarcie} />}
+      {dowod}
+    </>
+  );
   const kontekstStacji = dane
     ? [dane.parentStationLabel ?? (dane.kind !== 'station' && dane.stationCode ? `Stacja ${dane.stationCode}` : null), dane.parentBayLabel]
         .filter((czesc): czesc is string => Boolean(czesc))
@@ -340,12 +433,19 @@ export function PanelElementuKanwy({
     <div data-testid="inspektor-element-kanwy" data-rodzaj={dane?.kind ?? ''} data-element-id={dane?.elementId ?? ''}>
       {dane && (
         <div className="flex flex-col gap-0.5 border-b px-4 py-2" style={STYL_SEKCJI} data-testid="inspektor-element-kontekst">
-          <span>
-            <span data-testid="inspektor-element-rodzaj" style={{ color: 'var(--mvd-muted)' }}>
-              {karta?.rodzajPl ?? (dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element')}
-            </span>
-            <span style={{ color: 'var(--mvd-muted)' }}>: </span>
-            <span data-testid="inspektor-element-etykieta" className="font-semibold">{karta?.nazwa ?? etykietaElementuKanwy(dane)}</span>
+          {/* Układ 1 (karta INSPEKTOR-I-NAWIGACJA): nazwa z oznaczeniem, pod nią rodzaj z napięciami. */}
+          <span data-testid="inspektor-element-naglowek" className="font-semibold">
+            {karta?.oznaczenieSchematu && (
+              <>
+                <span data-testid="inspektor-element-oznaczenie" className="mvd-num">{karta.oznaczenieSchematu}</span>
+                {' · '}
+              </>
+            )}
+            <span data-testid="inspektor-element-etykieta">{karta?.nazwa ?? etykietaElementuKanwy(dane)}</span>
+          </span>
+          <span style={{ color: 'var(--mvd-muted)' }}>
+            <span data-testid="inspektor-element-rodzaj">{karta?.rodzajPl ?? (dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element')}</span>
+            {karta?.napieciaPl && <span data-testid="inspektor-element-napiecia">{` · ${karta.napieciaPl}`}</span>}
           </span>
           {kontekstStacji && <span data-testid="inspektor-element-sciezka" style={{ color: 'var(--mvd-muted)' }}>{kontekstStacji}</span>}
           {dane.globalId && (
@@ -354,7 +454,10 @@ export function PanelElementuKanwy({
         </div>
       )}
       {szkicDer && daneSzkicuDer && <FormularzSzkicuDer dane={daneSzkicuDer} derKind={szkicDer.derKind} />}
-      {karta && (
+      {/* Kolejność paneli (karta INSPEKTOR-I-NAWIGACJA) dla każdego rodzaju: 1 nazwa (wyżej),
+          2 parametry, 3 połączenia i stany, 4 wyniki, 5 katalog (końcowa sekcja karty),
+          6 działania (niżej). Stany i wyniki idą do karty przed jej sekcją „Katalog”. */}
+      {karta ? (
         <KartaTechnicznaElementu
           karta={karta}
           onEdytuj={edytuj}
@@ -362,12 +465,11 @@ export function PanelElementuKanwy({
           onAkcja={stan.wykonajAkcjeWiersza}
           onAkcjaKarty={stan.akcjaKarty}
           sekcjaWyrozniona={stan.sekcjaWyrozniona}
+          przedKatalogiem={stanyIWyniki}
         />
+      ) : (
+        stanyIWyniki
       )}
-      {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
-      {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}
-      {stan.stanObiektuRef !== null && <StanObiektuWInspektorze elementRef={stan.stanObiektuRef} />}
-      {(dane || stan.temat) && <SekcjaWynikowElementu wyniki={wyniki} />}
       {konfiguracja && (
         <div className="border-b px-4 py-3" style={STYL_SEKCJI}>
           <button type="button" className="mvd-btn" data-testid="inspektor-otworz-konfiguracje" onClick={konfiguracja.otworz}>

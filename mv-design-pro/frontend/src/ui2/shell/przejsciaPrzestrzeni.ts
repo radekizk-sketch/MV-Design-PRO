@@ -17,10 +17,10 @@
 import { useAppStateStore } from '../../ui/app-state';
 import {
   getCurrentHashRoute,
-  getCurrentSearchParams,
+  nawigujHashAplikacji,
   navigateToAnalysis,
   navigateToCaseConfig,
-  navigateToNetworkBuild,
+  navigateToSld,
 } from '../../ui/navigation';
 import { przestrzenDlaTrasy } from '../legacy/mostObszarow';
 import { runIdOgladanyTeraz } from '../wyniki/kontekst/kontekstWyniku';
@@ -34,8 +34,7 @@ import { useShellStore } from './useShellStore';
  * kontekst (`#?run=…`), co `getCurrentHashRoute` czyta jako „brak trasy".
  */
 function wyczyscTraseZachowujacKontekst(): void {
-  const zapytanie = getCurrentSearchParams().toString();
-  window.location.hash = zapytanie ? `?${zapytanie}` : '';
+  nawigujHashAplikacji('');
 }
 
 /**
@@ -47,7 +46,7 @@ export function mostTrasyPrzestrzeni(space: SpaceId): void {
   const stan = useAppStateStore.getState();
   switch (space) {
     case 'schemat':
-      navigateToNetworkBuild();
+      navigateToSld();
       return;
     case 'obliczenia':
       navigateToCaseConfig({ caseId: stan.activeCaseId });

@@ -7,6 +7,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorOdgalezienia } from '../KreatorOdgalezienia';
+import { useSelectionStore as sklepSelekcji } from '../../../../ui/selection/store';
+
+// Karta SLD-SKALA-I-NAWIGACJA: zaznaczenie po zapisie idzie jedyną drogą
+// (`zaznaczElementModelu`) do REALNEGO sklepu selekcji — asercje czytają sklep.
+afterEach(() => {
+  sklepSelekcji.getState().clearSelection();
+});
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -24,13 +31,18 @@ const snapshot = { branches: [], buses: [], substations: [], sources: [], genera
 const snapshotState = { error: null as string | null, executeDomainOperation: executeDomainOperationMock, snapshot };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return {
+    ...oryginal,
+    useSnapshotStore };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -39,7 +51,8 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationContext: () => context,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 
@@ -117,7 +130,7 @@ describe('KreatorOdgalezienia — realna ścieżka', () => {
       );
     });
     expect(closeFormMock).toHaveBeenCalled();
-    expect(selectElementMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'seg/5', type: 'LineBranch' }));
+    expect(sklepSelekcji.getState().selectedElement).toEqual(expect.objectContaining({ id: 'seg/5', type: 'LineBranch' }));
   });
 
   it('panel teorii renderuje wzory ΔU i Kirchhoffa przez KaTeX (math-rendered)', async () => {

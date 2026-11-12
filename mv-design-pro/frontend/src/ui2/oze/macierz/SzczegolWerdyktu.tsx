@@ -11,8 +11,7 @@
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { ZapisTechniczny } from '../../wyniki/wzorzec/ZapisTechniczny';
-import { usePoprawWModelu } from '../../wyniki/wzorzec/usePoprawWModelu';
-import { akcjaNaprawcza } from '../../wyniki/wzorzec/akcjeNaprawcze';
+import { PrzyciskPokazNaSchemacie } from '../../shared/PrzyciskPokazNaSchemacie';
 import type { ClaimKind } from '../../wyniki/wzorzec/werdykt';
 import type { DefinicjaTestuNcRfg, JednostkiKrokuSladu, KrokSladuNcRfg } from '../ncrfg/typy';
 import type { KomorkaMacierzy } from './macierzModel';
@@ -58,8 +57,6 @@ export function SzczegolWerdyktu({
   jednostkiSladu,
   szczegolyAudytowe,
 }: SzczegolWerdyktuProps): JSX.Element {
-  const pokazElement = usePoprawWModelu();
-  const akcjaInspekcji = akcjaNaprawcza('inspekcja-elementu');
   return (
     <section
       className="mvd-oze-panel"
@@ -97,22 +94,12 @@ export function SzczegolWerdyktu({
 
           {komorka.wynik.ocena.przedmiot.element_ref ? (
             <div className="mvd-oze-panel-blok">
-              <button
-                type="button"
+              <PrzyciskPokazNaSchemacie
+                elementRef={komorka.wynik.ocena.przedmiot.element_ref}
+                zrodlo="macierz-nc-rfg"
                 className="mvd-btn"
-                title={akcjaInspekcji.opis}
-                onClick={() =>
-                  pokazElement(
-                    komorka.wynik.ocena.przedmiot.element_ref as string,
-                    'Generator',
-                    komorka.wynik.ocena.przedmiot.nazwa_pl,
-                    'inspekcja-elementu',
-                  )
-                }
-                data-testid="mvd-oze-szczegol-pokaz-element"
-              >
-                {akcjaInspekcji.etykieta}
-              </button>
+                testId="mvd-oze-szczegol-pokaz-element"
+              />
             </div>
           ) : null}
 

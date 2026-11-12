@@ -1,7 +1,32 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { SemanticIssuesBanner } from '../SemanticIssuesBanner';
 import type { SemanticIssue } from '../../../types/domainOps';
+import type { EnergyNetworkModel } from '../../../types/enm';
+import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useSelectionStore } from '../../selection/store';
+
+const migawka = {
+  buses: [],
+  branches: [],
+  transformers: [],
+  sources: [],
+  loads: [{ id: 'LOAD-1', ref_id: 'LOAD-1', name: 'Odbiór 1', bus_ref: 'B-1' }],
+  generators: [],
+  substations: [],
+  bays: [],
+  junctions: [],
+  corridors: [],
+  measurements: [],
+  protection_assignments: [],
+} as unknown as EnergyNetworkModel;
+
+const stanSnapshot = useSnapshotStore.getState();
+const stanSelekcji = useSelectionStore.getState();
+afterEach(() => {
+  useSnapshotStore.setState(stanSnapshot, true);
+  useSelectionStore.setState(stanSelekcji, true);
+});
 
 function makeIssue(overrides: Partial<SemanticIssue> = {}): SemanticIssue {
   return {
@@ -47,36 +72,31 @@ describe('SemanticIssuesBanner', () => {
     expect(getByText(/Konkretna naprawa/)).toBeTruthy();
   });
 
-  it('Wywołuje onSelectElement po kliknięciu "Pokaż element"', () => {
-    const onSelect = vi.fn();
-    const { getByText } = render(
-      <SemanticIssuesBanner issues={[makeIssue({ element_id: 'EL-99' })]} onSelectElement={onSelect} />,
+  it('Element na schemacie → wspólny przycisk „Pokaż na schemacie" zaznacza go i wskazuje kamerze', () => {
+    useSnapshotStore.setState({ snapshot: migawka });
+    const { getByTestId } = render(
+      <SemanticIssuesBanner issues={[makeIssue({ code: 'semantic.zero_power_load', element_id: 'LOAD-1' })]} />,
     );
-    fireEvent.click(getByText('Pokaż element'));
-    expect(onSelect).toHaveBeenCalledWith('EL-99');
+    const przycisk = getByTestId('semantic-issue-action-semantic.zero_power_load');
+    // Ta sama etykieta dla każdego kodu — dawne „Uzupełnij moc odbioru" obiecywało naprawę.
+    expect(przycisk).toHaveTextContent('Pokaż na schemacie');
+    fireEvent.click(przycisk);
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('LOAD-1');
+    expect(useSelectionStore.getState().sldWskazanie?.ref).toBe('LOAD-1');
   });
 
-  it('Dla odbioru bez P/Q pokazuje akcję uzupełnienia mocy', () => {
-    const onSelect = vi.fn();
-    const { getByText } = render(
-      <SemanticIssuesBanner
-        issues={[makeIssue({ code: 'semantic.zero_power_load', element_id: 'LOAD-1' })]}
-        onSelectElement={onSelect}
-      />,
-    );
-    fireEvent.click(getByText('Uzupełnij moc odbioru'));
-    expect(onSelect).toHaveBeenCalledWith('LOAD-1');
+  it('Element spoza migawki → brak przycisku (bez martwego kliku)', () => {
+    useSnapshotStore.setState({ snapshot: migawka });
+    const { queryByTestId } = render(<SemanticIssuesBanner issues={[makeIssue({ element_id: 'EL-99' })]} />);
+    expect(queryByTestId('semantic-issue-action-semantic.test')).toBeNull();
   });
 
-  it('Nie pokazuje "Pokaż element" gdy filtrujemy po elementId', () => {
+  it('Nie pokazuje przycisku gdy filtrujemy po elementId', () => {
+    useSnapshotStore.setState({ snapshot: migawka });
     const { queryByText } = render(
-      <SemanticIssuesBanner
-        issues={[makeIssue({ element_id: 'EL-1' })]}
-        elementId="EL-1"
-        onSelectElement={() => {}}
-      />,
+      <SemanticIssuesBanner issues={[makeIssue({ element_id: 'LOAD-1' })]} elementId="LOAD-1" />,
     );
-    expect(queryByText('Pokaż element')).toBeNull();
+    expect(queryByText('Pokaż na schemacie')).toBeNull();
   });
 
   it('WARNING ma żółty kolor, ERROR czerwony', () => {

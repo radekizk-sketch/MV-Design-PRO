@@ -47,7 +47,7 @@ import { useTopologyStore, type TopologyState } from '../../../ui/topology/store
 import type { TopologyStructure } from '../../../ui/topology/api';
 import { useProblemyGotowosci } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { LICZNIKI_ZERO, type LicznikiWezla, type TrybDrzewaTopologii, type WezelDrzewa } from '../treeModel';
-import { etykietaZapasowaRefu } from '../../wyniki/wzorzec/useNazwaObiektu';
+import { nazwaObiektuZMigawki, useNazwaObiektu, type NazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 
 /**
  * JEDYNY odczyt kolekcji pochodzącej z odpowiedzi serwera w tym module
@@ -127,12 +127,20 @@ function grupa(id: string, etykietaPL: string, dzieci: WezelDrzewa[]): WezelDrze
   return { id, etykietaPL, ikona: 'folder', liczniki: LICZNIKI_ZERO, dzieci };
 }
 
-function odgalezienieLisc(ref: string, liczniki: Map<string, LicznikiWezla>): WezelDrzewa {
-  return { id: ref, etykietaPL: ref, ikona: 'odgalezienie', liczniki: liczOrDefault(liczniki, ref), dzieci: [] };
+/**
+ * Etykieta węzła drzewa = NAZWA obiektu (most nazw `nazwaObiektuZMigawki`: migawka
+ * modelu → polska etykieta rodzaju z referencji), nigdy surowy identyfikator.
+ * Identyfikator zostaje w `id` (klucz zaznaczenia i nawigacji). Domyślna funkcja
+ * (bez migawki) daje etykietę rodzaju — mapowanie czyste zostaje testowalne wprost.
+ */
+const NAZWA_BEZ_MIGAWKI: NazwaObiektu = (ref) => nazwaObiektuZMigawki(null, ref);
+
+function odgalezienieLisc(ref: string, liczniki: Map<string, LicznikiWezla>, nazwa: NazwaObiektu): WezelDrzewa {
+  return { id: ref, etykietaPL: nazwa(ref), ikona: 'odgalezienie', liczniki: liczOrDefault(liczniki, ref), dzieci: [] };
 }
 
-function szynaLisc(ref: string, liczniki: Map<string, LicznikiWezla>): WezelDrzewa {
-  return { id: ref, etykietaPL: ref, ikona: 'szyna', liczniki: liczOrDefault(liczniki, ref), dzieci: [] };
+function szynaLisc(ref: string, liczniki: Map<string, LicznikiWezla>, nazwa: NazwaObiektu): WezelDrzewa {
+  return { id: ref, etykietaPL: nazwa(ref), ikona: 'szyna', liczniki: liczOrDefault(liczniki, ref), dzieci: [] };
 }
 
 /** Węzły grafu bez wpisu w spine/lateral (posortowane, jak `getIsolatedNodes` dawnego TopologyTreeView). */
@@ -153,6 +161,7 @@ interface DrzewoSpineDeps {
   spineSet: Set<string>;
   lateraleWgSasiada: Map<string, string[]>;
   liczniki: Map<string, LicznikiWezla>;
+  nazwa: NazwaObiektu;
   /** WSPÓLNA ochrona przed cyklem (has_cycles) dla całego skanu — jeden węzeł
    *  spine nie powtarza się w DWÓCH poddrzewach tego samego wywołania. */
   odwiedzone: Set<string>;
@@ -175,10 +184,10 @@ function budujPoddrzewoSpine(ref: string, deps: DrzewoSpineDeps): WezelDrzewa | 
     .filter((w): w is WezelDrzewa => w !== null);
   const dzieciLateral = (deps.lateraleWgSasiada.get(ref) ?? [])
     .sort()
-    .map((lat) => odgalezienieLisc(lat, deps.liczniki));
+    .map((lat) => odgalezienieLisc(lat, deps.liczniki, deps.nazwa));
   return {
     id: ref,
-    etykietaPL: ref,
+    etykietaPL: deps.nazwa(ref),
     ikona: spine?.is_source ? 'zrodlo' : 'szyna',
     liczniki: liczOrDefault(deps.liczniki, ref),
     dzieci: [...dzieciSpine, ...dzieciLateral],
@@ -186,7 +195,11 @@ function budujPoddrzewoSpine(ref: string, deps: DrzewoSpineDeps): WezelDrzewa | 
 }
 
 /** Buduje `DrzewoSpineDeps` wspólne dla trybów „zasilania"/„obwodowy" (jedno źródło prawdy — reguła KLASA pkt 3). */
-function budujDrzewoSpineDeps(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): {
+function budujDrzewoSpineDeps(
+  topologia: TopologiaZOdpowiedzi,
+  liczniki: Map<string, LicznikiWezla>,
+  nazwa: NazwaObiektu,
+): {
   deps: DrzewoSpineDeps;
   sieroty: string[];
 } {
@@ -207,7 +220,7 @@ function budujDrzewoSpineDeps(topologia: TopologiaZOdpowiedzi, liczniki: Map<str
   }
 
   return {
-    deps: { byRef, spineSet, lateraleWgSasiada, liczniki, odwiedzone: new Set<string>() },
+    deps: { byRef, spineSet, lateraleWgSasiada, liczniki, nazwa, odwiedzone: new Set<string>() },
     sieroty,
   };
 }
@@ -216,10 +229,11 @@ function grupyIzolowaneISieroty(
   topologia: TopologiaZOdpowiedzi,
   liczniki: Map<string, LicznikiWezla>,
   sieroty: string[],
+  nazwa: NazwaObiektu,
 ): WezelDrzewa[] {
   const grupy: WezelDrzewa[] = [];
   if (sieroty.length > 0) {
-    grupy.push(grupa('odgalezienia', 'Odgałęzienia', sieroty.sort().map((r) => odgalezienieLisc(r, liczniki))));
+    grupy.push(grupa('odgalezienia', 'Odgałęzienia', sieroty.sort().map((r) => odgalezienieLisc(r, liczniki, nazwa))));
   }
   const izolowane = znajdzIzolowane(topologia);
   if (izolowane.length > 0) {
@@ -227,7 +241,7 @@ function grupyIzolowaneISieroty(
       grupa(
         'izolowane',
         'Węzły izolowane',
-        izolowane.map((r) => ({ id: r, etykietaPL: r, ikona: 'izolowany', liczniki: liczOrDefault(liczniki, r), dzieci: [] })),
+        izolowane.map((r) => ({ id: r, etykietaPL: nazwa(r), ikona: 'izolowany', liczniki: liczOrDefault(liczniki, r), dzieci: [] })),
       ),
     );
   }
@@ -235,8 +249,12 @@ function grupyIzolowaneISieroty(
 }
 
 /** Drzewo zasilania (od GPZ) — hierarchia wg `children_refs`, z odgałęzieniami dopiętymi do najbliższego węzła magistrali. */
-function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): WezelDrzewa[] {
-  const { deps, sieroty } = budujDrzewoSpineDeps(topologia, liczniki);
+function budujDrzewoZasilania(
+  topologia: TopologiaZOdpowiedzi,
+  liczniki: Map<string, LicznikiWezla>,
+  nazwa: NazwaObiektu,
+): WezelDrzewa[] {
+  const { deps, sieroty } = budujDrzewoSpineDeps(topologia, liczniki, nazwa);
 
   const korzenie = [...topologia.spine]
     .filter((s) => s.is_source || s.depth === 0)
@@ -247,7 +265,7 @@ function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<str
 
   const grupy: WezelDrzewa[] = [];
   if (drzewo.length > 0) grupy.push(grupa('magistrala', 'Magistrala (od GPZ)', drzewo));
-  grupy.push(...grupyIzolowaneISieroty(topologia, liczniki, sieroty));
+  grupy.push(...grupyIzolowaneISieroty(topologia, liczniki, sieroty, nazwa));
   return grupy;
 }
 
@@ -259,8 +277,12 @@ function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<str
  * = cały odpływ. Źródło bez żadnego dziecka spine (stacja bez odejść w
  * modelu) nie tworzy pustej grupy — nie ma czego pokazać, zero fabrykacji.
  */
-function budujGrupowanieObwodowe(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): WezelDrzewa[] {
-  const { deps, sieroty } = budujDrzewoSpineDeps(topologia, liczniki);
+function budujGrupowanieObwodowe(
+  topologia: TopologiaZOdpowiedzi,
+  liczniki: Map<string, LicznikiWezla>,
+  nazwa: NazwaObiektu,
+): WezelDrzewa[] {
+  const { deps, sieroty } = budujDrzewoSpineDeps(topologia, liczniki, nazwa);
 
   const zrodla = [...topologia.spine].filter((s) => s.is_source).sort((a, b) => a.bus_ref.localeCompare(b.bus_ref));
   const grupy: WezelDrzewa[] = [];
@@ -273,7 +295,7 @@ function budujGrupowanieObwodowe(topologia: TopologiaZOdpowiedzi, liczniki: Map<
       if (poddrzewo) grupy.push(poddrzewo);
     }
   }
-  grupy.push(...grupyIzolowaneISieroty(topologia, liczniki, sieroty));
+  grupy.push(...grupyIzolowaneISieroty(topologia, liczniki, sieroty, nazwa));
   return grupy;
 }
 
@@ -288,6 +310,7 @@ function budujGrupowanieAdministracyjne(
   topologia: TopologiaZOdpowiedzi,
   struktura: TopologyStructure,
   liczniki: Map<string, LicznikiWezla>,
+  nazwa: NazwaObiektu,
 ): WezelDrzewa[] {
   const stacjaSzyny = new Map<string, string>();
   // Karta W5-B: `bays` niesie też pola rozdzielnic odgałęźnych ZKSN (właściciel
@@ -297,8 +320,8 @@ function budujGrupowanieAdministracyjne(
   }
   const nazwaStacji = new Map<string, string>();
   for (const stacja of struktura.substations) if (stacja.name) nazwaStacji.set(stacja.ref_id, stacja.name);
-  // Stacja bez nazwy (albo spoza struktury): polska etykieta rodzaju z referencji, nie identyfikator.
-  const nazwaGrupyStacji = (ref: string): string => nazwaStacji.get(ref) ?? etykietaZapasowaRefu(ref);
+  // Stacja bez nazwy w strukturze: most nazw (migawka → polska etykieta rodzaju), nie identyfikator.
+  const nazwaGrupyStacji = (ref: string): string => nazwaStacji.get(ref) ?? nazwa(ref);
 
   const wszystkieSzyny = new Set<string>();
   for (const wpis of topologia.adjacency) {
@@ -324,10 +347,10 @@ function budujGrupowanieAdministracyjne(
   const grupy: WezelDrzewa[] = [...szynyWgStacji.entries()]
     .sort((a, b) => nazwaGrupyStacji(a[0]).localeCompare(nazwaGrupyStacji(b[0]), 'pl'))
     .map(([stacjaRef, szyny]) =>
-      grupa(stacjaRef, nazwaGrupyStacji(stacjaRef), szyny.sort().map((r) => szynaLisc(r, liczniki))),
+      grupa(stacjaRef, nazwaGrupyStacji(stacjaRef), szyny.sort().map((r) => szynaLisc(r, liczniki, nazwa))),
     );
   if (bezStacji.length > 0) {
-    grupy.push(grupa('poza-stacja', 'Poza stacją', bezStacji.sort().map((r) => szynaLisc(r, liczniki))));
+    grupy.push(grupa('poza-stacja', 'Poza stacją', bezStacji.sort().map((r) => szynaLisc(r, liczniki, nazwa))));
   }
   return grupy;
 }
@@ -338,16 +361,17 @@ export function mapowanieTopologiiDoDrzewa(
   issues: ReadinessIssue[],
   tryb: TrybDrzewaTopologii,
   struktura: TopologyStructure | null = null,
+  nazwa: NazwaObiektu = NAZWA_BEZ_MIGAWKI,
 ): WezelDrzewa[] {
   if (!summary) return [];
   const liczniki = budujLicznikiZReadiness(issues);
   const topologia = odczytajTopologie(summary);
-  if (tryb === 'zasilania') return budujDrzewoZasilania(topologia, liczniki);
-  if (tryb === 'obwodowy') return budujGrupowanieObwodowe(topologia, liczniki);
+  if (tryb === 'zasilania') return budujDrzewoZasilania(topologia, liczniki, nazwa);
+  if (tryb === 'obwodowy') return budujGrupowanieObwodowe(topologia, liczniki, nazwa);
   // 'administracyjny': brak struktury (jeszcze nie pobrana/błąd sieci) = uczciwy
   // stan zerowy — adapter nigdy nie zgaduje przypisania szyny do stacji.
   if (!struktura) return [];
-  return budujGrupowanieAdministracyjne(topologia, struktura, liczniki);
+  return budujGrupowanieAdministracyjne(topologia, struktura, liczniki, nazwa);
 }
 
 /** Adapter read-only: `ui/topology/store.ts` (summary + structure) + `gotowoscAdapter` (problemy). */
@@ -355,8 +379,9 @@ export function useTopologyTree(tryb: TrybDrzewaTopologii): WezelDrzewa[] {
   const summary = useTopologyStore((s: TopologyState) => s.summary);
   const struktura = useTopologyStore((s: TopologyState) => s.structure);
   const issues = useProblemyGotowosci();
+  const nazwa = useNazwaObiektu();
   return useMemo(
-    () => mapowanieTopologiiDoDrzewa(summary, issues, tryb, struktura),
-    [summary, issues, tryb, struktura],
+    () => mapowanieTopologiiDoDrzewa(summary, issues, tryb, struktura, nazwa),
+    [summary, issues, tryb, struktura, nazwa],
   );
 }

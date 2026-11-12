@@ -25,10 +25,13 @@ const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 const context: Record<string, unknown> = { source_name: 'GPZ Wschód' };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: { activeCaseId: string | null }) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: { activeCaseId: string | null }) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => ({
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   useSnapshotStore: (selector: (s: { executeDomainOperation: typeof executeDomainOperationMock }) => unknown) =>
     selector({ executeDomainOperation: executeDomainOperationMock }),
 }));
@@ -43,7 +46,8 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationContext: () => context,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 

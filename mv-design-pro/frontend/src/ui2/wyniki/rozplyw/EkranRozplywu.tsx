@@ -29,6 +29,7 @@ import { TabelaSzyn } from './TabelaSzyn';
 import { ROZPLYW_STRINGS } from './strings';
 import { useWynikRozplywu } from './adapters/rozplywAdapter';
 import './rozplyw.css';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 const PODZAKLADKI = [
   { id: 'szyny', etykieta: ROZPLYW_STRINGS.podzakladkaSzyny },
@@ -64,8 +65,8 @@ export function EkranRozplywu({
   onPreselekcjaSkonsumowana,
 }: EkranRozplywuProps) {
   const [podzakladka, setPodzakladka] = useState<PodzakladkaId>('szyny');
-  const [wybranaSzyna, setWybranaSzyna] = useState<string | null>(null);
-  const [wybranaGalaz, setWybranaGalaz] = useState<string | null>(null);
+  const [wybranaSzyna, setWybranaSzyna] = useWyborPowrotu('wybor:rozplyw-szyny');
+  const [wybranaGalaz, setWybranaGalaz] = useWyborPowrotu('wybor:rozplyw-galezie');
   const { wynik } = useWynikRozplywu();
 
   // Pre-selekcja z deep-linku (D-2) — konsumowana dopiero, gdy wynik rozpływu

@@ -15,6 +15,8 @@ import { kierunekPrzeplywuPL, naWierszeRozplywu, rozplywDlaWiersza } from '../zw
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useSelectionStore } from '../../../../ui/selection';
 import { useOverlayStore } from '../../../../ui/sld-overlay/overlayStore';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import {
   rozplywFixture,
   shortCircuitResultsFixture,
@@ -186,6 +188,17 @@ describe('EkranZwarc — sekcja „Rozpływ prądu zwarciowego" (pkt 2)', () => 
 });
 
 describe('EkranZwarc — „Pokaż na schemacie" (pkt 6) + overlay rozpływu (pkt 7)', () => {
+  // Punkty zwarcia istnieją w modelu pod tymi samymi nazwami (akcja tylko dla elementu na schemacie).
+  beforeEach(() => {
+    ustawMigawkeZElementami([
+      { kolekcja: 'buses', id: 'EL-GPZ', name: 'Szyna GPZ 15 kV' },
+      { kolekcja: 'buses', id: 'EL-ST1', name: 'Szyna ST1 15 kV' },
+    ]);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null });
+  });
+
   it('natywny klik → selekcja elementu, centrowanie SLD, overlay, nawigacja', async () => {
     ustawWynikZRozplywem();
     await renderEkranZwarc(<EkranZwarc {...props()} />);

@@ -6,6 +6,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { StationConfigDerSourcesCard } from '../StationConfigDerSourcesCard';
+import { ustawMigawkeZElementami } from '../../../../../test/schematTestowy';
+import { useSelectionStore } from '../../../../selection/store';
+import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
@@ -176,17 +179,24 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
     expect(onAddDer).toHaveBeenCalledWith('PV');
   });
 
-  it('klik "SLD" wywołuje onShowOnSld z derId', () => {
-    const onShowOnSld = vi.fn();
-    render(
-      <StationConfigDerSourcesCard
-        stationId="station_1"
-        ders={[makeDer()]}
-        onShowOnSld={onShowOnSld}
-      />,
-    );
-    fireEvent.click(screen.getByTestId('der-action-sld-der_1'));
-    expect(onShowOnSld).toHaveBeenCalledWith('der_1');
+  it('„Pokaż na schemacie" źródła obecnego w modelu: zaznaczenie + wskazanie kamery (jedna droga wejścia)', () => {
+    // Dawne „SLD" otwierało powierzchnię E-01 z `focusElementRef`, którego nikt nie
+    // czytał (kamera nie dostawała wskazania) — karta SLD-SKALA-I-NAWIGACJA.
+    ustawMigawkeZElementami([{ kolekcja: 'generators', id: 'der_1', name: 'PV 1', pola: { gen_type: 'pv_inverter' } }]);
+    render(<StationConfigDerSourcesCard stationId="station_1" ders={[makeDer()]} />);
+    const przycisk = screen.getByTestId('der-action-sld-der_1');
+    expect(przycisk).toHaveTextContent('Pokaż na schemacie');
+    fireEvent.click(przycisk);
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('der_1');
+    expect(useSelectionStore.getState().sldWskazanie).toMatchObject({ ref: 'der_1', tryb: 'kadruj' });
+    useSnapshotStore.setState({ snapshot: null });
+    useSelectionStore.getState().clearSelection();
+  });
+
+  it('źródło nieobecne w migawce modelu: brak akcji wejścia na schemat', () => {
+    useSnapshotStore.setState({ snapshot: null });
+    render(<StationConfigDerSourcesCard stationId="station_1" ders={[makeDer()]} />);
+    expect(screen.queryByTestId('der-action-sld-der_1')).toBeNull();
   });
 
   it('klik "Usuń" wywołuje onDetachDer (bez window.confirm)', () => {

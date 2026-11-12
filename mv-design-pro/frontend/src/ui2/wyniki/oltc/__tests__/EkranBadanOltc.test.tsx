@@ -46,7 +46,9 @@ const REJESTR_GOTOWOSCI = new Map([
 const klientRejestru = () => Promise.resolve(REJESTR_GOTOWOSCI);
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: { activeCaseId: string | null }) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: { activeCaseId: string | null }) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
 vi.mock('../../../../ui/study-cases/api', () => ({

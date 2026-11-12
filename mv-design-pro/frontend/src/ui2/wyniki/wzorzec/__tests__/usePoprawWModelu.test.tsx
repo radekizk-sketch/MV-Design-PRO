@@ -10,12 +10,36 @@ import { ROUTES } from '../../../../ui/navigation/routes';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
 import { usePoprawWModelu } from '../usePoprawWModelu';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { usePowrotZeSchematu } from '../../../shell/powrotZeSchematu';
 
 describe('usePoprawWModelu — od wyniku do decyzji', () => {
   beforeEach(() => {
     useSelectionStore.getState().clearSelection?.();
     useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+    // Karta SLD-SKALA-I-NAWIGACJA: wejście na schemat dotyczy elementu z migawki
+    // modelu (jedna droga `pokazElementNaSchemacie`) — realny sklep, bez mocka.
+    ustawMigawkeZElementami([
+      { kolekcja: 'buses', id: 'szyna-1', name: 'Szyna GPZ', pola: { voltage_kv: 15 } },
+      { kolekcja: 'buses', id: 'slack', name: 'Szyna bilansująca', pola: { voltage_kv: 110 } },
+      { kolekcja: 'branches', id: 'galaz-7', name: 'Odcinek SN', pola: { type: 'cable' } },
+    ]);
+    usePowrotZeSchematu.setState({ wpis: null, doOdebrania: null });
+  });
+
+  it('ref spoza migawki modelu: brak przejścia i brak wpisu powrotu (nie ma czego pokazać)', () => {
+    const { result } = renderHook(() => usePoprawWModelu());
+    act(() => result.current('nieistniejacy', 'Bus', 'Widmo'));
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useSelectionStore.getState().sldWskazanie).toBeNull();
+    expect(usePowrotZeSchematu.getState().wpis).toBeNull();
+  });
+
+  it('wejście z „Wyników" zapisuje powrót do ekranu źródłowego', () => {
+    const { result } = renderHook(() => usePoprawWModelu());
+    act(() => result.current('szyna-1', 'Bus', 'Szyna GPZ'));
+    expect(usePowrotZeSchematu.getState().wpis?.przestrzen).toBe('wyniki');
   });
 
   it('zaznacza element (property-grid), centruje SLD i przechodzi do przestrzeni „Schemat"', () => {

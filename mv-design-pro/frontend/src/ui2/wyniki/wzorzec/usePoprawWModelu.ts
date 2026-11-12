@@ -10,9 +10,10 @@
  * `akcjeNaprawcze.ts` (np. bilans mocy biernej → okno „Dobór kompensacji"
  * w przestrzeni „Wyniki" przez deep-link `setWynikiTab`).
  *
- * Reużywa istniejącej infrastruktury wiązania (V12K-073): `selectElement`
- * (property-grid) + `centerSldOnElement` (zoom na SLD) + `przejdzDoPrzestrzeni`
- * + `setWynikiTab` (deep-link zakładki — wzorzec z `HubDokumentacji`).
+ * Cel „schemat" idzie JEDNĄ drogą wejścia na schemat (`pokazElementNaSchemacie`,
+ * karta SLD-SKALA-I-NAWIGACJA, część W: zaznaczenie + kadr + przestrzeń „Schemat"
+ * + powrót do ekranu wyniku). Cel „zakładka wyników" — `selectElement` +
+ * `setWynikiTab` (deep-link zakładki — wzorzec z `HubDokumentacji`).
  *
  * C-12 (klasa akcji naprawczych): przejście idzie JEDNĄ nawigacją powłoki
  * (`przejdzDoPrzestrzeni`, kanon D1) — dawny goły `setActiveSpace` zostawiał trasę
@@ -25,6 +26,8 @@ import { useCallback } from 'react';
 
 import { useSelectionStore } from '../../../ui/selection/store';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+import { elementNaSchemacie, pokazElementNaSchemacie } from '../../shell/zaznaczElementModelu';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
 import type { ElementType } from '../../../ui/types';
 import { akcjaNaprawcza, type RodzajPrzekroczenia } from './akcjeNaprawcze';
@@ -36,13 +39,12 @@ export function usePoprawWModelu(): (
   rodzaj?: RodzajPrzekroczenia,
 ) => void {
   const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   return useCallback(
     (ref, typ, nazwa, rodzaj) => {
       const { cel } = akcjaNaprawcza(rodzaj);
-      selectElement({ id: ref, type: typ, name: nazwa });
       if (cel.rodzaj === 'wyniki-zakladka') {
+        selectElement({ id: ref, type: typ, name: nazwa });
         // Akcja kontekstowa: zakładka przestrzeni „Wyniki" (bez zoomu SLD —
         // schemat nie jest celem, odroczony zoom byłby zaskoczeniem).
         // R2-B: deep-link niesie ref elementu przekroczenia — okno docelowe
@@ -51,10 +53,25 @@ export function usePoprawWModelu(): (
         setWynikiTab(cel.zakladka, ref);
         przejdzDoPrzestrzeni('wyniki');
       } else {
-        centerSldOnElement(ref);
-        przejdzDoPrzestrzeni('schemat');
+        pokazElementNaSchemacie(ref, 'petla-wynik-model');
       }
     },
-    [selectElement, centerSldOnElement, setWynikiTab],
+    [selectElement, setWynikiTab],
   );
+}
+
+/**
+ * Czy akcja pętli decyzji dla `ref` ma dokąd prowadzić (karta SLD-SKALA-I-NAWIGACJA,
+ * część W, pkt 5): cel „zakładka wyników" — zawsze; cel „schemat" — wyłącznie dla
+ * elementu obecnego na schemacie (TEN SAM predykat co `pokazElementNaSchemacie`).
+ * Przycisk bez celu się nie renderuje — brak akcji zamiast martwego kliku.
+ */
+export function celDecyzjiOsiagalny(ref: string | null | undefined, rodzaj?: RodzajPrzekroczenia): boolean {
+  return akcjaNaprawcza(rodzaj).cel.rodzaj !== 'schemat' || elementNaSchemacie(ref) !== null;
+}
+
+/** Hook predykatu z subskrypcją migawki (przycisk znika razem z elementem modelu). */
+export function useCelDecyzjiOsiagalny(): typeof celDecyzjiOsiagalny {
+  useSnapshotStore((s) => s.snapshot);
+  return celDecyzjiOsiagalny;
 }

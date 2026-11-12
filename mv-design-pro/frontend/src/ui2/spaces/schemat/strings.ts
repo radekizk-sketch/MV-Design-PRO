@@ -15,4 +15,7 @@ export const SCHEMAT_STRINGS = {
   trybEdycja: 'Edycja',
   trybPodglad: 'Podgląd',
   trybPodgladOpis: 'Kanwa zablokowana do odczytu — operacje edycyjne są odrzucane.',
+  // Powrót do ekranu, z którego weszło się na schemat (karta SLD-SKALA-I-NAWIGACJA, część W)
+  powrot: (ekran: string) => `Wróć do: ${ekran}`,
+  powrotOpis: (ekran: string) => `Wróć do ekranu „${ekran}" w stanie sprzed przejścia na schemat`,
 } as const;

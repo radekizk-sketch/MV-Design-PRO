@@ -25,6 +25,7 @@ import {
   EkranAnalizy,
   InformacjeAudytowe,
   useNazwaObiektu,
+  useCelDecyzjiOsiagalny,
   usePoprawWModelu,
 } from '../wzorzec';
 import { useSwiezoscNaglowka } from '../../freshness';
@@ -411,6 +412,7 @@ function PanelZlychDanych({
 }) {
   const bad = dane.bad_data;
   const poprawWModelu = usePoprawWModelu();
+  const celOsiagalny = useCelDecyzjiOsiagalny();
   const nazwaObiektu = useNazwaObiektu();
   const chiIstotnosc: IstotnoscStanu = bad.chi_square_flag ? 'err' : 'ok';
   const lnrIstotnosc: IstotnoscStanu = bad.lnr_flag ? 'err' : 'ok';
@@ -447,7 +449,7 @@ function PanelZlychDanych({
           {/* F-K4 (znalezisko Z4): odrzucony pomiar prowadzi do SZYNY, w ktorej go
               wykonano — inaczej projektant wie, ze cos jest zle, i nie ma stad
               drogi do miejsca. Przycisk tylko przy przekroczonym progu LNR. */}
-          {bad.lnr_flag && (
+          {bad.lnr_flag && celOsiagalny(bad.lnr_measurement.bus_ref, 'zle-dane-pomiarowe') && (
             <button
               type="button"
               className="mvd-est-popraw"

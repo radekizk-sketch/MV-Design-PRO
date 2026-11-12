@@ -229,3 +229,57 @@ def test_flags_czas_nieustalony_in_every_word_order(tmp_path: Path) -> None:
 def test_czas_rule_does_not_fire_on_switch_position_state(tmp_path: Path) -> None:
     sciezka = _napisz(tmp_path, "const p = 'Położenie nieustalone — brak danej w modelu';\n")
     assert guard.scan_file(sciezka) == []
+
+
+# Karta INSPEKTOR-I-NAWIGACJA: terminologia inspektora. Iloczyn: fraza {6 zakazanych} ×
+# nośnik {literał w cudzysłowie, tekst JSX w tej samej linii, tekst JSX w OSOBNEJ linii,
+# szablon} + brak trafienia w komentarzu i w testach + realne repo czyste.
+_FRAZY_INSPEKTORA = (
+    "Wywód obliczeń",
+    "Pełny LaTeX",
+    "Działania (9)",
+    "Tryb szeroki",
+    "Pobieram wynik zwarciowy",
+    "dowód niepełny",
+)
+
+
+@pytest.mark.parametrize("fraza", _FRAZY_INSPEKTORA)
+@pytest.mark.parametrize(
+    "nosnik",
+    (
+        "const a = '{f}';\n",
+        "export const X = () => <span>{f}</span>;\n",
+        "export const X = () => (\n  <div>\n    {f}\n  </div>\n);\n",
+        "const b = `${{n}} — {f}`;\n",
+    ),
+)
+def test_terminologia_inspektora_iniekcja_czerwona(tmp_path: Path, fraza: str, nosnik: str) -> None:
+    sciezka = _napisz(tmp_path, nosnik.format(f=fraza))
+    naruszenia = guard.scan_terminologia_inspektora(sciezka)
+    assert naruszenia, (fraza, nosnik)
+    oczekiwana_linia = 3 if nosnik.startswith("export const X = () => (") else 1
+    assert naruszenia[0][0] == oczekiwana_linia
+
+
+def test_terminologia_inspektora_bez_trafienia_w_komentarzu(tmp_path: Path) -> None:
+    sciezka = _napisz(
+        tmp_path,
+        "// dawny „Wywód obliczeń”\n/* Pełny LaTeX */\nconst a = 'Obliczenia zwarciowe';\n",
+    )
+    assert guard.scan_terminologia_inspektora(sciezka) == []
+
+
+def test_terminologia_inspektora_realne_repo_czyste_testy_poza_regula() -> None:
+    import os
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(guard.__file__)))
+    assert guard.naruszenia_terminologii_inspektora(root) == []
+
+
+def test_zakres_skanu_bez_martwych_katalogow() -> None:
+    import os
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(guard.__file__)))
+    for katalog in guard.SCAN_DIRS:
+        assert os.path.isdir(os.path.join(root, katalog)), katalog

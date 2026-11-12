@@ -95,7 +95,7 @@ jest jawna — brak nie moze byc niemy.
   ksztaltu odpowiedzi).
 * `ui/sld-overlay/sldDeltaOverlayStore.ts` — store nakladki + `payloadEtykietRoznic`
   (postac czytana przez warstwe etykiet).
-* `ui/sld/v3/canvas/resultLabelTemplates.ts` — rodzina `short_circuit_delta`
+* `ui/sld/shared/resultLabelTemplates.ts` — rodzina `short_circuit_delta`
   (podpisy „Δ Ik″", „Δ Ik″ %", „Δ ip", „Δ Ith", „Δ Sk"); `analysis_type`
   z prefiksem `DELTA_` wybiera te rodzine.
 * `ui/sld/v3/canvas/SldCanvasV3Workspace.tsx` — nakladka roznic ma
