@@ -264,6 +264,16 @@ function ApparatusSymbol(props: {
     case 'FUSE':
       symbol = <ApparatusFuse cx={cx} cy={cy} state={energized ? 'healthy' : 'unknown'} />;
       break;
+    case 'FUSE_SWITCH':
+      // Rozłącznik bezpiecznikowy (aparat główny pola, IEC 60617 S00368): łącznik z położeniem
+      // i wkładka w jednym aparacie — nóż łącznika i wkładka pod nim, jeden rekord.
+      symbol = (
+        <g data-testid="sld-v2-gpz-bay-fuse-switch">
+          <ApparatusThreePositionSwitch cx={cx} cy={cy - 6} position={apparatus.switchState} h={6} />
+          <ApparatusFuse cx={cx} cy={cy + 8} state={energized ? 'healthy' : 'unknown'} />
+        </g>
+      );
+      break;
     case 'CT':
       symbol = <CtPrimary cx={cx} cy={cy} ratio={catalogLabel} />;
       break;

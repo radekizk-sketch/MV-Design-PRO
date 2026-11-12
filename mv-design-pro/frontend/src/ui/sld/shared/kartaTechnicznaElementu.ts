@@ -472,7 +472,8 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   VT: 'Przekładnik napięciowy',
   CABLE_HEAD: 'Głowica kablowa',
   TRANSFORMER_DEVICE: 'Transformator',
-  FUSE: 'Bezpiecznik',
+  FUSE: 'Bezpiecznik (wkładka)',
+  FUSE_SWITCH: 'Rozłącznik z bezpiecznikami',
   GENERATOR_PV: 'Falownik PV',
   GENERATOR_BESS: 'Przekształtnik BESS',
   GENERATOR_FW: 'Przekształtnik FW',
@@ -602,7 +603,7 @@ const PIERWSZENSTWO_APARATU_GALEZI: Readonly<Record<RodzajGaleziAparatu, number>
   fuse: 3,
   disconnector: 4,
 };
-const PRIORYTET_URZADZENIA: readonly BayPrimaryDevice['kind'][] = ['CB', 'LOAD_SWITCH', 'FUSE', 'DS'];
+const PRIORYTET_URZADZENIA: readonly BayPrimaryDevice['kind'][] = ['CB', 'LOAD_SWITCH', 'FUSE_SWITCH', 'FUSE', 'DS'];
 
 /** Rodzaj aparatu SN (`device_kind` projekcji APARAT_SN) z rodzaju urządzenia pola modelu. */
 const RODZAJ_APARATU_SN_Z_URZADZENIA: Readonly<Partial<Record<BayPrimaryDevice['kind'], string>>> = {
@@ -611,6 +612,7 @@ const RODZAJ_APARATU_SN_Z_URZADZENIA: Readonly<Partial<Record<BayPrimaryDevice['
   DS: 'ODLACZNIK',
   ES: 'UZIEMNIK',
   FUSE: 'ROZLACZNIK_BEZPIECZNIKOWY',
+  FUSE_SWITCH: 'ROZLACZNIK_BEZPIECZNIKOWY',
 };
 /** Rodzaj aparatu SN z typu gałęzi modelu (łącznik ogólny i sprzęgło — bez rozstrzygnięcia). */
 const RODZAJ_APARATU_SN_Z_GALEZI: Readonly<Partial<Record<Branch['type'], string>>> = {

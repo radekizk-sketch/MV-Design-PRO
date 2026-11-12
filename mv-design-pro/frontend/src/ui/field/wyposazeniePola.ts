@@ -31,6 +31,7 @@ export type RodzajAparatuPolaSn =
   | 'VT'
   | 'SURGE_ARRESTER'
   | 'FUSE'
+  | 'FUSE_SWITCH'
   | 'CABLE_HEAD'
   | 'TRANSFORMER_DEVICE'
   | 'THREE_POSITION_SWITCH'
@@ -51,6 +52,7 @@ export const PRZESTRZEN_KATALOGU_APARATU: Readonly<Record<RodzajAparatuPolaSn, P
   VT: 'VT',
   SURGE_ARRESTER: 'OGRANICZNIK_SN',
   FUSE: null,
+  FUSE_SWITCH: 'APARAT_SN',
   CABLE_HEAD: null,
   TRANSFORMER_DEVICE: null,
   THREE_POSITION_SWITCH: null,
@@ -64,12 +66,13 @@ export const PRZESTRZEN_KATALOGU_APARATU: Readonly<Record<RodzajAparatuPolaSn, P
 export const RODZAJE_KATALOGOWE_APARATU: Readonly<Partial<Record<RodzajAparatuPolaSn, readonly string[]>>> = {
   CB: ['REKLOZER', 'WYLACZNIK'],
   LOAD_SWITCH: ['ROZLACZNIK', 'ROZLACZNIK_BEZPIECZNIKOWY'],
+  FUSE_SWITCH: ['ROZLACZNIK_BEZPIECZNIKOWY'],
   DS: ['ODLACZNIK'],
   ES: ['UZIEMNIK'],
 };
 
 /** Rodzaje wskazujące gałąź łącznikową modelu (`linked_ref`). */
-export const RODZAJE_Z_GALEZIA: readonly RodzajAparatuPolaSn[] = ['CB', 'DS', 'FUSE', 'LOAD_SWITCH'];
+export const RODZAJE_Z_GALEZIA: readonly RodzajAparatuPolaSn[] = ['CB', 'DS', 'FUSE', 'FUSE_SWITCH', 'LOAD_SWITCH'];
 /** Rodzaje z rolą uziemienia (`earthing_role`). */
 export const RODZAJE_Z_ROLA_UZIEMIENIA: readonly RodzajAparatuPolaSn[] = ['ES', 'SURGE_ARRESTER'];
 
@@ -82,6 +85,7 @@ export const NAZWA_RODZAJU_APARATU_PL: Readonly<Record<RodzajAparatuPolaSn, stri
   VT: 'przekładnik napięciowy',
   SURGE_ARRESTER: 'ogranicznik przepięć',
   FUSE: 'bezpieczniki',
+  FUSE_SWITCH: 'rozłącznik z bezpiecznikami',
   CABLE_HEAD: 'głowica kablowa',
   TRANSFORMER_DEVICE: 'transformator pola',
   THREE_POSITION_SWITCH: 'łącznik trójpołożeniowy',
@@ -100,6 +104,7 @@ export const RODZAJE_APARATU_POLA_SN: readonly RodzajAparatuPolaSn[] = [
   'VT',
   'SURGE_ARRESTER',
   'FUSE',
+  'FUSE_SWITCH',
   'CABLE_HEAD',
   'TRANSFORMER_DEVICE',
   'THREE_POSITION_SWITCH',

@@ -52,7 +52,7 @@ import {
   noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
-  protectionAnnotationAtLod1IsBareFrame,
+  noProtectionAnnotationAtLod1,
   protectionMarkingGaps,
   sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
@@ -378,11 +378,21 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     // — patrz test „JEDNA KOTWICA"; różni się tylko rozkład detalu WEWNĄTRZ
     // kolumny. Ten test sprawdza WYŁĄCZNIE, że zestaw aparatów jest taki sam
     // (żaden aparat nie jest dodawany/usuwany w zależności od LOD).
+    // Decyzja D3d (rejestr konfliktów UX04-RAMKA-BEZ-TRESCI): oznaczenie zabezpieczeń — blok
+    // (`protectionRelay`) z liniami wyłączania i pomiarowymi — istnieje wyłącznie na LOD2. To
+    // adnotacja, nie aparat: porównanie zestawu aparatów pomija je, a test niżej sprawdza, że
+    // RÓŻNICA L2 − L1 to dokładnie ta adnotacja (nic innego nie znika z LOD1).
     const sceneL1 = buildSceneV3(enm, 1);
     const sceneL2 = buildSceneV3(enm, 2);
-    expect(sceneL1.symbols.length).toBe(sceneL2.symbols.length);
-    expect(sceneL1.segments.length).toBe(sceneL2.segments.length);
-    expect(sceneL1.symbols.map((s) => s.symbolId)).toEqual(sceneL2.symbols.map((s) => s.symbolId));
+    const adnotacjaSymbol = (s: (typeof sceneL2.symbols)[number]) => s.symbolId === 'protectionRelay';
+    const adnotacjaOdcinek = (s: (typeof sceneL2.segments)[number]) =>
+      s.meta?.kind === 'protectionTrip' || s.meta?.kind === 'measurementLink';
+    expect(sceneL1.symbols.filter(adnotacjaSymbol)).toEqual([]);
+    expect(sceneL1.segments.filter(adnotacjaOdcinek)).toEqual([]);
+    const aparatyL2 = sceneL2.symbols.filter((s) => !adnotacjaSymbol(s));
+    expect(sceneL1.symbols.length).toBe(aparatyL2.length);
+    expect(sceneL1.segments.length).toBe(sceneL2.segments.filter((s) => !adnotacjaOdcinek(s)).length);
+    expect(sceneL1.symbols.map((s) => s.symbolId)).toEqual(aparatyL2.map((s) => s.symbolId));
   });
 
   it('SCHEMAT-10 S1 (V12K-135): JEDNA KOTWICA — środek glifu stacji IDENTYCZNY na L0/L1/L2 (nazwa stacji i symbol zbiorczy)', () => {
@@ -1686,60 +1696,52 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
   });
 
   // -------------------------------------------------------------------------
-  // B-1 (recenzja F9.9, spec §17.4 L1) — protectionAnnotationAtLod1IsBareFrame.
-  // Dowody POZYTYWNE i NEGATYWNE na scenach syntetycznych (fixtura
-  // referencyjna jest pusto-prawdziwa — 0 danych §17.2, recenzent wytknął,
-  // że to nie wystarcza jako dowód).
+  // B-1 (recenzja F9.9, spec §17.4 L1) — noProtectionAnnotationAtLod1. Decyzja architekta D3d
+  // (karta UX-04/ROZDZIELNICA-SN-KOREKTA, dyrektywa właściciela 2026-11-11 nad odbiorem
+  // 2026-11-04, `docs/v12xx/REJESTR_KONFLIKTOW.md`): na L1 bloku zabezpieczeń nie ma — dawna
+  // GOŁA ramka była pustym prostokątem. Intencja testów bez zmian: dowód POZYTYWNY na scenie
+  // rzeczywistej i dowody NEGATYWNE (wyrocznia gryzie) na scenach syntetycznych.
   // -------------------------------------------------------------------------
 
-  it('B-1 (§17.4 L1, POZYTYW): scena L1 z GOŁĄ ramką bloku zabezpieczeń i linią wyłączania do łącznika pola ⇒ oracle zielony', () => {
-    const scene = buildSceneV3(enm, 1);
-    const blok = syntetycznyBlok('bay-l1', 800, 800, false).symbol;
-    const fakeBreaker: SceneV3['symbols'][number] = {
-      symbolId: 'breaker',
-      x: 760,
-      y: 808,
-      meta: { ownerRef: 'bay-l1', elementKind: 'apparatus' },
-    };
-    const synthetic: SceneV3 = {
-      ...scene,
-      symbols: [...scene.symbols, fakeBreaker, blok],
-      segments: [
-        ...scene.segments,
-        {
-          // Port N wyłącznika (768, 808) → wejście ramki (800, 808).
-          points: [{ x: 768, y: 808 }, { x: 800, y: 808 }],
-          meta: { kind: 'protectionTrip', ownerRef: 'bay-l1#trip-line', elementKind: 'protectionAnnotation' },
-        },
-      ],
-    };
-    expect(synthetic.meta.lod).toBe(1);
-    // Ramka OBECNA (dowód pozytywny — nie pusta scena) i oracle zielony.
-    expect(synthetic.symbols.some((s) => s.symbolId === 'protectionRelay')).toBe(true);
-    expect(protectionAnnotationAtLod1IsBareFrame(synthetic)).toBe(true);
-    expect(allProtectionMarkingsValid(synthetic)).toBe(true); // ownerRef i ramka są, kodów brak — L1 OK.
+  it('B-1 (§17.4 L1, POZYTYW): scena L1 fikstur z blokami zabezpieczeń na L2 nie ma bloku ani jego linii ⇒ oracle zielony', () => {
+    for (const nazwa of ['gpz110kvPolaSzablonow', 'stacjeTypowAbcd'] as const) {
+      const fx = JSON.parse(readFileSync(`public/test-fixtures/${nazwa}.enm.json`, 'utf8'));
+      const model = (fx.enm ?? fx) as EnergyNetworkModel;
+      // Pusta wyrocznia = fałszywa pewność: ta sama fikstura MA bloki na L2.
+      expect(buildSceneV3(model, 2).symbols.some((s) => s.symbolId === 'protectionRelay'), nazwa).toBe(true);
+      const l1 = buildSceneV3(model, 1);
+      expect(noProtectionAnnotationAtLod1(l1), nazwa).toBe(true);
+      expect(protectionMarkingGaps(l1), nazwa).toEqual([]);
+    }
   });
 
-  it('B-1 (§17.4 L1, NEGATYW ×4): wiersze kodów / przekaźnik bez ramki / linia pomiarowa / miernik na L1 ⇒ oracle FAIL (dowód, że gryzie)', () => {
+  it('B-1 (§17.4 L1, NEGATYW ×5): goła ramka / ramka z kodami / linia wyłączania / linia pomiarowa / miernik na L1 ⇒ oracle FAIL (dowód, że gryzie)', () => {
     const scene = buildSceneV3(enm, 1);
+    const gola = syntetycznyBlok('bay-l1', 800, 800, false).symbol;
+    const withBareFrame: SceneV3 = { ...scene, symbols: [...scene.symbols, gola] };
+    expect(noProtectionAnnotationAtLod1(withBareFrame)).toBe(false);
+    // Ta sama wada widziana przez protectionMarkingGaps (block-at-lod1).
+    expect(protectionMarkingGaps(withBareFrame).some((g) => g.reason === 'block-at-lod1')).toBe(true);
+
     const blok = syntetycznyBlok('bay-l1', 800, 800, true);
     const withCodes: SceneV3 = {
       ...scene,
       symbols: [...scene.symbols, blok.symbol],
       labels: [...scene.labels, ...blok.labels],
     };
-    expect(protectionAnnotationAtLod1IsBareFrame(withCodes)).toBe(false);
-    // Ta sama wada widziana przez protectionMarkingGaps (codes-present-at-lod1).
-    expect(protectionMarkingGaps(withCodes).some((g) => g.reason === 'codes-present-at-lod1')).toBe(true);
+    expect(noProtectionAnnotationAtLod1(withCodes)).toBe(false);
 
-    const withCircle: SceneV3 = {
+    const withTrip: SceneV3 = {
       ...scene,
-      symbols: [
-        ...scene.symbols,
-        { symbolId: 'protectionRelay', x: 800, y: 800, meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' } },
+      segments: [
+        ...scene.segments,
+        {
+          points: [{ x: 768, y: 808 }, { x: 800, y: 808 }],
+          meta: { kind: 'protectionTrip', ownerRef: 'bay-l1#trip-line', elementKind: 'protectionAnnotation' },
+        },
       ],
     };
-    expect(protectionAnnotationAtLod1IsBareFrame(withCircle)).toBe(false);
+    expect(noProtectionAnnotationAtLod1(withTrip)).toBe(false);
 
     const withMeasurement: SceneV3 = {
       ...scene,
@@ -1751,7 +1753,7 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
         },
       ],
     };
-    expect(protectionAnnotationAtLod1IsBareFrame(withMeasurement)).toBe(false);
+    expect(noProtectionAnnotationAtLod1(withMeasurement)).toBe(false);
 
     const withMeter: SceneV3 = {
       ...scene,
@@ -1760,12 +1762,12 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
         { symbolId: 'meter', x: 800, y: 800, meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' } },
       ],
     };
-    expect(protectionAnnotationAtLod1IsBareFrame(withMeter)).toBe(false);
+    expect(noProtectionAnnotationAtLod1(withMeter)).toBe(false);
   });
 
   it('B-1 sanity: na L2 oracle L1 nie dotyczy (zwraca true niezależnie od kodów) — rozdział odpowiedzialności per LOD', () => {
     const scene2 = buildSceneV3(enm, 2);
-    expect(protectionAnnotationAtLod1IsBareFrame(scene2)).toBe(true);
+    expect(noProtectionAnnotationAtLod1(scene2)).toBe(true);
   });
 
   // -------------------------------------------------------------------------
@@ -1946,10 +1948,10 @@ describe(
 
     // -----------------------------------------------------------------------
     // §20.1/§17.4: obie linie wtórne ukryte na L0/L1 (rozszerzenie
-    // `noProtectionAnnotationAtLod0`/`protectionAnnotationAtLod1IsBareFrame`
+    // `noProtectionAnnotationAtLod0`/`noProtectionAnnotationAtLod1`
     // o measurementLink, patrz `scene/buildScene.ts`).
     // -----------------------------------------------------------------------
-    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L1 ⇒ protectionAnnotationAtLod1IsBareFrame FAIL', () => {
+    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L1 ⇒ noProtectionAnnotationAtLod1 FAIL', () => {
       const scene = buildSceneV3(enm, 1);
       const synthetic: SceneV3 = {
         ...scene,
@@ -1961,7 +1963,7 @@ describe(
           },
         ],
       };
-      expect(protectionAnnotationAtLod1IsBareFrame(synthetic)).toBe(false);
+      expect(noProtectionAnnotationAtLod1(synthetic)).toBe(false);
     });
 
     it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L0 ⇒ noProtectionAnnotationAtLod0 FAIL', () => {

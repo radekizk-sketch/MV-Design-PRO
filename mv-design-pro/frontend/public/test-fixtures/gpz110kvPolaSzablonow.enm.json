@@ -2998,7 +2998,7 @@
             "naped": null,
             "odgalezienie": null,
             "operating_state": null,
-            "placement": "DOWNSTREAM",
+            "placement": "OFF_PATH",
             "ports": [
               {
                 "port_id": "przylacze",
@@ -3688,7 +3688,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "f5f2dc46d6463b72808d5ff2b9fa77a8b8ec6927d8ec31b6585bd3c44056d41b",
+      "hash_sha256": "1080b8e22069526af0451026e5de89ac3ce9f3cd5ecac817cebd2767b82d0159",
       "name": "GPZ z polami z szablonów ENEA",
       "revision": 1,
       "updated_at": "2026-09-25T00:00:00Z"

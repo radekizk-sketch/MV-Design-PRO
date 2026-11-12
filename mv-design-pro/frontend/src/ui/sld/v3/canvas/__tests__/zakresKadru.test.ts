@@ -418,6 +418,12 @@ describe('determinizm i jedno źródło przynależności', () => {
         if (!nalezy(l.ownerRef)) continue;
         dolicz(l.rect.x, l.rect.y, l.rect.x + l.rect.width, l.rect.y + l.rect.height);
       }
+      // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (K1): tło pola GPZ malowane przez kanwę należy do
+      // pola (i do każdego zakresu z tym polem).
+      for (const p of scene.meta.gpzAdnotacje?.panele ?? []) {
+        if (!nalezy(p.bayRef)) continue;
+        dolicz(p.rect.x, p.rect.y, p.rect.x + p.rect.width, p.rect.y + p.rect.height);
+      }
       return b;
     };
     for (const lod of [0, 1, 2] as SceneLod[]) {

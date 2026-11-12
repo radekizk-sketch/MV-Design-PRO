@@ -16,9 +16,13 @@
  *
  * ROZSTRZYGNIĘCIE. Obrys rysowany na kanwie jest funkcją TEGO SAMEGO planu, który rysuje tekst:
  *  · ramka bloku — `ramkaBlokuPrzekaznika`: ramka sceny ∪ NARYSOWANE wiersze z listy członków
- *    sceny (`PreviewElementMeta.wierszeBlokuPrzekaznika`) z marginesem; żaden wiersz
- *    nienarysowany (LOD1, oddalenie) ⇒ ramka sceny — blok zachowuje kształt bez kodów
- *    (odbiór właściciela 2026-11-04, korekta v2: blok to ramka bez okręgu);
+ *    sceny (`PreviewElementMeta.wierszeBlokuPrzekaznika`) z marginesem. Ramka i jej treść są
+ *    JEDNĄ klasą informacji (decyzja architekta D3d, karta UX-04/ROZDZIELNICA-SN-KOREKTA, za
+ *    dyrektywą właściciela 2026-11-11 „puste prostokąty bez określonej funkcji nie mogą
+ *    występować w gotowym SLD", rozstrzygnięcie V12K w `docs/v12xx/REJESTR_KONFLIKTOW.md`):
+ *    żaden wiersz nienarysowany (oddalenie, podłoga czytelności) ⇒ bloku NIE rysujemy wcale —
+ *    ani ramki, ani linii wyłączania i linii pomiarowych prowadzących do niej
+ *    (`blokiBezTresciWgPlanu`);
  *  · tło pola — `panelePolGpz` (ta sama funkcja co scena) z tła sceny pomniejszonego o margines
  *    (obrys elementów sceny), NARYSOWANYCH etykiet z listy członków (`PanelPolaGpz.etykiety`)
  *    i ramek bloków przekaźników pola wg planu. Tło nie kurczy się poniżej obrysu sceny:
@@ -61,9 +65,46 @@ export function ramkiBlokowWgPlanu(
   symbols.forEach((symbol, index) => {
     if (!symbol.meta?.ramkaBlokuPrzekaznika) return;
     const wiersze = (symbol.meta.wierszeBlokuPrzekaznika ?? []).flatMap((ref) => narysowane.get(ref) ?? []);
+    // D3d: blok bez narysowanej treści nie ma ramki (jedno źródło z `blokiBezTresciWgPlanu`).
+    if (wiersze.length === 0) return;
     wynik.set(index, ramkaBlokuPrzekaznika(symbol.meta.ramkaBlokuPrzekaznika, symbol.x, symbol.y, wiersze));
   });
   return wynik;
+}
+
+/** Bloki zabezpieczeń bez narysowanej treści (D3d): symbole przekaźników, których kanwa nie
+ *  rysuje, i pola, których linie wyłączania (`#trip-line`) i pomiarowe (`#measurement-link…`)
+ *  znikają razem z blokiem. Predykat parami z `ramkiBlokowWgPlanu`: blok jest narysowany ⇔ ma
+ *  ramkę wg planu. */
+export interface BlokiBezTresci {
+  readonly symbole: ReadonlySet<number>;
+  readonly pola: ReadonlySet<string>;
+}
+
+export function blokiBezTresciWgPlanu(
+  symbols: readonly PreviewSymbol[],
+  ramki: ReadonlyMap<number, V3Rect>,
+): BlokiBezTresci {
+  const symbole = new Set<number>();
+  const pola = new Set<string>();
+  symbols.forEach((symbol, index) => {
+    if (!symbol.meta?.ramkaBlokuPrzekaznika || ramki.has(index)) return;
+    symbole.add(index);
+    if (symbol.meta.ownerRef) pola.add(symbol.meta.ownerRef);
+  });
+  return { symbole, pola };
+}
+
+/** Czy odcinek sceny jest linią bloku zabezpieczeń pola z `pola` (wyłączania albo pomiarowa). */
+export function liniaBlokuBezTresci(
+  segment: { readonly meta?: { readonly kind?: string; readonly ownerRef?: string } },
+  bloki: BlokiBezTresci,
+): boolean {
+  const kind = segment.meta?.kind;
+  if (kind !== 'protectionTrip' && kind !== 'measurementLink') return false;
+  const owner = segment.meta?.ownerRef ?? '';
+  const i = owner.indexOf('#');
+  return bloki.pola.has(i > 0 ? owner.slice(0, i) : owner);
 }
 
 /**

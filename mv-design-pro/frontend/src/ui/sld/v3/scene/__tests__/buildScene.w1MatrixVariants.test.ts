@@ -30,12 +30,15 @@ const EXPECTED_SCENE_STACK: Record<string, readonly string[]> = {
   'linia-lbs-es': ['loadBreakSwitch', 'cableHead', 'earthSwitch'],
   'linia-lbs-es-otw': ['loadBreakSwitch', 'cableHead', 'earthSwitch'],
   'linia-cb-ct-es': ['disconnector', 'breaker', 'currentTransformer', 'disconnector', 'cableHead', 'earthSwitch'],
-  'linia-lbs-fuse': ['loadBreakSwitch', 'fuseSwitch', 'cableHead', 'earthSwitch'],
+  // Rozłącznik LOAD_SWITCH i wkładki FUSE to dwa aparaty z dwoma symbolami: wkładka rysuje się
+  // glifem bezpiecznika (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja FUSE — dawniej wkładka
+  // dostawała glif rozłącznika z bezpiecznikami i rozłącznik był narysowany dwa razy).
+  'linia-lbs-fuse': ['loadBreakSwitch', 'fuse', 'cableHead', 'earthSwitch'],
   'linia-cb-ct-sa': ['disconnector', 'breaker', 'currentTransformer', 'cableHead', 'earthSwitch', 'surgeArrester'],
   // W1b (uwaga 14): 2×uziemnik (krotność z listy) i CT+VT (rozróżnialność).
   'linia-2es': ['disconnector', 'breaker', 'currentTransformer', 'cableHead', 'earthSwitch', 'earthSwitch'],
   'linia-ct-vt': ['disconnector', 'breaker', 'currentTransformer', 'cableHead', 'voltageTransformer', 'earthSwitch'],
-  'tr-lbs-fuse-es': ['loadBreakSwitch', 'fuseSwitch', 'transformer2W', 'earthSwitch'],
+  'tr-lbs-fuse-es': ['loadBreakSwitch', 'fuse', 'transformer2W', 'earthSwitch'],
   'tr-cb-ct-zab': ['disconnector', 'breaker', 'currentTransformer', 'transformer2W', 'earthSwitch'],
 };
 

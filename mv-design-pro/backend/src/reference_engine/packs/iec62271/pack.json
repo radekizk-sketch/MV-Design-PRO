@@ -2,7 +2,7 @@
   "pack_id": "iec62271",
   "kind": "norm",
   "name_pl": "IEC 62271-200 — rozdzielnice SN w osłonach metalowych (profile pól + blokady)",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "status": "repo_verified",
   "source_document_refs": [
     "IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)",
@@ -37,21 +37,21 @@
       "profile_id": "rmu_transformer",
       "name_pl": "Pole transformatorowe RMU (stacje SN/nN, rozłącznik z bezpiecznikami)",
       "required": ["ES", "TRANSFORMER_DEVICE"],
-      "one_of_groups": [["FUSE", "CB"]],
+      "one_of_groups": [["FUSE", "FUSE_SWITCH", "CB"]],
       "optional": ["DS", "LOAD_SWITCH", "CT", "VT", "SURGE_ARRESTER", "CABLE_HEAD"],
       "forbidden": ["GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
+      "canonical_order": ["DS", "LOAD_SWITCH", "FUSE_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
       "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
       "notes_pl": "Zabezpieczenie transformatora: bezpieczniki (rozłącznik z bezpiecznikami) ALBO wyłącznik (recenzja NO-GO pkt 5/6)."
     },
     {
       "profile_id": "transformer_fuse",
       "name_pl": "Pole transformatorowe bezpiecznikowe (poza RMU)",
-      "required": ["DS", "FUSE", "TRANSFORMER_DEVICE"],
-      "one_of_groups": [],
+      "required": ["DS", "TRANSFORMER_DEVICE"],
+      "one_of_groups": [["FUSE", "FUSE_SWITCH"]],
       "optional": ["ES", "CT", "VT", "SURGE_ARRESTER", "CABLE_HEAD"],
       "forbidden": ["GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
+      "canonical_order": ["DS", "LOAD_SWITCH", "FUSE_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
       "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
       "notes_pl": "Słownik konwencji §12.4: DS → bezpiecznik → TR2W."
     },
@@ -63,7 +63,7 @@
       "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
       "optional": ["CT", "ES", "VT", "SURGE_ARRESTER", "CABLE_HEAD", "TRANSFORMER_DEVICE", "VOLTAGE_INDICATOR"],
       "forbidden": ["GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "LOAD_SWITCH", "FUSE_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
       "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
       "notes_pl": "Kanoniczny szablon kreatora bay_template_transformer: DS → CB → CT → DS → (ES bocznie) → TR. Karta POLA-GPZ-SZABLONY (ENEA Zeszyt 1, wersja 02.2023 – 2): odłączenie od szyny łącznikiem trójpołożeniowym albo odłącznikiem albo wysunięciem wyłącznika (§13); wskaźnik napięcia bocznie. Pole transformatora 110 kV/SN po stronie SN (Z.7 s.86): transformator stoi POZA celą (kabel do transformatora, ogranicznik przepięć przy jego zaciskach) — aparat transformatora w polu nie jest wymagany."
     },
@@ -74,9 +74,9 @@
       "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
       "optional": ["ES", "SURGE_ARRESTER", "VOLTAGE_INDICATOR", "CABLE_HEAD"],
       "forbidden": ["TRANSFORMER_DEVICE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["THREE_POSITION_SWITCH", "DS"],
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CABLE_HEAD"],
       "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
-      "notes_pl": "Boczny tor pomiarowy z przekładnikami napięciowymi (VT z definicji poza osią toru, §18.1). Odłączenie od szyny: odłącznik albo łącznik trójpołożeniowy (pole pomiaru napięcia ENEA Zeszyt 1 Z.17 s.97). Złącze wtykowe przekładnika napięciowego (§13 s.26 — gniazda dla bezpośredniego przyłączenia przekładników, bez wkładek bezpiecznikowych) leży w odgałęzieniu za łącznikiem, poza torem głównym — głowica w torze głównym pola pomiarowego narusza kolejność toru."
+      "notes_pl": "Boczny tor pomiarowy z przekładnikami napięciowymi (VT z definicji poza osią toru, §18.1). Odłączenie od szyny: odłącznik albo łącznik trójpołożeniowy (pole pomiaru napięcia ENEA Zeszyt 1 Z.17 s.97). Złącze wtykowe przekładnika napięciowego (§13 s.26 — gniazda dla bezpośredniego przyłączenia przekładników, bez wkładek bezpiecznikowych) kończy tor pola za łącznikiem (Z.17 s.97: tor schodzi od łącznika przez złącze do przekładnika, wskaźnik napięcia odchodzi w bok), a przekładnik przyłącza się do węzła końca toru i pozostaje aparatem bocznym (rejestr konfliktów UX04-Z17-KONIEC-TORU)."
     },
     {
       "profile_id": "coupler",
@@ -91,13 +91,24 @@
       "notes_pl": "Łącznik dwóch sekcji szyny SN. Karta POLA-GPZ-SZABLONY (ENEA Zeszyt 1, wersja 02.2023 – 2): odłączenie od szyny łącznikiem trójpołożeniowym albo odłącznikiem albo wysunięciem wyłącznika (§13); wskaźnik napięcia bocznie. Łącznik szyn SN (Z.12 s.92): łącznik trójpołożeniowy od strony sekcji A → wyłącznik → przekładnik prądowy → łącznik trójpołożeniowy od strony sekcji B."
     },
     {
+      "profile_id": "rmu_coupler",
+      "name_pl": "Pole sprzęgła RMU (stacje SN/nN, technologia rozłącznikowa)",
+      "required": [],
+      "one_of_groups": [["LOAD_SWITCH", "CB"]],
+      "optional": ["DS", "CT", "ES", "VOLTAGE_INDICATOR"],
+      "forbidden": ["TRANSFORMER_DEVICE", "CABLE_HEAD", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "CT", "DS"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
+      "notes_pl": "Łącznik dwóch sekcji szyny SN stacji SN/nN: funkcja łączeniowa rozłącznikiem ALBO wyłącznikiem (lustro profilu pola liniowego RMU), uziemnik bocznie; głowica kablowa i transformator zakazane — pole łączy sekcje, nie wyprowadza obwodu."
+    },
+    {
       "profile_id": "capacitor_bank",
       "name_pl": "Pole baterii kondensatorów równoległych (GPZ)",
       "required": ["CB", "CT"],
       "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
       "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
       "optional": ["ES", "CABLE_HEAD", "SURGE_ARRESTER", "VT", "PHASE_TO_PHASE_VT", "UNBALANCE_CT", "VOLTAGE_INDICATOR"],
-      "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "FUSE_SWITCH", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
       "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CB", "CT", "CABLE_HEAD"],
       "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "PHASE_TO_PHASE_VT", "UNBALANCE_CT", "VOLTAGE_INDICATOR"],
       "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Zał. 16: odłącznik szynowy (człon wysuwny) → wyłącznik → przekładnik prądowy → głowica kablowa; ogranicznik przepięć, dwa przekładniki napięciowe międzyfazowe L1-L2 i L2-L3 oraz przekładnik niezrównoważenia w połączeniu międzygwiazdowym stoją przy baterii, poza osią toru. Wymagalność przekładników baterii zależy od układu połączeń i od rezystorów rozładowczych jednostek — ocenia ją walidator modelu (W046, W047), nie profil. Karta POLA-GPZ-SZABLONY (ENEA Zeszyt 1, wersja 02.2023 – 2): odłączenie od szyny łącznikiem trójpołożeniowym albo odłącznikiem albo wysunięciem wyłącznika (§13); wskaźnik napięcia bocznie. Bateria kondensatorów (Z.16 s.96): łącznik trójpołożeniowy → wyłącznik → przekładnik prądowy → wskaźnik napięcia (bocznie) → złącze kablowe."
@@ -109,7 +120,7 @@
       "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
       "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
       "optional": ["ES", "CABLE_HEAD", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
-      "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "FUSE_SWITCH", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
       "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CB", "CT", "CABLE_HEAD"],
       "lateral_only": ["ES", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
       "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), Z.13–Z.15 s.93–95 i §16 s.30: łącznik trójpołożeniowy → wyłącznik z napędem M → przekładnik prądowy 100/5 → węzeł z ogranicznikiem przepięć (bocznie) → transformator uziemiający ZNyn11 poza celą (element modelu `Transformer`). Dławik, rezystor, stycznik AWSC, odłączniki gałęzi i przekładnik gałęzi rezystora leżą w punkcie neutralnym transformatora — opisuje je nośnik punktu neutralnego transformatora, nie aparat pola."
@@ -139,11 +150,11 @@
     {
       "profile_id": "aux",
       "name_pl": "Pole potrzeb własnych",
-      "required": ["DS", "FUSE"],
-      "one_of_groups": [],
+      "required": ["DS"],
+      "one_of_groups": [["FUSE", "FUSE_SWITCH"]],
       "optional": ["ES", "CABLE_HEAD"],
       "forbidden": [],
-      "canonical_order": ["DS", "FUSE", "CABLE_HEAD"],
+      "canonical_order": ["DS", "FUSE_SWITCH", "FUSE", "CABLE_HEAD"],
       "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
       "notes_pl": "Zasilanie urządzeń pomocniczych stacji."
     }

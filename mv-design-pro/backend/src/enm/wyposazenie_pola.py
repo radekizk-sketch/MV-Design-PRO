@@ -119,6 +119,7 @@ TrybWyposazenia = Literal["katalog", "szablon", "wyczysc"]
 PRZESTRZEN_KATALOGU_APARATU: dict[str, str] = {
     "CB": "APARAT_SN",
     "LOAD_SWITCH": "APARAT_SN",
+    "FUSE_SWITCH": "APARAT_SN",
     "DS": "APARAT_SN",
     "ES": "APARAT_SN",
     "CT": "CT",
@@ -136,6 +137,8 @@ PRZESTRZEN_KATALOGU_APARATU: dict[str, str] = {
 RODZAJE_KATALOGOWE_APARATU: dict[str, frozenset[str]] = {
     "CB": frozenset({"WYLACZNIK", "REKLOZER"}),
     "LOAD_SWITCH": frozenset({"ROZLACZNIK", "ROZLACZNIK_BEZPIECZNIKOWY"}),
+    # Rozłącznik bezpiecznikowy jako aparat główny pola (rodzaj `FUSE_SWITCH`).
+    "FUSE_SWITCH": frozenset({"ROZLACZNIK_BEZPIECZNIKOWY"}),
     "DS": frozenset({"ODLACZNIK"}),
     "ES": frozenset({"UZIEMNIK"}),
 }
@@ -158,7 +161,7 @@ RODZAJE_BEZ_KATALOGU_SN: frozenset[str] = frozenset(
 
 #: Rodzaje aparatu wskazujące gałąź łącznikową modelu (``linked_ref``) — ich stan
 #: (otwarty/zamknięty) jest stanem tej gałęzi.
-RODZAJE_Z_GALEZIA: frozenset[str] = frozenset({"CB", "LOAD_SWITCH", "DS", "FUSE"})
+RODZAJE_Z_GALEZIA: frozenset[str] = frozenset({"CB", "LOAD_SWITCH", "DS", "FUSE", "FUSE_SWITCH"})
 #: Rodzaje z rolą uziemienia (``earthing_role``).
 RODZAJE_Z_ROLA_UZIEMIENIA: frozenset[str] = frozenset({"ES", "SURGE_ARRESTER"})
 #: Aparaty łączeniowe toru (sterowalne) — TEN SAM zbiór, co szablony pola.

@@ -1806,7 +1806,12 @@ class BayPrimaryDevice(BaseModel):
         "VT",
         "CABLE_HEAD",
         "TRANSFORMER_DEVICE",
+        # Bezpiecznik = WKŁADKA bezpiecznikowa (IEC 60617 S00362, PN-EN 60282-1) — element toru
+        # obok łącznika (szablon RMU: rozłącznik Q1 + wkładki F1). Rozłącznik bezpiecznikowy
+        # jako APARAT GŁÓWNY pola (IEC 60617 S00368, PN-EN 62271-105) to osobny rodzaj
+        # `FUSE_SWITCH` (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta FUSE).
         "FUSE",
+        "FUSE_SWITCH",
         "GENERATOR_PV",
         "GENERATOR_BESS",
         "GENERATOR_FW",

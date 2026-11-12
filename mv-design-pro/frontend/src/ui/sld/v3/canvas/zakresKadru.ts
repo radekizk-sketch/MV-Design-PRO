@@ -143,6 +143,8 @@ interface IndeksModelu {
   /** Łączniki (rekordy `branches` typu łącznikowego) obu końców w tej samej stacji. */
   readonly lacznikiStacji: ReadonlyMap<string, readonly string[]>;
   readonly stacjaLacznika: ReadonlyMap<string, string>;
+  /** Łącznik stacji → szyny obu jego końców (sprzęgło sekcji łączy dwie sekcje). */
+  readonly szynyLacznika: ReadonlyMap<string, readonly [string, string]>;
   readonly nazwy: ReadonlyMap<string, string>;
 }
 
@@ -239,6 +241,7 @@ function indeksModelu(snapshot: EnergyNetworkModel): IndeksModelu {
   }
   const lacznikiStacji = new Map<string, string[]>();
   const stacjaLacznika = new Map<string, string>();
+  const szynyLacznika = new Map<string, readonly [string, string]>();
   for (const br of snapshot.branches ?? []) {
     nazwy.set(br.ref_id, br.name);
     if (!jestRodzajemGaleziAparatu(br.type)) continue;
@@ -247,6 +250,7 @@ function indeksModelu(snapshot: EnergyNetworkModel): IndeksModelu {
     if (z && z === doS) {
       dopisz(lacznikiStacji, z, br.ref_id);
       stacjaLacznika.set(br.ref_id, z);
+      szynyLacznika.set(br.ref_id, [br.from_bus_ref, br.to_bus_ref]);
     }
   }
 
@@ -267,6 +271,7 @@ function indeksModelu(snapshot: EnergyNetworkModel): IndeksModelu {
     stacjaZrodla,
     lacznikiStacji,
     stacjaLacznika,
+    szynyLacznika,
     nazwy,
   };
   INDEKSY_MODELU.set(snapshot, indeks);
@@ -438,6 +443,17 @@ function refySekcji(ix: IndeksModelu, sekcja: Sekcja): string[] {
     for (const pole of ix.polaStacji.get(stacja.ref_id) ?? []) {
       if (pole.gpz_section_id === s.section_id || pole.bus_ref === s.bus_ref) refy.push(...refyPola(ix, pole.ref_id));
     }
+    // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (K1): sprzęgło sekcji (Z.12) łączy DWIE sekcje, a rekord
+    // pola sprzęgła wskazuje jedną z nich (`gpz_section_id`). Łącznik stacji, którego koniec stoi na
+    // szynie tej sekcji, należy do sekcji — razem z polem, które go nosi — więc kadr każdej z dwóch
+    // sekcji obejmuje celkę sprzęgła, a nie tylko kadr sekcji wskazanej rekordem pola.
+    const lacznikiSekcji = (ix.lacznikiStacji.get(stacja.ref_id) ?? []).filter((br) =>
+      (ix.szynyLacznika.get(br) ?? ([] as readonly string[])).includes(s.bus_ref),
+    );
+    refy.push(...lacznikiSekcji);
+    for (const pole of ix.polaStacji.get(stacja.ref_id) ?? []) {
+      if ((pole.equipment_refs ?? []).some((r) => lacznikiSekcji.includes(r))) refy.push(...refyPola(ix, pole.ref_id));
+    }
     refy.push(...(ix.przylaczoneDoSzyny.get(s.bus_ref) ?? []));
     if (s.incoming_source_ref) refy.push(s.incoming_source_ref);
     return refy;
@@ -588,6 +604,15 @@ export interface SasiadElektrycznieWymagany {
   /** Refy modelu INNEJ stacji, które kadr stacji `stacjaRef` musi objąć. */
   readonly refy: (snapshot: EnergyNetworkModel, stacjaRef: string) => readonly string[];
 }
+
+/**
+ * K2b §0.1 (c) — krycie elementów POZA celem kadru (kurtyna). Sąsiad, który
+ * wpadł w okno kadru, zostaje rozpoznawalny jako kontekst (kształt, położenie),
+ * ale nie konkuruje z celem; klik w niego nadal prowadzi do obiektu. Stała żyje
+ * przy relacji przynależności (`nalezyDoZakresu`), bo kurtynę malują i kanwa,
+ * i jej warstwy (tła pól GPZ, `GpzAdnotacjeWarstwa`).
+ */
+export const KURTYNA_KADRU_OPACITY = 0.22;
 
 export const SASIEDZI_ELEKTRYCZNIE_WYMAGANI: readonly SasiadElektrycznieWymagany[] = [];
 

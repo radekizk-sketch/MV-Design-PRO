@@ -31,6 +31,8 @@ export function deviceKindLabel(kind: string | null | undefined): string {
       return 'Transformator';
     case 'FUSE':
       return 'Bezpiecznik';
+    case 'FUSE_SWITCH':
+      return 'Rozłącznik z bezpiecznikami';
     case 'GENERATOR_PV':
       return 'Generator PV';
     case 'GENERATOR_BESS':

@@ -189,7 +189,10 @@ def test_wyjscie_0_4_kv_zespolu_uziemiajacego_nie_jest_odplywem_sn(wariant: str)
 
 def test_szablon_z17_przekladnik_napieciowy_konczy_tor_pola() -> None:
     aparaty = {a.designation_q: a for a in BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.devices}
-    assert aparaty["T1"].placement == "DOWNSTREAM"
+    # Przekładnik napięciowy jest aparatem bocznym (profil `measurement`, §18.1) — koniec toru
+    # wyznaczają porty (jeden port na węźle za złączem GK1), nie `placement` (rejestr konfliktów
+    # UX04-Z17-KONIEC-TORU).
+    assert aparaty["T1"].placement == "OFF_PATH"
     assert aparaty["GK1"].placement == "DOWNSTREAM"
     assert aparaty["T1"].odgalezienie is None
     assert aparaty["GK1"].odgalezienie is None
@@ -204,7 +207,7 @@ def test_pole_z17_w_modelu_przekladnik_na_koncu_toru() -> None:
     aparaty = {a["designation"]: a for a in pole["primary_devices"]}
     # Tor: szyna → Q1 → węzeł (PF1 z boku) → GK1 → koniec toru, na którym stoi T1.
     q1, gk1, t1 = aparaty["Q1"], aparaty["GK1"], aparaty["T1"]
-    assert t1["placement"] == "DOWNSTREAM" and not t1.get("odgalezienie")
+    assert t1["placement"] == "OFF_PATH" and not t1.get("odgalezienie")
     assert gk1["placement"] == "DOWNSTREAM" and not gk1.get("odgalezienie")
     porty_gk1 = {p["wezel"] for p in gk1["ports"]}
     porty_t1 = {p["wezel"] for p in t1["ports"]}

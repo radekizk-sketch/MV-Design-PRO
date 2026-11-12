@@ -101,7 +101,9 @@ function naruszenia(p: Przypadek, scena: SceneV3): string[] {
   const rekordy = new Map((bay.primary_devices ?? []).map((d) => [d.device_ref, d] as const));
   const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === p.bayRef);
   // (A)
-  const oczekiwaneBloki = lod > 0 && p.eaz ? 1 : 0;
+  // D3d (REJESTR_KONFLIKTOW UX04-RAMKA-BEZ-TRESCI): blok wyłącznie na LOD2 — ramka bez treści
+  // (dawna goła ramka LOD1) nie jest rysowana.
+  const oczekiwaneBloki = lod === 2 && p.eaz ? 1 : 0;
   if (bloki.length !== oczekiwaneBloki) n.push(`(A) ${bloki.length} bloków zabezpieczeń, oczekiwano ${oczekiwaneBloki}`);
   const aparaty = scena.symbols.filter((s) => s.meta?.ownerRef === p.bayRef && s.symbolId !== 'protectionRelay' && s.meta?.deviceRef != null);
   const opisy = scena.labels.filter((l) => l.ownerRef.startsWith(`${p.bayRef}#`));

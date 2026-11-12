@@ -1329,8 +1329,9 @@ testami. Żaden test ani strażnik nie został wyłączony.
    i GPZ, iniekcje „brak” i „odgałęzienie poza torem”. Wyrocznia kodowała dawny warunek
    „brak rozwidlenia węzła → zbiór pusty”. Kanon tej karty
    (`rodzaje_aparatury.aparaty_poza_torem_glownym`) dopuszcza odgałęzienie z węzła końca toru:
-   łącznik trójpołożeniowy Z.17 kończy tor, a złącze i przekładnik leżą w odgałęzieniu za nim.
-   Wyrocznię przepisałem do tego kanonu. Intencja się nie zmienia: zbiór liczony wyłącznie
+   łącznik trójpołożeniowy Z.17 kończy tor, a złącze i przekładnik leżą w odgałęzieniu za nim
+   (stan do karty UX-04/ROZDZIELNICA-SN-KOREKTA; od niej złącze GK1 kończy tor Z.17, a przekładnik
+   leży na węźle końca toru — rejestr konfliktów UX04-Z17-KONIEC-TORU). Wyrocznię przepisałem do tego kanonu. Intencja się nie zmienia: zbiór liczony wyłącznie
    z portów. Po zmianie sprawdzenia odczepu, przewodów i pasa podpisów dla Z.17 biegną do końca
    i są zielone.
 4. **`css_kolizje_klas_guard`.** Klasę `.mvd-ocena-tabela` definiowały dwa globalne arkusze:
@@ -1818,8 +1819,10 @@ kierunek migracji) — wymaga rozstrzygnięcia sesji głównej przed wpięciem z
 **Wymaganie (stan po odbiorze B-02 2026-11-04 z korektą v2, §11.19 pkt 7 i §11.20 „Korekta v2”).**
 Blok zabezpieczeń: prostokątna ramka BEZ okręgu przekaźnika, tuż przy Q0, ze środkiem na
 wysokości Q0; wewnątrz wszystkie kody funkcji pola w dwóch kolumnach pionowych (kolejność danych
-`Bay.protection_codes`, wierszy ⌈n/2⌉), bez licznika „+n”; kody wyłącznie na LOD2, na LOD1 ramka
-tego samego kształtu bez kodów, na LOD0 GPZ zwinięty; pole bez funkcji — bez bloku. (Dawny stan
+`Bay.protection_codes`, wierszy ⌈n/2⌉), bez licznika „+n”; blok wyłącznie na LOD2 — na LOD1
+bloku nie ma (D3d, dyrektywa właściciela 2026-11-11: ramka bez treści nie jest rysowana;
+`docs/v12xx/REJESTR_KONFLIKTOW.md` UX04-RAMKA-BEZ-TRESCI), na LOD0 GPZ zwinięty; pole bez
+funkcji — bez bloku. (Dawny stan
 „kółko + kody pod kółkiem” zastąpiony korektą v2.) Natywny klik otwiera zakładkę inspektora
 „Zabezpieczenia i automatyka" z wierszami „ANSI + nazwa polska" prowadzącymi do nastaw; zero
 phantomów. (Dawne wymaganie „≤ 4 kody + „+N”, automatyka poza kanwą” zastąpione decyzją właściciela.)
@@ -2102,8 +2105,9 @@ Zmiana wyłącznie wizualna: topologia, ENM, logika aparatów i kontrakty bez zm
    `zasiegRamkiBloku`) dla sceny (`buildScene.ts`: declutter, sondy kolizji, porty), obrysu
    trafienia (`canvas/hitAreas.ts`) i kompozycji (`compose/gpz.ts`). Wejścia linii (wyłączania
    i pomiarowych) leżą na krawędziach ramki (`meta.wejsciaBlokuPrzekaznika`). Kanwa: ramka wg
-   planu = ramka sceny ∪ narysowane wiersze z marginesem (`canvas/obrysyWgPlanu.ts`), więc na LOD1
-   i przy wierszach ukrytych blok zachowuje kształt.
+   planu = ramka sceny ∪ narysowane wiersze z marginesem (`canvas/obrysyWgPlanu.ts`); blok, którego
+   żaden wiersz nie jest narysowany (próg czytelności), nie ma ramki ani linii wyłączania
+   i pomiarowych (D3d, `blokiBezTresciWgPlanu`), a na LOD1 bloku nie ma w scenie.
 2. *Kody z danych.* Jedynym źródłem jest `Bay.protection_codes` (adapter
    `enmToCanonicalGpzAdapter.ts`); w kodzie bloku nie ma zaszytej liczby, listy ani kolejności.
    Stałe kodów znalezione w repo (`v2/canvas/canonicalGpzModel.ts` — `KOD_FUNKCJI_PLAKIETKI`,
@@ -2137,7 +2141,7 @@ Zmiana wyłącznie wizualna: topologia, ENM, logika aparatów i kontrakty bez zm
 
 **Testy korekty v2.** `scene/__tests__/poleLinioweGpz.test.tsx`: położenie (ramka ≥ 2·GRID za Q0,
 środek na wysokości Q0 ±GRID, najbliższe wolne — przesunięcie o oczko w lewo czerwone, linia
-przez wnętrze ramki, koniec linii na krawędzi), LOD1 = LOD2 (ramka, linia wyłączania), linia
+przez wnętrze ramki, koniec linii na krawędzi), LOD1 bez bloku i linii wyłączania (D3d), linia
 wyłączania jednym odcinkiem z limitami Z.10 5·GRID, Z.11.1 16·GRID, Z.11 23·GRID; wyrocznia
 bloku (kody w kolejności danych, ⌈n/2⌉ wierszy, lewa kolumna oczko od krawędzi ramki); glif bez
 okręgu (i kontrola: glif bez ramki ma okrąg); kontrakt N ∈ {0, 1, 2, 7, 9} (kody pola w odwróconej
@@ -2169,8 +2173,8 @@ podgląd rozdzielnicy w kreatorze stacji i arkusz symboli.
    (`symbols/okragPrzekaznika.ts`) skasowany; glif `ProtectionRelayGlyph` rysuje wyłącznie ramkę
    (i znak „!” braku topologicznego).
 2. *Kody z modelu, dwie kolumny.* Treścią bloku są `Bay.protection_codes` w kolejności danych,
-   ⌈n/2⌉ wierszy w dwóch kolumnach. LOD2 — kody, LOD1 — goła ramka tego samego kształtu, LOD0 —
-   nic. Brak kodów — brak bloku.
+   ⌈n/2⌉ wierszy w dwóch kolumnach. LOD2 — kody, LOD1 — nic (D3d: ramka bez treści nie jest
+   rysowana), LOD0 — nic. Brak kodów — brak bloku.
 3. *Wysokość.* Środek ramki na wysokości łącznika, który zabezpieczenie wyłącza (zacisk cewki
    albo środek symbolu); gdy model nie wskazuje łącznika wyłączanego — pierwszego łącznika pola;
    gdy oś wypada ponad rysunkiem aparatów, górna krawędź ramki w górnej krawędzi rysunku (ramka

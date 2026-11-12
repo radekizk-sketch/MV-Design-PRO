@@ -57,6 +57,7 @@ import {
   type GpzComposition,
 } from '../gpz';
 import { measureLabelWidth } from '../../core/text';
+import { protectionAnnotationDetailForLod } from '../protectionMarking';
 
 const ORIGIN = { x: 0, y: 0 };
 
@@ -1073,11 +1074,14 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): blok zabezpieczeń bez 
     );
   });
 
-  it('B-1 (§17.4 L1, circle-only): goła ramka bloku BEZ wierszy, zero etykiet protection', () => {
-    const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN, [], 'circle-only');
-    expect(composition.protectionSymbols).toHaveLength(1);
-    expect(composition.protectionSymbols[0].ramkaBloku).toBeDefined();
-    expect(composition.protectionSymbols[0].wierszeBloku).toEqual([]);
+  // Decyzja architekta D3d (karta UX-04/ROZDZIELNICA-SN-KOREKTA): dawny tryb L1 „goła ramka bez
+  // wierszy" znika — ramka bez treści była pustym prostokątem; L1 dostaje `'none'`
+  // (`protectionAnnotationDetailForLod`). Intencja: poziom szczegółu L1 nie rysuje kodów — teraz
+  // nie rysuje i ramki.
+  it('B-1 (§17.4 L1 → none, D3d): L1 bez bloku zabezpieczeń mimo kodów w danych', () => {
+    expect(protectionAnnotationDetailForLod(1)).toBe('none');
+    const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN, [], protectionAnnotationDetailForLod(1));
+    expect(composition.protectionSymbols).toHaveLength(0);
     expect(composition.labels.protection).toHaveLength(0);
   });
 

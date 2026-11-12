@@ -259,7 +259,7 @@ def test_add_sn_bay_pole_zrodlowe_oze_w_stacji(konstrukcja: str) -> None:
     pole = next(b for b in enm["bays"] if b["ref_id"] == ref)
     glowny = KONSTRUKCJE[konstrukcja][1]
     if konstrukcja == "rozlacznik_bezpiecznikowy":
-        glowny = "FUSE"
+        glowny = "FUSE_SWITCH"
     assert [a["kind"] for a in pole["primary_devices"]] == [
         "DS",
         glowny,
@@ -312,7 +312,9 @@ def _glowny(enm: dict[str, Any], pole: dict[str, Any]) -> tuple[str, str, str]:
 #: Para typ gałęzi ↔ rodzaj rekordu aparatu głównego (wyrocznia jawna).
 PARA_GALAZ_APARAT = {
     "breaker": {"CB"},
-    "switch": {"LOAD_SWITCH", "FUSE"},
+    # Rozłącznik bezpiecznikowy jako aparat główny — `FUSE_SWITCH`, nigdy wkładka `FUSE`
+    # (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta FUSE).
+    "switch": {"LOAD_SWITCH", "FUSE_SWITCH"},
     "disconnector": {"DS", "THREE_POSITION_SWITCH"},
     "bus_coupler": {"CB"},
 }
@@ -338,7 +340,7 @@ def test_pole_pomiarowe_stacji_aparat_glowny_wskazuje_galaz(
     assert oznaczenie == "Q1"
     oczekiwany = KONSTRUKCJE[konstrukcja][1] if konstrukcja else "DS"
     if konstrukcja == "rozlacznik_bezpiecznikowy":
-        oczekiwany = "FUSE"
+        oczekiwany = "FUSE_SWITCH"
     assert rodzaj == oczekiwany
     assert [a["kind"] for a in pole["primary_devices"]] == [oczekiwany, "VT", "ES"]
 
@@ -395,7 +397,7 @@ def test_pole_ze_wskazanym_szablonem_aparat_glowny_wg_katalogu(
     assert oznaczenie == "Q0"
     oczekiwany = KONSTRUKCJE[konstrukcja][1] if konstrukcja else "CB"
     if konstrukcja == "rozlacznik_bezpiecznikowy":
-        oczekiwany = "FUSE"
+        oczekiwany = "FUSE_SWITCH"
     assert rodzaj == oczekiwany
 
 

@@ -19,9 +19,9 @@ import { cleanup, render } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
-import { KURTYNA_KADRU_OPACITY, SldCanvasV3, segmentTestId, symbolTestId } from '../SldCanvasV3';
+import { SldCanvasV3, segmentTestId, symbolTestId } from '../SldCanvasV3';
 import { MIN_OPIS_CELU_KADRU_PX } from '../../core/text';
-import { nalezyDoZakresu, zakresCelu } from '../zakresKadru';
+import { KURTYNA_KADRU_OPACITY, nalezyDoZakresu, zakresCelu } from '../zakresKadru';
 import { hiddenLabelsHintText, hiddenLabelsHintTextKadru, hiddenLabelsHintTextPozaCelem } from '../chromeLayout';
 
 const here = dirname(fileURLToPath(import.meta.url));

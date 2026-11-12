@@ -775,3 +775,34 @@ def test_oznaczenie_kanoniczne_aparatu_liczy_tylko_tor_glowny_szablonow() -> Non
         if a.odgalezienie is not None
     }
     assert {("ES", "Q51"), ("CABLE_HEAD", "GK1"), ("VT", "T3")} <= odgalezienia
+
+
+def test_oznaczenie_kanoniczne_aparatu_pomija_wzorce_gpz() -> None:
+    """Karta UX-04/ROZDZIELNICA-SN-KOREKTA: wzorzec GPZ Z.17 kończy tor pola złączem GK1
+    i przekładnikiem T1 (oznaczenia rysunku), a jednostka bloku RMU materializuje pole
+    rozdzielnicy stacji — kanon oznaczeń liczą wyłącznie wzorce pól stacji. Iniekcja (pomiar
+    2026-11-12): bez filtra `tylko_gpz` znika „cable_head” i „voltage_transformer”."""
+    from enm.pole_katalogowe import OZNACZENIE_KANONICZNE_APARATU
+    from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY
+    from network_model.catalog.switchgear import FACTORY_CONFIGURATION_REGISTRY
+
+    tor_glowny_gpz = {
+        (a.kind, a.designation_q)
+        for s in BAY_TEMPLATE_REGISTRY.values()
+        if s.tylko_gpz
+        for a in s.devices
+        if a.odgalezienie is None
+    }
+    # Dane wejściowe testu istnieją: tor główny GPZ ma oznaczenia inne niż kanon stacji.
+    assert {("CABLE_HEAD", "GK1"), ("VT", "T1")} <= tor_glowny_gpz
+    assert OZNACZENIE_KANONICZNE_APARATU["cable_head"] == "GK"
+    assert OZNACZENIE_KANONICZNE_APARATU["voltage_transformer"] == "T2"
+    # Każdy aparat, który jednostka bloku dokłada po łączniku głównym, ma oznaczenie kanoniczne.
+    dokladane = {
+        kind
+        for konfiguracja in FACTORY_CONFIGURATION_REGISTRY.values()
+        for jednostka in konfiguracja.units
+        for kind in jednostka.apparatus_kinds[1:]
+    }
+    assert dokladane
+    assert dokladane <= set(OZNACZENIE_KANONICZNE_APARATU)

@@ -177,8 +177,14 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
     const symbolsGroup = () => container.querySelector('[data-testid="sld-v3-symbols"]')!;
 
-    // Widoczne domyślnie (brak layerVisibility jawnego = wszystko widoczne).
-    expect(symbolsGroup().children[derIndex]).toBeTruthy();
+    const derTestId = scene.symbols[derIndex].meta?.testId ?? `sld-v3-symbol-${derIndex}`;
+    const maDer = () => Array.from(symbolsGroup().children).some((el) => el.getAttribute('data-testid') === derTestId);
+    // Widoczne domyślnie (brak layerVisibility jawnego = wszystko widoczne). Liczba dzieci
+    // grupy na starcie to stan odniesienia: kanwa nie rysuje bloków zabezpieczeń bez narysowanej
+    // treści (D3d, rejestr UX04-RAMKA-BEZ-TRESCI), więc może być mniejsza niż liczba symboli sceny.
+    expect(maDer()).toBe(true);
+    const n0 = symbolsGroup().children.length;
+    expect(n0).toBeLessThanOrEqual(scene.symbols.length);
 
     fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     const derCheckbox = screen.getByTestId('sld-v3-layer-toggle-derSources');
@@ -188,16 +194,13 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
     expect((derCheckbox as HTMLInputElement).checked).toBe(false);
     // Element ukrytej warstwy renderuje `null` — DOM child na tym indeksie
     // znika (liczba dzieci grupy maleje), reszta pozostaje nietknięta.
-    expect(symbolsGroup().children.length).toBeLessThan(scene.symbols.length);
-    expect(
-      Array.from(symbolsGroup().children).some(
-        (el) => el.getAttribute('data-testid') === (scene.symbols[derIndex].meta?.testId ?? `sld-v3-symbol-${derIndex}`),
-      ),
-    ).toBe(false);
+    expect(symbolsGroup().children.length).toBeLessThan(n0);
+    expect(maDer()).toBe(false);
 
     fireEvent.click(derCheckbox);
     expect((derCheckbox as HTMLInputElement).checked).toBe(true);
-    expect(symbolsGroup().children.length).toBe(scene.symbols.length);
+    expect(symbolsGroup().children.length).toBe(n0);
+    expect(maDer()).toBe(true);
   });
 
   it('reset przywraca wszystkie warstwy do widoczności domyślnej', () => {

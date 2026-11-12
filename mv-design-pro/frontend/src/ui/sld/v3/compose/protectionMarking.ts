@@ -59,21 +59,19 @@ export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
  * recenzji F9.9) — JEDNA prawda dla `compose/station.ts` i `compose/gpz.ts`
  * (wołający `scene/buildScene.ts` wywodzi wartość z LOD sceny przez
  * `protectionAnnotationDetailForLod` niżej):
- *  - `'full'`        (L2): ramka bloku zabezpieczeń z kodami funkcji, linia
- *                     wyłączania, linie pomiarowe, „52", „M", odniesienia.
- *  - `'circle-only'` (L1, nazwa historyczna): SAMA ramka bloku tego samego
- *                     kształtu BEZ kodów i linia wyłączania; linie pomiarowe,
- *                     „52"/„M" i wiersze nieobecne (§17.4, odbiór B-02 2026-11-04).
- *                     Przekaźnik NIE jest okręgiem (karta JEDNA NOTACJA BLOKU
- *                     ZABEZPIECZEŃ).
- *  - `'none'`        (L0): warstwa adnotacji nieobecna (plan sieci).
+ *  - `'full'` (L2): ramka bloku zabezpieczeń z kodami funkcji, linia wyłączania,
+ *              linie pomiarowe, „52", „M", odniesienia.
+ *  - `'none'` (L0 i L1): warstwa adnotacji nieobecna. Na L1 dawniej rysowano GOŁĄ ramkę
+ *              bloku z linią wyłączania (odbiór B-02 2026-11-04); decyzja architekta D3d
+ *              (karta UX-04/ROZDZIELNICA-SN-KOREKTA) za dyrektywą właściciela 2026-11-11
+ *              („puste prostokąty bez określonej funkcji nie mogą występować w gotowym SLD",
+ *              późniejszy dokument właściciela — `docs/v12xx/REJESTR_KONFLIKTOW.md`): ramka
+ *              i jej treść są jedną klasą informacji, więc bez kodów nie ma i ramki.
  */
-export type ProtectionAnnotationDetail = 'full' | 'circle-only' | 'none';
+export type ProtectionAnnotationDetail = 'full' | 'none';
 
 export function protectionAnnotationDetailForLod(lod: 0 | 1 | 2): ProtectionAnnotationDetail {
-  if (lod === 2) return 'full';
-  if (lod === 1) return 'circle-only';
-  return 'none';
+  return lod === 2 ? 'full' : 'none';
 }
 
 /** Odstęp kolejnych wierszy pełnej listy kodów [px świata] — dwa rastry: wiersze t4

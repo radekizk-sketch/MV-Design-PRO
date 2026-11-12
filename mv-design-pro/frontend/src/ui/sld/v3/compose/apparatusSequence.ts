@@ -141,7 +141,9 @@ export const SYMBOL_QET_RODZAJU: Readonly<Partial<Record<BayPrimaryDeviceKind, S
   LOAD_SWITCH: 'qetLoadBreakSwitch',
   DS: 'qetDisconnector',
   ES: 'qetEarthSwitch',
-  FUSE: 'qetFuseSwitch',
+  // Rozłącznik bezpiecznikowy (aparat główny pola). Wkładka bezpiecznikowa (`FUSE`) nie ma
+  // elementu QET w repozytorium — rysuje się symbolem kanonicznym `fuse`.
+  FUSE_SWITCH: 'qetFuseSwitch',
   THREE_POSITION_SWITCH: 'qetThreePositionSwitch',
   CT: 'qetCurrentTransformer',
   VT: 'qetVoltageTransformer',
@@ -295,6 +297,12 @@ function symbolKanonicznyRodzaju(kind: BayPrimaryDeviceKind): SymbolId | null {
     case 'TRANSFORMER_DEVICE':
       return 'transformer2W';
     case 'FUSE':
+      // Wkładka bezpiecznikowa (IEC 60617 S00362) — element toru obok łącznika (pole RMU
+      // transformatorowe: rozłącznik Q1 + wkładki F1).
+      return 'fuse';
+    case 'FUSE_SWITCH':
+      // Rozłącznik bezpiecznikowy jako aparat główny pola (IEC 60617 S00368; karta
+      // UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta FUSE: dwa urządzenia, dwa rodzaje).
       return 'fuseSwitch';
     case 'SURGE_ARRESTER':
       // F9.6 (§12.5, V12K-028): SA WYŁĄCZNIE ze ścieżki danych — mapowanie

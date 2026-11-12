@@ -1971,7 +1971,7 @@
           },
           {
             "port_id": "wy",
-            "wezel": "odplyw"
+            "wezel": "w1"
           }
         ],
         "render_variant": "qet_en60617"
@@ -1983,7 +1983,7 @@
         "ports": [
           {
             "port_id": "przylacze",
-            "wezel": "odplyw"
+            "wezel": "w1"
           }
         ],
         "render_variant": "qet_en60617"
@@ -1991,15 +1991,15 @@
       {
         "designation": "GK1",
         "kind": "CABLE_HEAD",
-        "placement": "OFF_PATH",
+        "placement": "DOWNSTREAM",
         "ports": [
           {
             "port_id": "we",
-            "wezel": "odplyw"
+            "wezel": "w1"
           },
           {
             "port_id": "wy",
-            "wezel": "pn1"
+            "wezel": "kabel"
           }
         ],
         "render_variant": "qet_en60617"
@@ -2011,16 +2011,13 @@
         "ports": [
           {
             "port_id": "przylacze",
-            "wezel": "pn1"
+            "wezel": "kabel"
           }
         ],
         "render_variant": "qet_en60617"
       }
     ],
     "nazwa": "bay_template_gpz_pomiar_napiecia_enea_z17",
-    "poza_torem_glownym": [
-      "GK1",
-      "T1"
-    ]
+    "poza_torem_glownym": []
   }
 ]

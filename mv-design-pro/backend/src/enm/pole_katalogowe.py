@@ -134,9 +134,19 @@ def _oznaczenia_kanoniczne() -> dict[str, str]:
     i nie są kanonem aparatu toru, który dokłada jednostka bloku — liczy się tor główny
     (pomiar 2026-10-29: bez tego filtra uziemnik, głowica kablowa i przekładnik napięciowy
     traciły oznaczenie kanoniczne, a pola bloków z uziemnikiem nie dawały się zbudować).
+
+    Liczą się wyłącznie wzorce pól rozdzielnicy stacji (`BayTemplate.tylko_gpz` fałszywe):
+    jednostka bloku fabrycznego RMU materializuje pole rozdzielnicy stacji SN/nn, a nie pole
+    rozdzielni SN stacji 110 kV/SN. Wzorce GPZ (ENEA Z.7–Z.17) niosą oznaczenia swoich rysunków
+    — np. pole pomiaru napięcia Z.17 kończy tor złączem GK1 i przekładnikiem T1 (karta
+    UX-04/ROZDZIELNICA-SN-KOREKTA) — i nie są kanonem aparatu dokładanego przez jednostkę bloku
+    (pomiar 2026-11-12: z wzorcami GPZ w tablicy głowica kablowa i przekładnik napięciowy traciły
+    oznaczenie kanoniczne).
     """
     oznaczenia_wg_rodzaju: dict[str, set[str]] = {}
     for szablon in BAY_TEMPLATE_REGISTRY.values():
+        if szablon.tylko_gpz:
+            continue
         for aparat in szablon.devices:
             if aparat.odgalezienie is not None:
                 continue

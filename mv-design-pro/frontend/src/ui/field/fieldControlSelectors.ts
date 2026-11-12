@@ -18,6 +18,7 @@ const CONTROL_DEVICE_LABELS: Partial<Record<BayPrimaryDeviceKind, string>> = {
   LOAD_SWITCH: 'rozłącznik',
   DS: 'odłącznik',
   FUSE: 'bezpiecznik',
+  FUSE_SWITCH: 'rozłącznik z bezpiecznikami',
 };
 
 const CONTROL_DEVICE_KINDS = new Set<BayPrimaryDeviceKind>([
@@ -25,6 +26,7 @@ const CONTROL_DEVICE_KINDS = new Set<BayPrimaryDeviceKind>([
   'LOAD_SWITCH',
   'DS',
   'FUSE',
+  'FUSE_SWITCH',
 ]);
 
 function deviceLabel(kind: BayPrimaryDeviceKind, refId: string): string {

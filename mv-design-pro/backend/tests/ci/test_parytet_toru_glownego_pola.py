@@ -145,9 +145,9 @@ def test_fikstura_parytetu_toru_glownego_rowna_backendowi():
 def test_przypadki_pokrywaja_odgalezienia_i_iniekcje():
     wynik = {p["nazwa"]: p for p in przypadki()}
     z_odgalezieniem = [n for n, p in wynik.items() if p["poza_torem_glownym"]]
-    # Sześć szablonów Z.11.1/Z.11, odgałęzienie od szyny, pole BKR i pole pomiaru napięcia Z.17
-    # mają odgałęzienie; Z.10 — nie.
-    assert len(z_odgalezieniem) == 9
+    # Sześć szablonów Z.11.1/Z.11, odgałęzienie od szyny i pole BKR mają odgałęzienie; Z.10
+    # i pole pomiaru napięcia Z.17 — nie.
+    assert len(z_odgalezieniem) == 8
     assert all("z10" not in n for n in z_odgalezieniem)
     # Tor niejednoznaczny (dwie drogi / zero dróg) — brak wniosku, pusty zbiór.
     assert wynik["iniekcja_dwie_drogi_do_konca_toru"]["poza_torem_glownym"] == []
@@ -162,13 +162,20 @@ def test_przypadki_pokrywaja_odgalezienia_i_iniekcje():
         {"port_id": "B", "wezel": "rozladowanie1"},
     ]
     assert porty_vt["T7"] == [{"port_id": "obwod", "wezel": "kabel"}]
-    # Pole Z.17: głowica kablowa i przekładnik napięciowy leżą w odgałęzieniu od węzła końca
-    # toru (reguła „gałąź może zaczynać się na węźle końca toru", parytet z `torPolaZPortow`);
-    # wskaźnik napięcia (jeden port na węźle końca toru) leży na węźle toru — jak przekładnik
-    # niezrównoważenia pola BKR.
+    # Pole Z.17 (karta UX-04/ROZDZIELNICA-SN-KOREKTA, rysunek s.97): tor łącznik Q1 → złącze GK1
+    # kończy się węzłem `kabel`, przekładnik T1 (jeden port) leży na węźle końca toru, wskaźnik
+    # napięcia PF1 — na węźle między łącznikiem a złączem. Odgałęzienia nie ma (dawniej GK1 i T1
+    # leżały w odgałęzieniu od węzła końca toru, a w osi toru stał wskaźnik napięcia).
     z17 = wynik[BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id]
     assert sorted(a["designation"] for a in z17["aparaty"]) == ["GK1", "PF1", "Q1", "T1"]
-    assert z17["poza_torem_glownym"] == ["GK1", "T1"]
+    assert z17["poza_torem_glownym"] == []
+    porty_z17 = {a["designation"]: a["ports"] for a in z17["aparaty"]}
+    assert porty_z17["GK1"] == [
+        {"port_id": "we", "wezel": "w1"},
+        {"port_id": "wy", "wezel": "kabel"},
+    ]
+    assert [p["wezel"] for p in porty_z17["T1"]] == ["kabel"]
+    assert [p["wezel"] for p in porty_z17["PF1"]] == ["w1"]
 
 
 if __name__ == "__main__":

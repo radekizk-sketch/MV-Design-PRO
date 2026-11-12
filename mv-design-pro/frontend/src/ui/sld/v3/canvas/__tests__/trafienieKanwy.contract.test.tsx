@@ -33,7 +33,8 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
 import { planSceneLabels } from '../labelLegibility';
 import { sheetSizeFor } from '../../sheet/outline';
-import { SldCanvasV3 } from '../SldCanvasV3';
+import { SldCanvasV3, segmentTestId, symbolTestId } from '../SldCanvasV3';
+import { blokiBezTresciWgPlanu, liniaBlokuBezTresci, ramkiBlokowWgPlanu } from '../obrysyWgPlanu';
 import {
   HIT_ATTR,
   MIN_HIT_SCREEN_PX,
@@ -103,6 +104,21 @@ describe('S9-4 — nazwy atrybutów kanału trafień', () => {
   });
 });
 
+/** Obiekty sceny, których kanwa NIE rysuje: bloki zabezpieczeń bez narysowanej treści i ich linie
+ *  (D3d, rejestr UX04-RAMKA-BEZ-TRESCI) — ta sama funkcja planu i ten sam kanał `ukryteTestId`
+ *  co `SldCanvasV3` (identyfikatory po indeksie sceny, nie po indeksie przefiltrowanej listy). */
+function ukryteWgPlanu(scene: ReturnType<typeof buildSceneV3>, drawn: ReturnType<typeof planSceneLabels>['drawn']) {
+  const bloki = blokiBezTresciWgPlanu(scene.symbols, ramkiBlokowWgPlanu(scene.symbols, drawn));
+  const ukryte = new Set<string>();
+  scene.segments.forEach((sg, i) => {
+    if (liniaBlokuBezTresci(sg, bloki)) ukryte.add(segmentTestId(sg, i));
+  });
+  scene.symbols.forEach((sy, i) => {
+    if (bloki.symbole.has(i)) ukryte.add(symbolTestId(sy, i));
+  });
+  return ukryte;
+}
+
 describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda', () => {
   it.each([0, 1, 2] as SceneLod[])(
     'LOD %s: geometria uchwytów w DOM == `buildCanvasHitAreas` (co do wartości, nie „mniej więcej")',
@@ -123,6 +139,7 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
         symbols: scene.symbols,
         segments: scene.segments,
         labels: plan.drawn,
+        ukryteTestId: ukryteWgPlanu(scene, plan.drawn),
         resultMarkers: [],
         scale,
       });
@@ -173,6 +190,7 @@ describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24
       symbols: scene.symbols,
       segments: scene.segments,
       labels: plan.drawn,
+      ukryteTestId: ukryteWgPlanu(scene, plan.drawn),
       resultMarkers: [],
       scale,
     });

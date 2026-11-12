@@ -155,6 +155,13 @@ RODZAJ_PRZEKLADNIKA_FERRANTIEGO = "CORE_BALANCE_CT"
 #: Pojemnościowy wskaźnik napięcia (Z.10 s.89, §13 „stacjonarne wskaźniki napięcia") —
 #: odgałęzienie jednoportowe bez obciążenia toru.
 RODZAJ_WSKAZNIKA_NAPIECIA = "VOLTAGE_INDICATOR"
+#: Rozłącznik bezpiecznikowy jako APARAT GŁÓWNY pola (IEC 60617 S00368 „rozłącznik
+#: z bezpiecznikiem”, PN-EN 62271-105 zestaw rozłącznik–bezpieczniki): łącznik z położeniem
+#: (zamknięty/otwarty) i wkładkami w jednym aparacie. Rodzaj ``FUSE`` to sama WKŁADKA
+#: bezpiecznikowa (IEC 60617 S00362) — element toru obok łącznika (szablon RMU: rozłącznik Q1
+#: i wkładki F1). Dwa urządzenia, dwa rodzaje (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja
+#: architekta FUSE): rysunek, kreator i eksport rozróżniają je jednym słownikiem.
+RODZAJ_ROZLACZNIKA_BEZPIECZNIKOWEGO = "FUSE_SWITCH"
 
 #: Nazwa rodzaju aparatu pola (``BayPrimaryDevice.kind``) w zdaniu dla projektanta — liść
 #: słownika, z którego czytają model (odmowy walidatora aparatu) i operacje wyposażenia pola.
@@ -167,6 +174,7 @@ NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
     "VT": "przekładnik napięciowy",
     "SURGE_ARRESTER": "ogranicznik przepięć",
     "FUSE": "bezpieczniki",
+    RODZAJ_ROZLACZNIKA_BEZPIECZNIKOWEGO: "rozłącznik z bezpiecznikami",
     "CABLE_HEAD": "głowica kablowa",
     "TRANSFORMER_DEVICE": "transformator pola",
     RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO: "łącznik trójpołożeniowy",
@@ -222,6 +230,7 @@ PORTY_APARATU_POLA: dict[str, tuple[str, ...]] = {
     "LOAD_SWITCH": (PORT_WEJSCIA, PORT_WYJSCIA),
     "DS": (PORT_WEJSCIA, PORT_WYJSCIA),
     "FUSE": (PORT_WEJSCIA, PORT_WYJSCIA),
+    RODZAJ_ROZLACZNIKA_BEZPIECZNIKOWEGO: (PORT_WEJSCIA, PORT_WYJSCIA),
     RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO: (PORT_WEJSCIA, PORT_WYJSCIA),
     "CT": (PORT_WEJSCIA, PORT_WYJSCIA),
     "CABLE_HEAD": (PORT_WEJSCIA, PORT_WYJSCIA),
@@ -270,8 +279,19 @@ STANY_LACZNIKA_TROJPOLOZENIOWEGO: tuple[str, ...] = (
 #: Rodzaje aparatu pola, które są ŁĄCZNIKAMI (mają położenie łączeniowe): zbiór, który
 #: schemat oznacza ramką stanu (zamknięty / otwarty) i który czytają reguły blokad. Ten sam
 #: zbiór ma lustro frontu (``RODZAJE_LACZNIKOW_POLA``) — równość przypięta testem.
+#: Wkładka bezpiecznikowa (``FUSE``) NIE jest łącznikiem: nie ma położenia łączeniowego ani
+#: napędu, a glif bezpiecznika nie ma kafla stanu. Łącznikiem jest rozłącznik z bezpiecznikami
+#: (``FUSE_SWITCH``) — do karty UX-04/ROZDZIELNICA-SN-KOREKTA rodzaj ``FUSE`` oznaczał oba
+#: urządzenia naraz (decyzja architekta FUSE: dwa urządzenia, dwa rodzaje).
 RODZAJE_LACZNIKOW_POLA: frozenset[str] = frozenset(
-    {"CB", "LOAD_SWITCH", "DS", "ES", "FUSE", RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO}
+    {
+        "CB",
+        "LOAD_SWITCH",
+        "DS",
+        "ES",
+        RODZAJ_ROZLACZNIKA_BEZPIECZNIKOWEGO,
+        RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
+    }
 )
 #: Uziemnik pola (aparat odgałęzieniowy do ziemi) — jedyny łącznik pola poza torem głównym.
 RODZAJ_UZIEMNIKA = "ES"

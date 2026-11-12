@@ -39,10 +39,19 @@
         "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
       },
       {
-        "attachment_bus_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_terminal",
+        "attachment_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/terminal",
         "bay_role": "TR",
         "corridor_refs": [],
-        "field_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay",
+        "field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+        "occupied": false,
+        "segment_refs": [],
+        "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+      },
+      {
+        "attachment_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/terminal",
+        "bay_role": "TR",
+        "corridor_refs": [],
+        "field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
         "occupied": false,
         "segment_refs": [],
         "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
@@ -1198,30 +1207,31 @@
         "catalog_bindings": null,
         "config_id": "kanoniczny:bay_template_gpz_transformator_sn_enea_z7",
         "equipment_refs": [
-          "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus",
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/wn_sn"
         ],
         "feeder_short_name": null,
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
-        "id": "d32cbbf4-6aa4-5c9e-8a7c-88b0580a0a9a",
+        "id": "ec490980-6b5f-511f-8ac4-37b02cdb6b10",
         "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
-          "apparatus_kind": "CB",
-          "catalog_binding": null,
-          "default_device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device",
-          "field_status": "CONFIGURED_FOR_TRUNK"
+          "default_device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus",
+          "gpz_section_order": 0,
+          "source_field_kind": "TRANSFORMER",
+          "transformer_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/wn_sn"
         },
         "metadane_pochodzenia": null,
-        "name": "Pole transformatorowe",
+        "name": "Pole transformatora TR1 110/15 kV",
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [
           {
             "catalog_ref": null,
             "designation": "PF0",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::0",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
             "earthing_role": null,
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
@@ -1251,7 +1261,7 @@
           {
             "catalog_ref": null,
             "designation": "Q1",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
             "earthing_role": null,
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
@@ -1294,13 +1304,13 @@
             "zrodlo_zaczepu": null
           },
           {
-            "catalog_ref": null,
+            "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "designation": "Q0",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::2",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
             "earthing_role": null,
             "is_controllable": true,
             "kind": "CB",
-            "linked_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device",
+            "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus",
             "naped": "SILNIKOWY",
             "odgalezienie": null,
             "operating_state": null,
@@ -1330,7 +1340,7 @@
           {
             "catalog_ref": null,
             "designation": "Q5",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::3",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
             "earthing_role": null,
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
@@ -1375,7 +1385,7 @@
           {
             "catalog_ref": null,
             "designation": "GK1",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::4",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
             "earthing_role": null,
             "is_controllable": false,
             "kind": "CABLE_HEAD",
@@ -1409,7 +1419,7 @@
           {
             "catalog_ref": null,
             "designation": "T3",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::5",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
             "earthing_role": null,
             "is_controllable": false,
             "kind": "VT",
@@ -1469,7 +1479,7 @@
           {
             "catalog_ref": "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
             "designation": "T1",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::6",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
             "earthing_role": null,
             "is_controllable": false,
             "kind": "CT",
@@ -1542,7 +1552,7 @@
           {
             "catalog_ref": null,
             "designation": "PF1",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::7",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
             "earthing_role": null,
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
@@ -1572,7 +1582,7 @@
           {
             "catalog_ref": null,
             "designation": "GK",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::8",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
             "earthing_role": null,
             "is_controllable": false,
             "kind": "CABLE_HEAD",
@@ -1606,7 +1616,7 @@
           {
             "catalog_ref": null,
             "designation": "F1",
-            "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::9",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
             "earthing_role": "surge_ground",
             "is_controllable": false,
             "kind": "SURGE_ARRESTER",
@@ -1634,15 +1644,478 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "ref_id": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
         "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
-        "tags": [],
-        "terminal_bus_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_terminal",
+        "tags": [
+          "gpz_transformer_field"
+        ],
+        "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/terminal",
+        "wybor_bloku": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "TR",
+        "bay_template_ref": "bay_template_gpz_transformator_sn_enea_z7",
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "catalog_bindings": null,
+        "config_id": "kanoniczny:bay_template_gpz_transformator_sn_enea_z7",
+        "equipment_refs": [
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus",
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/wn_sn"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+        "id": "122d54c9-1200-5ce2-a401-c1a5636a72c8",
+        "klasa_pola": null,
+        "manufacturer_ref": null,
+        "meta": {
+          "default_device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus",
+          "gpz_section_order": 1,
+          "source_field_kind": "TRANSFORMER",
+          "transformer_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/wn_sn"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole transformatora TR2 110/15 kV",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [
+          {
+            "catalog_ref": null,
+            "designation": "PF0",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+            "earthing_role": null,
+            "is_controllable": false,
+            "kind": "VOLTAGE_INDICATOR",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "szyna"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:voltage_indicator",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "Q1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+            "earthing_role": null,
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "UPSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": {
+              "actual_state": "zamkniety",
+              "armed_for_close": null,
+              "armed_for_open": null,
+              "cause_code": null,
+              "commanded_state": null,
+              "communication_ok": null,
+              "control_mode": null,
+              "interlock_blocked": null,
+              "last_command_at": null,
+              "last_state_change_at": null
+            },
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "designation": "Q0",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+            "earthing_role": null,
+            "is_controllable": true,
+            "kind": "CB",
+            "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus",
+            "naped": "SILNIKOWY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cb",
+            "uzwojenia": [],
+            "wykonanie": "STALE",
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "Q5",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+            "earthing_role": null,
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": "pn",
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "pn1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": {
+              "actual_state": "zamkniety",
+              "armed_for_close": null,
+              "armed_for_open": null,
+              "cause_code": null,
+              "commanded_state": null,
+              "communication_ok": null,
+              "control_mode": null,
+              "interlock_blocked": null,
+              "last_command_at": null,
+              "last_state_change_at": null
+            },
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "GK1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+            "earthing_role": null,
+            "is_controllable": false,
+            "kind": "CABLE_HEAD",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": "pn",
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "pn1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "pn2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "T3",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+            "earthing_role": null,
+            "is_controllable": false,
+            "kind": "VT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": "pn",
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "pn2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:vt",
+            "uzwojenia": [
+              {
+                "klasa": "0,2",
+                "moc_va": 10.0,
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
+                "przeznaczenie": [
+                  "POMIAR",
+                  "JAKOSC_ENERGII"
+                ]
+              },
+              {
+                "klasa": "0,5",
+                "moc_va": 7.5,
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
+                "przeznaczenie": [
+                  "POMIAR"
+                ]
+              },
+              {
+                "klasa": "0,5/3P",
+                "moc_va": 7.5,
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
+                "przeznaczenie": [
+                  "REGULACJA",
+                  "POMIAR"
+                ]
+              }
+            ],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
+            "designation": "T1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "earthing_role": null,
+            "is_controllable": false,
+            "kind": "CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [
+              {
+                "fs": 5.0,
+                "klasa": "0,2S",
+                "moc_va": 10.0,
+                "przekladnia": "1000/5",
+                "przeznaczenie": [
+                  "POMIAR",
+                  "JAKOSC_ENERGII"
+                ]
+              },
+              {
+                "fs": 5.0,
+                "klasa": "0,2",
+                "moc_va": 10.0,
+                "przekladnia": "1000/5",
+                "przeznaczenie": [
+                  "POMIAR",
+                  "REGULACJA"
+                ]
+              },
+              {
+                "fs": null,
+                "klasa": "5P20",
+                "moc_va": 15.0,
+                "przekladnia": "1000/5",
+                "przeznaczenie": [
+                  "ROZNICOWE"
+                ]
+              },
+              {
+                "fs": null,
+                "klasa": "5P20",
+                "moc_va": 15.0,
+                "przekladnia": "1000/5",
+                "przeznaczenie": [
+                  "ZABEZPIECZENIA"
+                ]
+              }
+            ],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:ct",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "PF1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+            "earthing_role": null,
+            "is_controllable": false,
+            "kind": "VOLTAGE_INDICATOR",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:voltage_indicator",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "GK",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+            "earthing_role": null,
+            "is_controllable": false,
+            "kind": "CABLE_HEAD",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w3"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "F1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+            "earthing_role": "surge_ground",
+            "is_controllable": false,
+            "kind": "SURGE_ARRESTER",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:surge_arrester",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          }
+        ],
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_transformer_field"
+        ],
+        "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/terminal",
         "wybor_bloku": null
       },
       {
@@ -2552,7 +3025,7 @@
               },
               {
                 "port_id": "wy",
-                "wezel": "odplyw"
+                "wezel": "w1"
               }
             ],
             "przekladnia": null,
@@ -2582,7 +3055,7 @@
             "ports": [
               {
                 "port_id": "przylacze",
-                "wezel": "odplyw"
+                "wezel": "w1"
               }
             ],
             "przekladnia": null,
@@ -2606,17 +3079,17 @@
             "kind": "CABLE_HEAD",
             "linked_ref": null,
             "naped": null,
-            "odgalezienie": "pn",
+            "odgalezienie": null,
             "operating_state": null,
-            "placement": "OFF_PATH",
+            "placement": "DOWNSTREAM",
             "ports": [
               {
                 "port_id": "we",
-                "wezel": "odplyw"
+                "wezel": "w1"
               },
               {
                 "port_id": "wy",
-                "wezel": "pn1"
+                "wezel": "kabel"
               }
             ],
             "przekladnia": null,
@@ -2640,13 +3113,13 @@
             "kind": "VT",
             "linked_ref": null,
             "naped": null,
-            "odgalezienie": "pn",
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
             "ports": [
               {
                 "port_id": "przylacze",
-                "wezel": "pn1"
+                "wezel": "kabel"
               }
             ],
             "przekladnia": null,
@@ -2847,38 +3320,49 @@
         "x_ohm": 0.0
       },
       {
-        "catalog_namespace": null,
-        "catalog_ref": null,
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "czas_wylaczenia_zwarcia_s": null,
-        "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
-        "id": "309dec99-0684-5afa-8924-2bfe2631f98d",
-        "materialized_params": null,
+        "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "id": "4efd6fb3-679f-548f-9a0b-5a9872c4c8b6",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
         "meta": {
-          "apparatus_kind": "CB",
+          "apparatus_kind": "BREAKER",
           "bay_role": "TR",
-          "catalog_binding": null,
-          "field_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
           "render_on_sld": false,
-          "requires_catalog_binding": true,
+          "requires_catalog_binding": false,
           "show_in_project_tree": false,
           "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
-          "terminal_bus_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_terminal"
+          "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/terminal"
         },
-        "name": "Aparat Pole transformatorowe",
+        "name": "Wyłącznik Pole transformatora TR2 110/15 kV",
         "normal_state": null,
         "overrides": [],
-        "parameter_source": null,
+        "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus",
         "rodzaj_obwodu_nn": null,
-        "source_mode": null,
+        "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
-          "gpz_field_device",
-          "requires_catalog_binding"
+          "gpz_field_device"
         ],
-        "to_bus_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_terminal",
+        "to_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/terminal",
         "type": "breaker",
         "x_ohm": 0.0
       },
@@ -2983,6 +3467,53 @@
         "to_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
         "type": "bus_coupler",
         "x_ohm": null
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
+        "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "id": "d2e5ce75-3eb5-5694-aa0c-d6b1a71adbea",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "TR",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/terminal"
+        },
+        "name": "Wyłącznik Pole transformatora TR1 110/15 kV",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus",
+        "rodzaj_obwodu_nn": null,
+        "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
       },
       {
         "catalog_namespace": "APARAT_SN",
@@ -3213,19 +3744,43 @@
       },
       {
         "frequency_hz": null,
-        "id": "7ff2b430-29fb-5dc6-91ff-100178e8685f",
+        "id": "6e4c1f8b-e0fc-575f-b5d2-74ed68b980f0",
         "meta": {
-          "field_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay",
-          "port_kind": "trunk_out",
+          "field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+          "port_kind": "transformer",
           "render_on_sld": false,
           "show_in_project_tree": false,
           "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
           "visual_role": "FIELD_TERMINAL"
         },
-        "name": "Zacisk odpływowy Pole transformatorowe",
+        "name": "Zacisk pola Pole transformatora TR1 110/15 kV",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_terminal",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/terminal",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "2f4f46b2-860f-532e-a1c6-124c9356654d",
+        "meta": {
+          "field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+          "port_kind": "transformer",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk pola Pole transformatora TR2 110/15 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/terminal",
         "tags": [
           "helper_bus",
           "field_terminal"
@@ -3801,7 +4356,7 @@
       },
       {
         "aktywna_grupa": 1,
-        "bay_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay",
+        "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
         "catalog_namespace": null,
         "catalog_ref": null,
         "charakterystyki_ref": null,
@@ -3838,62 +4393,159 @@
           }
         ],
         "grupy_nastaw": [],
-        "id": "30102a8d-0710-5981-b47d-1ebb89a49ddb",
+        "id": "f1048256-f1ed-51b3-8cb9-aa507ae45fbf",
         "is_enabled": true,
         "macierz_wyzwolen": [
           {
             "aparat_refs": [
-              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
-            ],
-            "funkcja_ref": "87T",
-            "pobudza_spz": false
-          },
-          {
-            "aparat_refs": [
-              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus"
             ],
             "funkcja_ref": "51",
             "pobudza_spz": false
           },
           {
             "aparat_refs": [
-              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus"
             ],
             "funkcja_ref": "50",
             "pobudza_spz": false
           },
           {
             "aparat_refs": [
-              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus"
             ],
             "funkcja_ref": "ZS",
             "pobudza_spz": false
           },
           {
             "aparat_refs": [
-              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus"
             ],
             "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/apparatus"
+            ],
+            "funkcja_ref": "87T",
             "pobudza_spz": false
           }
         ],
         "materialized_params": null,
         "meta": {},
-        "name": "Sterownik pola Pole transformatorowe",
+        "name": "Sterownik pola Pole transformatora TR1 110/15 kV",
         "overrides": [],
         "parameter_source": null,
         "prad_znamionowy_wejscia_a": null,
-        "ref_id": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay/sterownik",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::6",
+          "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": "HOLMGREEN",
+          "i0_uklad": null,
           "u0_uklad": null,
           "u0_vt_ref": null,
-          "vt_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::5"
+          "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          },
+          {
+            "kod": "87T",
+            "ref": "87T",
+            "wlaczona": true
+          },
+          {
+            "kod": "90",
+            "ref": "90",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "a1bbdb05-1e54-546d-a154-d4f08dd10560",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus"
+            ],
+            "funkcja_ref": "ZS",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/apparatus"
+            ],
+            "funkcja_ref": "87T",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole transformatora TR2 110/15 kV",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
         }
       },
       {
@@ -4249,7 +4901,54 @@
         }
       }
     ],
-    "shunt_capacitors": [],
+    "shunt_capacitors": [
+      {
+        "bus_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay_terminal",
+        "catalog_namespace": "KOMPENSATOR_SN",
+        "catalog_ref": "KOMP_SN_1V2_15KV",
+        "dlawik_indukcyjnosc_mh": null,
+        "dlawik_ograniczajacy": null,
+        "id": "109db8e9-b517-5014-9f09-e3b39896b34a",
+        "liczba_stopni": null,
+        "materialized_params": {
+          "catalog_item_id": "KOMP_SN_1V2_15KV",
+          "catalog_item_version": "2024.1",
+          "liczba_stopni": 1,
+          "loss_kw": 0.6,
+          "rated_kv": 15.0,
+          "rated_mvar": 1.2,
+          "uklad_polaczen": "PODWOJNA_GWIAZDA_IZOLOWANA"
+        },
+        "meta": {
+          "catalog_binding": {
+            "catalog_item_id": "KOMP_SN_1V2_15KV",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "KOMPENSATOR_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "loss_kw": 0.6
+        },
+        "name": "Bateria kondensatorów SN 1,2 Mvar 15 kV",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "rated_kv": 15.0,
+        "rated_mvar": 1.2,
+        "ref_id": "shunt/20010d961db8ff06a8fcee95cdd17815/cap",
+        "rezystory_rozladowcze_wewnetrzne": null,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "stopnie_zalaczone": null,
+        "tags": [],
+        "tolerancja_pojemnosci_max_proc": null,
+        "tolerancja_pojemnosci_min_proc": null,
+        "uklad_polaczen": null,
+        "wylaczenie_od_transformatorow": [
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/wn_sn",
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/wn_sn"
+        ]
+      }
+    ],
     "sources": [
       {
         "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
@@ -4366,7 +5065,7 @@
         "hv_neutral": null,
         "i0_percent": 0.35,
         "id": "f0bda3f1-e39e-589c-9262-4c4d7387ebb4",
-        "lv_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "lv_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/terminal",
         "lv_earthing_system": null,
         "lv_neutral": null,
         "lv_voltage_tolerance": null,
@@ -4421,7 +5120,7 @@
         "hv_neutral": null,
         "i0_percent": 0.35,
         "id": "edf65590-dd63-553f-afe5-2e154be602dd",
-        "lv_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "lv_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/terminal",
         "lv_earthing_system": null,
         "lv_neutral": null,
         "lv_voltage_tolerance": null,

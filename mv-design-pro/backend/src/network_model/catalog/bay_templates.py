@@ -1394,6 +1394,10 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
         # napięcia odchodzi z węzła toru w bok. Pole nie ma odgałęzienia przekładnika (brak łącznika
         # odgałęzienia, jak w Z.7/Z.11) — do karty UX-04/ROZDZIELNICA-SN-KOREKTA szablon niósł złącze
         # i przekładnik jako odgałęzienie, a rysunek stawiał wskaźnik napięcia w osi toru.
+        # Złącze GK1 (dwa porty) kończy tor węzłem `kabel`; przekładnik (jeden port) przyłącza się
+        # do węzła końca toru i pozostaje aparatem bocznym (`OFF_PATH`) — przekładnik napięciowy
+        # jest z definicji poza osią toru (profil `measurement`, §18.1); położenie na końcu toru
+        # wynika z portów, nie z `placement`.
         BayDeviceTemplate(
             kind="CABLE_HEAD",
             designation_q="GK1",
@@ -1409,7 +1413,7 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
             kind="VT",
             designation_q="T1",
             position=3,
-            placement="DOWNSTREAM",
+            placement="OFF_PATH",
             uzwojenia=list(UZWOJENIA_VT_POLA_POMIARU_NAPIECIA_Z17),
             podstawa=(
                 "ENEA Z.17 (s.97) — przekładnik napięciowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3, "
@@ -2076,15 +2080,20 @@ _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND: dict[str, str] = {
 }
 
 # Aparaty łączeniowe toru (sterowalne, ze stanem otwarty/zamknięty) — łączniki toru głównego
-# z JEDNEGO źródła (`rodzaje_aparatury.RODZAJE_LACZNIKOW_TORU`) bez bezpiecznika: wkładka
-# bezpiecznikowa nie ma napędu (jej stan to stan gałęzi rozłącznika bezpiecznikowego).
-_SWITCHABLE_PRIMARY_KINDS: frozenset[str] = RODZAJE_LACZNIKOW_TORU - {"FUSE"}
+# z JEDNEGO źródła (`rodzaje_aparatury.RODZAJE_LACZNIKOW_TORU`); wkładka bezpiecznikowa `FUSE`
+# nie jest łącznikiem (nie ma napędu ani położenia), rozłącznik z bezpiecznikami `FUSE_SWITCH` jest.
+_SWITCHABLE_PRIMARY_KINDS: frozenset[str] = RODZAJE_LACZNIKOW_TORU
 
 
 def _main_apparatus_primary_kind(apparatus_kind: str | None) -> str | None:
     """Wybór GŁÓWNEGO aparatu łączeniowego pola z kreatora (`apparatus_kind`)
     → typ aparatu pierwotnego. Pole wyłącznikowe (CB) vs rozłącznikowe
-    (LOAD_SWITCH/DS/FUSE). `None` = brak jawnego wyboru (zostaje typ z szablonu).
+    (LOAD_SWITCH/DS/FUSE_SWITCH). `None` = brak jawnego wyboru (zostaje typ z szablonu).
+
+    Rozłącznik bezpiecznikowy jako aparat główny to rodzaj `FUSE_SWITCH` — NIE wkładka
+    `FUSE` szablonu (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta FUSE: dwa
+    urządzenia, dwa rodzaje; aparat główny pola jest łącznikiem z położeniem). Wybór „FUSE”
+    / „BEZPIECZNIK” w miejscu aparatu głównego oznacza ten sam łącznik z wkładkami.
     """
     normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
     if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK"}:
@@ -2097,7 +2106,7 @@ def _main_apparatus_primary_kind(apparatus_kind: str | None) -> str | None:
         "ROZLACZNIK_BEZPIECZNIKOWY",
         "BEZPIECZNIK",
     }:
-        return "FUSE"
+        return "FUSE_SWITCH"
     if normalized in {"CB", "BREAKER", "WYLACZNIK", "WYŁĄCZNIK"}:
         return "CB"
     return None
@@ -2181,7 +2190,8 @@ def template_primary_devices(
 
     `main_apparatus_kind` (opcjonalny wybór z kreatora): nadpisuje typ GŁÓWNEGO
     aparatu łączeniowego (CB szablonu) — pole wyłącznikowe (CB) vs rozłącznikowe
-    (LOAD_SWITCH/DS/FUSE). Pozostałe aparaty (CT/ES/głowica/TR/VT/SA) bez zmian.
+    (LOAD_SWITCH/DS/FUSE_SWITCH). Pozostałe aparaty (CT/ES/głowica/TR/VT/SA, wkładki FUSE)
+    bez zmian.
     """
     if not template_id:
         return []

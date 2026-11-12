@@ -921,23 +921,20 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
     });
   }
 
-  // LOD1: ta sama ramka (kształt i położenie z LOD2) bez kodów, połączona z cewką Q0 tą samą
-  // linią wyłączania; LOD0 — GPZ zwinięty, bloku nie ma (kontrakt N × LOD niżej).
+  // LOD1 (D3d, REJESTR_KONFLIKTOW UX04-RAMKA-BEZ-TRESCI — dyrektywa właściciela 2026-11-11
+  // „puste prostokąty bez określonej funkcji nie mogą występować w gotowym SLD” zastępuje
+  // dawną gołą ramkę LOD1): bloku, wierszy kodów i linii wyłączania nie ma; LOD0 — GPZ zwinięty.
+  // Intencja zachowana: LOD2 niesie pełny blok z linią wyłączania (warunek wstępny w teście).
   for (const [nazwaFx, enm] of FIKSTURY) {
-    it(`${nazwaFx} · LOD1: ramka w położeniu i kształcie LOD2, linia wyłączania do cewki Q0, bez kodów`, () => {
+    it(`${nazwaFx} · LOD1: bez bloku zabezpieczeń, wierszy kodów i linii wyłączania (blok jest na LOD2)`, () => {
       const l1 = buildSceneV3(enm, 1);
       const l2 = buildSceneV3(enm, 2);
       for (const pole of polaLiniowe(enm)) {
-        const p1 = przekaznikPola(l1, pole.ref);
-        const p2 = przekaznikPola(l2, pole.ref)!;
-        expect(p1, pole.ref).toBeDefined();
-        expect({ x: p1!.x, y: p1!.y }, pole.ref).toEqual({ x: p2.x, y: p2.y });
-        expect(p1!.meta?.ramkaBlokuPrzekaznika, `${pole.ref}: ramka LOD1 = LOD2`).toEqual(p2.meta?.ramkaBlokuPrzekaznika);
-        expect(kodyNaSymbolu(p1), `${pole.ref}: bez kodów na LOD1`).toBeUndefined();
-        expect(l1.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${pole.ref}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? '')), `${pole.ref}: bez wierszy na LOD1`).toEqual([]);
-        const w1 = l1.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`);
-        const w2 = l2.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`)!;
-        expect(w1?.points, `${pole.ref}: linia wyłączania na LOD1 = LOD2`).toEqual(w2.points);
+        expect(przekaznikPola(l2, pole.ref), `${pole.ref}: blok na LOD2`).toBeDefined();
+        expect(l2.segments.some((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`), `${pole.ref}: linia wyłączania na LOD2`).toBe(true);
+        expect(przekaznikPola(l1, pole.ref), `${pole.ref}: blok na LOD1`).toBeUndefined();
+        expect(l1.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${pole.ref}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? '')), `${pole.ref}: wiersze na LOD1`).toEqual([]);
+        expect(l1.segments.filter((g) => g.meta?.ownerRef === `${pole.ref}#trip-line` || (g.meta?.ownerRef ?? '').startsWith(`${pole.ref}#measurement-link`)), `${pole.ref}: linie bloku na LOD1`).toEqual([]);
       }
     });
   }
@@ -1380,7 +1377,7 @@ describe('UX-04 — blok zabezpieczeń: ramka bez okręgu, jedna reprezentacja f
  * (włączone funkcje sterownika pola, ADR-022) — bez zaszytej liczby, listy ani kolejności. Dla N funkcji pola
  * N ∈ {0, 1, 2, 7, 9} na LOD2 WSZYSTKIE kody stoją w ramce w dwóch kolumnach, liczba wierszy
  * ⌈N/2⌉, kolejność = kolejność danych (lewa kolumna z góry na dół, potem prawa), bez „+n"; na LOD1
- * ta sama ramka bez kodów, na LOD0 GPZ jest zwinięty (bloku nie ma). Kody — lista funkcji pola
+ * bloku nie ma (D3d: ramka bez treści nie jest rysowana), na LOD0 GPZ jest zwinięty. Kody — lista funkcji pola
  * z modelu w ODWRÓCONEJ kolejności, dopełniona kodami słownika spoza pola (kolejność danych inna
  * niż w fiksturze, więc zaszyta lista fikstury czerwieni test). Glif bloku w obu motywach (barwa
  * kreski motywu) bez okręgu. Warunek „T2 z linią pomiarową" wyroczni bloku dotyczy pola z funkcją
@@ -1407,7 +1404,7 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
     scena.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${bayRef}#`) && /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? ''));
   for (const [nazwaFx, enm] of FIKSTURY) {
     for (const n of [0, 1, 2, 7, 9]) {
-      it(`${nazwaFx} · N = ${n}: LOD2 — kody z danych w ramce, ⌈N/2⌉ wierszy; LOD1 — ramka bez kodów; LOD0 — brak; oba motywy bez okręgu`, () => {
+      it(`${nazwaFx} · N = ${n}: LOD2 — kody z danych w ramce, ⌈N/2⌉ wierszy; LOD1 i LOD0 — brak bloku; oba motywy bez okręgu`, () => {
         const model = zKodami(enm, n);
         const pola = polaLiniowe(model);
         for (const pole of pola) expect(kodySterownikaPola(model, pole.ref).length, pole.ref).toBe(n);
@@ -1445,11 +1442,7 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
             const p = przekaznikPola(scena, pole.ref);
             expect(kodyNaSymbolu(p), `${pole.ref} · LOD${lod}: symbol bez kodów`).toBeUndefined();
             if (lod === 0) expect(p, `${pole.ref} · LOD0: GPZ zwinięty`).toBeUndefined();
-            if (lod === 1 && n > 0) {
-              expect(p?.meta?.ramkaBlokuPrzekaznika, `${pole.ref} · LOD1: ramka`).toEqual(przekaznikPola(l2, pole.ref)!.meta?.ramkaBlokuPrzekaznika);
-              expect(okregiGlifu(glifSymbolu(p!)).length, `${pole.ref} · LOD1: okrąg`).toBe(0);
-            }
-            if (lod === 1 && n === 0) expect(p, `${pole.ref} · LOD1: brak bloku bez funkcji`).toBeUndefined();
+            if (lod === 1) expect(p, `${pole.ref} · LOD1: bez bloku (D3d)`).toBeUndefined();
           }
           expect(scena.labels.some((l) => /^\+\d/.test(l.text)), `LOD${lod}: licznik „+n"`).toBe(false);
         }

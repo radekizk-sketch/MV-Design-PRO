@@ -13,6 +13,15 @@
       "station_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation"
     },
     {
+      "attachment_bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/bay",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation"
+    },
+    {
       "attachment_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],

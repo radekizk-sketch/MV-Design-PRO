@@ -145,7 +145,9 @@ function hasKind(kinds: readonly BayPrimaryDeviceKind[], kind: BayPrimaryDeviceK
 }
 
 function hasAnySwitching(kinds: readonly BayPrimaryDeviceKind[]): boolean {
-  return hasKind(kinds, 'CB') || hasKind(kinds, 'LOAD_SWITCH') || hasKind(kinds, 'DS');
+  return (
+    hasKind(kinds, 'CB') || hasKind(kinds, 'LOAD_SWITCH') || hasKind(kinds, 'FUSE_SWITCH') || hasKind(kinds, 'DS')
+  );
 }
 
 /**
@@ -168,7 +170,7 @@ export function classifyAbbCellType(
 ): AbbCellType {
   switch (role) {
     case 'TRANSFORMATOROWE':
-      if (hasKind(apparatusKinds, 'FUSE')) return 'SDF';
+      if (hasKind(apparatusKinds, 'FUSE') || hasKind(apparatusKinds, 'FUSE_SWITCH')) return 'SDF';
       if (hasKind(apparatusKinds, 'CB')) return 'CBC';
       return 'SDF';
     case 'LINIA_IN':
@@ -225,6 +227,8 @@ function designate(kind: BayPrimaryDeviceKind, indexOfKind: number): string {
       return 'T5';
     case 'FUSE':
       return 'F1';
+    case 'FUSE_SWITCH':
+      return 'Q2';
     case 'CABLE_HEAD':
       return 'W1';
     case 'TRANSFORMER_DEVICE':

@@ -2,7 +2,7 @@
  * Kontrakt JEDNEJ NOTACJI BLOKU ZABEZPIECZEŃ (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ, decyzja
  * właściciela 2026-11-05: „tak ma być ramka we wszystkich tak samo”; UX04 §11.20): przekaźnik
  * albo sterownik pola jest na całym schemacie tą samą prostokątną ramką z kodami funkcji
- * w dwóch kolumnach (LOD2), gołą ramką (LOD1), nieobecną na LOD0; ramka stoi na wysokości
+ * w dwóch kolumnach (LOD2), nieobecną na LOD1 i LOD0 (D3d: ramka bez treści nie jest rysowana); ramka stoi na wysokości
  * łącznika, który zabezpieczenie wyłącza (albo — model nie wskazuje łącznika wyłączanego —
  * pierwszego łącznika pola).
  *
@@ -16,8 +16,8 @@
  *  (a) na scenie nie ma okręgu przekaźnika — każdy symbol `protectionRelay` niesie ramkę, glif
  *      każdego bloku w obu motywach rysuje wyłącznie prostokąt ramki (zero `circle`, zero tekstu);
  *  (b) geometria ramki z jednej funkcji — ramka sceny jest punktem stałym `ramkaBlokuZWierszy`
- *      dla wierszy kodów z prostokątami sceny (LOD2), gabaryt symbolu = ramka, ramka na LOD1 ma
- *      ten sam kształt co na LOD2, wiersze = kody pola w kolejności danych;
+ *      dla wierszy kodów z prostokątami sceny (LOD2), gabaryt symbolu = ramka, na LOD1 bloku
+ *      nie ma (D3d), wiersze = kody pola w kolejności danych;
  *  (c) środek ramki na wysokości łącznika ±1 oczko (łącznik wyłączany: zacisk cewki albo środek
  *      symbolu; bez wskazania — pierwszy łącznik pola) albo — gdy oś wypada ponad rysunkiem
  *      aparatów pola — górna krawędź ramki w górnej krawędzi rysunku aparatów (ramka nie
@@ -198,10 +198,10 @@ function naruszenia(scena: SceneV3, bayRef: string, kody: readonly string[]): st
     if (!ramkaBlokuSymbolu(s)) n.push(`(a) przekaźnik bez ramki bloku ${s.meta?.ownerRef ?? '—'}`);
     for (const motyw of MOTYWY) n.push(...naruszeniaGlifu(glifWMotywie(s, motyw), s, motyw));
   }
-  if (lod === 0 && bloki.length > 0) n.push(`(a) ${bloki.length} bloków zabezpieczeń na LOD0`);
+  if (lod !== 2 && bloki.length > 0) n.push(`(a) ${bloki.length} bloków zabezpieczeń na LOD${lod}`);
   for (const g of protectionMarkingGaps(scena)) n.push(`(a/b) sonda sceny: ${g.reason} ${g.ownerRef ?? '—'}`);
   const wlasne = bloki.filter((s) => s.meta?.ownerRef === bayRef);
-  const oczekiwane = lod === 0 || kody.length === 0 ? 0 : 1;
+  const oczekiwane = lod !== 2 || kody.length === 0 ? 0 : 1;
   if (wlasne.length !== oczekiwane) n.push(`(a) pole ${bayRef}: ${wlasne.length} bloków, oczekiwano ${oczekiwane}`);
   for (const blok of wlasne) {
     const ramka = ramkaBlokuSymbolu(blok);
@@ -273,7 +273,7 @@ function rozjazdyRezerwacjiWysokosci(enm: EnergyNetworkModel, scena: SceneV3): s
   return n;
 }
 
-/** Ramka bloku pola na scenie (do porównania kształtu LOD1 ↔ LOD2). */
+/** Ramka bloku pola na scenie (`null`: pole nie ma bloku na tej scenie). */
 function ramkaPola(scena: SceneV3, bayRef: string): V3Rect | null {
   const blok = scena.symbols.find((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === bayRef);
   return blok ? ramkaBlokuSymbolu(blok) : null;
@@ -288,10 +288,13 @@ describe('jedna notacja bloku zabezpieczeń — rodzaj pola × liczba kodów × 
         for (const scena of sceny) {
           expect(naruszenia(scena, bayRef, KODY[liczba]), `LOD${scena.meta.lod}`).toEqual([]);
         }
-        // (b) ramka LOD1 ma ten sam kształt co ramka LOD2 (goła ramka bez kodów).
+        // (b) D3d (REJESTR_KONFLIKTOW UX04-RAMKA-BEZ-TRESCI, dyrektywa właściciela 2026-11-11):
+        // ramka bez treści nie jest rysowana — na LOD1 bloku nie ma (dawniej „goła ramka tego
+        // samego kształtu co na LOD2”); intencja kontraktu (jedna notacja, ramka tylko z treścią)
+        // zostaje: LOD2 niesie blok, LOD1 i LOD0 — żadnego.
         const l1 = ramkaPola(sceny[1], bayRef);
         const l2 = ramkaPola(sceny[2], bayRef);
-        expect(l1 && { width: l1.width, height: l1.height }).toEqual(l2 && { width: l2.width, height: l2.height });
+        expect(l1, 'blok pola na LOD1').toBeNull();
         if (liczba > 0) expect(l2, 'blok pola na LOD2').not.toBeNull();
         for (const scena of sceny) expect(rozjazdyRezerwacjiWysokosci(enm, scena), `LOD${scena.meta.lod}`).toEqual([]);
       });
@@ -300,21 +303,25 @@ describe('jedna notacja bloku zabezpieczeń — rodzaj pola × liczba kodów × 
 });
 
 describe('fikstura 52 stacji — każdy blok stacji × LOD 1/2', () => {
-  for (const lod of [1, 2] as const) {
-    it(`LOD${lod}: (a)–(e) na każdym bloku, rezerwacja wysokości kolumny = rysunek`, () => {
-      const scena = buildSceneV3(BAZA_STACJI, lod);
-      const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay');
-      // Warunek wstępny: fikstura niesie bloki stacji (pola z kodami funkcji w modelu).
-      expect(bloki.length).toBeGreaterThan(100);
-      const n: string[] = [];
-      for (const blok of bloki) {
-        const bayRef = blok.meta!.ownerRef!;
-        n.push(...naruszenia(scena, bayRef, kodyPola(BAZA_STACJI, bayRef)));
-      }
-      expect([...new Set(n)]).toEqual([]);
-      expect(rozjazdyRezerwacjiWysokosci(BAZA_STACJI, scena)).toEqual([]);
-    });
-  }
+  it('LOD2: (a)–(e) na każdym bloku, rezerwacja wysokości kolumny = rysunek', () => {
+    const scena = buildSceneV3(BAZA_STACJI, 2);
+    const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay');
+    // Warunek wstępny: fikstura niesie bloki stacji (pola z kodami funkcji w modelu).
+    expect(bloki.length).toBeGreaterThan(100);
+    const n: string[] = [];
+    for (const blok of bloki) {
+      const bayRef = blok.meta!.ownerRef!;
+      n.push(...naruszenia(scena, bayRef, kodyPola(BAZA_STACJI, bayRef)));
+    }
+    expect([...new Set(n)]).toEqual([]);
+    expect(rozjazdyRezerwacjiWysokosci(BAZA_STACJI, scena)).toEqual([]);
+  });
+  // D3d: na LOD1 żadnego bloku ani jego linii (ramka bez treści nie jest rysowana).
+  it('LOD1: zero bloków, linii wyłączania i linii pomiarowych', () => {
+    const scena = buildSceneV3(BAZA_STACJI, 1);
+    expect(scena.symbols.filter((s) => s.symbolId === 'protectionRelay')).toEqual([]);
+    expect(scena.segments.filter((s) => s.meta?.kind === 'protectionTrip' || s.meta?.kind === 'measurementLink')).toEqual([]);
+  });
 });
 
 describe('wyrocznie kontraktu gryzą — iniekcje na realnej scenie', () => {

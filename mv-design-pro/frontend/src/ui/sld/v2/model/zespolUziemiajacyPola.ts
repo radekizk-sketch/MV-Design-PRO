@@ -45,6 +45,9 @@ export interface ZespolUziemiajacyPolaView {
   readonly iNastawyDlawikaA: number | null;
   /** Prąd czynny wymuszany przez AWSC [A] (`dlawik.awsc.i_wymuszany_a`). */
   readonly awscA: number | null;
+  /** Strona dławika, po której pracuje rezystor AWSC (`dlawik.awsc.strona`, ENEA Zeszyt 1 §16
+   *  s.30: wtórna, przy prądzie > 40 A pierwotna); `null` — model jej nie niesie. */
+  readonly awscStrona: 'wtorna' | 'pierwotna' | null;
   /** Szyna potrzeb własnych (`Transformer.lv_bus_ref`) i jej napięcie. */
   readonly szynaPotrzebWlasnychRef: string | null;
   readonly napieciePotrzebWlasnychKv: number | null;
@@ -91,6 +94,7 @@ export function zespolUziemiajacyPola(
     rOhm: liczba(rezystor?.r_ohm) ?? liczba(rezystor?.materialized_params?.r_ohm),
     iNastawyDlawikaA: liczba(dlawik?.i_nastawy_a),
     awscA: liczba(dlawik?.awsc?.i_wymuszany_a),
+    awscStrona: dlawik?.awsc?.strona ?? null,
     szynaPotrzebWlasnychRef: transformator.lv_bus_ref ?? null,
     napieciePotrzebWlasnychKv: liczba(szyna?.voltage_kv),
   };

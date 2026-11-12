@@ -701,21 +701,35 @@ const ROZSTAW_GALEZI_ZESPOLU = 4 * GRID;
 /** Odsunięcie węzła punktu neutralnego od krawędzi symbolu transformatora (ogranicznik pod nim). */
 const ODSUNIECIE_WEZLA_ZESPOLU = 2 * GRID;
 
+/** Gałąź punktu neutralnego zespołu: dławik gaszący, automatyka wymuszania składowej czynnej
+ *  dławika (AWSC, Z.13) albo rezystor uziemiający (Z.14, Z.15). */
+type GalazZespolu = 'dlawik' | 'awsc' | 'rezystor';
+
 /** Gałęzie punktu neutralnego zespołu w kolejności rysunku (Z.14: dławik, potem rezystor —
- *  strona 94, gałąź rezystora z przekładnikiem po prawej). */
-function galezieZespolu(zespol: ZespolUziemiajacyPolaView): readonly ('dlawik' | 'rezystor')[] {
-  return [...(zespol.dlawik ? (['dlawik'] as const) : []), ...(zespol.rezystor ? (['rezystor'] as const) : [])];
+ *  strona 94, gałąź rezystora z przekładnikiem po prawej). AWSC stoi tuż za dławikiem, do
+ *  którego należy (Z.13 s.93 — rezystor AWSC ze stycznikiem obok dławika). */
+function galezieZespolu(zespol: ZespolUziemiajacyPolaView): readonly GalazZespolu[] {
+  return [
+    ...(zespol.dlawik ? (['dlawik'] as const) : []),
+    ...(zespol.dlawik && zespol.awsc ? (['awsc'] as const) : []),
+    ...(zespol.rezystor ? (['rezystor'] as const) : []),
+  ];
 }
 
 /** Podpis wartości aparatu gałęzi punktu neutralnego — wartość z wyposażenia punktu
- *  neutralnego transformatora uziemiającego (`hv_neutral.dlawik` / `rezystor`), bez niej sama
- *  nazwa (zero domysłu, zero przeliczeń we froncie). Dławik: nastawa [A] i AWSC z prądem
- *  wymuszanym (Z.13); rezystor: rezystancja [Ω]. */
-function podpisGaleziZespolu(zespol: ZespolUziemiajacyPolaView, galaz: 'dlawik' | 'rezystor'): string {
+ *  neutralnego transformatora uziemiającego (`hv_neutral.dlawik` / `dlawik.awsc` / `rezystor`),
+ *  bez niej sama nazwa (zero domysłu, zero przeliczeń we froncie). Dławik: nastawa [A];
+ *  automatyka AWSC (Z.13) — WŁASNY podpis przy własnym aparacie (prąd wymuszany [A] i strona
+ *  dławika, po której pracuje rezystor), nie dopisek do dławika; rezystor: rezystancja [Ω]. */
+function podpisGaleziZespolu(zespol: ZespolUziemiajacyPolaView, galaz: GalazZespolu): string {
   if (galaz === 'dlawik') {
-    const nastawa = zespol.iNastawyDlawikaA != null ? `dławik ${liczbaPl(zespol.iNastawyDlawikaA)} A` : 'dławik';
-    if (!zespol.awsc) return nastawa;
-    return `${nastawa} · AWSC${zespol.awscA != null ? ` ${liczbaPl(zespol.awscA)} A` : ''}`;
+    return zespol.iNastawyDlawikaA != null ? `dławik ${liczbaPl(zespol.iNastawyDlawikaA)} A` : 'dławik';
+  }
+  if (galaz === 'awsc') {
+    const prad = zespol.awscA != null ? ` ${liczbaPl(zespol.awscA)} A` : '';
+    const strona =
+      zespol.awscStrona === 'wtorna' ? ' · strona wtórna' : zespol.awscStrona === 'pierwotna' ? ' · strona pierwotna' : '';
+    return `AWSC${prad}${strona}`;
   }
   return zespol.rOhm != null ? `$R_{N}$ ${liczbaPl(zespol.rOhm)} Ω` : 'rezystor';
 }
@@ -726,9 +740,9 @@ function podpisGaleziZespolu(zespol: ZespolUziemiajacyPolaView, galaz: 'dlawik' 
  *  (`szerokoscOgonaZespolu`, predykaty parami). */
 function kolumnyGaleziZespolu(
   zespol: ZespolUziemiajacyPolaView,
-): readonly { readonly galaz: 'dlawik' | 'rezystor'; readonly dx: number; readonly podpis: number }[] {
+): readonly { readonly galaz: GalazZespolu; readonly dx: number; readonly podpis: number }[] {
   const polowa = SYMBOL_DEFS.neutralEarthing.width / 2;
-  const kolumny: { galaz: 'dlawik' | 'rezystor'; dx: number; podpis: number }[] = [];
+  const kolumny: { galaz: GalazZespolu; dx: number; podpis: number }[] = [];
   let dx = ROZSTAW_GALEZI_ZESPOLU;
   for (const galaz of galezieZespolu(zespol)) {
     const podpis = measureLabelWidth(podpisGaleziZespolu(zespol, galaz), KLASA_ETYKIETY_APARATU_GPZ);
@@ -819,14 +833,26 @@ function ogonZespoluUziemiajacego(
   galezie.forEach((galaz, i) => {
     const x = xGalezi[i];
     let y = yN + GRID;
-    const ds = { symbolId: 'disconnector' as const, x: x - SYMBOL_DEFS.disconnector.width / 2, y };
-    symbols.push({ ...ds, state: 'closed', ports: portsInWorld(ds.symbolId, ds.x, ds.y), meta: metaOgona(`${galaz}-odlacznik`) });
+    // Łącznik gałęzi: odłącznik ręczny dławika i rezystora (Z.13–Z.15, §16 „odłącznik ręczny
+    // dławika”); w gałęzi AWSC — stycznik rezystora wymuszającego, w spoczynku otwarty (Z.13:
+    // stycznik z cewką w obwodzie AWSC; zamyka go automatyka po zwłoce od doziemienia) — glif
+    // rozłącznika, bo stycznik łączy prąd roboczy rezystora. Rezystor AWSC pracuje po stronie
+    // wtórnej albo pierwotnej dławika (`awscStrona`); jednokreskowo kolumna AWSC stoi w obwodzie
+    // punkt neutralny–ziemia, któremu wymusza składową czynną, a stronę niesie jej podpis.
+    const lacznik = galaz === 'awsc' ? ('loadBreakSwitch' as const) : ('disconnector' as const);
+    const ds = { symbolId: lacznik, x: x - SYMBOL_DEFS[lacznik].width / 2, y };
+    symbols.push({
+      ...ds,
+      state: galaz === 'awsc' ? 'open' : 'closed',
+      ports: portsInWorld(ds.symbolId, ds.x, ds.y),
+      meta: metaOgona(galaz === 'awsc' ? 'awsc-stycznik' : `${galaz}-odlacznik`),
+    });
     segments.push({
       ownerRef: `${bay.bayRef}#zespol-${galaz}-zejscie`,
       points: [{ x, y: yN }, { x, y }],
       meta: metaOgona(`${galaz}-zejscie`),
     });
-    y += SYMBOL_DEFS.disconnector.height;
+    y += SYMBOL_DEFS[lacznik].height;
     if (galaz === 'rezystor') {
       // Przekładnik prądowy gałęzi rezystora (Z.14/Z.15 — wejście Io>, Io>> zabezpieczenia).
       const ct = { symbolId: 'currentTransformer' as const, x: x - SYMBOL_DEFS.currentTransformer.width / 2, y: y + GRID };
@@ -2613,7 +2639,7 @@ function composeGpzPrzebieg(
     // `tripTarget`/`ctAnchor` puste). Blok w rezerwacji kolumny (`rightX`,
     // `gpzBayAnnotationWidth` — jedna prawda rezerwacja↔rysunek). LOD §17.4:
     // `'full'` ramka z kodami + tor + linie pomiarowe + „52" + adnotacje CT;
-    // `'circle-only'` ramka bez kodów + tor wyzwalania; `'none'` nic.
+    // `'none'` (L0, L1 — decyzja D3d: ramka bez kodów nie jest rysowana) nic.
     const gpzCodes = bay.protectionMarking?.codes ?? bay.protectionCodes ?? [];
     const hasCtRatings = (bay.ctRatingAnnotations?.length ?? 0) > 0;
     const hasVtMountings = (bay.vtMountingAnnotations?.length ?? 0) > 0;
@@ -2748,7 +2774,7 @@ function composeGpzPrzebieg(
           if (topologyGaps.length > 0) {
             brakiTopologiiPol.push({ bayRef: bay.bayRef, gaps: topologyGaps });
           }
-          const elementy = elementyBlokuZabezpieczen(blokPola.wejscie, blokPola.uklad, annotationDetail);
+          const elementy = elementyBlokuZabezpieczen(blokPola.wejscie, blokPola.uklad);
           protectionLabels.push(...elementy.wiersze);
           protectionSymbols.push({
             symbolId: 'protectionRelay',

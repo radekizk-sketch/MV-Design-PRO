@@ -125,6 +125,12 @@ export function indeksPrzynaleznosci(scene: SceneV3): IndeksPrzynaleznosci {
       label.rect.y + label.rect.height,
     );
   }
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (K1): tło pola GPZ (`gpzAdnotacje.panele`) jest malowane
+  // przez kanwę (warstwa adnotacji GPZ) i należy do pola — prostokąt pola i każdego zakresu
+  // z tym polem (sekcja, stacja) obejmuje całe tło, inaczej kadr ucina jego krawędź.
+  for (const panel of scene.meta.gpzAdnotacje?.panele ?? []) {
+    obejmij(panel.bayRef, panel.rect.x, panel.rect.y, panel.rect.x + panel.rect.width, panel.rect.y + panel.rect.height);
+  }
   // GEOMETRIA-STACJI (Z-03): szyna sekcji stacji należy do rekordu `Bus` sekcji, nie do
   // kompozytu stacji — prostokąt stacji obejmuje ją wg JEDYNEJ relacji sceny
   // `meta.stacjaSzynySekcji` (bez niej kadr i kotwica kamery stacji gubią jej szyny).

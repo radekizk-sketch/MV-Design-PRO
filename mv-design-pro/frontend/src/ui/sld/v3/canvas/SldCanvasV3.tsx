@@ -47,7 +47,7 @@ import {
 } from '../core/text';
 import { GRID } from '../core/grid';
 import { planSceneLabels, type PlannedLabel } from './labelLegibility';
-import { paneleWgPlanu, ramkiBlokowWgPlanu } from './obrysyWgPlanu';
+import { blokiBezTresciWgPlanu, liniaBlokuBezTresci, paneleWgPlanu, ramkiBlokowWgPlanu } from './obrysyWgPlanu';
 import {
   LABEL_OWNER_ELEMENT_KIND,
   buildCanvasHitAreas,
@@ -98,7 +98,7 @@ import {
   type ViewportTransform,
 } from './camera';
 import { kotwicaWidoku, prostokatRefowWScenie } from './viewAnchor';
-import { nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
+import { KURTYNA_KADRU_OPACITY, nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
@@ -259,12 +259,6 @@ export interface SldElementClickMeta {
   readonly symbolId?: SymbolId;
 }
 
-/**
- * K2b §0.1 (c) — krycie elementów POZA celem kadru (kurtyna). Sąsiad, który
- * wpadł w okno kadru, zostaje rozpoznawalny jako kontekst (kształt, położenie),
- * ale nie konkuruje z celem; klik w niego nadal prowadzi do obiektu.
- */
-export const KURTYNA_KADRU_OPACITY = 0.22;
 
 export interface SldCanvasV3Props {
   readonly snapshot: EnergyNetworkModel;
@@ -2922,6 +2916,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // planu — plan powiększa pismo celu kadru ponad slot sceny, więc obrys ze slotu nie obejmował
   // tuszu (`canvas/obrysyWgPlanu.ts`).
   const ramkiBlokow = useMemo(() => ramkiBlokowWgPlanu(scene.symbols, labelPlan.drawn), [scene, labelPlan]);
+  // D3d (karta UX-04/ROZDZIELNICA-SN-KOREKTA): blok zabezpieczeń bez narysowanej treści nie jest
+  // rysowany — ani ramka, ani jego linie wyłączania i pomiarowe; uchwyty trafień znikają razem
+  // z nim (ten sam zbiór w `ukryteTestId`).
+  const blokiBezTresci = useMemo(() => blokiBezTresciWgPlanu(scene.symbols, ramkiBlokow), [scene, ramkiBlokow]);
   const adnotacjeGpz = useMemo(() => {
     const adn = scene.meta.gpzAdnotacje;
     return adn ? { ...adn, panele: paneleWgPlanu(adn.panele, scene.symbols, ramkiBlokow, labelPlan.drawn) } : null;
@@ -3057,17 +3055,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const ukryteTestId = useMemo(() => {
     const ukryte = new Set<string>();
     scene.segments.forEach((segment, index) => {
-      if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) {
+      if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility) || liniaBlokuBezTresci(segment, blokiBezTresci)) {
         ukryte.add(segmentTestId(segment, index));
       }
     });
     scene.symbols.forEach((symbol, index) => {
-      if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) {
+      if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility) || blokiBezTresci.symbole.has(index)) {
         ukryte.add(symbolTestId(symbol, index));
       }
     });
     return ukryte;
-  }, [scene, layerVisibility]);
+  }, [scene, layerVisibility, blokiBezTresci]);
 
   /** Znaczniki warstwy wynikowej (S9-2) jako obiekty trafienia — etykieta
    *  liczbowa i marker skupiska „+N wyniki" są obiektami kanwy tak samo jak
@@ -3608,19 +3606,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         )}
         {/* GPZ-PARYTET: tła pól wg roli, bilans/alarmy nagłówka i tabela „Pola GPZ"
          *  (geometria ze sceny, wartości z wyniku backendu) — pod warstwą detalu. */}
+        {/* Karta UX-04/ROZDZIELNICA-SN-KOREKTA (K1): kurtyna kadru per element warstwy — tło pola
+         *  należy do POLA (kadr sekcji/pola go nie przyciemnia), nagłówek i tabela — do GPZ. */}
         {adnotacjeGpz && scene.meta.gpzId && (
-          <g
-            data-kadr={pozaKadrem(scene.meta.gpzId) ? 'poza' : undefined}
-            opacity={pozaKadrem(scene.meta.gpzId) ? KURTYNA_KADRU_OPACITY : undefined}
-          >
-            <GpzAdnotacjeWarstwa
-              adnotacje={adnotacjeGpz}
-              gpzRef={scene.meta.gpzId}
-              wyniki={overlay?.gpzWyniki ?? null}
-              nieaktualny={overlay?.resultsStale === true}
-              skala={camera.transform.scale}
-            />
-          </g>
+          <GpzAdnotacjeWarstwa
+            adnotacje={adnotacjeGpz}
+            gpzRef={scene.meta.gpzId}
+            wyniki={overlay?.gpzWyniki ?? null}
+            nieaktualny={overlay?.resultsStale === true}
+            skala={camera.transform.scale}
+            pozaKadrem={pozaKadrem}
+          />
         )}
         {/* Karta S8 (P2, płynność przejść LOD): WARSTWA DETALU (segmenty/
          * symbole/etykiety — treść zależna od LOD) owinięta w jedną grupę z
@@ -3658,7 +3654,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
          * ZAWSZE renderowany. */}
         <g data-testid="sld-v3-segments">
           {scene.segments.map((segment, index) => {
-            if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) return null;
+            if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility) || liniaBlokuBezTresci(segment, blokiBezTresci)) return null;
             const wezel = (
               <SceneSegmentNode
                 key={`segment-${index}`}
@@ -3680,7 +3676,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         </g>
         <g data-testid="sld-v3-symbols">
           {scene.symbols.map((symbol, index) => {
-            if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
+            if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility) || blokiBezTresci.symbole.has(index)) return null;
             // KD-5: blok GPZ zwinięty jest jedynym symbolem, w którym klik
             // NIESIE też nawigację (rozwinięcie = zbliżenie do progu LOD).
             // Karta S9-4: ta reguła żyje teraz w `handleHitClick` (jedno miejsce

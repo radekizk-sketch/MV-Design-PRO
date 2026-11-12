@@ -440,7 +440,9 @@ describe('znacznik rodzaju aparatu — tabela właściciela pokrywa każdy łąc
     // Wykonanie dotyczy wyłącznie wyłącznika (backend `RODZAJE_Z_WYKONANIEM`).
     expect(symbolIdForPrimaryDeviceKind('LOAD_SWITCH', WARIANT_RYSUNKU_QET, { wysuwny: true })).toBe('qetLoadBreakSwitch');
     expect(symboleRodzajuAparatu('CB')).toEqual(expect.arrayContaining(['qetBreakerWysuwny', 'qetBreakerWysuwnyZNapedem']));
-    expect([...RODZAJE_LACZNIKOW_POLA].sort()).toEqual(['CB', 'DS', 'ES', 'FUSE', 'LOAD_SWITCH', 'THREE_POSITION_SWITCH']);
+    // Rozdzielenie rodzajów (karta UX-04/ROZDZIELNICA-SN-KOREKTA): łącznikiem jest rozłącznik
+    // z bezpiecznikami `FUSE_SWITCH`; wkładka `FUSE` nie ma położenia ani kafla stanu.
+    expect([...RODZAJE_LACZNIKOW_POLA].sort()).toEqual(['CB', 'DS', 'ES', 'FUSE_SWITCH', 'LOAD_SWITCH', 'THREE_POSITION_SWITCH']);
   });
 
   it('trzy kształty znaczników; okrąg wyłącznie w rozłączniku; odłącznik i uziemnik — ta sama kreska, rozróżnia je symbol ziemi', () => {

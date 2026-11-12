@@ -664,7 +664,11 @@ jako WARSTWA ADNOTACJI schematu.
 
 - L2: pełne oznaczenie (okrąg + kody + linia wyzwalania + „52" + „M"; w układzie powiązań
   obwodów wtórnych §17.6 — blok przekaźnika w ramce, linia wyzwalania do portu `wylacz` wyłącznika, bez „52").
-- L1: okrąg przekaźnika bez kodów i bez „52"/„M"; linia wyzwalania ukryta.
+- L1: oznaczenie zabezpieczeń nieobecne — ani bloku (ramki), ani kodów, „52"/„M", linii wyzwalania
+  i linii pomiarowych (D3d, dyrektywa właściciela 2026-11-11: ramka bez treści nie jest rysowana;
+  `docs/v12xx/REJESTR_KONFLIKTOW.md` UX04-RAMKA-BEZ-TRESCI; sonda `noProtectionAnnotationAtLod1`,
+  luka `block-at-lod1`). Na L2 blok, którego żaden wiersz kodów nie mieści się w progu
+  czytelności, kanwa pomija w całości (ramka i linie bloku — `canvas/obrysyWgPlanu.ts`).
 - L0: warstwa adnotacji nieobecna (plan sieci).
 
 ### 17.5 Wyrocznie odbioru

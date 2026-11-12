@@ -109,8 +109,9 @@ function naruszenia(p: Przypadek): string[] {
   const ramki = ramkiBlokowWgPlanu(p.scena.symbols, p.plan.drawn);
   const panele = paneleWgPlanu(p.scena.meta.gpzAdnotacje!.panele, p.scena.symbols, ramki, p.plan.drawn);
   // Ramka bloku (korekta v2 2026-11-04 — blok to ramka bez okręgu): dokładnie ramka sceny ∪
-  // NARYSOWANE wiersze bloku + margines; brak narysowanych wierszy = ramka sceny (blok zachowuje
-  // kształt bez kodów, jak na LOD1).
+  // NARYSOWANE wiersze bloku + margines. D3d (rozstrzygnięcie UX04-RAMKA-BEZ-TRESCI w
+  // `docs/v12xx/REJESTR_KONFLIKTOW.md`): brak narysowanych wierszy ⇒ bloku nie ma wcale — ramka
+  // bez treści jest zakazana (wcześniej: ramka sceny bez kodów).
   p.scena.symbols.forEach((s, i) => {
     if (!s.meta?.ramkaBlokuPrzekaznika) {
       if (ramki.has(i)) bledy.push(`${opis}: ramka dla symbolu bez ramki sceny ${symbolTestId(s, i)}`);
@@ -119,9 +120,10 @@ function naruszenia(p: Przypadek): string[] {
     const wiersze = p.plan.drawn.filter((d) => d.label.ownerRef.startsWith(`${s.meta!.ownerRef}#`) && WIERSZ_BLOKU.test(d.label.ownerRef));
     const ramka = ramki.get(i);
     if (!ramka) {
-      bledy.push(`${opis}: brak ramki bloku ${symbolTestId(s, i)}`);
+      if (wiersze.length > 0) bledy.push(`${opis}: brak ramki bloku z treścią ${symbolTestId(s, i)}`);
       return;
     }
+    if (wiersze.length === 0) bledy.push(`${opis}: ramka bez treści ${symbolTestId(s, i)}`);
     const abs = { ...ramka, x: s.x + ramka.x, y: s.y + ramka.y };
     const r = s.meta.ramkaBlokuPrzekaznika;
     const ramkaSceny = { ...r, x: s.x + r.x, y: s.y + r.y };
@@ -265,23 +267,23 @@ describe('obrysy etykiet wg planu — iloczyn fikstura × skala × kadr × obrys
     expect(kolumnyBlokuWPismie(wieksze)).toEqual([0, 28, 0]);
   });
 
-  it('iloczyn nie jest pusty: pismo bloku powiększone, wiersze ukryte (ramka sceny bez kodów), tło poszerzone — każde występuje', () => {
+  it('iloczyn nie jest pusty: pismo bloku powiększone, wiersze ukryte (blok bez treści nie ma ramki — D3d), tło poszerzone — każde występuje', () => {
     let powiekszoneWiersze = 0;
-    let ramkiBezWierszy = 0;
+    let blokiBezRamki = 0;
     let tlaPoszerzone = 0;
     for (const p of PRZYPADKI) {
       powiekszoneWiersze += p.plan.drawn.filter((d) => WIERSZ_BLOKU.test(d.label.ownerRef) && d.enlarged).length;
       const ramki = ramkiBlokowWgPlanu(p.scena.symbols, p.plan.drawn);
       p.scena.symbols.forEach((s, i) => {
-        if (!ramki.has(i)) return;
+        if (!s.meta?.ramkaBlokuPrzekaznika) return;
         const narysowane = p.plan.drawn.some((d) => (s.meta?.wierszeBlokuPrzekaznika ?? []).includes(d.label.ownerRef));
-        if (!narysowane) ramkiBezWierszy += 1;
+        if (!narysowane && !ramki.has(i)) blokiBezRamki += 1;
       });
       const panele = paneleWgPlanu(p.scena.meta.gpzAdnotacje!.panele, p.scena.symbols, ramki, p.plan.drawn);
       tlaPoszerzone += panele.filter((t, k) => !rowne(t.rect, p.scena.meta.gpzAdnotacje!.panele[k].rect)).length;
     }
     expect(powiekszoneWiersze).toBeGreaterThan(0);
-    expect(ramkiBezWierszy).toBeGreaterThan(0);
+    expect(blokiBezRamki).toBeGreaterThan(0);
     expect(tlaPoszerzone).toBeGreaterThan(0);
   });
 

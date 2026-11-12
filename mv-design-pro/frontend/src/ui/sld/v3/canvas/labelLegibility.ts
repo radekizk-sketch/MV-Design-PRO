@@ -104,6 +104,7 @@
  */
 
 import { rectsOverlap, type V3Rect } from '../core/grid';
+import { ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../compose/zaciskiPrzekladnika';
 import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
 import { buildRectIndex, createRectIndex, createRectItemIndex, type RectIndex } from '../core/rectIndex';
 import { blokKrawedzi, zasiegWierszaWRamce } from '../symbols/blokZabezpieczen';
@@ -1097,6 +1098,29 @@ export function planSceneLabels(
     zajmij(zaplanowana);
     uzyteKandydaty.set(kandydat.index, kandydat);
     zaplanowane.set(kandydat.index, zaplanowana);
+  }
+
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (K3): oznaczenia zacisków pierwotnych przekładnika (P1, P2)
+  // są PARĄ — jedno bez drugiego nie mówi, w którą stronę liczy się biegunowość. Gdy plan
+  // narysował tylko jedno z nich, nie rysujemy żadnego (to, które przepadło, jest już policzone
+  // w ukrytych; drugie dochodzi do tej samej klasy).
+  const paryZaciskow = new Map<string, number[]>();
+  labels.forEach((label, index) => {
+    const i = label.ownerRef.indexOf(ZNACZNIK_ZACISKU_PRZEKLADNIKA);
+    if (i < 0) return;
+    const klucz = label.ownerRef.slice(0, label.ownerRef.lastIndexOf('-'));
+    const lista = paryZaciskow.get(klucz);
+    if (lista) lista.push(index);
+    else paryZaciskow.set(klucz, [index]);
+  });
+  for (const indeksy of paryZaciskow.values()) {
+    if (indeksy.length < 2 || indeksy.every((i) => zaplanowane.has(i)) || indeksy.every((i) => !zaplanowane.has(i))) continue;
+    for (const i of indeksy) {
+      if (!zaplanowane.has(i)) continue;
+      zaplanowane.delete(i);
+      if (labels[i].labelRole === 'tozsamosc') droppedIdentity.push(labels[i]);
+      else hiddenDetail.push(labels[i]);
+    }
   }
 
   const drawn: PlannedLabel[] = [];

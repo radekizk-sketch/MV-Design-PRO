@@ -122,9 +122,10 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
             expect(wylacznikToru!.meta?.ownerRef).toBe(POLE_TR);
             expect(scena.meta.gpzAdnotacje?.tabela?.karty.map((k) => k.bayRef)).toContain(POLE_TR);
             expect(scena.meta.gpzAdnotacje?.panele.map((p) => p.bayRef)).toContain(POLE_TR);
+            // Blok zabezpieczeń pola tylko na LOD2 (decyzja D3d, rejestr UX04-RAMKA-BEZ-TRESCI).
             expect(
               scena.symbols.some((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === POLE_TR),
-            ).toBe(true);
+            ).toBe(lod === 2);
           } else {
             expect(wylacznikToru).toBeUndefined();
             expect(stosPolaTr.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);

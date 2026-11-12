@@ -45,7 +45,8 @@ import {
   type SldV3Overlay,
   type SegmentFlowOverlay,
 } from './ui/sld/v3/canvas/overlay';
-import type { SceneLod } from './ui/sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneLod } from './ui/sld/v3/scene/buildScene';
+import { zakresCelu, type CelKadru, type ZakresKadru } from './ui/sld/v3/canvas/zakresKadru';
 import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
 import type { ShortCircuitFlowOverlayInput } from './ui/sld-overlay/ShortCircuitFlowOverlayAdapter';
 import falownikiRozplywScenyGpzFeederWynik from './harness-fixtures/generated/falowniki_rozplyw_scena_gpz_feeder_wynik.json';
@@ -254,6 +255,29 @@ async function loadSubstrateEnm(): Promise<EnergyNetworkModel> {
   return raw.enm;
 }
 
+/**
+ * Karta UX-04/ROZDZIELNICA-SN-KOREKTA (K1): `?kadr=<cel>:<ref>` — kadr zakresu pracy tą samą
+ * maszynerią co polecenie „Dopasuj do…" przestrzeni roboczej (`zakresCelu` → `zadanieKadru`
+ * kamery `'kadruj'` + kurtyna `refyKadru`). Cel: `stacja`, `sekcja`, `pole`; `ref` — rekord
+ * modelu wskazany jak zaznaczenie. Kadr wyliczony z obrysu elementów celu w scenie, nie ze
+ * stałych współrzędnych. Zakres niedostępny = jawny błąd harnessu (przyczyna z `zakresCelu`).
+ */
+const CELE_KADRU_HARNESSU: readonly CelKadru[] = ['stacja', 'sekcja', 'pole'];
+
+function kadrZQuery(enm: EnergyNetworkModel): ZakresKadru | null {
+  const raw = new URLSearchParams(window.location.search).get('kadr');
+  if (raw === null) return null;
+  const i = raw.indexOf(':');
+  const cel = raw.slice(0, i) as CelKadru;
+  const ref = raw.slice(i + 1);
+  if (i <= 0 || !CELE_KADRU_HARNESSU.includes(cel) || cel === 'tor' || ref.length === 0) {
+    throw new Error(`Nieznany kadr „${raw}" — oczekiwano <stacja|sekcja|pole>:<ref>`);
+  }
+  const wynik = zakresCelu(cel, enm, [ref], buildSceneV3(enm, 2));
+  if (!wynik.dostepny) throw new Error(`Kadr „${raw}" niedostępny: ${wynik.przyczyna}`);
+  return wynik.zakres;
+}
+
 type Status = 'loading' | 'ready' | 'error';
 
 function SubstrateHarness(): JSX.Element {
@@ -262,6 +286,7 @@ function SubstrateHarness(): JSX.Element {
   const [snapshot, setSnapshot] = useState<EnergyNetworkModel | null>(null);
   const [sldData, setSldData] = useState<SldDataPayload | null>(null);
   const [overlay, setOverlay] = useState<SldV3Overlay | undefined>(undefined);
+  const [kadr, setKadr] = useState<ZakresKadru | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   useEffect(() => {
@@ -275,6 +300,7 @@ function SubstrateHarness(): JSX.Element {
     Promise.all([loadSubstrateEnm(), loadPowerFlowCompanion(overlayMode)])
       .then(async ([enm, companion]) => {
         setSnapshot(enm);
+        setKadr(kadrZQuery(enm));
         if (companion) setOverlay(overlayFromCompanion(companion, enm));
         // Karta Z-3: tryb `faultflow` nie ma companion (czysty builder, zero
         // fetch) — patrz `overlayFromFaultFlowDemo` nagłówek (import dynamiczny).
@@ -319,6 +345,7 @@ function SubstrateHarness(): JSX.Element {
       data-cable-runs={sldData.cableRuns.length}
       data-gpzs={sldData.gpzs.length}
       data-lod-override={lodOverride ?? ''}
+      data-kadr-cel={kadr?.cel ?? ''}
       style={{ width: size.width, height: size.height }}
     >
       <SldCanvasV3
@@ -329,6 +356,8 @@ function SubstrateHarness(): JSX.Element {
         overlay={overlay}
         animateLodTransitions={false}
         paletteMode={theme}
+        zadanieKadru={kadr ? { zakres: kadr, seq: 1 } : null}
+        refyKadru={kadr ? kadr.refy : null}
       />
     </div>
   );

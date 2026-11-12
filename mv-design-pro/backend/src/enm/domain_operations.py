@@ -623,8 +623,8 @@ INWENTARZ_DEKLARACJI_KATALOGOWYCH: dict[str, str] = {
         "aparat pola liniowego: _brama_katalogowa_aparatu_sn"
     ),
     "_utworz_pola_tr_gpz": (
-        "wyłącznik pola TR GPZ (karta UX-04/ROZDZIELNICA-SN-KOREKTA): pozycja aparatu pól "
-        "wołającego `add_grid_source_sn` przeszła _brama_katalogowa_aparatu_sn"
+        "wyłącznik pola TR GPZ: pozycja aparatu pól operacji dodania źródła GPZ "
+        "przeszła _brama_katalogowa_aparatu_sn"
     ),
     "continue_trunk_segment_sn": "odcinek magistrali: _materialize_catalog_payload",
     "start_branch_segment_sn": "odcinek odgałęzienia: _materialize_catalog_payload",
@@ -1422,7 +1422,7 @@ def _rodzaj_aparatu_glownego_galezi(galaz: Mapping[str, Any]) -> str | None:
     """Rodzaj aparatu pierwotnego pola wskazującego gałąź łącznika modelu. Rodzaj wyrobu
     pochodzi z pozycji katalogu gałęzi (`device_kind` → rodzaj aparatu pierwotnego tą samą
     funkcją, którą szablon zastępuje aparat główny — `_main_apparatus_primary_kind`, para
-    predykatów z jednego źródła: rozłącznik bezpiecznikowy → wkładka FUSE, rozłącznik →
+    predykatów z jednego źródła: rozłącznik bezpiecznikowy → FUSE_SWITCH, rozłącznik →
     LOAD_SWITCH); bez pozycji — z typu gałęzi. Gałąź `bus_coupler` jest rolą w topologii
     (łącznik sekcji), nie rodzajem wyrobu — bez pozycji katalogu wyłącznik (Z.12)."""
     from network_model.catalog.bay_templates import _main_apparatus_primary_kind
@@ -1506,9 +1506,10 @@ def _powiaz_aparaty_pola_z_galezia(
     łącznika, `enm.wyposazenie_pola`)."""
     rodzaj = _rodzaj_aparatu_glownego_galezi(galaz)
     kandydaci = [a for a in aparaty if a.get("kind") == rodzaj]
-    if rodzaj == "FUSE" and any(a.get("kind") == "LOAD_SWITCH" for a in aparaty):
-        # Rozłącznik bezpiecznikowy: łącznikiem toru (stan gałęzi) jest rozłącznik pola,
-        # wkładki są jego częścią (pole RMU `bay_template_rmu_*`).
+    if rodzaj == "FUSE_SWITCH" and not kandydaci:
+        # Rozłącznik bezpiecznikowy w polu, którego szablon niesie rozłącznik i wkładki
+        # osobno (pole RMU `bay_template_rmu_*`: LOAD_SWITCH Q1 + FUSE F1): łącznikiem toru
+        # (stan gałęzi) jest rozłącznik pola, wkładki są jego częścią — nigdy wkładka FUSE.
         kandydaci = [a for a in aparaty if a.get("kind") == "LOAD_SWITCH"]
     if rodzaj == "DS" and not kandydaci:
         # Łącznik trójpołożeniowy jest odłącznikiem z uziemnikiem w jednym napędzie (pole
@@ -4804,11 +4805,11 @@ def _utworz_pola_tr_gpz(
         and _gpz_line_field_branch_type(line_field_apparatus["apparatus_kind"]) == "breaker"
     )
     wynik: list[tuple[str, list[tuple[str, str]]]] = []
-    for numer, transformer_ref in enumerate(transformer_refs, start=1):
+    for idx, transformer_ref in enumerate(transformer_refs, start=1):
         transformator = transformatory[transformer_ref]
         sekcja = sekcje_wg_id[transformator["meta"]["gpz_section_id"]]
-        bay_ref = _make_id("gpz", seed, f"transformer/{numer:03d}/bay")
-        nazwa_tr = nazwa_nadana(transformator.get("name")) or f"TR{numer}"
+        bay_ref = _make_id("gpz", seed, f"transformer/{idx:03d}/bay")
+        nazwa_tr = nazwa_nadana(transformator.get("name")) or f"TR{idx}"
         bay_name = f"Pole transformatora {nazwa_tr}"
         utworzone: list[tuple[str, str]] = []
         galaz: dict[str, Any] | None = None
@@ -4816,7 +4817,7 @@ def _utworz_pola_tr_gpz(
         equipment_refs: list[str] = []
         if z_galezia:
             assert line_field_apparatus is not None
-            zacisk = _make_id("gpz", seed, f"transformer/{numer:03d}/bay/terminal")
+            zacisk = _make_id("gpz", seed, f"transformer/{idx:03d}/bay/terminal")
             wynik_wezla = create_node(
                 enm,
                 {
@@ -4843,7 +4844,7 @@ def _utworz_pola_tr_gpz(
                 )
             enm.update(wynik_wezla.enm)
             utworzone.append((zacisk, "FIELD_TERMINAL_CREATED_SN"))
-            apparatus_ref = _make_id("gpz", seed, f"transformer/{numer:03d}/bay/apparatus")
+            apparatus_ref = _make_id("gpz", seed, f"transformer/{idx:03d}/bay/apparatus")
             binding = line_field_apparatus["catalog_binding"]
             galaz = {
                 "ref_id": apparatus_ref,

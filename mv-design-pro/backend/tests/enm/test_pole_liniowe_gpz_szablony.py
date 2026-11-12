@@ -378,10 +378,13 @@ def test_zbiory_lacznikow_i_polozen_otwartych():
         "LOAD_SWITCH",
         "DS",
         "ES",
-        "FUSE",
+        # Rozłącznik z bezpiecznikami — łącznik; wkładka bezpiecznikowa FUSE nie ma położenia
+        # (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja FUSE).
+        "FUSE_SWITCH",
         "THREE_POSITION_SWITCH",
     }
     assert MAIN_SWITCH_KINDS == RODZAJE_LACZNIKOW_TORU == RODZAJE_LACZNIKOW_POLA - {"ES"}
+    assert "FUSE" not in MAIN_SWITCH_KINDS
     assert is_open("uziemiony") and not is_closed("uziemiony")
     for stan in ("nieznany", "awaria", None):
         assert not is_open(stan) and not is_closed(stan)

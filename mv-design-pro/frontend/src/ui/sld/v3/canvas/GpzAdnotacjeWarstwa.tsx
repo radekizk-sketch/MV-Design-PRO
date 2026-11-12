@@ -34,6 +34,7 @@ import {
 import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 import { useSldPalette } from '../theme/palette';
 import type { GpzWynikiOverlay, WynikiPolaGpz } from './gpzWyniki';
+import { KURTYNA_KADRU_OPACITY } from './zakresKadru';
 
 const PUSTY_BILANS: BilansGpzWartosci = {
   pZasilaniaMw: null,
@@ -54,10 +55,16 @@ export interface GpzAdnotacjeWarstwaProps {
   readonly nieaktualny: boolean;
   /** Skala kamery (świat → ekran) — wyłącznie do progu czytelności pisma. */
   readonly skala: number;
+  /** Kurtyna kadru (K2b, `nalezyDoZakresu`): czy element o tym refie leży POZA celem kadru.
+   *  Tło pola sprawdza `bayRef`, nagłówek i tabela — `gpzRef`. Brak = bez kurtyny. */
+  readonly pozaKadrem?: (ref: string) => boolean;
 }
 
 export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Element {
   const { adnotacje, gpzRef, wyniki, nieaktualny, skala } = props;
+  const poza = (ref: string): boolean => props.pozaKadrem?.(ref) === true;
+  const kurtyna = (ref: string) =>
+    poza(ref) ? { 'data-kadr': 'poza' as const, opacity: KURTYNA_KADRU_OPACITY } : {};
   const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY[KLASA_DANYCH_GPZ];
   const linia = labelLineHeight(KLASA_DANYCH_GPZ);
@@ -104,6 +111,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
       <g data-testid="sld-v3-gpz-panele">
         {adnotacje.panele.map((panel) => (
           <rect
+            {...kurtyna(panel.bayRef)}
             key={`gpz-panel-${panel.bayRef}`}
             data-testid={`sld-v3-gpz-panel-${panel.bayRef}`}
             data-gpz-rola={panel.rola}
@@ -122,7 +130,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
         ))}
       </g>
       {tekstyCzytelne && (
-        <g data-testid="sld-v3-gpz-naglowek-wyniki">
+        <g data-testid="sld-v3-gpz-naglowek-wyniki" {...kurtyna(gpzRef)}>
           {tekst('sld-v3-gpz-bilans-zasilania', adnotacje.zasilanie.x, adnotacje.zasilanie.y, tekstZasilaniaGpz(bilans), maWynik ? kolorWyniku : kolorTekstu, 'start', linia)}
           {tekst('sld-v3-gpz-bilans-odplywow', adnotacje.odplywy.x, adnotacje.odplywy.y, tekstOdplywowGpz(bilans), maWynik ? kolorWyniku : kolorTekstu, 'start', linia)}
           {tekst(
@@ -141,7 +149,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
           kwadratów i kreskowanych prostokątów bez znaczenia (zrzut „po" rozdzielnicy GPZ). Poniżej
           progu czytelności pisma nie rysujemy tabeli wcale; tła pól (`panele`) zostają. */}
       {tabela && tekstyCzytelne && (
-        <g data-testid="sld-v3-gpz-tabela-pol">
+        <g data-testid="sld-v3-gpz-tabela-pol" {...kurtyna(gpzRef)}>
           {tekst('sld-v3-gpz-tabela-tytul', tabela.tytul.x, tabela.tytul.y, tekstTytuluTabeliGpz(maWynik, nieaktualny), kolorTekstu)}
           {tabela.kolumnyKart.map((kx, k) =>
               tabela.kolumnyWartosci.map((kol) => (

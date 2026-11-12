@@ -54,6 +54,7 @@ import {
   ctRatingLabelText,
   vtMountingAnnotationLabelText,
   vtMountingLabelText,
+  protectionAnnotationDetailForLod,
 } from '../protectionMarking';
 import { pasyOpisowPolaStacji } from '../kolumnaOpisowPola';
 
@@ -1046,26 +1047,25 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
   });
 
   // -------------------------------------------------------------------------
-  // B-1 (recenzja F9.9, spec §17.4): annotationDetail='circle-only' (L1).
+  // B-1 (recenzja F9.9, spec §17.4) — L1. Decyzja architekta D3d (karta
+  // UX-04/ROZDZIELNICA-SN-KOREKTA, dyrektywa właściciela 2026-11-11 nad odbiorem 2026-11-04,
+  // `docs/v12xx/REJESTR_KONFLIKTOW.md`): dawna GOŁA ramka bloku z linią wyłączania na L1 była
+  // pustym prostokątem — L1 dostaje `'none'`. Intencja (L1 nie rysuje kodów, „52", „M") zostaje;
+  // ramka i linia wyłączania znikają razem z treścią.
   // -------------------------------------------------------------------------
 
-  it('B-1 (§17.4 L1, circle-only): GOŁA ramka bloku BEZ kodów + linia wyłączania do wyłącznika — zero „52", zero „M", zero wierszy, zero missingData §17', () => {
+  it('B-1 (§17.4 L1 → none, D3d): ani ramki bloku, ani linii wyłączania, ani „52"/„M"/wierszy mimo pełnych danych', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51N', '51', '87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
       meteringMeasurementRef: 'meas-metering-1',
     });
     const station = makeStation('protection-l1', [bay]);
-    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: 'circle-only' });
+    expect(protectionAnnotationDetailForLod(1)).toBe('none');
+    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: protectionAnnotationDetailForLod(1) });
 
-    const relays = composition.protectionSymbols.filter((s) => s.symbolId === 'protectionRelay');
-    expect(relays).toHaveLength(1); // ramka OBECNA (dowód pozytywny §17.4 L1).
-    expect(relays[0].ramkaBloku).toBeDefined();
-    expect(relays[0].wierszeBloku).toEqual([]); // BEZ kodów.
-    expect(composition.protectionSymbols.filter((s) => s.symbolId === 'meter')).toHaveLength(0);
-    // Linia wyłączania zostaje na L1 (odbiór B-02 2026-11-04: blok połączony z łącznikiem,
-    // który wyłącza — od karty JEDNA NOTACJA jednakowo w GPZ i stacjach); linii pomiarowych brak.
-    expect(composition.protectionSegments.map((g) => g.ownerRef)).toEqual([`${bay.bayRef}#trip-line`]);
+    expect(composition.protectionSymbols).toHaveLength(0);
+    expect(composition.protectionSegments).toHaveLength(0);
     expect(composition.measurementSegments).toHaveLength(0);
     expect(composition.labels.protection).toHaveLength(0);
     expect(composition.missingData).not.toContain('bay.protection.trip_link_unresolved');
@@ -1306,13 +1306,13 @@ describe('V3 compose/station — F10.5 §20.1: linia pomiarowa CT→przekaźnik 
     expect(composition.missingData).toContain('bay.protection.measurement_link_unresolved');
   });
 
-  it('B-1 (§17.4/§20.1 L1, circle-only): linia pomiarowa UKRYTA na L1 (TA SAMA gałąź LOD co tor wyzwalania), zero missingData §20.1 na TYM poziomie', () => {
+  it('B-1 (§17.4/§20.1 L1 → none, D3d): linia pomiarowa UKRYTA na L1 (TA SAMA gałąź LOD co tor wyzwalania), zero missingData §20.1 na TYM poziomie', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51'], breakerRef: 'cb-1', ctRef: 'ct-1' },
     });
     const station = makeStation('measurement-link-l1', [bay]);
-    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: 'circle-only' });
+    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: protectionAnnotationDetailForLod(1) });
 
     expect(composition.measurementSegments).toHaveLength(0);
     expect(composition.missingData).not.toContain('bay.protection.measurement_link_unresolved');
@@ -1409,15 +1409,14 @@ describe('V3 compose/station — F10.5 §20.2: walidacja topologiczna funkcji za
     expect(composition.missingData).not.toContain('protection.topology.87t_missing_transformer');
   });
 
-  it('B-1 (§17.4/§20.2 L1, circle-only): walidacja topologiczna NIE liczona na L1 (TA SAMA gałąź LOD co „52"/„M") — zero protectionTopologyGaps mimo braku transformatora', () => {
+  it('B-1 (§17.4/§20.2 L1 → none, D3d): walidacja topologiczna NIE liczona na L1 (TA SAMA gałąź LOD co „52"/„M") — bez bloku i bez braków topologii mimo braku transformatora', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
     });
     const station = makeStation('topology-l1', [bay]);
-    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: 'circle-only' });
-    const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
-    expect(relay.protectionTopologyGaps).toBeUndefined();
+    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: protectionAnnotationDetailForLod(1) });
+    expect(composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')).toBeUndefined();
     expect(composition.missingData).not.toContain('protection.topology.87t_missing_transformer');
   });
 });

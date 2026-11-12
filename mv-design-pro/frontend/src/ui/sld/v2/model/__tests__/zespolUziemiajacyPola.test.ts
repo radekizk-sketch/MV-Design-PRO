@@ -137,7 +137,12 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
           .map((s) => s.earthingKind)
           .sort();
         expect(aparaty).toEqual(
-          wariant === 'Z13' ? ['coil'] : wariant === 'Z14' ? ['coil', 'resistor'] : ['resistor'],
+          // Z.13: dławik i rezystor automatyki AWSC (osobny aparat, karta UX-04/ROZDZIELNICA-SN-KOREKTA K4).
+          wariant === 'Z13' ? ['coil', 'resistor'] : wariant === 'Z14' ? ['coil', 'resistor'] : ['resistor'],
+        );
+        // Stycznik AWSC (otwarty w spoczynku) wyłącznie w Z.13.
+        expect(wPolu.filter((s) => s.meta.testId?.endsWith('zespol-awsc-stycznik')).map((s) => s.state)).toEqual(
+          wariant === 'Z13' ? ['open'] : [],
         );
         // Przekładnik prądowy gałęzi rezystora (wejście Io>, Io>> — Z.14/Z.15).
         const ctGalezi = wPolu.filter((s) => s.meta.testId?.endsWith('zespol-rezystor-przekladnik'));
@@ -154,7 +159,8 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
         // Podpisy wartości z wyposażenia punktu neutralnego (zero domysłu): nastawa dławika,
         // AWSC dławika (Z.13), R_N rezystora (Z.14, Z.15).
         const teksty = c.labels.fieldDesignations.map((l) => l.text);
-        if (wariant === 'Z13') expect(teksty).toContain('dławik 100 A · AWSC 40 A');
+        // Dławik i AWSC — dwa aparaty, dwa podpisy (dawny wspólny „dławik 100 A · AWSC 40 A”).
+        if (wariant === 'Z13') expect(teksty).toEqual(expect.arrayContaining(['dławik 100 A', 'AWSC 40 A']));
         if (wariant === 'Z14') expect(teksty).toEqual(expect.arrayContaining(['dławik 100 A', '$R_{N}$ 25 Ω']));
         if (wariant === 'Z15') expect(teksty).toContain('$R_{N}$ 25 Ω');
         expect(teksty.some((t) => t.includes('AWSC'))).toBe(wariant === 'Z13');
@@ -172,7 +178,7 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
         const kropki = scena.symbols.filter(
           (s) => s.symbolId === 'junction' && String(s.meta?.testId ?? '').endsWith(`-${yPrzewodu}`),
         );
-        expect(kropki).toHaveLength(wariant === 'Z14' ? 2 : 1);
+        expect(kropki).toHaveLength(wariant === 'Z15' ? 1 : 2); // Z.13: dławik i AWSC, Z.14: dławik i rezystor
         expect(teksty).toContain('ZNyn11 · 100 kVA');
       });
     }

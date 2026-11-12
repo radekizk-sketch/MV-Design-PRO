@@ -11,6 +11,7 @@ import pytest
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, ENMHeader, Substation
 from enm.rola_pola_sn import ROLE_POLA_MODELU
 from network_model.catalog.bay_templates import (
+    SZABLON_ROZLACZNIKOWY_ROLI,
     BayTemplate,
     list_bay_templates,
     template_primary_devices,
@@ -102,6 +103,9 @@ class TestPackRegistry:
             "CABLE_HEAD",
             "TRANSFORMER_DEVICE",
             "FUSE",
+            # Wkładka (`FUSE`) i rozłącznik bezpiecznikowy (`FUSE_SWITCH`) — dwa rodzaje
+            # (karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja architekta FUSE).
+            "FUSE_SWITCH",
             "SURGE_ARRESTER",
             # UX-04/POLE-LINIOWE-WZORZEC: pozycje pola liniowego ENEA Z.10.
             "THREE_POSITION_SWITCH",
@@ -127,6 +131,18 @@ class TestPackRegistry:
                 assert profile_id in FIELD_PROFILE_REGISTRY
 
 
+#: Szablony technologii rozłącznikowej RMU — pola stacji SN/nN.
+_RMU = frozenset(t.template_id for t in SZABLON_ROZLACZNIKOWY_ROLI.values())
+
+
+def _szablony_stacji(station_type: str) -> list[BayTemplate]:
+    """Szablony oceniane w stacji danego typu: w GPZ — wszystkie poza RMU, w stacji SN/nN —
+    wszystkie poza wzorcami GPZ (`tylko_gpz`, odmowa W051 poza GPZ)."""
+    if station_type == "gpz":
+        return [t for t in list_bay_templates() if t.template_id not in _RMU]
+    return [t for t in list_bay_templates() if not t.tylko_gpz]
+
+
 class TestCreatorTemplatesComplyWithProfiles:
     """Kreator = implementacja referencji (spec §8 pkt 3): zero failów."""
 
@@ -139,7 +155,7 @@ class TestCreatorTemplatesComplyWithProfiles:
         )
         bays = [
             _bay_from_template(template, f"bay/{template.template_id}", "st/x")
-            for template in list_bay_templates()
+            for template in _szablony_stacji(station_type)
         ]
         enm = EnergyNetworkModel(
             header=ENMHeader(name="Szablony kreatora"),
@@ -152,8 +168,81 @@ class TestCreatorTemplatesComplyWithProfiles:
         ]
 
     def test_bay_templates_comply_with_profiles_gpz(self) -> None:
-        # Kanoniczne szablony to technologia wyłącznikowa (GPZ).
+        # Szablony technologii wyłącznikowej (wzorce GPZ i szablony ogólne) w stacji GPZ.
         assert self._evaluate_templates("gpz") == []
+
+    def test_bay_templates_comply_with_profiles_mv_lv(self) -> None:
+        # Szablony stacji SN/nN (RMU i szablony ogólne) w stacji SN/nN. Pomiar 2026-11-12:
+        # sprzęgło RMU i pole odgałęźne RMU oblewały profil wyłącznikowy (brak profilu sprzęgła
+        # RMU, pole odgałęźne z głowicą kablową oceniane profilem pola rezerwowego), a szablony RMU
+        # oceniano w stacji GPZ.
+        assert self._evaluate_templates("mv_lv") == []
+
+    def test_kazdy_szablon_oceniony_w_stacji_swojej_technologii(self) -> None:
+        # Warunek niepustej wyroczni: oba zbiory wyżej łącznie pokrywają cały rejestr, RMU
+        # i wzorce GPZ są rozłączne, a każdy z nich niepusty.
+        wszystkie = {t.template_id for t in list_bay_templates()}
+        gpz = {t.template_id for t in _szablony_stacji("gpz")}
+        sn_nn = {t.template_id for t in _szablony_stacji("mv_lv")}
+        assert gpz | sn_nn == wszystkie
+        assert _RMU and _RMU <= sn_nn and not (_RMU & gpz)
+        assert {t.template_id for t in list_bay_templates() if t.tylko_gpz} <= gpz - sn_nn
+
+    @pytest.mark.parametrize("station_type", ["gpz", "mv_lv"])
+    def test_rozlacznik_bezpiecznikowy_ocena_jak_przed_rozdzieleniem_rodzajow(
+        self, station_type: str
+    ) -> None:
+        # Karta UX-04/ROZDZIELNICA-SN-KOREKTA, decyzja FUSE: aparat główny „rozłącznik
+        # z bezpiecznikami” ma rodzaj FUSE_SWITCH (dawniej FUSE, rodzaj wkładki). Iloczyn: każdy
+        # szablon z łącznikiem głównym × typ stacji — rozdzielenie rodzajów nie dokłada żadnego
+        # niespełnienia profilu względem tego samego pola z dawnym rodzajem FUSE (wymóg
+        # bezpiecznika, kolejność toru, zakaz w polu BKR/ZU). Jedyna różnica (pomiar 2026-11-12):
+        # pole potrzeb własnych z rozłącznikiem bezpiecznikowym w miejscu odłącznika przestaje
+        # oblewać kolejność toru — dawny podwójny FUSE (aparat główny + wkładka) nie był
+        # podciągiem kanonu. Iniekcja: profil `aux` z wymogiem samego FUSE — test czerwony.
+        station = Substation(
+            ref_id="st/x",
+            name="Stacja testowa",
+            station_type=station_type,  # type: ignore[arg-type]
+            bus_refs=["bus/sn"],
+        )
+        ocenione = 0
+        for template in _szablony_stacji(station_type):
+            ref = f"bay/{template.template_id}"
+            nowe = [
+                BayPrimaryDevice.model_validate(e)
+                for e in template_primary_devices(
+                    template.template_id,
+                    field_ref=ref,
+                    main_apparatus_kind="ROZLACZNIK_BEZPIECZNIKOWY",
+                )
+            ]
+            if not any(d.kind == "FUSE_SWITCH" for d in nowe):
+                continue
+            dawne = [
+                d.model_copy(update={"kind": "FUSE"}) if d.kind == "FUSE_SWITCH" else d
+                for d in nowe
+            ]
+            wyniki = []
+            for aparaty in (nowe, dawne):
+                bay = _bay_from_template(template, ref, "st/x")
+                bay.primary_devices = aparaty
+                enm = EnergyNetworkModel(
+                    header=ENMHeader(name="Rozłącznik bezpiecznikowy"),
+                    substations=[station],
+                    bays=[bay],
+                )
+                report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
+                wyniki.append(
+                    sorted(
+                        c.rule_code.replace("FUSE_SWITCH", "FUSE")
+                        for c in report.packs[0].checks
+                        if c.status == "fail"
+                    )
+                )
+            assert set(wyniki[0]) <= set(wyniki[1]), template.template_id
+            ocenione += 1
+        assert ocenione > 0
 
     def test_family_solution_templates_comply_with_family_vocabulary(self) -> None:
         # Pkt 2/4 dyrektywy: szablon rodziny nie zawiera aparatu spoza

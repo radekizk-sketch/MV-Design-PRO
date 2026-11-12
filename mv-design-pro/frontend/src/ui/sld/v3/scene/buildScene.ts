@@ -6550,7 +6550,7 @@ const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = symboleRodzajow(RODZAJE_
  *  tylko TYP) do niezależnego audytu mapowania (a), zero zależności od tego,
  *  czy fixtura referencyjna akurat niesie dany `kind` w danych. */
 const ALL_BAY_PRIMARY_DEVICE_KINDS: readonly BayPrimaryDeviceKind[] = [
-  'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE', 'FUSE',
+  'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE', 'FUSE', 'FUSE_SWITCH',
   'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
   'THREE_POSITION_SWITCH', 'CORE_BALANCE_CT', 'VOLTAGE_INDICATOR',
   'UNBALANCE_CT', 'PHASE_TO_PHASE_VT',
@@ -8985,7 +8985,7 @@ export interface ProtectionMarkingGap {
     | 'relay-without-frame'
     | 'relay-without-owner'
     | 'frame-without-codes'
-    | 'codes-present-at-lod1'
+    | 'block-at-lod1'
     | 'code-row-outside-frame'
     | 'trip-line-endpoint-mismatch';
   readonly ownerRef?: string;
@@ -9005,9 +9005,11 @@ function wRamce(r: V3Rect, ramka: V3Rect): boolean {
  * jeden wiersz kodu funkcji pola (`#protection-codes-full…`, §17.2 „brak danych = brak
  * oznaczenia" — `'frame-without-codes'`), a każdy wiersz bloku obecny na scenie leży WEWNĄTRZ
  * ramki (`'code-row-outside-frame'` — ramka i wiersze z jednej funkcji geometrii,
- * `symbols/blokZabezpieczen.ts::ramkaBlokuZWierszy`). Na L1 (§17.4, B-1 recenzji) ramka jest
- * GOŁA: zero wierszy bloku (`'codes-present-at-lod1'`); pełny kształt L1 dowodzi
- * `protectionAnnotationAtLod1IsBareFrame` niżej. DOWÓD PEŁNY „wiersze = `protection_codes`
+ * `symbols/blokZabezpieczen.ts::ramkaBlokuZWierszy`). Na L1 bloku NIE MA wcale
+ * (`'block-at-lod1'`; decyzja architekta D3d, karta UX-04/ROZDZIELNICA-SN-KOREKTA: ramka bez
+ * treści nie jest rysowana — dyrektywa właściciela 2026-11-11 nad odbiorem 2026-11-04, wpis
+ * w `docs/v12xx/REJESTR_KONFLIKTOW.md`); pełny kształt L1 dowodzi
+ * `noProtectionAnnotationAtLod1` niżej. DOWÓD PEŁNY „wiersze = `protection_codes`
  * pola w kolejności danych, bez fabrykacji" żyje na warstwie kompozycji
  * (`compose/__tests__/blokZabezpieczenNotacja.contract.test.ts`) — scena nie niesie źródłowej
  * listy `Bay.protection_codes`. (b) każda linia wyzwalania (`meta.kind==='protectionTrip'`)
@@ -9047,9 +9049,7 @@ export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkin
     );
     const kodyNaScenie = wiersze.some((l) => l.ownerRef.startsWith(prefiksKodow));
     if (scene.meta.lod === 2 && !kodyNaScenie) gaps.push({ reason: 'frame-without-codes', ownerRef });
-    if (scene.meta.lod === 1 && (wiersze.length > 0 || zadeklarowane.size > 0)) {
-      gaps.push({ reason: 'codes-present-at-lod1', ownerRef });
-    }
+    if (scene.meta.lod === 1) gaps.push({ reason: 'block-at-lod1', ownerRef });
     for (const w of wiersze) {
       if (!wRamce(w.rect, ramka)) gaps.push({ reason: 'code-row-outside-frame', ownerRef: w.ownerRef });
     }
@@ -9100,28 +9100,22 @@ export function noProtectionAnnotationAtLod0(scene: SceneV3): boolean {
 }
 
 /**
- * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją), karta JEDNA NOTACJA BLOKU
- * ZABEZPIECZEŃ: na L1 warstwa adnotacji zabezpieczeń to GOŁA RAMKA bloku zabezpieczeń —
- * (1) każdy `protectionRelay` niesie ramkę i nie deklaruje wierszy (`wierszeBlokuPrzekaznika`
- *     puste);
- * (2) zero segmentów `measurementLink` (F10.5, §20.1: linie pomiarowe dopiero na L2); linia
- *     wyłączania (`protectionTrip`) ZOSTAJE — blok na L1 stoi tam, gdzie na L2, przy łączniku,
- *     z którym łączy go linia wyłączania (odbiór B-02, oględziny koordynatora 2026-11-04; od tej
- *     karty jednakowo w polach GPZ i stacji);
- * (3) zero symboli `meter` („M" nieobecne);
- * (4) zero etykiet `ownerKind==='protection'` („52", kody, przekładnie — nieobecne).
- * Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają własne dowody:
- * `noProtectionAnnotationAtLod0` / `protectionMarkingGaps`).
+ * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją) — po decyzji architekta D3d (karta
+ * UX-04/ROZDZIELNICA-SN-KOREKTA, dyrektywa właściciela 2026-11-11: „puste prostokąty bez
+ * określonej funkcji nie mogą występować w gotowym SLD", rozstrzygnięcie w
+ * `docs/v12xx/REJESTR_KONFLIKTOW.md` nad odbiorem 2026-11-04): na L1 warstwa adnotacji
+ * zabezpieczeń jest NIEOBECNA — ramka bloku bez kodów była pustym prostokątem. Dowód:
+ * (1) zero symboli `protectionRelay`; (2) zero segmentów `protectionTrip` i `measurementLink`
+ * (linia wyłączania bez bloku nie ma końca); (3) zero symboli `meter`; (4) zero etykiet
+ * `ownerKind==='protection'`. Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają
+ * własne dowody: `noProtectionAnnotationAtLod0` / `protectionMarkingGaps`).
  */
-export function protectionAnnotationAtLod1IsBareFrame(scene: SceneV3): boolean {
+export function noProtectionAnnotationAtLod1(scene: SceneV3): boolean {
   if (scene.meta.lod !== 1) return true;
-  const relaysAreBareFrames = scene.symbols
-    .filter((s) => s.symbolId === 'protectionRelay')
-    .every((s) => ramkaBlokuSymbolu(s) !== null && (s.meta?.wierszeBlokuPrzekaznika ?? []).length === 0);
-  const noMeasurementLines = !scene.segments.some((s) => s.meta?.kind === 'measurementLink');
-  const noMeters = !scene.symbols.some((s) => s.symbolId === 'meter');
+  const noRelays = !scene.symbols.some((s) => s.symbolId === 'protectionRelay' || s.symbolId === 'meter');
+  const noLines = !scene.segments.some((s) => s.meta?.kind === 'protectionTrip' || s.meta?.kind === 'measurementLink');
   const noProtectionLabels = !scene.labels.some((l) => l.ownerKind === 'protection');
-  return relaysAreBareFrames && noMeasurementLines && noMeters && noProtectionLabels;
+  return noRelays && noLines && noProtectionLabels;
 }
 
 // ---------------------------------------------------------------------------

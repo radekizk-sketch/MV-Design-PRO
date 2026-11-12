@@ -103,7 +103,14 @@ describe('stan obiektu na kanwie — iloczyn kompozycja × pochodzenie × stan',
     const dom = kanwa(enm);
     for (const s of bezRekordu) {
       expect(s.meta?.stanObiektu).toBeUndefined();
-      expect(dom.querySelector(`[data-testid="${s.meta!.testId}"]`)?.hasAttribute('data-stan-obiektu')).toBe(false);
+      const el = dom.querySelector(`[data-testid="${s.meta!.testId}"]`);
+      // D3d (rejestr UX04-RAMKA-BEZ-TRESCI): blok zabezpieczeń bez narysowanej treści nie jest
+      // rysowany — jedyny symbol sceny, którego może nie być w DOM.
+      if (!el) {
+        expect(s.meta?.ramkaBlokuPrzekaznika, s.meta!.testId).toBeDefined();
+        continue;
+      }
+      expect(el.hasAttribute('data-stan-obiektu')).toBe(false);
       expect(dom.querySelector(`[data-hit-for="${s.meta!.testId}"] title`)?.textContent ?? '').not.toContain('Stan obiektu');
     }
   });

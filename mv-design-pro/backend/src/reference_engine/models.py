@@ -28,6 +28,7 @@ ApparatusKind = Literal[
     "CABLE_HEAD",
     "TRANSFORMER_DEVICE",
     "FUSE",
+    "FUSE_SWITCH",
     "SURGE_ARRESTER",
     "THREE_POSITION_SWITCH",
     "VOLTAGE_INDICATOR",

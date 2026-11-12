@@ -2263,11 +2263,12 @@ function zFunkcjamiEaz(
  *  lustro `_DEVICE_KIND_NA_TYP_GALEZI` backendu (`enm/domain_operations.py`), które z tej
  *  samej klasy wybiera typ gałęzi. Pierwszeństwo przed typem gałęzi: typ `disconnector`
  *  niesie i odłącznik, i uziemnik. */
-const RODZAJ_APARATU_Z_KLASY_WYROBU: Readonly<Record<string, BayPrimaryDeviceKind>> = {
+export const RODZAJ_APARATU_Z_KLASY_WYROBU: Readonly<Record<string, BayPrimaryDeviceKind>> = {
   WYLACZNIK: 'CB',
   REKLOZER: 'CB',
   ROZLACZNIK: 'LOAD_SWITCH',
-  ROZLACZNIK_BEZPIECZNIKOWY: 'FUSE',
+  // Rozłącznik bezpiecznikowy = aparat główny pola `FUSE_SWITCH` (nie wkładka `FUSE`).
+  ROZLACZNIK_BEZPIECZNIKOWY: 'FUSE_SWITCH',
   ODLACZNIK: 'DS',
   UZIEMNIK: 'ES',
 };
@@ -2278,6 +2279,7 @@ const RODZAJ_APARATU_Z_TYPU_GALEZI: Readonly<Record<string, BayPrimaryDeviceKind
   breaker: 'CB',
   switch: 'LOAD_SWITCH',
   disconnector: 'DS',
+  // Gałąź `fuse` = wkładka bezpiecznikowa (`SwitchType.FUSE` backendu, „Fuse link”).
   fuse: 'FUSE',
 };
 

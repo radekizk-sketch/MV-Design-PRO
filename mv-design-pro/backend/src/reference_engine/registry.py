@@ -200,12 +200,18 @@ def profile_id_for_bay(
 
     Lustro `mapStationBayRoleToMiniRole` (frontend): GPZ = technologia
     wyłącznikowa, pozostałe stacje = technologia RMU (V12K-031-A).
-    Rola FEEDER obejmuje dwa kanoniczne szablony (rezerwowe / potrzeb
-    własnych) — rozróżnienie deterministycznie z DANYCH pola: obecny
-    bezpiecznik ⇒ profil `aux`, inaczej `reserve`.
+    Rola FEEDER obejmuje pola rezerwowe, potrzeb własnych i odgałęźne linii —
+    rozróżnienie deterministycznie z DANYCH pola: obecny bezpiecznik albo rozłącznik
+    z bezpiecznikami ⇒ profil `aux`; głowica kablowa (pole wyprowadza obwód linii, np.
+    pole odgałęźne RMU `bay_template_rmu_line_branch`, pole odgałęźne wg szablonu linii
+    odpływowej) ⇒ profil pola liniowego technologii stacji; inaczej `reserve`.
+    Sprzęgło stacji SN/nN (technologia rozłącznikowa, `bay_template_rmu_coupler`) ma
+    profil `rmu_coupler` — profil `coupler` wymaga wyłącznika (pomiar 2026-11-12: szablony
+    RMU sprzęgła i odgałęzienia oblewały profil wyłącznikowy).
     `None` = rola bez profilu (zero domysłu).
     """
     is_gpz = station_type == "gpz"
+    rodzaje = set(device_kinds)
     if bay_role in ("IN", "OUT"):
         return "line_breaker" if is_gpz else "rmu_line"
     if bay_role == "TR":
@@ -213,11 +219,15 @@ def profile_id_for_bay(
     if bay_role == "MEASUREMENT":
         return "measurement"
     if bay_role == "COUPLER":
-        return "coupler"
+        return "coupler" if is_gpz else "rmu_coupler"
     if bay_role == "OZE":
         return "der_source"
     if bay_role == "FEEDER":
-        return "aux" if "FUSE" in set(device_kinds) else "reserve"
+        if {"FUSE", "FUSE_SWITCH"} & rodzaje:
+            return "aux"
+        if "CABLE_HEAD" in rodzaje:
+            return "line_breaker" if is_gpz else "rmu_line"
+        return "reserve"
     if bay_role == "BKR":
         # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL, ENEA Zeszyt 1 Zał. 16) —
         # technologia wyłącznikowa w każdej stacji (bateria łączona wyłącznikiem).

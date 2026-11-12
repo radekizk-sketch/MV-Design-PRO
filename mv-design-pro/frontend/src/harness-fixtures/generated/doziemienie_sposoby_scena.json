@@ -139,13 +139,13 @@
             "dane_przyjete": [],
             "kompletnosc_dowodu": "PELNY"
           },
-          "proof_ref": "proof:short-circuit:80a6825dab4daf4c89ca4f57a21a37cd295afccedf78778bfd58f2904b4ebcd7",
+          "proof_ref": "proof:short-circuit:96152008a049e0108b3c89bad81225e110b035ce97ab91dae8eb6400bd6101a0",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:80a6825dab4daf4c89ca4f57a21a37cd295afccedf78778bfd58f2904b4ebcd7",
+            "proof_ref": "proof:short-circuit:96152008a049e0108b3c89bad81225e110b035ce97ab91dae8eb6400bd6101a0",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [],
@@ -379,7 +379,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
+        "snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-izolowany",
@@ -405,14 +405,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-izolowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0"
+          "snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
-          "enm_hash": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
-          "enm_snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
+          "snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
+          "enm_hash": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
+          "enm_snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -422,13 +422,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "6a1d84d4e919a0415055caf6e27efd38aac56be9d934fb4534da68e4a1bd8558",
-          "result_hash": "b3ae5e196e0322910cb8611c1641fee9dba5700767ed914274856bad082a704d",
+          "input_hash": "68f8943a434db523aa8316ef3f078edd87836b7bdabc99c735a84500ab56dd96",
+          "result_hash": "c2ee9dd833c66cd234a39db1b3c0e2b9f4412787ee1da8666d7ce47c21b0cd03",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
+          "catalog_snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -467,8 +467,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-izolowany",
-      "snapshot_id": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
-      "input_hash": "6a1d84d4e919a0415055caf6e27efd38aac56be9d934fb4534da68e4a1bd8558",
+      "snapshot_id": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
+      "input_hash": "68f8943a434db523aa8316ef3f078edd87836b7bdabc99c735a84500ab56dd96",
       "white_box_trace": [],
       "selection_index": {},
       "catalog_context": [
@@ -735,7 +735,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
+        "snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-izolowany",
@@ -761,14 +761,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-izolowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0"
+          "snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
-          "enm_hash": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
-          "enm_snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
+          "snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
+          "enm_hash": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
+          "enm_snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -778,13 +778,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "6a1d84d4e919a0415055caf6e27efd38aac56be9d934fb4534da68e4a1bd8558",
-          "result_hash": "b3ae5e196e0322910cb8611c1641fee9dba5700767ed914274856bad082a704d",
+          "input_hash": "68f8943a434db523aa8316ef3f078edd87836b7bdabc99c735a84500ab56dd96",
+          "result_hash": "c2ee9dd833c66cd234a39db1b3c0e2b9f4412787ee1da8666d7ce47c21b0cd03",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
+          "catalog_snapshot_ref": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -845,6 +845,443 @@
             "switchgear_family_ref": null,
             "tags": [
               "gpz_line_field"
+            ],
+            "terminal_bus_ref": null,
+            "wybor_bloku": null
+          },
+          {
+            "apparatus_catalog_ref": null,
+            "bay_number": null,
+            "bay_role": "TR",
+            "bay_template_ref": "bay_template_gpz_transformator_sn_enea_z7",
+            "branch_point_port_id": null,
+            "branch_point_ref": null,
+            "bus_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "catalog_bindings": null,
+            "config_id": "kanoniczny:bay_template_gpz_transformator_sn_enea_z7",
+            "equipment_refs": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            ],
+            "feeder_short_name": null,
+            "field_role": null,
+            "funkcja_pomiaru": null,
+            "gpz_section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001",
+            "id": "fbe2a88d-0a4d-5e9d-8eaf-e636973d1b77",
+            "klasa_pola": null,
+            "manufacturer_ref": null,
+            "meta": {
+              "gpz_section_order": 0,
+              "source_field_kind": "TRANSFORMER",
+              "transformer_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            },
+            "metadane_pochodzenia": null,
+            "name": "Pole transformatora TR1 110/15 kV",
+            "outgoing_destination_ref": null,
+            "ports": [],
+            "primary_devices": [
+              {
+                "catalog_ref": null,
+                "designation": "PF0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::0",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "szyna"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::1",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "UPSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "szyna"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "CB",
+                "linked_ref": null,
+                "naped": "SILNIKOWY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cb",
+                "uzwojenia": [],
+                "wykonanie": "STALE",
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q5",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::3",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::4",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "pn1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "T3",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:vt",
+                "uzwojenia": [
+                  {
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5/3P",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "REGULACJA",
+                      "POMIAR"
+                    ]
+                  }
+                ],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
+                "designation": "T1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2S",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "REGULACJA"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ROZNICOWE"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ZABEZPIECZENIA"
+                    ]
+                  }
+                ],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:ct",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "PF1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::7",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::8",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "DOWNSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w3"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "F1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::9",
+                "earthing_role": "surge_ground",
+                "is_controllable": false,
+                "kind": "SURGE_ARRESTER",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:surge_arrester",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              }
+            ],
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "rodzaj_pomiaru": null,
+            "runtime_state": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "substation_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation",
+            "surge_arresters": [],
+            "switchgear_family_ref": null,
+            "tags": [
+              "gpz_transformer_field"
             ],
             "terminal_bus_ref": null,
             "wybor_bloku": null
@@ -1020,7 +1457,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0",
+          "hash_sha256": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -1047,7 +1484,105 @@
         ],
         "loads": [],
         "measurements": [],
-        "protection_assignments": [],
+        "protection_assignments": [
+          {
+            "aktywna_grupa": 1,
+            "bay_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "catalog_namespace": null,
+            "catalog_ref": null,
+            "charakterystyki_ref": null,
+            "funkcje": [
+              {
+                "kod": "51",
+                "ref": "51",
+                "wlaczona": true
+              },
+              {
+                "kod": "50",
+                "ref": "50",
+                "wlaczona": true
+              },
+              {
+                "kod": "ZS",
+                "ref": "ZS",
+                "wlaczona": true
+              },
+              {
+                "kod": "50BF",
+                "ref": "50BF",
+                "wlaczona": true
+              },
+              {
+                "kod": "87T",
+                "ref": "87T",
+                "wlaczona": true
+              },
+              {
+                "kod": "90",
+                "ref": "90",
+                "wlaczona": true
+              }
+            ],
+            "grupy_nastaw": [],
+            "id": "263c03fb-42f2-55ef-a3df-a2edf0de78a4",
+            "is_enabled": true,
+            "macierz_wyzwolen": [
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "51",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "ZS",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50BF",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "87T",
+                "pobudza_spz": false
+              }
+            ],
+            "materialized_params": null,
+            "meta": {},
+            "name": "Sterownik pola Pole transformatora TR1 110/15 kV",
+            "overrides": [],
+            "parameter_source": null,
+            "prad_znamionowy_wejscia_a": null,
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay/sterownik",
+            "source_mode": null,
+            "tags": [],
+            "wejscia": {
+              "ct_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+              "ct_strony_2_refs": [],
+              "i0_ct_ref": null,
+              "i0_uklad": null,
+              "u0_uklad": null,
+              "u0_vt_ref": null,
+              "vt_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5"
+            }
+          }
+        ],
         "shunt_capacitors": [],
         "sources": [
           {
@@ -1203,7 +1738,7 @@
           }
         ]
       },
-      "snapshot_id": "ad16598e321f40b2145f7881c92c16980fe28affd068056e4c01ff2c88f4e0a0"
+      "snapshot_id": "d49d4361593d502da4636e6fc2f2bb1d97f1586551093c7eb39d16626d6eeeeb"
     }
   },
   "kompensowany": {
@@ -1393,13 +1928,13 @@
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:f0ee4f8c845b9df68a2f68bbeec8a311662ee4026f1fdd0a789a91fd75d56d96",
+          "proof_ref": "proof:short-circuit:35c442504d8eb2828beac2bc86df4a79bcdb1afd97ed102050de19befc906470",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:f0ee4f8c845b9df68a2f68bbeec8a311662ee4026f1fdd0a789a91fd75d56d96",
+            "proof_ref": "proof:short-circuit:35c442504d8eb2828beac2bc86df4a79bcdb1afd97ed102050de19befc906470",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [],
@@ -1839,7 +2374,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
+        "snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -1865,14 +2400,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0"
+          "snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
-          "enm_hash": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
-          "enm_snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
+          "snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
+          "enm_hash": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
+          "enm_snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -1882,13 +2417,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "e37b4e5674c983e523cdbf7c14298581913976a9383c48b15dd99421b39eddef",
-          "result_hash": "38a492181bf3bbf6b78874105b4af85552b4a490c7ff27a62779853466b01999",
+          "input_hash": "184b27eed59b917261d6b8f70f92f793fbffc9ff36cb1061aed6cd2eecda83fc",
+          "result_hash": "42ff7e9c2356d4a8523e892c093529c07e95646e2c678177875b93b0f8671c14",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
+          "catalog_snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
           "catalog_materialization_ref": "catalog-materialization:d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_hash": "d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_status": "materialized",
@@ -1927,8 +2462,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-kompensowany",
-      "snapshot_id": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
-      "input_hash": "e37b4e5674c983e523cdbf7c14298581913976a9383c48b15dd99421b39eddef",
+      "snapshot_id": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
+      "input_hash": "184b27eed59b917261d6b8f70f92f793fbffc9ff36cb1061aed6cd2eecda83fc",
       "white_box_trace": [],
       "selection_index": {},
       "catalog_context": [
@@ -2273,7 +2808,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
+        "snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -2299,14 +2834,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0"
+          "snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
-          "enm_hash": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
-          "enm_snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
+          "snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
+          "enm_hash": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
+          "enm_snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -2316,13 +2851,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "e37b4e5674c983e523cdbf7c14298581913976a9383c48b15dd99421b39eddef",
-          "result_hash": "38a492181bf3bbf6b78874105b4af85552b4a490c7ff27a62779853466b01999",
+          "input_hash": "184b27eed59b917261d6b8f70f92f793fbffc9ff36cb1061aed6cd2eecda83fc",
+          "result_hash": "42ff7e9c2356d4a8523e892c093529c07e95646e2c678177875b93b0f8671c14",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
+          "catalog_snapshot_ref": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
           "catalog_materialization_ref": "catalog-materialization:d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_hash": "d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_status": "materialized",
@@ -2383,6 +2918,443 @@
             "switchgear_family_ref": null,
             "tags": [
               "gpz_line_field"
+            ],
+            "terminal_bus_ref": null,
+            "wybor_bloku": null
+          },
+          {
+            "apparatus_catalog_ref": null,
+            "bay_number": null,
+            "bay_role": "TR",
+            "bay_template_ref": "bay_template_gpz_transformator_sn_enea_z7",
+            "branch_point_port_id": null,
+            "branch_point_ref": null,
+            "bus_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "catalog_bindings": null,
+            "config_id": "kanoniczny:bay_template_gpz_transformator_sn_enea_z7",
+            "equipment_refs": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            ],
+            "feeder_short_name": null,
+            "field_role": null,
+            "funkcja_pomiaru": null,
+            "gpz_section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001",
+            "id": "fbe2a88d-0a4d-5e9d-8eaf-e636973d1b77",
+            "klasa_pola": null,
+            "manufacturer_ref": null,
+            "meta": {
+              "gpz_section_order": 0,
+              "source_field_kind": "TRANSFORMER",
+              "transformer_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            },
+            "metadane_pochodzenia": null,
+            "name": "Pole transformatora TR1 110/15 kV",
+            "outgoing_destination_ref": null,
+            "ports": [],
+            "primary_devices": [
+              {
+                "catalog_ref": null,
+                "designation": "PF0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::0",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "szyna"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::1",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "UPSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "szyna"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "CB",
+                "linked_ref": null,
+                "naped": "SILNIKOWY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cb",
+                "uzwojenia": [],
+                "wykonanie": "STALE",
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q5",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::3",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::4",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "pn1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "T3",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:vt",
+                "uzwojenia": [
+                  {
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5/3P",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "REGULACJA",
+                      "POMIAR"
+                    ]
+                  }
+                ],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
+                "designation": "T1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2S",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "REGULACJA"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ROZNICOWE"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ZABEZPIECZENIA"
+                    ]
+                  }
+                ],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:ct",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "PF1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::7",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::8",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "DOWNSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w3"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "F1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::9",
+                "earthing_role": "surge_ground",
+                "is_controllable": false,
+                "kind": "SURGE_ARRESTER",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:surge_arrester",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              }
+            ],
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "rodzaj_pomiaru": null,
+            "runtime_state": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "substation_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation",
+            "surge_arresters": [],
+            "switchgear_family_ref": null,
+            "tags": [
+              "gpz_transformer_field"
             ],
             "terminal_bus_ref": null,
             "wybor_bloku": null
@@ -2675,7 +3647,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0",
+          "hash_sha256": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -2703,6 +3675,103 @@
         "loads": [],
         "measurements": [],
         "protection_assignments": [
+          {
+            "aktywna_grupa": 1,
+            "bay_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "catalog_namespace": null,
+            "catalog_ref": null,
+            "charakterystyki_ref": null,
+            "funkcje": [
+              {
+                "kod": "51",
+                "ref": "51",
+                "wlaczona": true
+              },
+              {
+                "kod": "50",
+                "ref": "50",
+                "wlaczona": true
+              },
+              {
+                "kod": "ZS",
+                "ref": "ZS",
+                "wlaczona": true
+              },
+              {
+                "kod": "50BF",
+                "ref": "50BF",
+                "wlaczona": true
+              },
+              {
+                "kod": "87T",
+                "ref": "87T",
+                "wlaczona": true
+              },
+              {
+                "kod": "90",
+                "ref": "90",
+                "wlaczona": true
+              }
+            ],
+            "grupy_nastaw": [],
+            "id": "263c03fb-42f2-55ef-a3df-a2edf0de78a4",
+            "is_enabled": true,
+            "macierz_wyzwolen": [
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "51",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "ZS",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50BF",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "87T",
+                "pobudza_spz": false
+              }
+            ],
+            "materialized_params": null,
+            "meta": {},
+            "name": "Sterownik pola Pole transformatora TR1 110/15 kV",
+            "overrides": [],
+            "parameter_source": null,
+            "prad_znamionowy_wejscia_a": null,
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay/sterownik",
+            "source_mode": null,
+            "tags": [],
+            "wejscia": {
+              "ct_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+              "ct_strony_2_refs": [],
+              "i0_ct_ref": null,
+              "i0_uklad": null,
+              "u0_uklad": null,
+              "u0_vt_ref": null,
+              "vt_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5"
+            }
+          },
           {
             "aktywna_grupa": 1,
             "bay_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
@@ -3017,7 +4086,7 @@
           }
         ]
       },
-      "snapshot_id": "e5a45bd453a31d9e86dbef2d7b32bee95b2e1fed2ed8d509781fa899dd8e49b0"
+      "snapshot_id": "115cac47b277c69d8bff59656c0d2a0bae3be2e61a3113d2d7d818d3d874e75d"
     }
   },
   "rezystor": {
@@ -3271,13 +4340,13 @@
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+            "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -3792,7 +4861,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
+        "snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -3818,14 +4887,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4"
+          "snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
-          "enm_hash": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
-          "enm_snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
+          "snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
+          "enm_hash": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
+          "enm_snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -3835,13 +4904,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "cdfb05c91c2b6f309b4acf8872ffa8431b422bdae50cab6c036d96c4329c92d4",
-          "result_hash": "07679e9a6dd8f8a04aab4a6417c5e54f6effd54b42c9b293785ef0449eb997d2",
+          "input_hash": "6ea2ce81fbdb6900804a623f90cf3086dbc64ee05bc6d1152083d00fb7285442",
+          "result_hash": "18f86571d9889e19bb44ae471a1dd676d3573cfcd3b9e426ca78838bbe870aa4",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
+          "catalog_snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
           "catalog_materialization_ref": "catalog-materialization:d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_hash": "d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_status": "materialized",
@@ -3880,8 +4949,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-rezystor",
-      "snapshot_id": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
-      "input_hash": "cdfb05c91c2b6f309b4acf8872ffa8431b422bdae50cab6c036d96c4329c92d4",
+      "snapshot_id": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
+      "input_hash": "6ea2ce81fbdb6900804a623f90cf3086dbc64ee05bc6d1152083d00fb7285442",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -3915,7 +4984,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3969,7 +5038,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4016,7 +5085,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4074,7 +5143,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4116,7 +5185,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4157,7 +5226,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4197,7 +5266,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4237,7 +5306,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4289,7 +5358,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4330,7 +5399,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4370,7 +5439,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:38264dba280cccda029fa482979e5b334baf41ab65fad1d310335401ff9161f0",
+          "proof_ref": "proof:short-circuit:e4e2e170fcac0ef74b0403d4dbe09de745354ba31ab2331ff2d3339a1017f233",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4738,7 +5807,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
+        "snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -4764,14 +5833,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4"
+          "snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
-          "enm_hash": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
-          "enm_snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
+          "snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
+          "enm_hash": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
+          "enm_snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -4781,13 +5850,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "cdfb05c91c2b6f309b4acf8872ffa8431b422bdae50cab6c036d96c4329c92d4",
-          "result_hash": "07679e9a6dd8f8a04aab4a6417c5e54f6effd54b42c9b293785ef0449eb997d2",
+          "input_hash": "6ea2ce81fbdb6900804a623f90cf3086dbc64ee05bc6d1152083d00fb7285442",
+          "result_hash": "18f86571d9889e19bb44ae471a1dd676d3573cfcd3b9e426ca78838bbe870aa4",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
+          "catalog_snapshot_ref": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
           "catalog_materialization_ref": "catalog-materialization:d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_hash": "d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_status": "materialized",
@@ -4848,6 +5917,443 @@
             "switchgear_family_ref": null,
             "tags": [
               "gpz_line_field"
+            ],
+            "terminal_bus_ref": null,
+            "wybor_bloku": null
+          },
+          {
+            "apparatus_catalog_ref": null,
+            "bay_number": null,
+            "bay_role": "TR",
+            "bay_template_ref": "bay_template_gpz_transformator_sn_enea_z7",
+            "branch_point_port_id": null,
+            "branch_point_ref": null,
+            "bus_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "catalog_bindings": null,
+            "config_id": "kanoniczny:bay_template_gpz_transformator_sn_enea_z7",
+            "equipment_refs": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            ],
+            "feeder_short_name": null,
+            "field_role": null,
+            "funkcja_pomiaru": null,
+            "gpz_section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001",
+            "id": "fbe2a88d-0a4d-5e9d-8eaf-e636973d1b77",
+            "klasa_pola": null,
+            "manufacturer_ref": null,
+            "meta": {
+              "gpz_section_order": 0,
+              "source_field_kind": "TRANSFORMER",
+              "transformer_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            },
+            "metadane_pochodzenia": null,
+            "name": "Pole transformatora TR1 110/15 kV",
+            "outgoing_destination_ref": null,
+            "ports": [],
+            "primary_devices": [
+              {
+                "catalog_ref": null,
+                "designation": "PF0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::0",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "szyna"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::1",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "UPSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "szyna"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "CB",
+                "linked_ref": null,
+                "naped": "SILNIKOWY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cb",
+                "uzwojenia": [],
+                "wykonanie": "STALE",
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q5",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::3",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::4",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "pn1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "T3",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:vt",
+                "uzwojenia": [
+                  {
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5/3P",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "REGULACJA",
+                      "POMIAR"
+                    ]
+                  }
+                ],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
+                "designation": "T1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2S",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "REGULACJA"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ROZNICOWE"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ZABEZPIECZENIA"
+                    ]
+                  }
+                ],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:ct",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "PF1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::7",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::8",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "DOWNSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w3"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "F1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::9",
+                "earthing_role": "surge_ground",
+                "is_controllable": false,
+                "kind": "SURGE_ARRESTER",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:surge_arrester",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              }
+            ],
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "rodzaj_pomiaru": null,
+            "runtime_state": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "substation_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation",
+            "surge_arresters": [],
+            "switchgear_family_ref": null,
+            "tags": [
+              "gpz_transformer_field"
             ],
             "terminal_bus_ref": null,
             "wybor_bloku": null
@@ -5140,7 +6646,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4",
+          "hash_sha256": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -5168,6 +6674,103 @@
         "loads": [],
         "measurements": [],
         "protection_assignments": [
+          {
+            "aktywna_grupa": 1,
+            "bay_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "catalog_namespace": null,
+            "catalog_ref": null,
+            "charakterystyki_ref": null,
+            "funkcje": [
+              {
+                "kod": "51",
+                "ref": "51",
+                "wlaczona": true
+              },
+              {
+                "kod": "50",
+                "ref": "50",
+                "wlaczona": true
+              },
+              {
+                "kod": "ZS",
+                "ref": "ZS",
+                "wlaczona": true
+              },
+              {
+                "kod": "50BF",
+                "ref": "50BF",
+                "wlaczona": true
+              },
+              {
+                "kod": "87T",
+                "ref": "87T",
+                "wlaczona": true
+              },
+              {
+                "kod": "90",
+                "ref": "90",
+                "wlaczona": true
+              }
+            ],
+            "grupy_nastaw": [],
+            "id": "263c03fb-42f2-55ef-a3df-a2edf0de78a4",
+            "is_enabled": true,
+            "macierz_wyzwolen": [
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "51",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "ZS",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50BF",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "87T",
+                "pobudza_spz": false
+              }
+            ],
+            "materialized_params": null,
+            "meta": {},
+            "name": "Sterownik pola Pole transformatora TR1 110/15 kV",
+            "overrides": [],
+            "parameter_source": null,
+            "prad_znamionowy_wejscia_a": null,
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay/sterownik",
+            "source_mode": null,
+            "tags": [],
+            "wejscia": {
+              "ct_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+              "ct_strony_2_refs": [],
+              "i0_ct_ref": null,
+              "i0_uklad": null,
+              "u0_uklad": null,
+              "u0_vt_ref": null,
+              "vt_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5"
+            }
+          },
           {
             "aktywna_grupa": 1,
             "bay_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
@@ -5477,7 +7080,7 @@
           }
         ]
       },
-      "snapshot_id": "8fe91eae9c46c510ffd754c8af30436764a002bb92313e4fc371891dcacb6ef4"
+      "snapshot_id": "6a3c005f2e08b0b87ed1f9782d02cc7947257c89bfcadeaa5181868401d84f95"
     }
   },
   "bezposrednie": {
@@ -5681,13 +7284,13 @@
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+            "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -6156,7 +7759,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
+        "snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -6182,14 +7785,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6"
+          "snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
-          "enm_hash": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
-          "enm_snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
+          "snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
+          "enm_hash": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
+          "enm_snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -6199,13 +7802,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "00941200fb581ea2846f07e97da6dca100ca595e1cb9961a69fa6666734c6adc",
-          "result_hash": "aacc1b54e64d2dbde6d33785f29fe60ba26e33bd708ea55c61bef1cedcdb6ed8",
+          "input_hash": "b91bf6d475afb8cff962f9effbc14b277052516ebac841479530919de80658b5",
+          "result_hash": "2e7c51ea2c423dd992e133f60b6de613e893bc96a90af3e26059120cccbbec94",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
+          "catalog_snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
           "catalog_materialization_ref": "catalog-materialization:d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_hash": "d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_status": "materialized",
@@ -6244,8 +7847,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-bezposrednie",
-      "snapshot_id": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
-      "input_hash": "00941200fb581ea2846f07e97da6dca100ca595e1cb9961a69fa6666734c6adc",
+      "snapshot_id": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
+      "input_hash": "b91bf6d475afb8cff962f9effbc14b277052516ebac841479530919de80658b5",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -6279,7 +7882,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6333,7 +7936,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6380,7 +7983,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6438,7 +8041,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6480,7 +8083,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6521,7 +8124,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6561,7 +8164,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6601,7 +8204,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6653,7 +8256,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6694,7 +8297,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6734,7 +8337,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:35071f4cc5d6a7e222842017f171837085cd528087f21183b20bc60e07c68893",
+          "proof_ref": "proof:short-circuit:890b0c4515fbfb0fde5c0d0cd10e40348f141bbf5c6a384e87939b03ecdd5293",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -7102,7 +8705,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
+        "snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -7128,14 +8731,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6"
+          "snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
-          "enm_hash": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
-          "enm_snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
+          "snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
+          "enm_hash": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
+          "enm_snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -7145,13 +8748,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "00941200fb581ea2846f07e97da6dca100ca595e1cb9961a69fa6666734c6adc",
-          "result_hash": "aacc1b54e64d2dbde6d33785f29fe60ba26e33bd708ea55c61bef1cedcdb6ed8",
+          "input_hash": "b91bf6d475afb8cff962f9effbc14b277052516ebac841479530919de80658b5",
+          "result_hash": "2e7c51ea2c423dd992e133f60b6de613e893bc96a90af3e26059120cccbbec94",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
+          "catalog_snapshot_ref": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
           "catalog_materialization_ref": "catalog-materialization:d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_hash": "d41c670924793dd21eec5b4832d8b4f0243d0b0b6a10e91ac0e8658172e8f208",
           "catalog_materialization_status": "materialized",
@@ -7212,6 +8815,443 @@
             "switchgear_family_ref": null,
             "tags": [
               "gpz_line_field"
+            ],
+            "terminal_bus_ref": null,
+            "wybor_bloku": null
+          },
+          {
+            "apparatus_catalog_ref": null,
+            "bay_number": null,
+            "bay_role": "TR",
+            "bay_template_ref": "bay_template_gpz_transformator_sn_enea_z7",
+            "branch_point_port_id": null,
+            "branch_point_ref": null,
+            "bus_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "catalog_bindings": null,
+            "config_id": "kanoniczny:bay_template_gpz_transformator_sn_enea_z7",
+            "equipment_refs": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            ],
+            "feeder_short_name": null,
+            "field_role": null,
+            "funkcja_pomiaru": null,
+            "gpz_section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001",
+            "id": "fbe2a88d-0a4d-5e9d-8eaf-e636973d1b77",
+            "klasa_pola": null,
+            "manufacturer_ref": null,
+            "meta": {
+              "gpz_section_order": 0,
+              "source_field_kind": "TRANSFORMER",
+              "transformer_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+            },
+            "metadane_pochodzenia": null,
+            "name": "Pole transformatora TR1 110/15 kV",
+            "outgoing_destination_ref": null,
+            "ports": [],
+            "primary_devices": [
+              {
+                "catalog_ref": null,
+                "designation": "PF0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::0",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "szyna"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::1",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "UPSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "szyna"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q0",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "CB",
+                "linked_ref": null,
+                "naped": "SILNIKOWY",
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cb",
+                "uzwojenia": [],
+                "wykonanie": "STALE",
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "Q5",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::3",
+                "earthing_role": null,
+                "is_controllable": true,
+                "kind": "THREE_POSITION_SWITCH",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn1"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:three_position_switch",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::4",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "pn1"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "T3",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": "pn",
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "pn2"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:vt",
+                "uzwojenia": [
+                  {
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "POMIAR"
+                    ]
+                  },
+                  {
+                    "klasa": "0,5/3P",
+                    "moc_va": 7.5,
+                    "otwarty_trojkat": false,
+                    "przekladnia": "SN/√3 / 0,1/√3",
+                    "przeznaczenie": [
+                      "REGULACJA",
+                      "POMIAR"
+                    ]
+                  }
+                ],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
+                "designation": "T1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CT",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "MIDSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w2"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2S",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "JAKOSC_ENERGII"
+                    ]
+                  },
+                  {
+                    "fs": 5.0,
+                    "klasa": "0,2",
+                    "moc_va": 10.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "POMIAR",
+                      "REGULACJA"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ROZNICOWE"
+                    ]
+                  },
+                  {
+                    "fs": null,
+                    "klasa": "5P20",
+                    "moc_va": 15.0,
+                    "przekladnia": "1000/5",
+                    "przeznaczenie": [
+                      "ZABEZPIECZENIA"
+                    ]
+                  }
+                ],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:ct",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "PF1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::7",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "VOLTAGE_INDICATOR",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "w3"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:voltage_indicator",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "GK",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::8",
+                "earthing_role": null,
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "DOWNSTREAM",
+                "ports": [
+                  {
+                    "port_id": "we",
+                    "wezel": "w3"
+                  },
+                  {
+                    "port_id": "wy",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:cable_head",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              },
+              {
+                "catalog_ref": null,
+                "designation": "F1",
+                "device_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::9",
+                "earthing_role": "surge_ground",
+                "is_controllable": false,
+                "kind": "SURGE_ARRESTER",
+                "linked_ref": null,
+                "naped": null,
+                "odgalezienie": null,
+                "operating_state": null,
+                "placement": "OFF_PATH",
+                "ports": [
+                  {
+                    "port_id": "przylacze",
+                    "wezel": "kabel"
+                  }
+                ],
+                "przekladnia": null,
+                "rdzenie": [],
+                "render_variant": "qet_en60617",
+                "section_side": null,
+                "stan_obiektu": "PROJEKTOWANY",
+                "switch_state": null,
+                "symbol_ref": "symbol:surge_arrester",
+                "uzwojenia": [],
+                "wykonanie": null,
+                "zaczep_pierwotny_a": null,
+                "zrodlo_zaczepu": null
+              }
+            ],
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "rodzaj_pomiaru": null,
+            "runtime_state": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "substation_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation",
+            "surge_arresters": [],
+            "switchgear_family_ref": null,
+            "tags": [
+              "gpz_transformer_field"
             ],
             "terminal_bus_ref": null,
             "wybor_bloku": null
@@ -7504,7 +9544,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6",
+          "hash_sha256": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -7532,6 +9572,103 @@
         "loads": [],
         "measurements": [],
         "protection_assignments": [
+          {
+            "aktywna_grupa": 1,
+            "bay_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay",
+            "catalog_namespace": null,
+            "catalog_ref": null,
+            "charakterystyki_ref": null,
+            "funkcje": [
+              {
+                "kod": "51",
+                "ref": "51",
+                "wlaczona": true
+              },
+              {
+                "kod": "50",
+                "ref": "50",
+                "wlaczona": true
+              },
+              {
+                "kod": "ZS",
+                "ref": "ZS",
+                "wlaczona": true
+              },
+              {
+                "kod": "50BF",
+                "ref": "50BF",
+                "wlaczona": true
+              },
+              {
+                "kod": "87T",
+                "ref": "87T",
+                "wlaczona": true
+              },
+              {
+                "kod": "90",
+                "ref": "90",
+                "wlaczona": true
+              }
+            ],
+            "grupy_nastaw": [],
+            "id": "263c03fb-42f2-55ef-a3df-a2edf0de78a4",
+            "is_enabled": true,
+            "macierz_wyzwolen": [
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "51",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "ZS",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "50BF",
+                "pobudza_spz": false
+              },
+              {
+                "aparat_refs": [
+                  "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::2"
+                ],
+                "funkcja_ref": "87T",
+                "pobudza_spz": false
+              }
+            ],
+            "materialized_params": null,
+            "meta": {},
+            "name": "Sterownik pola Pole transformatora TR1 110/15 kV",
+            "overrides": [],
+            "parameter_source": null,
+            "prad_znamionowy_wejscia_a": null,
+            "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay/sterownik",
+            "source_mode": null,
+            "tags": [],
+            "wejscia": {
+              "ct_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::6",
+              "ct_strony_2_refs": [],
+              "i0_ct_ref": null,
+              "i0_uklad": null,
+              "u0_uklad": null,
+              "u0_vt_ref": null,
+              "vt_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/bay::dev::5"
+            }
+          },
           {
             "aktywna_grupa": 1,
             "bay_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
@@ -7821,7 +9958,7 @@
           }
         ]
       },
-      "snapshot_id": "4f0b02a4d1482e41ac8d21f1d7a054cb14911461a176012e030104fb4fb4fce6"
+      "snapshot_id": "cbd6989904277e9c6e38bca4edf66a08f70ca8094bf2736c45e7eb41667c51bb"
     }
   }
 }

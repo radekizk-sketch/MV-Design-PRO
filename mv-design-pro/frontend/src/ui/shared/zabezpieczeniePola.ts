@@ -57,7 +57,7 @@ export function sterownikPola(model: EnergyNetworkModel | null | undefined, pole
 
 /** Pole, którego aparatem wyłączającym są bezpieczniki (rekord aparatu albo gałąź pola). */
 function poleZBezpiecznikami(model: EnergyNetworkModel | null | undefined, pole: Bay): boolean {
-  if ((pole.primary_devices ?? []).some((u) => u.kind === 'FUSE')) return true;
+  if ((pole.primary_devices ?? []).some((u) => u.kind === 'FUSE' || u.kind === 'FUSE_SWITCH')) return true;
   const refy = new Set(pole.equipment_refs ?? []);
   return (model?.branches ?? []).some((g) => refy.has(g.ref_id) && g.type === 'fuse');
 }

@@ -1532,7 +1532,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           prawaKrawedz: bx + reservedWidth,
         };
         const uklad = ulozBlokZabezpieczenPola(wejscie);
-        const elementy = elementyBlokuZabezpieczen(wejscie, uklad, annotationDetail);
+        const elementy = elementyBlokuZabezpieczen(wejscie, uklad);
         ramkaBloku = uklad.ramka;
         ramkaBlokuPola = uklad.ramka;
         // F10.5/F10.6 (spec §20.2): braki topologiczne (67N ⇒ potwierdzone źródło 3U₀ +
@@ -1569,8 +1569,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         missingData.push(...elementy.missingData);
       }
 
-      // §17.4 L1 (`'circle-only'`): „bez «52»/«M»" — miernik NIE jest rysowany
-      // ani rozliczany (gałąź poniżej wyłącznie w trybie `'full'`).
+      // §17.4: miernik „M" wyłącznie przy pełnej warstwie adnotacji (L2) — na L0/L1 warstwy nie ma.
       if (annotationDetail === 'full') {
         const meterAnchor = resolveMeterAnchor(bay.meteringMeasurementRef, stackDevices);
         if (meterAnchor) {

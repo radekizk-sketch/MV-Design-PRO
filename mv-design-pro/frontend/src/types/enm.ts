@@ -1386,7 +1386,11 @@ export type BayPrimaryDeviceKind =
   | 'VT'
   | 'CABLE_HEAD'
   | 'TRANSFORMER_DEVICE'
+  // Wkładka bezpiecznikowa (IEC 60617 S00362) — element toru obok łącznika, rozłącznik
+  // bezpiecznikowy jako aparat główny pola (IEC 60617 S00368) — `FUSE_SWITCH` (lustro
+  // `backend/src/enm/models.py`, karta UX-04/ROZDZIELNICA-SN-KOREKTA).
   | 'FUSE'
+  | 'FUSE_SWITCH'
   | 'GENERATOR_PV'
   | 'GENERATOR_BESS'
   | 'GENERATOR_FW'

@@ -10,13 +10,23 @@
  *
  * Iloczyn: każdy rodzaj aparatu szablonu (`RODZAJ_Z_KIND_SZABLONU`, tablica zamknięta względem
  * kontraktu backendu) × wariant {kanoniczny}. Wyjątki są jawne i nazwane: aparat główny pola —
- * kreator rysuje aparat WSKAZANY z katalogu (`symbolAparatuGlownego`), nie rodzaj szablonu.
+ * kreator rysuje aparat WSKAZANY z katalogu (`symbolAparatuGlownego`), nie rodzaj szablonu; jego
+ * parytet przypina drugi blok: klasa wyrobu katalogu APARAT_SN (`RODZAJE_APARATU_SN`) → glif
+ * kreatora (`SYMBOL_RODZAJU_APARATU`) × glif kanwy rodzaju aparatu pola, na który adapter mapuje
+ * tę klasę (`RODZAJ_APARATU_Z_KLASY_WYROBU`).
+ *
+ * Decyzja architekta FUSE (karta UX-04/ROZDZIELNICA-SN-KOREKTA): wkładka bezpiecznikowa (`FUSE`,
+ * glif `fuse`) i rozłącznik bezpiecznikowy jako aparat główny (`FUSE_SWITCH`, glif `fuseSwitch`)
+ * to dwa urządzenia i dwa rodzaje — dawna „rozbieżność zgłoszona” (rekord `FUSE` w dwóch
+ * znaczeniach) zniknęła, FUSE jest w parytecie.
  */
 import { describe, expect, it } from 'vitest';
 
+import { RODZAJE_APARATU_SN } from '../../../../ui/catalog/wartosciKodoweKarty';
+import { RODZAJ_APARATU_Z_KLASY_WYROBU } from '../../../../ui/sld/v2/canvas/enmToSldAdapter';
 import { symbolIdForPrimaryDeviceKind } from '../../../../ui/sld/v3/compose/apparatusSequence';
 import type { BayPrimaryDeviceKind } from '../../../../types/enm';
-import { RODZAJ_Z_KIND_SZABLONU, SYMBOL_RODZAJU_BOM } from '../generatorSldPola';
+import { RODZAJ_Z_KIND_SZABLONU, SYMBOL_RODZAJU_APARATU, SYMBOL_RODZAJU_BOM } from '../generatorSldPola';
 
 /** Rodzaj szablonu → rodzaj rekordu aparatu modelu (materializacja szablonu w pole). */
 const RODZAJ_MODELU: Readonly<Record<keyof typeof RODZAJ_Z_KIND_SZABLONU, BayPrimaryDeviceKind>> = {
@@ -50,18 +60,6 @@ const RODZAJ_MODELU: Readonly<Record<keyof typeof RODZAJ_Z_KIND_SZABLONU, BayPri
  */
 const POZA_PARYTETEM: ReadonlySet<string> = new Set(['CB', 'LOAD_SWITCH', 'UNBALANCE_CT', 'PHASE_TO_PHASE_VT']);
 
-/**
- * Rozbieżność ZGŁOSZONA architektowi (meldunek karty UX-04/ROZDZIELNICA-SN-KOREKTA): rekord `FUSE`
- * modelu niesie dwa znaczenia — wkładkę bezpiecznikową obok rozłącznika (szablon
- * `bay_template_rmu_transformer`: LOAD_SWITCH Q1 + FUSE F1) i rozłącznik bezpiecznikowy jako
- * aparat główny (nadpisanie `_main_apparatus_primary_kind` → FUSE, adapter
- * `ROZLACZNIK_BEZPIECZNIKOWY → FUSE`). Kreator rysuje wkładkę (`fuse`), kanwa — rozłącznik
- * z bezpiecznikiem (`fuseSwitch`). Rozstrzygnięcie wymaga rozróżnienia w kontrakcie rekordu
- * aparatu (decyzja architekta), nie domysłu po sąsiednich rekordach. Test przypina STAN: gdy
- * rozbieżność zniknie, ten test zaczerwieni się i wymusi przeniesienie FUSE do parytetu.
- */
-const ROZBIEZNOSC_ZGLOSZONA: ReadonlySet<string> = new Set(['FUSE']);
-
 describe('parytet glifu aparatu: podgląd kreatora × kanwa SLD (wariant kanoniczny)', () => {
   it('tablica rodzajów modelu pokrywa wszystkie rodzaje szablonu', () => {
     expect(Object.keys(RODZAJ_MODELU).sort()).toEqual(Object.keys(RODZAJ_Z_KIND_SZABLONU).sort());
@@ -71,14 +69,40 @@ describe('parytet glifu aparatu: podgląd kreatora × kanwa SLD (wariant kanonic
     if (POZA_PARYTETEM.has(kind)) continue;
     const kreator = (): string => SYMBOL_RODZAJU_BOM[RODZAJ_Z_KIND_SZABLONU[kind]];
     const kanwa = (): string | null => symbolIdForPrimaryDeviceKind(RODZAJ_MODELU[kind], 'kanoniczny');
-    if (ROZBIEZNOSC_ZGLOSZONA.has(kind)) {
-      it(`${kind}: rozbieżność zgłoszona (wkładka w kreatorze, rozłącznik bezpiecznikowy na kanwie)`, () => {
-        expect([kreator(), kanwa()]).toEqual(['fuse', 'fuseSwitch']);
+    it(`${kind}: ten sam glif w kreatorze i na kanwie`, () => {
+      expect(kreator(), kind).toBe(kanwa());
+    });
+  }
+});
+
+/**
+ * Rozbieżność ZGŁOSZONA architektowi (wykryta tym testem, meldunek karty
+ * UX-04/ROZDZIELNICA-SN-KOREKTA): reklozer jest w modelu wyłącznikiem (`CB`, backend
+ * `wyposazenie_pola.RODZAJE_KATALOGOWE_APARATU["CB"]` = WYLACZNIK | REKLOZER), więc kanwa rysuje go
+ * glifem `breaker`; kreator rysuje wybraną pozycję katalogu glifem `recloser` (test kreatora „inny
+ * aparat główny = inny rysunek” przypina to rozróżnienie). Rekord aparatu pola nie niesie klasy
+ * wyrobu (tylko `catalog_ref`), więc kanwa nie odróżni reklozera bez decyzji o kontrakcie
+ * (osobny rodzaj aparatu albo cecha rysunku z pozycji katalogu). Test przypina STAN: gdy
+ * rozbieżność zniknie, zaczerwieni się i wymusi przeniesienie REKLOZER do parytetu.
+ */
+const ROZBIEZNOSC_ZGLOSZONA_APARATU_GLOWNEGO: ReadonlySet<string> = new Set(['REKLOZER']);
+
+describe('parytet glifu aparatu głównego: klasa wyrobu katalogu → kreator × kanwa', () => {
+  for (const klasa of RODZAJE_APARATU_SN) {
+    if (ROZBIEZNOSC_ZGLOSZONA_APARATU_GLOWNEGO.has(klasa)) {
+      it(`${klasa}: rozbieżność zgłoszona (reklozer w kreatorze, wyłącznik na kanwie)`, () => {
+        const rodzaj = RODZAJ_APARATU_Z_KLASY_WYROBU[klasa];
+        expect([SYMBOL_RODZAJU_APARATU[klasa], symbolIdForPrimaryDeviceKind(rodzaj, 'kanoniczny')]).toEqual([
+          'recloser',
+          'breaker',
+        ]);
       });
       continue;
     }
-    it(`${kind}: ten sam glif w kreatorze i na kanwie`, () => {
-      expect(kreator(), kind).toBe(kanwa());
+    it(`${klasa}: ten sam glif w kreatorze i na kanwie`, () => {
+      const rodzaj = RODZAJ_APARATU_Z_KLASY_WYROBU[klasa];
+      expect(rodzaj, `${klasa}: klasa wyrobu bez rodzaju aparatu pola`).toBeDefined();
+      expect(SYMBOL_RODZAJU_APARATU[klasa], klasa).toBe(symbolIdForPrimaryDeviceKind(rodzaj, 'kanoniczny'));
     });
   }
 });

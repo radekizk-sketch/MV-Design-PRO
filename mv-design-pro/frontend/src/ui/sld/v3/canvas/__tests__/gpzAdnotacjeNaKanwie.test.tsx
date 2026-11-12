@@ -268,16 +268,25 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
       expect(flagiPola(liniowe[1].ref_id)).toEqual(['SPZ', 'LRW', 'NZ', 'OWG']);
       // Pole pomiaru napięcia szyn (ENEA Z.17, szablon `…_pomiar_napiecia_enea_z17`) niesie
       // automatykę SCO sekcji z rysunku i §26.9.8 / §26.10.6 Zeszytu 1 („przekaźnik zabudowany
-      // w polu pomiaru napięcia") — plakietka SCO z JEGO kodów; poza tym polem i dwoma polami
-      // liniowymi żaden kod nie daje plakietki (intencja: plakietki wyłącznie z kodów pól).
+      // w polu pomiaru napięcia") — plakietka SCO z JEGO kodów; poza tym polem, dwoma polami
+      // liniowymi i polami TR żaden kod nie daje plakietki (intencja: plakietki wyłącznie z kodów pól).
       const polaPomiaru = (zKodami.bays ?? []).filter(
         (b) => b.bay_role === 'MEASUREMENT' && kodyFunkcjiPola(zKodami, b.ref_id).length > 0,
       );
       expect(polaPomiaru).toHaveLength(1);
       expect(kodyFunkcjiPola(zKodami, polaPomiaru[0].ref_id)).toContain('SCO');
       expect(flagiPola(polaPomiaru[0].ref_id)).toEqual(['SCO']);
+      // Pola TR (Z.7) — po jednym na transformator od karty UX-04/ROZDZIELNICA-SN-KOREKTA (pole TR
+      // każdego transformatora w modelu); ich zestaw szablonu niesie 50BF, więc plakietka LRW
+      // z JEGO kodów (ta sama reguła co pola liniowe).
+      const polaTr = (zKodami.bays ?? []).filter((b) => b.bay_role === 'TR');
+      expect(polaTr).toHaveLength(2);
+      for (const tr of polaTr) {
+        expect(kodyFunkcjiPola(zKodami, tr.ref_id)).toContain('50BF');
+        expect(flagiPola(tr.ref_id)).toEqual(['LRW']);
+      }
       const plakietki = [...container.querySelectorAll('[data-gpz-plakietka]')];
-      expect(plakietki.length).toBe(3 + 4 + 1);
+      expect(plakietki.length).toBe(3 + 4 + 1 + polaTr.length);
       for (const p of plakietki) {
         expect(p.getAttribute('data-gpz-plakietka-stan')).toBe('nieustalony');
         expect(p.querySelector('rect')!.getAttribute('stroke-dasharray')).toBe('3 2');

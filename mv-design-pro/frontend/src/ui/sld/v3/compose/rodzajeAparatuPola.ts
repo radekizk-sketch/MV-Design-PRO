@@ -10,13 +10,14 @@ import type { BayPrimaryDeviceKind } from '../../../../types/enm';
 
 /** Rodzaje aparatu pola, które są ŁĄCZNIKAMI (położenie łączeniowe); ich symbole należą do
  *  `SYMBOLE_LACZNIKOW_Z_POLOZENIEM` (kafel stanu, test parytetu `kafelStanu.test.tsx`).
- *  Lustro `RODZAJE_LACZNIKOW_POLA`. */
+ *  Lustro `RODZAJE_LACZNIKOW_POLA`. Wkładka bezpiecznikowa `FUSE` nie jest łącznikiem (glif
+ *  bezpiecznika bez kafla) — łącznikiem jest rozłącznik z bezpiecznikami `FUSE_SWITCH`. */
 export const RODZAJE_LACZNIKOW_POLA: ReadonlySet<BayPrimaryDeviceKind> = new Set<BayPrimaryDeviceKind>([
   'CB',
   'LOAD_SWITCH',
   'DS',
   'ES',
-  'FUSE',
+  'FUSE_SWITCH',
   'THREE_POSITION_SWITCH',
 ]);
 
@@ -62,6 +63,7 @@ export const PORTY_APARATU_POLA: Readonly<Partial<Record<BayPrimaryDeviceKind, r
   LOAD_SWITCH: [PORT_WEJSCIA, PORT_WYJSCIA],
   DS: [PORT_WEJSCIA, PORT_WYJSCIA],
   FUSE: [PORT_WEJSCIA, PORT_WYJSCIA],
+  FUSE_SWITCH: [PORT_WEJSCIA, PORT_WYJSCIA],
   THREE_POSITION_SWITCH: [PORT_WEJSCIA, PORT_WYJSCIA],
   CT: [PORT_WEJSCIA, PORT_WYJSCIA],
   CABLE_HEAD: [PORT_WEJSCIA, PORT_WYJSCIA],
