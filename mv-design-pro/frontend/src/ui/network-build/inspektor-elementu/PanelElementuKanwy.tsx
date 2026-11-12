@@ -325,12 +325,19 @@ export function PanelElementuKanwy({
     <div data-testid="inspektor-element-kanwy" data-rodzaj={dane?.kind ?? ''} data-element-id={dane?.elementId ?? ''}>
       {dane && (
         <div className="flex flex-col gap-0.5 border-b px-4 py-2" style={STYL_SEKCJI} data-testid="inspektor-element-kontekst">
-          <span>
-            <span data-testid="inspektor-element-rodzaj" style={{ color: 'var(--mvd-muted)' }}>
-              {karta?.rodzajPl ?? (dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element')}
-            </span>
-            <span style={{ color: 'var(--mvd-muted)' }}>: </span>
-            <span data-testid="inspektor-element-etykieta" className="font-semibold">{karta?.nazwa ?? etykietaElementuKanwy(dane)}</span>
+          {/* Układ 1 (karta INSPEKTOR-I-NAWIGACJA): nazwa z oznaczeniem, pod nią rodzaj z napięciami. */}
+          <span data-testid="inspektor-element-naglowek" className="font-semibold">
+            {karta?.oznaczenieSchematu && (
+              <>
+                <span data-testid="inspektor-element-oznaczenie" className="mvd-num">{karta.oznaczenieSchematu}</span>
+                {' · '}
+              </>
+            )}
+            <span data-testid="inspektor-element-etykieta">{karta?.nazwa ?? etykietaElementuKanwy(dane)}</span>
+          </span>
+          <span style={{ color: 'var(--mvd-muted)' }}>
+            <span data-testid="inspektor-element-rodzaj">{karta?.rodzajPl ?? (dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element')}</span>
+            {karta?.napieciaPl && <span data-testid="inspektor-element-napiecia">{` · ${karta.napieciaPl}`}</span>}
           </span>
           {kontekstStacji && <span data-testid="inspektor-element-sciezka" style={{ color: 'var(--mvd-muted)' }}>{kontekstStacji}</span>}
           {dane.globalId && (

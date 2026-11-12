@@ -13,7 +13,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, renderHook } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react';
+import { TabelaWynikow } from '../../wyniki/wzorzec/TabelaWynikow';
 
 import { ustawMigawkeZElementami, zamontujKanweSchematu } from '../../../test/schematTestowy';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -60,6 +61,35 @@ afterEach(() => {
 });
 
 describe('Wpis powrotu — jeden, jawny, z ekranem źródłowym', () => {
+  // Karta INSPEKTOR-I-NAWIGACJA pkt 8: sortowanie tabeli wyników wraca po „Wróć do” — klik
+  // natywny w nagłówek, wejście na schemat, odmontowanie, powrót, ponowny montaż. Iloczyn:
+  // kierunek {rosnąco, malejąco} × powrót {„Wróć do”, inne wyjście — stan domyślny}.
+  it.each(['rosnaco', 'malejaco'] as const)('sortowanie tabeli wyników (%s) wraca po „Wróć do”', (kierunek) => {
+    const kolumny = [{ klucz: 'nazwa', etykieta: 'Nazwa' }, { klucz: 'ik', etykieta: 'Ik', mono: true }];
+    const wiersze = [
+      { nazwa: { wartosc: 'B' }, ik: { wartosc: 2 } },
+      { nazwa: { wartosc: 'A' }, ik: { wartosc: 9 } },
+      { nazwa: { wartosc: 'C' }, ik: { wartosc: 5 } },
+    ];
+    const kolejnosc = () => screen.getAllByRole('row').slice(1).map((w) => within(w).getAllByRole('cell')[0].textContent);
+    const pierwszy = render(<TabelaWynikow kolumny={kolumny} wiersze={wiersze} szczegolyAudytowe={false} />);
+    const przycisk = within(screen.getByTestId('mvd-wyn-th-ik')).getByRole('button');
+    fireEvent.click(przycisk);
+    if (kierunek === 'malejaco') fireEvent.click(przycisk);
+    const posortowane = kolejnosc();
+    expect(posortowane).toEqual(kierunek === 'rosnaco' ? ['B', 'C', 'A'] : ['A', 'C', 'B']);
+    pokazElementNaSchemacie('bus-1', 'test');
+    pierwszy.unmount();
+    wrocDoEkranu();
+    render(<TabelaWynikow kolumny={kolumny} wiersze={wiersze} szczegolyAudytowe={false} />);
+    expect(kolejnosc()).toEqual(posortowane);
+    expect(screen.getByTestId('mvd-wyn-th-ik')).toHaveAttribute('aria-sort', kierunek === 'rosnaco' ? 'ascending' : 'descending');
+    cleanup();
+    // Drugi montaż bez „Wróć do” — kolejność źródłowa.
+    render(<TabelaWynikow kolumny={kolumny} wiersze={wiersze} szczegolyAudytowe={false} />);
+    expect(kolejnosc()).toEqual(['B', 'A', 'C']);
+  });
+
   it('etykieta z ekranu zarejestrowanego; bez rejestracji — etykieta przestrzeni', () => {
     pokazElementNaSchemacie('bus-1', 'test');
     expect(usePowrotZeSchematu.getState().wpis?.etykieta).toBe('Wyniki i dowody');

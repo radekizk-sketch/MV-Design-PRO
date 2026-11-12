@@ -56,6 +56,7 @@ import {
   type KartaTechniczna,
 } from '../../sld/shared/kartaTechnicznaElementu';
 import { useKatalogiKarty } from './katalogiKarty';
+import { useObliczeniaKarty } from './pradyZnamionoweKarty';
 import type { ObslugaAkcjiKarty } from './KartaTechnicznaElementu';
 
 /** Nazwa rodzaju obiektu kanwy (nagłówek inspektora, zdanie przyczyny braku wyników). */
@@ -222,6 +223,17 @@ export function wskazanieAparatuPola(
   cel: CelWierszaTabeli,
   tylkoOdczyt: boolean,
 ): { readonly zaznaczenie: SelectedElement; readonly kontekst: KontekstElementuKanwy } {
+  if (cel.rodzaj === 'transformator') {
+    // Karta transformatora z karty stacji — to samo wejście co klik w symbol transformatora
+    // (właściciel symbolu = realny ref transformatora, rodzaj `transformer`).
+    const ref = cel.transformatorRef;
+    const temat = resolveCanvasMenuSubject({ ownerRef: ref, elementKind: 'transformer' }, index);
+    const typTr = elementTypeForKind('transformer');
+    return {
+      zaznaczenie: typTr ? { id: ref, type: typTr, name: ref } : { id: ref, type: 'DescriptiveElement', name: ref },
+      kontekst: { selekcjaId: ref, elementKind: 'transformer', ref, temat: temat.stan === 'temat' ? temat.temat : null, tylkoOdczyt },
+    };
+  }
   const pole = (snapshot?.bays ?? []).find((b) => b.ref_id === cel.poleRef) ?? null;
   const galezie = new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]));
   const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie, snapshot?.bays)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
@@ -335,7 +347,11 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     );
   }, [kontekst, payload, sldData, snapshot]);
 
-  const karta = useMemo(() => buildKartaTechniczna(snapshot, dane, katalogi), [dane, katalogi, snapshot]);
+  const obliczeniaKarty = useObliczeniaKarty(snapshot);
+  const karta = useMemo(
+    () => buildKartaTechniczna(snapshot, dane, katalogi, obliczeniaKarty),
+    [dane, katalogi, obliczeniaKarty, snapshot],
+  );
   // Wyniki obiektu z tego samego rejestru wielkości co etykiety kanwy; obiekt bez danych
   // panelu (np. istniejące źródło OZE) — pod refem modelu tematu.
   const odczytWynikow = useMemo(

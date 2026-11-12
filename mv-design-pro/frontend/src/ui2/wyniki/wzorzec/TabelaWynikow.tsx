@@ -21,10 +21,11 @@
  * prawdy, nigdy dwie niezależne liczby.
  */
 
-import { useMemo, useRef, useEffect, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useMemo, useRef, useEffect, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useSelectionStore } from '../../../ui/selection';
 import { zaznaczElementModelu } from '../../shell/zaznaczElementModelu';
+import { useStanPrzywracany, type KodekStanuPowrotu } from '../../shell/powrotZeSchematu';
 import { celDecyzjiOsiagalny } from './usePoprawWModelu';
 import { canonicalizeSelectedElement } from '../../../ui/shared/selectionResolution';
 import { refModeluElementu, useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -156,6 +157,16 @@ function posortuj(
     .map((x) => x.w);
 }
 
+const BEZ_SORTOWANIA = (): StanSortowania | null => null;
+const KODEK_SORTOWANIA: KodekStanuPowrotu<StanSortowania | null> = {
+  zapisz: (w) => (w ? `${w.kierunek}:${w.klucz}` : null),
+  odczytaj: (t) => {
+    const i = t.indexOf(':');
+    const kierunek = t.slice(0, i);
+    return i > 0 && (kierunek === 'rosnaco' || kierunek === 'malejaco') ? { kierunek, klucz: t.slice(i + 1) } : null;
+  },
+};
+
 export function TabelaWynikow({
   kolumny,
   wiersze,
@@ -173,7 +184,13 @@ export function TabelaWynikow({
   rodzajWiersza,
   trybDecyzji = 'przy-ostrzezeniu',
 }: TabelaWynikowProps) {
-  const [sort, setSort] = useState<StanSortowania | null>(null);
+  // Karta INSPEKTOR-I-NAWIGACJA pkt 8: sortowanie wraca po „Wróć do” razem z wierszem, filtrami
+  // i przewinięciem — stan przywracany kluczem kolumn tabeli (ta sama tabela = te same kolumny).
+  const [sort, setSort] = useStanPrzywracany<StanSortowania | null>(
+    `sortowanie:${kolumny.map((k) => k.klucz).join('|')}`,
+    BEZ_SORTOWANIA,
+    KODEK_SORTOWANIA,
+  );
   const selectElement = useSelectionStore((s) => s.selectElement);
   const snapshot = useSnapshotStore((stan) => stan.snapshot);
   // Karta K8: wiersz ekranu pełnego niesie bieg ekranu — schemat przełącza się na niego.

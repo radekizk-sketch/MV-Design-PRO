@@ -36,7 +36,7 @@ function tabela(klucz: string, zCelem = false): TabelaKarty {
 }
 
 function karta(sekcja: SekcjaKarty): KartaTechniczna {
-  return { rodzaj: 'pole', rodzajPl: 'Pole', nazwa: 'Pole 1', elementRef: 'bay/1', stacjaRef: null, stacjaNazwa: null, sekcje: [sekcja] };
+  return { rodzaj: 'pole', rodzajPl: 'Pole', nazwa: 'Pole 1', elementRef: 'bay/1', stacjaRef: null, stacjaNazwa: null, oznaczenieSchematu: null, napieciaPl: null, sekcje: [sekcja] };
 }
 
 describe('podpis tabeli × liczba tabel sekcji', () => {
