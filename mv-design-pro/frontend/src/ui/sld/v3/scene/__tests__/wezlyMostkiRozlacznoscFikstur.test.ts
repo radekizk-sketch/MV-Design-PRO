@@ -123,7 +123,7 @@ function wady(scene: SceneV3, enm: EnergyNetworkModel) {
 }
 
 describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłączność toru na każdej fiksturze × LOD', () => {
-  it('kontrola wejścia: 66 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
+  it('kontrola wejścia: 67 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 58 → 59 — fikstura harnessu
     // `pola_gpz_szablonow.json` (pola GPZ z szablonów Z.7, Z.12, Z.16, Z.17).
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 59 → 63 — sceny generatora
@@ -132,7 +132,10 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // `stacjeKonstrukcjiPol.enm.json` (public/test-fixtures i sceny; dopisane na gałęzi szablonów
     // pól po poprzednim pomiarze, pin go nie objął) oraz `glowice_kablowe_pol_gpz.json`
     // (harness, gałąź integracji — scena głowic kablowych pól GPZ).
-    expect(FIKSTURY).toHaveLength(66);
+    // Pomiar 2026-11-12 (karta UX-04/ROZDZIELNICA-SN-KOREKTA): 66 → 67 — `stacjeTypowAbcd.enm.json`
+    // (public/test-fixtures; stacje SN/nN typu A–D z generatora fikstur, dopisane w etapie 1
+    // karty `9bb2c974e` dla zrzutów i parytetu stacji).
+    expect(FIKSTURY).toHaveLength(67);
     for (const katalog of KATALOGI) expect(FIKSTURY.some(([n]) => n.startsWith(`${katalog}/`))).toBe(true);
     // Migawki biegu (model pod `snapshot`) i fikstury kanwy (model pod `enm`) są w zbiorze.
     expect(FIKSTURY.some(([n]) => n.endsWith('pulpit_scena_migawka.json'))).toBe(true);

@@ -75,6 +75,7 @@ import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { rodzajSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
 import { przeszkodySymbolu } from '../../symbols/blokZabezpieczen';
 import { symboleRodzajuAparatu } from '../../compose/apparatusSequence';
+import { KLUCZ_OPISU_GRANICY_WN } from '../../compose/gpz';
 import { RODZAJE_LACZNIKOW_TORU } from '../../compose/rodzajeAparatuPola';
 import { GRID, type V3Rect } from '../../core/grid';
 import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
@@ -442,10 +443,15 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
       expect(a2.has(ref), `kotwica ${ref} obecna na L0, brak na L2`).toBe(true);
     }
     const brakNaL0 = [...a1.keys()].filter((ref) => !a0.has(ref)).sort();
-    // Dokładnie pasma WEWNĘTRZNE bloku GPZ (i nic więcej) — 2 na fixturze:
-    // tabliczka TR i tabliczka źródła systemowego.
+    // Dokładnie pasma WEWNĘTRZNE bloku GPZ (i nic więcej) — 3 na fixturze:
+    // tabliczka TR, tabliczka źródła systemowego i opis granicy zasilania WN transformatora
+    // (karta UX-04/ROZDZIELNICA-SN-KOREKTA, D3b: transformator bez pola WN TR w modelu ma
+    // kreskowaną granicę z opisem w paśmie nazwy transformatora — element wnętrza bloku GPZ,
+    // który na L0 nie istnieje razem z transformatorem). Intencja bez zmian: liczba i rodzaj
+    // pasm znikających na L0 nazwane wprost.
     expect(brakNaL0.every((ref) => ref.startsWith('gpz/')), `nie-GPZ pasmo zgubione na L0: ${brakNaL0.join(', ')}`).toBe(true);
-    expect(brakNaL0.length).toBe(2);
+    expect(brakNaL0.length).toBe(3);
+    expect(brakNaL0.filter((ref) => ref.endsWith(`#${KLUCZ_OPISU_GRANICY_WN}`))).toHaveLength(1);
     const drift: string[] = [];
     for (const [ref, pos0] of a0) {
       const pos1 = a1.get(ref);

@@ -3506,7 +3506,10 @@ function composeGpzPrzebieg(
         nameSlot: {
           x: trCenterX + GRID,
           y: snapToGrid(hvBusY + (trTopY - hvBusY - wysokoscOpisu) / 2),
-          width: szerokoscOpisuGranicyWn() - GRID,
+          // D3e (pełne nazwy, bez wielokropka): rezerwacją jest cała prawa połowa kolumny wieży
+          // (`zasiegWiezy` ≥ szerokość opisu), nie sam tusz — powiększone pismo przy podłodze
+          // czytelności kanwy (`labelLegibility`) skraca się do rezerwacji, a ta ma zapas.
+          width: zasiegWiezy(transformer).prawo - GRID,
           height: wysokoscOpisu,
         },
         rows: wiersze,
