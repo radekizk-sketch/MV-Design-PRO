@@ -58,6 +58,12 @@ wymaganie, wynik. Brak danej w modelu nie jest zgodnością; wartość robocza
 
 ### Rozdzielnia 110 kV
 
+Zakres produktu (decyzja właściciela, przypomniana 2026-11-12): MV-DESIGN-PRO NIE modeluje pełnej
+rozdzielni 110 kV. Strona 110 kV to równoważnik obliczeniowy sieci (dane SN, wspólny równoważnik
+110 kV albo oddzielne zasilania 110 kV), rysowany symbolem sieci zasilającej, bez pól i aparatury
+110 kV. Wiersze E-23…E-27 są wyłącznie informacją o standardzie (np. do opisu warunków przyłączenia),
+nie zakresem wdrożenia.
+
 | Nr | Punkt | Wymaganie (własne sformułowanie) |
 |----|-------|----------------------------------|
 | E-23 | §11.1, Z.1 | Rozwiązanie podstawowe: układ H5 — jednosystemowa, dwusekcyjna (sekcje A i B), pięć pól: dwa liniowe, dwa transformatorowe, łącznik szyn. Dopuszczalny H4 (z rezerwą terenu do H5 lub 1S); przy współpracy z wytwórcami przyłączonymi do 110 kV łącznik szyn wyposażony jak w H5. Niedopuszczalna stacja z jedną linią zasilającą 110 kV. |
