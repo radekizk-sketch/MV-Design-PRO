@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Inwentarz miejsc wyboru wiersza (karta INSPEKTOR-I-NAWIGACJA, P1 powrót: „wszystkie miejsca
  * wyboru wiersza sprawdzone testem, nie trzy demonstracyjne”).

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Zestawienie zwarciowe inspektora (karta INSPEKTOR-I-NAWIGACJA, sekcja zwarć) — czysta funkcja
  * jako iloczyn cech: strony pasma {obie · tylko MAKS. · tylko MIN.} × rewizje stron {zgodne ·
