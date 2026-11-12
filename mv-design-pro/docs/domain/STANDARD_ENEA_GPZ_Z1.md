@@ -56,6 +56,16 @@ wymaganie, wynik. Brak danej w modelu nie jest zgodnością; wartość robocza
 | E-21 | §26.9.6 | Zespół uziemiający: I>>T, I>T, doziemne, blokowanie ZS, SPZ TU tylko w sieci z rezystorem, pobudzenie LRW (Z.13–Z.15). |
 | E-22 | §26.9.7 | Bateria kondensatorów: I>>T, I>T, ziemnozwarciowe, zabezpieczenie od uszkodzeń kondensatorów, U>T, blokowanie ZS, pobudzenie LRW, sterowanie zegarem (Z.16). |
 
+### Rozdzielnia 110 kV
+
+| Nr | Punkt | Wymaganie (własne sformułowanie) |
+|----|-------|----------------------------------|
+| E-23 | §11.1, Z.1 | Rozwiązanie podstawowe: układ H5 — jednosystemowa, dwusekcyjna (sekcje A i B), pięć pól: dwa liniowe, dwa transformatorowe, łącznik szyn. Dopuszczalny H4 (z rezerwą terenu do H5 lub 1S); przy współpracy z wytwórcami przyłączonymi do 110 kV łącznik szyn wyposażony jak w H5. Niedopuszczalna stacja z jedną linią zasilającą 110 kV. |
+| E-24 | §11.1 | Pole liniowe 110 kV, od szyny: odłącznik szynowy z uziemnikiem od strony pola, wyłącznik, przekładniki zespolone prądowo-napięciowe, odłącznik liniowy z uziemnikiem od strony linii, ograniczniki przepięć z licznikami zadziałań. |
+| E-25 | §11.1 | Pole transformatorowe 110 kV, od szyny: odłącznik szynowy z uziemnikiem od strony pola, wyłącznik, przekładniki zespolone prądowo-napięciowe, ograniczniki przepięć z licznikami zadziałań (Z.6). |
+| E-26 | §11.1, Z.8, Z.9 | Pole łącznika szyn 110 kV: odłącznik sekcyjny z uziemnikiem od strony pola, wyłącznik, przekładniki zespolone, odłącznik sekcyjny z uziemnikiem od strony pola (H5 — Z.8; H4 — Z.9). |
+| E-27 | Z.1 | Na rysunku zasadniczym: linie 110 kV wchodzą od góry do pól liniowych, sekcje A i B rozdzielone polem łącznika szyn, pola transformatorowe schodzą do transformatorów, a te do sekcji A i B rozdzielni SN; punkt neutralny 110 kV transformatora z ogranicznikiem i odłącznikiem. Wartości znamionowe aparatów i przekładni odczytywać z Z.1, Z.4–Z.6, Z.8 przed wpisaniem do katalogu. |
+
 Rysunki Z.12, Z.13–Z.15 i Z.16 trzeba przeczytać w oryginale przed wdrożeniem szczegółów tych
 pól (kolejność aparatów, przekładnie, przypisanie do urządzeń). Do tego czasu wiersze E-20…E-22
 obejmują wyłącznie listę funkcji z §26.9.
