@@ -321,8 +321,8 @@ describe('useSelectionStore', () => {
       const pierwsze = useSelectionStore.getState().sldWskazanie;
       useSelectionStore.getState().centerSldOnElement('bus-001');
       const drugie = useSelectionStore.getState().sldWskazanie;
-      expect(pierwsze).toEqual({ ref: 'bus-001', seq: start + 1, tryb: 'kadruj' });
-      expect(drugie).toEqual({ ref: 'bus-001', seq: start + 2, tryb: 'kadruj' });
+      expect(pierwsze).toEqual({ ref: 'bus-001', seq: start + 1, tryb: 'kadruj', rodzaj: null, stacjaRef: null, projekcja: null });
+      expect(drugie).toEqual({ ref: 'bus-001', seq: start + 2, tryb: 'kadruj', rodzaj: null, stacjaRef: null, projekcja: null });
     });
 
     it('K2: tryb „kotwicz" jest przenoszony jawnie, domyślny tryb to „kadruj"', () => {

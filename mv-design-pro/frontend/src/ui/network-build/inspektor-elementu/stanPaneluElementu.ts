@@ -15,6 +15,7 @@ import {
   useSwiezoscBiegu,
   type StanSwiezosciBiegu,
 } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
+import { useZwarcieElementu, type StanZwarciaElementu } from './zwarcieElementu';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { buildSldDataFromSnapshot, projectBayPrimaryDevices } from '../../sld/v2/canvas/enmToSldAdapter';
@@ -272,6 +273,8 @@ export interface StanPaneluElementu {
   readonly akcje: readonly SldMenuAction[];
   readonly wykonajAkcje: (actionId: string) => void;
   readonly wyniki: StanWynikowElementu;
+  /** Zestawienie zwarciowe MAKS./MIN. punktu obiektu (bieg zwarciowy), inaczej `nie-dotyczy`. */
+  readonly zwarcie: StanZwarciaElementu;
   readonly szkicDer: SzkicDer | null;
   readonly daneSzkicuDer: DaneElementuKanwy | null;
   readonly konfiguracja: OtwarcieKonfiguracji | null;
@@ -447,6 +450,15 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     return null;
   }, [dane, openRouteSurface]);
 
+  const zwarcie = useZwarcieElementu(
+    payload ? nakladka.runId : null,
+    odczytWynikow.analiza,
+    // Ten sam predykat co wykaz wielkości sekcji: punkt, dla którego rejestr (analiza × klasa)
+    // dał wielkości z nakładki — obiekt bez wielkości zwarciowych nie pyta o pasmo.
+    odczytWynikow.metryki.length > 0 ? odczytWynikow.refPunktu : null,
+    nakladka.bieg,
+  );
+
   if (selekcjaId === null) return null;
   return {
     dane,
@@ -462,6 +474,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
       karta?.nazwa ?? (dane ? etykietaElementuKanwy(dane) : selekcja?.name ?? selekcjaId),
       nakladka.runId,
     ),
+    zwarcie,
     szkicDer,
     daneSzkicuDer,
     konfiguracja,

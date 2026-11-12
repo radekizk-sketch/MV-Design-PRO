@@ -58,7 +58,14 @@ REGULA G — jedna droga „pokaz element na schemacie" (karta SLD-SKALA-I-NAWIG
       `useState` — po „Wroc do" ekran wraca w tym samym stanie tylko wtedy, gdy
       wybor idzie przez `useWyborPowrotu` / `useStanPrzywracany`
       (`ui2/shell/powrotZeSchematu.ts`); zwykly stan resetowal wybor do
-      pierwszego wiersza przy ponownym montazu ekranu.
+      pierwszego wiersza przy ponownym montazu ekranu;
+    - wybor projekcji (karta INSPEKTOR-I-NAWIGACJA, P0 jedna droga: wybor obiektu ->
+      identyfikacja elementu modelu -> WYBOR PROJEKCJI -> zaznaczenie -> kadr -> inspektor):
+      rodzaj, stacje i projekcje (SN/nN) celu wyznacza wylacznie `celWskazaniaModelu(`
+      (`ui/sld/shared/celWskazania.ts`), wolane tylko przez store selekcji (wskazanie
+      kamery `WskazanieSld`) i karte inspektora (stacja nadrzedna) — store MUSI go wolac;
+      projekcje nN schematu (`<LvDomainPortal`) montuje wylacznie
+      `ui/sld/v3/canvas/SldCanvasV3Workspace.tsx`.
 
 Uruchomienie:
     python scripts/nawigacja_jeden_kanon_guard.py
@@ -121,7 +128,8 @@ def pliki_frontu(*, z_testami: bool = False) -> list[Path]:
         if sciezka.suffix not in ROZSZERZENIA or not sciezka.is_file():
             continue
         if not z_testami and (
-            KATALOGI_POMIJANE & set(sciezka.parts) or sciezka.name.endswith(PRZYROSTKI_TESTOW)
+            KATALOGI_POMIJANE & set(sciezka.parts)
+            or sciezka.name.endswith(PRZYROSTKI_TESTOW)
         ):
             continue
         wynik.append(sciezka)
@@ -146,7 +154,9 @@ def regula_a_literaly_tras() -> list[str]:
     if not trasy:
         return ["[trasy-brak-kanonu] nie odczytano zadnej trasy z routes.ts"]
 
-    wzorzec = re.compile(r"""['"`](""" + "|".join(re.escape(t) for t in trasy) + r""")(?:[?'"`])""")
+    wzorzec = re.compile(
+        r"""['"`](""" + "|".join(re.escape(t) for t in trasy) + r""")(?:[?'"`])"""
+    )
     naruszenia: list[str] = []
     for sciezka in pliki_frontu():
         if sciezka == PLIK_TRAS:
@@ -274,9 +284,15 @@ def regula_e_wiazanie_pulpitu() -> list[str]:
 
 #: Regula F (karta C-12). Pliki klasy akcji naprawczych — przejscie przestrzeni
 #: wylacznie mostem tras.
-PLIK_AKCJI_NAPRAWCZYCH = FRONTEND_SRC / "ui2" / "spaces" / "gotowosc" / "akcjeNaprawcze.ts"
-PLIK_WYKONAWCY = FRONTEND_SRC / "ui2" / "spaces" / "gotowosc" / "fixActionSurfaceExecutor.ts"
-PLIK_PETLI_WYNIK_MODEL = FRONTEND_SRC / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts"
+PLIK_AKCJI_NAPRAWCZYCH = (
+    FRONTEND_SRC / "ui2" / "spaces" / "gotowosc" / "akcjeNaprawcze.ts"
+)
+PLIK_WYKONAWCY = (
+    FRONTEND_SRC / "ui2" / "spaces" / "gotowosc" / "fixActionSurfaceExecutor.ts"
+)
+PLIK_PETLI_WYNIK_MODEL = (
+    FRONTEND_SRC / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts"
+)
 GOLY_SETTER = re.compile(r"\bsetActiveSpace\b")
 WIAZANIE_NAPRAWY = "onAkcjaNaprawcza={wykonajAkcjeNaprawcza}"
 WLASNA_NAPRAWA = re.compile(r"\b(?:const|function)\s+wykonajAkcjeNaprawcza\b")
@@ -359,6 +375,14 @@ KATALOG_UI2 = FRONTEND_SRC / "ui2"
 DEFINICJA_REJESTRACJI = re.compile(r"\bfunction\s+useRejestracjaKanwySchematu\s*\(")
 #: Infrastruktura testow (`src/test/`) rejestruje montaz kanwy TA SAMA funkcja co
 #: produkcja (pomocnik `schematTestowy.ts`) — to nie druga sciezka montazu.
+PLIK_CELU = FRONTEND_SRC / "ui" / "sld" / "shared" / "celWskazania.ts"
+PLIK_KARTY = FRONTEND_SRC / "ui" / "sld" / "shared" / "kartaTechnicznaElementu.ts"
+PLIK_WORKSPACE = (
+    FRONTEND_SRC / "ui" / "sld" / "v3" / "canvas" / "SldCanvasV3Workspace.tsx"
+)
+WYWOLANIE_CELU = re.compile(r"\bcelWskazaniaModelu\s*\(")
+DEFINICJA_CELU = re.compile(r"\bfunction\s+celWskazaniaModelu\s*\(")
+MONTAZ_PROJEKCJI_NN = re.compile(r"<LvDomainPortal\b")
 KATALOG_INFRASTRUKTURY_TESTOW = FRONTEND_SRC / "test"
 #: Karta INSPEKTOR-I-NAWIGACJA, defekt P0 (a): adres przejscia z aplikacji niosl `sel=`
 #: poprzedniej selekcji. Jedyny zapis hasha przez aplikacje — `nawigujHashAplikacji`
@@ -408,6 +432,21 @@ def regula_g_jedna_droga_na_schemat() -> list[str]:
                     "nawigujHashAplikacji — adres przejscia poniesie stara selekcje, "
                     "a popstate przywroci ja do inspektora"
                 )
+            if (
+                WYWOLANIE_CELU.search(linia)
+                and not DEFINICJA_CELU.search(linia)
+                and sciezka not in (PLIK_STORE_SELEKCJI, PLIK_KARTY)
+            ):
+                naruszenia.append(
+                    f"[schemat-druga-projekcja] {miejsce} celWskazaniaModelu() poza store "
+                    "selekcji i karta inspektora — rodzaj, stacja i projekcja celu maja "
+                    "jedno wyprowadzenie (wskazanie kamery)"
+                )
+            if MONTAZ_PROJEKCJI_NN.search(linia) and sciezka != PLIK_WORKSPACE:
+                naruszenia.append(
+                    f"[schemat-druga-projekcja] {miejsce} projekcja nN montowana poza "
+                    "SldCanvasV3Workspace.tsx — drugi tor wyboru projekcji"
+                )
             if MONTAZ_KANWY.search(linia) and sciezka != PLIK_KANWY:
                 naruszenia.append(
                     f"[schemat-montaz-poza-rejestrem] {miejsce} kanwa montowana poza "
@@ -446,7 +485,22 @@ def regula_g_jedna_droga_na_schemat() -> list[str]:
                 "jedna droga wejscia na schemat nie rusza kamery"
             )
     else:
-        naruszenia.append(f"[schemat-brak-drogi] brak {PLIK_JEDNEJ_DROGI.relative_to(REPO_ROOT)}")
+        naruszenia.append(
+            f"[schemat-brak-drogi] brak {PLIK_JEDNEJ_DROGI.relative_to(REPO_ROOT)}"
+        )
+    if not PLIK_CELU.is_file() or not DEFINICJA_CELU.search(
+        bez_komentarzy(PLIK_CELU.read_text(encoding="utf-8"))
+    ):
+        naruszenia.append(
+            f"[schemat-brak-celu] brak celWskazaniaModelu w {PLIK_CELU.relative_to(REPO_ROOT)}"
+        )
+    if not PLIK_STORE_SELEKCJI.is_file() or not WYWOLANIE_CELU.search(
+        bez_komentarzy(PLIK_STORE_SELEKCJI.read_text(encoding="utf-8"))
+    ):
+        naruszenia.append(
+            "[schemat-wskazanie-bez-projekcji] store selekcji nie wola celWskazaniaModelu — "
+            "wskazanie kamery nie niesie rodzaju, stacji ani projekcji celu"
+        )
     if not PLIK_KANWY.is_file() or not REJESTRACJA_KANWY.search(
         bez_komentarzy(PLIK_KANWY.read_text(encoding="utf-8"))
     ):

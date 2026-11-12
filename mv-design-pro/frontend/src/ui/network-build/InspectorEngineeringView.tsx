@@ -1803,6 +1803,13 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     ? `${formatElementTypeLabel(elementType)} - ${wariantPrzylaczeniaPl(selectedConverterGenerator?.connection_variant) ?? '—'}`
     : `${formatElementTypeLabel(elementType)} - Oznaczenie: ${publicElementId}`;
 
+  const dowodObliczen = (
+    <ElementCalculationProofPanel
+      runId={runIdOgladany ?? null}
+      selectedElement={selectedElement}
+      candidateRefs={calculationProofRefs}
+    />
+  );
   return (
     <div className={clsx('flex flex-col h-full', className)} data-testid="inspector-engineering">
       {/* JEDNO przewijanie całego ciała inspektora: nagłówek, sekcje obiektu z kanwy, dowód
@@ -1824,13 +1831,18 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       </div>
       )}
 
-      {stanPanelu && <PanelElementuKanwy stan={stanPanelu} dzialaniaPoza />}
-
-      <ElementCalculationProofPanel
-        runId={runIdOgladany ?? null}
-        selectedElement={selectedElement}
-        candidateRefs={calculationProofRefs}
-      />
+      {/* Kolejność paneli (karta INSPEKTOR-I-NAWIGACJA): schemat pola (połączenia i stany)
+          i dowód obliczeń (wyniki) idą do panelu elementu PRZED sekcją „Katalog”. */}
+      {stanPanelu ? (
+        <PanelElementuKanwy
+          stan={stanPanelu}
+          dzialaniaPoza
+          schematPola={selectedBayField ? <SchematPolaSn item={selectedBayField} snapshot={snapshot} /> : null}
+          dowod={dowodObliczen}
+        />
+      ) : (
+        dowodObliczen
+      )}
 
       {pokazTechCard && techCardSubjectWithActions && (
         <div
@@ -1932,7 +1944,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           />
         ))}
 
-        {selectedBayField && <SchematPolaSn item={selectedBayField} snapshot={snapshot} />}
+        {!stanPanelu && selectedBayField && <SchematPolaSn item={selectedBayField} snapshot={snapshot} />}
 
         {/* K6: działania na samym końcu inspektora, zwinięte — pozycje rejestru menu kanwy
             i operacje modelu tego widoku w JEDNYM bloku (operacje modelu tylko w trybie edycji

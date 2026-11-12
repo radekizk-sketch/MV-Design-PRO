@@ -66,6 +66,7 @@ import {
 import { pola, polaNnStacji, polaSnStacji, stacjaPola, zaciskPola } from '../../shared/polaStacji';
 import { podpisStacjiPl, rodzajStacji, TYPY_STACJI_BEZ_RODZAJU } from '../../shared/rodzajStacji';
 import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
+import { celWskazaniaModelu, type RodzajCeluWskazania } from './celWskazania';
 import { opisBezPowtorzen } from '../../shared/opisBezPowtorzen';
 import {
   AKCJA_DODANIA_ZABEZPIECZENIA_PL,
@@ -154,6 +155,12 @@ export interface WierszKarty {
   /** Źródło danej, gdy różni się od źródła sekcji (np. nadpisanie projektanta). */
   readonly zrodloPl?: string | null;
   readonly edycja?: EdycjaWiersza;
+  /**
+   * Dana katalogowa (typ katalogowy, producent) — karta INSPEKTOR-I-NAWIGACJA, kolejność paneli:
+   * nazwa → parametry → połączenia i stany → wyniki → KATALOG → działania. `buildKartaTechniczna`
+   * przenosi takie wiersze do końcowej sekcji „Katalog” (`ID_SEKCJI_KATALOGU`) każdego rodzaju.
+   */
+  readonly katalog?: true;
 }
 
 export interface KolumnaTabeli {
@@ -482,7 +489,7 @@ function wiersz(
   klucz: string,
   etykieta: string,
   wartosc: string | null,
-  dodatki: Partial<Pick<WierszKarty, 'zrodloPl' | 'edycja' | 'lista' | 'brakPl' | 'akcja'>> = {},
+  dodatki: Partial<Pick<WierszKarty, 'zrodloPl' | 'edycja' | 'lista' | 'brakPl' | 'akcja' | 'katalog'>> = {},
 ): WierszKarty {
   return { klucz, etykieta, wartosc, ...dodatki };
 }
@@ -936,7 +943,7 @@ function wierszeTabliczki(tr: Transformer, katalogi: KatalogiKarty, edytowalne: 
   // mówi „przypisz typ katalogowy”, typ bez tej wartości — „brak w typie katalogowym”.
   const brakTabliczki = tr.catalog_ref ? 'brak w typie katalogowym' : 'bez typu katalogowego — przypisz typ';
   return [
-    wiersz('tr_typ', 'Typ katalogowy', typKatalogowy(nazwaKat, tr.catalog_ref), { brakPl: 'nie przypisano — przypisz typ z katalogu' }),
+    wiersz('tr_typ', 'Typ katalogowy', typKatalogowy(nazwaKat, tr.catalog_ref), { brakPl: 'nie przypisano — przypisz typ z katalogu', katalog: true }),
     wiersz('tr_sn', 'Moc znamionowa $S_n$', zapisLiczby(tr.sn_mva, 'MVA'), { zrodloPl: z('sn_mva'), brakPl: brakTabliczki }),
     wiersz('tr_napiecia', 'Napięcia $U_n$ GN / DN', napiecia, { zrodloPl: z('uhv_kv') ?? z('ulv_kv'), brakPl: brakTabliczki }),
     wiersz('tr_uk', 'Napięcie zwarcia $u_k$', zapisLiczby(tr.uk_percent, '%'), { zrodloPl: z('uk_percent'), brakPl: brakTabliczki }),
@@ -1729,7 +1736,7 @@ function kartaAparatu(
         id: 'znamiona',
         tytul: 'Dane znamionowe',
         wiersze: [
-          wiersz('typ', 'Typ katalogowy', zn.typ),
+          wiersz('typ', 'Typ katalogowy', zn.typ, { katalog: true }),
           wiersz('ur', 'Napięcie znamionowe $U_r$', zn.ur),
           wiersz('ir', 'Prąd znamionowy $I_r$', zn.ir),
           ...(aparat.lacznik ? [wiersz('ik_wyl', 'Zdolność wyłączalna', zn.ik)] : []),
@@ -1864,7 +1871,7 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaRodzaju {
         id: 'dane',
         tytul: 'Dane odcinka',
         wiersze: [
-          wiersz('typ', 'Typ', typOdcinka(galaz)),
+          wiersz('typ', 'Typ katalogowy', typOdcinka(galaz), { katalog: true }),
           wiersz('dlugosc', 'Długość', dlugoscOdcinka(galaz), odcinek ? { edycja: edycja(galaz.ref_id, 'length_km', odcinek.length_km) } : {}),
           wiersz('przekroj', 'Przekrój', zapisLiczby(odcinek?.cross_section_mm2 ?? mp?.cross_section_mm2, 'mm²')),
           wiersz('material', 'Materiał żyły', nazwaKodowaLubBrak('conductor_material', napis(odcinek?.conductor_material) ?? napis(mp?.conductor_material))),
@@ -2000,8 +2007,8 @@ function kartaZrodla(ix: IndeksModelu, g: Generator, katalogi: KatalogiKarty): K
           wiersz('stacja', 'Stacja', nazwaStacji(ix, g.station_ref ?? null)),
           wiersz('moc', 'Moc czynna P', zapisLiczby(g.p_mw, 'MW')),
           wiersz('jednostki', 'Jednostki', jednostki !== null ? String(jednostki) : null),
-          wiersz('typ', 'Typ katalogowy przekształtnika', typKatalogowy(przeksztaltnik?.name, g.catalog_ref)),
-          wiersz('producent', 'Producent', napis(przeksztaltnik?.manufacturer)),
+          wiersz('typ', 'Typ katalogowy przekształtnika', typKatalogowy(przeksztaltnik?.name, g.catalog_ref), { katalog: true }),
+          wiersz('producent', 'Producent', napis(przeksztaltnik?.manufacturer), { katalog: true }),
           wiersz('tryb_regulacji', 'Tryb regulacji', trybPl, { zrodloPl: zrodloTrybu }),
           wiersz('modul_ncrfg', 'Moduł NC RfG', g.nc_rfg_module ? `typ ${g.nc_rfg_module}` : null),
         ],
@@ -2074,7 +2081,7 @@ function kartaSieci(ix: IndeksModelu, s: Source, katalogi: KatalogiKarty): Karta
           wiersz('nazwa', 'Nazwa', napis(s.name)),
           wiersz('stacja', 'Stacja', nazwaStacji(ix, s.substation_ref ?? null)),
           wiersz('szyna', 'Szyna przyłączenia', opisSzyny(ix, s.bus_ref)),
-          wiersz('typ', 'Typ katalogowy', typKatalogowy(nazwaTypu, s.catalog_ref)),
+          wiersz('typ', 'Typ katalogowy', typKatalogowy(nazwaTypu, s.catalog_ref), { katalog: true }),
           wiersz('model', 'Model zastępczy', modelZastepczyPl(s.model)),
           ...(s.gpz_section_id
             ? [wiersz('sekcja_gpz', 'Sekcja rozdzielni zasilającej', napis(sekcjaGpz?.name) ?? 'sekcja spoza listy sekcji stacji')]
@@ -2246,10 +2253,12 @@ export function buildKartaTechniczna(
   const ix = indeks(snapshot);
   const karta = kartaRodzaju(ix, dane, katalogi, obliczenia);
   if (!karta) return null;
+  const sekcje = sekcjeZKatalogiemNaKoncu(karta.sekcje);
   const stacjaRef = stacjaNadrzedna(ix, karta);
   const stacja = stacjaRef ? ix.stacje.get(stacjaRef) : undefined;
   return {
     ...karta,
+    sekcje,
     oznaczenieSchematu: karta.oznaczenieSchematu ?? null,
     napieciaPl: karta.napieciaPl ?? null,
     stacjaRef: stacja ? stacja.ref_id : null,
@@ -2257,44 +2266,31 @@ export function buildKartaTechniczna(
   };
 }
 
+/** Id końcowej sekcji danych katalogowych (renderer stawia ją po wynikach, przed działaniami). */
+export const ID_SEKCJI_KATALOGU = 'katalog';
+
 /**
- * Stacja nadrzędna obiektu karty — z rekordów modelu (pole → `substation_ref`, transformator →
- * `transformer_refs` stacji, źródło → `substation_ref`/`station_ref`), a dla obiektu
- * przyłączonego do szyny — reguła przynależności szyny (`stacjaSzyn`). Bez zgadywania po nazwie.
+ * Kolejność paneli (karta INSPEKTOR-I-NAWIGACJA): wiersze katalogowe (`katalog: true`) każdego
+ * rodzaju karty trafiają do JEDNEJ końcowej sekcji „Katalog” w kolejności wystąpienia; sekcja,
+ * która po przeniesieniu nie ma ani wierszy, ani tabel, ani opisu braku, znika. Jeden predykat
+ * (flaga wiersza) — i wyjęcie, i dołożenie czytają tę samą flagę.
  */
-function stacjaNadrzedna(ix: IndeksModelu, karta: KartaRodzaju): string | null {
-  const ref = karta.elementRef;
-  const zSzyny = (szyna: string | null | undefined): string | null => (szyna ? ix.stacjaSzyny.get(szyna) ?? null : null);
-  switch (karta.rodzaj) {
-    case 'stacja':
-      return ix.stacje.get(ref)?.ref_id ?? null;
-    case 'pole':
-      return ix.polaWgRef.get(ref)?.substation_ref ?? null;
-    case 'aparat': {
-      for (const pole of pola(ix.model)) {
-        if (pole.ref_id === ref || (pole.equipment_refs ?? []).includes(ref)) return pole.substation_ref ?? null;
-      }
-      const galaz = ix.galezie.get(ref);
-      return galaz ? zSzyny(galaz.from_bus_ref) ?? zSzyny(galaz.to_bus_ref) : null;
-    }
-    case 'transformator': {
-      const tr = ix.transformatory.get(ref);
-      const wlasciciel = (ix.model.substations ?? []).find((st) => (st.transformer_refs ?? []).includes(tr?.ref_id ?? ref));
-      return wlasciciel?.ref_id ?? (tr ? zSzyny(tr.hv_bus_ref) ?? zSzyny(tr.lv_bus_ref) : null);
-    }
-    case 'zrodlo': {
-      const g = (ix.model.generators ?? []).find((x) => x.ref_id === ref || x.id === ref);
-      return g ? g.station_ref ?? zSzyny(g.bus_ref) : null;
-    }
-    case 'siec_zasilajaca': {
-      const z = (ix.model.sources ?? []).find((x) => x.ref_id === ref || x.id === ref);
-      return z ? z.substation_ref ?? zSzyny(z.bus_ref) : null;
-    }
-    case 'szyna':
-      return zSzyny(ref);
-    default:
-      return null;
+function sekcjeZKatalogiemNaKoncu(sekcje: readonly SekcjaKarty[]): readonly SekcjaKarty[] {
+  const katalog: WierszKarty[] = [];
+  const reszta: SekcjaKarty[] = [];
+  for (const sekcja of sekcje) {
+    const zostaja = sekcja.wiersze.filter((w) => !w.katalog);
+    katalog.push(...sekcja.wiersze.filter((w) => w.katalog));
+    const pusta = zostaja.length === 0 && (sekcja.tabele ?? []).length === 0 && !sekcja.pustaPl;
+    if (!pusta) reszta.push(zostaja.length === sekcja.wiersze.length ? sekcja : { ...sekcja, wiersze: zostaja });
   }
+  return katalog.length > 0 ? [...reszta, { id: ID_SEKCJI_KATALOGU, tytul: 'Katalog', wiersze: katalog }] : reszta;
+}
+
+/** Stacja nadrzędna obiektu karty — JEDNA reguła z celem wskazania kamery (`celWskazaniaModelu`). */
+function stacjaNadrzedna(ix: IndeksModelu, karta: KartaRodzaju): string | null {
+  const rodzaj: RodzajCeluWskazania = karta.rodzaj === 'lacznik' ? 'aparat' : karta.rodzaj;
+  return celWskazaniaModelu(ix.model, karta.elementRef, rodzaj)?.stacjaRef ?? null;
 }
 
 function kartaRodzaju(

@@ -193,6 +193,8 @@ export interface OdczytWynikuElementu {
   readonly klasa: ResultLabelKind | null;
   /** Czy nakładka ma w ogóle wpis punktu wyniku obiektu. */
   readonly punktWWyniku: boolean;
+  /** Ref punktu wyniku obiektu (stacja → jej szyna SN), `null` — obiekt nie jest punktem wyniku. */
+  readonly refPunktu: string | null;
   readonly metryki: NonNullable<DaneElementuKanwy['liveMetrics']>;
 }
 
@@ -230,7 +232,7 @@ export function odczytWynikuElementu(
       });
     }
   }
-  return { analiza, klasa, punktWWyniku, metryki };
+  return { analiza, klasa, punktWWyniku, refPunktu: ref ?? null, metryki };
 }
 
 /** Lista wielkości obiektu (`undefined` — brak), dla danych panelu z kanwy. */
