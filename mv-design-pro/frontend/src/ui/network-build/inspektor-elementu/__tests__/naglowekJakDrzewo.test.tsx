@@ -1,6 +1,10 @@
 /**
- * K6 (Z-11) — nagłówek prawego inspektora pokazuje TĘ SAMĄ nazwę i TEN SAM rodzaj stacji co
- * drzewo projektu. Iloczyn cech nazwy stacji w modelu:
+ * K6 (Z-11) — nagłówek prawego inspektora pokazuje TĘ SAMĄ nazwę stacji co drzewo projektu,
+ * a karta TEN SAM rodzaj stacji co drzewo. Kanon karty INSPEKTOR-I-NAWIGACJA (werdykt B-02
+ * właściciela): podtytuł nagłówka niesie KATEGORIĘ stacji z modelu („Stacja SN/nN · 15/0,4 kV”),
+ * a rodzaj topologiczny z drzewa (sekcyjna, odgałęźna…) stoi w wierszu „Rodzaj” sekcji
+ * Identyfikacja — intencja K6 (jedna reguła rodzaju dla drzewa i inspektora) zachowana, zmienia
+ * się tylko miejsce w karcie. Iloczyn cech nazwy stacji w modelu:
  *
  *   {nazwa nadana przez projektanta · brak nazwy · nazwa z odwołaniem technicznym · kod stacji}
  *
@@ -73,6 +77,12 @@ describe.each(WARIANTY)('nagłówek inspektora = drzewo projektu: $nazwa', (wari
     fireEvent.click(wiersz);
     const panel = screen.getByTestId('inspektor-element-kanwy');
     expect(within(panel).getByTestId('inspektor-element-etykieta').textContent).toBe(etykietaDrzewa);
-    expect((within(panel).getByTestId('inspektor-element-rodzaj').textContent ?? '').toLowerCase()).toBe(rodzajDrzewa.toLowerCase());
+    expect((within(panel).getByTestId('inspektor-karta-wartosc-rodzaj').textContent ?? '').toLowerCase()).toBe(rodzajDrzewa.toLowerCase());
+    // Podtytuł: kategoria z modelu — transformator rozdzielczy albo szyna nN → „Stacja SN/nN”.
+    const stacja = (enm.substations ?? [])[wariant.indeks];
+    const maNn =
+      (stacja.transformer_refs ?? []).length > 0 ||
+      (stacja.bus_refs ?? []).some((b) => ((enm.buses ?? []).find((x) => x.ref_id === b)?.voltage_kv ?? 99) < 1);
+    expect(within(panel).getByTestId('inspektor-element-rodzaj').textContent).toBe(maNn ? 'Stacja SN/nN' : 'Stacja SN');
   });
 });

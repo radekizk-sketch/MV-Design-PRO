@@ -244,7 +244,11 @@ export interface SekcjaKarty {
 
 export interface KartaTechniczna {
   readonly rodzaj: RodzajKarty;
-  /** Rodzaj w nagłówku — dla stacji ta sama reguła co drzewo projektu (`podpisStacjiPl`). */
+  /**
+   * Rodzaj w podtytule nagłówka. Dla stacji — KATEGORIA z modelu (karta INSPEKTOR-I-NAWIGACJA:
+   * „Stacja SN/nN · 15/0,4 kV”; `kategoriaStacjiPl`); rodzaj topologiczny (sekcyjna, odgałęźna…,
+   * reguła drzewa projektu `podpisStacjiPl`) stoi w wierszu „Rodzaj” sekcji Identyfikacja.
+   */
   readonly rodzajPl: string;
   readonly nazwa: string;
   /**
@@ -1280,6 +1284,17 @@ function sekcjaTransformatoraStacji(
   };
 }
 
+/**
+ * Kategoria stacji w podtytule karty — z modelu, nie z nazwy: GPZ i rozdzielnica nN z typu
+ * stacji; pozostałe — „Stacja SN/nN”, gdy stacja ma transformator rozdzielczy albo szynę
+ * w paśmie nN, inaczej „Stacja SN” (rozdzielnia bez transformacji).
+ */
+function kategoriaStacjiPl(stacja: Substation, liczbaTransformatorow: number, liczbaSzynNn: number): string {
+  if (stacja.station_type === 'gpz') return 'GPZ';
+  if (stacja.station_type === 'rozdzielnica_nn') return 'Rozdzielnica nN';
+  return liczbaTransformatorow > 0 || liczbaSzynNn > 0 ? 'Stacja SN/nN' : 'Stacja SN';
+}
+
 function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKarty, obliczenia: ObliczeniaKarty): KartaRodzaju {
   const model = ix.model;
   const tozsamosc = stationPublicIdentity(model, stacja);
@@ -1471,7 +1486,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
 
   return {
     rodzaj: 'stacja',
-    rodzajPl,
+    rodzajPl: kategoriaStacjiPl(stacja, transformatory.length, szynyNn.length),
     // K6 (Z-11): nazwa nagłówka z tej samej reguły co wiersz drzewa projektu.
     nazwa: nazwaStacjiJakWDrzewie(model, stacja),
     oznaczenieSchematu: tozsamosc.code,
