@@ -26,6 +26,8 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 
 **ZASADA NR 5 — STANDARD ENEA DLA GPZ (dyrektywa właściciela 2026-11-12, zasada stała).** ENEA Zeszyt 1, wersja 02.2023–2, jest domyślnym wzorcem stacji 110 kV/SN w całym produkcie: katalog, model ENM, kreatory, SLD, inspektor, ocena doboru, zabezpieczenia i automatyka, raporty. Wdrażany jako wariant standardu operatora (profil OSD), nie jako literały w kodzie; identyfikatory modelu bez zmian. Wymagania potwierdzone, z numerami punktów, i lista decyzji graficznych, których NIE wolno przedstawiać jako wymagań ENEA: `mv-design-pro/docs/domain/STANDARD_ENEA_GPZ_Z1.md`. Nie dopisuje się aparatów ani danych bez potwierdzenia we właściwym wariancie standardu; zgodności nie deklaruje się bez sprawdzenia rysunku źródłowego. PDF standardu nie trafia do repozytorium.
 
+**ZASADA NR 6 — NORMY ZWARCIOWE Z REPOZYTORIUM (dyrektywa właściciela 2026-11-12, zasada stała).** Treść IEC 60909-0:2016 i PN-EN 60909-3:2010 jest trwale odwzorowana w `mv-design-pro/docs/domain/NORMA_IEC_60909_0_2016.md` i `mv-design-pro/docs/domain/NORMA_PN_EN_60909_3_2010.md` (własny opis: punkty, wzory, tablice, rysunki, luki i omyłki druku). Każda praca dotycząca zwarć, prądów do doboru aparatury, zabezpieczeń, wkładu OZE, cieplnego i dynamicznego narażenia zaczyna się od przeczytania właściwych sekcji tych plików — także u wykonawców (karta wskazuje plik). Twierdzenie „brak tekstu normy” jest niedopuszczalne, gdy odpowiedź jest w tych plikach; opisy w produkcie podają podstawę numerem punktu, wzoru lub tablicy. Brak w pliku → zgłoszenie architektowi, który odczytuje normę i uzupełnia plik. Tekstu normy, PDF ani skanów nie commituje się (licencja ENEA).
+
 ---
 
 ## 🤖 Model i pisanie promptów
