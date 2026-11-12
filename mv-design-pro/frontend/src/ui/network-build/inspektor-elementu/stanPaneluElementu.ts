@@ -460,6 +460,12 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   );
 
   if (selekcjaId === null) return null;
+  // Nazwa obiektu w zdaniu przyczyny braku wyników: karta, etykieta schematu albo publiczna
+  // nazwa selekcji — nigdy identyfikator (strażnik kodyZamiastOpisow, R4).
+  const nazwaSelekcji = selekcja?.name;
+  const nazwaObiektu =
+    karta?.nazwa ??
+    (dane ? etykietaElementuKanwy(dane) : etykietaPubliczna(nazwaSelekcji) ? nazwaSelekcji : 'Element schematu');
   return {
     dane,
     temat,
@@ -471,7 +477,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
       payload != null,
       swiezoscBiegu?.stan ?? null,
       odczytWynikow,
-      karta?.nazwa ?? (dane ? etykietaElementuKanwy(dane) : selekcja?.name ?? selekcjaId),
+      nazwaObiektu,
       nakladka.runId,
     ),
     zwarcie,
