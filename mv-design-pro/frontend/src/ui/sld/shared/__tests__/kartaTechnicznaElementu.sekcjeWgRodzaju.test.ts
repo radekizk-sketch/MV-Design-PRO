@@ -5,7 +5,9 @@
  *   rodzaj stacji (9 wartości `station_type`)
  *   × treść modelu {same szyny SN · transformator SN/nN ze stroną nN · odbiór SN na szynie stacji}
  *   → zestaw i kolejność sekcji karty (identyfikacja, zasilanie, transformator, sekcje szyn,
- *     rozdzielnica SN, strona nN, przyłączenia) oraz wiersz „Podstawa rodzaju”;
+ *     rozdzielnica SN, strona nN, przyłączenia) oraz wiersz „Podstawa rodzaju” (karta
+ *     INSPEKTOR-I-NAWIGACJA I.1: przyczynę rodzaju mówi „Układ rozdzielnicy SN”, więc wiersz
+ *     stoi tylko, gdy niesie więcej — rodzaj nierozpoznany albo deklaracja inna, W043);
  *
  *   GPZ × {sieć zasilająca przypisana do GPZ · sieć tylko na szynie GPZ · brak sieci}
  *       × {transformator 110 kV/SN w modelu · brak} × {stan minimalny sieci w modelu · brak};
@@ -26,6 +28,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Substation } from '../../../../types/enm';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
 import { buildKartaTechniczna, KATALOGI_PUSTE, kluczeKarty, type KartaTechniczna, type KatalogiKarty } from '../kartaTechnicznaElementu';
+import { rodzajStacji } from '../../../shared/rodzajStacji';
 
 type RodzajStacji = Substation['station_type'];
 type Tresc = 'szyny_sn' | 'transformator_nn' | 'odbior_sn';
@@ -150,11 +153,15 @@ describe('karta stacji — rodzaj stacji × treść modelu → sekcje', () => {
       expect(odbiory?.lista ?? []).toEqual([]);
     });
 
-    it(`${rodzaj}: wiersz „Podstawa rodzaju” ${BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj) ? 'nieobecny (rodzaj topologiczny nie dotyczy)' : 'obecny'}`, () => {
-      const klucze = kluczeKarty(kartaStacji(model(rodzaj, 'szyny_sn')));
-      expect(klucze.includes('podstawa_rodzaju')).toBe(!BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj));
-      const tekst = JSON.stringify(kartaStacji(model(rodzaj, 'szyny_sn')));
-      expect(tekst).not.toContain('nie dotyczy');
+    it(`${rodzaj}: wiersz „Podstawa rodzaju” tylko z informacją ponad układ rozdzielnicy`, () => {
+      const m = model(rodzaj, 'szyny_sn');
+      const k = kartaStacji(m);
+      const wynik = BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj) ? null : rodzajStacji(m, ST);
+      const potrzebny = !BEZ_RODZAJU_TOPOLOGICZNEGO.has(rodzaj) && (wynik === null || !wynik.zgodnyZDeklaracja);
+      expect(kluczeKarty(k).includes('podstawa_rodzaju')).toBe(potrzebny);
+      const podstawa = k.sekcje.flatMap((sek) => sek.wiersze).find((w) => w.klucz === 'podstawa_rodzaju');
+      if (potrzebny && wynik) expect(podstawa?.wartosc).toMatch(/walidator W043/);
+      expect(JSON.stringify(k)).not.toContain('nie dotyczy');
     });
   }
 

@@ -383,7 +383,8 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'oznaczenie',
     'nazwa',
     'rodzaj',
-    'podstawa_rodzaju',
+    // „Podstawa rodzaju” nie jest wymagana: stoi tylko, gdy niesie więcej niż „Układ
+    // rozdzielnicy SN” (rodzaj nierozpoznany albo deklaracja inna — W043).
     'wykonanie',
     'uklad_sn',
     'sekcje_sn',
@@ -1301,9 +1302,12 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
   const rodzajPl = podpisStacjiPl(model, stacja);
   const bezRodzaju = TYPY_STACJI_BEZ_RODZAJU.has(stacja.station_type);
   const rodzaj = bezRodzaju ? null : rodzajStacji(model, stacja.ref_id);
-  const podstawa = rodzaj
-    ? `${rodzaj.przyczynaPl}${rodzaj.zgodnyZDeklaracja ? '' : ' — deklaracja w modelu jest inna (walidator W043)'}`
-    : null;
+  // „Podstawa rodzaju” (karta INSPEKTOR-I-NAWIGACJA I.1, werdykt B-02): przyczynę rodzaju
+  // mówi wiersz „Układ rozdzielnicy SN” sekcji rozdzielnicy („dwie sekcje szyn ze sprzęgłem”).
+  // Wiersz zostaje TYLKO, gdy niesie informację, której układ nie mówi: rodzaju nie rozpoznano
+  // z topologii albo deklaracja w modelu jest inna (walidator W043).
+  const podstawaPotrzebna = !bezRodzaju && (rodzaj === null || !rodzaj.zgodnyZDeklaracja);
+  const podstawa = rodzaj ? `${rodzaj.przyczynaPl} — deklaracja w modelu jest inna (walidator W043)` : null;
 
   const definicja = SEKCJE_Z_DEFINICJI_STACJI[stacja.station_type] ?? SEKCJE_STACJI_SN_NN;
   const jestGpz = stacja.station_type === 'gpz';
@@ -1321,9 +1325,9 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       wiersz('rodzaj', 'Rodzaj', rodzajPl),
       // Rodzaj topologiczny nie dotyczy GPZ ani rozdzielnicy nN — wiersz bez treści dla
       // inżyniera nie trafia na kartę (zamiast „nie dotyczy — …”).
-      ...(bezRodzaju
-        ? []
-        : [wiersz('podstawa_rodzaju', 'Podstawa rodzaju', podstawa, { brakPl: 'rodzaju nie rozpoznano z topologii stacji' })]),
+      ...(podstawaPotrzebna
+        ? [wiersz('podstawa_rodzaju', 'Podstawa rodzaju', podstawa, { brakPl: 'rodzaju nie rozpoznano z topologii stacji' })]
+        : []),
       wiersz('wykonanie', 'Wykonanie stacji', stacja.construction_type ? WYKONANIE_STACJI_PL[stacja.construction_type] ?? null : null, {
         brakPl: 'Nie określono',
       }),

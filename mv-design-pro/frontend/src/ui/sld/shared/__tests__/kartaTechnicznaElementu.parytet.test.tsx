@@ -440,7 +440,7 @@ const WSKAZANIE: Readonly<Record<RodzajKarty, Pick<DaneElementuKanwy, 'kind' | '
  * decyzja: brak parametru nie usuwa wiedzy o połączeniach.
  */
 const Z_TOPOLOGII: Readonly<Record<RodzajKarty, readonly string[]>> = {
-  stacja: ['rodzaj', 'podstawa_rodzaju', 'uklad_sn', 'sekcje_sn', 'tabela:pola_sn', 'tabela:tr_karta', 'nn_sekcje', 'nn_odplywy', 'nn_odbiory', 'nn_zrodla', 'tabela:przylaczenia', 'nazwa_naglowka'],
+  stacja: ['rodzaj', 'uklad_sn', 'sekcje_sn', 'tabela:pola_sn', 'tabela:tr_karta', 'nn_sekcje', 'nn_odplywy', 'nn_odbiory', 'nn_zrodla', 'tabela:przylaczenia', 'nazwa_naglowka'],
   // „przekladniki" to lista z modelu: pole bez przekładnika to fakt „brak w modelu", nie luka.
   pole: ['rola', 'stacja', 'szyna', 'tabela:aparaty', 'przylaczenie', 'przekladniki'],
   aparat: ['nazwa', 'rodzaj', 'pole', 'stacja', 'stan'],
