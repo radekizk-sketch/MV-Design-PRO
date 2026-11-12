@@ -2,7 +2,7 @@
   "created_at": "2026-09-17T08:00:00+00:00",
   "devices": [
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
       "device_type": "RELAY",
       "id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000/sterownik",
       "name": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S01",
@@ -10,10 +10,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -52,7 +52,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -60,7 +60,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -135,10 +135,143 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "7aac8feb-7aba-5fe7-b625-233c4319c6ea",
+          "c89efd59-988c-5581-9a39-41caf153a24a",
+          "d6c8a8bc-17fb-5cb8-b3c3-291e9079a8c7"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "0d7c6ace-aa1f-57f9-a257-c1e7910d6961"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "6357b55f-ef8a-519a-b44c-1b158f867a2e"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "90e3195b-cc5e-56d3-8fc8-4256f397c138"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "cb457794-285a-5119-b8ff-6fa51aebcf8c"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ced0a047-2b12-5ea2-a71c-98cf34a60a61"
+          }
+        ],
+        "wezel_zacisku": "7aac8feb-7aba-5fe7-b625-233c4319c6ea",
+        "wezly_strefy": [
+          "004329a5-e3ab-548f-9e8c-3abe8c925494",
+          "0d7c6ace-aa1f-57f9-a257-c1e7910d6961",
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "6357b55f-ef8a-519a-b44c-1b158f867a2e",
+          "7aac8feb-7aba-5fe7-b625-233c4319c6ea",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "90e3195b-cc5e-56d3-8fc8-4256f397c138",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
+          "b0ddfc54-04f7-5a21-b86a-27395417c506",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c6dedd1b-66ce-5dd5-a19f-d41780da08f1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "c89efd59-988c-5581-9a39-41caf153a24a",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "cb457794-285a-5119-b8ff-6fa51aebcf8c",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "ced0a047-2b12-5ea2-a71c-98cf34a60a61",
+          "d6c8a8bc-17fb-5cb8-b3c3-291e9079a8c7",
+          "d9c6be6f-be19-5898-849a-f6c4388f6cb2",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613",
+          "e1d4911e-f81f-5363-8b52-900f2e123058",
+          "e6a0de0b-c535-5655-80f9-2824307f28c4"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Stacja S03",
+          "Stacja S02",
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Szyna nN stacji",
+          "Stacja S01",
+          "Odpływ nN 1",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Węzeł łącznika",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Wyłącznik główny nN",
+          "Szyna nN stacji",
+          "Odpływ nN 1",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk końcowy Magistrala GPZ",
+          "Węzeł łącznika 2",
+          "Zacisk techniczny pola SN 1"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
       "device_type": "RELAY",
       "id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000/sterownik",
       "name": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S02",
@@ -146,10 +279,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -188,7 +321,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -196,7 +329,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -271,10 +404,110 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+          "b0ddfc54-04f7-5a21-b86a-27395417c506"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "0d7c6ace-aa1f-57f9-a257-c1e7910d6961"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "cb457794-285a-5119-b8ff-6fa51aebcf8c"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+        "wezly_strefy": [
+          "004329a5-e3ab-548f-9e8c-3abe8c925494",
+          "0d7c6ace-aa1f-57f9-a257-c1e7910d6961",
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
+          "b0ddfc54-04f7-5a21-b86a-27395417c506",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "cb457794-285a-5119-b8ff-6fa51aebcf8c",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613",
+          "e6a0de0b-c535-5655-80f9-2824307f28c4"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Stacja S03",
+          "Stacja S02",
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk techniczny pola SN 3",
+          "Wyłącznik główny nN",
+          "Szyna nN stacji",
+          "Odpływ nN 1",
+          "Zacisk końcowy Magistrala GPZ",
+          "Zacisk techniczny pola SN 1"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/000",
       "device_type": "RELAY",
       "id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000/sterownik",
       "name": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S03",
@@ -282,10 +515,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -324,7 +557,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/000",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -332,7 +565,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -407,10 +640,81 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+        "wezly_strefy": [
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Stacja S03",
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 2",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk techniczny pola SN 3",
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Zacisk końcowy Magistrala GPZ"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/000",
       "device_type": "RELAY",
       "id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000/sterownik",
       "name": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S04",
@@ -418,10 +722,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -460,7 +764,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/000",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -468,7 +772,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -543,10 +847,52 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+        "wezly_strefy": [
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 3",
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Zacisk końcowy Magistrala GPZ"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
       "device_type": "RELAY",
       "id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001/sterownik",
       "name": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01",
@@ -554,10 +900,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -596,7 +942,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -604,7 +950,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -679,10 +1025,116 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "c89efd59-988c-5581-9a39-41caf153a24a"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "0d7c6ace-aa1f-57f9-a257-c1e7910d6961"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "cb457794-285a-5119-b8ff-6fa51aebcf8c"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "c89efd59-988c-5581-9a39-41caf153a24a",
+        "wezly_strefy": [
+          "004329a5-e3ab-548f-9e8c-3abe8c925494",
+          "0d7c6ace-aa1f-57f9-a257-c1e7910d6961",
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "37c2925e-edbc-5956-b23a-7fed082c4f7d",
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
+          "b0ddfc54-04f7-5a21-b86a-27395417c506",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c6dedd1b-66ce-5dd5-a19f-d41780da08f1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "c89efd59-988c-5581-9a39-41caf153a24a",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "cb457794-285a-5119-b8ff-6fa51aebcf8c",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "d9c6be6f-be19-5898-849a-f6c4388f6cb2",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613",
+          "e1d4911e-f81f-5363-8b52-900f2e123058",
+          "e6a0de0b-c535-5655-80f9-2824307f28c4"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Stacja S03",
+          "Stacja S02",
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Węzeł łącznika",
+          "Zacisk techniczny pola SN 3",
+          "Zacisk techniczny pola SN 2",
+          "Wyłącznik główny nN",
+          "Szyna nN stacji",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk końcowy Magistrala GPZ",
+          "Węzeł łącznika 2",
+          "Zacisk techniczny pola SN 1"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
       "device_type": "RELAY",
       "id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001/sterownik",
       "name": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02",
@@ -690,10 +1142,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -732,7 +1184,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -740,7 +1192,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -815,10 +1267,83 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "b0ddfc54-04f7-5a21-b86a-27395417c506"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "b0ddfc54-04f7-5a21-b86a-27395417c506",
+        "wezly_strefy": [
+          "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
+          "b0ddfc54-04f7-5a21-b86a-27395417c506",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613",
+          "e6a0de0b-c535-5655-80f9-2824307f28c4"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Stacja S03",
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 2",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk techniczny pola SN 3",
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Zacisk końcowy Magistrala GPZ",
+          "Zacisk techniczny pola SN 1"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/001",
       "device_type": "RELAY",
       "id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001/sterownik",
       "name": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03",
@@ -826,10 +1351,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -868,7 +1393,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/001",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -876,7 +1401,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -951,10 +1476,54 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+        "wezly_strefy": [
+          "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "5e0fe19e-8d19-5b01-b10f-308ebfbbba53",
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "b72895c4-4da2-5890-bba5-cc5aac184ea1",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Stacja S04",
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 2",
+          "Zacisk techniczny pola SN 1",
+          "Zacisk techniczny pola SN 3",
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Zacisk końcowy Magistrala GPZ"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/001",
       "device_type": "RELAY",
       "id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001/sterownik",
       "name": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04",
@@ -962,10 +1531,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -1004,7 +1573,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/001",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -1012,7 +1581,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
@@ -1087,10 +1656,24 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "b4b7321b-22c9-5560-bfea-5ad124389733"
+        ],
+        "punkty_innego_poziomu_napiecia": [],
+        "wezel_zacisku": "b4b7321b-22c9-5560-bfea-5ad124389733",
+        "wezly_strefy": [
+          "b4b7321b-22c9-5560-bfea-5ad124389733",
+          "da9bb5fc-04ce-5e44-a6d7-f385e000a613"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Zacisk techniczny pola SN 2",
+          "Zacisk końcowy Magistrala GPZ"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
       "device_type": "RELAY",
       "id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002/sterownik",
       "name": "Sterownik pola Pole transformatorowe 3 — Stacja S01",
@@ -1098,10 +1681,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -1140,7 +1723,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -1148,7 +1731,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "87T",
@@ -1239,10 +1822,44 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "d6c8a8bc-17fb-5cb8-b3c3-291e9079a8c7"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "6357b55f-ef8a-519a-b44c-1b158f867a2e"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "90e3195b-cc5e-56d3-8fc8-4256f397c138"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ced0a047-2b12-5ea2-a71c-98cf34a60a61"
+          }
+        ],
+        "wezel_zacisku": "d6c8a8bc-17fb-5cb8-b3c3-291e9079a8c7",
+        "wezly_strefy": [
+          "6357b55f-ef8a-519a-b44c-1b158f867a2e",
+          "90e3195b-cc5e-56d3-8fc8-4256f397c138",
+          "ced0a047-2b12-5ea2-a71c-98cf34a60a61",
+          "d6c8a8bc-17fb-5cb8-b3c3-291e9079a8c7"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Szyna nN stacji",
+          "Odpływ nN 1",
+          "Wyłącznik główny nN",
+          "Zacisk techniczny pola SN 3"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
       "device_type": "RELAY",
       "id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002/sterownik",
       "name": "Sterownik pola Pole transformatorowe 3 — Stacja S02",
@@ -1250,10 +1867,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -1292,7 +1909,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -1300,7 +1917,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "87T",
@@ -1391,10 +2008,44 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "0d7c6ace-aa1f-57f9-a257-c1e7910d6961"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "cb457794-285a-5119-b8ff-6fa51aebcf8c"
+          }
+        ],
+        "wezel_zacisku": "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+        "wezly_strefy": [
+          "004329a5-e3ab-548f-9e8c-3abe8c925494",
+          "0d7c6ace-aa1f-57f9-a257-c1e7910d6961",
+          "5cee19aa-1112-5ee1-a068-240dc5d9463d",
+          "cb457794-285a-5119-b8ff-6fa51aebcf8c"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/002",
       "device_type": "RELAY",
       "id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002/sterownik",
       "name": "Sterownik pola Pole transformatorowe 3 — Stacja S03",
@@ -1402,10 +2053,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -1444,7 +2095,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/002",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -1452,7 +2103,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "87T",
@@ -1543,10 +2194,44 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "50c539d0-8153-5690-aaef-3e2dd34a8955"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "808cbcc5-400c-5551-b72d-6766120604a4"
+          },
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+          }
+        ],
+        "wezel_zacisku": "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+        "wezly_strefy": [
+          "50c539d0-8153-5690-aaef-3e2dd34a8955",
+          "808cbcc5-400c-5551-b72d-6766120604a4",
+          "9a08b4f4-eb09-5752-8dcd-bdbe985bdc87",
+          "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Wyłącznik główny nN",
+          "Odpływ nN 1",
+          "Zacisk techniczny pola SN 3",
+          "Szyna nN stacji"
+        ]
+      }
     },
     {
-      "breaker_ref": null,
+      "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/002",
       "device_type": "RELAY",
       "id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002/sterownik",
       "name": "Sterownik pola Pole transformatorowe 3 — Stacja S04",
@@ -1554,10 +2239,10 @@
         "alf": null,
         "braki": [
           {
-            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "funkcja": null,
-            "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+            "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
           },
           {
             "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -1596,7 +2281,7 @@
             "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
           }
         ],
-        "breaker_ref": null,
+        "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/002",
         "charakterystyki": {
           "jakosc": "ESTIMATED",
           "model": "OC-EF-300",
@@ -1604,7 +2289,7 @@
           "profil": "REF-OC-EF-300",
           "zrodlo": "WARTOSC_ROBOCZA"
         },
-        "ct_ref": null,
+        "ct_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002::dev::2",
         "funkcje_nieoceniane": [
           {
             "funkcja": "87T",
@@ -1695,7 +2380,41 @@
           ]
         }
       },
-      "strefa": null
+      "strefa": {
+        "klaster_zacisku": [
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd"
+        ],
+        "punkty_innego_poziomu_napiecia": [
+          {
+            "nazwa_pl": "Szyna nN stacji",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "4dd77a8f-9709-50f3-8bba-cf2e862ca070"
+          },
+          {
+            "nazwa_pl": "Wyłącznik główny nN",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ca76019f-80a4-5c39-a2bf-05a87029ab21"
+          },
+          {
+            "nazwa_pl": "Odpływ nN 1",
+            "powod_pl": "Punkt zwarcia na innym poziomie napięcia niż przekaźnik — rozpływ biegu zwarciowego podaje prąd gałęzi w bazie napięcia punktu zwarcia, więc prąd przekaźnika nie jest wyznaczany (decyzja rdzenia IEC 60909 do właściciela).",
+            "punkt_ref": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+          }
+        ],
+        "wezel_zacisku": "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+        "wezly_strefy": [
+          "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
+          "c84015de-bf5a-52b5-b197-0d4a3a07d4cd",
+          "ca76019f-80a4-5c39-a2bf-05a87029ab21",
+          "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93"
+        ],
+        "wezly_strefy_nazwy_pl": [
+          "Szyna nN stacji",
+          "Zacisk techniczny pola SN 3",
+          "Wyłącznik główny nN",
+          "Odpływ nN 1"
+        ]
+      }
     },
     {
       "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
@@ -2372,10 +3091,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -2412,15 +3131,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S02",
       "ocena": {
@@ -2491,14 +3204,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -2524,10 +3236,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -2564,15 +3276,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02",
       "ocena": {
@@ -2643,14 +3349,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -2676,10 +3381,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -2716,15 +3421,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S02",
       "ocena": {
@@ -2795,14 +3494,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole transformatorowe 3” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -2828,10 +3526,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -2868,15 +3566,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/000",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S04",
       "ocena": {
@@ -2947,14 +3639,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -2980,10 +3671,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -3020,15 +3711,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/001",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04",
       "ocena": {
@@ -3099,14 +3784,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -3132,10 +3816,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -3172,15 +3856,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field_breaker/002",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S04",
       "ocena": {
@@ -3251,14 +3929,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole transformatorowe 3” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -3284,10 +3961,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -3324,15 +4001,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/000",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S03",
       "ocena": {
@@ -3403,14 +4074,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -3436,10 +4106,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -3476,15 +4146,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/001",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03",
       "ocena": {
@@ -3555,14 +4219,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -3588,10 +4251,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -3628,15 +4291,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field_breaker/002",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S03",
       "ocena": {
@@ -3707,14 +4364,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole transformatorowe 3” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -3740,10 +4396,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
@@ -3780,15 +4436,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S01",
       "ocena": {
@@ -3859,14 +4509,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wejściowe 1” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -3892,10 +4541,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
@@ -3932,15 +4581,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01",
       "ocena": {
@@ -4011,14 +4654,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole liniowe wyjściowe 2” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -4044,10 +4686,10 @@
     {
       "braki": [
         {
-          "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "akcja_naprawcza_pl": "Wskaż w zabezpieczeniu przekładnik prądowy pola.",
           "funkcja": null,
-          "kod": "zabezpieczenia.brak_przekladnika",
-          "komunikat_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          "kod": "zabezpieczenia.przekladnik_nie_pradowy",
+          "komunikat_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
         },
         {
           "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
@@ -4084,15 +4726,9 @@
           "funkcja": "50",
           "kod": "zabezpieczenia.brak_charakterystyki",
           "komunikat_pl": "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej."
-        },
-        {
-          "akcja_naprawcza_pl": "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka).",
-          "funkcja": null,
-          "kod": "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen",
-          "komunikat_pl": "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia."
         }
       ],
-      "breaker_ref": null,
+      "breaker_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
       "kandydaci_naprawy": [],
       "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S01",
       "ocena": {
@@ -4163,14 +4799,13 @@
             "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
             "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
             "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Nastawy zabezpieczenia pola „Pole transformatorowe 3” zapisane w modelu sieci projektu” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: nastawy albo dane toru pomiarowego niekompletne — patrz braki).",
-            "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I> (51) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I> (51) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma dodatniego progu rozruchowego. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
             "Próg stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika). Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola.",
-            "Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia. Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → Zabezpieczenia i automatyka)."
+            "Stopień I>> (50) zabezpieczenia pola „Pole transformatorowe 3” nie ma charakterystyki czasowej. Uzupełnij nastawy stopnia I>> (50) zabezpieczenia pola „Pole transformatorowe 3” w karcie pola."
           ],
           "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
           "zastrzezenia": [
@@ -4250,7 +4885,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4262,7 +4897,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4274,7 +4909,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4286,7 +4921,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4298,7 +4933,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4310,7 +4945,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4322,7 +4957,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4334,7 +4969,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4346,7 +4981,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4358,7 +4993,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wejściowe 1” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wejściowe 1” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wejściowe 1” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4370,7 +5005,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole liniowe wyjściowe 2” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole liniowe wyjściowe 2” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole liniowe wyjściowe 2” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,
@@ -4382,7 +5017,7 @@
       "i_pickup_a": null,
       "margin_percent": null,
       "nazwa_punktu_pl": null,
-      "notes_pl": "Zabezpieczenie pola „Pole transformatorowe 3” nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej. Stopnie nadprądowe zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie działają na żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć zwarcia.",
+      "notes_pl": "Wejście prądów fazowych zabezpieczenia pola „Pole transformatorowe 3” wskazuje aparat, który nie jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego. Nastawy zabezpieczenia pola „Pole transformatorowe 3” są niekompletne: I> (51) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej; I>> (50) — brak progu rozruchowego, jednostki progu, charakterystyki czasowej.",
       "punkt_ref": null,
       "ratio": null,
       "required_ratio": 1.5,

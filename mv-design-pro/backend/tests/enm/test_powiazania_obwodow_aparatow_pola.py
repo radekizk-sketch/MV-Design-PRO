@@ -371,7 +371,10 @@ def test_zmiana_szablonu_przepina_wejscia_na_aparaty_wlasciwego_rodzaju():
     identyfikatora daje ``ct_ref`` = wyłącznik Q0."""
     from enm.zabezpieczenie import RODZAJE_WEJSCIA_STEROWNIKA, naruszenia_referencji_sterownika
 
-    for szablon_id in SZABLONY:
+    # Zmiana szablonu TEGO SAMEGO pola liniowego — szablon innej funkcji pola (Z.7, Z.12, Z.13–Z.16)
+    # pola liniowego nie wyposaża (`bay_equipment.template_role_mismatch`); ten sam predykat co
+    # droga zapisu `_z_szablonu_wg_roli`.
+    for szablon_id in [s for s in SZABLONY if BAY_TEMPLATE_REGISTRY[s].wykonanie_pola is not None]:
         enm = _z_szablonu(_gpz(), szablon_id)
         rekord = _pole(enm)
         sterownik = sterownik_pola(enm, rekord["ref_id"])

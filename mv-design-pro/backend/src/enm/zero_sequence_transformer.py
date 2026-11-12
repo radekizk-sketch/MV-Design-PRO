@@ -66,7 +66,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING
 
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
@@ -83,6 +83,9 @@ from network_model.pochodne import (
 
 from .grupa_polaczen import parsuj_grupe_polaczen
 from .models import GroundingConfig, Transformer
+
+if TYPE_CHECKING:
+    from network_model.whitebox.tracer import WhiteBoxTracer
 from .nazwy_elementow import nazwa_elementu
 from .punkt_neutralny_zespolu import (
     WyposazeniePunktuNeutralnego,
@@ -281,7 +284,7 @@ def _zn_zespolu(
 
 
 def _slad_zespolu(
-    tracer: Any,
+    tracer: WhiteBoxTracer,
     trafo: Transformer,
     nazwa: str,
     wyposazenie: WyposazeniePunktuNeutralnego,
@@ -513,7 +516,7 @@ def build_transformer_zero_seq_model(
     )
 
 
-def _z0_zygzaka_pu(tracer: Any, trafo: Transformer, nazwa: str, strona: str) -> complex:
+def _z0_zygzaka_pu(tracer: WhiteBoxTracer, trafo: Transformer, nazwa: str, strona: str) -> complex:
     """Z_0 uzwojenia zygzakowego w per-unit na S_base z R0/X0 elementu (Ω na fazę na napięciu
     strony zygzaka); brakująca składowa — wartość robocza (ślad nazywa, która)."""
     u_kv = trafo.uhv_kv if strona == "HV" else trafo.ulv_kv

@@ -204,7 +204,7 @@ from .uziemienie import blad_konfiguracji_uziemienia
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
-from .zabezpieczenie import aparaty_sterownika, kody_funkcji_pola
+from .zabezpieczenie import aparaty_sterownika, kody_funkcji_pola, zdejmij_uklady_bez_wejsc
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
     TYPY_ODCINKA_TERENOWEGO,
@@ -12594,10 +12594,7 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             for klucz in ("ct_ref", "vt_ref", "i0_ct_ref", "u0_vt_ref"):
                 if wejscia.get(klucz) in usuniete_aparaty:
                     wejscia.pop(klucz)
-            if wejscia.get("i0_uklad") == "FERRANTI" and not wejscia.get("i0_ct_ref"):
-                wejscia.pop("i0_uklad")
-            if wejscia.get("u0_uklad") == "OTWARTY_TROJKAT" and not wejscia.get("u0_vt_ref"):
-                wejscia.pop("u0_uklad")
+            zdejmij_uklady_bez_wejsc(wejscia)
             wejscia["ct_strony_2_refs"] = [
                 r for r in wejscia.get("ct_strony_2_refs") or [] if r not in usuniete_aparaty
             ]

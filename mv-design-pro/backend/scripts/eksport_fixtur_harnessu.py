@@ -1374,8 +1374,6 @@ def pola_kart_katalogu() -> dict[str, Any]:
             # przekładnika, `przekladniki.NAZWY_PRZEZNACZENIA_PL`) — wartości kodowe karty.
             "przeznaczenie_rdzenia": dict(sorted(NAZWY_PRZEZNACZENIA_PL.items())),
             "catalog_status": sorted(s.value for s in CatalogStatus),
-            # Przeznaczenie rdzenia CT / uzwojenia VT (`przekladniki.NAZWY_PRZEZNACZENIA_PL`).
-            "przeznaczenie_rdzenia": dict(sorted(NAZWY_PRZEZNACZENIA_PL.items())),
             # Izolacja kabla w MODELU (`Cable.insulation`) — dziedzina szersza niż katalog
             # (izolacja papierowa kabli istniejących); karta elementu nazywa ją tym samym
             # słownikiem co kartę katalogu (`insulation_type`).

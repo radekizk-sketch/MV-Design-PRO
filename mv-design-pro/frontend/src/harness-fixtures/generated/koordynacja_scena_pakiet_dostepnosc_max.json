@@ -11,8 +11,8 @@
       },
       "nazwa": "Magistrala GPZ (2) (2) (1)",
       "odmowa_zacisku": {
-        "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
+        "kod": "protection.relay_terminal_choice_missing",
+        "powod_pl": "Model ma zabezpieczenia w szeregu z oboma zaciskami gałęzi (gałąź zasilana dwustronnie albo pierścień) — wskaż zacisk, którego dotyczą nastawy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
       },
       "wymaga_wskazania_zacisku": true,
       "zacisk_z_modelu": null,
@@ -41,8 +41,8 @@
       },
       "nazwa": "Magistrala GPZ (2) (2) (2) (1)",
       "odmowa_zacisku": {
-        "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
+        "kod": "protection.relay_terminal_choice_missing",
+        "powod_pl": "Model ma zabezpieczenia w szeregu z oboma zaciskami gałęzi (gałąź zasilana dwustronnie albo pierścień) — wskaż zacisk, którego dotyczą nastawy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
       },
       "wymaga_wskazania_zacisku": true,
       "zacisk_z_modelu": null,

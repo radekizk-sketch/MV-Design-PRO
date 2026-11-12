@@ -27,6 +27,7 @@ from application.project_archive.service import ProjectArchiveService
 from domain.archive_diff import compare_archives
 from domain.incremental_archive import SectionChangeStatus
 from domain.project_archive import (
+    NAZWY_SEKCJI_ARCHIWUM_PL,
     ArchiveImportStatus,
     compute_hash,
 )
@@ -294,7 +295,13 @@ def test_naruszona_sekcja_scenariuszy_odmawia_importu(
     tresc = json.dumps(odp.json(), ensure_ascii=False)
     assert odp.status_code in {200, 400, 422}, odp.text
     assert "FAILED" in tresc or odp.status_code != 200, tresc
-    assert "scenariusze" in tresc
+    # Odmowa wskazuje sekcję scenariuszy: błąd integralności (treść albo odcisk) nazywa sekcję
+    # nazwą polską z jednego słownika (`NAZWY_SEKCJI_ARCHIWUM_PL`), błąd struktury rejestru —
+    # ścieżką pola w archiwum (`ArchiveStructureError.sciezka`, ta sama w komunikacie).
+    if naruszenie == "rejestr_bez_rewizji":
+        assert "scenariusze.rejestry[0].rewizje" in tresc, tresc
+    else:
+        assert NAZWY_SEKCJI_ARCHIWUM_PL["scenariusze"] in tresc, tresc
     assert klient.get("/api/projects").json()["total"] == projekty_przed
 
 

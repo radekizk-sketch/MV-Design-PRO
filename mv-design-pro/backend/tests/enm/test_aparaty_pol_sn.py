@@ -33,6 +33,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import reset_enm_store, set_enm
 from enm.wyposazenie_pola import dane_przyjete_wyposazenia
+from enm.zabezpieczenie import kody_funkcji_pola
 from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY, SZABLON_KANONICZNY_ROLI
 
 from tests.enm.siec_lacznikowa import _gpz, _kable, _odcinki, wykonaj
@@ -188,7 +189,7 @@ def _sprawdz_pole(
                 assert stan == ("zamkniety" if zamknieta else "otwarty"), aparat
         assert aparat.get("stan_obiektu") == pole.get("stan_obiektu")
     # Funkcje EAZ z TEGO szablonu, z którego są aparaty (para predykatów z jednego źródła).
-    kody = pole.get("protection_codes") or []
+    kody = kody_funkcji_pola(enm, pole["ref_id"])
     if wylacznikowe and not gpz:
         # Funkcje szablonu; kierunkowa ziemnozwarciowa 67N jest warunkowa (potwierdzone źródło
         # 3U₀ pola, `enm.zrodlo_napiecia_zerowego`) — pole nowe jej nie ma.
@@ -275,7 +276,7 @@ def test_add_sn_bay_pole_zrodlowe_oze_w_stacji(konstrukcja: str) -> None:
     ] == [(glowny, ref_galezi)]
     # 67N warunkowa (potwierdzone źródło 3U₀) — pole nowe jej nie ma.
     szablonu = SZABLON_KANONICZNY_ROLI["OZE"].funkcje_eaz
-    assert pole["protection_codes"] == [k for k in szablonu if k != "67N"]
+    assert kody_funkcji_pola(enm, pole["ref_id"]) == [k for k in szablonu if k != "67N"]
 
 
 @pytest.mark.parametrize("konstrukcja", sorted(KONSTRUKCJE))

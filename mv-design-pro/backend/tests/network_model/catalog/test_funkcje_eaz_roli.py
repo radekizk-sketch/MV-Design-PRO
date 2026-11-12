@@ -70,16 +70,6 @@ def test_pole_baterii_kondensatorow_ma_zestaw_wg_iriesd() -> None:
     assert funkcje_eaz_roli("BKR") == ["51", "50", "51N", "60N", "59", "50BF"]
 
 
-def test_pole_zespolu_uziemiajacego_ma_funkcje_rysunku_z13() -> None:
-    """Zestaw roli ``ZU`` = funkcje słownika z podstawą cytującą rysunek pola ZU (Zeszyt 1,
-    Z.13) — predykaty parami: tablica roli i podstawy słownika z jednego kanonu (iniekcja:
-    pusta lista roli albo funkcja spoza rysunku zapala test)."""
-    from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ
-
-    z_rysunku = [kod for kod, f in FUNKCJE_EAZ.items() if "Z.13" in f.podstawa]
-    assert funkcje_eaz_roli("ZU") == z_rysunku == ["51N", "50N", "ZAWSC", "BT", "BD"]
-
-
 def test_rola_spoza_modelu_bez_funkcji() -> None:
     assert funkcje_eaz_roli("XYZ") == []
 

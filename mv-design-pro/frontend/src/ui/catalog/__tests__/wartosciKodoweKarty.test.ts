@@ -14,7 +14,6 @@ import wyrocznia from '../../../harness-fixtures/generated/pola_kart_katalogu.js
 import { NAZWA_PRZEZNACZENIA_RDZENIA_PL } from '../../../types/przekladniki';
 import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
 import {
-  NAZWA_PRZEZNACZENIA_RDZENIA_PL,
   NAZWA_RODZAJU_APARATU_PL,
   POLA_KODOWE_KARTY,
   RODZAJE_APARATU_SN,
