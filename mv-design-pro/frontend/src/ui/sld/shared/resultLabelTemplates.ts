@@ -31,8 +31,8 @@
  * do rejestru poniżej — na kanwie widoczne top-N wg LOD (cap 3), pełny zestaw
  * dostępny w inspektorze/overlay.
  */
-import type { RawMetricValue } from '../../../sld-overlay/rawResultOverlayStore';
-import { formatMagnitudeKa } from '../../../sld-overlay/FaultContributionArrow';
+import type { RawMetricValue } from '../../sld-overlay/rawResultOverlayStore';
+import { formatMagnitudeKa } from '../../sld-overlay/FaultContributionArrow';
 
 /** Klasa elementu, do którego zakotwiczona jest etykieta (strategia kotwiczenia
  *  w rendererze: szyna/przęsło → środek biegu odcinka; TR/źródło → pod symbolem). */
@@ -67,6 +67,9 @@ export interface ResultLabelLine {
 export interface ResultLabelLineSpec {
   readonly code: string;
   readonly prefix: string;
+  /** Pełna polska nazwa wielkości (inspektor, tabele) — z TEGO SAMEGO wpisu co podpis kanwy,
+   *  więc kanwa i inspektor czytają jeden wykaz kodów (karta INSPEKTOR-I-NAWIGACJA, P0 (b)). */
+  readonly nazwaPl: string;
   /** Wielkość filtrowana linii (wym. 17) — JEDNO źródło prawdy z podpisem: tabela filtra
    *  (`resultLabelLineQuantity`) jest budowana z tych par, więc podpis szablonu nie może
    *  rozjechać się z wpisem tabeli (predykaty parami, reguła KLASA NIE INSTANCJA). */
@@ -200,28 +203,28 @@ export function applyDeltaSign(formattedBody: string, diff: number): string {
 
 /** Rozpływ — szyna (węzeł): napięcie najważniejsze (L1), kąt δ drugorzędny. */
 const LF_BUS: readonly ResultLabelLineSpec[] = [
-  { code: 'U_kV', prefix: 'U', quantity: 'U', format: formatScalar },
-  { code: 'V_PU', prefix: 'U', quantity: 'U', format: formatScalar, skipIfAnyPresent: ['U_kV'] },
-  { code: 'ANGLE_DEG', prefix: 'δ', quantity: 'U', format: formatScalar },
+  { code: 'U_kV', prefix: 'U', nazwaPl: 'Napięcie', quantity: 'U', format: formatScalar },
+  { code: 'V_PU', prefix: 'U', nazwaPl: 'Napięcie względne', quantity: 'U', format: formatScalar, skipIfAnyPresent: ['U_kV'] },
+  { code: 'ANGLE_DEG', prefix: 'δ', nazwaPl: 'Kąt fazowy napięcia', quantity: 'U', format: formatScalar },
 ];
 
 /** Rozpływ — transformator: obciążenie [%] najważniejsze (L1, wym. 5), potem
  *  moc pozorna S i straty ΔP. Pozycja zaczepu = ISTNIEJĄCY badge OLTC (nie
  *  dublujemy tutaj — §0.5). */
 const LF_TRANSFORMER: readonly ResultLabelLineSpec[] = [
-  { code: 'LOADING_PCT', prefix: 'obc.', quantity: 'loading', format: formatScalar },
-  { code: 'S_MVA', prefix: 'S', quantity: 'S', format: formatScalar },
-  { code: 'LOSSES_P_MW', prefix: 'ΔP', quantity: 'P', format: formatScalar },
+  { code: 'LOADING_PCT', prefix: 'obc.', nazwaPl: 'Obciążenie', quantity: 'loading', format: formatScalar },
+  { code: 'S_MVA', prefix: 'S', nazwaPl: 'Moc pozorna', quantity: 'S', format: formatScalar },
+  { code: 'LOSSES_P_MW', prefix: 'ΔP', nazwaPl: 'Straty mocy czynnej', quantity: 'P', format: formatScalar },
 ];
 
 /** Rozpływ — źródło/DER: moc czynna P (L1, ZE ZNAKIEM), moc bierna Q
  *  (wym. 4 — obowiązkowo dostępna), moc pozorna S, współczynnik mocy cosφ
  *  (LF-KONTRAKT V12K-161 — pochodna |P|/|S| z bilansu węzła źródłowego). */
 const LF_SOURCE: readonly ResultLabelLineSpec[] = [
-  { code: 'P_MW', prefix: 'P', quantity: 'P', format: formatSignedScalar },
-  { code: 'Q_Mvar', prefix: 'Q', quantity: 'Q', format: formatSignedScalar },
-  { code: 'S_MVA', prefix: 'S', quantity: 'S', format: formatScalar },
-  { code: 'COS_PHI', prefix: PODPIS_COS_PHI, quantity: 'P', format: formatDimensionless },
+  { code: 'P_MW', prefix: 'P', nazwaPl: 'Moc czynna', quantity: 'P', format: formatSignedScalar },
+  { code: 'Q_Mvar', prefix: 'Q', nazwaPl: 'Moc bierna', quantity: 'Q', format: formatSignedScalar },
+  { code: 'S_MVA', prefix: 'S', nazwaPl: 'Moc pozorna', quantity: 'S', format: formatScalar },
+  { code: 'COS_PHI', prefix: PODPIS_COS_PHI, nazwaPl: 'Współczynnik mocy', quantity: 'P', format: formatDimensionless },
 ];
 
 /** Rozpływ — linia/kabel: obciążenie [%] (L1, wym. 5), prąd I, moc czynna P
@@ -229,12 +232,12 @@ const LF_SOURCE: readonly ResultLabelLineSpec[] = [
  *  V12K-161 — pochodne z wyniku solvera; na kanwie top-N wg LOD, pełny zestaw
  *  w inspektorze). */
 const LF_BRANCH: readonly ResultLabelLineSpec[] = [
-  { code: 'LOADING_PCT', prefix: 'obc.', quantity: 'loading', format: formatScalar },
-  { code: 'I_A', prefix: 'I', quantity: 'I', format: formatScalar },
-  { code: 'P_MW', prefix: 'P', quantity: 'P', format: formatSignedScalar },
-  { code: 'Q_Mvar', prefix: 'Q', quantity: 'Q', format: formatSignedScalar },
-  { code: 'DELTA_U_PCT', prefix: 'ΔU', quantity: 'U', format: formatScalar },
-  { code: 'COS_PHI', prefix: PODPIS_COS_PHI, quantity: 'P', format: formatDimensionless },
+  { code: 'LOADING_PCT', prefix: 'obc.', nazwaPl: 'Obciążenie', quantity: 'loading', format: formatScalar },
+  { code: 'I_A', prefix: 'I', nazwaPl: 'Prąd', quantity: 'I', format: formatScalar },
+  { code: 'P_MW', prefix: 'P', nazwaPl: 'Moc czynna', quantity: 'P', format: formatSignedScalar },
+  { code: 'Q_Mvar', prefix: 'Q', nazwaPl: 'Moc bierna', quantity: 'Q', format: formatSignedScalar },
+  { code: 'DELTA_U_PCT', prefix: 'ΔU', nazwaPl: 'Spadek napięcia', quantity: 'U', format: formatScalar },
+  { code: 'COS_PHI', prefix: PODPIS_COS_PHI, nazwaPl: 'Współczynnik mocy', quantity: 'P', format: formatDimensionless },
 ];
 
 /** Zwarcie — szyna (węzeł): prąd początkowy Ik″ (L1), prąd udarowy ip, prąd
@@ -249,10 +252,10 @@ const LF_BRANCH: readonly ResultLabelLineSpec[] = [
  *  strzałkami wkładu (`FaultContributionArrow`), duplikacja zakazana
  *  (reużycie zamiast dublowania). Patrz rejestr braków R4. */
 const SC_BUS: readonly ResultLabelLineSpec[] = [
-  { code: 'IK_3F_A', prefix: PODPIS_IK, quantity: 'I', format: formatCurrent },
-  { code: 'IP_A', prefix: PODPIS_IP, quantity: 'I', format: formatCurrent },
-  { code: 'ITH_A', prefix: PODPIS_ITH, quantity: 'I', format: formatCurrent },
-  { code: 'SK_MVA', prefix: PODPIS_SK, quantity: 'S', format: formatScalar },
+  { code: 'IK_3F_A', prefix: PODPIS_IK, nazwaPl: 'Prąd zwarciowy początkowy', quantity: 'I', format: formatCurrent },
+  { code: 'IP_A', prefix: PODPIS_IP, nazwaPl: 'Prąd zwarciowy udarowy', quantity: 'I', format: formatCurrent },
+  { code: 'ITH_A', prefix: PODPIS_ITH, nazwaPl: 'Prąd zwarciowy cieplny zastępczy', quantity: 'I', format: formatCurrent },
+  { code: 'SK_MVA', prefix: PODPIS_SK, nazwaPl: 'Moc zwarciowa początkowa', quantity: 'S', format: formatScalar },
 ];
 
 /** NAKŁADKA RÓŻNIC A/B — szyna (punkt zwarcia). Kolejność = priorytet: różnica
@@ -270,15 +273,15 @@ const SC_BUS: readonly ResultLabelLineSpec[] = [
  *  spadek); wartości B bez znaku (wielkości bezwzględne). Wartości i jednostki
  *  1:1 z backendu — ZERO arytmetyki w tej warstwie. */
 const SC_DELTA_BUS: readonly ResultLabelLineSpec[] = [
-  { code: 'DELTA_IK_3F_KA', prefix: `Δ ${PODPIS_IK}`, quantity: 'I', format: formatSignedScalar },
-  { code: 'B_IK_3F_KA', prefix: `${PODPIS_IK} (B)`, quantity: 'I', format: formatCurrent },
-  { code: 'DELTA_IK_3F_PCT', prefix: `Δ ${PODPIS_IK} %`, quantity: 'I', format: formatSignedScalar },
-  { code: 'DELTA_IP_KA', prefix: `Δ ${PODPIS_IP}`, quantity: 'I', format: formatSignedScalar },
-  { code: 'B_IP_KA', prefix: `${PODPIS_IP} (B)`, quantity: 'I', format: formatCurrent },
-  { code: 'DELTA_ITH_KA', prefix: `Δ ${PODPIS_ITH}`, quantity: 'I', format: formatSignedScalar },
-  { code: 'B_ITH_KA', prefix: `${PODPIS_ITH} (B)`, quantity: 'I', format: formatCurrent },
-  { code: 'DELTA_SK_MVA', prefix: `Δ ${PODPIS_SK}`, quantity: 'S', format: formatSignedScalar },
-  { code: 'B_SK_MVA', prefix: `${PODPIS_SK} (B)`, quantity: 'S', format: formatScalar },
+  { code: 'DELTA_IK_3F_KA', nazwaPl: 'Różnica prądu zwarciowego początkowego', prefix: `Δ ${PODPIS_IK}`, quantity: 'I', format: formatSignedScalar },
+  { code: 'B_IK_3F_KA', nazwaPl: 'Prąd zwarciowy początkowy przebiegu B', prefix: `${PODPIS_IK} (B)`, quantity: 'I', format: formatCurrent },
+  { code: 'DELTA_IK_3F_PCT', nazwaPl: 'Różnica względna prądu zwarciowego początkowego', prefix: `Δ ${PODPIS_IK} %`, quantity: 'I', format: formatSignedScalar },
+  { code: 'DELTA_IP_KA', nazwaPl: 'Różnica prądu zwarciowego udarowego', prefix: `Δ ${PODPIS_IP}`, quantity: 'I', format: formatSignedScalar },
+  { code: 'B_IP_KA', nazwaPl: 'Prąd zwarciowy udarowy przebiegu B', prefix: `${PODPIS_IP} (B)`, quantity: 'I', format: formatCurrent },
+  { code: 'DELTA_ITH_KA', nazwaPl: 'Różnica prądu zwarciowego cieplnego', prefix: `Δ ${PODPIS_ITH}`, quantity: 'I', format: formatSignedScalar },
+  { code: 'B_ITH_KA', nazwaPl: 'Prąd zwarciowy cieplny przebiegu B', prefix: `${PODPIS_ITH} (B)`, quantity: 'I', format: formatCurrent },
+  { code: 'DELTA_SK_MVA', nazwaPl: 'Różnica mocy zwarciowej', prefix: `Δ ${PODPIS_SK}`, quantity: 'S', format: formatSignedScalar },
+  { code: 'B_SK_MVA', nazwaPl: 'Moc zwarciowa przebiegu B', prefix: `${PODPIS_SK} (B)`, quantity: 'S', format: formatScalar },
 ];
 
 /** Rejestr szablonów: `analysis → kind → specyfikacje`. Brak wpisu (analiza lub

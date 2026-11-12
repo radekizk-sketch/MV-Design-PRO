@@ -29,7 +29,13 @@ import { sterownikPola } from '../../shared/sterownikZabezpieczen';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers, stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { getMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
-import { formatScalar } from '../v3/canvas/resultLabelTemplates';
+import {
+  normalizeResultLabelAnalysis,
+  selectResultLabelSpecs,
+  type ResultLabelAnalysis,
+  type ResultLabelKind,
+} from './resultLabelTemplates';
+import { pickStationBus } from './stationBusResolution';
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
 import { projectBayPrimaryDevices } from '../v2/canvas/enmToSldAdapter';
 import {
@@ -40,7 +46,6 @@ import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../s
 import { apparatusIdentifiers, orderedSymbolPrimaryDevices, symbolAparatuPola } from '../v3/compose/apparatusSequence';
 import type { PreviewElementKind } from '../v3/compose/preview';
 import { jestRodzajemGaleziAparatu } from '../../../types/rodzajeGalezi';
-import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 /**
  * Rodzaj obiektu, dla którego inspektor elementu (prawy panel, `PanelElementuKanwy`)
@@ -96,6 +101,9 @@ export interface DaneElementuKanwy {
   readonly liveMetrics?: ReadonlyArray<{
     readonly code: string;
     readonly label: string;
+    /** Oznaczenie wielkości (np. `$I_{k}''$`, „U") — ten sam podpis co etykieta kanwy;
+     *  `null` dla wielkości bez oznaczenia (obciążenie). */
+    readonly symbol: string | null;
     readonly value: string;
   }>;
   /** K30-98: breadcrumb context — parent station label (Stacja › Pole). */
@@ -140,48 +148,101 @@ export function findSubstationByRef(
   );
 }
 
-/** Etykiety polskie wielkości wynikowych elementu — klucz = kod metryki nakładki
- *  wyników (`RawOverlayPayload.elements[ref].metrics`). Wartość i jednostka zawsze
- *  z backendu, zapis polski tym samym formaterem co etykiety wyników na kanwie
- *  (`formatScalar`), tu wyłącznie nazwa wielkości. */
-const ETYKIETA_METRYKI_PL: Readonly<Record<string, string>> = {
-  U_kV: 'Napięcie U',
-  U_pu: 'Napięcie względne U',
-  P_MW: 'Moc czynna P',
-  Q_Mvar: 'Moc bierna Q',
-  I_A: 'Prąd I',
+/**
+ * Klasa rejestru wielkości wynikowych (`resultLabelTemplates.ts` — JEDEN wykaz kodów dla
+ * kanwy i inspektora) dla rodzaju obiektu kanwy. Pole SN nie jest punktem wyniku (wynik
+ * należy do jego szyny albo aparatu) — `null`.
+ */
+const KLASA_WYNIKU: Readonly<Record<NonNullable<RodzajElementuKanwy>, ResultLabelKind | null>> = {
+  station: 'bus',
+  bus: 'bus',
+  node: 'bus',
+  transformer: 'transformer',
+  generator: 'source',
+  grid_source: 'source',
+  der: 'source',
+  cable_run: 'branch',
+  apparatus: 'branch',
+  bay: null,
 };
 
+/** Klasa wyniku obiektu bez rodzaju kanwy (wskazanie spoza kanwy) — z kolekcji modelu. */
+function klasaWynikuZModelu(snapshot: EnergyNetworkModel | null, ref: string): ResultLabelKind | null {
+  const jest = (lista: ReadonlyArray<{ ref_id: string; id?: string }> | undefined): boolean =>
+    (lista ?? []).some((el) => el.ref_id === ref || el.id === ref);
+  if (jest(snapshot?.buses)) return 'bus';
+  if (jest(snapshot?.transformers)) return 'transformer';
+  if (jest(snapshot?.generators) || jest(snapshot?.sources)) return 'source';
+  if (jest(snapshot?.branches)) return 'branch';
+  return null;
+}
+
 /**
- * K30-84 → UI-02b: wielkości wynikowe elementu (U, U wzgl., P, Q, I) z nakładki wyników
- * aktywnego przebiegu (`RawOverlayPayload`, LF/SC) — sekcja „Wyniki" inspektora elementu.
- * `undefined` = brak payloadu albo brak wielkości dla tego refu (inspektor pokazuje stan
- * „brak", nigdy zero). Stacja czyta szynę SN `⟨stacja⟩/sn_bus`.
- *
- * Bez kolorowania odchyłki napięcia: dawne progi ±5 % / ±10 % zaszyte w tym module były
- * werdyktem bez kryterium, podstawy i marginesu (kontrakt werdyktu wyjaśnialnego) —
- * ocenę napięć wydaje analiza profilu napięć backendu, nie warstwa prezentacji.
+ * Ref punktu wyniku obiektu: stacja → jej szyna SN wybrana z modelu (`pickStationBus`, ta sama
+ * reguła co rysunek), każdy inny obiekt → własny ref. Bez składania refu z sufiksu.
  */
+function refPunktuWyniku(snapshot: EnergyNetworkModel | null, rodzaj: DaneElementuKanwy['kind'], elementId: string): string | null {
+  if (rodzaj !== 'station') return elementId;
+  const stacja = findSubstationByRef(snapshot, elementId);
+  if (!stacja) return null;
+  const szyny = new Map((snapshot?.buses ?? []).map((b) => [b.ref_id, b] as const));
+  return pickStationBus(stacja, szyny, 'sn').ref;
+}
+
+/** Odczyt wielkości obiektu z nakładki wyników: analiza, klasa i lista wielkości. */
+export interface OdczytWynikuElementu {
+  readonly analiza: ResultLabelAnalysis | null;
+  readonly klasa: ResultLabelKind | null;
+  /** Czy nakładka ma w ogóle wpis punktu wyniku obiektu. */
+  readonly punktWWyniku: boolean;
+  readonly metryki: NonNullable<DaneElementuKanwy['liveMetrics']>;
+}
+
+/**
+ * Wielkości wynikowe obiektu z nakładki wyników przebiegu — KODY, KOLEJNOŚĆ, PODPISY i FORMAT
+ * z rejestru wspólnego z etykietami kanwy (analiza × klasa obiektu), pełny zestaw (bez cięcia
+ * wg poziomu szczegółu). Karta INSPEKTOR-I-NAWIGACJA, P0 (b): dawna lista zaszyta tutaj
+ * (P, Q, I, U) nie znała kodów zwarciowych — tabela zwarć i kanwa pokazywały Ik″ szyny,
+ * a inspektor „brak wielkości"; stacja pytała o `U_pu`, którego backend nie emituje (`V_PU`).
+ * Wielkość bez wartości liczbowej nie dostaje wiersza (uczciwy brak, nie „—").
+ */
+export function odczytWynikuElementu(
+  payload: RawOverlayPayload | null,
+  snapshot: EnergyNetworkModel | null,
+  rodzaj: DaneElementuKanwy['kind'],
+  elementId: string,
+): OdczytWynikuElementu {
+  const analiza = payload ? normalizeResultLabelAnalysis(payload.analysis_type) : null;
+  const klasa = rodzaj ? KLASA_WYNIKU[rodzaj] : klasaWynikuZModelu(snapshot, elementId);
+  const ref = refPunktuWyniku(snapshot, rodzaj, elementId);
+  const punktWWyniku = Boolean(payload && ref && payload.elements[ref]);
+  const metryki: Array<{ code: string; label: string; symbol: string | null; value: string }> = [];
+  if (payload && ref && klasa) {
+    const obecne = new Set<string>();
+    for (const spec of selectResultLabelSpecs(analiza, klasa)) {
+      if (spec.skipIfAnyPresent?.some((kod) => obecne.has(kod))) continue;
+      const m = getMetric(payload, ref, spec.code);
+      if (!m || typeof m.value !== 'number' || !Number.isFinite(m.value)) continue;
+      obecne.add(spec.code);
+      metryki.push({
+        code: spec.code,
+        label: spec.nazwaPl,
+        symbol: spec.quantity === 'loading' ? null : spec.prefix,
+        value: spec.format(m),
+      });
+    }
+  }
+  return { analiza, klasa, punktWWyniku, metryki };
+}
+
+/** Lista wielkości obiektu (`undefined` — brak), dla danych panelu z kanwy. */
 export function buildLiveMetrics(
   payload: RawOverlayPayload | null,
+  snapshot: EnergyNetworkModel | null,
   rodzaj: DaneElementuKanwy['kind'],
   elementId: string,
 ): DaneElementuKanwy['liveMetrics'] {
-  if (!payload) return undefined;
-  const ref = rodzaj === 'station'
-    ? elementId.endsWith('/station')
-      ? `${elementId.slice(0, -'/station'.length)}/sn_bus`
-      : `${elementId}/sn_bus`
-    : elementId;
-  const kody = rodzaj === 'station' ? ['U_kV', 'U_pu'] : ['P_MW', 'Q_Mvar', 'I_A', 'U_kV'];
-  const metryki: Array<{ code: string; label: string; value: string }> = [];
-  for (const code of kody) {
-    const m = getMetric(payload, ref, code);
-    // Wielkość bez wartości liczbowej nie dostaje wiersza (uczciwy brak, nie „—").
-    if (m && typeof m.value === 'number' && Number.isFinite(m.value)) {
-      metryki.push({ code, label: etykietaZeSlownika(ETYKIETA_METRYKI_PL, code), value: formatScalar(m) });
-    }
-  }
+  const { metryki } = odczytWynikuElementu(payload, snapshot, rodzaj, elementId);
   return metryki.length > 0 ? metryki : undefined;
 }
 
@@ -216,7 +277,7 @@ export function buildDaneStacji(
       ?? stacjaSld?.stationCode
       ?? nazwaObiektuPl(null, 'stacja', miejsceWKolekcji(snapshot?.substations, stationId)),
     stationCode: stacjaSld?.stationCode ?? null,
-    liveMetrics: buildLiveMetrics(overlayPayload, 'station', stationId),
+    liveMetrics: buildLiveMetrics(overlayPayload, snapshot, 'station', stationId),
   };
 }
 
@@ -296,7 +357,7 @@ export function buildDaneCiaguSn(
     kind: 'cable_run',
     elementId: elementRef,
     label: elementName,
-    liveMetrics: buildLiveMetrics(overlayPayload, 'cable_run', elementRef),
+    liveMetrics: buildLiveMetrics(overlayPayload, snapshot, 'cable_run', elementRef),
   };
 }
 
@@ -345,7 +406,7 @@ export function buildDaneWezlaSn(
       catalogRef: branchPointAny?.catalog_ref ?? null,
       blockers: branchPointAny?.catalog_ref ? [] : ['Brak pozycji katalogowej węzła SN.'],
     },
-    liveMetrics: buildLiveMetrics(overlayPayload, 'apparatus', elementRef),
+    liveMetrics: buildLiveMetrics(overlayPayload, snapshot, 'node', elementRef),
   };
 }
 
@@ -582,7 +643,7 @@ export function buildDaneElementuStacji(
           ?? nazwaElementuZModelu(snapshot, id)
           ?? nazwaZRodzajemPl(null, rodzaj ? RODZAJ_ELEMENTU_KANWY_PL[rodzaj] : ''),
         stationCode: stationContext?.stationCode ?? null,
-        liveMetrics: buildLiveMetrics(overlayPayload, rodzaj, id),
+        liveMetrics: buildLiveMetrics(overlayPayload, snapshot, rodzaj, id),
         apparatusState,
         parentStationLabel,
         parentBayLabel,
@@ -665,7 +726,7 @@ export function buildDaneObiektuModelu(
     kind: rodzaj,
     elementId: element.ref_id,
     label: publicTechnicalLabel(element.name, domyslna),
-    liveMetrics: buildLiveMetrics(overlayPayload, rodzaj, element.ref_id),
+    liveMetrics: buildLiveMetrics(overlayPayload, snapshot, rodzaj, element.ref_id),
   };
 }
 

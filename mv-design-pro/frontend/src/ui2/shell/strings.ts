@@ -45,8 +45,8 @@ export const SHELL_STRINGS = {
     'Pokaż identyfikatory techniczne, odciski danych, ślady obliczeń i zakładki analiz akademickich',
   toggleLeft: 'Panel nawigacji',
   toggleRight: 'Inspektor',
-  inspectorWide: 'Tryb szeroki inspektora',
-  inspectorWideButton: 'Tryb szeroki',
+  inspectorWide: 'Rozszerz panel inspektora',
+  inspectorWideButton: 'Rozszerz panel',
   inspectorWideHint:
     'Inspektor 560 px — pełne tabele karty technicznej. Ponowne polecenie przywraca szerokość 340–420 px.',
   toggleBottom: 'Panel dolny',

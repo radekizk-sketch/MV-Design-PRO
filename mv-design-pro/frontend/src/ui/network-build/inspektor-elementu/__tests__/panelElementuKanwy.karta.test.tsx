@@ -129,7 +129,7 @@ describe.each(PRZYPADKI)('inspektor — karta techniczna: $nazwa', (przypadek) =
     kliknij(przypadek);
     const zwiniete = screen.getByTestId('inspektor-dzialania-zwiniete') as HTMLDetailsElement;
     expect(zwiniete.open).toBe(false);
-    expect(screen.getByTestId('inspektor-dzialania-rozwin').textContent).toMatch(/^Działania \(\d+\)$/);
+    expect(screen.getByTestId('inspektor-dzialania-rozwin').textContent).toMatch(/^Dostępne czynności \(\d+\)$/);
     fireEvent.click(screen.getByTestId('inspektor-dzialania-rozwin'));
     expect(zwiniete.open).toBe(true);
   });

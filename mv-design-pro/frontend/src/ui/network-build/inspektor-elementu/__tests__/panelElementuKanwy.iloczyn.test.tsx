@@ -3,7 +3,10 @@
  *
  *   rodzaj obiektu {stacja · pole · aparat · transformator · źródło OZE · odcinek · węzeł SN}
  *   × działanie {dostępne (klik ma skutek) · niedostępne z przyczyną (klik bez skutku)}
- *   × wyniki {brak · nieaktualne · wartość}.
+ *   × wyniki {brak · nieaktualne · wartość}
+ *   × analiza {rozpływ mocy · obliczenia zwarciowe} (karta INSPEKTOR-I-NAWIGACJA, P0 (b):
+ *     wykaz wielkości z rejestru wspólnego z etykietami kanwy; obiekt, dla którego analiza
+ *     nie wyznacza wielkości, dostaje przyczynę nazywającą analizę i obiekt).
  *
  * Ścieżka natywna: obiekt wskazuje KLIK w uchwyt trafienia kanwy (`data-hit-for`), nie
  * wymuszony stan selekcji — kanwa pisze selekcję i kontekst kliknięcia, inspektor czyta je
@@ -51,7 +54,7 @@ const SIEC_ZKSN = wczytaj('..', '..', '..', 'sld', 'v3', 'scene', '__tests__', '
 const SIEC_APARATOW = buildW1MatrixFixture().enm;
 
 /** Nakładka wyników z wielkościami dla KAŻDEGO refu modelu (i szyny SN stacji). */
-function nakladkaDlaModelu(enm: EnergyNetworkModel): RawOverlayPayload {
+function nakladkaDlaModelu(enm: EnergyNetworkModel, analiza: 'LOAD_FLOW' | 'SC_3F' = 'LOAD_FLOW'): RawOverlayPayload {
   const refy = new Set<string>();
   const zbierz = (wartosc: unknown): void => {
     if (Array.isArray(wartosc)) wartosc.forEach(zbierz);
@@ -72,16 +75,24 @@ function nakladkaDlaModelu(enm: EnergyNetworkModel): RawOverlayPayload {
       kind: 'element',
       badges: [],
       severity: 'INFO',
+      // Kody, które backend emituje (`result_builder_v1.METRYKI_ELEMENTOW_WYNIKU`) — zestaw
+      // obu analiz pod każdym refem: wykaz obiektu wybiera rejestr (analiza × klasa).
       metrics: {
         U_kV: metryka('U_kV', 15.12, 'kV'),
-        U_pu: metryka('U_pu', 1.008, 'p.u.'),
+        V_PU: metryka('V_PU', 1.008, 'p.u.'),
         P_MW: metryka('P_MW', 0.42, 'MW'),
         Q_Mvar: metryka('Q_Mvar', 0.11, 'Mvar'),
         I_A: metryka('I_A', 17.3, 'A'),
+        S_MVA: metryka('S_MVA', 0.44, 'MVA'),
+        LOADING_PCT: metryka('LOADING_PCT', 41.5, '%'),
+        IK_3F_A: metryka('IK_3F_A', 18496, 'A'),
+        IP_A: metryka('IP_A', 44120, 'A'),
+        ITH_A: metryka('ITH_A', 18800, 'A'),
+        SK_MVA: metryka('SK_MVA', 480.5, 'MVA'),
       },
     };
   }
-  return { run_id: 'run-iloczyn', analysis_type: 'LOAD_FLOW', elements };
+  return { run_id: 'run-iloczyn', analysis_type: analiza, elements };
 }
 
 type StanWynikow = 'brak' | 'nieaktualne' | 'wartosc';
@@ -93,7 +104,7 @@ type StanWynikow = 'brak' | 'nieaktualne' | 'wartosc';
  * nieaktualny). Nakładka kanwy (`rawResultOverlayStore`) dostaje ten sam payload — w
  * aplikacji pisze ją orkiestrator z tej samej pamięci.
  */
-function ustawWyniki(enm: EnergyNetworkModel, stan: StanWynikow): void {
+function ustawWyniki(enm: EnergyNetworkModel, stan: StanWynikow, analiza: 'LOAD_FLOW' | 'SC_3F' = 'LOAD_FLOW'): void {
   act(() => {
     // Status wyników PRZYPADKU (serwer) zostaje źródłem dostępności akcji „Pokaż wyniki"
     // (`kontekstDostepnosciAkcji`) — to werdykt przypadku, nie wybór biegu.
@@ -106,8 +117,8 @@ function ustawWyniki(enm: EnergyNetworkModel, stan: StanWynikow): void {
       useRawResultOverlayStore.getState().setPayload(null);
       return;
     }
-    const payload = nakladkaDlaModelu(enm);
-    useExecutionRunsStore.setState({ runs: [biegRejestru(payload.run_id, 'LOAD_FLOW')] });
+    const payload = nakladkaDlaModelu(enm, analiza);
+    useExecutionRunsStore.setState({ runs: [biegRejestru(payload.run_id, analiza)] });
     useSnapshotStore.setState({
       rewizjaBiezacegoModelu: stan === 'nieaktualne' ? REWIZJA_BIEGU + 1 : REWIZJA_BIEGU,
     });
@@ -269,12 +280,39 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
         const wiersze = within(sekcja).getAllByTestId(/^inspektor-wynik-/);
         expect(wiersze.length).toBeGreaterThan(0);
         // Liczby z nakładki wyników (format polski), nigdy wartość zastępcza.
-        expect(wiersze.map((w) => w.textContent).join(' ')).toMatch(/\d+,\d+ (kV|MW|Mvar|A|p\.u\.)/);
+        expect(wiersze.map((w) => w.textContent).join(' ')).toMatch(/\d+,\d+ (kV|MW|Mvar|MVA|A|%|p\.u\.)/);
         expect(wiersze.map((w) => w.textContent).join(' ')).not.toContain('—');
         expect(within(sekcja).queryByTestId('inspektor-wyniki-nieaktualne') !== null).toBe(stan === 'nieaktualne');
       }
     });
   }
+
+  // Obliczenia zwarciowe: wielkości węzłowe (Ik″, ip, Ith, Sk″) tylko dla punktów zwarcia
+  // (stacja → jej szyna SN, węzeł SN); gałąź, transformator, aparat i źródło dostają przyczynę
+  // z nazwą analizy i obiektu. Dawniej inspektor znał tylko kody rozpływu — szyna z Ik″ w
+  // tabeli zwarć i na kanwie miała w inspektorze „brak wielkości”.
+  it('obliczenia zwarciowe: wykaz z rejestru kanwy albo przyczyna z analizą i obiektem', () => {
+    kliknij();
+    ustawWyniki(przypadek.enm, 'wartosc', 'SC_3F');
+    const sekcja = screen.getByTestId('inspektor-wyniki');
+    expect(sekcja).toHaveAttribute('data-analiza', 'short_circuit');
+    expect(within(sekcja).getByTestId('inspektor-wyniki-tytul').textContent).toBe('Obliczenia zwarciowe');
+    const punktZwarcia = przypadek.rodzaj === 'station' || przypadek.rodzaj === 'node';
+    if (punktZwarcia) {
+      expect(sekcja).toHaveAttribute('data-stan', 'wartosc');
+      const kody = within(sekcja).getAllByTestId(/^inspektor-wynik-/).map((w) => w.getAttribute('data-testid'));
+      expect(kody).toEqual(['inspektor-wynik-IK_3F_A', 'inspektor-wynik-IP_A', 'inspektor-wynik-ITH_A', 'inspektor-wynik-SK_MVA']);
+      expect(within(sekcja).getByTestId('inspektor-wynik-IK_3F_A').textContent).toContain('18,5 kA');
+      expect(within(sekcja).getByTestId('inspektor-wynik-IK_3F_A').textContent).toContain('Prąd zwarciowy początkowy');
+    } else {
+      expect(sekcja).toHaveAttribute('data-stan', 'brak');
+      const powod = within(sekcja).getByTestId('inspektor-wyniki-brak').textContent ?? '';
+      expect(powod).toMatch(/^Obliczenia zwarciowe/);
+      expect(powod).not.toBe(POWOD_BRAK_PRZEBIEGU_PL);
+      // Przyczyna nazywa TEN obiekt — tą samą nazwą co nagłówek inspektora.
+      expect(powod).toContain(screen.getByTestId('inspektor-element-etykieta').textContent ?? '∅');
+    }
+  });
 
   if (przypadek.rodzaj === 'node') {
     it('działanie dostępne: wejście do karty węzła otwiera kartę ZK SN z refem węzła; brak paska działań (węzeł bez menu kanwy)', () => {

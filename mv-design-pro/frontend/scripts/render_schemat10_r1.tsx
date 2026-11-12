@@ -35,7 +35,7 @@ import { SYMBOL_DEFS, type SymbolId } from '../src/ui/sld/v3/symbols/defs';
 import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
 import { buildResultLabelsFromScene, orientedSegmentRefs } from '../src/ui/sld/v3/canvas/resultLabels';
 import { computeResultLabelPlacements } from '../src/ui/sld/v3/canvas/SldCanvasV3';
-import { resultLabelLinesForLod } from '../src/ui/sld/v3/canvas/resultLabelTemplates';
+import { resultLabelLinesForLod } from '../src/ui/sld/shared/resultLabelTemplates';
 import type { EnergyNetworkModel } from '../src/types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../src/ui/sld-overlay/rawResultOverlayStore';
 

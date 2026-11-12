@@ -110,7 +110,47 @@ describe('ElementCalculationProofPanel', () => {
     vi.unstubAllGlobals();
   });
 
-  it('odnośnik „Pełny LaTeX” wyłącznie przy eksporcie potwierdzonym przez serwer (brama UI-02)', async () => {
+  // Karta INSPEKTOR-I-NAWIGACJA: sekcja wisiała na „Wczytywanie…”, bo każde odświeżenie
+  // migawki modelu (nowa lista refów kandydackich) albo nowe zaznaczenie w trakcie pobierania
+  // anulowało odpowiedź i zaczynało pobranie od nowa. Iloczyn: (nowe refy kandydackie ×
+  // nowe zaznaczenie) × odpowiedź opóźniona względem odświeżeń. Dane przebiegu pobiera się
+  // raz na `runId`, dopasowanie do obiektu nie pobiera ponownie.
+  it('odświeżenia zaznaczenia i refów w trakcie pobierania nie zawieszają sekcji', async () => {
+    const zwolnij: Array<() => void> = [];
+    const bazowy = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/results/trace')) return new Response(JSON.stringify(tracePayload), { status: 200 });
+      if (url.endsWith('/results/short-circuit')) return new Response(JSON.stringify(shortCircuitPayload), { status: 200 });
+      return new Response(JSON.stringify({ run_id: 'run-1', formaty: [] }), { status: 200 });
+    });
+    const fetchMock = vi.fn((input: RequestInfo | URL) =>
+      new Promise<Response>((resolve) => {
+        zwolnij.push(() => void bazowy(input).then(resolve));
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { rerender } = render(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} candidateRefs={['bus-sn-1']} />,
+    );
+    expect(screen.getByText('Wczytywanie wyników zwarciowych…')).toBeInTheDocument();
+    rerender(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} candidateRefs={['bus-sn-1']} />,
+    );
+    rerender(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-other', name: 'Szyna SN 2', type: 'Bus' }} candidateRefs={['bus-other']} />,
+    );
+    rerender(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} candidateRefs={['bus-sn-1']} />,
+    );
+    const zapytaniaWyniku = () => fetchMock.mock.calls.filter(([u]) => String(u).endsWith('/results/short-circuit')).length;
+    expect(zapytaniaWyniku()).toBe(1);
+    for (const z of zwolnij.splice(0)) z();
+    expect(await screen.findByTestId('element-proof-short-circuit-table')).toBeInTheDocument();
+    expect(screen.queryByText('Wczytywanie wyników zwarciowych…')).toBeNull();
+    expect(screen.getByText('Obliczenia zwarciowe')).toBeInTheDocument();
+  });
+
+  it('odnośnik „Pokaż obliczenia” wyłącznie przy eksporcie potwierdzonym przez serwer (brama UI-02)', async () => {
     mockAnalysisFetch();
     const { unmount } = render(
       <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} />,
@@ -149,7 +189,7 @@ describe('ElementCalculationProofPanel', () => {
     expect(screen.getByText('Wyprowadzenie impedancji zastępczej')).toBeInTheDocument();
     expect(screen.getByText('Moduł impedancji')).toBeInTheDocument();
     expect(screen.getByText('Podstawienie modułu')).toBeInTheDocument();
-    expect(screen.getByText('Kroki wywodu obliczeniowego')).toBeInTheDocument();
+    expect(screen.getByText('Kroki obliczeń')).toBeInTheDocument();
     expect(screen.getByText('Dane wejściowe')).toBeInTheDocument();
     expect(screen.getByText('Podstawienie')).toBeInTheDocument();
     expect(screen.getByText('Wynik kroku')).toBeInTheDocument();

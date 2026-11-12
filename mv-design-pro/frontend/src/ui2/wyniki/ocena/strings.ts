@@ -76,7 +76,7 @@ export const OCENA_STRINGS = {
 
   // Działania (powiązania z siecią)
   dowodObliczen: 'Dowód obliczeń',
-  dowodObliczenOpis: 'Otwórz wywód obliczeń tego przebiegu dla wskazanego elementu',
+  dowodObliczenOpis: 'Pokaż obliczenia tego przebiegu dla wskazanego elementu',
 
   // Kryteria bez podstawy do oceny (pozycje bez elementów)
   bezPodstawTytul: 'Kryteria bez podstawy do oceny',

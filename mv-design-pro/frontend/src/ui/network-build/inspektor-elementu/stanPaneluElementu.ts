@@ -34,9 +34,12 @@ import { akcjeElementu } from '../../sld/shared/akcjeElementu';
 import {
   buildDaneElementuKanwy,
   buildDaneSzkicuDer,
-  buildLiveMetrics,
+  odczytWynikuElementu,
   type DaneElementuKanwy,
+  type RodzajElementuKanwy,
+  type OdczytWynikuElementu,
 } from '../../sld/shared/daneElementuKanwy';
+import { selectResultLabelSpecs, type ResultLabelAnalysis } from '../../sld/shared/resultLabelTemplates';
 import {
   kontekstDlaSelekcji,
   useKontekstElementuKanwy,
@@ -55,13 +58,42 @@ import {
 import { useKatalogiKarty } from './katalogiKarty';
 import type { ObslugaAkcjiKarty } from './KartaTechnicznaElementu';
 
-/** Bieg, z którego pochodzi sekcja „Wyniki" (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
+/** Nazwa rodzaju obiektu kanwy (nagłówek inspektora, zdanie przyczyny braku wyników). */
+export const NAZWA_RODZAJU: Readonly<Record<NonNullable<RodzajElementuKanwy>, string>> = {
+  station: 'Stacja SN/nN',
+  bay: 'Pole',
+  apparatus: 'Aparat',
+  transformer: 'Transformator',
+  der: 'Źródło rozproszone',
+  cable_run: 'Ciąg SN',
+  node: 'Węzeł sieci SN',
+  generator: 'Źródło OZE',
+  grid_source: 'Sieć zasilająca',
+  bus: 'Szyna',
+};
+
+const REF_WEWNETRZNY = /\b(?:stn|seg|gpz|bus|bay|pv|bess|fw|source)\/[^\s]+/i;
+
+function etykietaPubliczna(wartosc: string | null | undefined): wartosc is string {
+  return Boolean(wartosc && !REF_WEWNETRZNY.test(wartosc));
+}
+
+/** Nazwa obiektu na schemacie — publiczna etykieta, kod stacji albo nazwa rodzaju. */
+export function etykietaElementuKanwy(dane: DaneElementuKanwy): string {
+  if (etykietaPubliczna(dane.label)) return dane.label;
+  if (dane.kind === 'station' && dane.stationCode) return dane.stationCode;
+  return dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element schematu';
+}
+
+/** Bieg, z którego pochodzi sekcja wyników (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
 interface ZrodloWynikowElementu {
   readonly runId: string | null;
   readonly swiezosc: StanSwiezosciBiegu | null;
+  /** Rodzina analizy biegu (tytuł sekcji: „Obliczenia zwarciowe”, „Rozpływ mocy”…). */
+  readonly analiza: ResultLabelAnalysis | null;
 }
 
-/** Stan sekcji „Wyniki": brak / nieaktualne / wartość — bez wartości zastępczych. */
+/** Stan sekcji wyników: brak / nieaktualne / wartość — bez wartości zastępczych. */
 export type StanWynikowElementu =
   | ({ readonly stan: 'brak'; readonly powodPl: string } & ZrodloWynikowElementu)
   | ({
@@ -71,8 +103,53 @@ export type StanWynikowElementu =
 
 export const POWOD_BRAK_PRZEBIEGU_PL =
   'Brak wyników obliczeń aktywnego przypadku. Uruchom obliczenia, aby zobaczyć wielkości elementu.';
-export const POWOD_BRAK_WIELKOSCI_PL =
-  'Wynik aktywnego przebiegu nie zawiera wielkości dla tego elementu.';
+
+/** Tytuł sekcji wyników wg rodziny analizy biegu (karta INSPEKTOR-I-NAWIGACJA pkt 3). */
+export const TYTUL_WYNIKOW_PL: Readonly<Record<ResultLabelAnalysis, string>> = {
+  short_circuit: 'Obliczenia zwarciowe',
+  load_flow: 'Rozpływ mocy',
+  short_circuit_delta: 'Porównanie zwarć A/B',
+};
+
+/** Rodzaj obiektu w dopełniaczu — zdanie przyczyny („… dla szyny Szyna nN stacji”). */
+const RODZAJ_DLA_PL: Readonly<Record<string, string>> = {
+  bus: 'szyny',
+  transformer: 'transformatora',
+  source: 'źródła',
+  branch: 'gałęzi',
+};
+
+/**
+ * Przyczyna braku wielkości — rodzaj obliczenia, konkretny obiekt i USTALONA przyczyna
+ * (karta INSPEKTOR-I-NAWIGACJA pkt 3), z odczytu nakładki, nie z domysłu:
+ *  - bieg nieznanej rodziny analizy (brak wykazu wielkości),
+ *  - rodzaj obiektu, dla którego ta analiza nie wyznacza wielkości (np. pole SN — wynik
+ *    należy do szyny albo aparatu; gałąź w obliczeniach zwarciowych — wynik w węzłach),
+ *  - obiekt nie jest punktem obliczeń biegu (brak wpisu w wyniku),
+ *  - wpis jest, ale bez wartości liczbowych wykazu.
+ */
+export function powodBrakuWielkosci(odczyt: OdczytWynikuElementu, nazwaObiektu: string): string {
+  const { analiza, klasa, punktWWyniku } = odczyt;
+  if (!analiza) {
+    return `Oglądany przebieg nie jest obliczeniem zwarciowym ani rozpływem mocy — ta analiza nie wyznacza wielkości obiektu ${nazwaObiektu}.`;
+  }
+  const obliczenie = TYTUL_WYNIKOW_PL[analiza];
+  if (!klasa) {
+    return `${obliczenie}: obiekt ${nazwaObiektu} nie jest punktem obliczeń — wielkości należą do jego szyny albo aparatu.`;
+  }
+  const dla = `${RODZAJ_DLA_PL[klasa]} ${nazwaObiektu}`;
+  if (selectSpecsPuste(analiza, klasa)) {
+    return `${obliczenie} nie wyznaczają wielkości dla ${dla} — wyniki tej analizy są w węzłach sieci.`;
+  }
+  if (!punktWWyniku) {
+    return `${obliczenie}: przebieg nie liczył punktu dla ${dla} — obiekt nie jest punktem obliczeń tego przebiegu.`;
+  }
+  return `${obliczenie}: wynik przebiegu dla ${dla} nie niesie wartości liczbowych.`;
+}
+
+function selectSpecsPuste(analiza: ResultLabelAnalysis, klasa: NonNullable<OdczytWynikuElementu['klasa']>): boolean {
+  return selectResultLabelSpecs(analiza, klasa).length === 0;
+}
 
 /**
  * Stan wyników elementu z biegu OGLĄDANEGO. Nieaktualność z TEGO SAMEGO predykatu
@@ -82,13 +159,18 @@ export const POWOD_BRAK_WIELKOSCI_PL =
 export function stanWynikowElementu(
   maWynikPrzebiegu: boolean,
   swiezosc: StanSwiezosciBiegu | null,
-  metryki: DaneElementuKanwy['liveMetrics'],
+  odczyt: OdczytWynikuElementu,
+  nazwaObiektu: string,
   runId: string | null = null,
 ): StanWynikowElementu {
-  const zrodlo = { runId: maWynikPrzebiegu ? runId : null, swiezosc: maWynikPrzebiegu ? swiezosc : null };
+  const zrodlo = {
+    runId: maWynikPrzebiegu ? runId : null,
+    swiezosc: maWynikPrzebiegu ? swiezosc : null,
+    analiza: maWynikPrzebiegu ? odczyt.analiza : null,
+  };
   if (!maWynikPrzebiegu) return { stan: 'brak', powodPl: POWOD_BRAK_PRZEBIEGU_PL, ...zrodlo };
-  if (!metryki || metryki.length === 0) return { stan: 'brak', powodPl: POWOD_BRAK_WIELKOSCI_PL, ...zrodlo };
-  return { stan: swiezosc === 'nieaktualny' ? 'nieaktualne' : 'wartosc', metryki, ...zrodlo };
+  if (odczyt.metryki.length === 0) return { stan: 'brak', powodPl: powodBrakuWielkosci(odczyt, nazwaObiektu), ...zrodlo };
+  return { stan: swiezosc === 'nieaktualny' ? 'nieaktualne' : 'wartosc', metryki: odczyt.metryki, ...zrodlo };
 }
 
 /**
@@ -254,6 +336,15 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   }, [kontekst, payload, sldData, snapshot]);
 
   const karta = useMemo(() => buildKartaTechniczna(snapshot, dane, katalogi), [dane, katalogi, snapshot]);
+  // Wyniki obiektu z tego samego rejestru wielkości co etykiety kanwy; obiekt bez danych
+  // panelu (np. istniejące źródło OZE) — pod refem modelu tematu.
+  const odczytWynikow = useMemo(
+    () =>
+      dane?.elementId
+        ? odczytWynikuElementu(payload, snapshot, dane.kind, dane.elementId)
+        : odczytWynikuElementu(payload, snapshot, null, kontekst?.temat?.modelRef ?? selekcjaId ?? ''),
+    [dane, kontekst, payload, selekcjaId, snapshot],
+  );
   const edycjaDozwolona = activeMode === 'MODEL_EDIT' && !(kontekst?.tylkoOdczyt ?? false);
   const edytuj = useCallback(
     (edycja: EdycjaWiersza) =>
@@ -351,7 +442,8 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     wyniki: stanWynikowElementu(
       payload != null,
       swiezoscBiegu?.stan ?? null,
-      dane?.liveMetrics ?? (temat ? buildLiveMetrics(payload, null, temat.modelRef) : undefined),
+      odczytWynikow,
+      karta?.nazwa ?? (dane ? etykietaElementuKanwy(dane) : selekcja?.name ?? selekcjaId),
       nakladka.runId,
     ),
     szkicDer,

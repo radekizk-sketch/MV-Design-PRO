@@ -31,7 +31,7 @@ export const GEN_STRINGS = {
   eksportEyebrow: 'WYTWÓRZ DOKUMENT',
   raportGrupa: 'Raport techniczny',
   dowodGrupa: 'Pakiet dowodowy WHITE BOX',
-  dowodOpis: 'Formalny wywód obliczeń (liczba → wzór → wynik). Skład dokumentu go nie dotyczy — pakiet jest pełny z definicji.',
+  dowodOpis: 'Formalny zapis obliczeń (liczba → wzór → wynik). Skład dokumentu go nie dotyczy — pakiet jest pełny z definicji.',
   dowodNiedostepny: 'Eksport wywodu niedostępny',
   zapiszDoMagazynu: 'Zapisz kopię w magazynie dokumentów projektu',
   zapiszOpis: 'Zapisany dokument pojawia się na liście w przeglądzie dokumentacji (z datą, rozmiarem i odciskiem).',

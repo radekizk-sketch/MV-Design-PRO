@@ -11,7 +11,8 @@
  *  - węzeł SN (ZK SN, słup rozgałęźny) i stan aparatu z rekordu źródła runtime modelu;
  *  - w trybie edycji modelu: stan obiektu (istniejący / projektowany) pola, aparatu pola albo
  *    łącznika poza polem — edytor operacji `set_object_state` (`ui/field/EdytorStanuObiektuPola`);
- *  - „Wyniki" — wielkości elementu z nakładki wyników: brak / nieaktualne / wartość;
+ *  - wyniki oglądanego przebiegu pod nazwą analizy („Obliczenia zwarciowe”, „Rozpływ mocy”) —
+ *    wielkości z rejestru wspólnego z etykietami kanwy: brak z przyczyną / nieaktualne / wartość;
  *  - wejście do pełnej konfiguracji odcinka (E-12) i karty węzła (E-14 / E-15);
  *  - na końcu, ZWINIĘTE, działania z TEGO SAMEGO rejestru i kontekstu dostępności co menu
  *    kontekstowe kanwy (`akcjeElementu`), wykonywane tym samym wykonawcą; pozycja niedostępna
@@ -30,43 +31,24 @@ import { SEKCJE_MENU_SLD, type SldMenuAction } from '../../sld/v2/command/SldCom
 import { OPIS_POLOZENIA_PL } from '../../sld/v2/model/stanAparatowPola';
 import { stanKaflaPolozenia } from '../../sld/v3/symbols/glyphs';
 import { STATE_COLOR } from '../../sld/v3/theme/colorTokens';
-import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
+import type { DaneElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { StanObiektuWInspektorze } from '../../field/EdytorStanuObiektuPola';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
-import type { StanPaneluElementu, StanWynikowElementu } from './stanPaneluElementu';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
+import {
+  NAZWA_RODZAJU,
+  TYTUL_WYNIKOW_PL,
+  etykietaElementuKanwy,
+  type StanPaneluElementu,
+  type StanWynikowElementu,
+} from './stanPaneluElementu';
 
 const STYL_SEKCJI = {
   borderColor: 'var(--mvd-line)',
   fontSize: 'var(--mvd-font-size-data)',
   color: 'var(--mvd-ink)',
 } as const;
-
-const NAZWA_RODZAJU: Readonly<Record<NonNullable<RodzajElementuKanwy>, string>> = {
-  station: 'Stacja SN/nN',
-  bay: 'Pole',
-  apparatus: 'Aparat',
-  transformer: 'Transformator',
-  der: 'Źródło rozproszone',
-  cable_run: 'Ciąg SN',
-  node: 'Węzeł sieci SN',
-  generator: 'Źródło OZE',
-  grid_source: 'Sieć zasilająca',
-  bus: 'Szyna',
-};
-
-const REF_WEWNETRZNY = /\b(?:stn|seg|gpz|bus|bay|pv|bess|fw|source)\/[^\s]+/i;
-
-function etykietaPubliczna(wartosc: string | null | undefined): wartosc is string {
-  return Boolean(wartosc && !REF_WEWNETRZNY.test(wartosc));
-}
-
-/** Nazwa obiektu na schemacie — publiczna etykieta, kod stacji albo nazwa rodzaju. */
-export function etykietaElementuKanwy(dane: DaneElementuKanwy): string {
-  if (etykietaPubliczna(dane.label)) return dane.label;
-  if (dane.kind === 'station' && dane.stationCode) return dane.stationCode;
-  return dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element schematu';
-}
 
 export function PasekDzialanElementu({
   akcje,
@@ -82,8 +64,8 @@ export function PasekDzialanElementu({
     .map((grupa) => ({ grupa, pozycje: akcje.filter((akcja) => akcja.section === grupa) }))
     .filter((wpis) => wpis.pozycje.length > 0);
   return (
-    <section data-testid="inspektor-dzialania" aria-label="Działania elementu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
-      <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Działania</h4>
+    <section data-testid="inspektor-dzialania" aria-label="Dostępne czynności" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
+      <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Dostępne czynności</h4>
       {grupy.map(({ grupa, pozycje }) => (
         <div key={grupa} role="group" aria-label={grupa} data-testid={`inspektor-dzialania-${grupa}`} className="flex flex-col gap-1">
           <span style={{ color: 'var(--mvd-muted)' }}>{grupa}</span>
@@ -123,10 +105,11 @@ export function PasekDzialanElementu({
 }
 
 export function SekcjaWynikowElementu({ wyniki }: { readonly wyniki: StanWynikowElementu }): JSX.Element {
+  const tytul = wyniki.analiza ? TYTUL_WYNIKOW_PL[wyniki.analiza] : 'Wyniki obliczeń';
   return (
-    <section data-testid="inspektor-wyniki" data-stan={wyniki.stan} data-run-id={wyniki.runId ?? undefined} data-swiezosc={wyniki.swiezosc ?? undefined} aria-label="Wyniki elementu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
+    <section data-testid="inspektor-wyniki" data-stan={wyniki.stan} data-analiza={wyniki.analiza ?? undefined} data-run-id={wyniki.runId ?? undefined} data-swiezosc={wyniki.swiezosc ?? undefined} aria-label={tytul} className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
       <div className="flex items-center justify-between gap-2">
-        <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Wyniki</h4>
+        <h4 className="font-semibold" data-testid="inspektor-wyniki-tytul" style={{ fontSize: 'var(--mvd-font-size-data)' }}>{tytul}</h4>
         {wyniki.stan === 'nieaktualne' && (
           <span className="mvd-tag mvd-tag-warn" data-testid="inspektor-wyniki-nieaktualne">Nieaktualne</span>
         )}
@@ -143,7 +126,9 @@ export function SekcjaWynikowElementu({ wyniki }: { readonly wyniki: StanWynikow
           <dl className="flex flex-col gap-1">
             {wyniki.metryki.map((metryka) => (
               <div key={metryka.code} className="mvd-kt-wiersz" data-testid={`inspektor-wynik-${metryka.code}`}>
-                <dt className="mvd-kt-etykieta">{metryka.label}</dt>
+                <dt className="mvd-kt-etykieta">
+                  <TekstZWzorami tekst={metryka.symbol ? `${metryka.label} ${metryka.symbol}` : metryka.label} />
+                </dt>
                 <dd className="mvd-kt-wartosc mvd-num">{metryka.value}</dd>
               </div>
             ))}
@@ -288,7 +273,7 @@ export function DzialaniaZwiniete({
         className="cursor-pointer px-4 py-2 font-semibold"
         style={{ fontSize: 'var(--mvd-font-size-data)', color: 'var(--mvd-ink)' }}
       >
-        Działania ({liczba})
+        Dostępne czynności ({liczba})
       </summary>
       <PasekDzialanElementu akcje={akcje} onAkcja={onAkcja} />
       {operacje.length > 0 && (

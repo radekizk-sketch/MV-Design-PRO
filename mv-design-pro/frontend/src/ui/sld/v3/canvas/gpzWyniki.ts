@@ -11,7 +11,7 @@
  */
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import type { BilansGpzWartosci } from '../compose/gpzAdnotacje';
-import { formatMetricValuePl, normalizeResultLabelAnalysis } from './resultLabelTemplates';
+import { formatMetricValuePl, normalizeResultLabelAnalysis } from '../../shared/resultLabelTemplates';
 
 export interface WynikiPolaGpz {
   readonly p: string | null;

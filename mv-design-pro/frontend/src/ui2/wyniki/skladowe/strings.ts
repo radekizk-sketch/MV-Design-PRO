@@ -134,7 +134,8 @@ export const SKLADOWE_STRINGS = {
   doziemieniePodwojne: 'Podwójne doziemienie',
   doziemienieZastrzezenia: 'Zastrzeżenia',
   doziemienieDanePrzyjete: 'Dane przyjęte (wartości robocze)',
-  doziemienieNiepelny: 'Wynik na wartościach roboczych albo z brakiem — dowód niepełny.',
+  doziemienieNiepelny:
+    'Wynik doziemienia policzony na wartościach roboczych z wykazu „Dane przyjęte” — nie jest potwierdzeniem zgodności; zmień wartości w modelu i przelicz.',
   doziemienieSlad: 'Ślad obliczenia (model zastosowany dla sposobu pracy punktu neutralnego)',
 
   // Raportowalność wybranego punktu.

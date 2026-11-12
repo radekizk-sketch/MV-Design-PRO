@@ -431,14 +431,16 @@ function TraceStepCard({ step, index }: { step: TraceStep; index: number }) {
   );
 }
 
-function ShortCircuitRows({ rows }: { rows: ShortCircuitRow[] }) {
+function ShortCircuitRows({ rows, nazwaPunktu }: { rows: ShortCircuitRow[]; nazwaPunktu: string | null }) {
   if (rows.length === 0) {
     return (
       <div
         data-testid="element-proof-no-short-circuit"
         className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]"
       >
-        Nie wyznaczono wyniku zwarciowego dla tego obiektu w aktywnym obliczeniu.
+        {nazwaPunktu
+          ? `Obliczenia zwarciowe nie liczyły punktu zwarcia w obiekcie ${nazwaPunktu} — wynik zwarciowy jest wyznaczany w węzłach sieci (szyny, węzły odcinków).`
+          : 'Obliczenia zwarciowe nie liczyły punktu zwarcia w zaznaczonym obiekcie.'}
       </div>
     );
   }
@@ -498,8 +500,15 @@ export function ElementCalculationProofPanel({
   // eksport (brama liczona funkcją eksportu); inaczej nieaktywny opis z przyczyną.
   const eksportLatex = formatWStanie(useDostepnoscEksportuWywodu(runId), 'latex');
 
+  // Wynik zwarciowy i ślad są danymi CAŁEGO przebiegu — pobranie zależy wyłącznie od `runId`.
+  // Karta INSPEKTOR-I-NAWIGACJA: dawny efekt zależał też od zaznaczenia i listy refów
+  // kandydackich (pamiętanej z migawką modelu), więc każde odświeżenie migawki albo zmiana
+  // zaznaczenia w trakcie pobierania anulowała odpowiedź i zaczynała od nowa — sekcja wisiała
+  // na „Pobieram…”, gdy pobranie śladu trwało dłużej niż odstęp odświeżeń. Dopasowanie do
+  // obiektu robią memo niżej, bez ponownego pobierania.
+  const maZaznaczenie = selectedElement != null;
   useEffect(() => {
-    if (!runId || !selectedElement) {
+    if (!runId || !maZaznaczenie) {
       setState(IDLE_STATE);
       return;
     }
@@ -535,7 +544,7 @@ export function ElementCalculationProofPanel({
     return () => {
       cancelled = true;
     };
-  }, [candidateRefs, runId, selectedElement]);
+  }, [runId, maZaznaczenie]);
 
   const traceSteps = useMemo(
     () => resolveTraceStepsForElement(state.trace, selectedElement, candidateRefs),
@@ -554,7 +563,7 @@ export function ElementCalculationProofPanel({
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
           <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-info)]">
-            Wywód obliczeń
+            Obliczenia zwarciowe
           </div>
           <h4 className="text-sm font-semibold text-[color:var(--mvd-ink)]">
             {selectedElement ? nazwaObiektuPl(selectedElement.name, 'element') : 'Wybierz obiekt na SLD'}
@@ -568,7 +577,7 @@ export function ElementCalculationProofPanel({
             className="shrink-0 rounded border border-[color:var(--mvd-line)] px-2 py-1 text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-ink)] hover:bg-[color:var(--mvd-surface)]"
             data-testid="element-proof-latex-link"
           >
-            Pełny LaTeX
+            Pokaż obliczenia
           </a>
         )}
         {runId && !eksportLatex.dostepny && (
@@ -578,14 +587,15 @@ export function ElementCalculationProofPanel({
             aria-disabled="true"
             data-testid="element-proof-latex-niedostepny"
           >
-            Pełny LaTeX
+            Pokaż obliczenia
           </span>
         )}
       </div>
 
       {!runId ? (
         <div className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]">
-          Brak aktywnego obliczenia. Uruchom obliczenia, aby zobaczyć wywód dla elementu.
+          Brak obliczeń zwarciowych aktywnego przypadku — uruchom obliczenia zwarciowe, aby zobaczyć
+          wartości i kroki obliczeń{selectedElement ? ` obiektu ${nazwaObiektuPl(selectedElement.name, 'element')}` : ''}.
         </div>
       ) : !selectedElement ? (
         <div className="rounded border border-[color:var(--mvd-line)] bg-[color:var(--mvd-surface)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-muted)]">
@@ -593,11 +603,11 @@ export function ElementCalculationProofPanel({
         </div>
       ) : state.status === 'loading' ? (
         <div className="rounded border border-[color:var(--mvd-line)] bg-[color:var(--mvd-surface)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-muted)]">
-          Pobieram wynik zwarciowy i ślad obliczeń dla zaznaczonego obiektu.
+          Wczytywanie wyników zwarciowych…
         </div>
       ) : state.status === 'error' ? (
         <div className="rounded border border-[color:var(--mvd-err)] bg-[color:var(--mvd-err-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-err-ink)]">
-          Nie udało się pobrać wywodu obliczeń: {state.errors.join(' ')}
+          Nie wczytano obliczeń zwarciowych: {state.errors.join(' ')}
         </div>
       ) : (
         <div className="space-y-3">
@@ -607,12 +617,12 @@ export function ElementCalculationProofPanel({
             </div>
           )}
 
-          <ShortCircuitRows rows={shortCircuitRows} />
+          <ShortCircuitRows rows={shortCircuitRows} nazwaPunktu={selectedElement?.name ?? null} />
 
           {traceSteps.length > 0 ? (
             <div className="space-y-2">
               <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-muted)]">
-                Kroki wywodu obliczeniowego
+                Kroki obliczeń
               </div>
               {traceSteps.map((step, index) => (
                 <TraceStepCard
@@ -627,9 +637,9 @@ export function ElementCalculationProofPanel({
               data-testid="element-proof-no-trace"
               className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]"
             >
-              Ślad obliczeń jest dostępny, ale nie ma kroku bezpośrednio powiązanego
-              z zaznaczonym obiektem. Otwórz pełny plik .tex albo wybierz węzeł
-              wynikowy na SLD.
+              Ślad obliczeń zwarciowych nie ma kroku powiązanego z obiektem
+              {' '}{nazwaObiektuPl(selectedElement.name, 'element')} — kroki są zapisywane dla punktów
+              zwarcia; wybierz szynę albo węzeł na schemacie lub otwórz pełne obliczenia.
             </div>
           )}
         </div>

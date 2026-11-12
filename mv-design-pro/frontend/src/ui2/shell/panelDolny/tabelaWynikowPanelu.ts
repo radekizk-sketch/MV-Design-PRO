@@ -13,7 +13,7 @@
  *    nie komórki.
  */
 import type { RawMetricValue, RawOverlayElement } from '../../../ui/sld-overlay/rawResultOverlayStore';
-import { formatMetricValuePl } from '../../../ui/sld/v3/canvas/resultLabelTemplates';
+import { formatMetricValuePl } from '../../../ui/sld/shared/resultLabelTemplates';
 import { formatElementTypeLabelPl } from '../../../ui/shared/elementTypeLabels';
 import { resolveSelectedElementFromSnapshot } from '../../../ui/shared/selectionResolution';
 import type { EnergyNetworkModel } from '../../../types/enm';

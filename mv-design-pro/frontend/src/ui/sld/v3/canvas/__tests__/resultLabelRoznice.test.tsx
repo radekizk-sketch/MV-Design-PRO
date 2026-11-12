@@ -32,7 +32,7 @@ import { buildResultLabelsFromScene, resultLabelLineQuantity, orientedSegmentRef
 import {
   RESULT_LABEL_TEMPLATES,
   normalizeResultLabelAnalysis,
-} from '../resultLabelTemplates';
+} from '../../../shared/resultLabelTemplates';
 import {
   useRawResultOverlayStore,
   type RawOverlayElement,
