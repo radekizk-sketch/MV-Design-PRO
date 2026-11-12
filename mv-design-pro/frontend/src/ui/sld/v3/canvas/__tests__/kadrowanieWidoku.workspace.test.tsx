@@ -3,7 +3,7 @@
  *
  * Ścieżka NATYWNA (Zero-Debt §5): dwuklik i klik w REALNE obszary trafienia
  * (`data-hit-for`), klik w przyciski doku, klawisze na `window` — kamera jest
- * stanem wewnętrznym kanwy, więc kontrakt mierzy `viewBox` i `data-scene-lod`.
+ * stanem wewnętrznym kanwy, więc kontrakt mierzy `viewBox` i `data-skala-kamery`.
  *
  * ILOCZYN CECH:
  *  - wejście polecenia: dwuklik stacji · „Dopasuj widok" · menu „Dopasuj do…" ·
@@ -32,7 +32,7 @@ import { useAppStateStore } from '../../../../app-state';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useSelectionStore } from '../../../../selection';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
 import { sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
@@ -47,12 +47,12 @@ const enm = (
     readFileSync(resolve(here, '../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json'), 'utf8'),
   ) as { enm: EnergyNetworkModel }
 ).enm;
-const sceny = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
-const porzadek = sceny[2].meta.stationTraversalOrder;
+const scena = buildSceneV3(enm);
+const porzadek = scena.meta.stationTraversalOrder;
 const nazwa = (ref: string) => enm.substations.find((s) => s.ref_id === ref)?.name ?? ref;
 
 /** Stacja ciągu głównego z polami SN (trzecia w porządku magistrali). */
-const STACJA = sceny[2].meta.mainTrunkStationIds[2];
+const STACJA = scena.meta.mainTrunkStationIds[2];
 const POLE = enm.bays.find((b) => b.substation_ref === STACJA && b.ref_id.includes('/sn_field/'))!;
 
 beforeEach(() => {
@@ -74,7 +74,7 @@ afterEach(() => {
 
 const kanwa = (c: HTMLElement) => c.querySelector('[data-testid="sld-canvas-v3"]')!;
 const viewBox = (c: HTMLElement) => kanwa(c).getAttribute('viewBox');
-const poziom = (c: HTMLElement) => Number(kanwa(c).getAttribute('data-scene-lod')) as SceneLod;
+const skala = (c: HTMLElement) => Number(kanwa(c).getAttribute('data-skala-kamery'));
 const etykietySciezki = () =>
   within(screen.getByTestId('sld-v3-sciezka-kadru'))
     .getAllByTestId(/^sld-v3-sciezka-\d+$/)
@@ -89,11 +89,21 @@ function uchwyt(container: HTMLElement, scene: SceneV3, predykat: (s: SceneV3['s
   return el;
 }
 
-function dwuklikStacji(container: HTMLElement, ref: string): void {
-  const lod = poziom(container);
-  fireEvent.doubleClick(
-    uchwyt(container, sceny[lod], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref),
+/**
+ * Uchwyt STACJI — napis jej nazwy (kompozyt `${ref}#name-row-0`). Karta
+ * SLD-SKALA-I-NAWIGACJA (R1/R4): dawniej celem był zwinięty blok stacji L0; na
+ * jednej scenie stację reprezentuje napis tożsamości, widoczny przy każdej skali.
+ */
+function uchwytStacji(container: HTMLElement, ref: string): Element {
+  const el = [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="etykieta"]')].find(
+    (n) => n.getAttribute('data-hit-owner-ref') === `${ref}#name-row-0`,
   );
+  if (!el) throw new Error(`brak uchwytu napisu stacji ${ref}`);
+  return el;
+}
+
+function dwuklikStacji(container: HTMLElement, ref: string): void {
+  fireEvent.doubleClick(uchwytStacji(container, ref));
 }
 
 function otworzMenu(): HTMLElement {
@@ -102,21 +112,21 @@ function otworzMenu(): HTMLElement {
 }
 
 describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
-  it('dwuklik w stację (L0) → kadr stacji na L ≥ 1 i ścieżka „Sieć › stacja"; „Wstecz" i Alt+← przywracają kadr', () => {
+  it('dwuklik w stację → kadr stacji (przybliżenie) i ścieżka „Sieć › stacja"; „Wstecz" i Alt+← przywracają kadr', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
-    expect(poziom(container)).toBe(0);
+    const skalaSieci = skala(container);
     const kadrSieci = viewBox(container);
     expect(screen.getByTestId('sld-v3-poprzedni-widok')).toBeDisabled();
 
     dwuklikStacji(container, STACJA);
-    expect(poziom(container)).toBeGreaterThanOrEqual(1);
+    expect(skala(container)).toBeGreaterThan(skalaSieci);
     const kadrStacji = viewBox(container);
     expect(kadrStacji).not.toBe(kadrSieci);
     expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
 
     fireEvent.click(screen.getByTestId('sld-v3-poprzedni-widok'));
     expect(viewBox(container)).toBe(kadrSieci);
-    expect(poziom(container)).toBe(0);
+    expect(skala(container)).toBe(skalaSieci);
     expect(screen.queryByTestId('sld-v3-sciezka-kadru')).toBeNull();
 
     dwuklikStacji(container, STACJA);
@@ -125,15 +135,10 @@ describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
     expect(viewBox(container)).toBe(kadrSieci);
   });
 
-  it('rozwinięcie zwiniętego GPZ klikiem (KD-5) jest poleceniem widoku: „Wstecz" wraca do kadru sieci', () => {
-    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
-    const kadrSieci = viewBox(container);
-    fireEvent.click(uchwyt(container, sceny[0], (s) => s.symbolId === 'gpzCollapsed'));
-    expect(poziom(container)).toBeGreaterThanOrEqual(1);
-    expect(screen.getByTestId('sld-v3-poprzedni-widok')).not.toBeDisabled();
-    fireEvent.click(screen.getByTestId('sld-v3-poprzedni-widok'));
-    expect(viewBox(container)).toBe(kadrSieci);
-  });
+  // Dawny test „rozwinięcie zwiniętego GPZ klikiem (KD-5) jest poleceniem widoku"
+  // skasowany z intencją (karta SLD-SKALA-I-NAWIGACJA R1): GPZ nie jest zwijany, więc
+  // klik w niego nie zmienia widoku; wejście do GPZ to dwuklik (test wyżej, stacja
+  // pierwsza obchodu = GPZ w teście „pierwsza stacja obchodu").
 
   it('klik w poziom „Sieć" ścieżki wraca do kadru sieci; poprzednia/następna stacja w porządku obchodu rysunku', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
@@ -149,7 +154,6 @@ describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
 
     fireEvent.click(screen.getByTestId('sld-v3-sciezka-0'));
     expect(screen.queryByTestId('sld-v3-sciezka-kadru')).toBeNull();
-    expect(poziom(container)).toBe(0);
   });
 
   it('pierwsza stacja obchodu (GPZ): „poprzednia" nieaktywna z opisem', () => {
@@ -173,21 +177,18 @@ describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
  * × zdarzenie {drugi klik · dwuklik}.
  */
 describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kliku', () => {
-  const inny = () => porzadek.find((r) => r !== STACJA && r !== sceny[2].meta.gpzId)!;
-  const stacjaL0 = (c: HTMLElement, ref: string) =>
-    uchwyt(c, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref);
+  const inny = () => porzadek.find((r) => r !== STACJA && r !== scena.meta.gpzId)!;
   const zaznaczone = () => useSelectionStore.getState().selectedElements.map((e) => e.id);
 
   it('pierwszy klik w stację, drugi klik i dwuklik w przesunięty pod kursor węzeł sąsiada → kadr i zaznaczenie TEJ stacji', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
-    fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
+    fireEvent.click(uchwytStacji(container, STACJA), { detail: 1 });
     expect(zaznaczone()).toEqual([STACJA]);
-    const sasiad = stacjaL0(container, inny());
+    const sasiad = uchwytStacji(container, inny());
     fireEvent.click(sasiad, { detail: 2 });
     expect(zaznaczone()).toEqual([STACJA]);
     fireEvent.doubleClick(sasiad, { detail: 2 });
     expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
-    expect(poziom(container)).toBeGreaterThanOrEqual(1);
   });
 
   it('drugi klik i dwuklik w NIEDOSTĘPNĄ akcję paska inspektora odsłoniętego pierwszym klikiem → kadr stacji; akcja nie jest `disabled` (inaczej przeglądarka nie wysłałaby zdarzeń)', () => {
@@ -197,7 +198,7 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
         <InspektorKanwyTestowy />
       </>,
     );
-    fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
+    fireEvent.click(uchwytStacji(container, STACJA), { detail: 1 });
     const pasek = screen.getByTestId('inspektor-dzialania');
     const niedostepna = pasek.querySelector('[data-testid^="inspektor-akcja-"][data-disabled="true"]');
     expect(niedostepna, 'stacja bez wyników ma w pasku akcję niedostępną').not.toBeNull();
@@ -214,7 +215,7 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
     const kadrSieci = viewBox(container);
     fireEvent.click(kanwa(container), { detail: 1 });
-    const cel = stacjaL0(container, STACJA);
+    const cel = uchwytStacji(container, STACJA);
     fireEvent.click(cel, { detail: 2 });
     fireEvent.doubleClick(cel, { detail: 2 });
     expect(zaznaczone()).toEqual([]);
@@ -227,7 +228,7 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
     const bezUchwytu = container.querySelector('[data-testid="sld-v3-rysunek"]')!;
     expect(bezUchwytu.closest('[data-hit-for]')).toBeNull();
     fireEvent.click(bezUchwytu, { detail: 1 });
-    const cel = stacjaL0(container, STACJA);
+    const cel = uchwytStacji(container, STACJA);
     fireEvent.click(cel, { detail: 2 });
     expect(zaznaczone()).toEqual([STACJA]);
     fireEvent.doubleClick(cel, { detail: 2 });
@@ -241,7 +242,7 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
     przyciskPanelu.addEventListener('click', klikPanelu);
     document.body.appendChild(przyciskPanelu);
     try {
-      fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
+      fireEvent.click(uchwytStacji(container, STACJA), { detail: 1 });
       fireEvent.click(przyciskPanelu, { detail: 2 });
       fireEvent.doubleClick(przyciskPanelu, { detail: 2 });
       expect(klikPanelu).not.toHaveBeenCalled();
@@ -258,7 +259,7 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
     document.body.appendChild(zewnatrz);
     try {
       fireEvent.click(zewnatrz, { detail: 1 });
-      const cel = stacjaL0(container, STACJA);
+      const cel = uchwytStacji(container, STACJA);
       fireEvent.click(cel, { detail: 2 });
       expect(zaznaczone()).toEqual([STACJA]);
       fireEvent.doubleClick(cel, { detail: 2 });
@@ -270,7 +271,7 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
 
   it('cel bez zmian (rysunek nie drgnął): drugi klik i dwuklik w ten sam uchwyt działają zwykłą drogą', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
-    const cel = stacjaL0(container, STACJA);
+    const cel = uchwytStacji(container, STACJA);
     fireEvent.click(cel, { detail: 1 });
     fireEvent.click(cel, { detail: 2 });
     fireEvent.doubleClick(cel, { detail: 2 });
@@ -295,16 +296,16 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
   /** Prostokąt stacji w pikselach ekranu kanwy (z viewBox i geometrii sceny). */
   function stacjaNaEkranie(container: HTMLElement) {
     const [x, y, w, h] = viewBox(container)!.split(' ').map(Number);
-    const wynik = zakresCelu('stacja', enm, [STACJA], sceny[2]);
+    const wynik = zakresCelu('stacja', enm, [STACJA], scena);
     if (!wynik.dostepny) throw new Error(wynik.przyczyna);
-    const box = prostokatyZakresu(sceny, wynik.zakres, sceneBoxToCameraWorld).celByLod[poziom(container)]!;
+    const box = prostokatyZakresu(scena, wynik.zakres, sceneBoxToCameraWorld).cel!;
     const k = SZEROKOSC / w;
     expect(WYSOKOSC / h).toBeCloseTo(k, 6);
     return { left: (box.minX - x) * k, right: (box.maxX - x) * k, top: (box.minY - y) * k, bottom: (box.maxY - y) * k };
   }
   function naEkranie(container: HTMLElement, ref: string) {
     const [x, , w] = viewBox(container)!.split(' ').map(Number);
-    const box = sceneBoxToCameraWorld(prostokatRefowWScenie(sceny[poziom(container)], [ref])!);
+    const box = sceneBoxToCameraWorld(prostokatRefowWScenie(scena, [ref])!);
     const k = SZEROKOSC / w;
     return { left: (box.minX - x) * k, right: (box.maxX - x) * k };
   }
@@ -318,7 +319,7 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
 
   it('dwuklik stacji kadruje na całej kanwie; klik pola w kadrze pokazuje pole w inspektorze, a kadr zostaje DOKŁADNIE ten sam', () => {
     const { container } = renderZInspektorem();
-    const cel = uchwyt(container, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === STACJA);
+    const cel = uchwytStacji(container, STACJA);
     fireEvent.click(cel, { detail: 1 });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', STACJA);
     fireEvent.doubleClick(cel, { detail: 2 });
@@ -328,8 +329,7 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
     expect(pelny.left).toBeGreaterThanOrEqual(-1e-6);
     expect(pelny.right).toBeLessThanOrEqual(SZEROKOSC + 1e-6);
 
-    const lod = poziom(container);
-    fireEvent.click(uchwyt(container, sceny[lod], (s) => s.meta?.ownerRef === POLE.ref_id), { detail: 1 });
+    fireEvent.click(uchwyt(container, scena, (s) => s.meta?.ownerRef === POLE.ref_id), { detail: 1 });
     expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([POLE.ref_id]);
     expect(screen.getByTestId('inspektor-element-kanwy')).toBeInTheDocument();
     expect(viewBox(container)).toBe(kadrPelny);
@@ -340,13 +340,13 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
     const { container } = renderZInspektorem();
     const granica = SZEROKOSC - DAWNA_SZEROKOSC_SZUFLADY_PX;
     const ref = porzadek.find((r) => {
-      if (r === sceny[2].meta.gpzId) return false;
+      if (r === scena.meta.gpzId) return false;
       const e = naEkranie(container, r);
       return e.right > granica && e.left < SZEROKOSC && e.right - e.left < granica - 80;
     });
     expect(ref, 'fikstura ma stację w pasie dawnej szuflady').toBeTruthy();
     const przed = viewBox(container);
-    fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
+    fireEvent.click(uchwytStacji(container, ref!), {
       detail: 1,
     });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);
@@ -356,15 +356,14 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
   it('klik stacji widocznej na lewo od pasa: widok bez zmian', () => {
     const { container } = renderZInspektorem();
     const granica = SZEROKOSC - DAWNA_SZEROKOSC_SZUFLADY_PX;
-    // GPZ pominięty: klik w zwinięty blok GPZ rozwija go (KD-5) — to polecenie widoku.
     const ref = porzadek.find((r) => {
-      if (r === sceny[2].meta.gpzId) return false;
+      if (r === scena.meta.gpzId) return false;
       const e = naEkranie(container, r);
       return e.left >= 40 && e.right <= granica - 40;
     });
     expect(ref, 'fikstura ma stację na lewo od pasa').toBeTruthy();
     const przed = viewBox(container);
-    fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
+    fireEvent.click(uchwytStacji(container, ref!), {
       detail: 1,
     });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);
@@ -390,8 +389,7 @@ describe('„Dopasuj widok", menu „Dopasuj do…" i klawisze', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
     const kadrSieci = viewBox(container);
     dwuklikStacji(container, STACJA);
-    const lod = poziom(container);
-    fireEvent.click(uchwyt(container, sceny[lod], (s) => s.meta?.ownerRef === POLE.ref_id));
+    fireEvent.click(uchwyt(container, scena, (s) => s.meta?.ownerRef === POLE.ref_id));
     expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([POLE.ref_id]);
     const kadrStacji = viewBox(container);
 
@@ -444,7 +442,6 @@ describe('wskazanie ze sklepu selekcji', () => {
   it('wskazanie wydane, gdy schematu NIE było (przełączenie przestrzeni) — obsłużone raz po montażu', () => {
     act(() => useSelectionStore.getState().centerSldOnElement(STACJA));
     const { container, rerender } = render(<SldCanvasV3Workspace width={1200} height={800} />);
-    expect(poziom(container)).toBeGreaterThanOrEqual(1);
     expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
     fireEvent.click(screen.getByTestId('sld-v3-fit-sheet'));
     const poArkuszu = viewBox(container);
@@ -530,7 +527,7 @@ describe.each(TRYBY_PLANISTY)('tor zasilania (odpowiedź backendu, bez wyróżni
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })));
 
   it('drogi pewna i warunkowa: kadr obejmuje sumę dróg, tekst podaje liczby, łączniki nieustalone i podstawę', async () => {
-    const gpzPole = enm.bays.find((b) => b.substation_ref === sceny[2].meta.gpzId)!;
+    const gpzPole = enm.bays.find((b) => b.substation_ref === scena.meta.gpzId)!;
     odpowiedz(
       200,
       tor({
@@ -654,7 +651,7 @@ describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wp
     return el;
   };
   function dwuklikNatywny(c: HTMLElement, ref: string): void {
-    const el = uchwyt(c, sceny[poziom(c)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref);
+    const el = uchwytStacji(c, ref);
     fireEvent.click(el, { detail: 1 });
     fireEvent.click(el, { detail: 2 });
     fireEvent.doubleClick(el, { detail: 2 });
@@ -685,7 +682,6 @@ describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wp
         if (powrot === 'sciezka') fireEvent.click(screen.getByTestId('sld-v3-sciezka-0'));
         else fireEvent.click(screen.getByTestId('sld-v3-poprzedni-widok'));
         expect(viewBox(container)).toBe(kadrSieci);
-        expect(poziom(container)).toBe(0);
         expect(screen.queryByTestId('sld-v3-sciezka-kadru')).toBeNull();
         expect(zaznaczone()).toEqual(przed);
         // Przegląd stacji nie zostawił wpisów pośrednich: jeden powrót wraca do sieci.
@@ -712,7 +708,7 @@ describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wp
         const { container, rerender } = render(<SldCanvasV3Workspace width={SZEROKA} height={856} />);
         const kadrSieci = viewBox(container);
         for (let n = 0; n < cykle; n += 1) {
-          const el = uchwyt(container, sceny[poziom(container)], (sc) => sc.meta?.elementKind === 'station' && sc.meta?.ownerRef === STACJA);
+          const el = uchwytStacji(container, STACJA);
           fireEvent.click(el, { detail: 1 });
           if (zwezenie === 'miedzy-kliknieciami') rerender(<SldCanvasV3Workspace width={WASKA} height={856} />);
           fireEvent.click(el, { detail: 2 });

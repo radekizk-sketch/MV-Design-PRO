@@ -10,11 +10,11 @@
  * browser. Any divergence = a "second truth" defect and turns these red.
  *
  *  N-1 CONTINUITY  — every drawn cable-run segment endpoint coincides with a real
- *                    block/GPZ port (zero free ends); zero unconnected blocks.
+ *                    symbol/bus port (zero free ends); zero unconnected stations.
  *  N-2 ENERGIZED   — the rendered energized-set (per-segment `data-energized` read
  *                    from the DOM) EQUALS the solver `energized_branch_refs`
- *                    (set-equality on the render). The set of DIMMED station
- *                    blocks EQUALS the set of stations `companion.de_energized_
+ *                    (set-equality on the render). The set of DIMMED stations
+ *                    (all drawn bus segments dimmed) EQUALS the set of stations `companion.de_energized_
  *                    bus_refs` maps to (same station membership rule the render
  *                    itself uses — `szynyStacji`: ALL of a station's buses, incl.
  *                    its own SN-field terminals, de-energised).
@@ -132,21 +132,23 @@ function expectedDimmedStations(companion: Companion, enm: EnmMembership): Set<s
   return dimmed;
 }
 
-/** The station ref_ids ACTUALLY rendered dimmed — read from `data-owner-ref`
- *  on each `data-energized="false"` L0 block (the SAME attribute the segment
- *  reader above uses for branches; GPZ blocks share the `sld-v3-l0-` testid
- *  prefix but their ownerRef is never a station ref_id, so they drop out of
- *  set-equality against `expectedDimmedStations` on their own — no separate
- *  exclusion needed here). */
+/** The station ref_ids ACTUALLY rendered dimmed. One scene (karta SLD-SKALA-I-NAWIGACJA R1):
+ *  the carrier of a station's state is its drawn BUS segments (`path[data-owner-ref]` whose base
+ *  ref before `#` is one of the station's buses under the ONE membership rule `szynyStacji`) —
+ *  the collapsed L0 station block no longer exists. A station is rendered dimmed iff it draws
+ *  ≥1 bus segment and EVERY drawn bus segment carries `data-energized="false"`. */
 async function readDimmedStationOwnerRefs(
   page: import('@playwright/test').Page,
+  enm: EnmMembership,
 ): Promise<Set<string>> {
-  const loc = page.locator('[data-testid^="sld-v3-l0-"][data-energized="false"]');
-  const count = await loc.count();
+  const stany = await page.locator('path[data-owner-ref*="#"][data-energized]').evaluateAll((nodes) =>
+    nodes.map((n) => [n.getAttribute('data-owner-ref') ?? '', n.getAttribute('data-energized') ?? ''] as const),
+  );
   const refs = new Set<string>();
-  for (let i = 0; i < count; i += 1) {
-    const ownerRef = await loc.nth(i).getAttribute('data-owner-ref');
-    if (ownerRef) refs.add(ownerRef);
+  for (const station of enm.substations) {
+    const szyny = new Set(szynyStacji(enm, station));
+    const wlasne = stany.filter(([ref]) => szyny.has(ref.split('#')[0]));
+    if (wlasne.length > 0 && wlasne.every(([, stan]) => stan === 'false')) refs.add(station.ref_id);
   }
   return refs;
 }
@@ -160,7 +162,7 @@ interface PowerFlowCase {
   readonly companionPath: string;
   /** `?case=` value for the harness URL; `undefined` = omit the param (the
    *  harness's own default is already `normal` — existing single-case tests
-   *  below keep calling `gotoL0(page)` unchanged). */
+   *  below keep calling `gotoPrzeglad(page)` unchanged). */
   readonly queryCase: 'maintenance' | undefined;
   readonly pngSuffix: string;
 }
@@ -207,7 +209,7 @@ async function readSegments(page: import('@playwright/test').Page): Promise<Segm
   return out;
 }
 
-async function gotoL0(
+async function gotoPrzeglad(
   page: import('@playwright/test').Page,
   queryCase?: 'maintenance',
 ): Promise<void> {
@@ -218,7 +220,7 @@ async function gotoL0(
   // konserwacji); pominięty parametr = harness ładuje companion normalny
   // (domyślne zachowanie, bez zmian dla wywołań bez argumentu).
   const caseParam = queryCase ? `&case=${queryCase}` : '';
-  await page.goto(`${HARNESS_URL}?lod=0&overlay=pf${caseParam}`);
+  await page.goto(`${HARNESS_URL}?overlay=pf${caseParam}`);
   const root = page.locator('[data-testid="sld-harness-root"]').first();
   await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
   const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
@@ -229,15 +231,16 @@ async function gotoL0(
 test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () => {
   test('case_ref state declaration is rendered on the canvas', async ({ page }) => {
     const companion = loadCompanion(COMPANION_PATH);
-    await gotoL0(page);
+    await gotoPrzeglad(page);
     const badge = page.locator('[data-testid="sld-v3-overlay-provenance"]').first();
     await expect(badge).toBeVisible();
     await expect(badge).toHaveAttribute('data-case-ref', companion.case_ref);
     await expect(badge).toHaveAttribute('data-converged', String(companion.converged));
   });
 
-  test('N-1: every drawn segment connects to a real block/GPZ (zero free ends; zero unconnected blocks)', async ({ page }) => {
-    await gotoL0(page);
+  test('N-1: every drawn segment connects to a real symbol/bus (zero free ends; zero unconnected stations)', async ({ page }) => {
+    await gotoPrzeglad(page);
+    const enmMembership = loadEnmMembership();
 
     interface Box { id: string; x: number; y: number; width: number; height: number; }
     const readBoxes = async (selector: string, kind: string): Promise<Box[]> => {
@@ -246,7 +249,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
       const boxes: Box[] = [];
       for (let i = 0; i < n; i += 1) {
         const el = loc.nth(i);
-        const id = (await el.getAttribute('data-element-id'))
+        const id = (await el.getAttribute('data-owner-ref'))
           ?? (await el.getAttribute('data-testid'))
           ?? `${kind}-${i}`;
         const box = await el.boundingBox();
@@ -256,23 +259,24 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
     };
 
     // REAL rendered geometry (browser boundingBoxes — the M-02 primitive). NO
-    // geometry is reproduced here: every box comes from the live layout.
-    const stationBlocks = await readBoxes('[data-testid^="sld-v3-l0-"]', 'station');
-    const gpzBlocks = await readBoxes('[data-testid^="gpz-canonical-"]', 'gpz');
+    // geometry is reproduced here: every box comes from the live layout. One scene
+    // (karta SLD-SKALA-I-NAWIGACJA R1): the carriers are the drawn apparatus symbols and
+    // bus segments — the collapsed L0 station blocks no longer exist.
+    const symbols = await readBoxes('[data-testid="sld-v3-symbols"] [data-element-kind][data-owner-ref]', 'symbol');
+    const buses = await readBoxes('path[data-owner-ref*="#"]', 'bus');
     const segments = await readBoxes('path[data-owner-ref^="seg/"]', 'segment');
-    expect(stationBlocks.length, 'substrate must render its station blocks').toBeGreaterThanOrEqual(50);
+    expect(symbols.length, 'substrate must render its field apparatus').toBeGreaterThanOrEqual(50);
     expect(segments.length, 'substrate must render its cable-run segments').toBeGreaterThan(20);
 
-    const blocks = [...stationBlocks, ...gpzBlocks];
+    const blocks = [...symbols, ...buses];
 
-    // Connection tolerance is DERIVED from the rendered block size (NOT a fabricated
-    // literal): an endpoint within ~one block-width of a port sits at that block's
-    // port region (the renderer snaps cable ends to station ports within a similar
-    // band). A truly floating edge, > one block-width from every block AND every
-    // other segment, still fails → the assert can go red on a real disconnect.
-    const medianBlockW =
-      [...stationBlocks].map((b) => b.width).sort((a, c) => a - c)[Math.floor(stationBlocks.length / 2)] ?? 64;
-    const PORT_TOL = medianBlockW; // ≈ one block width (render-derived).
+    // Connection tolerance is DERIVED from the rendered symbol size (NOT a fabricated
+    // literal): an endpoint within ~one symbol-width of a port sits at that symbol's
+    // port region. A truly floating edge, > one symbol-width from every symbol, bus
+    // AND every other segment, still fails → the assert can go red on a real disconnect.
+    const medianSymbolW =
+      [...symbols].map((b) => b.width).sort((a, c) => a - c)[Math.floor(symbols.length / 2)] ?? 16;
+    const PORT_TOL = medianSymbolW;
     const SEAM_TOL = 8; // segment↔segment shared port (touching).
 
     const gap = (a: Box, b: Box): number => {
@@ -281,9 +285,8 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
       return Math.hypot(dx, dy);
     };
 
-    // (1) ZERO FREE ENDS: every drawn segment must connect to a real port — either
-    //     a block (within one block-width port region) OR another segment (shared
-    //     junction). A floating edge connects to neither → red.
+    // (1) ZERO FREE ENDS: every drawn cable segment must connect to a real port — a
+    //     symbol or bus (within one symbol-width port region) OR another segment.
     const floating: string[] = [];
     for (const seg of segments) {
       const nearBlock = blocks.some((b) => gap(seg, b) <= PORT_TOL);
@@ -294,35 +297,25 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
     }
     expect(
       floating.length,
-      `floating segments (no block port and no neighbouring segment): ${floating.slice(0, 12).join('; ')}`,
+      `floating segments (no symbol/bus port and no neighbouring segment): ${floating.slice(0, 12).join('; ')}`,
     ).toBe(0);
 
-    // (2) ZERO UNCONNECTED BLOCKS: every station block must have ≥1 segment at its
-    //     port (it sits on a cable run). An orphan block has none → red.
-    //
-    // FIX (TESTY-DRYF-E2E card, item 5, 2026-08-12): the L0 GPZ "grid source"
-    // glyph (`sld-v3-l0-gpz-source-*`, `buildScene.ts` ~L2518) is NOT a
-    // station sitting on a cable run — it is the external-grid origin glyph,
-    // always wired to its own collapsed GPZ block by construction via a
-    // dedicated drop connector (`segments.push({ meta: { ownerRef:
-    // `${src.id}#grid-source-drop` } })`, buildScene.ts ~L2530-2533). That
-    // connector is a real rendered `<path>`, but its `data-owner-ref` does
-    // NOT carry the `seg/` prefix real cable-run branches use, so it is
-    // invisible to `segments` (filtered to `path[data-owner-ref^="seg/"]`
-    // above) — a ref-prefix mismatch between two DIFFERENT connector
-    // families, not a genuinely disconnected block. Excluded here with the
-    // SAME reasoning the check already applies to `gpzBlocks` (not included
-    // in `stationBlocks` at all, for the identical reason).
+    // (2) ZERO UNCONNECTED STATIONS: every station that draws a bus has ≥1 cable
+    //     segment at one of its field symbols (it sits on a cable run). The station's
+    //     symbols are those whose owner ref lies under the station's ref prefix.
     const unconnected: string[] = [];
-    for (const block of stationBlocks) {
-      if (block.id.startsWith('sld-v3-l0-gpz-source-')) continue;
-      if (!segments.some((seg) => gap(seg, block) <= PORT_TOL)) {
-        unconnected.push(block.id);
+    for (const station of enmMembership.substations) {
+      const szyny = new Set(szynyStacji(enmMembership, station));
+      if (!buses.some((b) => szyny.has(b.id.split('#')[0]))) continue;
+      const prefiks = station.ref_id.replace(/\/station$/, '/');
+      const wlasne = symbols.filter((sym) => sym.id.startsWith(prefiks));
+      if (!segments.some((seg) => wlasne.some((sym) => gap(seg, sym) <= PORT_TOL))) {
+        unconnected.push(station.ref_id);
       }
     }
     expect(
       unconnected.length,
-      `station blocks with no connected segment: ${unconnected.slice(0, 12).join('; ')}`,
+      `stations with no connected cable segment: ${unconnected.slice(0, 12).join('; ')}`,
     ).toBe(0);
   });
 
@@ -330,7 +323,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
     test(`N-2 (${powerFlowCase.name}): rendered energized-set EQUALS the solver energized-set (set-equality on the render)`, async ({ page }) => {
       const companion = loadCompanion(powerFlowCase.companionPath);
       const enmMembership = loadEnmMembership();
-      await gotoL0(page, powerFlowCase.queryCase);
+      await gotoPrzeglad(page, powerFlowCase.queryCase);
 
       const segments = await readSegments(page);
       expect(segments.length, 'expected rendered segments').toBeGreaterThan(20);
@@ -391,7 +384,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
           'maintenance companion must de-energize every bus of at least one station',
         ).toBeGreaterThan(0);
       }
-      const renderedDimmed = await readDimmedStationOwnerRefs(page);
+      const renderedDimmed = await readDimmedStationOwnerRefs(page, enmMembership);
       const missingDimmed = [...expectedDimmed].filter((ref) => !renderedDimmed.has(ref));
       const extraDimmed = [...renderedDimmed].filter((ref) => !expectedDimmed.has(ref));
       expect(
@@ -407,7 +400,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
 
   test('N-3: rendered direction per branch EQUALS solver sign(P) (incl. reversed OZE branches)', async ({ page }) => {
     const companion = loadCompanion(COMPANION_PATH);
-    await gotoL0(page);
+    await gotoPrzeglad(page);
 
     const segments = await readSegments(page);
     expect(segments.length).toBeGreaterThan(20);
@@ -598,7 +591,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
 
   test('N-7: same snapshot + case_ref → identical geometry hash on reload (determinism)', async ({ page }) => {
     const hashRun = async (): Promise<string> => {
-      await gotoL0(page);
+      await gotoPrzeglad(page);
       // Geometry signature = sorted (segment ref, energized, direction, rounded box).
       const segs = await readSegments(page);
       const sig = segs
@@ -619,8 +612,8 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
   });
 
   for (const powerFlowCase of CASES) {
-    test(`screenshot (${powerFlowCase.name}): L0 oddalony view WITH the power-flow tor → save PNG`, async ({ page }) => {
-      await gotoL0(page, powerFlowCase.queryCase);
+    test(`screenshot (${powerFlowCase.name}): overview (fit) WITH the power-flow tor → save PNG`, async ({ page }) => {
+      await gotoPrzeglad(page, powerFlowCase.queryCase);
 
       // The tor must be visible: case badge + energized segments + ≥1 reverse arrow.
       await expect(page.locator('[data-testid="sld-v3-overlay-provenance"]').first()).toBeVisible();
@@ -632,9 +625,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
         .locator('path[data-owner-ref^="seg/"][data-flow-direction="reverse"]')
         .count();
       expect(reverseSegs, 'tor must render reverse (OZE backfeed) segments').toBeGreaterThan(0);
-      const dimmedStations = await page
-        .locator('[data-testid^="sld-v3-l0-"][data-energized="false"]')
-        .count();
+      const dimmedStations = (await readDimmedStationOwnerRefs(page, loadEnmMembership())).size;
       // E2E-FIX: `normal` has ZERO dimmed stations by design (SUB-52s ring-closed
       // the substrate's only NOP); `maintenance` (second companion — a station
       // taken out of service) must render ≥1 genuinely dimmed station.

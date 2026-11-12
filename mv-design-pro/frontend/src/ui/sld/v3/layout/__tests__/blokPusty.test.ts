@@ -48,7 +48,7 @@ import { measureLabelWidth } from '../../core/text';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { prostokatElementuWScenie } from '../../canvas/viewAnchor';
 import { composeStation, type ComposeStationInput } from '../../compose/station';
 import type { StationDerSourceInput } from '../../compose/sourceKind';
@@ -75,60 +75,36 @@ const fixturePath = resolve(
   here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json',
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
-const LODY: readonly SceneLod[] = [0, 1, 2];
 
 // ---------------------------------------------------------------------------
 // (1)(2) KLASA: prostokąt etykiety = tusz; rezerwacja = własne pole.
 // ---------------------------------------------------------------------------
 
 describe('BLOK-PUSTY §1 — prostokąt etykiety niesie TUSZ, nie rezerwację slotu', () => {
-  for (const lod of LODY) {
-    it(`L${lod}: ŻADNA etykieta sceny referencyjnej nie jest szersza od swojego tekstu`, () => {
-      const scene = buildSceneV3(enm, lod);
-      // Wyrocznia bez listy wyjątków — obejmuje WSZYSTKIE klasy właściciela i
-      // wszystkie sloty. Przed kartą zapalałaby się na 273 wierszach pasma
-      // nazw (prostokąt średnio 7,57× szerszy od tekstu).
-      expect(labelRectsWiderThanInk(scene.labels)).toEqual([]);
-    });
+  it(`ŻADNA etykieta sceny referencyjnej nie jest szersza od swojego tekstu`, () => {
+    const scene = buildSceneV3(enm);
+    // Wyrocznia bez listy wyjątków — obejmuje WSZYSTKIE klasy właściciela i
+    // wszystkie sloty. Przed kartą zapalałaby się na 273 wierszach pasma
+    // nazw (prostokąt średnio 7,57× szerszy od tekstu).
+    expect(labelRectsWiderThanInk(scene.labels)).toEqual([]);
+  });
 
-    it(`L${lod}: tusz mieści się w rezerwacji wszędzie POZA jednym nazwanym długiem (drugi koniec pary)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const luki = labelGrowthReservationGaps(scene.labels);
-      if (lod === 0) {
-        // DŁUG NAZWANY (opis i uzasadnienie: `scene/buildScene.ts`
-        // `composeCollapsedGpz`): wiersz stanu zwinięcia GPZ jest dopisywany do
-        // pasma, którego baner zmierzono wyłącznie dla wiersza tytułowego.
-        // NIE filtrujemy go z wyroczni — ASERTUJEMY go co do sztuki i co do
-        // liczby, więc test pada zarówno wtedy, gdy dojdzie NOWE takie miejsce,
-        // jak i wtedy, gdy nadmiar zmieni rozmiar albo gdy dług zostanie
-        // spłacony (wtedy tę gałąź się usuwa — świadomie, nie „żeby przeszło").
-        // Ref GPZ czytany z fikstury (karta GPZ-MODEL: ziarno GPZ z równoważnikiem 110 kV
-        // zmieniło identyfikator; literał przepinany przy każdej regeneracji).
-        const gpzRef = enm.substations.find((st) => st.station_type === 'gpz')!.ref_id;
-        expect(luki.map((g) => g.ownerRef)).toEqual([`${gpzRef}#name-row-1`]);
-        // GPZ-MODEL (2026-10-21): 95 → 87. Tusz wiersza stanu bez zmian (391), baner
-        // szerszy o 8 (296 → 304), bo nazwa GPZ substratu brzmi „GPZ Referencyjny 110 kV"
-        // (o jeden znak dłuższa niż „… 15 kV" — GPZ z równoważnikiem 110 kV); pomiar sondą
-        // karty na fiksturze przed/po. Dług ten sam, nadmiar mniejszy o szerokość znaku.
-        // UX-04/POLE-LINIOWE-WZORZEC (2026-10-30, §11.7 pkt 7 — tabela posuwów kroju zamiast
-        // 0,62 em): 87 → 50. Baner 304 → 248, tusz wiersza stanu 391 → 298 (sonda na fiksturze
-        // przed/po); dług ten sam, nadmiar mniejszy, bo cyfry i małe litery są węższe od szacunku.
-        expect(luki[0].inkExtent - luki[0].rectExtent).toBeCloseTo(50, 6);
-        // Wiersz stanu istnieje WYŁĄCZNIE na poziomie przeglądowym — na L1/L2
-        // gałąź `else` niżej wymaga zbioru PUSTEGO bez żadnego ustępstwa.
-      } else {
-        expect(luki).toEqual([]);
-      }
-      // Rezerwacja obejmuje prostokąt geometrycznie — nie tylko liczbowo.
-      for (const label of scene.labels) {
-        const rez = labelReservationRect(label);
-        expect(label.rect.x).toBeGreaterThanOrEqual(rez.x - 0.5);
-        expect(label.rect.x + label.rect.width).toBeLessThanOrEqual(rez.x + rez.width + 0.5);
-        expect(label.rect.y).toBeGreaterThanOrEqual(rez.y - 0.5);
-        expect(label.rect.y + label.rect.height).toBeLessThanOrEqual(rez.y + rez.height + 0.5);
-      }
-    });
-  }
+  it(`tusz mieści się w rezerwacji wszędzie POZA jednym nazwanym długiem (drugi koniec pary)`, () => {
+    const scene = buildSceneV3(enm);
+    const luki = labelGrowthReservationGaps(scene.labels);
+    // Dawny DŁUG NAZWANY (wiersz stanu zwinięcia GPZ dopisywany do pasma zmierzonego
+    // dla tytułu, `composeCollapsedGpz`) zniknął razem z widokiem zwiniętym — karta
+    // SLD-SKALA-I-NAWIGACJA R1 (jedna scena). Zbiór luk ma być PUSTY bez ustępstw.
+    expect(luki).toEqual([]);
+    // Rezerwacja obejmuje prostokąt geometrycznie — nie tylko liczbowo.
+    for (const label of scene.labels) {
+      const rez = labelReservationRect(label);
+      expect(label.rect.x).toBeGreaterThanOrEqual(rez.x - 0.5);
+      expect(label.rect.x + label.rect.width).toBeLessThanOrEqual(rez.x + rez.width + 0.5);
+      expect(label.rect.y).toBeGreaterThanOrEqual(rez.y - 0.5);
+      expect(label.rect.y + label.rect.height).toBeLessThanOrEqual(rez.y + rez.height + 0.5);
+    }
+  });
 
   it('CZUŁOŚĆ wyroczni: etykieta z prostokątem szerszym od tekstu JEST wykrywana (inaczej zieleń niczego nie dowodzi)', () => {
     const tekst = 'Stacja S01';
@@ -172,26 +148,24 @@ describe('BLOK-PUSTY §1 — prostokąt etykiety niesie TUSZ, nie rezerwację sl
 // ---------------------------------------------------------------------------
 
 describe('BLOK-PUSTY §2 — zwężenie prostokąta NIE przesuwa napisu', () => {
-  for (const lod of LODY) {
-    it(`L${lod}: wszystkie wiersze jednego pasma nazw mają WSPÓLNY środek poziomy`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const pasma = new Map<string, number[]>();
-      for (const label of scene.labels) {
-        if (label.ownerKind !== 'station-name') continue;
-        const klucz = label.ownerRef.replace(/#name-row-\d+$/, '');
-        const lista = pasma.get(klucz) ?? [];
-        lista.push(label.rect.x + label.rect.width / 2);
-        pasma.set(klucz, lista);
-      }
-      expect(pasma.size).toBeGreaterThan(0);
-      for (const [klucz, srodki] of pasma) {
-        // Render rysuje tekst `textAnchor=middle` w środku prostokąta — wspólny
-        // środek wszystkich wierszy znaczy, że pasmo jest nadal wyśrodkowane w
-        // kolumnie dokładnie tak, jak przed kartą.
-        expect(new Set(srodki).size, `pasmo ${klucz} rozjechało się w poziomie`).toBe(1);
-      }
-    });
-  }
+  it(`wszystkie wiersze jednego pasma nazw mają WSPÓLNY środek poziomy`, () => {
+    const scene = buildSceneV3(enm);
+    const pasma = new Map<string, number[]>();
+    for (const label of scene.labels) {
+      if (label.ownerKind !== 'station-name') continue;
+      const klucz = label.ownerRef.replace(/#name-row-\d+$/, '');
+      const lista = pasma.get(klucz) ?? [];
+      lista.push(label.rect.x + label.rect.width / 2);
+      pasma.set(klucz, lista);
+    }
+    expect(pasma.size).toBeGreaterThan(0);
+    for (const [klucz, srodki] of pasma) {
+      // Render rysuje tekst `textAnchor=middle` w środku prostokąta — wspólny
+      // środek wszystkich wierszy znaczy, że pasmo jest nadal wyśrodkowane w
+      // kolumnie dokładnie tak, jak przed kartą.
+      expect(new Set(srodki).size, `pasmo ${klucz} rozjechało się w poziomie`).toBe(1);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -199,19 +173,17 @@ describe('BLOK-PUSTY §2 — zwężenie prostokąta NIE przesuwa napisu', () => 
 // ---------------------------------------------------------------------------
 
 describe('BLOK-PUSTY §3 — arkusz mierzy REZERWACJĘ, więc nie zależy od treści poziomu', () => {
-  it('szerokość bbox sceny IDENTYCZNA na L0/L1/L2, mimo że wiersz pasma nazw niesie na L0 kod, a na L1/L2 nazwę', () => {
-    const szerokosci = LODY.map((lod) => buildSceneV3(enm, lod).bbox.width);
+  it('szerokość bbox sceny nie zależy od kamery — jedna scena, ta sama rezerwacja przy każdej budowie', () => {
+    // Intencja (KD-5/S1 „jedna kotwica"): arkusz mierzy REZERWACJĘ, nie tusz. Dawniej
+    // dowodzono jej na trzech poziomach szczegółu z różną treścią pasma nazw (kod na L0,
+    // nazwa na L1/L2); jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) nie ma już innej
+    // treści pasma — dowodem zostaje stałość arkusza i to, że pasmo niesie NAZWĘ stacji.
+    const szerokosci = [buildSceneV3(enm).bbox.width, buildSceneV3(enm).bbox.width];
     expect(new Set(szerokosci).size, `szerokości arkusza: ${szerokosci.join(' / ')}`).toBe(1);
-    // Kontrola, że przesłanka testu zachodzi (treść RÓŻNI się między poziomami)
-    // — inaczej równość wyżej byłaby prawdziwa z powodu, którego nie badamy.
-    // Bierzemy wiersz STACJI (nie nagłówek GPZ, który jest ten sam na każdym
-    // poziomie): na L0 niesie kod stacji, na L2 jej nazwę.
-    const wierszStacji = (lod: SceneLod): string | undefined =>
-      buildSceneV3(enm, lod).labels.find(
-        (l) => l.ownerKind === 'station-name' && l.ownerRef.startsWith('stn/'),
-      )?.text;
-    expect(wierszStacji(0)).toBeDefined();
-    expect(wierszStacji(0)).not.toBe(wierszStacji(2));
+    const wierszStacji = buildSceneV3(enm).labels.find(
+      (l) => l.ownerKind === 'station-name' && l.ownerRef.startsWith('stn/'),
+    );
+    expect(wierszStacji?.text).toBeDefined();
   });
 });
 
@@ -371,48 +343,42 @@ describe('BLOK-PUSTY §4 — rezerwacja strony nN śledzi RYSUNEK (max, nie suma
 // ---------------------------------------------------------------------------
 
 describe('BLOK-PUSTY §5 — rama bloku obejmuje TREŚĆ, nie rezerwację kolumny', () => {
-  for (const lod of LODY) {
-    it(`L${lod}: rama KAŻDEGO bloku jest węższa niż rezerwacja kolumny, którą blok zajmuje`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const korzenie = new Set<string>();
-      for (const label of scene.labels) {
-        const m = /^((stn|gpz)\/[0-9a-f]+)\//.exec(label.ownerRef);
-        if (m) korzenie.add(m[1]);
-      }
-      expect(korzenie.size).toBeGreaterThan(50);
-      let zbadane = 0;
-      const naStyk: string[] = [];
-      for (const korzen of korzenie) {
-        const ref = korzen.startsWith('gpz') ? `${korzen}/substation` : `${korzen}/station`;
-        const rama = prostokatElementuWScenie(scene, ref);
-        if (!rama) continue;
-        const wiersze = scene.labels.filter(
-          (l) => l.ownerKind === 'station-name' && (l.ownerRef === ref || l.ownerRef.startsWith(`${ref}#`)),
-        );
-        if (wiersze.length === 0) continue;
-        const kolumna = wiersze[0].rezerwacjaSzerokosci;
-        expect(kolumna, `wiersz pasma nazw bez rezerwacji: ${wiersze[0].ownerRef}`).toBeGreaterThan(0);
-        // Rama nie może już być rozdmuchana rezerwacją: prostokąt pasma NIGDY
-        // nie przekracza kolumny, a w każdym bloku, którego wiersze się w niej
-        // mieszczą, jest od niej ŚCIŚLE węższy — więc jeżeli rama równa się
-        // kolumnie, to wyłącznie dlatego, że NARYSOWANA treść (szyna,
-        // aparatura) tyle zajmuje.
-        const najszerszyWiersz = Math.max(...wiersze.map((l) => l.rect.width));
-        expect(najszerszyWiersz).toBeLessThanOrEqual(kolumna!);
-        if (najszerszyWiersz === kolumna) naStyk.push(ref);
-        zbadane += 1;
-      }
-      expect(zbadane).toBeGreaterThan(50);
-      // Równość zachodzi WYŁĄCZNIE tam, gdzie tusz nie mieści się w rezerwacji
-      // i `tuszWSlocie` oddaje slot bez zmian — czyli w jedynym nazwanym długu
-      // (wiersz stanu zwinięcia GPZ, istniejący tylko na L0; opis w
-      // `scene/buildScene.ts` `composeCollapsedGpz`). Liczba, nie filtr: nowy
-      // blok „na styk" zapala test.
-      expect(naStyk, `bloki z pasmem na styk kolumny: ${naStyk.join(', ')}`).toHaveLength(
-        lod === 0 ? 1 : 0,
+  it(`rama KAŻDEGO bloku jest węższa niż rezerwacja kolumny, którą blok zajmuje`, () => {
+    const scene = buildSceneV3(enm);
+    const korzenie = new Set<string>();
+    for (const label of scene.labels) {
+      const m = /^((stn|gpz)\/[0-9a-f]+)\//.exec(label.ownerRef);
+      if (m) korzenie.add(m[1]);
+    }
+    expect(korzenie.size).toBeGreaterThan(50);
+    let zbadane = 0;
+    const naStyk: string[] = [];
+    for (const korzen of korzenie) {
+      const ref = korzen.startsWith('gpz') ? `${korzen}/substation` : `${korzen}/station`;
+      const rama = prostokatElementuWScenie(scene, ref);
+      if (!rama) continue;
+      const wiersze = scene.labels.filter(
+        (l) => l.ownerKind === 'station-name' && (l.ownerRef === ref || l.ownerRef.startsWith(`${ref}#`)),
       );
-    });
-  }
+      if (wiersze.length === 0) continue;
+      const kolumna = wiersze[0].rezerwacjaSzerokosci;
+      expect(kolumna, `wiersz pasma nazw bez rezerwacji: ${wiersze[0].ownerRef}`).toBeGreaterThan(0);
+      // Rama nie może już być rozdmuchana rezerwacją: prostokąt pasma NIGDY
+      // nie przekracza kolumny, a w każdym bloku, którego wiersze się w niej
+      // mieszczą, jest od niej ŚCIŚLE węższy — więc jeżeli rama równa się
+      // kolumnie, to wyłącznie dlatego, że NARYSOWANA treść (szyna,
+      // aparatura) tyle zajmuje.
+      const najszerszyWiersz = Math.max(...wiersze.map((l) => l.rect.width));
+      expect(najszerszyWiersz).toBeLessThanOrEqual(kolumna!);
+      if (najszerszyWiersz === kolumna) naStyk.push(ref);
+      zbadane += 1;
+    }
+    expect(zbadane).toBeGreaterThan(50);
+    // Równość zachodziła WYŁĄCZNIE w nazwanym długu wiersza stanu zwinięcia GPZ
+    // (widok zwinięty usunięty — jedna scena). Liczba, nie filtr: nowy blok „na styk"
+    // zapala test.
+    expect(naStyk, `bloki z pasmem na styk kolumny: ${naStyk.join(', ')}`).toHaveLength(0);
+  });
 });
 
 /*

@@ -143,16 +143,16 @@ describe('S9-5 — kategoria menu wynika z KOTWICY, nie z kreski', () => {
     expect(wynik.stan === 'temat' && wynik.temat.menuKind).toBe('apparatus');
   });
 
-  it('etykieta STACJI daje menu stacji i TEN SAM ref co symbol stacji (jeden predykat na obiekt)', () => {
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA, R1): rysunek nie ma symbolu stacji (dawna klasa
+  // trafienia `stacja`), więc uchwytem stacji jest napis jej nazwy — i to on musi dać menu
+  // stacji z refem MODELU stacji, a nie z kompozytowym refem napisu.
+  it('etykieta STACJI daje menu stacji z refem modelu stacji (uchwyt stacji na rysunku)', () => {
     const zEtykiety = resolveCanvasMenuSubject(
       { klasa: 'etykieta', elementKind: 'station', ownerRef: 'stn/A/station#name-row-0' },
       index,
     );
-    const zSymbolu = resolveCanvasMenuSubject(
-      { klasa: 'stacja', elementKind: 'station', ownerRef: 'stn/A/station' },
-      index,
-    );
-    expect(zEtykiety).toEqual(zSymbolu);
+    expect(zEtykiety.stan === 'temat' && zEtykiety.temat.kotwica).toBe('stacja');
+    expect(zEtykiety.stan === 'temat' && zEtykiety.temat.modelRef).toBe('stn/A/station');
   });
 
   it('podtyp DER rozstrzyga kategorię tylko dla rodzajów ROZPOZNANYCH (reszta = degradacja)', () => {
@@ -258,7 +258,6 @@ describe('S9-5 — iloczyn cech {klasa} × {kotwica}: tabela ZAMKNIĘTA', () => 
   };
   /** Oczekiwanie = deklaracja `KOTWICE_DOZWOLONE_DLA_KLASY` z modułu. */
   const DOZWOLONE: Record<HitObjectClass, readonly MenuAnchorKind[]> = {
-    stacja: ['stacja'],
     aparat: ['pole', 'galaz', 'transformator'],
     transformator: ['transformator', 'pole'],
     zrodlo: ['zrodlo'],

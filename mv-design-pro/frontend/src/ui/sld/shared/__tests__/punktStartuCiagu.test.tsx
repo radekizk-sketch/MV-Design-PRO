@@ -513,7 +513,7 @@ describe('S95-START — natywny prawy klik w etykietę stacji na kanwie', () => 
   it.each(STANY)('stan pól %s: pozycja „Kontynuuj ciąg główny" aktywna ⇔ wolne pole liniowe', async (stan) => {
     const { snapshot, logical_views: widoki } = scena('stacja_na_odcinku', stan);
     useSnapshotStore.setState({ snapshot, logicalViews: widoki });
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} />);
     const etykieta = container.querySelector(
       `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(STACJA_REF)}#name-row"]`,
     );
@@ -613,7 +613,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
    */
   it('kanon rysunku: pole wolne rysuje głowicę i zakończenie pola, pole zajęte — głowicę', () => {
     useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} />);
     const uchwyt = (pole: string, symbol: string) =>
       container.querySelector(
         `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(pole)}"][${HIT_ATTR.for}*="${symbol}"]`,
@@ -631,7 +631,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
     { nazwa: 'wyłącznik wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'breaker', aktywna: false },
   ])('$nazwa: prawy klik → pozycja menu → kreator z polem startu', async ({ pole, symbol, aktywna }) => {
     useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} />);
     await userEvent.pointer({ keys: '[MouseRight]', target: uchwytSymbolu(container, pole, symbol) });
     const menu = screen.getByRole('menu');
     const pozycja = within(menu).getByTestId('sld-menu-extend-trunk') as HTMLButtonElement;
@@ -650,7 +650,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
 
   it('lewy klik w zakończenie wolnego pola z głowicą: inspektor pokazuje głowicę pola i aktywną pozycję paska', async () => {
     useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} />);
     await userEvent.click(uchwytSymbolu(container, POLE_GPZ_WOLNE, 'bayReserve'));
     cleanup();
     renderWithQueryClient(<InspectorEngineeringView />);

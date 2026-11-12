@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { oddalDoSkali, selektorUchwytuStacji } from './skalaKamery';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -183,19 +184,16 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
 
   await reloadEditorPage(page);
 
-  // Adaptacja v3 (F12-C): drop DER na stację przyjmuje klik w element o
-  // elementKind 'station' — w v3 to WYŁĄCZNIE symbol zbiorczy L0
-  // (`sld-v3-l0-<stationRef>`, plan sieci); na L1/L2 stacja jest rozwinięta
-  // w pola bez pojedynczego elementu-stacji. Ścieżka użytkownika: oddal
-  // widok do planu (zoom kółkiem), uzbrój paletę, kliknij blok stacji —
-  // dawne data-element-kind/data-element-id były kontraktem kanwy v2.
+  // Drop DER na stację przyjmuje klik w element o elementKind 'station' — w jednej scenie
+  // (karta SLD-SKALA-I-NAWIGACJA R1) jest nim napis identyfikacji stacji (`<ref>#name-row-0`;
+  // dawny symbol zbiorczy L0 `sld-v3-l0-<ref>` nie istnieje). Ścieżka użytkownika: oddal
+  // widok kółkiem NATYWNYM do kadru całości, uzbrój paletę, kliknij napis stacji.
   const canvas = page.getByTestId('sld-canvas-v3');
   await expect(canvas).toBeVisible();
-  const stationL0 = page.locator(`[data-testid="sld-v3-l0-${stationRef!}"]`);
-  for (let i = 0; i < 24 && (await stationL0.count()) === 0; i += 1) {
-    await canvas.dispatchEvent('wheel', { deltaY: 240, clientX: 400, clientY: 300, bubbles: true });
-    await page.waitForTimeout(120);
-  }
+  const ramkaKanwy = await canvas.boundingBox();
+  expect(ramkaKanwy).not.toBeNull();
+  await oddalDoSkali(page, canvas, { x: ramkaKanwy!.x + ramkaKanwy!.width / 2, y: ramkaKanwy!.y + ramkaKanwy!.height / 2 });
+  const stationL0 = page.locator(selektorUchwytuStacji(stationRef!));
   await expect(stationL0).toBeAttached({ timeout: 5000 });
 
   // KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy węższej kanwie

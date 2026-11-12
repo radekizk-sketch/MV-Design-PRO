@@ -13,7 +13,7 @@
  * poziomu NAJZGRUBSZEGO (LOD 0 — stacje jako mini-RMU, magistrala, laterale;
  * 83 symbole/126 odcinków na sieci referencyjnej wobec 765/690 na LOD 2) i
  * rzutuje bboxy jej elementów na prostokąty i linie. Wołający buduje tę scenę
- * TĄ SAMĄ funkcją `buildSceneV3(snapshot, 0)` co kanwa (czysta, memoizowana na
+ * TĄ SAMĄ funkcją `buildSceneV3(snapshot)` co kanwa (czysta, memoizowana na
  * snapshot — wzorzec `buildEnergizationOverlay`/`buildFlowOverlayForSnapshot`
  * w `SldCanvasV3Workspace.tsx`).
  *
@@ -22,22 +22,20 @@
  * ---------------------------------------------------------------------------
  * Klik/przeciągnięcie w minimapie produkuje PUNKT ŚWIATA, który wołający
  * podaje kamerze jako akcję `'center'` (`camera.ts`) — czysta translacja
- * `viewBox` przy niezmienionej skali. Minimapa NIE zmienia sceny, LOD-u ani
+ * `viewBox` przy niezmienionej skali. Minimapa NIE zmienia sceny ani
  * skali; jej jedynym wyjściem jest współrzędna.
  *
  * ---------------------------------------------------------------------------
- * MOSTEK MIĘDZY ŚWIATAMI LOD (dlaczego normalizacja, a nie tożsamość)
+ * ŚWIAT KAMERY A ŚWIAT MINIMAPY (przesunięcie o margines arkusza)
  * ---------------------------------------------------------------------------
- * Kadr kamery żyje w świecie AKTUALNEGO LOD, a minimapa rysuje świat LOD 0 —
- * a światy per-LOD mają WŁASNE bboxy (osobne rezerwacje, spec §7; na sieci
- * referencyjnej szerokości są równe co do piksela, ale wysokości już nie:
- * 3411 na L0 wobec 3489 na L1/L2). Prostokąt kadru mapujemy więc przez
- * NORMALIZACJĘ bbox→bbox (ta sama zasada proporcji, na której stoi
- * `refScaleFor`/`applyLodScaleMapping` w `camera.ts`): pozycja względna w
- * świecie źródłowym = pozycja względna w świecie docelowym. Dla świata
- * tożsamego mapowanie jest tożsamością (zero błędu), dla różniących się —
- * deterministyczne i odwracalne (`minimapPointToWorld` jest dokładną
- * odwrotnością `worldRectToMinimap` dla tego samego LOD).
+ * Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1/R7): minimapa i kanwa rysują TĘ
+ * SAMĄ scenę. Kamera liczy jednak `viewBox` w układzie arkusza, w którym treść
+ * sceny jest przesunięta o margines ramki (`sceneBoxToCameraWorld`), a minimapa
+ * — w układzie sceny. Mapowanie między nimi to czyste PRZESUNIĘCIE (ten sam
+ * rozmiar świata): `cameraSceneBbox` to prostokąt sceny w układzie kamery.
+ * Dawna normalizacja proporcji między bboxami światów per poziom szczegółu
+ * zniknęła razem z tymi światami. `minimapPointToWorld` jest dokładną
+ * odwrotnością `worldRectToMinimap`.
  *
  * Wszystko tu jest CZYSTĄ funkcją bez DOM/React — testowalne bez renderu
  * (P7 determinizm: te same wejścia = ten sam wynik, zero `Date`/losowości).
@@ -45,6 +43,7 @@
 import type { V3Rect } from '../core/grid';
 import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { SceneV3 } from '../scene/buildScene';
+import { prostokatElementuWScenie } from './viewAnchor';
 
 /** Prostokąt w układzie MINIMAPY (piksele panelu, początek w jej lewym górnym rogu). */
 export interface MinimapRect {
@@ -153,11 +152,7 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
     const g = gabarytSymbolu(symbol);
     const topLeft = projectPoint(projection, g.x, g.y);
     shapes.push({
-      // KD-5: blok GPZ zwinięty jest STACJĄ (zasilającą) — ta sama klasa
-      // nawigacyjna co `stationCollapsed`. Minimapa nie ma własnej ścieżki
-      // renderu: bierze to, co niesie scena L0, więc zwinięcie GPZ dziedziczy
-      // automatycznie; ta gałąź nadaje mu wyłącznie właściwą KLASĘ kształtu.
-      kind: symbol.symbolId === 'stationCollapsed' || symbol.symbolId === 'gpzCollapsed' ? 'station' : 'symbol',
+      kind: 'symbol',
       rect: {
         x: topLeft.x,
         y: topLeft.y,
@@ -169,23 +164,34 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
       },
     });
   }
+  // Stacje (w tym GPZ) — obrys całego rysunku stacji z TEJ SAMEJ sceny, którą
+  // rysuje kanwa (`prostokatElementuWScenie`: symbole, odcinki i etykiety
+  // należące do stacji). Jedna scena niezależna od skali (karta
+  // SLD-SKALA-I-NAWIGACJA, R1/R7) — nawigator nie ma osobnej sceny przeglądu.
+  for (const ref of scene.meta.drawnStationIds) {
+    const box = prostokatElementuWScenie(scene, ref);
+    if (!box) continue;
+    const topLeft = projectPoint(projection, box.minX, box.minY);
+    shapes.push({
+      kind: 'station',
+      rect: {
+        x: topLeft.x,
+        y: topLeft.y,
+        width: Math.max(1.5, (box.maxX - box.minX) * projection.scale),
+        height: Math.max(1.5, (box.maxY - box.minY) * projection.scale),
+      },
+    });
+  }
   return shapes;
-}
-
-/** Normalizacja pozycji względnej między bboxami dwóch światów LOD (patrz
- *  nagłówek „MOSTEK MIĘDZY ŚWIATAMI LOD"). */
-function renormalize(value: number, from: { readonly start: number; readonly size: number }, to: { readonly start: number; readonly size: number }): number {
-  if (!(from.size > 0) || !(to.size > 0)) return value;
-  return to.start + ((value - from.start) / from.size) * to.size;
 }
 
 /**
  * Prostokąt KADRU KAMERY na minimapie. `cameraWorldRect` to widoczny wycinek
- * świata AKTUALNEGO LOD (dokładnie to, co niesie `viewBox` kanwy —
- * `camera.ts::cameraViewBox`), `cameraSceneBbox` to bbox świata tego LOD.
- * Wynik jest w pikselach panelu; może wystawać poza panel (kadr szerszy niż
- * sieć przy pełnym oddaleniu) — wołający przycina go `clipPath`, bo obcięcie
- * liczbowe kłamałoby o położeniu kamery.
+ * świata kamery (dokładnie to, co niesie `viewBox` kanwy —
+ * `camera.ts::cameraViewBox`), `cameraSceneBbox` to prostokąt sceny w świecie
+ * kamery (przesunięty o margines arkusza). Wynik jest w pikselach panelu; może
+ * wystawać poza panel (kadr szerszy niż sieć przy pełnym oddaleniu) — wołający
+ * przycina go `clipPath`, bo obcięcie liczbowe kłamałoby o położeniu kamery.
  */
 export function worldRectToMinimap(
   cameraWorldRect: V3Rect,
@@ -193,23 +199,23 @@ export function worldRectToMinimap(
   projection: MinimapProjection,
 ): MinimapRect {
   const bbox0 = projection.worldBbox;
-  const x0 = renormalize(cameraWorldRect.x, { start: cameraSceneBbox.x, size: cameraSceneBbox.width }, { start: bbox0.x, size: bbox0.width });
-  const y0 = renormalize(cameraWorldRect.y, { start: cameraSceneBbox.y, size: cameraSceneBbox.height }, { start: bbox0.y, size: bbox0.height });
-  const widthRatio = cameraSceneBbox.width > 0 ? bbox0.width / cameraSceneBbox.width : 1;
-  const heightRatio = cameraSceneBbox.height > 0 ? bbox0.height / cameraSceneBbox.height : 1;
-  const topLeft = projectPoint(projection, x0, y0);
+  const topLeft = projectPoint(
+    projection,
+    cameraWorldRect.x - cameraSceneBbox.x + bbox0.x,
+    cameraWorldRect.y - cameraSceneBbox.y + bbox0.y,
+  );
   return {
     x: topLeft.x,
     y: topLeft.y,
-    width: cameraWorldRect.width * widthRatio * projection.scale,
-    height: cameraWorldRect.height * heightRatio * projection.scale,
+    width: cameraWorldRect.width * projection.scale,
+    height: cameraWorldRect.height * projection.scale,
   };
 }
 
 /**
  * ODWROTNOŚĆ `worldRectToMinimap` dla punktu: punkt panelu → punkt świata
- * AKTUALNEGO LOD (ten, w którym kamera liczy `viewBox`). To jedyne wyjście
- * minimapy do kamery — wołający podaje wynik jako `{ type: 'center' }`.
+ * kamery (ten, w którym kamera liczy `viewBox`). To jedyne wyjście minimapy do
+ * kamery — wołający podaje wynik jako `{ type: 'center' }`.
  */
 export function minimapPointToWorld(
   point: MinimapPoint,
@@ -217,11 +223,9 @@ export function minimapPointToWorld(
   projection: MinimapProjection,
 ): MinimapPoint {
   const bbox0 = projection.worldBbox;
-  const world0X = (point.x - projection.offsetX) / projection.scale + bbox0.x;
-  const world0Y = (point.y - projection.offsetY) / projection.scale + bbox0.y;
   return {
-    x: renormalize(world0X, { start: bbox0.x, size: bbox0.width }, { start: cameraSceneBbox.x, size: cameraSceneBbox.width }),
-    y: renormalize(world0Y, { start: bbox0.y, size: bbox0.height }, { start: cameraSceneBbox.y, size: cameraSceneBbox.height }),
+    x: (point.x - projection.offsetX) / projection.scale - bbox0.x + cameraSceneBbox.x,
+    y: (point.y - projection.offsetY) / projection.scale - bbox0.y + cameraSceneBbox.y,
   };
 }
 

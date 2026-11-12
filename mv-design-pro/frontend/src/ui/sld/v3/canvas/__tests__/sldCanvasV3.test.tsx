@@ -5,9 +5,10 @@
  * syntetyki, zgodnie z zadaniem.
  *
  * Zakres (DoD zadania):
- *  A. Montaż: liczba symboli w DOM = `scene.symbols.length` dla danego LOD.
- *  B. Przełączenie LOD (`lodOverride`, escape hatch — patrz `SldCanvasV3Props`
- *     nagłówek) zmienia zawartość (L0 vs L2).
+ *  A. Montaż: liczba symboli w DOM = `scene.symbols.length`.
+ *  B. Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA R1): ten
+ *     sam rysunek toru przy każdej skali kamery; skala wystawiona atrybutem
+ *     `data-skala-kamery` (dawne „przełączenie LOD" nie istnieje).
  *  C. Klik w symbol woła `onElementClick` z jego `testId`.
  *  D. Overlay energizacji zmienia WYŁĄCZNIE atrybuty koloru — geometria
  *     (x/y/width/height/d/points/transform) identyczna z i bez nakładki.
@@ -21,23 +22,8 @@ import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
-import {
-  SldCanvasV3,
-  computeFaultFlowPlacements,
-  computeFaultPointMarkerPlacement,
-  computeFlowOverlayPlacements,
-  computeOltcBadgePlacements,
-  computeResultLabelPlacements,
-  contentBoundingBoxOf,
-  sceneBoxToCameraWorld,
-  layoutResultLabels,
-  flowOverlayGeometry,
-  formatFlowLabelPl,
-  formatOltcBadgeLabel,
-} from '../SldCanvasV3';
-import { buildResultLabelsFromScene, resultRefForSegment } from '../resultLabels';
-import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
+import { buildSceneV3 } from '../../scene/buildScene';
+import { SldCanvasV3, computeFaultFlowPlacements, computeFaultPointMarkerPlacement, computeFlowOverlayPlacements, computeOltcBadgePlacements, contentBoundingBoxOf, sceneBoxToCameraWorld, flowOverlayGeometry, formatFlowLabelPl, formatOltcBadgeLabel } from '../SldCanvasV3';
 import {
   orientedSegmentRefs,
   type SegmentFaultFlowOverlay,
@@ -46,7 +32,8 @@ import {
   type TransformerOltcOverlay,
 } from '../overlay';
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
-import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
+import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState, type CameraState } from '../camera';
+import { kameraNaPunkcieSceny } from './kameraTestowa';
 import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { LABEL_ROLE_BY_OWNER_KIND } from '../../layout/labels';
@@ -71,6 +58,10 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 800;
+/** Kanwa, na której CAŁA sieć referencyjna mieści się przy skali czytania
+ *  (`SKALA_CZYTANIA`, przypięte w `sldCanvasV3.wyniki.test.tsx`). */
+const KANWA_CZYTANIA = { width: 30000, height: 20000 } as const;
+// Testy warstwy liczb wynikowych (W4, R2) — `sldCanvasV3.wyniki.test.tsx`.
 /** BLOK-PUSTY: długość grota nakładki przepływu [j.św.] — LUSTRO stałej
  *  `FLOW_ARROW_LENGTH` z `SldCanvasV3.tsx` (tam prywatna). Przęsło krótsze od
  *  grota nie może go ponieść (`flowOverlayGeometry` zwraca `null`). */
@@ -86,6 +77,14 @@ const FLOW_ARROW_LENGTH_JSW = 12;
  *  nakładki dla audytora DOM/e2e — `sld-pa-powerflow-tor.spec.ts`; zero
  *  geometrii). Diff geometrii usuwa je W CAŁOŚCI (nie tylko wartości —
  *  bez nakładki atrybut nie istnieje). */
+/** Grubość kreski jest jedyną cechą rysunku zależną od skali: podłoga grubości
+ *  (karta SLD-SKALA-I-NAWIGACJA R5) trzyma linię toru co najmniej na progu
+ *  ekranowym, więc w jednostkach świata grubieje przy oddaleniu. Geometria
+ *  (położenie, kształt, kolejność) nie zależy od skali — to porównanie ją izoluje. */
+function bezGruboscKreski(html: string): string {
+  return html.replace(/stroke-width="[^"]*"/g, 'stroke-width="_"');
+}
+
 function stripColorAttrs(html: string): string {
   return html
     .replace(/stroke="[^"]*"/g, 'stroke="_"')
@@ -94,9 +93,9 @@ function stripColorAttrs(html: string): string {
 }
 
 describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
-  it('LOD 0: liczba symboli w DOM = scene.symbols.length', () => {
-    const scene = buildSceneV3(enm, 0);
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
+  it('liczba symboli w DOM = scene.symbols.length (pełny widok sieci)', () => {
+    const scene = buildSceneV3(enm);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
   });
@@ -109,14 +108,11 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
   // ginie PO CICHU — każda etykieta jest albo w DOM, albo policzona jako ukryta.
   //
   // KD-11: kubełki są TRZY, nie dwa — ukryte DANE SZCZEGÓŁOWE
-  // (`data-hidden-unreadable`, wskaźnik „Ukryto N opisów") ORAZ tożsamości bez
-  // miejsca (`data-dropped-identity`). Ten kadr WYMUSZA `lodOverride={2}` przy
-  // skali ~0,08, czyli stan, którego kamera produkcyjna nie osiąga (histereza
-  // trzyma tam L0) — dlatego trzeci kubełek bywa tu niepusty, a osobny test
-  // niżej pilnuje, że w stanach PRODUKCYJNYCH jest zerowy.
-  it('LOD 2: symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte dane + porzucone tożsamości = scene.labels.length', () => {
-    const scene = buildSceneV3(enm, 2);
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
+  // (`data-hidden-unreadable`) ORAZ tożsamości bez miejsca
+  // (`data-dropped-identity`).
+  it('symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte dane + porzucone tożsamości = scene.labels.length', () => {
+    const scene = buildSceneV3(enm);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
@@ -129,8 +125,8 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
   // Bez tego poprzedni test przechodziłby także wtedy, gdyby declutter przestał
   // działać (0 ukrytych + wszystkie w DOM też daje sumę).
   it('pełny widok sieci: opisy nieczytelne są ukryte i zameldowane w warstwie ekranu', () => {
-    const scene = buildSceneV3(enm, 2);
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
+    const scene = buildSceneV3(enm);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
     const porzucone = Number(labelGroup?.getAttribute('data-dropped-identity') ?? '0');
@@ -156,48 +152,44 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
   });
 
   it('kanwa niesie ramkę arkusza (SheetFrame) i tło SCADA', () => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     expect(container.querySelector('[data-testid="sld-sheet-frame"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="sld-sheet-border"]')).toBeTruthy();
   });
 });
 
-describe('SldCanvasV3 — LOD (spec §7): L0 vs L2 daje różną zawartość', () => {
-  it('data-scene-lod odzwierciedla lodOverride; L2 ma więcej węzłów DOM niż L0 (specyfikacje/podpisy)', () => {
-    const { container: c0 } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
-    const { container: c2 } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
-    expect(c0.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod')).toBe('0');
-    expect(c2.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod')).toBe('2');
-
-    // INTENCJA (zachowana): L2 niesie WIĘCEJ opisów niż L0. Od declutteru
-    // ekranowego (V12K-218) sama liczba węzłów w DOM tego nie wyraża przy pełnym
-    // widoku sieci — na tym kadrze próg czytelności ukrywa opisy na OBU
-    // poziomach, więc porównywalibyśmy zero z zerem. Liczymy więc opisy, które
-    // scena NA TYM POZIOMIE wystawiła: w DOM plus zameldowane jako ukryte.
-    const opisyRazem = (c: ParentNode): number => {
-      const g = c.querySelector('[data-testid="sld-v3-labels"]');
-      return (g?.children.length ?? 0) + Number(g?.getAttribute('data-hidden-unreadable') ?? '0');
-    };
-    expect(opisyRazem(c2)).toBeGreaterThan(opisyRazem(c0));
-
-    const symbols0 = c0.querySelector('[data-testid="sld-v3-symbols"]')?.children.length ?? 0;
-    const symbols2 = c2.querySelector('[data-testid="sld-v3-symbols"]')?.children.length ?? 0;
-    expect(symbols2).toBeGreaterThan(symbols0);
+describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1)', () => {
+  // INTENCJA dawnego testu „L0 vs L2 daje różną zawartość" zmieniona kanonem: skala
+  // kamery steruje wyłącznie gęstością napisów, więc rysunek toru (symbole, odcinki)
+  // jest TEN SAM przy każdej skali. Iloczyn: szerokość kanwy (skala dopasowania)
+  // {mała, duża} × warstwa {symbole, odcinki}.
+  it('ta sama migawka na kanwie małej i dużej: identyczne symbole i odcinki, różna skala kamery', () => {
+    const { container: maly } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+    const { container: duzy } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH * 6} height={CANVAS_HEIGHT * 6} />);
+    const skala = (c: ParentNode) => Number(c.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
+    expect(skala(duzy)).toBeGreaterThan(skala(maly) * 3);
+    for (const warstwa of ['sld-v3-symbols', 'sld-v3-segments']) {
+      const a = maly.querySelector(`[data-testid="${warstwa}"]`);
+      const b = duzy.querySelector(`[data-testid="${warstwa}"]`);
+      expect(a, warstwa).toBeTruthy();
+      expect(bezGruboscKreski(a!.innerHTML), warstwa).toBe(bezGruboscKreski(b!.innerHTML));
+    }
   });
 
-  it('domyślnie (brak lodOverride) LOD wynika z kamery dopasowanej do sceny — startuje jako liczba 0|1|2 valid', () => {
+  it('kanwa nie niesie atrybutu poziomu szczegółu — jedynym parametrem widoku jest skala kamery', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
-    const lod = container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod');
-    expect(['0', '1', '2']).toContain(lod);
+    const kanwa = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    expect(kanwa.hasAttribute('data-scene-' + 'lod')).toBe(false);
+    expect(Number(kanwa.getAttribute('data-skala-kamery'))).toBeGreaterThan(0);
   });
 });
 
 describe('SldCanvasV3 — klik w symbol', () => {
   it('klik w pierwszy symbol woła onElementClick z jego testId', () => {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
     );
     const firstSymbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.firstElementChild;
     expect(firstSymbolGroup).toBeTruthy();
@@ -218,35 +210,35 @@ describe('SldCanvasV3 — klik w symbol', () => {
       ownerRef: scene.symbols[0].meta?.ownerRef,
       elementKind: scene.symbols[0].meta?.elementKind,
       // S9-10: lewy klik niesie też KLASĘ trafienia (wspólny `metaZTrafienia`
-      // z prawym klikiem) — pierwszy symbol L0 to blok stacji.
-      klasa: 'stacja',
+      // z prawym klikiem) — ta sama, którą niesie uchwyt trafienia.
+      klasa: firstSymbolHit!.getAttribute('data-hit-klasa'),
       // Rodzaj trafionego symbolu sceny (`SymbolId`) — tożsamość aparatu pola dla menu.
       symbolId: scene.symbols[0].symbolId,
     });
   });
 
-  it('F8b-1: klik w symbol L0 (stationCollapsed) przekazuje ownerRef=station id + elementKind=station', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
-    expect(stationIndex).toBeGreaterThanOrEqual(0);
+  // F8b-1 — INTENCJA zachowana po R1: klik w obiekt STACJI przekazuje tożsamość
+  // stacji. Dawniej celem był zwinięty blok stacji L0; na jednej scenie stację
+  // reprezentuje jej napis nazwy (uchwyt kompozytu `#name-row`).
+  it('F8b-1: klik w napis nazwy stacji przekazuje ownerRef = ref stacji', () => {
+    const scene = buildSceneV3(enm);
+    const stacja = scene.meta.stationTraversalOrder.find((r) => r !== scene.meta.gpzId)!;
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH * 4} height={CANVAS_HEIGHT * 4} onElementClick={onElementClick} />,
     );
-    // Karta S9-4: klik idzie w uchwyt obiektu (patrz komentarz wyżej).
-    const stationTestId = scene.symbols[stationIndex].meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
-    fireEvent.click(container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`)!);
-    expect(onElementClick).toHaveBeenCalledWith(expect.any(String), {
-      ownerRef: scene.symbols[stationIndex].meta?.ownerRef,
-      elementKind: 'station',
-      // S9-10: klasa trafienia w lewym kliku — patrz test wyżej.
-      klasa: 'stacja',
-      symbolId: 'stationCollapsed',
-    });
+    const uchwyt = [...container.querySelectorAll('[data-hit-role="obrys"][data-hit-klasa="etykieta"]')].find(
+      (n) => (n.getAttribute('data-hit-owner-ref') ?? '').startsWith(stacja),
+    );
+    expect(uchwyt, 'napis nazwy stacji ma uchwyt trafienia').toBeTruthy();
+    fireEvent.click(uchwyt!);
+    expect(onElementClick).toHaveBeenCalledTimes(1);
+    const [, meta] = onElementClick.mock.calls[0] as [string, { ownerRef?: string }];
+    expect(meta.ownerRef?.startsWith(stacja)).toBe(true);
   });
 
   it('bez onElementClick klik nie rzuca (brak handlera to no-op bezpieczny)', () => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const firstHit = container.querySelector('[data-hit-role="obrys"]');
     expect(firstHit).toBeTruthy();
     expect(() => fireEvent.click(firstHit!)).not.toThrow();
@@ -255,13 +247,13 @@ describe('SldCanvasV3 — klik w symbol', () => {
 
 describe('SldCanvasV3 — nakładka energizacji (spec §6: KOLOR, nie geometria)', () => {
   it('overlay zmienia WYŁĄCZNIE atrybuty koloru (stroke/fill) — geometria identyczna', () => {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const testId = scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0';
     const overlay: SldV3Overlay = { energizedByTestId: { [testId]: true } };
 
-    const { container: without } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
+    const { container: without } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const { container: withOverlay } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
 
     const symbolsWithout = without.querySelector('[data-testid="sld-v3-symbols"]')!;
@@ -282,9 +274,9 @@ describe('SldCanvasV3 — nakładka energizacji (spec §6: KOLOR, nie geometria)
   });
 
   it('bez overlay (undefined) rysunek jest bazowy mono (brak nakładki) — brak wpisu = brak zmiany koloru', () => {
-    const { container: a } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
+    const { container: a } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const { container: b } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} overlay={{ energizedByTestId: {} }} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={{ energizedByTestId: {} }} />,
     );
     expect(a.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML).toBe(
       b.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML,
@@ -294,22 +286,30 @@ describe('SldCanvasV3 — nakładka energizacji (spec §6: KOLOR, nie geometria)
 
 describe('SldCanvasV3 — determinizm', () => {
   it('dwa rendery tych samych propsów dają identyczny innerHTML', () => {
-    const { container: a } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
-    const { container: b } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
+    const { container: a } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+    const { container: b } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     expect(a.innerHTML).toBe(b.innerHTML);
   });
 });
 
 describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa sld-v3-flow-overlay)', () => {
-  /** Realny odcinek (segmentRef bez `#`) + jego indeks w scenie danego LOD —
-   *  testId nakładki jest indeksowy per LOD (`sld-v3-flow-${index}`). */
-  function flowTargetOnScene(lod: SceneLod): { readonly ownerRef: string; readonly index: number } {
-    const scene = buildSceneV3(enm, lod);
+  /** Realny odcinek (segmentRef bez `#`) + jego indeks w scenie — testId
+   *  nakładki jest indeksowy (`sld-v3-flow-${index}`). `kamera` = stan
+   *  początkowy kamery nad środkiem odcinka przy skali czytania (napis wartości
+   *  jest klasy `wyniki`: przy widoku całej sieci jego pismo ma ~1 px i nie
+   *  trafia do rysunku — `canvas/gestoscInformacji.ts`). */
+  function flowTargetOnScene(): { readonly ownerRef: string; readonly index: number; readonly kamera: CameraState } {
+    const scene = buildSceneV3(enm);
     const index = scene.segments.findIndex(
       (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
     );
     expect(index).toBeGreaterThanOrEqual(0);
-    return { ownerRef: scene.segments[index].meta!.ownerRef!, index };
+    const pts = scene.segments[index].points;
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const srodek = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+    const kamera = kameraNaPunkcieSceny(scene, srodek, 1.4, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+    return { ownerRef: scene.segments[index].meta!.ownerRef!, index, kamera };
   }
 
   function overlayWithFlow(entries: Record<string, SegmentFlowOverlay>): SldV3Overlay {
@@ -325,13 +325,13 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
   });
 
   it('(a) odcinek z wpisem w flowByOwnerRef → grot (polygon) + etykieta wartości w DOM (format polski, przecinek dziesiętny)', () => {
-    const { ownerRef, index } = flowTargetOnScene(2);
+    const { ownerRef, index, kamera } = flowTargetOnScene();
     const { container } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
+        cameraOverride={kamera}
         overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
       />,
     );
@@ -345,13 +345,12 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
   });
 
   it('(b) odcinki BEZ wpisu → zero grota i etykiety (warstwa niesie WYŁĄCZNIE odcinki z wynikiem); bez overlay warstwa pusta', () => {
-    const { ownerRef } = flowTargetOnScene(2);
+    const { ownerRef } = flowTargetOnScene();
     const { container } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
       />,
     );
@@ -359,14 +358,14 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
     expect(container.querySelector('[data-testid="sld-v3-flow-overlay"]')!.children.length).toBe(1);
 
     const { container: noOverlay } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     expect(noOverlay.querySelector('[data-testid="sld-v3-flow-overlay"]')!.children.length).toBe(0);
   });
 
   it('(c) forward=false → grot obrócony: polygon.points = flowOverlayGeometry(points, false), tip lustrzany względem forward=true', () => {
-    const { ownerRef, index } = flowTargetOnScene(2);
-    const points = buildSceneV3(enm, 2).segments[index].points;
+    const { ownerRef, index } = flowTargetOnScene();
+    const points = buildSceneV3(enm).segments[index].points;
     const forwardGeom = flowOverlayGeometry(points, true)!;
     const reversedGeom = flowOverlayGeometry(points, false)!;
     expect(reversedGeom.arrowPoints).not.toBe(forwardGeom.arrowPoints);
@@ -384,7 +383,6 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef, false) })}
       />,
     );
@@ -394,27 +392,28 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
   });
 
   it('(d) determinizm renderu nakładki: dwa rendery tych samych propsów → identyczny innerHTML warstwy przepływu', () => {
-    const { ownerRef } = flowTargetOnScene(2);
+    const { ownerRef } = flowTargetOnScene();
     const overlay = overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) });
     const { container: a } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     const { container: b } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     expect(a.querySelector('[data-testid="sld-v3-flow-overlay"]')!.innerHTML).toBe(
       b.querySelector('[data-testid="sld-v3-flow-overlay"]')!.innerHTML,
     );
   });
 
-  it('(e) L0 (plan sieci): grot obecny, tekst wartości NIEOBECNY (spec §15.2 — LOD steruje etykietami, nie ukrywa kierunku)', () => {
-    const { ownerRef, index } = flowTargetOnScene(0);
+  // (e) INTENCJA zachowana po R1/R3: skala steruje napisami, nigdy kierunkiem — przy
+  // widoku całej sieci pismo wartości jest nieczytelne, więc znika, a grot zostaje.
+  it('(e) widok całej sieci: grot obecny, tekst wartości NIEOBECNY (skala steruje napisami, nie ukrywa kierunku)', () => {
+    const { ownerRef, index } = flowTargetOnScene();
     const { container } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={0}
         overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
       />,
     );
@@ -422,42 +421,28 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
     expect(container.querySelector(`[data-testid="sld-v3-flow-label-${index}"]`)).toBeNull();
   });
 
-  it('formatFlowLabelPl: człony TYLKO dla metryk obecnych (brak metryki = brak członu, zero atrap); znak Q zachowany; |P| bo znak P niesie strzałka; detail "p-only" (L1, spec §15.2) = samo P', () => {
+  it('formatFlowLabelPl: człony TYLKO dla metryk obecnych (brak metryki = brak członu, zero atrap); znak Q zachowany; |P| bo znak P niesie strzałka', () => {
     expect(formatFlowLabelPl({ ownerRef: 'x', forward: false, p: { value: -3.456, unit: 'MW' } })).toBe('3,46 MW');
     expect(
       formatFlowLabelPl({ ownerRef: 'x', forward: true, p: { value: 1, unit: 'MW' }, q: { value: -0.45, unit: 'Mvar' } }),
     ).toBe('1,00 MW · -0,45 Mvar');
     expect(formatFlowLabelPl({ ownerRef: 'x', forward: true, i: { value: 87.6, unit: 'A' } })).toBe('88 A');
-    expect(
-      formatFlowLabelPl(
-        { ownerRef: 'x', forward: true, p: { value: 1.2, unit: 'MW' }, q: { value: 0.3, unit: 'Mvar' }, i: { value: 45, unit: 'A' } },
-        'p-only',
-      ),
-    ).toBe('1,20 MW');
   });
 
-  it('L1: etykieta przepływu skrócona do P (spec §15.2 adaptacyjne etykiety — „L1 skrócone, L2 pełne")', () => {
-    const { ownerRef, index } = flowTargetOnScene(1);
-    const { container } = render(
-      <SldCanvasV3
-        snapshot={enm}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        lodOverride={1}
-        overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
-      />,
-    );
-    expect(container.querySelector(`[data-testid="sld-v3-flow-label-${index}"]`)?.textContent).toBe('1,20 MW');
-  });
+  // Dawny test „L1: etykieta skrócona do P" (adaptacyjne etykiety poziomu L1)
+  // skasowany kartą SLD-SKALA-I-NAWIGACJA (R3): napis wartości przepływu jest
+  // jednej klasy informacji (`wyniki`) — widoczny w pełnym brzmieniu, gdy jego
+  // pismo jest czytelne, albo nieobecny. Skrócona postać „pośrednia" była
+  // artefaktem poziomów szczegółu.
 
   // F-2 + V-1 + V-2 (recenzja Opusa): rozłączność DLA WSZYSTKICH odcinków z
   // nakładką, względem WSZYSTKICH klas etykiet sceny (w tym tytuły stacji
   // `station-name` — V-1), WSZYSTKICH bboxów symboli (ikony DER — V-2) oraz
   // innych etykiet przepływu (stack — V-2). Payload syntetyczny na KAŻDYM
   // odcinku jednokawałkowym naraz (jak harness renderowy nadzorcy).
-  for (const [lod, detail] of [[1, 'p-only'], [2, 'full']] as const) {
-    it(`czytelność (LOD ${lod}, detail=${detail}): KAŻDA etykieta przepływu ma bbox rozłączny z każdą etykietą sceny, każdym symbolem i innymi etykietami przepływu`, () => {
-      const scene = buildSceneV3(enm, lod);
+  {
+    it(`czytelność: KAŻDA etykieta przepływu ma bbox rozłączny z każdą etykietą sceny, każdym symbolem i innymi etykietami przepływu`, () => {
+      const scene = buildSceneV3(enm);
       const singleHop = new Set(orientedSegmentRefs(enm).keys());
       const entries: Record<string, SegmentFlowOverlay> = {};
       for (const s of scene.segments) {
@@ -468,7 +453,7 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
       // fixtury (88); dawna bramka F-1 obejmowala 45 — rozlacznosc etykiet jest
       // teraz sprawdzana na PELNYM zbiorze przeslow, nie na polowie.
       expect(Object.keys(entries).length).toBe(88);
-      const placements = computeFlowOverlayPlacements(scene, entries, detail);
+      const placements = computeFlowOverlayPlacements(scene, entries, true);
       // BLOK-PUSTY: liczba placementów liczona z GEOMETRII, nie wpisana z
       // fixtury. Grot ma stałą długość (`FLOW_ARROW_LENGTH` = 12 j.św.), więc
       // przęsło KRÓTSZE od grota nie może go ponieść — `flowOverlayGeometry`
@@ -544,7 +529,7 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
   // `flowLabelCandidates`) — cel: wymusić pełną kolizję, nie odtworzyć
   // dokładnie algorytm doboru kandydatów.
   it('r1: fallback placementu — WSZYSTKIE kandydaty kolidują ⇒ candidates[0] + labelPlaced=false, bez wyjątku/NaN', () => {
-    const baseScene = buildSceneV3(enm, 2);
+    const baseScene = buildSceneV3(enm);
     const ownerRef = 'r1-synthetic-segment';
     const syntheticSegment = {
       points: [
@@ -571,7 +556,7 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
       i: { value: 45, unit: 'A' },
     };
 
-    const placements = computeFlowOverlayPlacements(syntheticScene, { [ownerRef]: flow }, 'full');
+    const placements = computeFlowOverlayPlacements(syntheticScene, { [ownerRef]: flow }, true);
 
     expect(placements.length).toBe(1);
     expect(placements[0].label).not.toBe('');
@@ -592,14 +577,13 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
     // (`computeFlowOverlayPlacements`, powyżej) ORAZ na poziomie renderu
     // realnego komponentu z overlay NA PRAWDZIWYM odcinku (regresja: overlay
     // z dowolnym wpisem nigdy nie rzuca, niezależnie od `labelPlaced`).
-    const { ownerRef: realOwnerRef, index } = flowTargetOnScene(2);
+    const { ownerRef: realOwnerRef, index } = flowTargetOnScene();
     expect(() =>
       render(
         <SldCanvasV3
           snapshot={enm}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          lodOverride={2}
           overlay={overlayWithFlow({ [realOwnerRef]: FULL_FLOW(realOwnerRef) })}
         />,
       ),
@@ -609,10 +593,10 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
 });
 
 describe('SldCanvasV3 — V12K-092: badge wynikowy OLTC (spec §14.2/§3.5, warstwa sld-v3-oltc-overlay)', () => {
-  /** Realny transformator (symbol `elementKind==='transformer'`) sceny danego
-   *  LOD + jego `meta.ownerRef` = `transformerRef`. */
-  function transformerRefOnScene(lod: SceneLod): string {
-    const scene = buildSceneV3(enm, lod);
+  /** Realny transformator (symbol `elementKind==='transformer'`) sceny + jego
+   *  `meta.ownerRef` = `transformerRef`. */
+  function transformerRefOnScene(): string {
+    const scene = buildSceneV3(enm);
     const sym = scene.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta.ownerRef);
     expect(sym).toBeTruthy();
     return sym!.meta!.ownerRef!;
@@ -623,13 +607,12 @@ describe('SldCanvasV3 — V12K-092: badge wynikowy OLTC (spec §14.2/§3.5, wars
   }
 
   it('(a) transformator z wpisem oltcByOwnerRef → badge (rect + tekst "poz. +N · M×") w warstwie sld-v3-oltc-overlay', () => {
-    const ref = transformerRefOnScene(2);
+    const ref = transformerRefOnScene();
     const { container } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithOltc({ [ref]: { ownerRef: ref, tapPosition: 3, switchCount: 4 } })}
       />,
     );
@@ -640,19 +623,19 @@ describe('SldCanvasV3 — V12K-092: badge wynikowy OLTC (spec §14.2/§3.5, wars
 
   it('(b) bez overlay OLTC → warstwa pusta (zero atrap)', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     expect(container.querySelector('[data-testid="sld-v3-oltc-overlay"]')!.children.length).toBe(0);
   });
 
   it('(c) determinizm renderu: dwa rendery tych samych propsów → identyczny innerHTML warstwy OLTC', () => {
-    const ref = transformerRefOnScene(2);
+    const ref = transformerRefOnScene();
     const overlay = overlayWithOltc({ [ref]: { ownerRef: ref, tapPosition: -2 } });
     const { container: a } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     const { container: b } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     expect(a.querySelector('[data-testid="sld-v3-oltc-overlay"]')!.innerHTML).toBe(
       b.querySelector('[data-testid="sld-v3-oltc-overlay"]')!.innerHTML,
@@ -666,7 +649,7 @@ describe('SldCanvasV3 — V12K-092: badge wynikowy OLTC (spec §14.2/§3.5, wars
   });
 
   it('computeOltcBadgePlacements: brak overlay ⇒ zero placementów; wpis dla nie-transformatora ⇒ ignorowany', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(computeOltcBadgePlacements(scene, undefined)).toEqual([]);
     // Ref spoza zbioru transformatorów sceny ⇒ brak placementu (nie fabrykuje).
     expect(
@@ -694,60 +677,32 @@ function viewBoxOf(container: HTMLElement): string {
   return container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!;
 }
 
-describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie zawsze LOD2)', () => {
+describe('SldCanvasV3 — F8a k4.1: fit startowy celuje w treść sieci', () => {
   // K11-A (dyrektywa SLD-first 2026-07-30): domyślny CEL fitu to bbox TREŚCI
   // sieci (`contentBoundingBoxOf` — elementy z ownerRef WRAZ Z ETYKIETAMI),
-  // nie pełny bbox sceny z meblami arkusza. INTENCJA testów bez zmian:
-  // lodOverride wybiera ŚWIAT (L0 ≠ L2), a fit celuje w treść tego świata.
-  // KD-7: cel fitu przeliczony do ŚWIATA KAMERY (`sceneBoxToCameraWorld`) —
-  // `viewBox` opisuje układ arkusza, w którym treść sceny jest przesunięta o
-  // margines ramki.
-  const contentFitBbox = (lod: 0 | 2) => {
-    const scena = buildSceneV3(enm, lod);
-    return sceneBoxToCameraWorld(contentBoundingBoxOf(scena) ?? boundingBoxOfRect(scena.bbox));
-  };
-
-  it('lodOverride=0: viewBox startowy dopasowany do treści L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {
-    const bbox0 = contentFitBbox(0);
-    const bbox2 = contentFitBbox(2);
+  // nie pełny bbox sceny z meblami arkusza. KD-7: cel fitu przeliczony do
+  // ŚWIATA KAMERY (`sceneBoxToCameraWorld`) — `viewBox` opisuje układ arkusza,
+  // w którym treść sceny jest przesunięta o margines ramki. Dawny wariant
+  // „fit do świata wymuszonego poziomu L0 ≠ L2" zniknął z poziomami (R1).
+  it('viewBox startowy = dopasowanie treści sieci w prostokącie bezpiecznym (nie bbox arkusza)', () => {
+    const scena = buildSceneV3(enm);
+    const tresc = sceneBoxToCameraWorld(contentBoundingBoxOf(scena) ?? boundingBoxOfRect(scena.bbox));
+    const arkusz = sceneBoxToCameraWorld(boundingBoxOfRect(scena.bbox));
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
     // S9-8 („obszar bezpieczny pod dokami UI"): kamera produkcyjna liczy kadr w
     // PROSTOKĄCIE BEZPIECZNYM (kanwa minus pasy doków, `SLD_CANVAS_DOCK_INSETS`),
-    // więc oczekiwanie testu MUSI przejść tą samą drogą — inaczej test mierzyłby
-    // kadr, którego produkt świadomie już nie liczy.
-    const expectedFitToL0 = cameraViewBox(
-      computeInitialCameraState(bbox0, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+    // więc oczekiwanie testu MUSI przejść tą samą drogą.
+    const oczekiwany = cameraViewBox(
+      computeInitialCameraState(tresc, viewportSize, null, SLD_CANVAS_DOCK_INSETS).transform,
       viewportSize,
     );
-    const expectedWrongFitToL2 = cameraViewBox(
-      computeInitialCameraState(bbox2, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+    const zlyDoArkusza = cameraViewBox(
+      computeInitialCameraState(arkusz, viewportSize, null, SLD_CANVAS_DOCK_INSETS).transform,
       viewportSize,
     );
-
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
-    const actual = viewBoxOf(container);
-
-    expect(actual).toBe(expectedFitToL0);
-    expect(actual).not.toBe(expectedWrongFitToL2);
-  });
-
-  it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do treści L2', () => {
-    const bbox2 = contentFitBbox(2);
-    const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
-    // S9-8 („obszar bezpieczny pod dokami UI"): kamera produkcyjna liczy kadr w
-    // PROSTOKĄCIE BEZPIECZNYM (kanwa minus pasy doków, `SLD_CANVAS_DOCK_INSETS`),
-    // więc oczekiwanie testu MUSI przejść tą samą drogą — inaczej test mierzyłby
-    // kadr, którego produkt świadomie już nie liczy.
-    const expectedFitToL2 = cameraViewBox(
-      computeInitialCameraState(bbox2, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
-      viewportSize,
-    );
-
-    const { container: withOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
-    const { container: withoutOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
-
-    expect(viewBoxOf(withOverride)).toBe(expectedFitToL2);
-    expect(viewBoxOf(withoutOverride)).toBe(expectedFitToL2);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+    expect(viewBoxOf(container)).toBe(oczekiwany);
+    expect(oczekiwany).not.toBe(zlyDoArkusza);
   });
 });
 
@@ -762,7 +717,7 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
   // kamery; pinch/pan pointer-based mają pokrycie WYŁĄCZNIE na poziomie
   // czystych funkcji (`camera.test.ts`), tak jak przed F8a (brak regresji
   // pokrycia — pointer/pinch nie miały testu DOM ani przed tą dostawą).
-  const WHEEL_DELTA_Y = -50; // mały zoom-in, NIE przekracza progu LOD0 (0.4×1.15)
+  const WHEEL_DELTA_Y = -50; // mały zoom-in
 
   /**
    * INTENCJA (bez zmian od F8a): zmiana świata BEZ wskazania obiektu odrzuca
@@ -784,12 +739,11 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
       ) as { readonly enm: EnergyNetworkModel }
     ).enm;
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
-    const scenaInnej = buildSceneV3(innaSiec, 2);
+    const scenaInnej = buildSceneV3(innaSiec);
     const oczekiwanyFitInnej = cameraViewBox(
       computeInitialCameraState(
         sceneBoxToCameraWorld(contentBoundingBoxOf(scenaInnej) ?? boundingBoxOfRect(scenaInnej.bbox)),
         viewportSize,
-        undefined,
         null,
         SLD_CANVAS_DOCK_INSETS,
       ).transform,
@@ -816,7 +770,7 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+    const bbox2 = boundingBoxOfRect(buildSceneV3(enm).bbox);
     const bboxCenter = { x: (bbox2.minX + bbox2.maxX) / 2, y: (bbox2.minY + bbox2.maxY) / 2 };
 
     // Zoom z kursorem POZA środkiem viewportu (200,150 ≠ środek 600,400) —
@@ -837,7 +791,7 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
     const scaleAfterResize = scaleFromViewBox(viewBoxAfterResize, nextWidth);
     const worldCenterAfterResize = worldCenterFromViewBox(viewBoxAfterResize);
 
-    // Skala NIETKNIĘTA przez resize (k3) — tylko przez zoom/LOD-mapping.
+    // Skala NIETKNIĘTA przez resize (k3) — zmienia ją wyłącznie zoom.
     expect(scaleAfterResize).toBeCloseTo(scaleBeforeResize, 10);
     // Punkt świata pod środkiem viewportu PRZED resize (przesunięty zoomem,
     // NIE bbox center) pozostaje pod środkiem PO resize — dowód, że to
@@ -860,9 +814,9 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
   }
 
   /** Realny odcinek (segmentRef bez `#`) z biegiem wystarczającym na strzałkę
-   *  + jego indeks w scenie danego LOD (testId nakładki jest indeksowy). */
-  function faultTargetOnScene(lod: SceneLod): { readonly ownerRef: string; readonly index: number } {
-    const scene = buildSceneV3(enm, lod);
+   *  + jego indeks w scenie (testId nakładki jest indeksowy). */
+  function faultTargetOnScene(): { readonly ownerRef: string; readonly index: number } {
+    const scene = buildSceneV3(enm);
     const index = scene.segments.findIndex(
       (s) =>
         s.meta?.elementKind === 'segment' &&
@@ -887,13 +841,12 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
   });
 
   it('(a) odcinek z wpisem w faultFlowByOwnerRef → prymityw FaultContributionArrow (trzon+grot+etykieta kA) w warstwie', () => {
-    const { ownerRef, index } = faultTargetOnScene(2);
+    const { ownerRef, index } = faultTargetOnScene();
     const { container } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) })}
       />,
     );
@@ -911,17 +864,16 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
 
   it('(b) bez wpisów / bez overlay → warstwa pusta (zero atrap — „overlay wyłączony bez wyniku")', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     expect(container.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.children.length).toBe(0);
 
-    const { ownerRef } = faultTargetOnScene(2);
+    const { ownerRef } = faultTargetOnScene();
     const { container: withEntry } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) })}
       />,
     );
@@ -930,8 +882,8 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
   });
 
   it('(c) orientacja: forward=false ⇒ końce strzałki ZAMIENIONE względem forward=true (zwrot z tokenu kierunku solvera)', () => {
-    const { ownerRef, index } = faultTargetOnScene(2);
-    const scene = buildSceneV3(enm, 2);
+    const { ownerRef, index } = faultTargetOnScene();
+    const scene = buildSceneV3(enm);
     const placementForward = computeFaultFlowPlacements(scene, { [ownerRef]: FAULT_ENTRY(ownerRef, true) });
     const placementReversed = computeFaultFlowPlacements(scene, { [ownerRef]: FAULT_ENTRY(ownerRef, false) });
     expect(placementForward.length).toBeGreaterThanOrEqual(1);
@@ -946,7 +898,6 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef, false) })}
       />,
     );
@@ -959,16 +910,15 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
   });
 
   it('(d) strzałki są WARSTWĄ nakładki, nie zmianą layoutu: geometria segmentów/symboli IDENTYCZNA z i bez wpisów', () => {
-    const { ownerRef } = faultTargetOnScene(2);
+    const { ownerRef } = faultTargetOnScene();
     const { container: without } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     const { container: withFault } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) })}
       />,
     );
@@ -981,13 +931,13 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
   });
 
   it('(e) determinizm renderu: dwa rendery tych samych propsów → identyczny innerHTML warstwy strzałek', () => {
-    const { ownerRef } = faultTargetOnScene(2);
+    const { ownerRef } = faultTargetOnScene();
     const overlay = overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) });
     const { container: a } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     const { container: b } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     expect(a.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML).toBe(
       b.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML,
@@ -995,7 +945,7 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
   });
 
   it('computeFaultFlowPlacements: brak overlay ⇒ zero placementów; ref spoza sceny ⇒ ignorowany (nie fabrykuje)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(computeFaultFlowPlacements(scene, undefined)).toEqual([]);
     expect(
       computeFaultFlowPlacements(scene, { 'nieznany-ref': FAULT_ENTRY('nieznany-ref') }),
@@ -1004,13 +954,27 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
 });
 
 describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-120/121, warstwa sld-v3-fault-flow-overlay)', () => {
+  /** Symbol, którego `ownerRef` nie dzieli żaden inny symbol ani odcinek sceny —
+   *  wtedy znacznik zwarcia jednoznacznie należy do NIEGO (dawniej: zwinięty blok
+   *  stacji L0; po karcie SLD-SKALA-I-NAWIGACJA scena ma jedną postać — pierwszy
+   *  aparat z własnym refem modelu). */
+  function symbolJednoznacznyNaScenie(scene: ReturnType<typeof buildSceneV3>): number {
+    const licznik = new Map<string, number>();
+    for (const el of [...scene.symbols.map((x) => x.meta?.ownerRef), ...scene.segments.map((x) => x.meta?.ownerRef)]) {
+      if (el) licznik.set(el, (licznik.get(el) ?? 0) + 1);
+    }
+    return scene.symbols.findIndex(
+      (x) => x.meta?.ownerRef != null && !x.meta.ownerRef.includes('#') && licznik.get(x.meta.ownerRef) === 1,
+    );
+  }
+
   function overlayWithFaultPoint(faultPointMarkerRef: string): SldV3Overlay {
     return { energizedByTestId: {}, faultPointMarkerRef };
   }
 
   it('(a) ref dopasowany do SYMBOLU → znacznik w środku bboxa tego symbolu', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    const scene = buildSceneV3(enm);
+    const stationIndex = symbolJednoznacznyNaScenie(scene);
     expect(stationIndex).toBeGreaterThanOrEqual(0);
     const symbol = scene.symbols[stationIndex];
     const ownerRef = symbol.meta!.ownerRef!;
@@ -1023,7 +987,6 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={0}
         overlay={overlayWithFaultPoint(ownerRef)}
       />,
     );
@@ -1039,7 +1002,7 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
   });
 
   it('(b) ref dopasowany do ODCINKA (nie protectionAnnotation) → znacznik w środku najdłuższego biegu', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const segIndex = scene.segments.findIndex(
       (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
     );
@@ -1054,7 +1017,6 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlayWithFaultPoint(ownerRef)}
       />,
     );
@@ -1065,7 +1027,7 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
 
   it('(c) brak overlay / brak faultPointMarkerRef → warstwa bez znacznika (zero atrap — „overlay wyłączony bez wyniku")', () => {
     const { container: without } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     expect(without.querySelector('[data-testid="sld-v3-fault-point-marker"]')).toBeNull();
 
@@ -1074,7 +1036,6 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={{ energizedByTestId: {} }}
       />,
     );
@@ -1082,19 +1043,18 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
   });
 
   it('(d) znacznik jest WARSTWĄ nakładki, nie zmianą layoutu: geometria segmentów/symboli IDENTYCZNA z i bez znacznika', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    const scene = buildSceneV3(enm);
+    const stationIndex = symbolJednoznacznyNaScenie(scene);
     const ownerRef = scene.symbols[stationIndex].meta!.ownerRef!;
 
     const { container: without } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     const { container: withMarker } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={0}
         overlay={overlayWithFaultPoint(ownerRef)}
       />,
     );
@@ -1107,16 +1067,16 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
   });
 
   it('(e) determinizm renderu: dwa rendery tych samych propsów → identyczny innerHTML warstwy', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    const scene = buildSceneV3(enm);
+    const stationIndex = symbolJednoznacznyNaScenie(scene);
     const ownerRef = scene.symbols[stationIndex].meta!.ownerRef!;
     const overlay = overlayWithFaultPoint(ownerRef);
 
     const { container: a } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     const { container: b } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     expect(a.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML).toBe(
       b.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML,
@@ -1124,13 +1084,13 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
   });
 
   it('computeFaultPointMarkerPlacement: brak ref ⇒ null; ref spoza sceny ⇒ null (nie fabrykuje pozycji)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(computeFaultPointMarkerPlacement(scene, undefined)).toBeNull();
     expect(computeFaultPointMarkerPlacement(scene, 'nieznany-ref-spoza-sceny')).toBeNull();
   });
 
   it('computeFaultPointMarkerPlacement: pomija odcinki elementKind==="protectionAnnotation" (adnotacja, nie geometria toru)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const annotationSegment = scene.segments.find(
       (s) => s.meta?.elementKind === 'protectionAnnotation' && s.meta.ownerRef,
     );
@@ -1146,11 +1106,11 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
 
 describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (tabela §3, BEZ nakładki wynikowej)', () => {
   it('szyna SN stacji (#sn-bus) ma stroke = VOLTAGE_COLOR.sn; szyna nN (#lv-bus, gdy fixtura ją niesie) ma stroke = VOLTAGE_COLOR.nn — dwa RÓŻNE kolory, nie jednolity V3_STROKE_BASE jak przed S3', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
     expect(snBus).toBeTruthy();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     const snPath = container.querySelector(`[data-owner-ref="${snBus!.meta!.ownerRef}"]`);
     expect(snPath?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.sn);
@@ -1164,26 +1124,26 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
   });
 
   it('szyna WN GPZ (#hv-bus) ma stroke = VOLTAGE_COLOR.hv (matrix §3: „110 biały" = baza — zero zmiany wizualnej dla WN)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const hvBus = scene.segments.find(
       (s) => s.meta?.ownerRef != null && s.meta.ownerRef.includes('#hv-bus') && !s.meta.ownerRef.includes('label'),
     );
     if (!hvBus) return; // fixtura może nie mieć treści WN wprost jako odcinek na tym LOD — bez fabrykacji.
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     const path = container.querySelector(`[data-owner-ref="${hvBus.meta!.ownerRef}"]`);
     expect(path?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.hv);
   });
 
   it('nakładka energizacji WCIĄŻ WYGRYWA nad kolorem napięcia (precedencja niezmieniona: wyróżnienie > napięcie)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
     expect(snBus).toBeTruthy();
     const ownerRef = snBus!.meta!.ownerRef!;
     const overlay: SldV3Overlay = { energizedByTestId: {}, energizedByOwnerRef: { [ownerRef]: false } };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     const path = container.querySelector(`[data-owner-ref="${ownerRef}"]`);
     // De-energizacja (szary) nadpisuje kolor napięcia (zielony SN) — precedencja z nagłówka `theme/colorTokens.ts`.
@@ -1194,28 +1154,27 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
 
 // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29): NOP jest FUNKCJĄ
 // łącznika, nie osobnym kolorem stanu. INTENCJA dawnego testu D7 („NOP wyróżniony, nie zlewa się
-// z napięciem") zostaje: wyróżnia go ZNACZNIK `noPoint` (okrąg + podpis „NO") na L1/L2, a stan
+// z napięciem") zostaje: wyróżnia go ZNACZNIK `noPoint` (okrąg + podpis „NO"), a stan
 // niesie kafel łącznika z jednej tabeli `STATE_COLOR`. Punkt NO stacji nie ma rekordu położenia
 // łącznika — rysuje się sam znacznik w kolorze napięcia toru, bez kafla (brak danej ≠ stan).
 describe('SldCanvasV3 — NOP: znacznik funkcji, stan z kafla łącznika (bez osobnego koloru NOP)', () => {
-  it('symbol noPoint na L1/L2: znacznik w kolorze napięcia toru, żadna barwa kafla stanu bez rekordu położenia', () => {
+  it('symbol noPoint: znacznik w kolorze napięcia toru, żadna barwa kafla stanu bez rekordu położenia', () => {
     // Fixtura bazowa nie niesie żadnego NOP (patrz `buildScene.test.ts`
     // `enmWithSyntheticNop` — ten sam GAP udokumentowany tam). Syntetyzujemy
     // lokalnie: punkt podziału w pierwszej stacji ciągu głównego — pozycja normalna
     // łącznika pola (karta W5-C; dawna kopia `LineRun.nop_station_ref` skasowana).
-    // GS-1 (V12K-137, GAP §10.4): symbol `noPoint` (kolorowany wg tabeli stanów)
-    // to reprezentacja L1/L2; na L0 NOP niesie marker `noOpen` sylwetki mini-RMU
-    // (bez osobnego symbolu — patrz `buildScene.test.ts`).
-    const scene2 = buildSceneV3(enm, 2);
+    // GS-1 (V12K-137, GAP §10.4): symbol `noPoint` jest jedyną reprezentacją punktu
+    // rozcięcia na jednej scenie — przy każdej skali (karta SLD-SKALA-I-NAWIGACJA).
+    const scene2 = buildSceneV3(enm);
     const targetStationRef = scene2.meta.mainTrunkStationIds[0];
     const enmWithNop = zPunktemPodzialuWStacji(enm, targetStationRef);
 
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enmWithNop, lod);
+    for (const [w, h] of [[CANVAS_WIDTH, CANVAS_HEIGHT], [KANWA_CZYTANIA.width, KANWA_CZYTANIA.height]] as const) {
+      const scene = buildSceneV3(enmWithNop);
       const nopIndex = scene.symbols.findIndex((s) => s.symbolId === 'noPoint');
       expect(nopIndex).toBeGreaterThanOrEqual(0);
       const { container } = render(
-        <SldCanvasV3 snapshot={enmWithNop} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} />,
+        <SldCanvasV3 snapshot={enmWithNop} width={w} height={h} />,
       );
       const nopGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[nopIndex];
       // Karta S9-4: patrz wyżej — grupa symbolu nie niesie już transparentnego
@@ -1230,55 +1189,35 @@ describe('SldCanvasV3 — NOP: znacznik funkcji, stan z kafla łącznika (bez os
 });
 
 // ---------------------------------------------------------------------------
-// Karta S8 (płynność przejść LOD, P2): crossfade warstwy detalu (DOM), tryb
-// bez animacji dla eksportu, oraz CIĄGŁOŚĆ na REALNEJ ścieżce (natywny wheel
-// zmienia LOD — nie syntetyczny dispatch stanu; ciągłość nakładki po zmianie).
+// Karta S8 (ciągłość widoku przy zmianie skali) — po karcie SLD-SKALA-I-NAWIGACJA
+// (R1/R8): jedna scena, jedna grupa przekształcenia, bez przenikania poziomów.
+// Ciągłość jest teraz własnością z konstrukcji: natywny gest kółka zmienia
+// WYŁĄCZNIE skalę kamery — rysunek toru i nakładka zostają te same.
 // ---------------------------------------------------------------------------
-describe('SldCanvasV3 — S8: crossfade detalu i ciągłość przejść LOD', () => {
+describe('SldCanvasV3 — S8: ciągłość widoku przy zmianie skali', () => {
   const detailLayerOf = (c: HTMLElement) =>
     c.querySelector('[data-testid="sld-v3-detail-layer"]');
-  const lodOf = (c: HTMLElement) =>
-    c.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod');
+  const skalaOf = (c: HTMLElement) =>
+    Number(c.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
 
-  it('warstwa detalu (segmenty/symbole/etykiety) jest owinięta w JEDNĄ grupę crossfade', () => {
+  it('warstwa detalu (segmenty/symbole/etykiety) jest JEDNĄ grupą; nakładka wyników poza nią', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     const detail = detailLayerOf(container);
     expect(detail).toBeTruthy();
-    // Trzy grupy bazowe są POTOMKAMI warstwy detalu (nie rodzeństwem overlayów).
     expect(detail?.querySelector('[data-testid="sld-v3-segments"]')).toBeTruthy();
     expect(detail?.querySelector('[data-testid="sld-v3-symbols"]')).toBeTruthy();
     expect(detail?.querySelector('[data-testid="sld-v3-labels"]')).toBeTruthy();
-    // Overlay wyników jest POZA warstwą detalu (nie migocze przy zmianie LOD).
     expect(detail?.querySelector('[data-testid="sld-v3-flow-overlay"]')).toBeNull();
   });
 
-  it('domyślnie (produkcja) warstwa detalu niesie węzeł <animate> opacity 0→1 (crossfade)', () => {
+  it('brak przenikania poziomów: warstwa detalu bez animacji przezroczystości (R1 — nie ma czego przenikać)', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
-    );
-    const anim = detailLayerOf(container)?.querySelector('animate');
-    expect(anim).toBeTruthy();
-    expect(anim?.getAttribute('attributeName')).toBe('opacity');
-    expect(anim?.getAttribute('from')).toBe('0');
-    expect(anim?.getAttribute('to')).toBe('1');
-    // opacity BAZOWE = 1 (jsdom/SSR/eksport bez silnika SMIL widzą pełną treść).
-    expect(detailLayerOf(container)?.getAttribute('opacity')).toBe('1');
-  });
-
-  it('animateLodTransitions=false (eksport/SSR/harness) ⇒ BRAK węzła <animate>, opacity bazowe 1', () => {
-    const { container } = render(
-      <SldCanvasV3
-        snapshot={enm}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        lodOverride={2}
-        animateLodTransitions={false}
-      />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     expect(detailLayerOf(container)?.querySelector('animate')).toBeNull();
-    expect(detailLayerOf(container)?.getAttribute('opacity')).toBe('1');
+    expect(detailLayerOf(container)?.getAttribute('opacity') ?? '1').toBe('1');
   });
 
   it('przesuwanie rysunku to gest KAMERY, nie zaznaczanie tekstu (V12K-235)', () => {
@@ -1296,383 +1235,51 @@ describe('SldCanvasV3 — S8: crossfade detalu i ciągłość przejść LOD', ()
     expect(svg.style.userSelect).toBe('none');
   });
 
-  it('REALNA ścieżka: natywny wheel zoom-in przekraczający próg PODNOSI LOD i ZACHOWUJE nakładkę (ciągłość, karta S8)', () => {
-    // Nakładka energizacji kluczowana ownerRef (tożsamość LOD-niezależna) —
-    // pokrywa symbole KAŻDEGO LOD; po zmianie LOD musi nadal kolorować.
+  it('REALNA ścieżka: natywny wheel zoom-in zmienia WYŁĄCZNIE skalę — rysunek toru i nakładka te same', () => {
     const energizedByOwnerRef: Record<string, boolean> = {};
-    for (const lod of [0, 1, 2] as const) {
-      for (const sym of buildSceneV3(enm, lod).symbols) {
-        if (sym.meta?.ownerRef) energizedByOwnerRef[sym.meta.ownerRef] = true;
-      }
+    for (const sym of buildSceneV3(enm).symbols) {
+      if (sym.meta?.ownerRef) energizedByOwnerRef[sym.meta.ownerRef] = true;
     }
     const overlay: SldV3Overlay = { energizedByTestId: {}, energizedByOwnerRef };
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
     );
     const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
-    const startLod = Number(lodOf(container));
+    const symbole = () => bezGruboscKreski(container.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML);
+    const odcinki = () => bezGruboscKreski(container.querySelector('[data-testid="sld-v3-segments"]')!.innerHTML);
     const energizedCount = () =>
       container.querySelectorAll('[data-testid="sld-v3-symbols"] [data-energized="true"]').length;
-    const energizedBefore = energizedCount();
-    expect(energizedBefore).toBeGreaterThan(0);
-
-    // Użytkownik kręci kółkiem w kierunku zoom-in (natywne zdarzenie wheel,
-    // NIE syntetyczny dispatch stanu kamery) aż LOD wzrośnie.
-    let guard = 0;
-    while (Number(lodOf(container)) === startLod && guard < 60) {
+    const przed = { skala: skalaOf(container), symbole: symbole(), odcinki: odcinki(), zasilone: energizedCount() };
+    expect(przed.zasilone).toBeGreaterThan(0);
+    for (let i = 0; i < 20; i += 1) {
       fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: -140 });
-      guard += 1;
     }
-    const endLod = Number(lodOf(container));
-    expect(endLod).toBeGreaterThan(startLod); // LOD podniesiony na realnej ścieżce
-    // Warstwa detalu wciąż obecna (remontowana per LOD, key=effectiveLod).
-    expect(detailLayerOf(container)).toBeTruthy();
-    // Nakładka PRZEŻYŁA zmianę LOD — symbole nowego LOD dalej energizowane
-    // (klucz ownerRef, brak ponownego wyliczania stanu użytkownika).
-    expect(energizedCount()).toBeGreaterThan(0);
+    expect(skalaOf(container)).toBeGreaterThan(przed.skala * 2);
+    expect(symbole()).toBe(przed.symbole);
+    expect(odcinki()).toBe(przed.odcinki);
+    expect(energizedCount()).toBe(przed.zasilone);
   });
 
-  it('REALNA ścieżka: powrót zoom-out po zoom-in WRACA do LOD startowego (histereza domyka pętlę, karta S8)', () => {
+  it('REALNA ścieżka: oddalenie zatrzymuje się na dopasowaniu całej sieci (R2 — dolna granica kamery)', () => {
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
-    const startLod = Number(lodOf(container));
-    let guard = 0;
-    while (Number(lodOf(container)) === startLod && guard < 60) {
+    const start = skalaOf(container);
+    for (let i = 0; i < 20; i += 1) {
       fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: -140 });
-      guard += 1;
     }
-    expect(Number(lodOf(container))).toBeGreaterThan(startLod);
-    // Zoom-out symetryczny — wracamy poniżej progu wyjścia, LOD spada do startu.
-    guard = 0;
-    while (Number(lodOf(container)) > startLod && guard < 120) {
+    expect(skalaOf(container)).toBeGreaterThan(start);
+    for (let i = 0; i < 120; i += 1) {
       fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: 140 });
-      guard += 1;
     }
-    expect(Number(lodOf(container))).toBe(startLod);
+    // Start = dopasowanie treści w prostokącie bezpiecznym; dolna granica = dopasowanie
+    // całego świata kamery — oddalenie nie schodzi poniżej niej i nie ucieka w zero.
+    expect(skalaOf(container)).toBeGreaterThan(0);
+    expect(skalaOf(container)).toBeLessThanOrEqual(start + 1e-9);
+    const poKolejnych = skalaOf(container);
+    fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: 140 });
+    expect(skalaOf(container)).toBe(poKolejnych);
   });
 });
 
-// ---------------------------------------------------------------------------
-// W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8/§9/§16): warstwa liczbowych
-// etykiet wynikowych — inwariancja geometrii, kolizje=0, znak/kierunek,
-// determinizm, bramkowanie layerem `resultLabels`.
-// ---------------------------------------------------------------------------
-describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16)', () => {
-  const sceneL2 = buildSceneV3(enm, 2);
-  const singleHop = new Set(orientedSegmentRefs(enm).keys());
-
-  function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
-    return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
-  }
-  function payloadOf(elements: Record<string, RawOverlayElement>, analysisType = 'load_flow'): RawOverlayPayload {
-    return { run_id: 'run-w4', analysis_type: analysisType, elements };
-  }
-
-  const trRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta?.ownerRef)!.meta!.ownerRef!;
-  const sourceRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)!.meta!.ownerRef!;
-  const branchRef = sceneL2.segments.find(
-    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
-  )!.meta!.ownerRef!;
-
-  // Wartości przepisane z realnych źródeł (patrz `resultLabels.test.ts` nagłówek):
-  // loading 72,5 % (test_result_contract_v1.py); S 0,63 MVA; P 6,546769 MW
-  // (sldSubstrate52s.powerflow.json branch_flow); Q -0,3 Mvar.
-  const payload = payloadOf({
-    [trRef]: el(trRef, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } }),
-    [sourceRef]: el(sourceRef, 'generator', {
-      P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' },
-      Q_Mvar: { code: 'Q_Mvar', value: -0.3, unit: 'Mvar', format_hint: 'fixed4' },
-    }),
-    [branchRef]: el(branchRef, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } }),
-  });
-  const resultLabelsByOwnerRef = buildResultLabelsFromScene(sceneL2, payload, singleHop);
-  const overlayWithLabels: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef };
-
-  it('§9 inwariancja: geometria segmentów/symboli/etykiet BAJT-identyczna z i bez warstwy liczb', () => {
-    const { container: without } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
-    );
-    const { container: withLabels } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
-    );
-    for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
-      expect(withLabels.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
-        without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
-      );
-    }
-    // A jednak warstwa liczb JEST obecna (dowód, że test nie jest pusty).
-    expect(withLabels.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBeGreaterThan(0);
-  });
-
-  it('R1 §11 inwariancja geometrii ON/OFF × L0/L1/L2: żaden LOD nie zmienia sceny warstwą liczb', () => {
-    for (const lod of [0, 1, 2] as const) {
-      const { container: without } = render(
-        <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} />,
-      );
-      const { container: withLabels } = render(
-        <SldCanvasV3
-          snapshot={enm}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          lodOverride={lod}
-          overlay={overlayWithLabels}
-        />,
-      );
-      for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
-        expect(withLabels.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
-          without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
-        );
-      }
-    }
-  });
-
-  it('S9-2 zwijanie LOD: L0 JEDNA linia (wartosc zbiorcza); L1 jedna; L2 do trzech (zrodlo P/Q)', () => {
-    // Zrodlo niesie 2 linie (P, Q). L0 ⇒ 1 linia (P — wartosc zbiorcza; dotad 0,
-    // przez co rysunek po biegu nie roznil sie od rysunku przed biegiem, audyt
-    // 2026-08 W-1); L1 ⇒ 1 linia (P); L2 ⇒ 2 (P, Q).
-    const linesAtLod = (lod: 0 | 1 | 2): readonly string[] => {
-      const { container } = render(
-        <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} overlay={overlayWithLabels} />,
-      );
-      const group = container.querySelector(`[data-result-owner-ref="${CSS.escape(sourceRef)}"]`);
-      if (!group) return [];
-      return Array.from(group.querySelectorAll('text')).map((t) => t.textContent ?? '');
-    };
-    expect(linesAtLod(0)).toEqual(['P +6,5468 MW']);
-    expect(linesAtLod(1)).toEqual(['P +6,5468 MW']);
-    expect(linesAtLod(2)).toEqual(['P +6,5468 MW', 'Q -0,3000 Mvar']);
-  });
-
-  it('§8 kolizje=0: etykiety wyników wzajemnie rozłączne (anty-dryf), każda ulokowana bezkolizyjnie', () => {
-    const placements = computeResultLabelPlacements(sceneL2, resultLabelsByOwnerRef);
-    expect(placements.length).toBe(3);
-    // Każda ulokowana względem sceny bezkolizyjnie (nie fallback).
-    for (const p of placements) expect(p.labelPlaced).toBe(true);
-    // Parami rozłączne (warstwa się nie nakłada sama na siebie).
-    for (let i = 0; i < placements.length; i++) {
-      for (let j = i + 1; j < placements.length; j++) {
-        const a = placements[i];
-        const b = placements[j];
-        const disjoint =
-          a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
-        expect(disjoint).toBe(true);
-      }
-    }
-  });
-
-  it('§16 znak/kierunek: P generacji dodatnie renderuje się z „+"; ujemne Q z „-"', () => {
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
-    );
-    const sourceGroup = container.querySelector(`[data-result-owner-ref="${CSS.escape(sourceRef)}"]`)!;
-    const texts = Array.from(sourceGroup.querySelectorAll('text')).map((t) => t.textContent);
-    expect(texts).toContain('P +6,5468 MW');
-    expect(texts).toContain('Q -0,3000 Mvar');
-  });
-
-  it('§0 wartość 1:1: obciążenie przęsła renderuje dokładnie wartość payloadu', () => {
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
-    );
-    const branchGroup = container.querySelector(`[data-result-owner-ref="${CSS.escape(branchRef)}"]`)!;
-    expect(Array.from(branchGroup.querySelectorAll('text')).map((t) => t.textContent)).toEqual(['obc. 72,5 %']);
-  });
-
-  it('determinizm: dwa rendery tych samych propsów ⇒ identyczny innerHTML warstwy liczb', () => {
-    const { container: a } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
-    );
-    const { container: b } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
-    );
-    expect(a.querySelector('[data-testid="sld-v3-result-labels"]')!.innerHTML).toBe(
-      b.querySelector('[data-testid="sld-v3-result-labels"]')!.innerHTML,
-    );
-  });
-
-  it('bramkowanie warstwą: layer `resultLabels` ukryty ⇒ warstwa liczb pusta (zero węzłów)', () => {
-    const { container } = render(
-      <SldCanvasV3
-        snapshot={enm}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        lodOverride={2}
-        overlay={overlayWithLabels}
-        layerVisibility={{ resultLabels: false }}
-      />,
-    );
-    expect(container.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBe(0);
-    // Kontener warstwy pozostaje (pusty) — filtr renderu, nie usunięcie węzła.
-    expect(container.querySelector('[data-testid="sld-v3-result-labels"]')).toBeTruthy();
-  });
-
-  it('brak payloadu ⇒ warstwa liczb pusta (§8 „gdy wyniki są")', () => {
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
-    );
-    expect(container.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// R2 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.8/12/14): warstwa wynikowa —
-// walidacja NIEAKTUALNYCH wyników (baner + wyszarzenie), markery agregatów
-// „+N wyniki" (klik → popover), inwariancja geometrii w stanach stale/agregacja.
-// ---------------------------------------------------------------------------
-describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
-  const sceneL2 = buildSceneV3(enm, 2);
-  const singleHop = new Set(orientedSegmentRefs(enm).keys());
-
-  function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
-    return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
-  }
-
-  const trRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta?.ownerRef)!.meta!.ownerRef!;
-  const sourceRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)!.meta!.ownerRef!;
-  const branchRef = sceneL2.segments.find(
-    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
-  )!.meta!.ownerRef!;
-
-  // Payload MAŁY (3 rozłączne kotwice — patrz W4 blok): brak agregacji, do
-  // testów staleness/inwariancji graying.
-  const smallPayload: RawOverlayPayload = {
-    run_id: 'run-r2',
-    analysis_type: 'load_flow',
-    elements: {
-      [trRef]: el(trRef, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } }),
-      [sourceRef]: el(sourceRef, 'generator', { P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' } }),
-      [branchRef]: el(branchRef, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } }),
-    },
-  };
-  const smallByRef = buildResultLabelsFromScene(sceneL2, smallPayload, singleHop);
-
-  /** PEŁNY payload rozpływu z realnych refów (produkuje ≥1 agregat na fixturze). */
-  function buildFullByRef(): Record<string, ReturnType<typeof buildResultLabelsFromScene>[string]> {
-    const elements: Record<string, RawOverlayElement> = {};
-    for (const s of sceneL2.symbols) {
-      const k = s.meta?.elementKind;
-      const ref = s.meta?.ownerRef;
-      if (k === 'source' && ref && !elements[ref]) elements[ref] = el(ref, 'generator', { P_MW: { code: 'P_MW', value: 6.5, unit: 'MW', format_hint: 'fixed4' } });
-      if (k === 'transformer' && ref && !elements[ref]) elements[ref] = el(ref, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } });
-    }
-    for (const s of sceneL2.segments) {
-      const k = s.meta?.elementKind;
-      const ref = s.meta?.ownerRef;
-      if (k === 'bus') {
-        // ADAPTER-BUSREF: payload backendu kluczowany KANONICZNYM Bus.ref_id —
-        // szyny GPZ kompozytowe po `busResultRef`, szyny stacji po ownerRef.
-        const busRef = resultRefForSegment(s.meta);
-        if (busRef && !elements[busRef]) elements[busRef] = el(busRef, 'bus', { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } });
-        continue;
-      }
-      if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
-        elements[ref] = el(ref, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } });
-      }
-    }
-    return buildResultLabelsFromScene(sceneL2, { run_id: 'r2-full', analysis_type: 'load_flow', elements }, singleHop);
-  }
-
-  it('wym.8 nieaktualne: baner „⚠ wyniki nieaktualne" + etykiety oznaczone data-result-stale/wyszarzone (nie znikają)', () => {
-    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: smallByRef, resultsStale: true };
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
-    );
-    // Baner obecny.
-    const badge = container.querySelector('[data-testid="sld-v3-result-stale-badge"]');
-    expect(badge).toBeTruthy();
-    expect(badge!.textContent).toContain('wyniki nieaktualne');
-    // Etykiety NIE znikają, ale są oznaczone jako nieaktualne i wyszarzone.
-    const labels = container.querySelectorAll('[data-testid^="sld-v3-result-label-"]');
-    expect(labels.length).toBeGreaterThan(0);
-    for (const g of Array.from(labels)) {
-      expect(g.getAttribute('data-result-stale')).toBe('true');
-      expect(g.getAttribute('opacity')).toBe('0.5');
-    }
-  });
-
-  it('wym.8 aktualne: brak banera; etykiety data-result-stale="false", pełna widoczność', () => {
-    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: smallByRef };
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
-    );
-    expect(container.querySelector('[data-testid="sld-v3-result-stale-badge"]')).toBeNull();
-    const labels = container.querySelectorAll('[data-testid^="sld-v3-result-label-"]');
-    expect(labels.length).toBeGreaterThan(0);
-    for (const g of Array.from(labels)) {
-      expect(g.getAttribute('data-result-stale')).toBe('false');
-      expect(g.getAttribute('opacity')).toBe('1');
-    }
-  });
-
-  it('wym.8 baner NIE renderuje się, gdy warstwa liczb pusta (nawet przy resultsStale)', () => {
-    const overlay: SldV3Overlay = { energizedByTestId: {}, resultsStale: true };
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
-    );
-    expect(container.querySelector('[data-testid="sld-v3-result-stale-badge"]')).toBeNull();
-  });
-
-  it('§11 inwariancja geometrii w stanie NIEAKTUALNYM: bazowe grupy sceny bajt-identyczne z i bez warstwy', () => {
-    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: smallByRef, resultsStale: true };
-    const { container: without } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
-    );
-    const { container: withStale } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
-    );
-    for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
-      expect(withStale.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
-        without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
-      );
-    }
-  });
-
-  it('wym.14 agregacja: marker „+N wyniki" renderuje się; klik rozwija popover z listą; ponowny klik zwija', () => {
-    const fullByRef = buildFullByRef();
-    // Bramka: layout produkuje ≥1 agregat na tej fixturze (skutek realny).
-    const layout = layoutResultLabels(sceneL2, fullByRef, [], 2);
-    expect(layout.aggregates.length).toBeGreaterThan(0);
-    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: fullByRef };
-    const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
-    );
-    const toggle = container.querySelector('[data-testid="sld-v3-result-aggregate-toggle-0"]');
-    expect(toggle).toBeTruthy();
-    // Karta S9-4: marker skupiska jest rysunkiem, a jego uchwyt (rozwijanie
-    // popovera) siedzi w warstwie trafień pod tym samym `testId` — klikamy
-    // węzeł, który w przeglądarce faktycznie łapie zdarzenie.
-    const toggleHit = container.querySelector('[data-hit-for="sld-v3-result-aggregate-0"][data-hit-role="obrys"]');
-    expect(toggleHit, 'marker skupiska ma uchwyt trafienia').toBeTruthy();
-    expect(container.querySelector('[data-testid="sld-v3-result-aggregate-0"]')!.textContent).toContain('wyniki');
-    // Popover domyślnie zwinięty.
-    expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
-    // Klik → rozwinięty, lista członków obecna.
-    fireEvent.click(toggleHit!);
-    const popover = container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]');
-    expect(popover).toBeTruthy();
-    expect(container.querySelectorAll('[data-testid^="sld-v3-result-aggregate-member-0-"]').length).toBe(layout.aggregates[0].count);
-    // Ponowny klik → zwinięty.
-    fireEvent.click(toggleHit!);
-    expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
-  });
-
-  it('§11 inwariancja geometrii przy AGREGACJI: bazowe grupy sceny bajt-identyczne z i bez warstwy', () => {
-    const fullByRef = buildFullByRef();
-    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: fullByRef };
-    const { container: without } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
-    );
-    const { container: withAgg } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
-    );
-    for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
-      expect(withAgg.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
-        without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
-      );
-    }
-    // A jednak agregat JEST obecny (dowód, że test nie jest pusty).
-    expect(withAgg.querySelectorAll('[data-testid^="sld-v3-result-aggregate-"]').length).toBeGreaterThan(0);
-  });
-});

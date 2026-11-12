@@ -17,6 +17,8 @@
  * Zrzuty: `docs/sld/audyt-2026-09/pola-w-torze-<stacja>-<motyw>.png`.
  */
 import { test, expect } from '@playwright/test';
+
+import { SKALA_CZYTANIA, skalaKamery } from './skalaKamery';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -72,7 +74,9 @@ test('POLA-W-TORZE — kadry stacji odgałęźnej, sekcyjnej, końcowej i końco
       await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
       await uchwyt.dblclick();
       await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(stacja.nazwa, { timeout: 10000 });
-      await expect(kanwa).not.toHaveAttribute('data-scene-lod', '0');
+      // Kadr stacji jest w skali czytania (jedna scena niezależna od skali — karta
+      // SLD-SKALA-I-NAWIGACJA; dawniej: „poziom szczegółu ≠ przegląd”).
+      await expect.poll(() => skalaKamery(kanwa)).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
       await page.waitForTimeout(400);
       await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `pola-w-torze-${stacja.plik}-${motyw.klucz}.png`) });
     }

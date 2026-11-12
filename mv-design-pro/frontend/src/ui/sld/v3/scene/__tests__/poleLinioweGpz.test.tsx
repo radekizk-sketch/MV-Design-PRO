@@ -52,7 +52,7 @@ import { DARK_SCADA_SLD_PALETTE, type StanKafla } from '../../theme/colorTokens'
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { GRID } from '../../core/grid';
 import { zaczepTekstuEtykiety, type OwnedLabel } from '../../layout/labels';
-import { buildSceneV3, labelCollisions, labelWireCollisions, noSceneSymbolOverlaps, symbolWireCollisions, type SceneLod, type SceneV3 } from '../buildScene';
+import { buildSceneV3, labelCollisions, labelWireCollisions, noSceneSymbolOverlaps, symbolWireCollisions, type SceneV3 } from '../buildScene';
 import { interiorCrossings, junctionDotGaps, wezlyModeluEnm } from '../crossings';
 
 type WykonaniePola = 'Z10' | 'Z11_1' | 'Z11';
@@ -421,7 +421,7 @@ function scenaZ(nazwa: string, enm: EnergyNetworkModel, q1: StanQ1, q0: StanQ0) 
   const gotowa = sceny.get(klucz);
   if (gotowa) return gotowa;
   const model = zPolozeniami(enm, q1, q0);
-  const wynik = { enm: model, scena: buildSceneV3(model, 2) };
+  const wynik = { enm: model, scena: buildSceneV3(model) };
   sceny.set(klucz, wynik);
   return wynik;
 }
@@ -565,8 +565,8 @@ describe('UX-04 — cała scena GPZ bez kolizji i z kompozycją na siatce', () =
 
   for (const [nazwaFx, enm] of FIKSTURY) {
     it(`${nazwaFx} · determinizm: ta sama migawka → ta sama scena (symbole, odcinki, etykiety)`, () => {
-      const a = buildSceneV3(zPolozeniami(enm, 'uziemiony', 'nieznany'), 2);
-      const b = buildSceneV3(zPolozeniami(enm, 'uziemiony', 'nieznany'), 2);
+      const a = buildSceneV3(zPolozeniami(enm, 'uziemiony', 'nieznany'));
+      const b = buildSceneV3(zPolozeniami(enm, 'uziemiony', 'nieznany'));
       expect(JSON.stringify(b.symbols)).toBe(JSON.stringify(a.symbols));
       expect(JSON.stringify(b.segments)).toBe(JSON.stringify(a.segments));
       expect(JSON.stringify(b.labels)).toBe(JSON.stringify(a.labels));
@@ -574,9 +574,9 @@ describe('UX-04 — cała scena GPZ bez kolizji i z kompozycją na siatce', () =
 
     it(`${nazwaFx} · zmiana położenia łącznika nie przesuwa układu pola (geometria niezależna od stanu)`, () => {
       const geometria = (s: SceneV3) => JSON.stringify(s.symbols.map((x) => [x.symbolId, x.x, x.y]));
-      const wzorzec = geometria(buildSceneV3(zPolozeniami(enm, 'zamkniety', 'zamkniety'), 2));
+      const wzorzec = geometria(buildSceneV3(zPolozeniami(enm, 'zamkniety', 'zamkniety')));
       for (const q1 of ['otwarty', 'uziemiony', 'brak'] as const) {
-        for (const q0 of STANY_Q0) expect(geometria(buildSceneV3(zPolozeniami(enm, q1, q0), 2)), `${q1}/${q0}`).toBe(wzorzec);
+        for (const q0 of STANY_Q0) expect(geometria(buildSceneV3(zPolozeniami(enm, q1, q0))), `${q1}/${q0}`).toBe(wzorzec);
       }
     });
   }
@@ -684,8 +684,6 @@ function zOdcinkiemDoklejonymDoCiaguGlownego(enm: EnergyNetworkModel): EnergyNet
   return model;
 }
 
-const LODY: readonly SceneLod[] = [0, 1, 2];
-
 describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność kabli różnych pól', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
     it(`${nazwaFx} · L2: pole zajęte — kabel z portu S przekładnika T2; pole wolne — żaden`, () => {
@@ -700,21 +698,19 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
       }
     });
 
-    for (const lod of LODY) {
-      it(`${nazwaFx} · L${lod}: kable różnych pól bez nakładań, bez przecięć i bez kropek bez węzła modelu`, () => {
-        const scena = buildSceneV3(enm, lod);
-        expect(nakladaniaKabli(enm, scena)).toEqual([]);
-        const przecieciaKabli = interiorCrossings(kableSceny(enm, scena));
-        expect(przecieciaKabli).toEqual([]);
-        expect(kropkiBezWezlaModelu(enm, scena)).toEqual([]);
-      });
-    }
+    it(`${nazwaFx}: kable różnych pól bez nakładań, bez przecięć i bez kropek bez węzła modelu`, () => {
+      const scena = buildSceneV3(enm);
+      expect(nakladaniaKabli(enm, scena)).toEqual([]);
+      const przecieciaKabli = interiorCrossings(kableSceny(enm, scena));
+      expect(przecieciaKabli).toEqual([]);
+      expect(kropkiBezWezlaModelu(enm, scena)).toEqual([]);
+    });
   }
 
   it('iniekcja: odcinek pola 2.1 doklejony do ciągu pola 1.1 (stara postać modelu) — wyrocznia czerwona', () => {
     for (const [nazwaFx, enm] of FIKSTURY) {
       const zly = zOdcinkiemDoklejonymDoCiaguGlownego(enm);
-      const naruszenia = naruszeniaKablaOdejscia(zly, buildSceneV3(zly, 2));
+      const naruszenia = naruszeniaKablaOdejscia(zly, buildSceneV3(zly));
       expect(naruszenia.length, nazwaFx).toBeGreaterThan(0);
       expect(naruszenia.some((n) => n.includes('zaczyna się w')), `${nazwaFx}: ${naruszenia.join('; ')}`).toBe(true);
     }
@@ -722,7 +718,7 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
 
   it('iniekcja: kabel odejścia przesunięty o jedną kratkę od portu T2 — wyrocznia czerwona', () => {
     const [, enm] = FIKSTURY[0];
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const kabel = kableOdejsciaPola(enm, polaLiniowe(enm).find((p) => p.zajete)!.ref)[0];
     const przesuniety: SceneV3 = {
       ...scena,
@@ -735,7 +731,7 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
 
   it('iniekcje wyroczni rozłączności: dwa kable jedną kreską i kropka bez węzła modelu — czerwień', () => {
     const [, enm] = FIKSTURY[0];
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const [k1, k2] = polaLiniowe(enm)
       .filter((p) => p.zajete)
       .map((p) => kableOdejsciaPola(enm, p.ref)[0].ref_id);
@@ -771,7 +767,7 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
  * linia przez obcy aparat albo przez wnętrze ramki, linia pomiarowa wracająca przez własny zacisk
  * wtórny, przecięcie linii bloku. Ta sama wyrocznia na scenie bez przesunięcia jest pusta (brak
  * fałszywych alarmów). Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki {trójpołożeniowy,
- * stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × przesunięcie {0, −GRID} × LOD {1, 2}.
+ * stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × przesunięcie {0, −GRID}.
  */
 const WIERSZ_BLOKU_POLA = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
 
@@ -911,7 +907,7 @@ function przesunPrzekaznik(scena: SceneV3, bayRef: string, dx: number): SceneV3 
 describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wysokości Q0 (korekta v2 2026-11-04)', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
     it(`${nazwaFx}: ramka na prawo od Q0, środek na wysokości Q0 ±GRID, położenie najbliższe wolne (o oczko w lewo — naruszenie)`, () => {
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       const pola = polaLiniowe(enm);
       expect(pola.length).toBeGreaterThan(0);
       for (const pole of pola) {
@@ -921,30 +917,13 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
     });
   }
 
-  // LOD1: ta sama ramka (kształt i położenie z LOD2) bez kodów, połączona z cewką Q0 tą samą
-  // linią wyłączania; LOD0 — GPZ zwinięty, bloku nie ma (kontrakt N × LOD niżej).
-  for (const [nazwaFx, enm] of FIKSTURY) {
-    it(`${nazwaFx} · LOD1: ramka w położeniu i kształcie LOD2, linia wyłączania do cewki Q0, bez kodów`, () => {
-      const l1 = buildSceneV3(enm, 1);
-      const l2 = buildSceneV3(enm, 2);
-      for (const pole of polaLiniowe(enm)) {
-        const p1 = przekaznikPola(l1, pole.ref);
-        const p2 = przekaznikPola(l2, pole.ref)!;
-        expect(p1, pole.ref).toBeDefined();
-        expect({ x: p1!.x, y: p1!.y }, pole.ref).toEqual({ x: p2.x, y: p2.y });
-        expect(p1!.meta?.ramkaBlokuPrzekaznika, `${pole.ref}: ramka LOD1 = LOD2`).toEqual(p2.meta?.ramkaBlokuPrzekaznika);
-        expect(kodyNaSymbolu(p1), `${pole.ref}: bez kodów na LOD1`).toBeUndefined();
-        expect(l1.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${pole.ref}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? '')), `${pole.ref}: bez wierszy na LOD1`).toEqual([]);
-        const w1 = l1.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`);
-        const w2 = l2.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`)!;
-        expect(w1?.points, `${pole.ref}: linia wyłączania na LOD1 = LOD2`).toEqual(w2.points);
-      }
-    });
-  }
+  // Dawny test „LOD1: ramka bez kodów w położeniu LOD2" usunięty: jedna scena (karta
+  // SLD-SKALA-I-NAWIGACJA R1) nie ma odmiany bez kodów — kody i linia wyłączania są w scenie
+  // przy każdej skali (kontrakt N kodów niżej), a o ich czytelności rozstrzyga kanwa.
 
   it('iniekcja: blok dalej od Q0 o dwa oczka — położenie nie jest najbliższe (o oczko w lewo wolne)', () => {
     const [, enm] = FIKSTURY[0];
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const pole = polaLiniowe(enm)[0];
     const dalej = przesunPrzekaznik(scena, pole.ref, 2 * GRID);
     expect(naruszeniaPolozeniaPrzekaznika(dalej, pole.ref)).toEqual([]);
@@ -953,7 +932,7 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
 
   it('iniekcja: blok o dwa oczka niżej (środek poza wysokością Q0) — czerwień', () => {
     const [, enm] = FIKSTURY[0];
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const pole = polaLiniowe(enm)[0];
     const przekaznik = przekaznikPola(scena, pole.ref)!;
     const nizej: SceneV3 = { ...scena, symbols: scena.symbols.map((s) => (s === przekaznik ? { ...s, y: s.y + 2 * GRID } : s)) };
@@ -979,7 +958,7 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
   const DLUGOSC_WYLACZANIA: Readonly<Record<WykonaniePola, number>> = { Z10: 3 * GRID, Z11_1: 9 * GRID, Z11: 17 * GRID };
   it('linia wyłączania pozioma na wysokości Q0, krótka: Z.10 ≤ 3·GRID, Z.11.1 ≤ 9·GRID, Z.11 ≤ 17·GRID', () => {
     for (const [, enm] of FIKSTURY) {
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       for (const pole of polaLiniowe(enm)) {
         const g = scena.segments.find((x) => x.meta?.ownerRef === `${pole.ref}#trip-line`)!;
         const q0 = wylacznikPola(scena, pole.ref)!;
@@ -995,7 +974,8 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
   // i węższe”. Szerokość rysunku pola = rozpiętość X symboli (ramka bloku — jej prostokąt),
   // etykiet i przewodów pola. Pomiar przed wzorcem (baza `9dafb6083`, LOD2/LOD1): Z.11.1 393/387,
   // Z.11 stałe 434/428, Z.10 stałe 306/300, Z.10 trójpołożeniowe 281/275. Pomiar po (LOD1
-  // i LOD2 równe — kolumny opisów rezerwowane niezależnie od LOD): Z.11.1 369, Z.11 425, Z.10
+  // i LOD2 równe — kolumny opisów rezerwowane niezależnie od LOD; od karty SLD-SKALA-I-NAWIGACJA
+  // jedna scena): Z.11.1 369, Z.11 425, Z.10
   // stałe 305, Z.10 trójpołożeniowe 280 (Z.10 na LOD1 o 5 szersze niż przed wzorcem, na LOD2
   // o 1 węższe — pole Z.10 nie ma kolumny odgałęzienia, więc nie zyskuje jej pasa). Zapadka
   // w dół; Z.11.1 — kryterium (e) wzorca: węższe niż przed wzorcem.
@@ -1008,23 +988,21 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
   it('szerokość rysunku pola po przeniesieniu opisów na lewo (zapadka; Z.11.1 węższe niż przed wzorcem: 393)', () => {
     const zmierzone = new Map<string, number>();
     for (const [, enm] of FIKSTURY) {
-      for (const lod of [1, 2] as const) {
-        const scena = buildSceneV3(enm, lod);
-        for (const b of (enm.bays ?? []).filter((x) => (x.bay_template_ref ?? '').startsWith('bay_template_gpz_line_enea_'))) {
-          const wzor = b.bay_template_ref!.replace('bay_template_gpz_line_enea_', '');
-          const nalezy = (r: string | undefined) => r === b.ref_id || (r ?? '').startsWith(`${b.ref_id}#`);
-          const xs: number[] = [];
-          for (const sym of scena.symbols.filter((x) => nalezy(x.meta?.ownerRef))) {
-            const r = sym.meta?.ramkaBlokuPrzekaznika;
-            if (r) xs.push(sym.x + r.x, sym.x + r.x + r.width);
-            else xs.push(sym.x, sym.x + SYMBOL_DEFS[sym.symbolId].width);
-          }
-          for (const l of scena.labels.filter((x) => nalezy(x.ownerRef))) xs.push(l.rect.x, l.rect.x + l.rect.width);
-          for (const g of scena.segments.filter((x) => nalezy(x.meta?.ownerRef))) for (const q of g.points) xs.push(q.x);
-          const w = Math.max(...xs) - Math.min(...xs);
-          expect(w, `${b.ref_id} (${wzor}) L${lod}`).toBeLessThanOrEqual(SZEROKOSC_POLA[wzor]);
-          zmierzone.set(wzor, Math.max(zmierzone.get(wzor) ?? 0, w));
+      const scena = buildSceneV3(enm);
+      for (const b of (enm.bays ?? []).filter((x) => (x.bay_template_ref ?? '').startsWith('bay_template_gpz_line_enea_'))) {
+        const wzor = b.bay_template_ref!.replace('bay_template_gpz_line_enea_', '');
+        const nalezy = (r: string | undefined) => r === b.ref_id || (r ?? '').startsWith(`${b.ref_id}#`);
+        const xs: number[] = [];
+        for (const sym of scena.symbols.filter((x) => nalezy(x.meta?.ownerRef))) {
+          const r = sym.meta?.ramkaBlokuPrzekaznika;
+          if (r) xs.push(sym.x + r.x, sym.x + r.x + r.width);
+          else xs.push(sym.x, sym.x + SYMBOL_DEFS[sym.symbolId].width);
         }
+        for (const l of scena.labels.filter((x) => nalezy(x.ownerRef))) xs.push(l.rect.x, l.rect.x + l.rect.width);
+        for (const g of scena.segments.filter((x) => nalezy(x.meta?.ownerRef))) for (const q of g.points) xs.push(q.x);
+        const w = Math.max(...xs) - Math.min(...xs);
+        expect(w, `${b.ref_id} (${wzor})`).toBeLessThanOrEqual(SZEROKOSC_POLA[wzor]);
+        zmierzone.set(wzor, Math.max(zmierzone.get(wzor) ?? 0, w));
       }
     }
     expect([...zmierzone.keys()].sort()).toEqual(Object.keys(SZEROKOSC_POLA).sort());
@@ -1164,14 +1142,14 @@ function glifSymbolu(p: PreviewSymbol, stroke = '#000'): Document {
 describe('UX-04 — blok zabezpieczeń: ramka bez okręgu, jedna reprezentacja funkcji, cewka Q0, T2 → blok (uwagi właściciela pkt 4 i 5, korekta v2)', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
     it(`${nazwaFx} · L2: każda funkcja raz w ramce, ramka bez kolizji, bez „52", wyłączanie do cewki, T2 z linią pomiarową`, () => {
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       expect(polaLiniowe(enm).length).toBeGreaterThan(0);
       expect(naruszeniaBlokuPrzekaznika(enm, scena)).toEqual([]);
     });
   }
 
   const [, enmZ11] = FIKSTURY[2];
-  const scenaBazowa = buildSceneV3(enmZ11, 2);
+  const scenaBazowa = buildSceneV3(enmZ11);
   const poleZ111 = polaLiniowe(enmZ11).find((p) => p.pole === 'Z11_1')!;
   type ScenaZmienna = { -readonly [K in keyof SceneV3]: SceneV3[K] };
   const zmien = (f: (s: ScenaZmienna) => void): SceneV3 => {
@@ -1407,11 +1385,11 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
     scena.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${bayRef}#`) && /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? ''));
   for (const [nazwaFx, enm] of FIKSTURY) {
     for (const n of [0, 1, 2, 7, 9]) {
-      it(`${nazwaFx} · N = ${n}: LOD2 — kody z danych w ramce, ⌈N/2⌉ wierszy; LOD1 — ramka bez kodów; LOD0 — brak; oba motywy bez okręgu`, () => {
+      it(`${nazwaFx} · N = ${n}: kody z danych w ramce, ⌈N/2⌉ wierszy; oba motywy bez okręgu; bez licznika „+n"`, () => {
         const model = zKodami(enm, n);
         const pola = polaLiniowe(model);
         for (const pole of pola) expect(kodySterownikaPola(model, pole.ref).length, pole.ref).toBe(n);
-        const l2 = buildSceneV3(model, 2);
+        const l2 = buildSceneV3(model);
         if (n === 0) {
           for (const pole of pola) {
             expect(przekaznikPola(l2, pole.ref), pole.ref).toBeUndefined();
@@ -1438,22 +1416,10 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
             }
           }
         }
-        for (const lod of [0, 1] as const) {
-          const scena = buildSceneV3(model, lod);
-          for (const pole of pola) {
-            expect(etykietyKodow(scena, pole.ref), `${pole.ref} · LOD${lod}`).toEqual([]);
-            const p = przekaznikPola(scena, pole.ref);
-            expect(kodyNaSymbolu(p), `${pole.ref} · LOD${lod}: symbol bez kodów`).toBeUndefined();
-            if (lod === 0) expect(p, `${pole.ref} · LOD0: GPZ zwinięty`).toBeUndefined();
-            if (lod === 1 && n > 0) {
-              expect(p?.meta?.ramkaBlokuPrzekaznika, `${pole.ref} · LOD1: ramka`).toEqual(przekaznikPola(l2, pole.ref)!.meta?.ramkaBlokuPrzekaznika);
-              expect(okregiGlifu(glifSymbolu(p!)).length, `${pole.ref} · LOD1: okrąg`).toBe(0);
-            }
-            if (lod === 1 && n === 0) expect(p, `${pole.ref} · LOD1: brak bloku bez funkcji`).toBeUndefined();
-          }
-          expect(scena.labels.some((l) => /^\+\d/.test(l.text)), `LOD${lod}: licznik „+n"`).toBe(false);
-        }
-        expect(l2.labels.some((l) => /^\+\d/.test(l.text)), 'LOD2: licznik „+n"').toBe(false);
+        // Dawne gałęzie „LOD1 — ramka bez kodów, LOD0 — GPZ zwinięty" zniknęły razem z
+        // poziomami szczegółu (karta SLD-SKALA-I-NAWIGACJA R1): jedna scena niesie kody,
+        // a ich czytelność rozstrzyga rozmiar ekranowy pisma (klasa „oznaczenia").
+        expect(l2.labels.some((l) => /^\+\d/.test(l.text)), 'licznik „+n"').toBe(false);
       });
     }
   }
@@ -1496,21 +1462,19 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
   ];
   const pokrycie = new Set<string>();
   for (const [nazwaFx, enm] of ZESTAW) {
-    for (const lod of [1, 2] as const) {
-      it(`${nazwaFx} · L${lod}: każda etykieta zabezpieczeń niesie wyrównanie zgodne ze stroną kotwicy`, () => {
-        const scena = buildSceneV3(enm, lod);
-        const bledy: string[] = [];
-        for (const l of scena.labels.filter((x) => x.ownerKind === 'protection')) {
-          const rodzaj = rodzajAdnotacjiZabezpieczen(l);
-          const oczekiwane = l.placement === 'right' ? 'poczatek' : l.placement === 'below' || l.placement === 'left' ? 'koniec' : undefined;
-          pokrycie.add(`${rodzaj} · ${l.placement ?? 'brak'} · ${l.wyrownanieTekstu ?? 'środek'}`);
-          if (rodzaj.startsWith('nieznany')) bledy.push(`${l.ownerRef}: ${rodzaj}`);
-          if (oczekiwane === undefined) bledy.push(`${l.ownerRef}: strona ${l.placement ?? 'brak'} bez reguły zaczepu`);
-          else if (l.wyrownanieTekstu !== oczekiwane) bledy.push(`${l.ownerRef} (${rodzaj}, ${l.placement}): ${l.wyrownanieTekstu ?? 'środek'} ≠ ${oczekiwane}`);
-        }
-        expect(bledy).toEqual([]);
-      });
-    }
+    it(`${nazwaFx}: każda etykieta zabezpieczeń niesie wyrównanie zgodne ze stroną kotwicy`, () => {
+      const scena = buildSceneV3(enm);
+      const bledy: string[] = [];
+      for (const l of scena.labels.filter((x) => x.ownerKind === 'protection')) {
+        const rodzaj = rodzajAdnotacjiZabezpieczen(l);
+        const oczekiwane = l.placement === 'right' ? 'poczatek' : l.placement === 'below' || l.placement === 'left' ? 'koniec' : undefined;
+        pokrycie.add(`${rodzaj} · ${l.placement ?? 'brak'} · ${l.wyrownanieTekstu ?? 'środek'}`);
+        if (rodzaj.startsWith('nieznany')) bledy.push(`${l.ownerRef}: ${rodzaj}`);
+        if (oczekiwane === undefined) bledy.push(`${l.ownerRef}: strona ${l.placement ?? 'brak'} bez reguły zaczepu`);
+        else if (l.wyrownanieTekstu !== oczekiwane) bledy.push(`${l.ownerRef} (${rodzaj}, ${l.placement}): ${l.wyrownanieTekstu ?? 'środek'} ≠ ${oczekiwane}`);
+      }
+      expect(bledy).toEqual([]);
+    });
   }
   it('pokrycie iloczynu na scenie: blok zabezpieczeń (prawa strona, lewa krawędź) i tabliczki przekładników w kolumnie przekładni (lewa krawędź kolumny); zero wierszy kodów pod okręgiem', () => {
     // Kolejność `it` w pliku: ten test biegnie po komórkach iloczynu wyżej. Adnotacje CT/„52"
@@ -1548,7 +1512,7 @@ describe('UX-04 — tło pola obejmuje podpis pola i opisy jego zabezpieczeń (p
   const ETYKIETY_POLA = /#(designation|protection-codes-full(-\d+)?|zrodlo-u0(-\d+)?|device-number|ct-rating-.+|vt-rating-.+|cbct-rating-.+|vt-mounting-.+)$/;
   for (const [nazwaFx, enm] of FIKSTURY) {
     it(`${nazwaFx} · L2: podpis pola i kody funkcji w całości w tle pola; tła rozłączne parami`, () => {
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       const panele = scena.meta.gpzAdnotacje?.panele ?? [];
       let poza = 0;
       for (const pole of polaLiniowe(enm)) {
@@ -1583,7 +1547,7 @@ describe('UX-04 — iniekcje na modelu pola', () => {
     const q0 = bay.primary_devices!.find((d) => d.designation === 'Q0')!;
     const t1 = bay.primary_devices!.find((d) => d.designation === 'T1')!;
     [q0.ports, t1.ports] = [t1.ports, q0.ports];
-    const scena = buildSceneV3(model, 2);
+    const scena = buildSceneV3(model);
     const mapa = oznaczenia(model, poleTrojpolozeniowe.ref);
     const kolejnosc = torGlowny(scena, poleTrojpolozeniowe.ref).map((s) => (s.meta?.deviceRef ? mapa.get(s.meta.deviceRef) : '-'));
     expect(kolejnosc.slice(0, 3)).toEqual(['Q1', 'T1', 'Q0']);
@@ -1592,7 +1556,7 @@ describe('UX-04 — iniekcje na modelu pola', () => {
   it('rekord odłącznika w położeniu „uziemiony" (sprzeczny z rodzajem) — stan nieustalony, kafel „?"', () => {
     for (const [, fx] of FIKSTURY) {
       const model = zPolozeniami(fx, 'uziemiony', 'zamkniety');
-      const scena = buildSceneV3(model, 2);
+      const scena = buildSceneV3(model);
       const stale = polaLiniowe(model).filter((p) => p.laczniki === 'STALY');
       expect(stale.length).toBeGreaterThan(0);
       for (const pole of stale) {
@@ -1613,7 +1577,7 @@ describe('UX-04 — iniekcje na modelu pola', () => {
     const bay = model.bays!.find((b) => b.ref_id === poleTrojpolozeniowe.ref)!;
     const t1 = bay.primary_devices!.find((d) => d.designation === 'T1')!;
     t1.ports = (t1.ports ?? []).filter((p) => p.port_id !== 'wy');
-    const scena = buildSceneV3(model, 2);
+    const scena = buildSceneV3(model);
     expect(scena.meta.missingData).toContain(`gpz.bay.port.missing:${poleTrojpolozeniowe.ref}:${t1.device_ref}`);
     const tor = torGlowny(scena, poleTrojpolozeniowe.ref);
     const t1Sym = tor.find((s) => s.meta?.deviceRef === t1.device_ref);
@@ -1631,7 +1595,7 @@ describe('UX-04 — iniekcje na modelu pola', () => {
       const bay = model.bays!.find((b) => b.ref_id === pole.ref)!;
       const q5 = bay.primary_devices!.find((d) => d.designation === 'Q5')!;
       q5.ports = (q5.ports ?? []).map((p) => (p.port_id === 'we' ? { ...p, wezel: 'w77' } : p));
-      const scena = buildSceneV3(model, 2);
+      const scena = buildSceneV3(model);
       expect(scena.meta.missingData, pole.ref).toContain(`gpz.bay.port.missing:${pole.ref}:${q5.device_ref}`);
       expect(scena.segments.some((s) => s.meta?.ownerRef === `${pole.ref}#odgalezienie-0`), pole.ref).toBe(false);
       // Tor główny bez zmian: aparaty toru dalej połączone przewodami port → port.
@@ -1812,13 +1776,11 @@ function polaczeniaBezOdpowiednika(enm: EnergyNetworkModel, scena: SceneV3): str
 
 describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z modelu (wymaganie 8)', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
-    for (const lod of [1, 2] as const) {
-      it(`${nazwaFx} · L${lod}: każdy aparat ma rekord, każde połączenie — wspólny węzeł modelu, i odwrotnie`, () => {
-        const scena = buildSceneV3(enm, lod);
-        expect(aparatyBezOdpowiednika(enm, scena)).toEqual([]);
-        expect(polaczeniaBezOdpowiednika(enm, scena)).toEqual([]);
-      });
-    }
+    it(`${nazwaFx}: każdy aparat ma rekord, każde połączenie — wspólny węzeł modelu, i odwrotnie`, () => {
+      const scena = buildSceneV3(enm);
+      expect(aparatyBezOdpowiednika(enm, scena)).toEqual([]);
+      expect(polaczeniaBezOdpowiednika(enm, scena)).toEqual([]);
+    });
   }
 
   it('warunek wstępny: fikstury niosą napęd silnikowy Q0 i T3 Z.11.1 z trzema uzwojeniami w gwieździe (decyzja właściciela pkt 1)', () => {
@@ -1850,7 +1812,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
   const poleZ111 = polaLiniowe(fxZ11Model).find((p) => p.pole === 'Z11_1' && p.zajete)!;
 
   it('iniekcja: symbol z deviceRef spoza rekordów pola i rekord bez symbolu — wyrocznia aparatów czerwona', () => {
-    const scena = buildSceneV3(fxZ11Model, 2);
+    const scena = buildSceneV3(fxZ11Model);
     const wzor = symbolePola(scena, poleZ111.ref).find((s) => s.meta?.deviceRef)!;
     const fikcyjny: SceneV3 = {
       ...scena,
@@ -1862,7 +1824,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
   });
 
   it('iniekcja: węzeł wyjścia Q0 zmieniony w modelu, rysunek z dawnego modelu — połączenie bez wspólnego węzła', () => {
-    const scena = buildSceneV3(fxZ11Model, 2);
+    const scena = buildSceneV3(fxZ11Model);
     const model = structuredClone(fxZ11Model) as EnergyNetworkModel;
     const q0 = model.bays!.find((b) => b.ref_id === poleZ111.ref)!.primary_devices!.find((d) => d.designation === 'Q0')!;
     q0.ports = (q0.ports ?? []).map((p) => (p.port_id === 'wy' ? { ...p, wezel: 'w9' } : p));
@@ -1871,7 +1833,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
   });
 
   it('iniekcja: przewód T1 → PF1 usunięty ze sceny — węzeł modelu bez połączenia na rysunku', () => {
-    const scena = buildSceneV3(fxZ11Model, 2);
+    const scena = buildSceneV3(fxZ11Model);
     const mapa = oznaczenia(fxZ11Model, poleZ111.ref);
     const tor = torGlowny(scena, poleZ111.ref);
     const t1 = tor.find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'T1')!;
@@ -1888,7 +1850,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
   });
 
   it('iniekcja: przewód dorysowany z wyjścia Q1 do wejścia T1 (różne węzły modelu) — wyrocznia połączeń czerwona', () => {
-    const scena = buildSceneV3(fxZ11Model, 2);
+    const scena = buildSceneV3(fxZ11Model);
     const mapa = oznaczenia(fxZ11Model, poleZ111.ref);
     const tor = torGlowny(scena, poleZ111.ref);
     const q1 = tor.find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q1')!;
@@ -1919,7 +1881,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
               if (bezNapedu) d.naped = null;
             }
           }
-          const scena = buildSceneV3(model, 2);
+          const scena = buildSceneV3(model);
           for (const pole of polaLiniowe(model)) {
             const mapa = oznaczenia(model, pole.ref);
             const q0 = torGlowny(scena, pole.ref).find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q0')!;
@@ -1932,7 +1894,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
             // Rysunek stały przy rekordzie wysuwnym — wyrocznia aparatów czerwona.
             const staly = structuredClone(model) as EnergyNetworkModel;
             for (const bay of staly.bays ?? []) for (const d of bay.primary_devices ?? []) if (d.kind === 'CB') d.wykonanie = 'STALE';
-            const naruszenia = aparatyBezOdpowiednika(model, buildSceneV3(staly, 2));
+            const naruszenia = aparatyBezOdpowiednika(model, buildSceneV3(staly));
             expect(naruszenia.length, nazwaFx).toBeGreaterThan(0);
           }
         }
@@ -1948,7 +1910,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
         if (!(bay.tags ?? []).includes('gpz_line_field')) continue;
         for (const d of bay.primary_devices ?? []) if (d.kind === 'CB' || d.kind === 'THREE_POSITION_SWITCH') d.naped = null;
       }
-      const scena = buildSceneV3(model, 2);
+      const scena = buildSceneV3(model);
       for (const pole of polaLiniowe(model)) {
         const mapa = oznaczenia(model, pole.ref);
         const tor = torGlowny(scena, pole.ref);
@@ -1961,7 +1923,7 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
       }
       expect(aparatyBezOdpowiednika(model, scena), nazwaFx).toEqual([]);
       // Rysunek z napędem przy rekordzie bez napędu — wyrocznia aparatów czerwona.
-      const naruszenia = aparatyBezOdpowiednika(model, buildSceneV3(enm, 2));
+      const naruszenia = aparatyBezOdpowiednika(model, buildSceneV3(enm));
       expect(naruszenia.some((n) => n.includes('qetBreakerZNapedem')), nazwaFx).toBe(true);
       expect(naruszenia.some((n) => n.includes('qetThreePositionSwitchZNapedem')), nazwaFx).toBe(true);
     }
@@ -1979,13 +1941,13 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
       const model = structuredClone(fxZ11Model) as EnergyNetworkModel;
       const t3 = model.bays!.find((b) => b.ref_id === poleZ111.ref)!.primary_devices!.find((d) => d.designation === 'T3')!;
       t3.uzwojenia = (t3.uzwojenia ?? []).slice(0, liczba);
-      const scena = buildSceneV3(model, 2);
+      const scena = buildSceneV3(model);
       const symbol = symbolePola(scena, poleZ111.ref).find((s) => s.meta?.deviceRef === t3.device_ref)!;
       expect(symbol.symbolId, `${liczba} uzwojeń`).toBe(oczekiwany[liczba]);
       expect(aparatyBezOdpowiednika(model, scena), `${liczba} uzwojeń`).toEqual([]);
       if (liczba !== 3) {
         // Rysunek trzech uzwojeń przy rekordzie z inną liczbą — wyrocznia czerwona.
-        expect(aparatyBezOdpowiednika(model, buildSceneV3(fxZ11Model, 2)).some((n) => n.includes('qetVoltageTransformer3'))).toBe(true);
+        expect(aparatyBezOdpowiednika(model, buildSceneV3(fxZ11Model)).some((n) => n.includes('qetVoltageTransformer3'))).toBe(true);
       }
     }
   });

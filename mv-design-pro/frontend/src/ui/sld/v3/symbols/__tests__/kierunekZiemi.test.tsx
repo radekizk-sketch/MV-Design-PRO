@@ -37,7 +37,7 @@
  * Iloczyn: {Q1 trójpołożeniowy (bez i z napędem), Q5/Q8 uziemnik, uziemnik rodziny kanonicznej,
  * punkt neutralny ×4 rodzaje, bateria w gwieździe uziemionej, uziemnik CAD, trzy symbole v2} ×
  * stan {zamknięty, otwarty, uziemiony, nieustalony, awaria, brak stanu} × motyw {ciemny, jasny} ×
- * poziom szczegółu {LOD1, LOD2} (mnożnik kreski kanwy `strokeScaleFactor`).
+ * skala kamery {0,69; 1,02} (mnożnik kreski kanwy `strokeScaleFactor`).
  * Iniekcje (każda czerwona): ziemia odbita w górę, ziemia obrócona na bok, ziemia nad kotwicą,
  * ziemia poza osią kotwicy, brak pionu odgałęzienia, przerwa toru punktu neutralnego uziemionego
  * bezpośrednio (stan sprzed poprawki 2026-10-30).
@@ -53,7 +53,6 @@ import { CadSymbol } from '../../cad/CadSymbol';
 import { ELECTRICAL_CAD_SYMBOL_REGISTRY, type CadSwitchState, type CadSymbolId } from '../../cad/cadSymbolRegistry';
 import { QET_SYMBOLE_POLA_SN, type QetSymbolPolaSnId } from '../../cad/qet/qetPoleSn';
 import { strokeScaleFactor } from '../../compose/preview';
-import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../../canvas/camera';
 import { symbolAparatu } from '../../lv-domain/symbolRegistry';
 import { DARK_SCADA_SLD_PALETTE } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
@@ -359,9 +358,9 @@ function naruszeniaZiemi(r: Rysunek, w: Wymagania): string[] {
 // Inwentarz klasy i iloczyn
 // ---------------------------------------------------------------------------------------------
 
-const LODY = [
-  ['LOD1', DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN)],
-  ['LOD2', DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN)],
+const SKALE = [
+  ['skala 0,69', 0.69],
+  ['skala 1,02', 1.02],
 ] as const;
 const MOTYWY = [
   ['ciemny', DARK_SCADA_SLD_PALETTE],
@@ -458,8 +457,6 @@ function wariantyGlifu(id: SymbolId): ReadonlyArray<readonly [string, Partial<Gl
       for (const p of [false, true]) w.push([`${uklad ?? 'NIEOKRESLONY'}${p ? ' z przekładnikiem' : ''}`, { bateria: { uklad, przekladnikNiezrownowazenia: p } }]);
     }
   }
-  w.push(['stacja sekcjonowana z transformatorem', { stationSectioned: true, stationHasTransformer: true }]);
-  for (const der of ['pv', 'bess', 'wind', 'generator'] as const) w.push([`stacja z OZE ${der}`, { stationDerOnMv: der }]);
   w.push(['licznik A', { meterQuantity: 'A' }], ['licznik V', { meterQuantity: 'V' }]);
   return w;
 }
@@ -467,7 +464,7 @@ function wariantyGlifu(id: SymbolId): ReadonlyArray<readonly [string, Partial<Gl
 describe('symbol ziemi pod uziemnikiem, skierowany w dół — cała klasa glifów', () => {
   it('inwentarz wykryty z rysunku = inwentarz zadeklarowany (obie strony)', () => {
     const [, motyw] = MOTYWY[0];
-    const [, skala] = LODY[1];
+    const [, skala] = SKALE[1];
     // Klucz: symbol, a dla glifów, w których ziemię niesie DANA modelu (układ baterii), także
     // wariant danej. Ziemia uziemnika i punktu neutralnego nie zależy od stanu ani rodzaju —
     // wykrycie w części wariantów byłoby defektem, więc wymagamy jej we WSZYSTKICH.
@@ -507,33 +504,33 @@ describe('symbol ziemi pod uziemnikiem, skierowany w dół — cała klasa glif�
   it('każdy wpis inwentarza ma wykrytą ziemię (deklaracja bez rysunku = czerwony)', () => {
     const [, motyw] = MOTYWY[0];
     for (const w of INWENTARZ) {
-      expect(wykryjZiemie(rysunek(w.rysuj(w.stany[0], motyw, LODY[1][1]))).length, w.nazwa).toBe(1);
+      expect(wykryjZiemie(rysunek(w.rysuj(w.stany[0], motyw, SKALE[1][1]))).length, w.nazwa).toBe(1);
     }
   });
 
-  it('iloczyn: glif z ziemią × stan × motyw × LOD — ziemia pozioma, w dół, pod kotwicą, na końcu pionu', () => {
+  it('iloczyn: glif z ziemią × stan × motyw × skala — ziemia pozioma, w dół, pod kotwicą, na końcu pionu', () => {
     const naruszenia: string[] = [];
     let przypadki = 0;
     for (const w of INWENTARZ) {
       for (const stan of w.stany) {
         for (const [motyw, paleta] of MOTYWY) {
-          for (const [lod, skala] of LODY) {
+          for (const [nazwaSkali, skala] of SKALE) {
             przypadki += 1;
             for (const b of naruszeniaZiemi(rysunek(w.rysuj(stan, paleta, skala)), w.wymagania)) {
-              naruszenia.push(`${w.nazwa} · ${stan ?? 'brak stanu'} · ${motyw} · ${lod}: ${b}`);
+              naruszenia.push(`${w.nazwa} · ${stan ?? 'brak stanu'} · ${motyw} · ${nazwaSkali}: ${b}`);
             }
           }
         }
       }
     }
     expect(naruszenia).toEqual([]);
-    expect(przypadki).toBe(INWENTARZ.reduce((s, w) => s + w.stany.length, 0) * MOTYWY.length * LODY.length);
+    expect(przypadki).toBe(INWENTARZ.reduce((s, w) => s + w.stany.length, 0) * MOTYWY.length * SKALE.length);
   });
 
   it('predykat parami: tor punktu neutralnego do uziomu przerwany ⇔ sieć izolowana', () => {
     const [, motyw] = MOTYWY[1];
     for (const kind of RODZAJE_UZIEMIENIA) {
-      for (const [, skala] of LODY) {
+      for (const [, skala] of SKALE) {
         const r = rysunek(glif('neutralEarthing', { earthingKind: kind }, motyw, skala));
         const g = wykryjZiemie(r)[0];
         const przerwy = przerwyToru(r, ...portGorny('neutralEarthing'), g.kreski[0].a[1]);
@@ -585,7 +582,7 @@ function przeksztalcZiemie(doc: Document, f: (p: P, g: GrupaZiemi) => P): Docume
 
 describe('iniekcje reguły ziemi', () => {
   const [, motyw] = MOTYWY[0];
-  const skala = LODY[0][1];
+  const skala = SKALE[0][1];
   const pierwszy = (w: Wpis): Document => w.rysuj(w.stany[0], motyw, skala);
 
   it.each(INWENTARZ.map((w) => [w.nazwa, w] as const))('%s: ziemia odbita w górę → czerwony', (_n, w) => {

@@ -11,9 +11,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { DostepnoscCelu, KomunikatKadru } from './useKadrowanieWidoku';
 import { CELE_MENU_KADRU, ETYKIETA_CELU_KADRU, type CelKadru, type PoziomSciezki } from './zakresKadru';
 
-/** Klasa przycisków pasa narzędzi kanwy (ta sama co pozostałe kontrolki doku widoku). */
+/** Klasa przycisków pasa narzędzi kanwy — JEDNO źródło dla wszystkich kontrolek doku widoku.
+ *  `whitespace-nowrap`: tekst przycisku nie łamie się na dwa wiersze (zasada właściciela —
+ *  ta sama co dla stanowiska EAZ; zrzut wejścia z wyników zwarć 2026-11-11 pokazał
+ *  „Drzewo / układu” i „Dopasuj / widok” w dwóch wierszach). */
 export const KLASA_PRZYCISKU_DOKU =
-  'h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40';
+  'whitespace-nowrap h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40';
 
 export function MenuDopasujDo(props: {
   readonly dostepnosc: Readonly<Record<CelKadru, DostepnoscCelu>>;

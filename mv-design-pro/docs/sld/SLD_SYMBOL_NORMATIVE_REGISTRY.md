@@ -42,7 +42,7 @@ Kolejność dokumentów: kanon V12.xx → ten rejestr → `PROJEKCJA_SN_NN_PORTA
    (R2 §6).
 5. **Siatka CAD** (R2 §16). Jednostka „u"; aparat 16×24 u, oś toru x = 8; każdy symbol ma
    `anchors.{top,bottom,left,right,center}`, `terminals` na krawędzi gabarytu,
-   `nominalWidth/Height`, `minimumSizePx`, `lodPolicy`. Zaciski wszystkich symbolów leżą
+   `nominalWidth/Height`, `minimumSizePx` (bez polityki poziomów szczegółu — scena jest jedna, karta SLD-SKALA-I-NAWIGACJA). Zaciski wszystkich symbolów leżą
    na siatce 1 u (pin: `cad/__tests__/cadSymbolRegistry.test.tsx`).
 6. **Pierwowzór właściciela jest rozstrzygający** (R2.1). Tam, gdzie konwencja IEC dopuszcza
    warianty (strona odchylenia noża, miejsce kwalifikatora, kolejność ogniw złożenia),

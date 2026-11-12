@@ -115,13 +115,13 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
     });
   });
 
-  describe('LOD policy (wymaganie #3) — 5 poziomów × 13 warstw', () => {
-    it('LodPolicy.ts istnieje', () => {
-      expect(fileExists('ui/sld/v2/lod/LodPolicy.ts')).toBe(true);
-    });
-
-    it('LodPolicy ma testy (22 tests baseline)', () => {
-      expect(fileExists('ui/sld/v2/__tests__/LodPolicy.test.ts')).toBe(true);
+  // Wymaganie #3 („polityka LOD 5 poziomów × 13 warstw") zastąpione kontraktem jednej sceny
+  // (karta SLD-SKALA-I-NAWIGACJA, `docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0): scena nie
+  // zależy od skali, gęstość napisów liczy jedna czysta funkcja kanwy.
+  describe('skala i gęstość informacji (wymaganie #3) — jedna scena', () => {
+    it('funkcja gęstości informacji istnieje, a polityka poziomów v2 nie', () => {
+      expect(fileExists('ui/sld/v3/canvas/gestoscInformacji.ts')).toBe(true);
+      expect(fileExists('ui/sld/v2/lod/LodPolicy.ts')).toBe(false);
     });
   });
 

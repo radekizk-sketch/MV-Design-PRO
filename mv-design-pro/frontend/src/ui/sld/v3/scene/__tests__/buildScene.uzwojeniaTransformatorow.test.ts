@@ -55,7 +55,7 @@ describe('uzwojenia transformatora z grupy połączeń — miejsce × grupa (sce
     for (const grupa of GRUPY) {
       it(`${miejsce} × ${grupa ?? 'brak grupy'}`, () => {
         const { enm, ownerRef } = migawka(miejsce, grupa);
-        const scena = buildSceneV3(enm, 2);
+        const scena = buildSceneV3(enm);
         const tr = scena.symbols.filter((s) => s.symbolId === 'transformer2W' && s.meta?.ownerRef === ownerRef);
         expect(tr, `symbol transformatora ${ownerRef}`).toHaveLength(1);
         const u = tr[0].uzwojenia;
@@ -84,10 +84,8 @@ describe('uzwojenia transformatora z grupy połączeń — miejsce × grupa (sce
   it('niezmiennik klasy: żaden symbol transformer2W sceny nie jest bez oznaczenia uzwojeń', () => {
     for (const miejsce of MIEJSCA) {
       const { enm } = migawka(miejsce, 'Dyn11');
-      for (const lod of [1, 2] as const) {
-        const bez = buildSceneV3(enm, lod).symbols.filter((s) => s.symbolId === 'transformer2W' && !s.uzwojenia);
-        expect(bez.map((s) => s.meta?.ownerRef), `${miejsce}, L${lod}`).toEqual([]);
-      }
+      const bez = buildSceneV3(enm).symbols.filter((s) => s.symbolId === 'transformer2W' && !s.uzwojenia);
+      expect(bez.map((s) => s.meta?.ownerRef), `${miejsce}`).toEqual([]);
     }
   });
 });

@@ -1,7 +1,7 @@
 /**
  * SCHEMAT-10 W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8/§9/§16) — dowód
  * wizualny warstwy LICZBOWYCH etykiet wynikowych §8 na L2. REALNA scena
- * `buildSceneV3(sldSubstrate52s, L2)` + warstwa liczb zbudowana produkcyjnym
+ * `buildSceneV3(sldSubstrate52s)` + warstwa liczb zbudowana produkcyjnym
  * potokiem: `buildResultLabelsFromScene` (kanał `overlay.resultLabelsByOwnerRef`)
  * → `computeResultLabelPlacements` (declutter, ta sama funkcja co kanwa). Rysunek
  * bazowy (segmenty/symbole/etykiety) NIETKNIĘTY — warstwa liczb NAD sceną (§9
@@ -47,7 +47,7 @@ mkdirSync(OUT, { recursive: true });
 const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 // Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
 // zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
 // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).

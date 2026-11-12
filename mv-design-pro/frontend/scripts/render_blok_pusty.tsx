@@ -48,7 +48,7 @@ import { dirname, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import { SldCanvasV3, sceneBoxToCameraWorld } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { prostokatElementuWScenie } from '../src/ui/sld/v3/canvas/viewAnchor';
 import type { CameraState } from '../src/ui/sld/v3/canvas/camera';
@@ -76,7 +76,6 @@ const enm = (
 
 const KADR = { width: 1500, height: 820 } as const;
 const STOPKA = 92;
-const LOD: SceneLod = 2;
 /** Skala kadru — STAŁA w obu fazach (kadr ma być ten sam, nie „dopasowany”). */
 const SKALA = Number(process.env.SKALA ?? '1.4');
 /** Gdzie w kadrze siada szyna SN bloku (ułamek wysokości). Blok zwisa POD nią,
@@ -139,12 +138,7 @@ function udzialPustki(rama: Prostokat, tusz: readonly Prostokat[]): number {
   return 1 - n / (kol * wier);
 }
 
-const scene = buildSceneV3(enm, LOD);
-const sceny: Readonly<Record<SceneLod, SceneV3>> = {
-  0: buildSceneV3(enm, 0),
-  1: buildSceneV3(enm, 1),
-  2: scene,
-};
+const scene = buildSceneV3(enm);
 
 const wierszNazwy = scene.labels.find((l) => l.ownerKind === 'station-name' && l.text === STACJA);
 if (!wierszNazwy) throw new Error(`brak stacji „${STACJA}" w scenie`);
@@ -177,9 +171,8 @@ const bboxKamery = (s: SceneV3) =>
   sceneBoxToCameraWorld({ minX: s.bbox.x, minY: s.bbox.y, maxX: s.bbox.x + s.bbox.width, maxY: s.bbox.y + s.bbox.height });
 const kamera: CameraState = {
   transform,
-  lod: LOD,
   viewportSize: KADR,
-  lodBboxes: { 0: bboxKamery(sceny[0]), 1: bboxKamery(sceny[1]), 2: bboxKamery(sceny[2]) },
+  swiat: bboxKamery(scene),
 };
 
 const pustka = udzialPustki(
@@ -197,7 +190,7 @@ const p0 = doPiksela(ramaSwiat.minX, ramaSwiat.minY);
 const p1 = doPiksela(ramaSwiat.maxX, ramaSwiat.maxY);
 
 const stopka =
-  `${FAZA === 'przed' ? 'PRZED' : 'PO'} · fixtura referencyjna sldSubstrate52s (53 stacje) · poziom szczegółu L2 · ` +
+  `${FAZA === 'przed' ? 'PRZED' : 'PO'} · fixtura referencyjna sldSubstrate52s (53 stacje) · ` +
   `skala ${SKALA.toFixed(3)} px/j.św. (kadr podany kanwie przez cameraOverride) · blok „${STACJA}"`;
 const stopka2 =
   `rama bloku ${Math.round(ramaSceny.maxX - ramaSceny.minX)}×${Math.round(ramaSceny.maxY - ramaSceny.minY)} j.św. · ` +
@@ -222,7 +215,6 @@ for (const motyw of MOTYWY) {
       snapshot={enm}
       width={KADR.width}
       height={KADR.height}
-      lodOverride={LOD}
       paletteMode={motyw.mode}
       cameraOverride={kamera}
     />,

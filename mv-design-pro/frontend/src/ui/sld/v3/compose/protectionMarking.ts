@@ -54,28 +54,6 @@ import { tekstOdniesieniaZrodlaU0 } from '../../v2/model/zrodloNapieciaZerowego'
  *  zabezpieczeń — ramkę, `./blokZabezpieczenPola`). */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
 
-/**
- * Szczegółowość warstwy adnotacji zabezpieczeń per LOD (spec §17.4, B-1
- * recenzji F9.9) — JEDNA prawda dla `compose/station.ts` i `compose/gpz.ts`
- * (wołający `scene/buildScene.ts` wywodzi wartość z LOD sceny przez
- * `protectionAnnotationDetailForLod` niżej):
- *  - `'full'`        (L2): ramka bloku zabezpieczeń z kodami funkcji, linia
- *                     wyłączania, linie pomiarowe, „52", „M", odniesienia.
- *  - `'circle-only'` (L1, nazwa historyczna): SAMA ramka bloku tego samego
- *                     kształtu BEZ kodów i linia wyłączania; linie pomiarowe,
- *                     „52"/„M" i wiersze nieobecne (§17.4, odbiór B-02 2026-11-04).
- *                     Przekaźnik NIE jest okręgiem (karta JEDNA NOTACJA BLOKU
- *                     ZABEZPIECZEŃ).
- *  - `'none'`        (L0): warstwa adnotacji nieobecna (plan sieci).
- */
-export type ProtectionAnnotationDetail = 'full' | 'circle-only' | 'none';
-
-export function protectionAnnotationDetailForLod(lod: 0 | 1 | 2): ProtectionAnnotationDetail {
-  if (lod === 2) return 'full';
-  if (lod === 1) return 'circle-only';
-  return 'none';
-}
-
 /** Odstęp kolejnych wierszy pełnej listy kodów [px świata] — dwa rastry: wiersze t4
  *  przyciągane do siatki nie nachodzą na siebie. */
 export const ODSTEP_WIERSZY_KODOW_EAZ = 2 * GRID;
@@ -107,9 +85,9 @@ export function odniesieniaPrzekaznikaPola(
  * zaakceptowana, korekta v2): blok BEZ okręgu przekaźnika, wewnątrz ramki WSZYSTKIE kody funkcji
  * pola (bez ukrywania, bez licznika) w kolejności danych (`Bay.protection_codes`), wypełnienie
  * kolumnami (najpierw lewa, z góry w dół): lewa ma ⌈n/2⌉ kodów, prawa resztę, liczba wierszy
- * ⌈n/2⌉. Kody są wyłącznie na LOD2 (`ProtectionAnnotationDetail` `'full'`); na LOD1 zostaje
- * ramka tego samego kształtu bez kodów, na LOD0 bloku nie ma. Nastawy i opis funkcji — inspektor
- * pola („Zabezpieczenia i automatyka”).
+ * ⌈n/2⌉. Blok z kodami jest w scenie w każdej skali (jedna geometria); kody to napisy klasy
+ * „oznaczenia aparatów i kody funkcji”, których widoczność liczy plan etykiet kanwy z rozmiaru
+ * ekranowego pisma. Nastawy i opis funkcji — inspektor pola („Zabezpieczenia i automatyka”).
  */
 export function kolumnyKodowBloku(codes: readonly string[]): readonly [readonly string[], readonly string[]] {
   const wLewej = Math.ceil(codes.length / 2);

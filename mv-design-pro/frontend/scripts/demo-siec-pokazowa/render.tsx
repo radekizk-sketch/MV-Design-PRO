@@ -32,7 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { EnergyNetworkModel } from '../../src/types/enm';
-import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod } from '../../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3 } from '../../src/ui/sld/v3/scene/buildScene';
 import { SldCanvasV3 } from '../../src/ui/sld/v3/canvas/SldCanvasV3';
 import { useThemeModeStore } from '../../src/ui2/theme/themeMode';
 import { sldPaletteForTheme } from '../../src/ui/sld/v3/theme/palette';
@@ -82,20 +82,19 @@ function kadr(bbox: { readonly width: number; readonly height: number }) {
   };
 }
 const FOOTER = 78;
-/** L0 = przegląd sieci, L2 = stacje i aparatura (kanon „jedna kotwica"). */
-const LODY: readonly SceneLod[] = [0, 2];
 /** Przedrostek nazw plików; `pomiar-odg` zostaje dla porównania „przed/po"
  *  etapu 2, `odg-rysunek` to odbiór etapu 3 (rysowanie punktów odgałęźnych). */
 const PREFIKS = process.env.POMIAR_ODG_PREFIKS ?? 'odg-rysunek';
 
 for (const wariant of WARIANTY) {
   const enm = wczytaj(wariant.plik);
-  for (const LOD of LODY) {
-  const scene = buildSceneV3(enm, LOD);
+  // Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1) — jeden
+  // kadr dopasowania na wariant i motyw.
+  const scene = buildSceneV3(enm);
   const pominiete = scene.meta.stopNotes.filter((n) => n.includes('ciąg pominięty')).length;
   const punkty = (enm.branch_points ?? []).length;
   const wiersz1 =
-    `${SCENE_LOD_LABELS_PL[LOD]} (L${LOD}) · ${wariant.opis}` +
+    `${wariant.opis}` +
     ` · stacji w ciągu głównym=${scene.meta.mainTrunkStationIds.length}` +
     ` · stacji narysowanych=${scene.meta.drawnStationIds.length}`;
   const wiersz2 =
@@ -114,7 +113,6 @@ for (const wariant of WARIANTY) {
         snapshot={enm}
         width={WIDTH}
         height={HEIGHT}
-        lodOverride={LOD}
         paletteMode={motyw.mode}
       />,
     );
@@ -129,9 +127,8 @@ for (const wariant of WARIANTY) {
       `<text x="16" y="${HEIGHT + 56}" font-family="system-ui,sans-serif" font-size="15" ` +
       `fill="${paleta.baseStroke}">${wiersz2}</text>` +
       `</svg>`;
-    const nazwa = `${PREFIKS}-${wariant.klucz}-l${LOD}-${motyw.klucz}.svg`;
+    const nazwa = `${PREFIKS}-${wariant.klucz}-${motyw.klucz}.svg`;
     writeFileSync(resolve(OUT, nazwa), svg, 'utf8');
     console.log('svg', nazwa);
-  }
   }
 }

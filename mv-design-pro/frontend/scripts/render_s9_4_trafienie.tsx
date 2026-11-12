@@ -28,7 +28,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../src/ui/sld/v3/scene/buildScene';
 import { planSceneLabels } from '../src/ui/sld/v3/canvas/labelLegibility';
 import { sheetSizeFor } from '../src/ui/sld/v3/sheet/outline';
 import { SldCanvasV3, layoutResultLabels, scenePointToCameraWorld } from '../src/ui/sld/v3/canvas/SldCanvasV3';
@@ -72,16 +72,17 @@ const MOTYWY = [
   { klucz: 'jasny', mode: 'light_technical' as const },
 ];
 
-/** Rodzaje obiektów pokazywane na zrzutach + poziom, na którym występują. */
-const PRZYPADKI: readonly { readonly klasa: HitObjectClass; readonly lod: SceneLod }[] = [
-  { klasa: 'stacja', lod: 0 },
-  { klasa: 'lacznik-wiersza', lod: 0 },
-  { klasa: 'aparat', lod: 2 },
-  { klasa: 'transformator', lod: 2 },
-  { klasa: 'szyna', lod: 2 },
-  { klasa: 'tor', lod: 2 },
-  { klasa: 'etykieta', lod: 2 },
-  { klasa: 'znacznik-wyniku', lod: 2 },
+/** Rodzaje obiektów pokazywane na zrzutach — jedna scena niezależna od skali
+ *  (karta SLD-SKALA-I-NAWIGACJA, R1), więc bez wymiaru „poziom szczegółu”; stację
+ *  trafia się napisem nazwy (`etykieta`), bo rysunek nie ma symbolu stacji. */
+const PRZYPADKI: readonly { readonly klasa: HitObjectClass }[] = [
+  { klasa: 'lacznik-wiersza' },
+  { klasa: 'aparat' },
+  { klasa: 'transformator' },
+  { klasa: 'szyna' },
+  { klasa: 'tor' },
+  { klasa: 'etykieta' },
+  { klasa: 'znacznik-wyniku' },
 ];
 
 /**
@@ -135,7 +136,7 @@ function ksztaltDoSvg(area: CanvasHitArea, kolor: string): string {
 const orientedRefs = orientedSegmentRefs(enm);
 
 for (const przypadek of PRZYPADKI) {
-  const scene = buildSceneV3(enm, przypadek.lod);
+  const scene = buildSceneV3(enm);
   const rlByRef = buildResultLabelsFromScene(
     scene,
     // Payload odwzorowujący bieg rozpływowy na REALNYCH refach sceny — ta sama
@@ -175,12 +176,10 @@ for (const przypadek of PRZYPADKI) {
         snapshot={enm}
         width={KAMERA.width}
         height={KAMERA.height}
-        lodOverride={przypadek.lod}
         paletteMode={motyw.mode}
         overlay={overlay}
         onElementClick={() => {}}
         onResultLabelActivate={() => {}}
-        animateLodTransitions={false}
       />,
     );
     const dom = new JSDOM(`<body>${inner}</body>`);
@@ -189,7 +188,7 @@ for (const przypadek of PRZYPADKI) {
     const scale = KAMERA.width / viewBox[2];
 
     const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
-    const layoutWynikow = layoutResultLabels(scene, rlByRef, [], przypadek.lod);
+    const layoutWynikow = layoutResultLabels(scene, rlByRef, []);
     const oczekiwane = buildCanvasHitAreas({
       symbols: scene.symbols,
       segments: scene.segments,
@@ -205,7 +204,7 @@ for (const przypadek of PRZYPADKI) {
     // wybór deterministyczny, bez „ładniejszego" przykładu.
     const cel = oczekiwane.find((a) => a.klasa === przypadek.klasa);
     if (!cel) {
-      console.log(`pominięto ${przypadek.klasa} (brak obiektu tej klasy na L${przypadek.lod})`);
+      console.log(`pominięto ${przypadek.klasa} (brak obiektu tej klasy na scenie)`);
       continue;
     }
     const punkt = punktKliku(cel, oczekiwane);
@@ -237,7 +236,7 @@ for (const przypadek of PRZYPADKI) {
       .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
 
     const wiersz1 =
-      `Rodzaj: ${przypadek.klasa} · poziom L${przypadek.lod} · skala kamery ${scale.toFixed(2)} px/j.św. · `
+      `Rodzaj: ${przypadek.klasa} · skala kamery ${scale.toFixed(2)} px/j.św. · `
       + `obszar trafienia ${rozmiarPx.toFixed(1)} px ekranu (minimum ${MIN_HIT_SCREEN_PX} px)`;
     const wiersz2 =
       `Klik w punkt (${punkt.x.toFixed(0)}, ${punkt.y.toFixed(0)}) → wskazano: `

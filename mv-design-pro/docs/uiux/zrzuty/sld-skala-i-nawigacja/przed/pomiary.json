@@ -1,0 +1,445 @@
+{
+  "etap": "przed",
+  "pomiary": {
+    "sldSubstrate52s-cala-siec-1440x900-ciemny.png": {
+      "skala": 0.12304622519638822,
+      "napisyNarysowane": 54,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1892,
+      "najcienszyPrzewodPx": 2.000005648964614,
+      "klatkaSredniaMs": 21.35,
+      "klatkaP95Ms": 33.4
+    },
+    "sldSubstrate52s-skala-posrednia-1440x900-ciemny.png": {
+      "skala": 1.0669507893947816,
+      "napisyNarysowane": 414,
+      "napisyUkryte": 106,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8321,
+      "najcienszyPrzewodPx": 1.5000047757943356,
+      "klatkaSredniaMs": 90.62,
+      "klatkaP95Ms": 133.3
+    },
+    "sldSubstrate52s-stacja-przelotowa-1440x900-ciemny.png": {
+      "skala": 1.5292919242580154,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 1.8351503091096184,
+      "klatkaSredniaMs": 179.89,
+      "klatkaP95Ms": 266.7
+    },
+    "sldSubstrate52s-stacja-odgalezna-1440x900-ciemny.png": {
+      "skala": 1.5292919242580154,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 1.8351503091096184,
+      "klatkaSredniaMs": 160.6,
+      "klatkaP95Ms": 233.4
+    },
+    "sldSubstrate52s-gpz-pola-1-1-1-2-1440x900-ciemny.png": {
+      "skala": 1.0669507893947816,
+      "napisyNarysowane": 414,
+      "napisyUkryte": 106,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8321,
+      "najcienszyPrzewodPx": 1.5000047757943356,
+      "klatkaSredniaMs": 92.7,
+      "klatkaP95Ms": 116.7
+    },
+    "sldSubstrate52s-pole-1440x900-ciemny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 9.6,
+      "klatkaSredniaMs": 162.11,
+      "klatkaP95Ms": 249.9
+    },
+    "sldSubstrate52s-cala-siec-1440x900-jasny.png": {
+      "skala": 0.12304622519638822,
+      "napisyNarysowane": 54,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1892,
+      "najcienszyPrzewodPx": 2.000005648964614,
+      "klatkaSredniaMs": 27.78,
+      "klatkaP95Ms": 50
+    },
+    "sldSubstrate52s-skala-posrednia-1440x900-jasny.png": {
+      "skala": 1.0669507893947816,
+      "napisyNarysowane": 414,
+      "napisyUkryte": 106,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8321,
+      "najcienszyPrzewodPx": 1.5000047757943356,
+      "klatkaSredniaMs": 92.42,
+      "klatkaP95Ms": 116.7
+    },
+    "sldSubstrate52s-stacja-przelotowa-1440x900-jasny.png": {
+      "skala": 1.5292919242580154,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 1.8351503091096184,
+      "klatkaSredniaMs": 174.47,
+      "klatkaP95Ms": 250
+    },
+    "sldSubstrate52s-stacja-odgalezna-1440x900-jasny.png": {
+      "skala": 1.5292919242580154,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 1.8351503091096184,
+      "klatkaSredniaMs": 167.7,
+      "klatkaP95Ms": 200.1
+    },
+    "sldSubstrate52s-gpz-pola-1-1-1-2-1440x900-jasny.png": {
+      "skala": 1.0669507893947816,
+      "napisyNarysowane": 414,
+      "napisyUkryte": 106,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8321,
+      "najcienszyPrzewodPx": 1.5000047757943356,
+      "klatkaSredniaMs": 98.43,
+      "klatkaP95Ms": 150
+    },
+    "sldSubstrate52s-pole-1440x900-jasny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 9.6,
+      "klatkaSredniaMs": 172.72,
+      "klatkaP95Ms": 233.4
+    },
+    "sldSubstrate52s-cala-siec-1280x720-ciemny.png": {
+      "skala": 0.09311605968572335,
+      "napisyNarysowane": 54,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1892,
+      "najcienszyPrzewodPx": 2.0000025995657778,
+      "klatkaSredniaMs": 21.51,
+      "klatkaP95Ms": 33.4
+    },
+    "sldSubstrate52s-skala-posrednia-1280x720-ciemny.png": {
+      "skala": 0.8074221706447198,
+      "napisyNarysowane": 357,
+      "napisyUkryte": 163,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8086,
+      "najcienszyPrzewodPx": 1.4999966117369348,
+      "klatkaSredniaMs": 105.2,
+      "klatkaP95Ms": 150
+    },
+    "sldSubstrate52s-stacja-przelotowa-1280x720-ciemny.png": {
+      "skala": 1.1573019744337025,
+      "napisyNarysowane": 520,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8742,
+      "najcienszyPrzewodPx": 1.5000022351030105,
+      "klatkaSredniaMs": 111.82,
+      "klatkaP95Ms": 150
+    },
+    "sldSubstrate52s-stacja-odgalezna-1280x720-ciemny.png": {
+      "skala": 1.1573019744337025,
+      "napisyNarysowane": 520,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8742,
+      "najcienszyPrzewodPx": 1.5000022351030105,
+      "klatkaSredniaMs": 99.99,
+      "klatkaP95Ms": 116.7
+    },
+    "sldSubstrate52s-gpz-pola-1-1-1-2-1280x720-ciemny.png": {
+      "skala": 0.8074221706447198,
+      "napisyNarysowane": 357,
+      "napisyUkryte": 163,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8086,
+      "najcienszyPrzewodPx": 1.4999966117369348,
+      "klatkaSredniaMs": 86.97,
+      "klatkaP95Ms": 133.3
+    },
+    "sldSubstrate52s-pole-1280x720-ciemny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 9.6,
+      "klatkaSredniaMs": 184.34,
+      "klatkaP95Ms": 266.6
+    },
+    "sldSubstrate52s-cala-siec-1280x720-jasny.png": {
+      "skala": 0.09311605968572335,
+      "napisyNarysowane": 54,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1892,
+      "najcienszyPrzewodPx": 2.0000025995657778,
+      "klatkaSredniaMs": 21.51,
+      "klatkaP95Ms": 33.4
+    },
+    "sldSubstrate52s-skala-posrednia-1280x720-jasny.png": {
+      "skala": 0.8074221706447198,
+      "napisyNarysowane": 357,
+      "napisyUkryte": 163,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8086,
+      "najcienszyPrzewodPx": 1.4999966117369348,
+      "klatkaSredniaMs": 103.12,
+      "klatkaP95Ms": 150
+    },
+    "sldSubstrate52s-stacja-przelotowa-1280x720-jasny.png": {
+      "skala": 1.1573019744337025,
+      "napisyNarysowane": 520,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8742,
+      "najcienszyPrzewodPx": 1.5000022351030105,
+      "klatkaSredniaMs": 111.97,
+      "klatkaP95Ms": 166.7
+    },
+    "sldSubstrate52s-stacja-odgalezna-1280x720-jasny.png": {
+      "skala": 1.1573019744337025,
+      "napisyNarysowane": 520,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8742,
+      "najcienszyPrzewodPx": 1.5000022351030105,
+      "klatkaSredniaMs": 105.2,
+      "klatkaP95Ms": 133.4
+    },
+    "sldSubstrate52s-gpz-pola-1-1-1-2-1280x720-jasny.png": {
+      "skala": 0.8074221706447198,
+      "napisyNarysowane": 357,
+      "napisyUkryte": 163,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 8086,
+      "najcienszyPrzewodPx": 1.4999966117369348,
+      "klatkaSredniaMs": 89.78,
+      "klatkaP95Ms": 116.7
+    },
+    "sldSubstrate52s-pole-1280x720-jasny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1639,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 13829,
+      "najcienszyPrzewodPx": 9.6,
+      "klatkaSredniaMs": 179.68,
+      "klatkaP95Ms": 283.3
+    },
+    "gpzDwusekcyjny40-cala-siec-1440x900-ciemny.png": {
+      "skala": 0.1524515790787254,
+      "napisyNarysowane": 38,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1398,
+      "najcienszyPrzewodPx": 1.9999970207758906,
+      "klatkaSredniaMs": 17.74,
+      "klatkaP95Ms": 33.3
+    },
+    "gpzDwusekcyjny40-skala-posrednia-1440x900-ciemny.png": {
+      "skala": 1.321928632878174,
+      "napisyNarysowane": 479,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 15570,
+      "najcienszyPrzewodPx": 1.0575429063025392,
+      "klatkaSredniaMs": 174.24,
+      "klatkaP95Ms": 250.1
+    },
+    "gpzDwusekcyjny40-stacja-przelotowa-1440x900-ciemny.png": {
+      "skala": 1.321928632878174,
+      "napisyNarysowane": 479,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 15570,
+      "najcienszyPrzewodPx": 1.0575429063025392,
+      "klatkaSredniaMs": 162.11,
+      "klatkaP95Ms": 233.3
+    },
+    "gpzDwusekcyjny40-gpz-pola-1-1-1-2-1440x900-ciemny.png": {
+      "skala": 1.321928632878174,
+      "napisyNarysowane": 479,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 15570,
+      "najcienszyPrzewodPx": 1.0575429063025392,
+      "klatkaSredniaMs": 148.52,
+      "klatkaP95Ms": 216.7
+    },
+    "gpzDwusekcyjny40-pole-1440x900-ciemny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1780,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 20848,
+      "najcienszyPrzewodPx": 6.4,
+      "klatkaSredniaMs": 238.88,
+      "klatkaP95Ms": 349.9
+    },
+    "gpzDwusekcyjny40-cala-siec-1440x900-jasny.png": {
+      "skala": 0.1524515790787254,
+      "napisyNarysowane": 38,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1398,
+      "najcienszyPrzewodPx": 1.9999970207758906,
+      "klatkaSredniaMs": 24.48,
+      "klatkaP95Ms": 33.4
+    },
+    "gpzDwusekcyjny40-skala-posrednia-1440x900-jasny.png": {
+      "skala": 1.321928632878174,
+      "napisyNarysowane": 479,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 15570,
+      "najcienszyPrzewodPx": 1.0575429063025392,
+      "klatkaSredniaMs": 187.87,
+      "klatkaP95Ms": 316.6
+    },
+    "gpzDwusekcyjny40-stacja-przelotowa-1440x900-jasny.png": {
+      "skala": 1.321928632878174,
+      "napisyNarysowane": 479,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 15570,
+      "najcienszyPrzewodPx": 1.0575429063025392,
+      "klatkaSredniaMs": 162.11,
+      "klatkaP95Ms": 233.4
+    },
+    "gpzDwusekcyjny40-gpz-pola-1-1-1-2-1440x900-jasny.png": {
+      "skala": 1.321928632878174,
+      "napisyNarysowane": 479,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 15570,
+      "najcienszyPrzewodPx": 1.0575429063025392,
+      "klatkaSredniaMs": 189.39,
+      "klatkaP95Ms": 300
+    },
+    "gpzDwusekcyjny40-pole-1440x900-jasny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1780,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 20848,
+      "najcienszyPrzewodPx": 6.4,
+      "klatkaSredniaMs": 276.25,
+      "klatkaP95Ms": 400
+    },
+    "gpzDwusekcyjny40-cala-siec-1280x720-ciemny.png": {
+      "skala": 0.11536876512503065,
+      "napisyNarysowane": 38,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1398,
+      "najcienszyPrzewodPx": 1.9999983015779939,
+      "klatkaSredniaMs": 25,
+      "klatkaP95Ms": 33.4
+    },
+    "gpzDwusekcyjny40-skala-posrednia-1280x720-ciemny.png": {
+      "skala": 1.000378465783478,
+      "napisyNarysowane": 402,
+      "napisyUkryte": 74,
+      "tozsamosciPorzucone": 3,
+      "wezlyDom": 15265,
+      "najcienszyPrzewodPx": 1.0000003227234118,
+      "klatkaSredniaMs": 172.72,
+      "klatkaP95Ms": 266.7
+    },
+    "gpzDwusekcyjny40-stacja-przelotowa-1280x720-ciemny.png": {
+      "skala": 1.000378465783478,
+      "napisyNarysowane": 402,
+      "napisyUkryte": 74,
+      "tozsamosciPorzucone": 3,
+      "wezlyDom": 15265,
+      "najcienszyPrzewodPx": 1.0000003227234118,
+      "klatkaSredniaMs": 163.63,
+      "klatkaP95Ms": 216.7
+    },
+    "gpzDwusekcyjny40-gpz-pola-1-1-1-2-1280x720-ciemny.png": {
+      "skala": 1.000378465783478,
+      "napisyNarysowane": 402,
+      "napisyUkryte": 74,
+      "tozsamosciPorzucone": 3,
+      "wezlyDom": 15265,
+      "najcienszyPrzewodPx": 1.0000003227234118,
+      "klatkaSredniaMs": 158.07,
+      "klatkaP95Ms": 266.7
+    },
+    "gpzDwusekcyjny40-pole-1280x720-ciemny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1780,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 20848,
+      "najcienszyPrzewodPx": 6.4,
+      "klatkaSredniaMs": 251.55,
+      "klatkaP95Ms": 366.7
+    },
+    "gpzDwusekcyjny40-cala-siec-1280x720-jasny.png": {
+      "skala": 0.11536876512503065,
+      "napisyNarysowane": 38,
+      "napisyUkryte": 1,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 1398,
+      "najcienszyPrzewodPx": 1.9999983015779939,
+      "klatkaSredniaMs": 21.5,
+      "klatkaP95Ms": 33.4
+    },
+    "gpzDwusekcyjny40-skala-posrednia-1280x720-jasny.png": {
+      "skala": 1.000378465783478,
+      "napisyNarysowane": 402,
+      "napisyUkryte": 74,
+      "tozsamosciPorzucone": 3,
+      "wezlyDom": 15265,
+      "najcienszyPrzewodPx": 1.0000003227234118,
+      "klatkaSredniaMs": 157.06,
+      "klatkaP95Ms": 233.4
+    },
+    "gpzDwusekcyjny40-stacja-przelotowa-1280x720-jasny.png": {
+      "skala": 1.000378465783478,
+      "napisyNarysowane": 402,
+      "napisyUkryte": 74,
+      "tozsamosciPorzucone": 3,
+      "wezlyDom": 15265,
+      "najcienszyPrzewodPx": 1.0000003227234118,
+      "klatkaSredniaMs": 173.22,
+      "klatkaP95Ms": 250.1
+    },
+    "gpzDwusekcyjny40-gpz-pola-1-1-1-2-1280x720-jasny.png": {
+      "skala": 1.000378465783478,
+      "napisyNarysowane": 402,
+      "napisyUkryte": 74,
+      "tozsamosciPorzucone": 3,
+      "wezlyDom": 15265,
+      "najcienszyPrzewodPx": 1.0000003227234118,
+      "klatkaSredniaMs": 181.81,
+      "klatkaP95Ms": 266.7
+    },
+    "gpzDwusekcyjny40-pole-1280x720-jasny.png": {
+      "skala": 8,
+      "napisyNarysowane": 1780,
+      "napisyUkryte": 0,
+      "tozsamosciPorzucone": 0,
+      "wezlyDom": 20848,
+      "najcienszyPrzewodPx": 6.4,
+      "klatkaSredniaMs": 256.85,
+      "klatkaP95Ms": 400
+    }
+  }
+}

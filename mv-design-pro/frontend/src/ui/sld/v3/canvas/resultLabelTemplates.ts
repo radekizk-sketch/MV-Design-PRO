@@ -16,9 +16,9 @@
  * arytmetyki wielkości. Brak metryki w payloadzie ⇒ linia pominięta (zero
  * placeholderów).
  *
- * KOLEJNOŚĆ specyfikacji = PRIORYTET informacji (wym. 2/5). Pierwsza pozycja to
- * „najważniejsza wartość" pokazywana na L1; L2 pokazuje 2–3 pierwsze
- * (`resultLabelLinesForLod`); L0 nie pokazuje nic. Znak (wym. 3): +P generacja
+ * KOLEJNOŚĆ specyfikacji = PRIORYTET informacji (wym. 2/5): etykieta pokazuje
+ * 2–3 pierwsze (`resultLabelLines`), gdy jej pismo jest czytelne na ekranie
+ * (`canvas/gestoscInformacji.ts`). Znak (wym. 3): +P generacja
  * / −P pobór — `formatSignedScalar`.
  *
  * KONTRAKT LF DOMKNIĘTY (LF-KONTRAKT, V12K-161 — dawny rejestr braków R1
@@ -28,7 +28,7 @@
  * straty czynne/bierne (LOSSES_P_MW/LOSSES_Q_Mvar — domknięcie ΔP transformatora)
  * oraz pochodne ΔU (DELTA_U_KV/DELTA_U_PCT) i cosφ (COS_PHI) linii/kabla. Wszystko
  * addytywnie, kontrakt FROZEN PowerFlowResult nietknięty. Kody ΔU/cosφ włączone
- * do rejestru poniżej — na kanwie widoczne top-N wg LOD (cap 3), pełny zestaw
+ * do rejestru poniżej — na kanwie widoczne top-3 (`RESULT_LABEL_MAX_LINES`), pełny zestaw
  * dostępny w inspektorze/overlay.
  */
 import type { RawMetricValue } from '../../../sld-overlay/rawResultOverlayStore';
@@ -45,10 +45,6 @@ export type ResultLabelKind = 'bus' | 'transformer' | 'source' | 'branch';
  *  własne podpisy „Δ …" (inaczej różnica udawałaby wartość bezwzględną).
  *  Kolejne rodziny (termika/ΔU) dochodzą addytywnie, bez zmiany kształtu. */
 export type ResultLabelAnalysis = 'load_flow' | 'short_circuit' | 'short_circuit_delta';
-
-/** Poziom szczegółu (histereza S8, `SceneLod`): L0 bez etykiet, L1 jedna
- *  najważniejsza wartość, L2 2–3 wartości. */
-export type ResultLabelLod = 0 | 1 | 2;
 
 /** Jedna linia etykiety: prefiks wielkości (np. „U", „P", „obc.") + wartość
  *  sformatowana (1:1 ze źródła). W trybie porównawczym (R4, wym. 10/15) `text`
@@ -226,7 +222,7 @@ const LF_SOURCE: readonly ResultLabelLineSpec[] = [
 
 /** Rozpływ — linia/kabel: obciążenie [%] (L1, wym. 5), prąd I, moc czynna P
  *  (ZE ZNAKIEM), moc bierna Q, spadek napięcia ΔU% oraz cosφ (LF-KONTRAKT
- *  V12K-161 — pochodne z wyniku solvera; na kanwie top-N wg LOD, pełny zestaw
+ *  V12K-161 — pochodne z wyniku solvera; na kanwie top-3, pełny zestaw
  *  w inspektorze). */
 const LF_BRANCH: readonly ResultLabelLineSpec[] = [
   { code: 'LOADING_PCT', prefix: 'obc.', quantity: 'loading', format: formatScalar },
@@ -242,7 +238,7 @@ const LF_BRANCH: readonly ResultLabelLineSpec[] = [
  *  wielkościami zwarciowymi węzła, które payload backendu NIESIE:
  *  `short_circuit_to_resultset_v1.py` element „bus" → ikss_a/ip_a/ith_a/sk_mva,
  *  `result_builder_v1.METRYKI_ELEMENTOW_WYNIKU` → IK_3F_A/IP_A/ITH_A/SK_MVA). Kolejność =
- *  priorytet: na kanwie top-3 wg LOD (Ik″/ip/Ith), Sk w pełnym zestawie
+ *  priorytet: na kanwie top-3 (Ik″/ip/Ith), Sk w pełnym zestawie
  *  (agregat/inspektor) — wzorzec LF (branch 6 linii, cap 3). Rozkład wkładu
  *  system/DER/total (IK_3F_SYSTEM_A/IK_3F_DER_A/IK_3F_TOTAL_A) jest w payloadzie,
  *  ale ŚWIADOMIE NIE templatowany jako tekst — jest już wizualizowany
@@ -300,21 +296,10 @@ export const RESULT_LABEL_TEMPLATES: Readonly<
   },
 };
 
-/** Maksymalna liczba linii per poziom LOD (wym. 5). L1 = 1 (najważniejsza
- *  wartość), L2 = 3 (2–3 wartości).
- *
- *  S9-2 (AUDYT_JAKOSCI_SLD_2026-08 W-1, wymóg „na L0 wartości zbiorcze/
- *  stacyjne"): L0 = 1. Dotąd poziom przeglądu nie pokazywał ŻADNEJ liczby, więc
- *  po biegu rysunek całej sieci wyglądał identycznie jak przed biegiem — dokładnie
- *  to zmierzył audyt. Na L0 stacja jest zwiniętym blokiem, a most refów
- *  (`resultRefBridge.ts`) wiąże ten blok z punktem wyniku szyny SN stacji, więc
- *  jedna linia = wartość STACYJNA (Ik″ punktu stacji / napięcie szyny), nie
- *  szczegół pola. */
-export const RESULT_LABEL_MAX_LINES_BY_LOD: Readonly<Record<ResultLabelLod, number>> = {
-  0: 1,
-  1: 1,
-  2: 3,
-};
+/** Maksymalna liczba linii etykiety wyniku (wym. 5): 2–3 najważniejsze wartości.
+ *  Widoczność CAŁEJ etykiety rozstrzyga czytelność jej pisma na ekranie
+ *  (`canvas/gestoscInformacji.ts`, klasa `wyniki`), nie poziom szczegółu. */
+export const RESULT_LABEL_MAX_LINES = 3;
 
 /**
  * Normalizuje `payload.analysis_type` (dowolna wielkość liter, aliasy) do
@@ -348,15 +333,11 @@ export function selectResultLabelSpecs(
 }
 
 /**
- * Zwija linie do poziomu LOD (wym. 5) — CZYSTA funkcja (bez sceny/DOM). Linie są
- * uporządkowane priorytetem (patrz szablony), więc zwijanie = przycięcie od
- * początku: L0 ⇒ [], L1 ⇒ pierwsza, L2 ⇒ do trzech. Zwraca ten sam obiekt, gdy
- * przycięcie nic nie zmienia (stabilność referencji dla memoizacji). */
-export function resultLabelLinesForLod(
-  lines: readonly ResultLabelLine[],
-  lod: ResultLabelLod,
-): readonly ResultLabelLine[] {
-  const max = RESULT_LABEL_MAX_LINES_BY_LOD[lod];
-  if (lines.length <= max) return lines;
-  return lines.slice(0, max);
+ * Przycina linie do `RESULT_LABEL_MAX_LINES` — CZYSTA funkcja (bez sceny/DOM).
+ * Linie są uporządkowane priorytetem (patrz szablony), więc przycięcie = od
+ * początku. Zwraca ten sam obiekt, gdy przycięcie nic nie zmienia (stabilność
+ * referencji dla memoizacji). */
+export function resultLabelLines(lines: readonly ResultLabelLine[]): readonly ResultLabelLine[] {
+  if (lines.length <= RESULT_LABEL_MAX_LINES) return lines;
+  return lines.slice(0, RESULT_LABEL_MAX_LINES);
 }

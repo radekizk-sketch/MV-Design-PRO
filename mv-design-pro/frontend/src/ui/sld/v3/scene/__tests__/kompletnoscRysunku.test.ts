@@ -52,7 +52,6 @@ const FIKSTURY: readonly (readonly [string, EnergyNetworkModel])[] = KATALOGI.fl
     }),
 );
 
-const LODY = [0, 1, 2] as const;
 
 describe('reguła kompletności rysunku — każda fikstura modelu ENM × LOD', () => {
   it('kontrola wejścia: zbiór fikstur obejmuje sceny, kanwę, substrat i macierz elementów ciągu', () => {
@@ -63,14 +62,12 @@ describe('reguła kompletności rysunku — każda fikstura modelu ENM × LOD', 
   });
 
   for (const [nazwa, enm] of FIKSTURY) {
-    for (const lod of LODY) {
-      it(`${nazwa} @ L${lod}: liczba elementów = narysowane + jawnie zwinięte (zero niewyjaśnionych)`, () => {
-        const raport = kompletnoscRysunku(buildSceneV3(enm, lod), enm);
-        expect(raport.niewyjasnione).toEqual([]);
-        const suma = Object.values(raport.liczniki).reduce((a, b) => a + b, 0);
-        expect(suma).toBe(raport.pozycje.length);
-      });
-    }
+    it(`${nazwa} @: liczba elementów = narysowane + jawnie zwinięte (zero niewyjaśnionych)`, () => {
+      const raport = kompletnoscRysunku(buildSceneV3(enm), enm);
+      expect(raport.niewyjasnione).toEqual([]);
+      const suma = Object.values(raport.liczniki).reduce((a, b) => a + b, 0);
+      expect(suma).toBe(raport.pozycje.length);
+    });
   }
 });
 
@@ -97,21 +94,19 @@ describe('macierz elementów ciągu: rodzaj × położenie × LOD — element ma
   for (const rodzaj of RODZAJE) {
     const enm = macierz(rodzaj);
     for (const polozenie of POLOZENIA) {
-      for (const lod of LODY) {
-        it(`${rodzaj} ${polozenie} @ L${lod}`, () => {
-          const scena = buildSceneV3(enm, lod);
-          const ref = elementW(enm, rodzaj, polozenie);
-          const raport = kompletnoscRysunku(scena, enm);
-          expect(raport.pozycje.find((p) => p.ref === ref)?.kategoria).toBe('narysowany');
-          expect(raport.niewyjasnione).toEqual([]);
-          if (rodzaj === 'zksn' || rodzaj === 'slup') {
-            // Stacja klienta za punktem — narysowana (wyrocznia pokrycia punktów).
-            expect(branchPointCoverageGaps(scena, enm)).toEqual([]);
-            const klient = (enm.substations ?? []).find((s) => s.name === `Stacja klienta ${polozenie}`)!;
-            expect(scena.meta.drawnStationIds).toContain(klient.ref_id);
-          }
-        });
-      }
+      it(`${rodzaj} ${polozenie} @`, () => {
+        const scena = buildSceneV3(enm);
+        const ref = elementW(enm, rodzaj, polozenie);
+        const raport = kompletnoscRysunku(scena, enm);
+        expect(raport.pozycje.find((p) => p.ref === ref)?.kategoria).toBe('narysowany');
+        expect(raport.niewyjasnione).toEqual([]);
+        if (rodzaj === 'zksn' || rodzaj === 'slup') {
+          // Stacja klienta za punktem — narysowana (wyrocznia pokrycia punktów).
+          expect(branchPointCoverageGaps(scena, enm)).toEqual([]);
+          const klient = (enm.substations ?? []).find((s) => s.name === `Stacja klienta ${polozenie}`)!;
+          expect(scena.meta.drawnStationIds).toContain(klient.ref_id);
+        }
+      });
     }
   }
 
@@ -119,11 +114,9 @@ describe('macierz elementów ciągu: rodzaj × położenie × LOD — element ma
     const enm = macierz('wezel');
     const mufy = (enm.buses ?? []).filter((b) => (b.meta as { visual_role?: string } | undefined)?.visual_role === 'INLINE_TERMINAL');
     expect(mufy.length).toBeGreaterThan(0);
-    for (const lod of LODY) {
-      const raport = kompletnoscRysunku(buildSceneV3(enm, lod), enm);
-      for (const mufa of mufy) {
-        expect(raport.pozycje.find((p) => p.ref === mufa.ref_id)?.kategoria).toBe('deklaracja-modelu');
-      }
+    const raport = kompletnoscRysunku(buildSceneV3(enm), enm);
+    for (const mufa of mufy) {
+      expect(raport.pozycje.find((p) => p.ref === mufa.ref_id)?.kategoria).toBe('deklaracja-modelu');
     }
   });
 
@@ -134,11 +127,9 @@ describe('macierz elementów ciągu: rodzaj × położenie × LOD — element ma
       ...enm,
       branches: (enm.branches ?? []).map((g) => (g.ref_id === ref ? { ...g, status: 'open' as const } : g)),
     };
-    for (const lod of LODY) {
-      const symbol = buildSceneV3(otwarty, lod).symbols.find((s) => s.meta?.ownerRef === ref);
-      expect(symbol?.state).toBe('open');
-      expect(['lineSwitch', 'disconnector']).toContain(symbol?.symbolId);
-    }
+    const symbol = buildSceneV3(otwarty).symbols.find((s) => s.meta?.ownerRef === ref);
+    expect(symbol?.state).toBe('open');
+    expect(['lineSwitch', 'disconnector']).toContain(symbol?.symbolId);
   });
 });
 
@@ -153,14 +144,14 @@ describe('iniekcje: wyrocznia kompletności gryzie', () => {
   it('łącznik sekcyjny bez symbolu ⇒ niewyjaśniony', () => {
     const enm = macierz('lacznik');
     const ref = elementW(enm, 'lacznik', 'za GPZ');
-    const raport = kompletnoscRysunku(bezPrymitywu(buildSceneV3(enm, 2), ref), enm);
+    const raport = kompletnoscRysunku(bezPrymitywu(buildSceneV3(enm), ref), enm);
     expect(raport.niewyjasnione.map((p) => p.ref)).toContain(ref);
   });
 
   it('ZKSN za GPZ bez symbolu ⇒ niewyjaśniony (a jego wnętrze przestaje być „wnętrzem narysowanego punktu")', () => {
     const enm = macierz('zksn');
     const ref = elementW(enm, 'zksn', 'za GPZ');
-    const raport = kompletnoscRysunku(bezPrymitywu(buildSceneV3(enm, 2), ref), enm);
+    const raport = kompletnoscRysunku(bezPrymitywu(buildSceneV3(enm), ref), enm);
     expect(raport.niewyjasnione.map((p) => p.ref)).toContain(ref);
   });
 });
@@ -170,19 +161,17 @@ describe('stacja z pomiarem z szablonu 1000 kVA za ZKSN zaraz za GPZ (znalezisko
   // w odgałęzieniu za nim — poprzednikiem punktu na ciągu jest GPZ. Przed naprawą kanwa
   // gubiła punkt RAZEM ze stacją na każdym LOD.
   const enm = wczytaj(resolve(FRONTEND, 'src/ui/sld/v3/scene/__tests__/fixtures/stacjaPomiar1000.enm.json'))!;
-  for (const lod of LODY) {
-    it(`L${lod}: ZKSN i stacja z pomiarem narysowane, zero niewyjaśnionych`, () => {
-      const scena = buildSceneV3(enm, lod);
-      const punkty = enm.branch_points ?? [];
-      expect(punkty.length).toBe(1);
-      expect(scena.meta.drawnBranchPointRefs).toContain(punkty[0].ref_id);
-      const stacje = (enm.substations ?? []).filter((s) => s.station_type !== 'gpz');
-      expect(stacje.length).toBeGreaterThan(0);
-      for (const stacja of stacje) expect(scena.meta.drawnStationIds).toContain(stacja.ref_id);
-      expect(branchPointCoverageGaps(scena, enm)).toEqual([]);
-      expect(kompletnoscRysunku(scena, enm).niewyjasnione).toEqual([]);
-    });
-  }
+  it(`ZKSN i stacja z pomiarem narysowane, zero niewyjaśnionych`, () => {
+    const scena = buildSceneV3(enm);
+    const punkty = enm.branch_points ?? [];
+    expect(punkty.length).toBe(1);
+    expect(scena.meta.drawnBranchPointRefs).toContain(punkty[0].ref_id);
+    const stacje = (enm.substations ?? []).filter((s) => s.station_type !== 'gpz');
+    expect(stacje.length).toBeGreaterThan(0);
+    for (const stacja of stacje) expect(scena.meta.drawnStationIds).toContain(stacja.ref_id);
+    expect(branchPointCoverageGaps(scena, enm)).toEqual([]);
+    expect(kompletnoscRysunku(scena, enm).niewyjasnione).toEqual([]);
+  });
 });
 
 describe('sprzęgło sekcji GPZ na L0 — wnętrze bloku stacji (karta UX-04/POLE-BKR-MODEL)', () => {
@@ -207,20 +196,18 @@ describe('sprzęgło sekcji GPZ na L0 — wnętrze bloku stacji (karta UX-04/POL
     expect(sprzeglo).toBeDefined();
   });
 
-  for (const lod of LODY) {
-    it(`L${lod}: sprzęgło ${lod === 0 ? 'wnętrzem bloku GPZ' : 'narysowane'}; bez prymitywu na L1/L2 — niewyjaśnione`, () => {
-      const scena = buildSceneV3(enm, lod);
-      const kategoria = kompletnoscRysunku(scena, enm).pozycje.find((p) => p.ref === sprzeglo.ref_id)?.kategoria;
-      expect(kategoria).toBe(lod === 0 ? 'blok-stacji' : 'narysowany');
-      const bez = kompletnoscRysunku(bezPrymitywuGalezi(scena, sprzeglo.ref_id), enm);
-      expect(bez.pozycje.find((p) => p.ref === sprzeglo.ref_id)?.kategoria).toBe(
-        lod === 0 ? 'blok-stacji' : 'niewyjasniony',
-      );
-    });
-  }
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): sprzęgło ma własny prymityw zawsze — dawne
+  // zwolnienie „wnętrze bloku GPZ" (L0) zniknęło razem z blokiem zwiniętym.
+  it('sprzęgło narysowane; bez prymitywu — niewyjaśnione', () => {
+    const scena = buildSceneV3(enm);
+    const kategoria = kompletnoscRysunku(scena, enm).pozycje.find((p) => p.ref === sprzeglo.ref_id)?.kategoria;
+    expect(kategoria).toBe('narysowany');
+    const bez = kompletnoscRysunku(bezPrymitywuGalezi(scena, sprzeglo.ref_id), enm);
+    expect(bez.pozycje.find((p) => p.ref === sprzeglo.ref_id)?.kategoria).toBe('niewyjasniony');
+  });
 
-  // Predykat parami: wnętrze bloku = OBA końce na szynach JEDNEJ narysowanej stacji.
-  const syntetyczny = (koniecB: 'ta sama stacja' | 'druga stacja' | 'poza stacją', lod: 0 | 1 | 2) => {
+  // Gałąź bez prymitywu nie ma zwolnienia „blok stacji" niezależnie od położenia drugiego końca.
+  const syntetyczny = (koniecB: 'ta sama stacja' | 'druga stacja' | 'poza stacją') => {
     const snapshot = {
       buses: ['s1/a', 's1/b', 's2/a', 'wolna'].map((ref_id) => ({ ref_id, name: ref_id, voltage_kv: 15 })),
       substations: [
@@ -241,15 +228,13 @@ describe('sprzęgło sekcji GPZ na L0 — wnętrze bloku stacji (karta UX-04/POL
       symbols: [],
       segments: [],
       labels: [],
-      meta: { lod, sources: [], drawnStationIds: ['s1', 's2'], drawnBranchPointRefs: [] },
+      meta: { sources: [], drawnStationIds: ['s1', 's2'], drawnBranchPointRefs: [] },
     } as unknown as SceneV3;
     return kompletnoscRysunku(scena, snapshot).pozycje.find((p) => p.ref === 'g')?.kategoria;
   };
   for (const koniecB of ['ta sama stacja', 'druga stacja', 'poza stacją'] as const) {
-    for (const lod of LODY) {
-      it(`gałąź bez prymitywu: drugi koniec ${koniecB} @ L${lod}`, () => {
-        expect(syntetyczny(koniecB, lod)).toBe(lod === 0 && koniecB === 'ta sama stacja' ? 'blok-stacji' : 'niewyjasniony');
-      });
-    }
+    it(`gałąź bez prymitywu: drugi koniec ${koniecB}`, () => {
+      expect(syntetyczny(koniecB)).toBe('niewyjasniony');
+    });
   }
 });

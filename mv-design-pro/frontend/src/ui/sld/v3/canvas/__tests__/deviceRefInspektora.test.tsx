@@ -75,14 +75,14 @@ function uchwytObrysu(container: HTMLElement, testId: string): Element {
 describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
   it('dwa aparaty JEDNEGO pola: kliki natywne niosą RÓŻNE deviceRef przy wspólnym ownerRef', async () => {
     const { enm } = buildW1MatrixFixture();
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const para = paraAparatowJednegoPola(scene);
     expect(para, 'fixtura W1 ma pole z ≥ 2 różnymi refami aparatów').toBeTruthy();
 
     const user = userEvent.setup();
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={1322} height={696} lodOverride={2} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={1322} height={696} onElementClick={onElementClick} />,
     );
 
     await user.click(uchwytObrysu(container, para!.a.testId));
@@ -99,18 +99,18 @@ describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
 
   it('warstwa trafień niesie atrybut audytu data-hit-device-ref (weryfikacja w WYRENDEROWANYM drzewie)', () => {
     const { enm } = buildW1MatrixFixture();
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const para = paraAparatowJednegoPola(scene);
     expect(para).toBeTruthy();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={1322} height={696} lodOverride={2} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={1322} height={696} onElementClick={() => {}} />,
     );
     expect(uchwytObrysu(container, para!.a.testId).getAttribute(HIT_ATTR.deviceRef)).toBe(para!.a.deviceRef);
     expect(uchwytObrysu(container, para!.b.testId).getAttribute(HIT_ATTR.deviceRef)).toBe(para!.b.deviceRef);
   });
 
   it('GPZ (ta sama klasa, druga kompozycja): klik w aparat pola GPZ niesie deviceRef', async () => {
-    const scene = buildSceneV3(gpzDataPathEnm, 2);
+    const scene = buildSceneV3(gpzDataPathEnm);
     const aparat = scene.symbols.find(
       (s) => s.meta?.elementKind === 'apparatus' && s.meta.deviceRef && s.meta.testId,
     );
@@ -122,7 +122,6 @@ describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
         snapshot={gpzDataPathEnm}
         width={1322}
         height={696}
-        lodOverride={2}
         onElementClick={onElementClick}
       />,
     );
@@ -135,13 +134,13 @@ describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
 describe('S9-10 — inspektor pokazuje KLIKNIĘTY aparat (Workspace, realna ścieżka)', () => {
   it('dwa aparaty jednego pola dają DWIE RÓŻNE treści inspektora (przed S9-10: jedna)', async () => {
     const { enm } = buildW1MatrixFixture();
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const para = paraAparatowJednegoPola(scene);
     expect(para).toBeTruthy();
 
     useSnapshotStore.setState({ snapshot: enm });
     const user = userEvent.setup();
-    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} lodOverride={2} /><InspektorKanwyTestowy /></>);
+    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} /><InspektorKanwyTestowy /></>);
 
     const inspektor = (): { tresc: string; ref: string } => {
       const panel = container.querySelector('[data-testid="inspektor-element-kanwy"]');
@@ -178,7 +177,7 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
   it('etykieta NAZWY STACJI (ref kompozytowy #name-row) pokazuje w inspektorze treść stacji', async () => {
     useSnapshotStore.setState({ snapshot: substrateEnm });
     const user = userEvent.setup();
-    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} lodOverride={2} /><InspektorKanwyTestowy /></>);
+    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} /><InspektorKanwyTestowy /></>);
     const etykieta = container.querySelector(
       `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.klasa}="etykieta"][${HIT_ATTR.ownerRef}*="#name-row"]`,
     );
@@ -199,7 +198,7 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
   it('etykieta APARATU pokazuje aparat w inspektorze (kotwica pola z tematu menu, nie ślepy sufiks)', async () => {
     useSnapshotStore.setState({ snapshot: substrateEnm });
     const user = userEvent.setup();
-    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} lodOverride={2} /><InspektorKanwyTestowy /></>);
+    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} /><InspektorKanwyTestowy /></>);
     // PROPORCJE (2026-08-07): kadr dopasowania sieci 53 stacji ma skalę 0,101 —
     // na takim oddaleniu oznaczniki aparatu NIE SĄ rysowane (sufit proporcji:
     // napis trzykrotnie wyższy od symbolu, który opisuje, byłby szyldem, nie

@@ -6,12 +6,12 @@
  * danych, zgodnie z zadaniem dokończenia F6a.
  *
  * Zakres (DoD F6a):
- *  A. Wyrocznie §11 per LOD (rdzeń DoD).
+ *  A. Wyrocznie §11 jednej sceny (rdzeń DoD).
  *  B. Determinizm (to samo wejście ⇒ identyczny wynik, spec P7).
- *  C. Kontrakt LOD (§7).
+ *  C. Jedna scena, pełna treść (karta SLD-SKALA-I-NAWIGACJA R1; dawny kontrakt LOD §7).
  *  D. Kompletność sceny (§10 — nic nie zgubione: wszystkie stacje ciągu
  *     głównego + laterali, GPZ).
- *  E. Ciągłość elektryczna (§16) dla LOD 2 — trasy magistrali łączą kolejne
+ *  E. Ciągłość elektryczna (§16) — trasy magistrali łączą kolejne
  *     stacje wg kolejności `topologyRuns[].stationRefs`.
  *
  * UWAGA (F6b, spłata długu §9): `noForbiddenDirectionTokens` sprawdza dziś
@@ -49,10 +49,8 @@ import {
   noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
-  noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
-  protectionAnnotationAtLod1IsBareFrame,
   protectionMarkingGaps,
   sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
@@ -65,14 +63,13 @@ import {
   annotationOverlapsPrimaryPath,
   allMeterSymbolsDisambiguated,
   meterDisambiguationGaps,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import { overlapProbe } from '../../layout/labels';
 import { sheetRowStationIds, trunkThicknessGaps } from '../buildScene';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
-import { rodzajSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
+import { rodzajSymbolu } from '../../symbols/defs';
 import { przeszkodySymbolu } from '../../symbols/blokZabezpieczen';
 import { symboleRodzajuAparatu } from '../../compose/apparatusSequence';
 import { RODZAJE_LACZNIKOW_TORU } from '../../compose/rodzajeAparatuPola';
@@ -101,7 +98,6 @@ const enmZastany = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly 
 // (`enmZastany`) pokrywa test ścieżki gałęzi pola niżej.
 const enm = zRekordamiAparatowPol(enmZastany);
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
 
 /** Rzeczywista liczba stacji SN na fixturze (potwierdzona empirycznie —
  *  ciąg główny 12 + 12 lateralów po 3-4 stacje = 53; NAZWA fixtury
@@ -170,123 +166,102 @@ function syntetycznyBlok(
   };
 }
 
-describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', () => {
-  for (const lod of LODS) {
-    describe(`LOD ${lod}`, () => {
-      const scene = buildSceneV3(enm, lod);
+describe('buildSceneV3 — wyrocznie §11 (realna fixtura, 53 stacje)', () => {
+  describe(``, () => {
+    const scene = buildSceneV3(enm);
 
-      it('grid_probe (§11.2): 100% originów symboli i wierzchołków tras na siatce', () => {
-        expect(allSceneGeometryOnGrid(scene)).toBe(true);
-      });
-
-      it('zero nachodzeń symbol↔symbol (rozszerzenie F6a wyroczni F5 na całą scenę)', () => {
-        expect(noSceneSymbolOverlaps(scene)).toBe(true);
-      });
-
-      it('overlap_probe (§11.1): zero kolizji etykieta↔etykieta i etykieta↔symbol', () => {
-        const probe = overlapProbe(scene.labels, symbolRectsOf(scene));
-        expect(probe.pairs).toEqual([]);
-        expect(probe.overlapCount).toBe(0);
-      });
-
-      it('§9: brak zakazanych tokenów WE/WY/ODG na ŻADNEJ etykiecie sceny (wszystkie ownerKind)', () => {
-        expect(noForbiddenDirectionTokens(scene)).toBe(true);
-      });
-
-      it('D2/k5b: żadna etykieta nie wystaje za lewą krawędź arkusza (rect.x >= 0; regresja: „Sekcja 1 · 15 kV" przy x≈-56 przed poprawką composeGpz)', () => {
-        expect(scene.labels.every((l) => l.rect.x >= 0)).toBe(true);
-      });
-
-      it('k6 SPŁACONE W CAŁOŚCI (F6d kanały pionowe + F6e nakłady własnego pola): ZERO kolizji etykieta↔przewód — WSZYSTKIE klasy, cała scena (historia: F6c wykryło 28/105/426 na LOD 0/1/2; F6d zbiło architekturę zejść do 3/3/317 „własnego pola"; F6e zbiło resztę do zera — oznacznik pola GPZ poniżej szyny, podpis kierunku odsunięty od osi magistrali i od pionu wejściowego zejścia przez rezerwację `entryDescentBayIndex`)', () => {
-        expect(labelWireCollisions(scene)).toEqual([]);
-        expect(noLabelWireCollisions(scene)).toBe(true);
-      });
-
-      it('junction_dot_probe (F13.2 + V12K-150, §22.1): kropka wyłącznie na realnym węźle (T tras I odczep pola); akcent-kropka usunięty, odczepy lateralne z kropką, 0 luk', () => {
-        expect(scene.meta.lateralRunIds.length).toBeGreaterThan(0);
-        // Dawny akcent-kropka (fałszywy odczyt węzła przy przelocie, D3-14)
-        // NIE istnieje na scenie:
-        expect(scene.symbols.some((s) => s.symbolId === 'branchJunction')).toBe(false);
-        // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) mają
-        // kropkę węzłową `junction` w scenie produkcyjnej.
-        // KD-5: odczep lateralny jest cechą ROZWINIĘTEGO pola — na L0 pól nie
-        // ma ANI w stacjach (mini-RMU), ANI w GPZ (blok zwinięty), więc kropek
-        // lateralnych na L0 nie ma i mieć nie może (kropka bez pola byłaby
-        // wskazaniem węzła, którego rysunek nie pokazuje). Intencja testu —
-        // „kropka wyłącznie na REALNYM węźle, obustronna spójność" — bez zmian:
-        // na L0 dowodzimy zera, na L1/L2 obecności.
-        const lateralDots = scene.symbols.filter((s) =>
-          String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-'),
-        );
-        if (lod === 0) expect(lateralDots.length).toBe(0);
-        else expect(lateralDots.length).toBeGreaterThan(0);
-        // Obustronna spójność kropka⇔węzeł (tee + lateral):
-        expect(noBranchWithoutAccent(scene)).toBe(true);
-      });
-
-      it('F9.3 FIX-1 (§12.3, kontrakt POŁĄCZENIA): głowice kablowe BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych końcach ciągów (1 magistrala + N laterali = brak dalszej stacji za polem "następnik"); WSZYSTKIE inne głowice (wnętrze ciągów, GPZ→S0, origin→lateral) MUSZĄ być dotknięte trasą', () => {
-        if (lod === 0) {
-          // L0: stacje SN są symbolem zbiorczym (brak aparatów pola/głowic).
-          // KD-5: blok GPZ jest na L0 ZWINIĘTY (dawniej renderował pełny detal
-          // na każdym LOD, stąd poprzednia treść tej gałęzi), więc jego głowica
-          // kablowa też nie istnieje — na L0 nie ma ŻADNEJ głowicy. Intencja
-          // testu (zbiór głowic NIEOSIĄGNIĘTYCH trasą jest pusty) obowiązuje
-          // dalej i jest tu spełniona w sposób mocniejszy: nie ma czego nie
-          // osiągnąć. Ciągłość toru źródło→magistrala na L0 dowodzi osobno
-          // `lodContinuity.test.ts` (aparat pola odejściowego + tor).
-          expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(false);
-          expect(fieldEntryConnectionsReachCableHead(scene)).toEqual([]);
-          expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
-          return;
-        }
-        expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(true);
-        const unreached = fieldEntryConnectionsReachCableHead(scene);
-        // DECYZJA (F9.3 FIX-1, patrz docstring `fieldEntryConnectionsReachCableHead`):
-        // ta wyrocznia dowodzi WYŁĄCZNIE, że TAM GDZIE trasa istnieje, dotyka
-        // głowicy. §16-v3 (2026-07-17): fizyczne końce ciągów (1 magistrala +
-        // N laterali) niosą TERAZ bieg OTWARTY (realne segmenty ENM
-        // `…/branch_end`/`…/downstream` za ostatnią stacją, dotąd niewidoczne
-        // — patrz `buildScene.openTerminal.test.ts`), więc głowica końcowa
-        // JEST dotknięta trasą — nieosiągnięte spada z `1 + laterale` do ZERA.
-        // Jeżeli liczba WZROŚNIE bez zmiany topologii fixtury — regresja
-        // (kabel międzystacyjny/ogon znowu nie dotyka głowicy).
-        expect(unreached.length).toBe(0);
-        expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
-      });
-
-      it('F9.3 (§12.1) → GEOMETRIA-STACJI (§0 pkt 4): pochodzenie stosu pola STACJI z danych — rekordy aparatów „dane", pola OZE bez rekordów „brak" (jedna sylwetka bez stanu)', () => {
-        // KOREKTA: dawniej fikstura bez `primary_devices` rysowała stosy konwencji („konwencja").
-        // Konwencja skasowana; fikstura niesie rekordy (patrz `zRekordamiAparatowPol`).
-        const stationFieldApparatus = scene.symbols.filter((s) => s.meta?.apparatusSource != null);
-        if (lod !== 0) expect(stationFieldApparatus.length).toBeGreaterThan(0);
-        expect(stationFieldApparatus.every((s) => s.meta?.apparatusSource === 'dane' || s.meta?.apparatusSource === 'brak')).toBe(true);
-        const brak = stationFieldApparatus.filter((s) => s.meta?.apparatusSource === 'brak');
-        expect(brak.every((s) => s.symbolId === 'bayNoEquipment' || s.meta?.elementKind !== 'apparatus')).toBe(true);
-        expect(brak.filter((s) => s.symbolId === 'bayNoEquipment').every((s) => s.state === undefined)).toBe(true);
-      });
-
-      it('GEOMETRIA-STACJI (§0 pkt 4a): sieć zastana — pole bez `primary_devices` rysuje gałąź łączeniową z `equipment_refs` (ref, stan), bez aparatów spoza modelu', () => {
-        const zastana = buildSceneV3(enmZastany, lod);
-        const galezie = new Map((enmZastany.branches ?? []).map((b) => [b.ref_id, b]));
-        const aparaty = zastana.symbols.filter((s) => s.meta?.apparatusSource != null && s.meta?.elementKind === 'apparatus');
-        if (lod !== 0) expect(aparaty.length).toBeGreaterThan(0);
-        for (const s of aparaty) {
-          if (s.symbolId === 'bayNoEquipment') {
-            expect(s.meta?.deviceRef).toBeUndefined();
-            continue;
-          }
-          expect(s.meta?.apparatusSource).toBe('dane');
-          expect(galezie.has(s.meta!.deviceRef!), `${s.meta?.testId}: gałąź pola w modelu`).toBe(true);
-          expect(['breaker', 'switch']).toContain(galezie.get(s.meta!.deviceRef!)!.type);
-        }
-        // Żaden aparat z dawnej konwencji (głowica, uziemnik, przekładnik) bez rekordu.
-        expect(zastana.symbols.filter((s) => s.meta?.apparatusSource != null && ['cableHead', 'earthSwitch', 'currentTransformer', 'loadBreakSwitch'].includes(s.symbolId))).toEqual([]);
-      });
+    it('grid_probe (§11.2): 100% originów symboli i wierzchołków tras na siatce', () => {
+      expect(allSceneGeometryOnGrid(scene)).toBe(true);
     });
-  }
+
+    it('zero nachodzeń symbol↔symbol (rozszerzenie F6a wyroczni F5 na całą scenę)', () => {
+      expect(noSceneSymbolOverlaps(scene)).toBe(true);
+    });
+
+    it('overlap_probe (§11.1): zero kolizji etykieta↔etykieta i etykieta↔symbol', () => {
+      const probe = overlapProbe(scene.labels, symbolRectsOf(scene));
+      expect(probe.pairs).toEqual([]);
+      expect(probe.overlapCount).toBe(0);
+    });
+
+    it('§9: brak zakazanych tokenów WE/WY/ODG na ŻADNEJ etykiecie sceny (wszystkie ownerKind)', () => {
+      expect(noForbiddenDirectionTokens(scene)).toBe(true);
+    });
+
+    it('D2/k5b: żadna etykieta nie wystaje za lewą krawędź arkusza (rect.x >= 0; regresja: „Sekcja 1 · 15 kV" przy x≈-56 przed poprawką composeGpz)', () => {
+      expect(scene.labels.every((l) => l.rect.x >= 0)).toBe(true);
+    });
+
+    it('k6 SPŁACONE W CAŁOŚCI (F6d kanały pionowe + F6e nakłady własnego pola): ZERO kolizji etykieta↔przewód — WSZYSTKIE klasy, cała scena (historia: F6c wykryło 28/105/426 na LOD 0/1/2; F6d zbiło architekturę zejść do 3/3/317 „własnego pola"; F6e zbiło resztę do zera — oznacznik pola GPZ poniżej szyny, podpis kierunku odsunięty od osi magistrali i od pionu wejściowego zejścia przez rezerwację `entryDescentBayIndex`)', () => {
+      expect(labelWireCollisions(scene)).toEqual([]);
+      expect(noLabelWireCollisions(scene)).toBe(true);
+    });
+
+    it('junction_dot_probe (F13.2 + V12K-150, §22.1): kropka wyłącznie na realnym węźle (T tras I odczep pola); akcent-kropka usunięty, odczepy lateralne z kropką, 0 luk', () => {
+      expect(scene.meta.lateralRunIds.length).toBeGreaterThan(0);
+      // Dawny akcent-kropka (fałszywy odczyt węzła przy przelocie, D3-14)
+      // NIE istnieje na scenie:
+      expect(scene.symbols.some((s) => s.symbolId === 'branchJunction')).toBe(false);
+      // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) mają
+      // kropkę węzłową `junction` w scenie produkcyjnej.
+      // Intencja testu — „kropka wyłącznie na REALNYM węźle, obustronna
+      // spójność"; jedna scena (pełne pola) — dowodzimy obecności.
+      const lateralDots = scene.symbols.filter((s) =>
+        String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-'),
+      );
+      expect(lateralDots.length).toBeGreaterThan(0);
+      // Obustronna spójność kropka⇔węzeł (tee + lateral):
+      expect(noBranchWithoutAccent(scene)).toBe(true);
+    });
+
+    it('F9.3 FIX-1 (§12.3, kontrakt POŁĄCZENIA): głowice kablowe BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych końcach ciągów (1 magistrala + N laterali = brak dalszej stacji za polem "następnik"); WSZYSTKIE inne głowice (wnętrze ciągów, GPZ→S0, origin→lateral) MUSZĄ być dotknięte trasą', () => {
+      expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(true);
+      const unreached = fieldEntryConnectionsReachCableHead(scene);
+      // DECYZJA (F9.3 FIX-1, patrz docstring `fieldEntryConnectionsReachCableHead`):
+      // ta wyrocznia dowodzi WYŁĄCZNIE, że TAM GDZIE trasa istnieje, dotyka
+      // głowicy. §16-v3 (2026-07-17): fizyczne końce ciągów (1 magistrala +
+      // N laterali) niosą TERAZ bieg OTWARTY (realne segmenty ENM
+      // `…/branch_end`/`…/downstream` za ostatnią stacją, dotąd niewidoczne
+      // — patrz `buildScene.openTerminal.test.ts`), więc głowica końcowa
+      // JEST dotknięta trasą — nieosiągnięte spada z `1 + laterale` do ZERA.
+      // Jeżeli liczba WZROŚNIE bez zmiany topologii fixtury — regresja
+      // (kabel międzystacyjny/ogon znowu nie dotyka głowicy).
+      expect(unreached.length).toBe(0);
+      expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
+    });
+
+    it('F9.3 (§12.1) → GEOMETRIA-STACJI (§0 pkt 4): pochodzenie stosu pola STACJI z danych — rekordy aparatów „dane", pola OZE bez rekordów „brak" (jedna sylwetka bez stanu)', () => {
+      // KOREKTA: dawniej fikstura bez `primary_devices` rysowała stosy konwencji („konwencja").
+      // Konwencja skasowana; fikstura niesie rekordy (patrz `zRekordamiAparatowPol`).
+      const stationFieldApparatus = scene.symbols.filter((s) => s.meta?.apparatusSource != null);
+      expect(stationFieldApparatus.length).toBeGreaterThan(0);
+      expect(stationFieldApparatus.every((s) => s.meta?.apparatusSource === 'dane' || s.meta?.apparatusSource === 'brak')).toBe(true);
+      const brak = stationFieldApparatus.filter((s) => s.meta?.apparatusSource === 'brak');
+      expect(brak.every((s) => s.symbolId === 'bayNoEquipment' || s.meta?.elementKind !== 'apparatus')).toBe(true);
+      expect(brak.filter((s) => s.symbolId === 'bayNoEquipment').every((s) => s.state === undefined)).toBe(true);
+    });
+
+    it('GEOMETRIA-STACJI (§0 pkt 4a): sieć zastana — pole bez `primary_devices` rysuje gałąź łączeniową z `equipment_refs` (ref, stan), bez aparatów spoza modelu', () => {
+      const zastana = buildSceneV3(enmZastany);
+      const galezie = new Map((enmZastany.branches ?? []).map((b) => [b.ref_id, b]));
+      const aparaty = zastana.symbols.filter((s) => s.meta?.apparatusSource != null && s.meta?.elementKind === 'apparatus');
+      expect(aparaty.length).toBeGreaterThan(0);
+      for (const s of aparaty) {
+        if (s.symbolId === 'bayNoEquipment') {
+          expect(s.meta?.deviceRef).toBeUndefined();
+          continue;
+        }
+        expect(s.meta?.apparatusSource).toBe('dane');
+        expect(galezie.has(s.meta!.deviceRef!), `${s.meta?.testId}: gałąź pola w modelu`).toBe(true);
+        expect(['breaker', 'switch']).toContain(galezie.get(s.meta!.deviceRef!)!.type);
+      }
+      // Żaden aparat z dawnej konwencji (głowica, uziemnik, przekładnik) bez rekordu.
+      expect(zastana.symbols.filter((s) => s.meta?.apparatusSource != null && ['cableHead', 'earthSwitch', 'currentTransformer', 'loadBreakSwitch'].includes(s.symbolId))).toEqual([]);
+    });
+  });
 
   it('§9 (spłata długu F6b): etykiety `apparatus` NIE noszą surowych WE/WY/ODG — oznacznik z konwencji Q/T, gdy dane nie dają realnego oznacznika', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const forbiddenTokenPattern = /\b(WE|WY|ODG)\b/;
     const apparatusLabels = scene.labels.filter((l) => l.ownerKind === 'apparatus');
     // Fixtura NADAL ma dziesiątki pól z `bay.designation` typu "WE"/"WY"/"ODG"
@@ -305,169 +280,36 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
 });
 
 describe('buildSceneV3 — determinizm (ta sama sieć musi dawać identyczny wynik)', () => {
-  it('dwa wywołania buildSceneV3(enm, 2) dają identyczny JSON', () => {
-    const sceneA = buildSceneV3(enm, 2);
-    const sceneB = buildSceneV3(enm, 2);
+  it('dwa wywołania buildSceneV3(enm) dają identyczny JSON', () => {
+    const sceneA = buildSceneV3(enm);
+    const sceneB = buildSceneV3(enm);
     expect(JSON.stringify(sceneA)).toBe(JSON.stringify(sceneB));
-  });
-
-  it('dwa wywołania buildSceneV3(enm, 0)/(enm, 1) dają identyczny JSON', () => {
-    for (const lod of [0, 1] as const) {
-      const sceneA = buildSceneV3(enm, lod);
-      const sceneB = buildSceneV3(enm, lod);
-      expect(JSON.stringify(sceneA)).toBe(JSON.stringify(sceneB));
-    }
   });
 });
 
-describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
-  it('LOD 0: stacje jako symbol zbiorczy (junction), brak etykiet segmentów/podpisów kierunku', () => {
-    const scene = buildSceneV3(enm, 0);
+// INTENCJA po karcie SLD-SKALA-I-NAWIGACJA (R1): dawny „kontrakt LOD (spec §7)"
+// porównywał trzy sceny (zwinięty przegląd L0, L1 bez podpisów, L2 pełny).
+// Jest jedna scena — pełna treść rysunku niezależna od skali kamery; o tym, co
+// widać przy danej skali, decyduje kanwa (`canvas/gestoscInformacji.ts`). Zostaje
+// więc dowód PEŁNEJ treści jednej sceny i stałej liczby stacji.
+describe('buildSceneV3 — jedna scena, pełna treść (karta SLD-SKALA-I-NAWIGACJA R1)', () => {
+  it('scena niesie pełne symbole stacji, nazwy stacji, etykiety odcinków i podpisy kierunku pól', () => {
+    const scene = buildSceneV3(enm);
     const counts = labelOwnerKindCounts(scene);
-    expect(counts['segment-span'] ?? 0).toBe(0);
-    expect(counts['segment-lateral'] ?? 0).toBe(0);
-    expect(counts['port-caption'] ?? 0).toBe(0);
-    // Każda z 53 stacji ma DOKŁADNIE jeden symbol 'stationCollapsed' (F6b:
-    // dedykowany symbol zbiorczy stacji L0, kontur kwadratu — spłata
-    // STOP-notatki F6a; wcześniej placeholder `junction`, patrz nagłówek
-    // `buildScene.ts`).
-    const collapsedSymbols = scene.symbols.filter((s) => s.symbolId === 'stationCollapsed');
-    expect(collapsedSymbols.length).toBe(EXPECTED_STATION_COUNT);
-    // 'junction' pozostaje WYŁĄCZNIE węzłem T tras — NIE stacją. Od S7-P2
-    // (V12K-137) węzeł T zejścia lateralu z kablem poziomym (Rodzina B na L0)
-    // materializuje kropkę `junction`; sprawdzamy więc, że ŻADNA kropka nie
-    // pokrywa się z pozycją stacji zbiorczej (kropki to węzły tras, stacje to
-    // `stationCollapsed`), zamiast dawnego „0 kropek w ogóle".
-    const collapsedKeys = new Set(collapsedSymbols.map((s) => `${s.x},${s.y}`));
-    const junctionOnStation = scene.symbols.some(
-      (s) => s.symbolId === 'junction' && collapsedKeys.has(`${s.x},${s.y}`),
-    );
-    expect(junctionOnStation).toBe(false);
-  });
-
-  it('LOD 1: pełne symbole stacji, ale zero etykiet segmentów i zero podpisów kierunku', () => {
-    const scene = buildSceneV3(enm, 1);
-    const counts = labelOwnerKindCounts(scene);
-    expect(counts['segment-span'] ?? 0).toBe(0);
-    expect(counts['segment-lateral'] ?? 0).toBe(0);
-    expect(counts['port-caption'] ?? 0).toBe(0);
-    // Pełne symbole (composeStation/composeGpz) — realne aparaty, NIE
-    // placeholder zbiorczy 'stationCollapsed' (kontrast z LOD 0).
-    expect(scene.symbols.some((s) => s.symbolId === 'stationCollapsed')).toBe(false);
     expect(scene.symbols.length).toBeGreaterThan(200);
-    // Nazwy/kVA/typ stacji (pasmo B5) SĄ obecne na L1 (kontrast z brakiem
-    // etykiet segmentów/podpisów kierunku powyżej).
     expect(counts['station-name'] ?? 0).toBeGreaterThan(0);
-  });
-
-  it('LOD 2: etykiety segmentów i podpisy kierunku pól są obecne', () => {
-    const scene = buildSceneV3(enm, 2);
-    const counts = labelOwnerKindCounts(scene);
     expect(counts['segment-span'] ?? 0).toBeGreaterThan(0);
     expect(counts['segment-lateral'] ?? 0).toBeGreaterThan(0);
     expect(counts['port-caption'] ?? 0).toBeGreaterThan(0);
   });
 
-  it('L1 i L2 mają IDENTYCZNĄ liczbę symboli/segmentów (aparaty się nie zmieniają — TYLKO etykiety)', () => {
-    // UWAGA: same WSPÓŁRZĘDNE aparatów mogą się różnić między L1/L2 (composeStation
-    // liczy centerX pola z rezerwacji ZALEŻNEJ od treści renderu — podpisy
-    // kierunku pól są na L2, nie na L1 — więc stos aparatów pola bywa inaczej
-    // wyśrodkowany w TEJ SAMEJ kolumnie). SCHEMAT-10 S1 (V12K-135): KOTWICE
-    // stacji (kolumny/oś magistrali/pasmo nazw) są już IDENTYCZNE na L1/L2 (i L0)
-    // — patrz test „JEDNA KOTWICA"; różni się tylko rozkład detalu WEWNĄTRZ
-    // kolumny. Ten test sprawdza WYŁĄCZNIE, że zestaw aparatów jest taki sam
-    // (żaden aparat nie jest dodawany/usuwany w zależności od LOD).
-    const sceneL1 = buildSceneV3(enm, 1);
-    const sceneL2 = buildSceneV3(enm, 2);
-    expect(sceneL1.symbols.length).toBe(sceneL2.symbols.length);
-    expect(sceneL1.segments.length).toBe(sceneL2.segments.length);
-    expect(sceneL1.symbols.map((s) => s.symbolId)).toEqual(sceneL2.symbols.map((s) => s.symbolId));
-  });
-
-  it('SCHEMAT-10 S1 (V12K-135): JEDNA KOTWICA — środek glifu stacji IDENTYCZNY na L0/L1/L2 (nazwa stacji i symbol zbiorczy)', () => {
-    // Macierz prawdy LOD §3: „środek glifu stacji i oś magistrali IDENTYCZNE na
-    // L0/L1/L2 — zoom = skala szczegółu, nie przemeblowanie". Dowód na REALNEJ
-    // fixturze: kotwica = wiersz nazwy stacji (pasmo B5, `ownerKind:
-    // 'station-name'`, kotwiczony do `nameSlot` KOLUMNY) — po unifikacji
-    // geometrii (buildRowLayout @ pełny szczegół) `nameSlot` jest ten sam na
-    // wszystkich LOD, więc etykieta nazwy każdej stacji ma IDENTYCZNE (x,y) na
-    // L0/L1/L2. Przed S1 (D1 „trzy światy") kolumny L0/L1/L2 różniły się
-    // szerokością → nazwa dryfowała między poziomami.
-    // Kotwica = PIERWSZY wiersz pasma nazw (`#name-row-0`). BLOK-PUSTY: jego
-    // `rect` niesie od tej karty sam TUSZ (`layout/labels.ts`
-    // `resolveStationNameBand` → `tuszWSlocie`), więc tekstowo-niezależne są
-    // dwie inne wielkości i to je porównujemy: ŚRODEK prostokąta (== środek
-    // `nameSlot` kolumny, bo zwężenie jest symetryczne) oraz
-    // `rezerwacjaSzerokosci` (== `nameSlot.width`). Na L0 pasmo ma 1 wiersz
-    // (S-id), na L1/L2 więcej (nazwa/kVA/typ/nN) — porównujemy wspólny wiersz 0.
-    const nameAnchors = (lod: 0 | 1 | 2): Map<string, string> => {
-      const scene = buildSceneV3(enm, lod);
-      const m = new Map<string, string>();
-      for (const label of scene.labels) {
-        if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
-          const stationRef = label.ownerRef.slice(0, -'#name-row-0'.length);
-          // BLOK-PUSTY: kotwica = PUNKT ZACZEPU wiersza (środek slotu w poziomie,
-          // strop w pionie) + SZEROKOŚĆ REZERWACJI. Do tej karty porównywano
-          // `rect.x`/`rect.width`, bo prostokąt wiersza BYŁ slotem kolumny;
-          // teraz prostokąt niesie sam tusz, a tusz z definicji zależy od
-          // TREŚCI poziomu (L0 rysuje kod stacji, L1/L2 nazwę). Intencja bez
-          // zmian i MOCNIEJSZA: sprawdzamy obie wielkości TEKSTOWO NIEZALEŻNE
-          // — środek zaczepu i rezerwację kolumny — więc dryf geometrii nadal
-          // pada, a różnica długości napisu już nie.
-          const srodek = label.rect.x + label.rect.width / 2;
-          m.set(stationRef, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
-        }
-      }
-      return m;
-    };
-    const a0 = nameAnchors(0);
-    const a1 = nameAnchors(1);
-    const a2 = nameAnchors(2);
-    // Zbiór STACJI z nazwą jest niepusty i wspólny (nic nie ginie między LOD).
-    // KD-5 (zwinięcie bloku GPZ na L0): pasma nazw ELEMENTÓW WEWNĘTRZNYCH GPZ
-    // (tabliczka transformatora, tabliczka źródła systemowego) na L0 nie
-    // istnieją — bo nie istnieją ich elementy. To TREŚĆ zwinięcia, nie dryf
-    // kotwicy, więc porównanie liczności robimy na STACJACH (`stn/...`), a
-    // różnicę GPZ nazywamy WPROST niżej (żeby przypadkowa utrata pasma i tak
-    // była złapana). Intencja testu — „kotwica stacji identyczna na L0/L1/L2"
-    // — bez zmian.
-    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
-      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
-    expect(a0.size).toBeGreaterThan(EXPECTED_STATION_COUNT / 2);
-    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
-    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
-    // Zwinięcie może pasma wyłącznie UJMOWAĆ — nigdy dodać nowej kotwicy na L0.
-    for (const ref of a0.keys()) {
-      expect(a1.has(ref), `kotwica ${ref} obecna na L0, brak na L1`).toBe(true);
-      expect(a2.has(ref), `kotwica ${ref} obecna na L0, brak na L2`).toBe(true);
-    }
-    const brakNaL0 = [...a1.keys()].filter((ref) => !a0.has(ref)).sort();
-    // Dokładnie pasma WEWNĘTRZNE bloku GPZ (i nic więcej) — 2 na fixturze:
-    // tabliczka TR i tabliczka źródła systemowego.
-    expect(brakNaL0.every((ref) => ref.startsWith('gpz/')), `nie-GPZ pasmo zgubione na L0: ${brakNaL0.join(', ')}`).toBe(true);
-    expect(brakNaL0.length).toBe(2);
-    const drift: string[] = [];
-    for (const [ref, pos0] of a0) {
-      const pos1 = a1.get(ref);
-      const pos2 = a2.get(ref);
-      if (pos1 !== pos0 || pos2 !== pos0) {
-        drift.push(`${ref}: L0=${pos0} L1=${pos1} L2=${pos2}`);
-      }
-    }
-    expect(drift, `kotwice stacji dryfują między LOD:\n${drift.slice(0, 8).join('\n')}`).toEqual([]);
-  });
-
-  it('liczba stacji w meta jest stała i zgodna z realną fixturą, niezależnie od LOD', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.meta.stationCount).toBe(EXPECTED_STATION_COUNT);
-      expect(scene.meta.lod).toBe(lod);
-    }
+  it('liczba stacji w meta jest zgodna z realną fixturą', () => {
+    expect(buildSceneV3(enm).meta.stationCount).toBe(EXPECTED_STATION_COUNT);
   });
 });
 
 describe('buildSceneV3 — kompletność sceny (spec §10, nic nie zgubione)', () => {
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
 
   it('ciąg główny ma 12 stacji (empirycznie potwierdzone na fixturze)', () => {
     expect(scene.meta.mainTrunkStationIds.length).toBe(12);
@@ -525,8 +367,8 @@ describe('buildSceneV3 — kompletność sceny (spec §10, nic nie zgubione)', (
   });
 });
 
-describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16, LOD 2)', () => {
-  const scene = buildSceneV3(enm, 2);
+describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16)', () => {
+  const scene = buildSceneV3(enm);
   const ids = scene.meta.mainTrunkStationIds;
 
   /** Zakres X symboli TEJ stacji (grupowanie po hashu identyfikatora w
@@ -625,7 +467,7 @@ describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16
  * na geometrię.
  */
 describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji B i nakładki C)', () => {
-  const scene2 = buildSceneV3(enm, 2);
+  const scene2 = buildSceneV3(enm);
 
   /**
    * SCHEMAT-10 S3 (V12K-135, D7): fixtura `sldSubstrate52s` nie niesie punktu normalnie
@@ -641,7 +483,7 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     return { enm: zPunktemPodzialuWStacji(enm, targetStationRef), targetStationRef };
   }
 
-  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, lvPortal→lvPortal, protectionRelay→protectionAnnotation, reszta→apparatus', () => {
+  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), lvPortal→lvPortal, protectionRelay→protectionAnnotation, reszta→apparatus', () => {
     const byKind = new Map(scene2.symbols.map((s) => [s.symbolId, s.meta?.elementKind]));
     expect(byKind.get('transformer2W')).toBe('transformer');
     expect(byKind.get('gridSource')).toBe('source');
@@ -659,7 +501,6 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         s.symbolId !== 'transformer2W' &&
         !s.symbolId.startsWith('der') &&
         s.symbolId !== 'gridSource' &&
-        s.symbolId !== 'stationCollapsed' &&
         s.symbolId !== 'lvPortal' &&
         s.symbolId !== 'protectionRelay',
     );
@@ -667,81 +508,25 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     expect(nonSpecial.every((s) => s.meta?.elementKind === 'apparatus')).toBe(true);
   });
 
-  it('L0: stationCollapsed niesie ownerRef=station id + elementKind=station', () => {
-    const scene0 = buildSceneV3(enm, 0);
-    const stationSymbols = scene0.symbols.filter((s) => s.symbolId === 'stationCollapsed');
-    expect(stationSymbols.length).toBeGreaterThan(0);
-    for (const s of stationSymbols) {
-      expect(s.meta?.elementKind).toBe('station');
+  it('symbol noPoint (NO) niesie ownerRef + elementKind=apparatus; NOP stacji docelowej ma własny symbol na torze', () => {
+    // INTENCJA po karcie SLD-SKALA-I-NAWIGACJA (R1): dawniej NOP na zwiniętym
+    // przeglądzie był markerem `noOpen` sylwetki stacji, a test kotwicy (D7)
+    // pilnował, że marker i symbol leżą w tym samym punkcie na trzech poziomach.
+    // Jest jedna scena, więc NOP ma JEDEN symbol `noPoint` na torze — jego
+    // czytelność przy oddaleniu pilnuje stała ekranowa znacznika stanu (R5).
+    const { enm: enmWithNop, targetStationRef } = enmWithSyntheticNop();
+    const scene = buildSceneV3(enmWithNop);
+    const nopSymbols = scene.symbols.filter((s) => s.symbolId === 'noPoint');
+    expect(nopSymbols.length).toBeGreaterThan(0);
+    for (const s of nopSymbols) {
+      expect(s.meta?.elementKind).toBe('apparatus');
       expect(s.meta?.ownerRef).toBeTruthy();
-      // testId ma postać `sld-v3-l0-${ownerRef}` z konstrukcji.
-      expect(s.meta?.testId).toBe(`sld-v3-l0-${s.meta?.ownerRef}`);
+      expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
     }
+    expect(scene.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === targetStationRef)).toBe(true);
   });
 
-  it('L1/L2: symbol noPoint (NO) niesie ownerRef=station id + elementKind=apparatus; L0 = marker noOpen sylwetki (GS-1)', () => {
-    // GS-1 (V12K-137, GAP §10.4, Zero-Debt pkt 2): symbol `noPoint` (16×16 na
-    // osi szyny) to reprezentacja L1/L2. Na L0 (sylwetka mini-RMU 48×48) osobny
-    // noPoint byłby POGRZEBANY w enklozurze — NOP niesie marker `noOpen`
-    // sylwetki (`meta.stationGlyph.noOpen`). TA SAMA kotwica (środek stacji) na
-    // wszystkich LOD (test D7 niżej).
-    const { enm: enmWithNop, targetStationRef } = enmWithSyntheticNop();
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enmWithNop, lod);
-      const nopSymbols = scene.symbols.filter((s) => s.symbolId === 'noPoint');
-      expect(nopSymbols.length).toBeGreaterThan(0);
-      for (const s of nopSymbols) {
-        expect(s.meta?.elementKind).toBe('apparatus');
-        expect(s.meta?.ownerRef).toBeTruthy();
-        expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
-      }
-    }
-    // L0: brak osobnego noPoint STACJI; NOP stacji w markerze sylwetki stacji
-    // docelowej. (K2b §0.4: fikstura niesie też NOP ŁĄCZNIKA w `Corridor.no_point_ref`
-    // — ten ma własny symbol `noPoint` na każdym poziomie, przy bloku stacji;
-    // asercja zawężona do NOP-stacji, intencja GS-1 bez zmian.)
-    const scene0 = buildSceneV3(enmWithNop, 0);
-    expect(scene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === targetStationRef)).toBe(false);
-    const nopGlyph = scene0.symbols.find(
-      (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef,
-    );
-    expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
-  });
-
-  it('SCHEMAT-10 S3 (V12K-135, D7) + GS-1: KOTWICA znacznika NOP (środek stacji) IDENTYCZNA na L0/L1/L2', () => {
-    // Macierz prawdy LOD §3, wiersz „Sekcje/NOP": „znacznik NA torze (kotwica =
-    // render szyny TEGO LOD)". Intencja D7 („marker nie dryfuje przy zmianie
-    // poziomu") ZACHOWANA pod kanonem GS-1: kotwica = ŚRODEK STACJI (JEDNA
-    // KOTWICA, geometria z L2). Reprezentacja RÓŻNI SIĘ per LOD („zoom = skala
-    // szczegółu"): L0 = marker `noOpen` sylwetki mini-RMU (środek stationCollapsed),
-    // L1/L2 = symbol `noPoint` (środek na osi szyny) — OBA w tym samym punkcie.
-    const { enm: enmWithNop, targetStationRef } = enmWithSyntheticNop();
-
-    // Środek NOP-a stacji docelowej per LOD (kotwica, niezależnie od symbolu).
-    const nopCenter = (lod: SceneLod): string | null => {
-      const scene = buildSceneV3(enmWithNop, lod);
-      if (lod === 0) {
-        const g = scene.symbols.find(
-          (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef && s.meta?.stationGlyph?.noOpen,
-        );
-        if (!g) return null;
-        const d = SYMBOL_DEFS.stationCollapsed;
-        return `${g.x + d.width / 2},${g.y + d.height / 2}`;
-      }
-      const s = scene.symbols.find((x) => x.symbolId === 'noPoint' && x.meta?.ownerRef === targetStationRef);
-      if (!s) return null;
-      const d = SYMBOL_DEFS.noPoint;
-      return `${s.x + d.width / 2},${s.y + d.height / 2}`;
-    };
-    const c0 = nopCenter(0);
-    const c1 = nopCenter(1);
-    const c2 = nopCenter(2);
-    expect(c0).toBeTruthy();
-    expect(c1).toBe(c0);
-    expect(c2).toBe(c0);
-  });
-
-  it('aparatura stacji (L2): ownerRef === bayRef odczytany z testId (`${bayRef}#${symbolId}`)', () => {
+  it('aparatura stacji: ownerRef === bayRef odczytany z testId (`${bayRef}#${symbolId}`)', () => {
     // Portal domeny nN ma `ownerRef` KOMPOZYTOWY (`${stationRef}#lv-portal`,
     // `compose/station.ts` `lvPortalOwnerRef`) — nie jest aparatem pola,
     // przypięty osobno w `buildScene.lvPortal.test.ts`.
@@ -806,20 +591,18 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
   });
 
   it('determinizm meta: dwa wywołania buildSceneV3 na tym samym wejściu dają identyczne ownerRef/elementKind', () => {
-    const a = buildSceneV3(enm, 2);
-    const b = buildSceneV3(enm, 2);
+    const a = buildSceneV3(enm);
+    const b = buildSceneV3(enm);
     expect(JSON.stringify(a.symbols.map((s) => s.meta))).toBe(JSON.stringify(b.symbols.map((s) => s.meta)));
     expect(JSON.stringify(a.segments.map((s) => s.meta))).toBe(JSON.stringify(b.segments.map((s) => s.meta)));
   });
 
-  it('meta (F8b-1) nie wpływa na geometrię — wyrocznie §11 pozostają zielone na L0/L1/L2 (regresja zerowa)', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      expect(allSceneGeometryOnGrid(scene)).toBe(true);
-      expect(noSceneSymbolOverlaps(scene)).toBe(true);
-      expect(noLabelWireCollisions(scene)).toBe(true);
-      expect(noForbiddenDirectionTokens(scene)).toBe(true);
-    }
+  it('meta (F8b-1) nie wpływa na geometrię — wyrocznie §11 pozostają zielone (regresja zerowa)', () => {
+    const scene = buildSceneV3(enm);
+    expect(allSceneGeometryOnGrid(scene)).toBe(true);
+    expect(noSceneSymbolOverlaps(scene)).toBe(true);
+    expect(noLabelWireCollisions(scene)).toBe(true);
+    expect(noForbiddenDirectionTokens(scene)).toBe(true);
   });
 });
 
@@ -832,30 +615,18 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
 // ---------------------------------------------------------------------------
 
 describe('buildSceneV3 — F9.4 runda korekcyjna: sourceCoverageGaps/allSourcesVisible (spec §13.1)', () => {
-  it('fixtura referencyjna: 21 źródeł w meta.sources (1 external_grid + 20 DER) na WSZYSTKICH LOD', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.meta.sources).toHaveLength(21);
-      expect(scene.meta.sources.filter((s) => s.kind === 'external_grid')).toHaveLength(1);
-    }
+  it('fixtura referencyjna: 21 źródeł w meta.sources (1 external_grid + 20 DER)', () => {
+    const scene = buildSceneV3(enm);
+    expect(scene.meta.sources).toHaveLength(21);
+    expect(scene.meta.sources.filter((s) => s.kind === 'external_grid')).toHaveLength(1);
   });
 
-  it('L0 (spec §7 — decyzja F9.4: DER od L1): TYLKO external_grid podlega wyroczni, 0 luk (GPZ zawsze renderowany w pełni)', () => {
-    const scene = buildSceneV3(enm, 0);
+  it('WSZYSTKIE 21 źródeł (external_grid + 20 DER) mają symbol na scenie, 0 luk', () => {
+    const scene = buildSceneV3(enm);
     const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
-    expect(derSymbols).toHaveLength(0); // DER faktycznie nieobecne na L0, z konstrukcji.
+    expect(derSymbols).toHaveLength(20);
     expect(sourceCoverageGaps(scene)).toEqual([]);
     expect(allSourcesVisible(scene)).toBe(true);
-  });
-
-  it('L1/L2: WSZYSTKIE 21 źródeł (external_grid + 20 DER) mają symbol na scenie, 0 luk', () => {
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
-      expect(derSymbols).toHaveLength(20);
-      expect(sourceCoverageGaps(scene)).toEqual([]);
-      expect(allSourcesVisible(scene)).toBe(true);
-    }
   });
 
   it('test negatywny (dowód, że wyrocznia gryzie): DER z connectionRef nieistniejącym w danych adaptera ⇒ sourceCoverageGaps zgłasza lukę, allSourcesVisible=false, stopNote wyjaśnia przyczynę (F-1.3)', () => {
@@ -869,7 +640,7 @@ describe('buildSceneV3 — F9.4 runda korekcyjna: sourceCoverageGaps/allSourcesV
     target!.station_ref = 'stn/does-not-exist-anywhere/station';
     target!.bus_ref = 'stn/does-not-exist-anywhere/nn_bus';
 
-    const scene = buildSceneV3(corrupted, 1);
+    const scene = buildSceneV3(corrupted);
     const gaps = sourceCoverageGaps(scene);
     expect(gaps.some((g) => g.sourceId === originalRef)).toBe(true);
     expect(allSourcesVisible(scene)).toBe(false);
@@ -885,17 +656,15 @@ describe('buildSceneV3 — F9.4 runda korekcyjna: sourceCoverageGaps/allSourcesV
 });
 
 describe('buildSceneV3 — F9.4 runda korekcyjna: sourceConnectivityGaps/allSourcesConnected (spec §14.1)', () => {
-  it('fixtura referencyjna: KAŻDE widoczne źródło (external_grid na L0/L1/L2, DER na L1/L2) ma trasę do co najmniej jednej szyny — 0 luk', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      const gaps = sourceConnectivityGaps(scene);
-      expect(gaps).toEqual([]);
-      expect(allSourcesConnected(scene)).toBe(true);
-    }
+  it('fixtura referencyjna: KAŻDE widoczne źródło (external_grid i DER) ma trasę do co najmniej jednej szyny — 0 luk', () => {
+    const scene = buildSceneV3(enm);
+    const gaps = sourceConnectivityGaps(scene);
+    expect(gaps).toEqual([]);
+    expect(allSourcesConnected(scene)).toBe(true);
   });
 
   it('test negatywny (dowód, że wyrocznia gryzie): symbol źródła całkowicie odizolowany (żaden port nie dotyka żadnego odcinka sceny) ⇒ sourceConnectivityGaps go zgłasza', () => {
-    const scene = buildSceneV3(enm, 1);
+    const scene = buildSceneV3(enm);
     // Syntetyczna scena: bierzemy realną (żeby geometria WSZYSTKICH innych
     // elementów była wiarygodna), ale DODAJEMY jeden symbol DER daleko poza
     // całą resztą rysunku (żaden port nie dotyka żadnego istniejącego
@@ -919,17 +688,15 @@ describe('buildSceneV3 — F9.4 runda korekcyjna: sourceConnectivityGaps/allSour
 });
 
 describe('buildSceneV3 — F9.7: sceneSegmentEndpointGaps/allSceneSegmentEndpointsAnchored (spec §11.3 port_probe, scena)', () => {
-  it('fixtura referencyjna: KAŻDY koniec KAŻDEGO odcinka (poza szynami — patrz docstring `isBusbarLikeSegment`) jest portem symbolu, dotyka innego odcinka, LUB (L0) trafia w środek `stationCollapsed` — 0 luk na WSZYSTKICH LOD', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      const gaps = sceneSegmentEndpointGaps(scene);
-      expect(gaps).toEqual([]);
-      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
-    }
+  it('fixtura referencyjna: KAŻDY koniec KAŻDEGO odcinka (poza szynami — patrz docstring `isBusbarLikeSegment`) jest portem symbolu, dotyka innego odcinka — 0 luk (jedna scena)', () => {
+    const scene = buildSceneV3(enm);
+    const gaps = sceneSegmentEndpointGaps(scene);
+    expect(gaps).toEqual([]);
+    expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
   });
 
   it('test negatywny (dowód, że wyrocznia gryzie): odcinek z jednym końcem w PRÓŻNI (żaden port, żaden inny odcinek) ⇒ sceneSegmentEndpointGaps go zgłasza', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const dangling: SceneV3 = {
       ...scene,
       segments: [
@@ -970,19 +737,17 @@ describe('buildSceneV3 — F9.7/F9.10: symbolWireCollisions/noSymbolWireCollisio
    * akcent i korytarz. Kolizje = ZERO na WSZYSTKICH LOD, baseline USUNIĘTY
    * (DoD F9.10: twarde zero, ten sam wzorzec co `noSceneSymbolOverlaps`).
    */
-  it('fixtura referencyjna: ZERO kolizji symbol↔przewód na WSZYSTKICH LOD (F9.10 — twarde zero, dług F9.3(b)/F9.7 spłacony)', () => {
-    expect(symbolWireCollisions(buildSceneV3(enm, 0))).toEqual([]);
-    expect(noSymbolWireCollisions(buildSceneV3(enm, 0))).toBe(true);
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      const hits = symbolWireCollisions(scene);
-      expect(hits.length).toBe(0);
-      expect(noSymbolWireCollisions(scene)).toBe(true);
-    }
+  it('fixtura referencyjna: ZERO kolizji symbol↔przewód (F9.10 — twarde zero, dług F9.3(b)/F9.7 spłacony)', () => {
+    expect(symbolWireCollisions(buildSceneV3(enm))).toEqual([]);
+    expect(noSymbolWireCollisions(buildSceneV3(enm))).toBe(true);
+    const scene = buildSceneV3(enm);
+    const hits = symbolWireCollisions(scene);
+    expect(hits.length).toBe(0);
+    expect(noSymbolWireCollisions(scene)).toBe(true);
   });
 
   it('test negatywny (dowód, że wyrocznia gryzie): symbol BEZ styku portowego umieszczony WPROST na trasie CUDZEGO odcinka ⇒ symbolWireCollisions go zgłasza', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     // Odcinek realny (magistrala/lateral), dowolny wystarczająco długi —
     // wstawiamy symbol (junction bazowy, port N/S/E/W ISTNIEJE, ale
     // CELOWO wyśrodkowany na WNĘTRZU cudzego odcinka, gdzie żaden z jego
@@ -1011,7 +776,7 @@ describe('buildSceneV3 — F9.7/F9.10: symbolWireCollisions/noSymbolWireCollisio
 
 describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertical_length_probe)', () => {
   it('miara jest deterministyczna i zgodna z prostą arytmetyką na syntetycznej scenie (dowód formuły)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const synthetic: SceneV3 = {
       ...scene,
       segments: [
@@ -1023,7 +788,7 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     expect(totalVerticalSegmentLength(synthetic)).toBe(70);
   });
 
-  it('fixtura referencyjna: baseline aktualny per LOD (historia: F9.7 9656/38504/53304 → F9.10 +2496 za kolizje=0 → F10.1 OBNIŻONY: tor główny pola KRÓTSZY o ES wyjęty na bok §18.1 — blok stacji −32, co przez 78 przecięć pasm ODDAJE dokładnie koszt F9.10 na L1/L2; L0 −32 na zejściu GPZ → F10.2 OBNIŻONY na L2: podpisy kierunku pola z nazwą linii §19.2 (dłuższe teksty na fixturze referencyjnej, `LineRunV1.name` np. „Magistrala 01"/„Odgałęzienie SN kablowe") poszerzyły kolumny NIEKTÓRYCH pól — przez `colorSegmentLabelRows` (`layout/segments.ts`, r9, NIEZMIENIONE przez F10.2) zmiana szerokości kolumn przełożyła się na inne przydziały wierszy pasma B1, co ODDAJE 1072px pionów na L2 (spadek, nie wzrost — miara „nie-rosnąca" spec §15.1 spełniona z zapasem); L0/L1 BEZ zmian (L0 nie niesie `bayDirectionCaptions`, L1 ma je wyłączone — spec §7) → F10.3 PODNIESIONY na L1/L2 (spec §18.4 — etykieta szyny SN, `busbar_label_probe`): zakaz anonimowego odcinka szyny wymaga WŁASNEGO wiersza B2 (`stationBusbarLabelHeight`, `layout/measure.ts`) NAD podpisem kierunku pola — rezerwacja doliczana JEDNOLICIE do KAŻDEGO wiersza stacji z co najmniej jednym polem SN (`snBays.length>0`, zgodnie z `composeStation` — pomija tylko stacje bez pól), więc rośnie na L1/L2 (gdzie `snBays` jest niepuste), NIE na L0 (kolaps do `stationCollapsed`, `snBays: []` z konstrukcji `buildMeasureInput`). Świadome odstępstwo od reguły „nie-rosnąca" (jak F9.10: czytelność/zero-anonimowej-szyny ma pierwszeństwo przed minimalizacją pionów, spec §15.1 „redukcja jest ograniczeniem MIĘKKIM") — ZERO nowych kolizji symbol↔przewód/etykieta↔przewód/etykieta↔etykieta na fixturze referencyjnej (zweryfikowane `npm run accept:sld-v3`).', () => {
+  it('fixtura referencyjna: baseline sumy pionów jednej sceny (historia zmian w komentarzu)', () => {
     // → F13.1/F13.2 (D3, przejęcie nadzorcy): L0 PODNIESIONY 12120→12280
     // (+160 — rynna objazdu wyjścia GPZ: prosty pion PRZEBIJAŁ własną szynę
     // sekcji GPZ we wnętrzu przęsła, zakaz §22.3; koszt poprawności
@@ -1329,23 +1094,22 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // `…/branch_segment_L` −3104 (−3104), człony ciągu `…/segment_L_R` −2968 (−2952),
     // `…/segment` +3488 (+4016), `…/segment_L` +344 (+32), `…/segment_L_L` +344 (+96) —
     // krótsze zejścia w niższych wierszach, dłuższe piony kanałów powrotnych łamania.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(19696);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(43232);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(43232);
+    // Karta SLD-SKALA-I-NAWIGACJA (R1): jedna scena = dawny pełny szczegół, więc
+    // baseline to dawna wartość L1/L2 (43232); wartość zwiniętego przeglądu (19696)
+    // zniknęła razem z nim.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm))).toBe(43232);
   });
 });
 
 describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne + opisane zakończenia)', () => {
-  it('earth_switch_lateral_probe + vt_parallel_probe: zero luk na realnej fixturze, wszystkie LOD', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      expect(allEarthSwitchesLateral(scene)).toBe(true);
-      expect(allVtParallel(scene)).toBe(true);
-    }
+  it('earth_switch_lateral_probe + vt_parallel_probe: zero luk na realnej fixturze', () => {
+    const scene = buildSceneV3(enm);
+    expect(allEarthSwitchesLateral(scene)).toBe(true);
+    expect(allVtParallel(scene)).toBe(true);
   });
 
   it('§18.1 (test negatywny): ES podstawiony NA oś toru ⇒ wyrocznia zgłasza on-main-axis', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const axisApparatus = scene.symbols.find(
       (sym) => sym.meta?.elementKind === 'apparatus' && sym.symbolId === 'breaker' && sym.meta?.ownerRef,
     )!;
@@ -1356,7 +1120,7 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
   });
 
   it('§18.1 (test negatywny 2): ES odsunięty od osi, ale BEZ odcinka odgałęzienia ⇒ no-branch-segment', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const axisApparatus = scene.symbols.find(
       (sym) => sym.meta?.elementKind === 'apparatus' && sym.symbolId === 'breaker' && sym.meta?.ownerRef,
     )!;
@@ -1378,7 +1142,7 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
     // segmenty ENM za ostatnią stacją) — głowice są dotknięte trasą, więc
     // etykiet `#termination` jest 0, a opis końca daje 13 etykiet
     // „koniec otwarty" (`#open-terminal-label`, L2).
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(allPathTerminationsLabeled(scene)).toBe(true);
     expect(scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))).toHaveLength(0);
     // SLD-SUBSTRAT (kontynuacja): 13 → 11 — dwa końce ogonów zamyka odcinek powiązania
@@ -1410,53 +1174,44 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
     expect(pathTerminationLabelGaps(stripped).length).toBe(11);
   });
 
-  it('§18.6: L0/L1 bez etykiet zakończeń (poziom szczegółowości L2 — spójnie z etykietami przęseł)', () => {
-    for (const lod of [0, 1] as const) {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))).toHaveLength(0);
-      expect(pathTerminationLabelGaps(scene)).toHaveLength(0);
-    }
-  });
 });
 
 describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze REALNEJ', () => {
-  it('każda szyna SN (stacji + sekcji GPZ) ma DOKŁADNIE JEDNĄ etykietę busbar-voltage, format poprawny, na lod>=1', () => {
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      expect(allBusbarLabelsValid(scene)).toBe(true);
-      expect(busbarLabelGaps(scene)).toHaveLength(0);
-      const busbarLabels = scene.labels.filter((l) => l.ownerKind === 'busbar-voltage');
-      // 53 stacje + N sekcji GPZ (fixtura: 1) — parytet z GPZ dosłownie.
-      expect(busbarLabels.length).toBeGreaterThanOrEqual(53);
-      // S9-7 (reguła KLASA §3 — predykaty parami): format sprawdza WYŁĄCZNIE
-      // wyrocznia produkcyjna (`busbarLabelGaps` wyżej). Poprzednia wersja
-      // testu powtarzała TU własne wyrażenie regularne, i to ROZJECHANE z
-      // produkcją: dopuszczała kropkę dziesiętną („15.5 kV"), której kanon
-      // zapisu rysunku (`liczbaRysunkuPl`) zabrania. Dwa niezależne warunki na
-      // ten sam format to defekt czekający na dane brzegowe — wzorzec został
-      // usunięty, a jego intencję (forma SN + forma WN §21.1) niesie dowód
-      // POZYTYWNY niżej.
-      //
-      // S9-8: dowód pozytywny nowej własności — opis sekcji stacji niesie
-      // IDENTYFIKATOR STACJI jako człon wiodący (GPZ, który kodu nie ma,
-      // zachowuje formę „Sekcja N · V kV"/„Szyna WN · V kV").
-      const zStacji = busbarLabels.filter((l) => l.ownerRef.startsWith('stn/'));
-      expect(zStacji.length).toBeGreaterThan(0);
-      expect(zStacji.every((l) => /^S\d+ · Sekcja \d+/.test(l.text))).toBe(true);
-      // S9-12 (audyt C-8 — „dwa różne obiekty z identycznym opisem w jednym
-      // kadrze"): sam FORMAT z członem `S\d+` nie dowodzi rozróżnialności —
-      // dwie stacje mogłyby dostać ten sam kod (np. regres źródła kodu na
-      // stałą). Asercja wprost: przy WIELU stacjach w kadrze (fixtura: 53)
-      // każda etykieta sekcji jest INNA (człon stacji z danych czyni opis
-      // unikalnym per stacja).
-      expect(zStacji.length).toBeGreaterThan(1);
-      expect(new Set(zStacji.map((l) => l.text)).size).toBe(zStacji.length);
-      expect(busbarLabels.some((l) => /^Szyna WN( · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
-    }
+  it('każda szyna SN (stacji + sekcji GPZ) ma DOKŁADNIE JEDNĄ etykietę busbar-voltage, format poprawny', () => {
+    const scene = buildSceneV3(enm);
+    expect(allBusbarLabelsValid(scene)).toBe(true);
+    expect(busbarLabelGaps(scene)).toHaveLength(0);
+    const busbarLabels = scene.labels.filter((l) => l.ownerKind === 'busbar-voltage');
+    // 53 stacje + N sekcji GPZ (fixtura: 1) — parytet z GPZ dosłownie.
+    expect(busbarLabels.length).toBeGreaterThanOrEqual(53);
+    // S9-7 (reguła KLASA §3 — predykaty parami): format sprawdza WYŁĄCZNIE
+    // wyrocznia produkcyjna (`busbarLabelGaps` wyżej). Poprzednia wersja
+    // testu powtarzała TU własne wyrażenie regularne, i to ROZJECHANE z
+    // produkcją: dopuszczała kropkę dziesiętną („15.5 kV"), której kanon
+    // zapisu rysunku (`liczbaRysunkuPl`) zabrania. Dwa niezależne warunki na
+    // ten sam format to defekt czekający na dane brzegowe — wzorzec został
+    // usunięty, a jego intencję (forma SN + forma WN §21.1) niesie dowód
+    // POZYTYWNY niżej.
+    //
+    // S9-8: dowód pozytywny nowej własności — opis sekcji stacji niesie
+    // IDENTYFIKATOR STACJI jako człon wiodący (GPZ, który kodu nie ma,
+    // zachowuje formę „Sekcja N · V kV"/„Szyna WN · V kV").
+    const zStacji = busbarLabels.filter((l) => l.ownerRef.startsWith('stn/'));
+    expect(zStacji.length).toBeGreaterThan(0);
+    expect(zStacji.every((l) => /^S\d+ · Sekcja \d+/.test(l.text))).toBe(true);
+    // S9-12 (audyt C-8 — „dwa różne obiekty z identycznym opisem w jednym
+    // kadrze"): sam FORMAT z członem `S\d+` nie dowodzi rozróżnialności —
+    // dwie stacje mogłyby dostać ten sam kod (np. regres źródła kodu na
+    // stałą). Asercja wprost: przy WIELU stacjach w kadrze (fixtura: 53)
+    // każda etykieta sekcji jest INNA (człon stacji z danych czyni opis
+    // unikalnym per stacja).
+    expect(zStacji.length).toBeGreaterThan(1);
+    expect(new Set(zStacji.map((l) => l.text)).size).toBe(zStacji.length);
+    expect(busbarLabels.some((l) => /^Szyna WN( · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
   });
 
   it('(test negatywny a): usunięcie etykiety JEDNEJ szyny SN ⇒ bus-without-label zgłoszony', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const victim = scene.labels.find((l) => l.ownerKind === 'busbar-voltage')!;
     const sabotaged = { ...scene, labels: scene.labels.filter((l) => l !== victim) };
     const gaps = busbarLabelGaps(sabotaged);
@@ -1465,7 +1220,7 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
   });
 
   it('(test negatywny b): tekst spoza formatu „Sekcja N"/„Sekcja N · V kV" ⇒ malformed-text zgłoszony', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const victim = scene.labels.find((l) => l.ownerKind === 'busbar-voltage')!;
     const sabotaged = { ...scene, labels: scene.labels.map((l) => (l === victim ? { ...l, text: 'S1 15kV' } : l)) };
     const gaps = busbarLabelGaps(sabotaged);
@@ -1474,12 +1229,10 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
 });
 
 describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) na fixturze REALNEJ', () => {
-  it('mapowanie kind→symbol jednoznaczne (statyczne, niezależne od LOD) i zero stanów nielegalnych na scenie, na wszystkich LOD', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      expect(allSwitchSymbolsUnambiguous(scene)).toBe(true);
-      expect(switchSymbolUnambiguityGaps(scene)).toHaveLength(0);
-    }
+  it('mapowanie kind→symbol jednoznaczne (statyczne) i zero stanów nielegalnych na scenie', () => {
+    const scene = buildSceneV3(enm);
+    expect(allSwitchSymbolsUnambiguous(scene)).toBe(true);
+    expect(switchSymbolUnambiguityGaps(scene)).toHaveLength(0);
   });
 
   it('(test negatywny a): kind dopisany do udokumentowanej aproksymacji nie psuje sondy, ALE dowód działa na SYMULOWANYM mapowaniu — negatyw pokryty w scripts/sld_v3_acceptance.mjs (statyczna tabela, poza zasięgiem sabotażu na scenie)', () => {
@@ -1487,12 +1240,12 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
     // `apparatusSequence.ts`, poza zasięgiem testu na scenie; dowód
     // pozytywny (mapowanie DZIŚ jednoznaczne) wystarcza tu, negatyw (b/c)
     // niżej i w acceptance script.
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(switchSymbolUnambiguityGaps(scene).some((g) => g.reason === 'kind-symbol-ambiguous')).toBe(false);
   });
 
   it('(test negatywny b): łącznik toru głównego ze stanem spoza {closed,open,unknown} ⇒ main-path-switch-invalid-state zgłoszony; `undefined` pozostaje LEGALNY (Invariant 9)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const anySwitch = scene.symbols.find((s) => s.symbolId === 'breaker' || s.symbolId === 'disconnector' || s.symbolId === 'fuseSwitch')!;
     const sabotaged = {
       ...scene,
@@ -1516,7 +1269,7 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
   // UX-04/POLE-LINIOWE-WZORZEC: napęd to atrybut łącznika, nie inny aparat; sonda pyta
   // o `rodzajSymbolu`, nie o tożsamość rysunku).
   describe('stan × rysunek łącznika toru (w tym znak napędu)', () => {
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const ofiara = scena.symbols.find((s) => s.symbolId === 'breaker' || s.symbolId === 'disconnector')!;
     const rysunki = [...new Set([...RODZAJE_LACZNIKOW_TORU].flatMap((k) => symboleRodzajuAparatu(k)))];
     it('warunek wstępny: rysunki obejmują oba łączniki ze znakiem napędu', () => {
@@ -1543,7 +1296,7 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
   });
 
   it('(test negatywny c): „52" jako wiersz kodu w ramce bloku zabezpieczeń ⇒ device-number-52-in-protection-codes zgłoszony', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const blok = syntetycznyBlok('sabotage-relay', 0, 0, true);
     const sabotaged = {
       ...scene,
@@ -1555,7 +1308,7 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
   });
 
   it('(test negatywny c, ownerKind): etykieta „52" z ownerKind spoza protection ⇒ device-number-52-misplaced zgłoszony', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const victim = scene.labels.find((l) => l.text === '52');
     if (!victim) return; // fixtura referencyjna: 0 torów wyzwalania (§17.2/GPZ) — patrz F9.9 opis niżej.
     const sabotaged = { ...scene, labels: scene.labels.map((l) => (l === victim ? { ...l, ownerKind: 'apparatus' as const } : l)) };
@@ -1565,7 +1318,7 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
 });
 
 describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixturze REALNEJ (sldSubstrate52s: sterowniki pól stacji z funkcjami, bez macierzy wyzwoleń i wejść, 0 measurements)', () => {
-  it('§17.2 na REALNEJ fixturze: blok zabezpieczeń DOKŁADNIE przy polach z funkcjami sterownika (L1/L2), zero na L0; bez macierzy wyzwoleń — zero torów wyzwalania; bez pomiarów — zero mierników; sonda bez luk', () => {
+  it('§17.2 na REALNEJ fixturze: blok zabezpieczeń DOKŁADNIE przy polach z funkcjami sterownika; bez macierzy wyzwoleń — zero torów wyzwalania; bez pomiarów — zero mierników; sonda bez luk', () => {
     // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela 2026-11-05): pola stacji
     // rzutują kody funkcji jak pola GPZ. Dawniej blok stacji kodów nie rzutował (W5-B), a ten
     // test twierdził, że fikstura nie niesie pól — twierdzenie było fałszywe (fikstura niesie
@@ -1580,20 +1333,16 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
     expect(zKodami.size).toBeGreaterThan(100);
     expect(sterownikiPol.flatMap((pa) => pa.macierz_wyzwolen)).toHaveLength(0);
     expect(sterownikiPol.filter((pa) => Object.values(pa.wejscia).some((v) => (Array.isArray(v) ? v.length > 0 : v)))).toHaveLength(0);
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      const bloki = scene.symbols.filter((s) => s.symbolId === 'protectionRelay').map((s) => s.meta?.ownerRef ?? '');
-      if (lod === 0) expect(bloki).toHaveLength(0);
-      else expect([...bloki].sort()).toEqual([...zKodami].sort());
-      expect(scene.symbols.filter((s) => s.symbolId === 'meter')).toHaveLength(0);
-      expect(scene.segments.filter((s) => s.meta?.kind === 'protectionTrip')).toHaveLength(0);
-      expect(allProtectionMarkingsValid(scene)).toBe(true);
-      expect(noProtectionAnnotationAtLod0(scene)).toBe(true);
-    }
+    const scene = buildSceneV3(enm);
+    const bloki = scene.symbols.filter((s) => s.symbolId === 'protectionRelay').map((s) => s.meta?.ownerRef ?? '');
+    expect([...bloki].sort()).toEqual([...zKodami].sort());
+    expect(scene.symbols.filter((s) => s.symbolId === 'meter')).toHaveLength(0);
+    expect(scene.segments.filter((s) => s.meta?.kind === 'protectionTrip')).toHaveLength(0);
+    expect(allProtectionMarkingsValid(scene)).toBe(true);
   });
 
-  it('(negatyw obowiązkowy, §17.5a) ramka bloku zabezpieczeń BEZ wierszy kodów na L2 ⇒ protectionMarkingGaps WYKRYWA (dowód, że wyrocznia gryzie, nie zawsze zielona)', () => {
-    const scene = buildSceneV3(enm, 2);
+  it('(negatyw obowiązkowy, §17.5a) ramka bloku zabezpieczeń BEZ wierszy kodów ⇒ protectionMarkingGaps WYKRYWA (dowód, że wyrocznia gryzie, nie zawsze zielona)', () => {
+    const scene = buildSceneV3(enm);
     const synthetic: SceneV3 = {
       ...scene,
       symbols: [...scene.symbols, syntetycznyBlok('bay-fabricated', 800, 800, false).symbol],
@@ -1603,22 +1352,20 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
     expect(allProtectionMarkingsValid(synthetic)).toBe(false);
   });
 
-  it('(negatyw obowiązkowy, karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ) przekaźnik BEZ ramki bloku (dawny okrąg) ⇒ relay-without-frame na KAŻDYM LOD z warstwą adnotacji', () => {
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      const synthetic: SceneV3 = {
-        ...scene,
-        symbols: [
-          ...scene.symbols,
-          { symbolId: 'protectionRelay', x: 800, y: 800, meta: { ownerRef: 'bay-okrag', elementKind: 'protectionAnnotation' } },
-        ],
-      };
-      expect(protectionMarkingGaps(synthetic).some((g) => g.reason === 'relay-without-frame' && g.ownerRef === 'bay-okrag')).toBe(true);
-    }
+  it('(negatyw obowiązkowy, karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ) przekaźnik BEZ ramki bloku (dawny okrąg) ⇒ relay-without-frame', () => {
+    const scene = buildSceneV3(enm);
+    const synthetic: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        { symbolId: 'protectionRelay', x: 800, y: 800, meta: { ownerRef: 'bay-okrag', elementKind: 'protectionAnnotation' } },
+      ],
+    };
+    expect(protectionMarkingGaps(synthetic).some((g) => g.reason === 'relay-without-frame' && g.ownerRef === 'bay-okrag')).toBe(true);
   });
 
   it('(negatyw obowiązkowy) wiersz kodu bloku POZA ramką ⇒ code-row-outside-frame', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const blok = syntetycznyBlok('bay-wiersz', 800, 800, true);
     const synthetic: SceneV3 = {
       ...scene,
@@ -1632,7 +1379,7 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
   });
 
   it('(negatyw obowiązkowy, §17.2/§17.5b) linia wyzwalania do NIEWŁAŚCIWEGO/nierejestrowanego punktu (nie port aparatu tego samego pola) ⇒ protectionMarkingGaps WYKRYWA', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const synthetic: SceneV3 = {
       ...scene,
       symbols: [
@@ -1652,7 +1399,7 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
   });
 
   it('(pozytyw kontrolny) para blok+tor poprawnie zakotwiczona na REJESTROWANYM porcie wyłącznika i wejściu ramki TEGO SAMEGO pola ⇒ zero luk', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const fakeBreaker: SceneV3['symbols'][number] = {
       symbolId: 'breaker',
       x: 800,
@@ -1679,88 +1426,12 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
     expect(allProtectionMarkingsValid(synthetic)).toBe(true);
   });
 
-  // -------------------------------------------------------------------------
-  // B-1 (recenzja F9.9, spec §17.4 L1) — protectionAnnotationAtLod1IsBareFrame.
-  // Dowody POZYTYWNE i NEGATYWNE na scenach syntetycznych (fixtura
-  // referencyjna jest pusto-prawdziwa — 0 danych §17.2, recenzent wytknął,
-  // że to nie wystarcza jako dowód).
-  // -------------------------------------------------------------------------
-
-  it('B-1 (§17.4 L1, POZYTYW): scena L1 z GOŁĄ ramką bloku zabezpieczeń i linią wyłączania do łącznika pola ⇒ oracle zielony', () => {
-    const scene = buildSceneV3(enm, 1);
-    const blok = syntetycznyBlok('bay-l1', 800, 800, false).symbol;
-    const fakeBreaker: SceneV3['symbols'][number] = {
-      symbolId: 'breaker',
-      x: 760,
-      y: 808,
-      meta: { ownerRef: 'bay-l1', elementKind: 'apparatus' },
-    };
-    const synthetic: SceneV3 = {
-      ...scene,
-      symbols: [...scene.symbols, fakeBreaker, blok],
-      segments: [
-        ...scene.segments,
-        {
-          // Port N wyłącznika (768, 808) → wejście ramki (800, 808).
-          points: [{ x: 768, y: 808 }, { x: 800, y: 808 }],
-          meta: { kind: 'protectionTrip', ownerRef: 'bay-l1#trip-line', elementKind: 'protectionAnnotation' },
-        },
-      ],
-    };
-    expect(synthetic.meta.lod).toBe(1);
-    // Ramka OBECNA (dowód pozytywny — nie pusta scena) i oracle zielony.
-    expect(synthetic.symbols.some((s) => s.symbolId === 'protectionRelay')).toBe(true);
-    expect(protectionAnnotationAtLod1IsBareFrame(synthetic)).toBe(true);
-    expect(allProtectionMarkingsValid(synthetic)).toBe(true); // ownerRef i ramka są, kodów brak — L1 OK.
-  });
-
-  it('B-1 (§17.4 L1, NEGATYW ×4): wiersze kodów / przekaźnik bez ramki / linia pomiarowa / miernik na L1 ⇒ oracle FAIL (dowód, że gryzie)', () => {
-    const scene = buildSceneV3(enm, 1);
-    const blok = syntetycznyBlok('bay-l1', 800, 800, true);
-    const withCodes: SceneV3 = {
-      ...scene,
-      symbols: [...scene.symbols, blok.symbol],
-      labels: [...scene.labels, ...blok.labels],
-    };
-    expect(protectionAnnotationAtLod1IsBareFrame(withCodes)).toBe(false);
-    // Ta sama wada widziana przez protectionMarkingGaps (codes-present-at-lod1).
-    expect(protectionMarkingGaps(withCodes).some((g) => g.reason === 'codes-present-at-lod1')).toBe(true);
-
-    const withCircle: SceneV3 = {
-      ...scene,
-      symbols: [
-        ...scene.symbols,
-        { symbolId: 'protectionRelay', x: 800, y: 800, meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' } },
-      ],
-    };
-    expect(protectionAnnotationAtLod1IsBareFrame(withCircle)).toBe(false);
-
-    const withMeasurement: SceneV3 = {
-      ...scene,
-      segments: [
-        ...scene.segments,
-        {
-          points: [{ x: 800, y: 900 }, { x: 900, y: 900 }],
-          meta: { kind: 'measurementLink', ownerRef: 'bay-l1#measurement-link', elementKind: 'protectionAnnotation' },
-        },
-      ],
-    };
-    expect(protectionAnnotationAtLod1IsBareFrame(withMeasurement)).toBe(false);
-
-    const withMeter: SceneV3 = {
-      ...scene,
-      symbols: [
-        ...scene.symbols,
-        { symbolId: 'meter', x: 800, y: 800, meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' } },
-      ],
-    };
-    expect(protectionAnnotationAtLod1IsBareFrame(withMeter)).toBe(false);
-  });
-
-  it('B-1 sanity: na L2 oracle L1 nie dotyczy (zwraca true niezależnie od kodów) — rozdział odpowiedzialności per LOD', () => {
-    const scene2 = buildSceneV3(enm, 2);
-    expect(protectionAnnotationAtLod1IsBareFrame(scene2)).toBe(true);
-  });
+  // B-1 (recenzja F9.9, spec §17.4 L1) — SKASOWANE z intencją (karta
+  // SLD-SKALA-I-NAWIGACJA R1 + werdykt właściciela 2026-11-11): dawny poziom L1
+  // rysował GOŁĄ ramkę bloku zabezpieczeń bez kodów. Pusty prostokąt bez funkcji
+  // nie może wystąpić w gotowym schemacie przy żadnej skali — scena niesie blok
+  // zawsze z kodami (`protectionMarkingGaps` → 'frame-without-codes', negatyw
+  // wyżej), a kanwa ukrywa klasę RAZEM z obrysem, gdy pismo jest nieczytelne.
 
   // -------------------------------------------------------------------------
   // R-3 (recenzja F9.9): tor wyzwalania NIE mostkuje komponentów spójności
@@ -1768,7 +1439,7 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
   // -------------------------------------------------------------------------
 
   it('R-3: segment protectionTrip łączący ODCIĘTE źródło z szyną ⇒ źródło NADAL zgłaszane jako odcięte (tor wyzwalania wykluczony z unii)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     // Syntetyczne odcięte źródło: symbol gridSource daleko od sceny (port
     // `bottom` w (808, 1024)) + szyna-wyspa obok; JEDYNE połączenie
     // źródło→szyna to segment protectionTrip.
@@ -1814,18 +1485,16 @@ describe(
   'buildSceneV3 — F10.5: secondary_link_duality_probe / annotation_no_overlap_primary_probe / ' +
     'meter_symbol_disambiguation (spec §20.1/§20.3/§20.4) na fixturze REALNEJ (0 protection_assignments)',
   () => {
-    it('§20.1 „brak danych = brak linii pomiarowej" na REALNEJ fixturze: ZERO segmentów measurementLink na WSZYSTKICH LOD — dowód vacuously true (fixtura nie niesie ProtectionAssignment w ogóle)', () => {
-      for (const lod of LODS) {
-        const scene = buildSceneV3(enm, lod);
-        expect(scene.segments.filter((s) => s.meta?.kind === 'measurementLink')).toHaveLength(0);
-        expect(allSecondaryLinksValid(scene)).toBe(true);
-        expect(allMeterSymbolsDisambiguated(scene)).toBe(true);
-        expect(noAnnotationOverlapsPrimaryPath(scene)).toBe(true);
-      }
+    it('§20.1 „brak danych = brak linii pomiarowej" na REALNEJ fixturze: ZERO segmentów measurementLink — dowód vacuously true (fixtura nie niesie ProtectionAssignment w ogóle)', () => {
+      const scene = buildSceneV3(enm);
+      expect(scene.segments.filter((s) => s.meta?.kind === 'measurementLink')).toHaveLength(0);
+      expect(allSecondaryLinksValid(scene)).toBe(true);
+      expect(allMeterSymbolsDisambiguated(scene)).toBe(true);
+      expect(noAnnotationOverlapsPrimaryPath(scene)).toBe(true);
     });
 
     it('(pozytyw kontrolny, §20.1a/c) CT+przekaźnik+wyłącznik z DWIEMA liniami RÓŻNYMI (measurementLink CT→przekaźnik, protectionTrip przekaźnik→wyłącznik), oba zakotwiczone na REJESTROWANYCH portach TEGO SAMEGO pola ⇒ zero luk', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const fakeCt: SceneV3['symbols'][number] = {
         symbolId: 'currentTransformer',
         x: 700,
@@ -1868,7 +1537,7 @@ describe(
     });
 
     it('(negatyw obowiązkowy, §20.1b) linia pomiarowa dotykająca PORTU WYŁĄCZNIKA (bezpośrednio „pomiar z wyłącznika") ⇒ secondaryLinkDualityGaps WYKRYWA', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const fakeBreaker: SceneV3['symbols'][number] = {
         symbolId: 'breaker',
         x: 700,
@@ -1893,7 +1562,7 @@ describe(
     });
 
     it('(negatyw obowiązkowy, §20.1c) linia pomiarowa BEZ zakotwiczenia na REJESTROWANYCH portach CT/przekaźnika TEGO SAMEGO pola ⇒ secondaryLinkDualityGaps WYKRYWA (endpoint-mismatch)', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const synthetic: SceneV3 = {
         ...scene,
         segments: [
@@ -1914,7 +1583,7 @@ describe(
     // TEN SAM wzorzec R-3 (F9.9) co protectionTrip, teraz dla measurementLink.
     // -----------------------------------------------------------------------
     it('§20.1e: segment measurementLink łączący ODCIĘTE źródło z szyną ⇒ źródło NADAL zgłaszane jako odcięte (linia pomiarowa wykluczona z unii ciągłości)', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const strandedSource: SceneV3['symbols'][number] = {
         symbolId: 'gridSource',
         x: 800,
@@ -1939,45 +1608,10 @@ describe(
     });
 
     // -----------------------------------------------------------------------
-    // §20.1/§17.4: obie linie wtórne ukryte na L0/L1 (rozszerzenie
-    // `noProtectionAnnotationAtLod0`/`protectionAnnotationAtLod1IsBareFrame`
-    // o measurementLink, patrz `scene/buildScene.ts`).
-    // -----------------------------------------------------------------------
-    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L1 ⇒ protectionAnnotationAtLod1IsBareFrame FAIL', () => {
-      const scene = buildSceneV3(enm, 1);
-      const synthetic: SceneV3 = {
-        ...scene,
-        segments: [
-          ...scene.segments,
-          {
-            points: [{ x: 800, y: 900 }, { x: 900, y: 900 }],
-            meta: { kind: 'measurementLink', ownerRef: 'bay-l1b#measurement-link', elementKind: 'protectionAnnotation' },
-          },
-        ],
-      };
-      expect(protectionAnnotationAtLod1IsBareFrame(synthetic)).toBe(false);
-    });
-
-    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L0 ⇒ noProtectionAnnotationAtLod0 FAIL', () => {
-      const scene = buildSceneV3(enm, 0);
-      const synthetic: SceneV3 = {
-        ...scene,
-        segments: [
-          ...scene.segments,
-          {
-            points: [{ x: 800, y: 900 }, { x: 900, y: 900 }],
-            meta: { kind: 'measurementLink', ownerRef: 'bay-l0#measurement-link', elementKind: 'protectionAnnotation' },
-          },
-        ],
-      };
-      expect(noProtectionAnnotationAtLod0(synthetic)).toBe(false);
-    });
-
-    // -----------------------------------------------------------------------
     // §20.4 meter_symbol_disambiguation.
     // -----------------------------------------------------------------------
     it('(negatyw obowiązkowy, §20.4a) okrąg „M" BEZ właściciela (pole) ⇒ meterDisambiguationGaps WYKRYWA', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const synthetic: SceneV3 = {
         ...scene,
         symbols: [...scene.symbols, { symbolId: 'meter', x: 800, y: 800, meta: {} }],
@@ -1988,7 +1622,7 @@ describe(
     });
 
     it('(pozytyw kontrolny, §20.4a) okrąg „M" Z właścicielem (pole) ⇒ zero luk', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const synthetic: SceneV3 = {
         ...scene,
         symbols: [
@@ -2007,7 +1641,7 @@ describe(
     // zero" na fixturze referencyjnej).
     // -----------------------------------------------------------------------
     it('(negatyw obowiązkowy, §20.3a) symbol warstwy adnotacji (protectionRelay) nachodzący na przewód toru pierwotnego (bez styku portem) ⇒ annotationOverlapsPrimaryPath WYKRYWA', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const primarySeg = scene.segments.find((s) => s.meta?.elementKind !== 'protectionAnnotation' && s.points.length >= 2);
       expect(primarySeg).toBeTruthy();
       const p0 = primarySeg!.points[0];
@@ -2027,12 +1661,10 @@ describe(
 );
 
 describe('buildSceneV3 — F13.4: trunk_thickness_probe (spec §22.4, D3-6)', () => {
-  it('fixtura L0/L1/L2: trasa ciągu głównego klasą snTrunk, odgałęzienia klasą sn — 0 luk', () => {
-    for (const lod of [0, 1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      expect(trunkThicknessGaps(scene)).toEqual([]);
-      expect(scene.segments.some((s) => s.meta?.kind === 'snTrunk')).toBe(true);
-    }
+  it('fixtura: trasa ciągu głównego klasą snTrunk, odgałęzienia klasą sn — 0 luk', () => {
+    const scene = buildSceneV3(enm);
+    expect(trunkThicknessGaps(scene)).toEqual([]);
+    expect(scene.segments.some((s) => s.meta?.kind === 'snTrunk')).toBe(true);
   });
 
   it('relacja stałych renderu: snTrunk > sn (hierarchia §6/§22.4: szyny > magistrala > odgałęzienie > nN)', () => {
@@ -2042,7 +1674,7 @@ describe('buildSceneV3 — F13.4: trunk_thickness_probe (spec §22.4, D3-6)', ()
   });
 
   it('NEGATYW (wyrocznia gryzie): trasa odgałęźna z klasą snTrunk ⇒ luka', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const branch = scene.segments.find((s) => (s.meta?.ownerRef ?? '').includes('branch_segment'))!;
     const corrupted = {
       ...scene,

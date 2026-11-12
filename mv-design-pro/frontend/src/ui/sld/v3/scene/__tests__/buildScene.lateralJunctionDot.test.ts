@@ -23,7 +23,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { SYMBOL_DEFS } from '../../symbols/defs';
-import { buildSceneV3, noSceneSymbolOverlaps, noSymbolWireCollisions, type SceneLod, type SceneV3 } from '../buildScene';
+import { buildSceneV3, noSceneSymbolOverlaps, noSymbolWireCollisions, type SceneV3 } from '../buildScene';
 import { odczepZaczynaSieNaWezlePola } from './wezelOdczepu';
 import { junctionDotGaps, lateralBranchNodes } from '../crossings';
 import { buildW1MatrixFixture } from './fixtures/w1MatrixVariants';
@@ -53,19 +53,17 @@ function junctionDotCenters(scene: SceneV3): Set<string> {
 
 describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie produkcyjnej', () => {
   describe('sieć referencyjna sldSubstrate52s', () => {
-    for (const lod of [0, 1, 2] as const) {
-      it(`LOD ${lod}: KAŻDY odczep lateralny (points[0] na osi) ma kropkę junction wyśrodkowaną na węźle`, () => {
-        const scene = buildSceneV3(enm, lod as SceneLod);
-        const nodes = lateralBranchNodes(scene, SYMBOL_DEFS);
-        const centers = junctionDotCenters(scene);
-        for (const n of nodes) {
-          expect(centers.has(`${n.x},${n.y}`), `kropka na odczepie (${n.x},${n.y}) LOD ${lod}`).toBe(true);
-        }
-      });
-    }
+    it(`KAŻDY odczep lateralny (points[0] na osi) ma kropkę junction wyśrodkowaną na węźle`, () => {
+      const scene = buildSceneV3(enm);
+      const nodes = lateralBranchNodes(scene, SYMBOL_DEFS);
+      const centers = junctionDotCenters(scene);
+      for (const n of nodes) {
+        expect(centers.has(`${n.x},${n.y}`), `kropka na odczepie (${n.x},${n.y})`).toBe(true);
+      }
+    });
 
     it('obustronna spójność kropka⇔węzeł (tee + lateral): junction_dot_probe = 0 luk na L2', () => {
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
     });
 
@@ -74,7 +72,7 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
       // NIE dostają kropki — kropka wyłącznie na realnym węźle. Dowód liczbowy:
       // #kropek == #(węzłów tras ∪ odczepów lateralnych), więc żadna nie wisi na
       // czystym skrzyżowaniu.
-      const scene = buildSceneV3(enm, 2);
+      const scene = buildSceneV3(enm);
       const dots = scene.symbols.filter((s) => s.symbolId === 'junction').length;
       // węzły z wyroczni (dedupe wg junctionDotGaps): 0 luk ⇒ #kropek == #węzłów.
       expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
@@ -89,16 +87,14 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
     });
 
     it('kropki NIE naruszają czytelności: noSceneSymbolOverlaps (aparaty) + noSymbolWireCollisions (twarde zero) zielone', () => {
-      for (const lod of [0, 1, 2] as const) {
-        const scene = buildSceneV3(enm, lod as SceneLod);
-        expect(noSceneSymbolOverlaps(scene), `overlaps LOD ${lod}`).toBe(true);
-        expect(noSymbolWireCollisions(scene), `symbol↔wire LOD ${lod}`).toBe(true);
-      }
+      const scene = buildSceneV3(enm);
+      expect(noSceneSymbolOverlaps(scene), `overlaps`).toBe(true);
+      expect(noSymbolWireCollisions(scene), `symbol↔wire`).toBe(true);
     });
 
     it('DETERMINIZM: dwa buildy dają IDENTYCZNY zbiór kropek lateralnych (te same dane ⇒ te same kropki)', () => {
-      const a = buildSceneV3(enm, 2);
-      const b = buildSceneV3(enm, 2);
+      const a = buildSceneV3(enm);
+      const b = buildSceneV3(enm);
       const dotsOf = (s: SceneV3) =>
         s.symbols
           .filter((x) => String(x.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-'))
@@ -109,8 +105,8 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
     });
 
     it('LOD: kropki lateralne obecne na L1 i L2 (te same pola ⇒ ta sama liczba)', () => {
-      const l1 = buildSceneV3(enm, 1);
-      const l2 = buildSceneV3(enm, 2);
+      const l1 = buildSceneV3(enm);
+      const l2 = buildSceneV3(enm);
       const count = (s: SceneV3) =>
         s.symbols.filter((x) => String(x.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-')).length;
       expect(count(l1)).toBeGreaterThan(0);
@@ -120,7 +116,7 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
 
   describe('macierz wariantów (ES/SA/VT) — pełny zestaw rodzajów odczepu', () => {
     const fixture = buildW1MatrixFixture();
-    const scene = buildSceneV3(fixture.enm, 2);
+    const scene = buildSceneV3(fixture.enm);
     const centers = junctionDotCenters(scene);
 
     const fieldLaterals = (fieldRef: string, kind: string) =>

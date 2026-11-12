@@ -1,6 +1,6 @@
 /**
  * SCHEMAT-10 R2 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.8/12/14/19; program
- * WYNIKI-SLD R2) — dowód wizualny trzech zdolności warstwy wynikowej na L2:
+ * WYNIKI-SLD R2) — dowód wizualny trzech zdolności warstwy wynikowej (scena pełna):
  *  A · PRIORYTETY przy kolizji (klasa właściciela ze sceny rozstrzyga — źródła/
  *      TR nigdy ustępują liniom/szynom; tabela ulokowane/ukryte per klasa),
  *  B · AGREGAT „+N wyniki" ROZWINIĘTY (skupisko bliskich kotwic → jeden marker;
@@ -8,7 +8,7 @@
  *  C · STAN NIEAKTUALNY (baner „⚠ wyniki nieaktualne" + etykiety wyszarzone —
  *      nie znikają; Case Immutability Rule).
  *
- * REALNA scena `buildSceneV3(sldSubstrate52s, L2)` + warstwa liczb zbudowana
+ * REALNA scena `buildSceneV3(sldSubstrate52s)` + warstwa liczb zbudowana
  * PRODUKCYJNYM potokiem (`buildResultLabelsFromScene` → `layoutResultLabels`, ta
  * sama funkcja co kanwa). Rysunek bazowy NIETKNIĘTY — warstwa NAD sceną (§11
  * inwariant geometrii). Metryki panelu A = te same, które raportuje
@@ -44,7 +44,7 @@ mkdirSync(OUT, { recursive: true });
 const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 // Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
 // zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
 // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
@@ -73,7 +73,7 @@ for (const s of scene.segments) {
 }
 const payload: RawOverlayPayload = { run_id: 'r2-proof', analysis_type: 'load_flow', elements };
 const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-const layout = layoutResultLabels(scene, byRef, [], 2);
+const layout = layoutResultLabels(scene, byRef, []);
 const m = layout.metrics;
 
 // Per-klasa: ulokowane vs ukryte (dowód priorytetu — panel A).
@@ -138,7 +138,7 @@ KINDS.forEach((k, i) => {
 });
 // Metryki po prawej
 const mx = 1240;
-parts.push(`<text x="${mx}" y="${AY + 24}" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700" fill="${SUB}">Metryki rozmieszczania (wym. 19) — L2</text>`);
+parts.push(`<text x="${mx}" y="${AY + 24}" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700" fill="${SUB}">Metryki rozmieszczania (wym. 19)</text>`);
 const metricLines = [
   `etykiety: ${m.labelCount}   ulokowane: ${layout.placements.length}   agregaty: ${m.aggregateCount}   ukryte: ${m.hiddenCount}`,
   `callouty (przesunięte): ${m.calloutCount}`,
@@ -222,7 +222,7 @@ staleSample.forEach((p, i) => {
 
 const title =
   `<text x="16" y="30" font-family="Inter, system-ui, sans-serif" font-size="19" font-weight="700" fill="${TXT}">` +
-  `R2 · Warstwa wynikowa — walidacja nieaktualnych wyników · priorytety kolizji · agregacja +N · metryki (scena realna sldSubstrate52s, L2)</text>` +
+  `R2 · Warstwa wynikowa — walidacja nieaktualnych wyników · priorytety kolizji · agregacja +N · metryki (scena realna sldSubstrate52s)</text>` +
   `<text x="16" y="52" font-family="Inter, system-ui, sans-serif" font-size="12" fill="${SUB}">` +
   `Priorytet z DANYCH SCENY (klasa właściciela, wym.12); agregacja skupisk ≤ 5·GRID (wym.14); staleness z ISTNIEJĄCEGO statusu przypadku (wym.8); metryki (wym.19).</text>` +
   `<text x="16" y="72" font-family="Inter, system-ui, sans-serif" font-size="11" fill="${SUB}">` +

@@ -1,6 +1,6 @@
 /**
  * S9-12 (OPISY I HIERARCHIA RYSUNKU; rejestr V12K-335 pkt 3) — DOWÓD WIZUALNY:
- * produkcyjna kanwa v3 na pełnym szczególe (L2), OBA motywy, dwie sceny:
+ * produkcyjna kanwa v3 (jedna scena niezależna od skali), OBA motywy, dwie sceny:
  *
  *  1. `pokazowa` — sieć pokazowa pomiaru rozliczeniowego
  *     (`demo-siec-pokazowa`, fixtura `pomiarOdgalezienie.enm.json`): stan po
@@ -63,12 +63,12 @@ function kadr(bbox: { readonly width: number; readonly height: number }) {
 }
 
 for (const scena of SCENY) {
-  const scene = buildSceneV3(scena.enm, 2);
+  const scene = buildSceneV3(scena.enm);
   const idApar = scene.labels.filter((l) => l.ownerKind === 'apparatus' && l.ownerRef.includes('#apparatus-id-'));
   const idF = idApar.filter((l) => /^F\d+(·\d+)?$/.test(l.text));
   const sekcje = scene.labels.filter((l) => l.ownerKind === 'busbar-voltage');
   const stopka =
-    `Pełny szczegół (L2) · ${scena.opis} · etykiet identyfikatora aparatu=${idApar.length}` +
+    `${scena.opis} · etykiet identyfikatora aparatu=${idApar.length}` +
     ` (w tym F=${idF.length}) · etykiet szyn/sekcji=${sekcje.length}`;
   const { width: WIDTH, height: HEIGHT } = kadr(scene.bbox);
   for (const motyw of MOTYWY) {
@@ -82,7 +82,6 @@ for (const scena of SCENY) {
         snapshot={scena.enm}
         width={WIDTH}
         height={HEIGHT}
-        lodOverride={2}
         paletteMode={motyw.mode}
       />,
     );
@@ -95,7 +94,7 @@ for (const scena of SCENY) {
       `<text x="16" y="${HEIGHT + 34}" font-family="system-ui,sans-serif" font-size="15" ` +
       `fill="${paleta.baseStroke}">${stopka}</text>` +
       `</svg>`;
-    const nazwa = `s9-12-${scena.klucz}-L2-${motyw.klucz}.svg`;
+    const nazwa = `s9-12-${scena.klucz}-${motyw.klucz}.svg`;
     writeFileSync(resolve(OUT, nazwa), svg, 'utf8');
     console.log('svg', nazwa);
   }

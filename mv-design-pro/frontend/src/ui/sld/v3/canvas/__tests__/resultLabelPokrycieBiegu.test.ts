@@ -64,7 +64,7 @@ const zwarcie = readFixture<RawOverlayPayload>('s92Zwarcie.overlay.json');
 const rozplyw = readFixture<RawOverlayPayload>('s92Rozplyw.overlay.json');
 const hidden = resultPointsHiddenByModel(enm);
 const nnBoard = resultPointsInStationNnBoard(enm);
-const gpzTabela = resultPointsInGpzTable(buildSceneV3(enm, 2));
+const gpzTabela = resultPointsInGpzTable(buildSceneV3(enm));
 
 // Tożsamość elementów wyprowadzana z modelu po NAZWACH/strukturze, nie z ziaren
 // identyfikatorów (te zmieniają się z każdą zmianą ziarna operacji domenowej).
@@ -156,7 +156,7 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
     expect(bezTabeli.inGpzTable).toBe(0);
     expect(bezTabeli.withoutTemplate).toBe(2);
     // L0: blok GPZ zwinięty, adnotacji nie ma — zbiór pusty.
-    expect(resultPointsInGpzTable(buildSceneV3(enm, 0)).size).toBe(0);
+    expect(resultPointsInGpzTable(buildSceneV3(enm)).size).toBe(0);
   });
 
   it('model DEKLARUJE 7 punktów jako nierysowane (2 mufy ciągu + 5 zacisków pól RMU) — to nie jest brak warstwy', () => {

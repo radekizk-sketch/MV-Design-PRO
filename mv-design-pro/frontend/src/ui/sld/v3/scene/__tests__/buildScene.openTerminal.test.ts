@@ -42,7 +42,6 @@ import {
   buildSceneV3,
   openTerminalGaps,
   sceneSegmentEndpointGaps,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 
@@ -61,7 +60,6 @@ const chainEnm = loadEnm('openTrunkChain.enm.json');
 const substratePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const substrateEnm = (JSON.parse(readFileSync(substratePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
 
 function corridorSegmentRefs(enm: EnergyNetworkModel): readonly string[] {
   const corridors = (enm as { corridors?: ReadonlyArray<{ ordered_segment_refs?: readonly string[] }> }).corridors ?? [];
@@ -85,40 +83,34 @@ describe('§16-v3 bieg otwarty — ciąg główny bez stacji (openTerminal.enm)'
     expect(trunkRefs).toHaveLength(1);
   });
 
-  for (const lod of LODS) {
-    it(`LOD ${lod}: segment ENM widoczny własnym ownerRef + słupek terminalny + wyrocznie zielone`, () => {
-      const scene = buildSceneV3(openTerminalEnm, lod);
-      const refs = sceneSegmentOwnerRefs(scene);
-      expect(refs).toContain(trunkRefs[0]);
-      const openRun = scene.segments.find((s) => s.meta?.ownerRef === trunkRefs[0]);
-      expect(openRun?.meta?.openTerminal).toBe(true);
-      expect(ticksOf(scene)).toHaveLength(1);
-      expect(openTerminalGaps(scene)).toHaveLength(0);
-      expect(allOpenTerminalsMarked(scene)).toBe(true);
-      expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
-      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
-      expect(allSceneGeometryOnGrid(scene)).toBe(true);
-    });
-  }
-
-  it('etykieta „koniec otwarty" WYŁĄCZNIE na L2 (konwencja §18.6/F10.1)', () => {
-    const labelsAt = (lod: SceneLod) =>
-      buildSceneV3(openTerminalEnm, lod).labels.filter((l) => l.text === 'koniec otwarty');
-    expect(labelsAt(2)).toHaveLength(1);
-    expect(labelsAt(1)).toHaveLength(0);
-    expect(labelsAt(0)).toHaveLength(0);
+  it(`segment ENM widoczny własnym ownerRef + słupek terminalny + wyrocznie zielone`, () => {
+    const scene = buildSceneV3(openTerminalEnm);
+    const refs = sceneSegmentOwnerRefs(scene);
+    expect(refs).toContain(trunkRefs[0]);
+    const openRun = scene.segments.find((s) => s.meta?.ownerRef === trunkRefs[0]);
+    expect(openRun?.meta?.openTerminal).toBe(true);
+    expect(ticksOf(scene)).toHaveLength(1);
+    expect(openTerminalGaps(scene)).toHaveLength(0);
+    expect(allOpenTerminalsMarked(scene)).toBe(true);
+    expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
+    expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+    expect(allSceneGeometryOnGrid(scene)).toBe(true);
   });
 
-  it('determinizm: dwa wywołania ⇒ identyczny JSON (każdy LOD)', () => {
-    for (const lod of LODS) {
-      expect(JSON.stringify(buildSceneV3(openTerminalEnm, lod))).toBe(
-        JSON.stringify(buildSceneV3(openTerminalEnm, lod)),
-      );
-    }
+  it('etykieta „koniec otwarty" — dokładnie jedna w scenie (konwencja §18.6/F10.1)', () => {
+    // Dawniej wyłącznie na L2; jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) niesie ją zawsze,
+    // a o jej czytelności rozstrzyga rozmiar ekranowy pisma na kanwie.
+    expect(buildSceneV3(openTerminalEnm).labels.filter((l) => l.text === 'koniec otwarty')).toHaveLength(1);
+  });
+
+  it('determinizm: dwa wywołania ⇒ identyczny JSON', () => {
+    expect(JSON.stringify(buildSceneV3(openTerminalEnm))).toBe(
+      JSON.stringify(buildSceneV3(openTerminalEnm)),
+    );
   });
 
   it('NEGATYW (wyrocznia gryzie): usunięcie słupka ⇒ openTerminalGaps ORAZ port_probe czerwone', () => {
-    const scene = buildSceneV3(openTerminalEnm, 2);
+    const scene = buildSceneV3(openTerminalEnm);
     const sabotaged: SceneV3 = {
       ...scene,
       segments: scene.segments.filter((s) => s.meta?.kind !== 'openTerminal'),
@@ -131,7 +123,7 @@ describe('§16-v3 bieg otwarty — ciąg główny bez stacji (openTerminal.enm)'
   });
 
   it('NEGATYW (wyrocznia gryzie): słupek-sierota (bieg odznaczony) ⇒ gap slupek-sierota', () => {
-    const scene = buildSceneV3(openTerminalEnm, 2);
+    const scene = buildSceneV3(openTerminalEnm);
     const sabotaged: SceneV3 = {
       ...scene,
       segments: scene.segments.map((s) =>
@@ -150,20 +142,18 @@ describe('§16-v3 otwarty ogon za stacją (openBranch.enm)', () => {
     expect(refs.some((r) => r.endsWith('segment_R'))).toBe(true);
   });
 
-  for (const lod of LODS) {
-    it(`LOD ${lod}: wejście (_L) I otwarty ogon (_R) widoczne własnymi ownerRef, ogon ze słupkiem`, () => {
-      const scene = buildSceneV3(openBranchEnm, lod);
-      const sceneRefs = sceneSegmentOwnerRefs(scene);
-      for (const ref of refs) expect(sceneRefs).toContain(ref);
-      const tailRef = refs.find((r) => r.endsWith('segment_R'))!;
-      const tail = scene.segments.find((s) => s.meta?.ownerRef === tailRef);
-      expect(tail?.meta?.openTerminal).toBe(true);
-      expect(ticksOf(scene).length).toBeGreaterThanOrEqual(1);
-      expect(openTerminalGaps(scene)).toHaveLength(0);
-      expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
-      expect(allSceneGeometryOnGrid(scene)).toBe(true);
-    });
-  }
+  it(`wejście (_L) I otwarty ogon (_R) widoczne własnymi ownerRef, ogon ze słupkiem`, () => {
+    const scene = buildSceneV3(openBranchEnm);
+    const sceneRefs = sceneSegmentOwnerRefs(scene);
+    for (const ref of refs) expect(sceneRefs).toContain(ref);
+    const tailRef = refs.find((r) => r.endsWith('segment_R'))!;
+    const tail = scene.segments.find((s) => s.meta?.ownerRef === tailRef);
+    expect(tail?.meta?.openTerminal).toBe(true);
+    expect(ticksOf(scene).length).toBeGreaterThanOrEqual(1);
+    expect(openTerminalGaps(scene)).toHaveLength(0);
+    expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
+    expect(allSceneGeometryOnGrid(scene)).toBe(true);
+  });
 });
 
 describe('§16-v3 tożsamość łańcucha — przęsło GPZ→S0 wieloczłonowe (openTrunkChain.enm)', () => {
@@ -173,19 +163,17 @@ describe('§16-v3 tożsamość łańcucha — przęsło GPZ→S0 wieloczłonowe 
     expect(refs).toHaveLength(3);
   });
 
-  for (const lod of LODS) {
-    it(`LOD ${lod}: KAŻDY z 3 segmentów ENM ma własny kawałek sceny (ownerRef), wyrocznie zielone`, () => {
-      const scene = buildSceneV3(chainEnm, lod);
-      const sceneRefs = sceneSegmentOwnerRefs(scene);
-      for (const ref of refs) expect(sceneRefs).toContain(ref);
-      expect(openTerminalGaps(scene)).toHaveLength(0);
-      expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
-      expect(allSceneGeometryOnGrid(scene)).toBe(true);
-    });
-  }
+  it(`KAŻDY z 3 segmentów ENM ma własny kawałek sceny (ownerRef), wyrocznie zielone`, () => {
+    const scene = buildSceneV3(chainEnm);
+    const sceneRefs = sceneSegmentOwnerRefs(scene);
+    for (const ref of refs) expect(sceneRefs).toContain(ref);
+    expect(openTerminalGaps(scene)).toHaveLength(0);
+    expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
+    expect(allSceneGeometryOnGrid(scene)).toBe(true);
+  });
 
   it('kawałki łańcucha GPZ→S0 stykają się końcami (ciągłość rysunkowa przęsła)', () => {
-    const scene = buildSceneV3(chainEnm, 2);
+    const scene = buildSceneV3(chainEnm);
     const leading = refs[0];
     const middle = refs[1];
     const segA = scene.segments.find((s) => s.meta?.ownerRef === leading)!;
@@ -249,14 +237,12 @@ describe('§16-v3 fixtura referencyjna (substrate) — ogony realne, zero fabryk
     expect(expectedTieEnds).toBe(2);
   });
 
-  for (const lod of LODS) {
-    it(`LOD ${lod}: dokładnie ${expectedTailRuns} słupków (1/ogon z ENM — zero fabrykacji), wyrocznie zielone`, () => {
-      const scene = buildSceneV3(substrateEnm, lod);
-      expect(ticksOf(scene)).toHaveLength(expectedTailRuns);
-      expect(scene.segments.filter((s) => s.meta?.openTerminal === true)).toHaveLength(expectedTailRuns);
-      expect(openTerminalGaps(scene)).toHaveLength(0);
-      expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
-      expect(scene.segments.filter((s) => s.meta?.kind === 'tieMarker')).toHaveLength(expectedTieEnds);
-    });
-  }
+  it(`dokładnie ${expectedTailRuns} słupków (1/ogon z ENM — zero fabrykacji), wyrocznie zielone`, () => {
+    const scene = buildSceneV3(substrateEnm);
+    expect(ticksOf(scene)).toHaveLength(expectedTailRuns);
+    expect(scene.segments.filter((s) => s.meta?.openTerminal === true)).toHaveLength(expectedTailRuns);
+    expect(openTerminalGaps(scene)).toHaveLength(0);
+    expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
+    expect(scene.segments.filter((s) => s.meta?.kind === 'tieMarker')).toHaveLength(expectedTieEnds);
+  });
 });

@@ -5,7 +5,7 @@
  *
  * ŹRÓDŁO ZRZUTU. Produkcyjna kanwa `SldCanvasV3` renderowana statycznie
  * (`renderToStaticMarkup`) na FIXTURZE REFERENCYJNEJ `sldSubstrate52s.enm.json`
- * (53 stacje), poziom szczegółu L2. NIE jest to zrzut z żywego backendu.
+ * (53 stacje), jedna scena niezależna od skali. NIE jest to zrzut z żywego backendu.
  *
  * CZEGO TEN ZRZUT NIE DOWODZI (uczciwie):
  *  · niczego o ścieżce danych z backendu — geometria liczona z fixtury;
@@ -39,7 +39,7 @@ import { dirname, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import { SldCanvasV3, sceneBoxToCameraWorld } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import type { CameraState } from '../src/ui/sld/v3/canvas/camera';
 import { useThemeModeStore } from '../src/ui2/theme/themeMode';
@@ -65,7 +65,6 @@ const KADR = {
   height: Number(process.env.WYSOKOSC ?? '700'),
 } as const;
 const STOPKA = 96;
-const LOD: SceneLod = 2;
 /** Skala kadru — STAŁA w obu fazach (kadr ma być ten sam, nie „dopasowany"). */
 /** 0,9 px/j.św. to NAJMNIEJSZA skala, przy której warstwa czytelności
  *  (`canvas/labelLegibility.ts`) rysuje podpisy przęseł (0,8 ⇒ 0/37 rysowanych,
@@ -79,12 +78,7 @@ const MOTYWY = [
   { klucz: 'jasny', mode: 'light_technical' as const },
 ];
 
-const scene = buildSceneV3(enm, LOD);
-const sceny: Readonly<Record<SceneLod, SceneV3>> = {
-  0: buildSceneV3(enm, 0),
-  1: buildSceneV3(enm, 1),
-  2: scene,
-};
+const scene = buildSceneV3(enm);
 
 const podpis = scene.labels.find((l) => l.ownerKind === 'segment-span' && l.text.startsWith(PARA));
 if (!podpis) throw new Error(`brak podpisu przęsła „${PARA}" w scenie`);
@@ -128,9 +122,8 @@ const bboxKamery = (s: SceneV3) =>
   });
 const kamera: CameraState = {
   transform,
-  lod: LOD,
   viewportSize: KADR,
-  lodBboxes: { 0: bboxKamery(sceny[0]), 1: bboxKamery(sceny[1]), 2: bboxKamery(sceny[2]) },
+  swiat: bboxKamery(scene),
 };
 
 const doPiksela = (x: number, y: number) => ({
@@ -154,7 +147,7 @@ const srPodpis = swiat(srodekPodpisuX, podpis.rect.y);
 const srKabel = swiat(srodekKablaX, kY);
 
 const stopka =
-  `${FAZA === 'przed' ? 'PRZED' : 'PO'} · fixtura referencyjna sldSubstrate52s (53 stacje) · poziom szczegółu L2 · ` +
+  `${FAZA === 'przed' ? 'PRZED' : 'PO'} · fixtura referencyjna sldSubstrate52s (53 stacje) · ` +
   `skala ${SKALA.toFixed(3)} px/j.św. (kadr PODANY kanwie przez cameraOverride) · podpis „${PARA}"`;
 const stopka2 =
   `podpis [${podpis.rect.x}..${podpis.rect.x + podpis.rect.width}] · opisywany kabel [${kMinX}..${kMaxX}] (dł. ${dlugosc} j.św.) · ` +
@@ -178,7 +171,6 @@ for (const motyw of MOTYWY) {
       snapshot={enm}
       width={KADR.width}
       height={KADR.height}
-      lodOverride={LOD}
       paletteMode={motyw.mode}
       cameraOverride={kamera}
     />,

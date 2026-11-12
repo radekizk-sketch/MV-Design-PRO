@@ -48,7 +48,7 @@ import { computeBands, DESCENT_STRIP_HEIGHT, departureStripExtraHeight } from '.
 import { GRID } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
-import { LODS, appendLateralBranch, loadEnm, radialize, sceneSignature } from './syntheticNetworks';
+import { appendLateralBranch, loadEnm, radialize, sceneSignature } from './syntheticNetworks';
 import { przecieciaMiedzyOdgalezieniamiStacji, przecieciaToruStacji } from './przecieciaStacji';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 
@@ -112,23 +112,21 @@ function nakladaniaWspolliniowe(scena: SceneV3): string[] {
 describe('ODEJŚCIA-ZAGNIEŻDŻONE — topologia × liczba odgałęzień tej samej stacji × poziom szczegółu', () => {
   for (const topo of topologie) {
     for (const dokl of doklejenia) {
-      for (const lod of LODS) {
-        it(`${topo.nazwa} × ${dokl.nazwa} × L${lod}: odgałęzienia stacji bez wzajemnych przecięć, każde skrzyżowanie z mostkiem, zero kropek bez węzła modelu, zero przecięć z szyną i torem stacji, zero nakładań`, () => {
-          const model = dokl.zastosuj(topo.siec);
-          const scena = buildSceneV3(model, lod);
-          // Rozstrzygnięcie S7-P2 (2026-10-30): skrzyżowanie kabli bez węzła modelu jest
-          // dozwolone wyłącznie z rysowalnym mostkiem; kropka tylko na węźle modelu.
-          expect(przecieciaBezMostka(scena.segments)).toEqual([]);
-          expect(junctionDotGaps(scena, SYMBOL_DEFS, wezlyModeluEnm(model))).toEqual([]);
-          expect(layoutMetricsReport(scena).crossingWithoutBridgeCount).toBe(0);
-          expect(przecieciaMiedzyOdgalezieniamiStacji(model, scena)).toEqual([]);
-          expect(crossingBusGaps(scena.segments)).toEqual([]);
-          expect(przecieciaToruStacji(scena)).toEqual([]);
-          expect(nakladaniaWspolliniowe(scena)).toEqual([]);
-          // Degeneracja c (kanał w kolumnie 0 wiersza lateralu) nie występuje.
-          expect(scena.meta.stopNotes.filter((n) => n.includes('degeneracja (c'))).toEqual([]);
-        });
-      }
+      it(`${topo.nazwa} × ${dokl.nazwa}: odgałęzienia stacji bez wzajemnych przecięć, każde skrzyżowanie z mostkiem, zero kropek bez węzła modelu, zero przecięć z szyną i torem stacji, zero nakładań`, () => {
+        const model = dokl.zastosuj(topo.siec);
+        const scena = buildSceneV3(model);
+        // Rozstrzygnięcie S7-P2 (2026-10-30): skrzyżowanie kabli bez węzła modelu jest
+        // dozwolone wyłącznie z rysowalnym mostkiem; kropka tylko na węźle modelu.
+        expect(przecieciaBezMostka(scena.segments)).toEqual([]);
+        expect(junctionDotGaps(scena, SYMBOL_DEFS, wezlyModeluEnm(model))).toEqual([]);
+        expect(layoutMetricsReport(scena).crossingWithoutBridgeCount).toBe(0);
+        expect(przecieciaMiedzyOdgalezieniamiStacji(model, scena)).toEqual([]);
+        expect(crossingBusGaps(scena.segments)).toEqual([]);
+        expect(przecieciaToruStacji(scena)).toEqual([]);
+        expect(nakladaniaWspolliniowe(scena)).toEqual([]);
+        // Degeneracja c (kanał w kolumnie 0 wiersza lateralu) nie występuje.
+        expect(scena.meta.stopNotes.filter((n) => n.includes('degeneracja (c'))).toEqual([]);
+      });
     }
   }
 });
@@ -170,51 +168,47 @@ describe('ODEJŚCIA-ZAGNIEŻDŻONE — port odejścia z tożsamości pola, nie z
 
   /** Sygnatura sceny z kodami stacji zastąpionymi identyfikatorem stacji (numeracja jest
    *  konwencją kolejności przejścia, nie tożsamością). */
-  function sygnaturaBezNumeracji(model: EnergyNetworkModel, lod: (typeof LODS)[number]): string {
+  function sygnaturaBezNumeracji(model: EnergyNetworkModel): string {
     const dane = buildSldDataFromSnapshot(model, model.logical_views ?? null, null);
     const idStacji = new Map(dane.stations.map((s) => [s.stationCode, s.id]));
-    return sceneSignature(buildSceneV3(model, lod)).replace(/\bS\d+\b/g, (kod) => idStacji.get(kod) ?? kod);
+    return sceneSignature(buildSceneV3(model)).replace(/\bS\d+\b/g, (kod) => idStacji.get(kod) ?? kod);
   }
 
   for (const dokl of doklejenia) {
-    for (const lod of LODS) {
-      it(`${dokl.nazwa} × L${lod}: odwrócona kolejność ciągów stacji nie zmienia rysunku ani podpisów`, () => {
-        const model = dokl.zastosuj(substrat);
-        expect(sygnaturaBezNumeracji(odwrocKolejnoscCiagowStacji(model), lod)).toBe(sygnaturaBezNumeracji(model, lod));
-      });
-    }
+    it(`${dokl.nazwa}: odwrócona kolejność ciągów stacji nie zmienia rysunku ani podpisów`, () => {
+      const model = dokl.zastosuj(substrat);
+      expect(sygnaturaBezNumeracji(odwrocKolejnoscCiagowStacji(model))).toBe(sygnaturaBezNumeracji(model));
+    });
   }
 });
 
 describe('ODEJŚCIA-ZAGNIEŻDŻONE — grupa nN za ostatnim transformatorem, przed polem na prawo od niego', () => {
   for (const dokl of doklejenia) {
-    for (const lod of [1, 2] as const) {
-      it(`${dokl.nazwa} × L${lod}: szyna rzędu DER nN nie obejmuje osi żadnego pola SN stacji`, () => {
-        const scena = buildSceneV3(dokl.zastosuj(substrat), lod);
-        let stacjePolaZaTr = 0;
-        let rzedyDer = 0;
-        for (const seg of scena.segments) {
-          const owner = seg.meta?.ownerRef ?? '';
-          if (!owner.endsWith('/station#der-row-bus')) continue;
-          rzedyDer += 1;
-          const prefiks = owner.replace(/\/station#der-row-bus$/, '');
-          const osiePol = scena.symbols
-            .filter((s) => s.symbolId === 'breaker' && (s.meta?.ownerRef ?? '').startsWith(`${prefiks}/sn_field/`))
-            .map((s) => s.x + SYMBOL_DEFS[s.symbolId].width / 2);
-          const osieTr = scena.symbols
-            .filter((s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith(`${prefiks}/`))
-            .map((s) => s.x + SYMBOL_DEFS[s.symbolId].width / 2);
-          if (osieTr.length > 0 && osiePol.some((x) => x > Math.max(...osieTr))) stacjePolaZaTr += 1;
-          const lewo = Math.min(...seg.points.map((p) => p.x));
-          const prawo = Math.max(...seg.points.map((p) => p.x));
-          expect(osiePol.filter((x) => x >= lewo && x <= prawo), owner).toEqual([]);
-        }
-        // Warunek wstępny: scena ma rzędy DER i stację z polem SN na prawo od TR —
-        // inaczej test nie ćwiczyłby instancji 4 klasy.
-        expect(rzedyDer).toBeGreaterThan(0);
-        expect(stacjePolaZaTr).toBeGreaterThan(0);
-      });
-    }
+    it(`${dokl.nazwa}: szyna rzędu DER nN nie obejmuje osi żadnego pola SN stacji`, () => {
+      const scena = buildSceneV3(dokl.zastosuj(substrat));
+      let stacjePolaZaTr = 0;
+      let rzedyDer = 0;
+      for (const seg of scena.segments) {
+        const owner = seg.meta?.ownerRef ?? '';
+        if (!owner.endsWith('/station#der-row-bus')) continue;
+        rzedyDer += 1;
+        const prefiks = owner.replace(/\/station#der-row-bus$/, '');
+        const osiePol = scena.symbols
+          .filter((s) => s.symbolId === 'breaker' && (s.meta?.ownerRef ?? '').startsWith(`${prefiks}/sn_field/`))
+          .map((s) => s.x + SYMBOL_DEFS[s.symbolId].width / 2);
+        const osieTr = scena.symbols
+          .filter((s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith(`${prefiks}/`))
+          .map((s) => s.x + SYMBOL_DEFS[s.symbolId].width / 2);
+        if (osieTr.length > 0 && osiePol.some((x) => x > Math.max(...osieTr))) stacjePolaZaTr += 1;
+        const lewo = Math.min(...seg.points.map((p) => p.x));
+        const prawo = Math.max(...seg.points.map((p) => p.x));
+        expect(osiePol.filter((x) => x >= lewo && x <= prawo), owner).toEqual([]);
+      }
+      // Warunek wstępny: scena ma rzędy DER i stację z polem SN na prawo od TR —
+      // inaczej test nie ćwiczyłby instancji 4 klasy.
+      expect(rzedyDer).toBeGreaterThan(0);
+      expect(stacjePolaZaTr).toBeGreaterThan(0);
+    });
   }
 });
 
@@ -235,28 +229,26 @@ describe('ODEJŚCIA-ZAGNIEŻDŻONE — grupa nN za ostatnim transformatorem, prz
 describe('ODEJŚCIA-ZAGNIEŻDŻONE — wachlarz pól GPZ na L0', () => {
   const KABEL_CIAGU_GLOWNEGO = 'seg/88ced29037bd5e349790a5f668820445/segment_L';
   const KABEL_ODGALEZIENIA = 'seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_L';
-  for (const lod of LODS) {
-    it(`GPZ z kilkoma polami liniowymi × L${lod}: zejścia pól bez węzła T; jedyne skrzyżowanie to dwa kable dwóch pól, rysowane mostkiem`, () => {
-      const scena = buildSceneV3(gpzOchrony, lod);
-      // Kropka wyłącznie na węźle modelu (rozstrzygnięcie S7-P2, 2026-10-30): kropki
-      // `sld-v3-wezel-lateral-…` to węzły odczepów pól z modelu, nie przecięcia.
-      expect(junctionDotGaps(scena, SYMBOL_DEFS, wezlyModeluEnm(gpzOchrony))).toEqual([]);
-      expect(crossingBusGaps(scena.segments)).toEqual([]);
-      const przeciecia = interiorCrossings(scena.segments);
-      expect(przeciecia.map((c) => [c.hOwnerRef, c.vOwnerRef, c.involvesBus])).toEqual([
-        [KABEL_CIAGU_GLOWNEGO, KABEL_ODGALEZIENIA, false],
-      ]);
-      // Mostek: pion kabla odgałęzienia przeskakuje poziom ciągu głównego dokładnie w
-      // punkcie przecięcia (ta sama funkcja, której używa kanwa przy rysowaniu ścieżki).
-      const pion = scena.segments.find((s) => s.meta?.ownerRef === KABEL_ODGALEZIENIA)!;
-      const mostki = [...bridgePointsForPolyline(pion.points, przeciecia).values()].flat();
-      expect(mostki).toEqual([przeciecia[0].y]);
-      // Decyzja architekta 2026-10-30 (pkt 4, `S7_GAP_CROSSING_ZERO_2026-07.md` §12): ten
-      // wachlarz z JEDNYM koniecznym skrzyżowaniem z mostkiem jest układem docelowym —
-      // mostek musi być rysowalny (półłuk mieści się w pionie, poziom przechodzi pod nim).
-      expect(przecieciaBezMostka(scena.segments)).toEqual([]);
-    });
-  }
+  it(`GPZ z kilkoma polami liniowymi: zejścia pól bez węzła T; jedyne skrzyżowanie to dwa kable dwóch pól, rysowane mostkiem`, () => {
+    const scena = buildSceneV3(gpzOchrony);
+    // Kropka wyłącznie na węźle modelu (rozstrzygnięcie S7-P2, 2026-10-30): kropki
+    // `sld-v3-wezel-lateral-…` to węzły odczepów pól z modelu, nie przecięcia.
+    expect(junctionDotGaps(scena, SYMBOL_DEFS, wezlyModeluEnm(gpzOchrony))).toEqual([]);
+    expect(crossingBusGaps(scena.segments)).toEqual([]);
+    const przeciecia = interiorCrossings(scena.segments);
+    expect(przeciecia.map((c) => [c.hOwnerRef, c.vOwnerRef, c.involvesBus])).toEqual([
+      [KABEL_CIAGU_GLOWNEGO, KABEL_ODGALEZIENIA, false],
+    ]);
+    // Mostek: pion kabla odgałęzienia przeskakuje poziom ciągu głównego dokładnie w
+    // punkcie przecięcia (ta sama funkcja, której używa kanwa przy rysowaniu ścieżki).
+    const pion = scena.segments.find((s) => s.meta?.ownerRef === KABEL_ODGALEZIENIA)!;
+    const mostki = [...bridgePointsForPolyline(pion.points, przeciecia).values()].flat();
+    expect(mostki).toEqual([przeciecia[0].y]);
+    // Decyzja architekta 2026-10-30 (pkt 4, `S7_GAP_CROSSING_ZERO_2026-07.md` §12): ten
+    // wachlarz z JEDNYM koniecznym skrzyżowaniem z mostkiem jest układem docelowym —
+    // mostek musi być rysowalny (półłuk mieści się w pionie, poziom przechodzi pod nim).
+    expect(przecieciaBezMostka(scena.segments)).toEqual([]);
+  });
 });
 
 describe('ODEJŚCIA-ZAGNIEŻDŻONE — rezerwacja wysokości strefy zejść', () => {

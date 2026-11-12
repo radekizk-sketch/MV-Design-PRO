@@ -1,5 +1,5 @@
 /** Pomiar jednorazowy (W3-KABLE-ETYKIETY §5): minimalne światło równoległych
- *  odcinków toru elektrycznego na fixturze referencyjnej, per LOD. Reużywa
+ *  odcinków toru elektrycznego na fixturze referencyjnej, (jedna scena). Reużywa
  *  produkcyjny buildSceneV3 (zero duplikacji geometrii). Wynik = wyprowadzenie
  *  wartości 4 nowych stałych §5 z DZISIEJSZEJ geometrii. */
 import { readFileSync } from 'node:fs';
@@ -31,8 +31,9 @@ function decompose(seg) {
   return out;
 }
 
-for (const lod of [0, 1, 2]) {
-  const scene = buildSceneV3(enm, lod);
+// Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1).
+{
+  const scene = buildSceneV3(enm);
   // Tylko trasy kablowe/liniowe MIĘDZY stacjami (magistrala + laterale) — kind
   // snTrunk/sn. Wewnętrzna geometria stacji (szyny nN, rzędy DER, dropy) NIE
   // jest „równoległym kablem" w rozumieniu §5 (to szyna, nie trasa).
@@ -76,7 +77,7 @@ for (const lod of [0, 1, 2]) {
       if (d < minH) { minH = d; minHpair = [a.owner, b.owner]; }
     }
   }
-  console.log(`LOD ${lod}: segmenty=${segs.length} V=${V.length} H=${H.length}`);
+  console.log(`segmenty=${segs.length} V=${V.length} H=${H.length}`);
   console.log(`  min światło równoległych PIONÓW = ${minV === Infinity ? 'brak par' : minV + ' px'} ${minVpair ? JSON.stringify(minVpair) : ''}`);
   console.log(`  min światło równoległych POZIOMÓW = ${minH === Infinity ? 'brak par' : minH + ' px'} ${minHpair ? JSON.stringify(minHpair) : ''}`);
 }

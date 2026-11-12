@@ -99,7 +99,7 @@ function przygotuj(enm: EnergyNetworkModel) {
   useSnapshotStore.setState({ snapshot: enm });
   const wynik = render(
     <>
-      <SldCanvasV3Workspace width={SZER} height={WYS} lodOverride={2} />
+      <SldCanvasV3Workspace width={SZER} height={WYS} />
       <InspektorKanwyTestowy />
     </>,
   );
@@ -127,7 +127,7 @@ function skalaKanwy(svg: Element): number {
  */
 function uchwytyWgKlasy(container: HTMLElement, enm: EnergyNetworkModel): Map<KlasaObiektu, Element> {
   const polaZKodami = new Set(enm.bays.filter((b) => funkcjeWlaczone(enm, b.ref_id).length > 0).map((b) => b.ref_id));
-  const scena = buildSceneV3(enm, 2);
+  const scena = buildSceneV3(enm);
   const refyWarstwy = new Set<string>([
     ...scena.symbols.filter((x) => x.meta?.elementKind === 'protectionAnnotation').map((x) => x.meta!.ownerRef!),
     ...scena.segments.filter((x) => x.meta?.elementKind === 'protectionAnnotation').map((x) => x.meta!.ownerRef!),

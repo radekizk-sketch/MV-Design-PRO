@@ -32,7 +32,6 @@ import { ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../../compose/zaciskiPrzekladnika
 import { LABEL_TYPOGRAPHY, measureTextWidth } from '../../core/text';
 import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
-import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../camera';
 import { planSceneLabels, type LabelRenderPlan } from '../labelLegibility';
 import { paneleWgPlanu, ramkiBlokowWgPlanu } from '../obrysyWgPlanu';
 import { SldCanvasV3, symbolTestId } from '../SldCanvasV3';
@@ -50,8 +49,6 @@ const FIKSTURY: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
   ['Z.7, Z.12, Z.13, Z.16, Z.17', snapshot(fxPolaGpz)],
 ];
 const SKALE = [2.5, 1.5, 1.02, 1.0, 0.7, 0.5, 0.35] as const;
-/** Dolna krawędź LOD2 z histerezą (`canvas/camera.ts`) — najmniejsza skala sceny LOD2 w kamerze. */
-const SKALA_DOLNA_LOD2 = DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN);
 const SKALA_NATURALNA = 2.5;
 /** Wiersz bloku przekaźnika — wyrocznia NIEZALEŻNA od listy członków sceny (wzorzec `ownerRef`). */
 const WIERSZ_BLOKU = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
@@ -83,7 +80,7 @@ interface Przypadek {
   readonly plan: LabelRenderPlan;
 }
 
-const SCENY = new Map(FIKSTURY.map(([nazwa, enm]) => [nazwa, buildSceneV3(enm, 2)] as const));
+const SCENY = new Map(FIKSTURY.map(([nazwa, enm]) => [nazwa, buildSceneV3(enm)] as const));
 const PRZYPADKI: Przypadek[] = FIKSTURY.flatMap(([fikstura, enm]) => {
   const scena = SCENY.get(fikstura)!;
   const przeszkody = sceneObstacleRects(scena);
@@ -144,13 +141,12 @@ function naruszenia(p: Przypadek): string[] {
     if (!rowne(panel.rect, oczekiwane)) bledy.push(`${opis}: tło ${panel.bayRef.slice(-7)} ${JSON.stringify(panel.rect)} ≠ ${JSON.stringify(oczekiwane)}`);
     for (const c of [...czlonkowie, ...ramkiPola]) if (!zawiera(panel.rect, c)) bledy.push(`${opis}: tusz poza tłem ${panel.bayRef.slice(-7)}`);
   });
-  // Tła sąsiednich pól rozłączne na skalach, na których kamera rysuje scenę LOD2 (≥ dolna krawędź
-  // LOD2 z histerezą, `SKALA_DOLNA_LOD2`): kolumna pola GPZ jest zwężona do zmierzonego rysunku
-  // pola (odbiór B-02 pkt 8) z zapasem na pismo powiększone podłogą opisów celu kadru NA TEJ
-  // krawędzi (`compose/gpz.ts::szerokosciRysunkuPol`). Scena LOD2 na skali niższej powstaje
-  // wyłącznie przez wymuszony LOD (`lodOverride` — zrzuty dokumentacyjne); tam pismo rośnie dalej
-  // (sufit proporcji klasy), a obrysy tła nadal obejmują tusz — sprawdzane wyżej na każdej skali.
-  if (p.skala >= SKALA_DOLNA_LOD2 - EPS) {
+  // Tła sąsiednich pól rozłączne w KAŻDEJ skali: jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) jest
+  // rysowana przy każdej skali kamery, więc dawne zwolnienie skal poniżej dolnej krawędzi poziomu
+  // pełnego szczegółu (scena tego poziomu powstawała tam tylko z wymuszenia) nie ma już podstawy.
+  // Kolumna pola GPZ jest zwężona do zmierzonego rysunku pola (odbiór B-02 pkt 8) z zapasem na
+  // pismo powiększone podłogą opisów celu kadru (`compose/gpz.ts::szerokosciRysunkuPol`).
+  {
     panele.forEach((a, i) =>
       panele.slice(i + 1).forEach((b) => {
         if (zachodzi(a.rect, b.rect)) bledy.push(`${opis}: tła ${a.bayRef.slice(-7)} × ${b.bayRef.slice(-7)} zachodzą`);
@@ -326,7 +322,7 @@ describe('kanwa: ramka bloku i tło pola w kadrze pola obejmują powiększone wi
     // (korekta v2 2026-11-04: ramka sceny bloku bez okręgu ma zapas do oczka siatki i szerokość
     // minimalną z wejść linii — przy 3000 × 1300 powiększone wiersze mieściły się jeszcze w ramce
     // sceny i iniekcja niżej przestała rozróżniać; przy 1700 × 736 plan ukrywa wiersze).
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={2400} height={1040} lodOverride={2} refyKadru={z.zakres.refy} />);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={2400} height={1040} refyKadru={z.zakres.refy} />);
     const grupa = container.querySelector(`[data-testid="${CSS.escape(symbolTestId(przekaznik, indeks))}"]`)!;
     const rama = grupa.querySelector('[data-przekaznik="ramka-bloku"]');
     expect(rama, 'ramka bloku narysowana').not.toBeNull();

@@ -5,8 +5,9 @@ oraz SLD v3 (SLD_CAD_REBUILD_PLAN_V3, domyślna ścieżka renderu od F8a).
 Po pełnym wygaszeniu starego pipeline (Sugiyama + A* + ELK + V1 layoutPipeline) w PR-5c
 ten guard sprawdza, że nowy konstruktywny builder (`ui/sld/v2/`) ma:
 
-1. Wymagany szkielet katalogowy (theme/geometry/viewport/lod/canvas/command/core/domain).
-2. Testy v2 są obecne (layoutEngine.substrate, ViewportController, LodPolicy, portAnchoredGeometry.substrate;
+1. Wymagany szkielet katalogowy (theme/geometry/viewport/canvas/command/core/domain;
+   dawny `lod/` skasowany kartą SLD-SKALA-I-NAWIGACJA — jedna scena niezależna od skali).
+2. Testy v2 są obecne (layoutEngine.substrate, ViewportController, portAnchoredGeometry.substrate;
    dawny `renderers` skasowany z rendererami v2 — karta GPZ-PARYTET cz. 2).
 3. Brak importu wygaszonych modułów (Sugiyama, A*, ELK, sldCanonicalStyle, IndustrialAesthetics, layoutPipeline V1, SLDView).
 4. Brak importu wygaszonego pakietu `elkjs` w package.json.
@@ -37,7 +38,6 @@ REQUIRED_V2_DIRS = [
     "ui/sld/v2/theme",
     "ui/sld/v2/geometry",
     "ui/sld/v2/viewport",
-    "ui/sld/v2/lod",
     "ui/sld/v2/canvas",
     "ui/sld/v2/command",
     "ui/sld/v2/core",
@@ -49,7 +49,6 @@ REQUIRED_V2_TESTS = [
     # usunięty w konsolidacji 2026-07 — teraz substrate testy żywego silnika).
     "ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts",
     "ui/sld/v2/__tests__/ViewportController.test.ts",
-    "ui/sld/v2/__tests__/LodPolicy.test.ts",
     # Live render-path geometry determinism (dawny visualFixtures na martwym
     # silniku usunięty — teraz port-anchored substrate żywej ścieżki renderu).
     "ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts",
@@ -92,7 +91,7 @@ FORBIDDEN_LEGACY_PATHS = [
     # NOTE: `engine/sld-layout/` was the OLD V1 layout pipeline (Sugiyama/A*/ELK),
     # wygaszony w PR-5c. Po cutover §4 (commit 0baa9e8 „layout-engine foundation —
     # one truth") katalog ten jest NOWYM, kanonicznym silnikiem layoutu
-    # (`TopologicalLayoutEngine`, `lodController`) — JEDYNE źródło geometrii per
+    # (`TopologicalLayoutEngine`) — JEDYNE źródło geometrii per
     # SLD_GEOMETRY_CONTRACT_V1 §1/§7. Wpis usunięty: blokował wymagany kontraktem
     # moduł (geometry/index.ts i canvas importują go zgodnie z kontraktem).
 ]

@@ -62,7 +62,7 @@ describe('W1 — macierz wyposażenia: łańcuch danych kreator→ENM→adapter�
 
   beforeAll(() => {
     fixture = buildW1MatrixFixture();
-    sceneL2 = buildSceneV3(fixture.enm, 2);
+    sceneL2 = buildSceneV3(fixture.enm);
   });
 
   it('każdy wariant §20 rysuje tor pierwotny Z DANYCH (apparatusSource="dane"), sekwencja == konfiguracja', () => {
@@ -162,7 +162,7 @@ describe('W1 — macierz wyposażenia: łańcuch danych kreator→ENM→adapter�
   });
 
   it('KOTWICA: dane pola nie zmieniają tożsamości/kotwic stacji (identyczny stationCount i ciąg główny)', () => {
-    const base = buildSceneV3(fixture.baseEnm, 2);
+    const base = buildSceneV3(fixture.baseEnm);
     // Wstrzyknięcie primary_devices NIE dodaje/usuwa/przenumerowuje stacji ani
     // nie zmienia szkieletu ciągu głównego (§0: footprint kolumny MOŻE rosnąć
     // od realnych stosów, ale tożsamość/kotwice węzłów są zachowane).
@@ -171,8 +171,8 @@ describe('W1 — macierz wyposażenia: łańcuch danych kreator→ENM→adapter�
   });
 
   it('KOTWICA L0=L1=L2 (§20): szkielet ciągu głównego niezmienny między poziomami LOD', () => {
-    const trunk0 = buildSceneV3(fixture.enm, 0).meta.mainTrunkStationIds;
-    const trunk1 = buildSceneV3(fixture.enm, 1).meta.mainTrunkStationIds;
+    const trunk0 = buildSceneV3(fixture.enm).meta.mainTrunkStationIds;
+    const trunk1 = buildSceneV3(fixture.enm).meta.mainTrunkStationIds;
     const trunk2 = sceneL2.meta.mainTrunkStationIds;
     expect([...trunk1]).toEqual([...trunk0]);
     expect([...trunk2]).toEqual([...trunk0]);
@@ -194,7 +194,7 @@ describe('W1b — semantyka toru (uwagi 4/5/6/13/14)', () => {
 
   beforeAll(() => {
     fixture = buildW1MatrixFixture();
-    sceneL2 = buildSceneV3(fixture.enm, 2);
+    sceneL2 = buildSceneV3(fixture.enm);
   });
 
   const mainAxis = (fieldRef: string): SceneSym[] =>

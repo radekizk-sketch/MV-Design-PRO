@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
 import { MAX_SCALE, MIN_SCALE } from '../camera';
 import { sheetSizeFor, type SheetOutline } from '../../sheet/outline';
 import {
@@ -376,22 +376,20 @@ describe('T2-LOD §4 — WYJĄTEK BEZWZGLĘDNY: `unresolved` ⇒ pełna etykieta
 });
 
 describe('T2-LOD §5 — licznik „Ukryto N opisów" liczy WYŁĄCZNIE L1/L2, na REALNYCH scenach', () => {
-  const sceny = { 0: buildSceneV3(GPZ_ENM, 0), 1: buildSceneV3(GPZ_ENM, 1), 2: buildSceneV3(GPZ_ENM, 2) } as const;
+  const scena = buildSceneV3(GPZ_ENM);
 
-  for (const lod of [0, 1, 2] as readonly SceneLod[]) {
-    it(`LOD ${lod}: hiddenDetailContainsL0 jest PUSTA na całej drabinie skal`, () => {
-      const scene = sceny[lod];
-      const obstacles = sceneObstacleRects(scene);
-      const sheet = sheetSizeFor(scene);
-      for (const scale of PELNA_DRABINA_SKAL) {
-        const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
-        expect(hiddenDetailContainsL0(plan), `LOD ${lod} @ ${scale}`).toEqual([]);
-      }
-    });
-  }
+  it(`hiddenDetailContainsL0 jest PUSTA na całej drabinie skal`, () => {
+    const scene = scena;
+    const obstacles = sceneObstacleRects(scene);
+    const sheet = sheetSizeFor(scene);
+    for (const scale of PELNA_DRABINA_SKAL) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
+      expect(hiddenDetailContainsL0(plan), `@ ${scale}`).toEqual([]);
+    }
+  });
 
   it('bramka NIE jest pusta trywialnie: przy niskiej skali sieć referencyjna FAKTYCZNIE ukrywa opisy L1/L2', () => {
-    const scene = sceny[2];
+    const scene = scena;
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), MIN_SCALE, sheetSizeFor(scene));
     expect(plan.hiddenDetail.length).toBeGreaterThan(0);
     // …a mimo to zbiór L0 w hiddenDetail zostaje pusty (dowód wyżej).
@@ -403,7 +401,7 @@ describe('T2-LOD §5 — licznik „Ukryto N opisów" liczy WYŁĄCZNIE L1/L2, n
 
 describe('T2-LOD §6 — wyrocznia spójności GRYZIE (sabotaż)', () => {
   it('brak sabotażu: WIELOSTACYJNA sieć referencyjna ma ZERO niespójności klasyfikacji L0', () => {
-    const scene = buildSceneV3(WIELOSTACYJNA_ENM, 1);
+    const scene = buildSceneV3(WIELOSTACYJNA_ENM);
     expect(labelsWithInconsistentL0Classification(scene.labels)).toEqual([]);
   });
 
@@ -428,7 +426,7 @@ describe('T2-LOD §6 — wyrocznia spójności GRYZIE (sabotaż)', () => {
 // zawsze ten sam wynik, bez stanu ukrytego między wywołaniami.
 describe('T2-LOD §7 — determinizm: te same wejścia = ten sam plan, bez stanu ukrytego', () => {
   it('planSceneLabels jest CZYSTĄ funkcją: dwa wywołania z KLONAMI tych samych danych dają identyczny wynik', () => {
-    const scene = buildSceneV3(GPZ_ENM, 2);
+    const scene = buildSceneV3(GPZ_ENM);
     const obstacles = sceneObstacleRects(scene);
     const sheet = sheetSizeFor(scene);
     const scale = 0.5;

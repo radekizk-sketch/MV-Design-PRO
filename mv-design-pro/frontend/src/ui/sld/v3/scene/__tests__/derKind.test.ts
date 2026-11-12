@@ -52,7 +52,7 @@ function derSymbolOf(scene: SceneV3, genRef: string) {
 
 describe('DER-MENU-V3 A — meta.derKind płynie adapter→compose→scene (REALNA wartość, zero re-derywacji)', () => {
   it('DER rozpoznane z fixtury (pv_inverter/bess/wind_inverter) niosą meta.derKind = pv/bess/wind', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     // GPZ-MODEL (2026-10-21): bez literałów identyfikatorów — regeneracja fikstury (ziarno GPZ
     // z równoważnikiem 110 kV) przepina ref-y wszystkich źródeł, a literały wskazywały sieć,
     // której produkt już nie wytwarza. Wyrocznia z DANYCH: KAŻDY generator fikstury, który ma
@@ -77,20 +77,20 @@ describe('DER-MENU-V3 A — meta.derKind płynie adapter→compose→scene (REAL
 
   it('gen_type=synchronous ⇒ meta.derKind=generator (osobny rodzaj v2 SldSourceView, glif derGenerator)', () => {
     const { snapshot, genRef } = withGenType(0, 'synchronous');
-    const scene = buildSceneV3(snapshot, 2);
+    const scene = buildSceneV3(snapshot);
     expect(derSymbolOf(scene, genRef)?.meta?.derKind).toBe('generator');
   });
 
   it('gen_type nierozpoznany/brak ⇒ meta.derKind=unknown (honest-unknown, ZERO domysłu podtypu)', () => {
     for (const corrupt of ['co_to_jest', null, undefined]) {
       const { snapshot, genRef } = withGenType(0, corrupt);
-      const scene = buildSceneV3(snapshot, 2);
+      const scene = buildSceneV3(snapshot);
       expect(derSymbolOf(scene, genRef)?.meta?.derKind).toBe('unknown');
     }
   });
 
   it('symbole NIE-DER (aparat, stacja, sieć zewnętrzna) NIGDY nie niosą derKind (undefined)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const nonDer = scene.symbols.filter((s) => s.meta?.elementKind !== 'der');
     expect(nonDer.length).toBeGreaterThan(0);
     expect(nonDer.every((s) => s.meta?.derKind === undefined)).toBe(true);
@@ -104,8 +104,8 @@ describe('DER-MENU-V3 D — determinizm sceny z nowym meta (spec §7, reguła 7 
         .filter((s) => s.meta?.elementKind === 'der')
         .map((s) => [s.meta!.ownerRef!, s.meta?.derKind] as const);
 
-    const a = buildSceneV3(enm, 2);
-    const b = buildSceneV3(enm, 2);
+    const a = buildSceneV3(enm);
+    const b = buildSceneV3(enm);
     expect(kindMapOf(a)).toEqual(kindMapOf(b));
     // Sanity: fixtura NAPRAWDĘ niesie DER (inaczej test byłby pusto-zielony).
     expect(kindMapOf(a).length).toBeGreaterThan(0);
@@ -121,7 +121,7 @@ describe('DER-MENU-V3 D — determinizm sceny z nowym meta (spec §7, reguła 7 
     // meta↔geometria. (Realny dowód „zero zmian geometrii" wobec stanu sprzed
     // karty: PEŁNA regresja goldenów/geometrii sceny v3 pozostaje zielona —
     // gdyby derKind ruszył layout, te testy by pękły.)
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
     expect(derSymbols.length).toBeGreaterThan(0);
     for (const s of derSymbols) {

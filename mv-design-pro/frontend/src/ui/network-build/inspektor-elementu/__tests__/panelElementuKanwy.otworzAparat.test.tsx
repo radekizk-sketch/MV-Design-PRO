@@ -42,8 +42,6 @@ function wczytaj(sciezka: string): EnergyNetworkModel {
   return 'enm' in surowy ? surowy.enm : surowy;
 }
 
-const LOD = 2 as const;
-
 /** Dwie drogi aparatury pola w modelu: gałęzie pola (`equipment_refs`, sieć 52 stacji)
  *  i rekordy aparatów (`primary_devices`, migawka macierzy z backendu). */
 const SIECI: readonly (readonly [string, EnergyNetworkModel])[] = [
@@ -63,7 +61,7 @@ interface PrzypadekAparatu {
 /** Symbole aparatów pola z refem urządzenia — jeden reprezentant na (sieć × rodzaj symbolu). */
 const PRZYPADKI: readonly PrzypadekAparatu[] = SIECI.flatMap(([siec, enm]) => {
   const wgRodzaju = new Map<string, PrzypadekAparatu>();
-  for (const s of buildSceneV3(enm, LOD).symbols) {
+  for (const s of buildSceneV3(enm).symbols) {
     const poleRef = s.meta?.ownerRef;
     const aparatRef = s.meta?.deviceRef;
     if (s.meta?.elementKind !== 'apparatus' || !poleRef || !aparatRef || !s.meta.testId) continue;
@@ -93,7 +91,7 @@ function montuj(enm: EnergyNetworkModel): HTMLElement {
   useSnapshotStore.setState({ snapshot: enm });
   const { container } = render(
     <>
-      <SldCanvasV3Workspace width={1322} height={696} lodOverride={LOD} />
+      <SldCanvasV3Workspace width={1322} height={696} />
       <InspektorKanwyTestowy />
     </>,
   );

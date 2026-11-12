@@ -38,6 +38,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './query-client';
 import { SldCanvasV3 } from './ui/sld/v3/canvas/SldCanvasV3';
+import { buildSceneV3 } from './ui/sld/v3/scene/buildScene';
 import type { ThemeMode } from './ui2/theme/themeMode';
 import {
   orientedSegmentRefs,
@@ -45,7 +46,6 @@ import {
   type SldV3Overlay,
   type SegmentFlowOverlay,
 } from './ui/sld/v3/canvas/overlay';
-import type { SceneLod } from './ui/sld/v3/scene/buildScene';
 import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
 import type { ShortCircuitFlowOverlayInput } from './ui/sld-overlay/ShortCircuitFlowOverlayAdapter';
 import falownikiRozplywScenyGpzFeederWynik from './harness-fixtures/generated/falowniki_rozplyw_scena_gpz_feeder_wynik.json';
@@ -71,21 +71,6 @@ const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
 const theme: ThemeMode =
   new URLSearchParams(window.location.search).get('theme') === 'light' ? 'light_technical' : 'dark_scada';
 document.documentElement.setAttribute('data-theme', theme);
-
-/**
- * Wymuszenie poziomu detalu z query-param `?lod=` — kontrakt LOD v3 jest
- * 3-poziomowy (0..2, spec §7); historyczne wartości v2 (3/4) klampowane do 2
- * (pełny detal), żeby istniejące wywołania spec nie wymagały zmiany semantyki.
- * `?focus=` (v2 `centerOnElementId`) NIE ma odpowiednika v3 — kadr szczegółu
- * robi Playwright clipem (spec e2e), parametr ignorowany świadomie.
- */
-function readLodOverride(): SceneLod | undefined {
-  const raw = new URLSearchParams(window.location.search).get('lod');
-  if (raw === null) return undefined;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) return undefined;
-  return Math.min(2, Math.floor(n)) as SceneLod;
-}
 
 /** Companion solvera (JEDNA PRAWDA wyniku rozpływu dla substrate) —
  *  program P-A: harness renderuje nakładkę WYŁĄCZNIE z tego pliku
@@ -137,7 +122,7 @@ async function loadPowerFlowCompanion(mode: OverlayMode): Promise<PowerFlowCompa
 // `gpzFeeder.enm.json` (GPZ z DWOMA jednokawałkowymi odpływami do Stacji S01/
 // S02 — `orientedSegmentRefs` niesie OBIE gałęzie, zweryfikowane sondą na
 // realnej scenie: zero fabrykacji topologii). Punkt zwarcia: Stacja S01
-// (`ownerRef` symbolu stacji na LOD0 = `Substation.ref_id`). Tor Thevenina
+// (`ownerRef` symbolu stacji = `Substation.ref_id`). Tor Thevenina
 // (sieć nadrzędna) płynie GPZ→S01 (odpływ zasilający punkt zwarcia wprost);
 // tor falownika (Stacja S02) płynie ZWROTNIE S02→GPZ (kierunek `to_from` na
 // JEJ WŁASNYM odpływie) — jedna strzałka na gałąź (kontrakt
@@ -189,22 +174,34 @@ async function overlayFromFaultFlowDemo(enm: EnergyNetworkModel): Promise<SldV3O
 /** Czysty builder nakładki z companion — zero fizyki (odczyt wyniku +
  *  projekcja szyna→stacja przez relacje pierwszoklasowe ENM: stacja jest
  *  wygaszona, gdy WSZYSTKIE jej szyny są w zbiorze beznapięciowym solvera;
- *  pod napięciem, gdy KTÓRAKOLWIEK jest w zbiorze energized). */
+ *  pod napięciem, gdy KTÓRAKOLWIEK jest w zbiorze energized).
+ *
+ *  Nośnik stanu stacji w jednej scenie (karta SLD-SKALA-I-NAWIGACJA R1): rysowane szyny
+ *  stacji (odcinki `elementKind: 'bus'`, ref bazowy przed `#` należy do `szynyStacji`
+ *  stacji) — dawny zwinięty symbol stacji widoku L0 nie istnieje. Stan szyny = stan STACJI
+ *  z jednej reguły przynależności (`szynyStacji`), tej samej, którą czyta spec e2e. */
 function overlayFromCompanion(companion: PowerFlowCompanion, enm: EnergyNetworkModel): SldV3Overlay {
   const energizedByOwnerRef: Record<string, boolean> = {};
   for (const ref of companion.energized_branch_refs) energizedByOwnerRef[ref] = true;
   for (const ref of companion.open_point_branch_refs) energizedByOwnerRef[ref] = false;
   const energizedBuses = new Set(companion.energized_bus_refs);
   const deEnergizedBuses = new Set(companion.de_energized_bus_refs);
+  const stanStacjiWgSzyny = new Map<string, boolean>();
   for (const station of enm.substations ?? []) {
     // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra `szynyStacji`.
     const busRefs = [...szynyStacji(enm, station)];
     if (busRefs.length === 0) continue;
-    if (busRefs.every((ref) => deEnergizedBuses.has(ref))) {
-      energizedByOwnerRef[station.ref_id] = false;
-    } else if (busRefs.some((ref) => energizedBuses.has(ref))) {
-      energizedByOwnerRef[station.ref_id] = true;
-    }
+    let stan: boolean | undefined;
+    if (busRefs.every((ref) => deEnergizedBuses.has(ref))) stan = false;
+    else if (busRefs.some((ref) => energizedBuses.has(ref))) stan = true;
+    if (stan === undefined) continue;
+    for (const ref of busRefs) stanStacjiWgSzyny.set(ref, stan);
+  }
+  for (const segment of buildSceneV3(enm).segments) {
+    const ownerRef = segment.meta?.ownerRef;
+    if (segment.meta?.elementKind !== 'bus' || !ownerRef) continue;
+    const stan = stanStacjiWgSzyny.get(ownerRef.split('#')[0]);
+    if (stan !== undefined) energizedByOwnerRef[ownerRef] = stan;
   }
   const flowByOwnerRef: Record<string, SegmentFlowOverlay> = {};
   // KARTA R10-E2E-CZERWONE: ta sama bramka orientacji co nakładka produktu
@@ -308,8 +305,6 @@ function SubstrateHarness(): JSX.Element {
     );
   }
 
-  const lodOverride = readLodOverride();
-
   return (
     <div
       id="sld-harness-root"
@@ -318,16 +313,13 @@ function SubstrateHarness(): JSX.Element {
       data-stations={sldData.stations.length}
       data-cable-runs={sldData.cableRuns.length}
       data-gpzs={sldData.gpzs.length}
-      data-lod-override={lodOverride ?? ''}
       style={{ width: size.width, height: size.height }}
     >
       <SldCanvasV3
         snapshot={snapshot}
         width={size.width}
         height={size.height}
-        lodOverride={lodOverride}
         overlay={overlay}
-        animateLodTransitions={false}
         paletteMode={theme}
       />
     </div>

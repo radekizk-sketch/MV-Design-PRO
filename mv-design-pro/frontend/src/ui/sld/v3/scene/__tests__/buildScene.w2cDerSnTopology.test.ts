@@ -21,7 +21,6 @@ import {
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
   noLabelCollisions,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import {
@@ -30,7 +29,6 @@ import {
   type InjectedDer,
 } from './fixtures/w2cDerSnFixtures';
 
-const LODS: readonly SceneLod[] = [0, 1, 2] as const;
 
 // ---------------------------------------------------------------------------
 // Pomocnicze wyrocznie sceny dla toru DER-SN.
@@ -77,24 +75,6 @@ function sourceHangsOnSnBus(scene: SceneV3, inj: InjectedDer): boolean {
   });
 }
 
-/** Kotwice nazw stacji per LOD (środek pasma nazw) — dowód „JEDNA KOTWICA
- *  L0/L1/L2" (zmiana W2c nie może przesuwać kotwic). */
-function nameAnchors(enm: EnergyNetworkModel, lod: SceneLod): Map<string, string> {
-  const scene = buildSceneV3(enm, lod);
-  const m = new Map<string, string>();
-  for (const label of scene.labels) {
-    if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
-      const ref = label.ownerRef.slice(0, -'#name-row-0'.length);
-      // BLOK-PUSTY (jak w `buildScene.test.ts`): kotwica to punkt zaczepu +
-      // rezerwacja kolumny — wielkości niezależne od TREŚCI poziomu; prostokąt
-      // wiersza niesie od tej karty sam tusz napisu.
-      const srodek = label.rect.x + label.rect.width / 2;
-      m.set(ref, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
-    }
-  }
-  return m;
-}
-
 function expectCleanScene(scene: SceneV3): void {
   expect(allSourcesVisible(scene)).toBe(true);
   expect(allSourcesConnected(scene)).toBe(true);
@@ -134,7 +114,7 @@ describe('W2c — przypadek 1 (nn): DER za TR stacji, bez toru SN', () => {
     // Baza (gpzFeeder): GPZ + stacje inline z TR odbiorczym, zero DER —
     // zmiana W2c jest NO-OP na sieci bez źródeł SN z torem (regresja).
     const { enm } = buildDerSnFixture([]);
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     // Brak transformerów blokowych DER na scenie (rola TR blokowego nie występuje).
     const blockTrs = scene.symbols.filter(
       (s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').includes('/der'),
@@ -155,7 +135,7 @@ describe('W2c — przypadek 2 (PV + TR blokowy + pole SN): pełny tor', () => {
   const stationTr = stationTransformerRef(enm, stationRef);
 
   it('L2: pełny tor (kabel→TR blokowy→szyna nN producenta→PV), TR blokowy ≠ TR stacji, źródło NIE na szynie SN', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expectFullChain(scene, injected[0], stationTr);
     // Reguła 2/3: szyna nN producenta obecna (segment #lv-bus toru).
     expect(segmentByOwner(scene, `${injected[0].producerLvBusRef}#lv-bus`), 'szyna nN producenta').toBeDefined();
@@ -165,32 +145,13 @@ describe('W2c — przypadek 2 (PV + TR blokowy + pole SN): pełny tor', () => {
     expect(scene.segments.some((s) => (s.meta?.ownerRef ?? '') === `${injected[0].sourceId}#der-source-descent`)).toBe(true);
   });
 
-  it('kotwica stacji IDENTYCZNA L0/L1/L2 (tor DER-SN nie przesuwa kotwic)', () => {
-    const a0 = nameAnchors(enm, 0);
-    const a1 = nameAnchors(enm, 1);
-    const a2 = nameAnchors(enm, 2);
-    // KD-5: pasma nazw elementów WEWNĘTRZNYCH bloku GPZ (tabliczka TR/źródła)
-    // znikają na L0 wraz ze zwinięciem bloku — liczność porównujemy na
-    // STACJACH (intencja: tor DER-SN nie przesuwa kotwic STACJI), zbiór L0
-    // pozostaje podzbiorem L1/L2.
-    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
-      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
-    expect(a0.size).toBeGreaterThan(0);
-    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
-    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
-    for (const ref of a0.keys()) {
-      expect(a1.has(ref) && a2.has(ref), `kotwica ${ref} obecna na L0, brak na L1/L2`).toBe(true);
-    }
-    const drift: string[] = [];
-    for (const [ref, p0] of a0) {
-      if (a1.get(ref) !== p0 || a2.get(ref) !== p0) drift.push(`${ref}: L0=${p0} L1=${a1.get(ref)} L2=${a2.get(ref)}`);
-    }
-    expect(drift, `kotwice dryfują:\n${drift.slice(0, 8).join('\n')}`).toEqual([]);
-  });
+  // Dawny test „kotwica stacji IDENTYCZNA L0/L1/L2 (tor DER-SN nie przesuwa kotwic)" usunięty:
+  // jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) nie ma drugiego poziomu, względem którego
+  // kotwica mogłaby dryfować; stałość rysunku między budowami pilnuje test determinizmu niżej.
 
   it('determinizm 2× (identyczny wynik sceny)', () => {
-    const s1 = JSON.stringify(buildSceneV3(enm, 2));
-    const s2 = JSON.stringify(buildSceneV3(enm, 2));
+    const s1 = JSON.stringify(buildSceneV3(enm));
+    const s2 = JSON.stringify(buildSceneV3(enm));
     expect(s1).toBe(s2);
   });
 });
@@ -206,7 +167,7 @@ describe('W2c — przypadek 3 (BESS + rozdzielnica nN + TR blokowy)', () => {
   const stationTr = stationTransformerRef(enm, stationRef);
 
   it('L2: pełny tor z symbolem BESS + TR blokowy ≠ TR stacji', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expectFullChain(scene, injected[0], stationTr);
     expect(symbolByOwner(scene, injected[0].sourceId)!.symbolId).toBe('derBess');
   });
@@ -221,7 +182,7 @@ describe('W2c — przypadek 4 (DER na SN bez TR blokowego): tor niepełny', () =
   const { enm, injected } = buildDerSnFixture([{ technology: 'PV', withoutBlockTransformer: true }]);
 
   it('L2: brak toru (adapter nie zbuduje chain) ⇒ placeholder + stopNote der.sn.torNiepelny', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     // Brak TR blokowego (nie zmaterializowany).
     expect(injected[0].blockTransformerRef).toBeNull();
     expect(scene.symbols.some((s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').includes('/der'))).toBe(false);
@@ -244,7 +205,7 @@ describe('W2c — przypadek 5 (PV × N, wspólna rozdzielnia nN)', () => {
   const stationTr = stationTransformerRef(enm, stationRef);
 
   it('L2: JEDEN symbol źródła + krotność ×3 w etykiecie (decyzja W2c), pełny tor', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expectFullChain(scene, injected[0], stationTr);
     // Decyzja W2c: JEDEN symbol PV (nie 3 symbole), krotność w etykiecie.
     const pvSymbols = scene.symbols.filter((s) => s.meta?.ownerRef === injected[0].sourceId);
@@ -265,7 +226,7 @@ describe('W2c — przypadek 6 (integrated-skid): uproszczenie wizualne, TR OBECN
   const stationTr = stationTransformerRef(enm, stationRef);
 
   it('L2: brak osobnej kreski szyny nN producenta, ale TR blokowy OBECNY i ciągłość zachowana', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     // TR blokowy OBECNY mimo uproszczenia (reguła 2).
     expect(blockTransformerSymbol(scene, injected[0]), 'TR blokowy obecny (integrated-skid)').toBeDefined();
     // Brak osobnej kreski szyny nN producenta (uproszczenie wizualne).
@@ -293,7 +254,7 @@ describe('W2c — przypadek 7 (dwa DER różnych topologii, wspólna szyna SN)',
   const stationTr = stationTransformerRef(enm, stationRef);
 
   it('L2: dwa pełne tory, dwa RÓŻNE TR blokowe (≠ siebie, ≠ TR stacji), wspólna stacja', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(injected).toHaveLength(2);
     for (const inj of injected) expectFullChain(scene, inj, stationTr);
     // Dwa RÓŻNE TR blokowe.
@@ -315,7 +276,7 @@ describe('W2c — przypadek 8 (DER-SN obok TR odbiorczego stacji)', () => {
   it('L2: tor DER-SN współistnieje z TR stacji; TR blokowy ownerRef ≠ TR stacji', () => {
     // Stacja referencyjna MA TR odbiorczy (sn_bus→nn_bus) — przypadek 8 z definicji.
     expect(stationTr).not.toBeNull();
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expectFullChain(scene, injected[0], stationTr);
     // TR stacji nadal obecny w danych (osobny element).
     expect(stationTr).toContain('/transformer');
@@ -324,16 +285,14 @@ describe('W2c — przypadek 8 (DER-SN obok TR odbiorczego stacji)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Determinizm materializacji toru na WSZYSTKICH LOD.
+// Determinizm materializacji toru (jedna scena).
 // ---------------------------------------------------------------------------
 
-describe('W2c — determinizm toru DER-SN na wszystkich LOD', () => {
+describe('W2c — determinizm toru DER-SN', () => {
   const { enm } = buildDerSnFixture([{ technology: 'PV' }]);
-  for (const lod of LODS) {
-    it(`L${lod}: scena 2× identyczna`, () => {
-      expect(JSON.stringify(buildSceneV3(enm, lod))).toBe(JSON.stringify(buildSceneV3(enm, lod)));
-    });
-  }
+  it(`scena 2× identyczna`, () => {
+    expect(JSON.stringify(buildSceneV3(enm))).toBe(JSON.stringify(buildSceneV3(enm)));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -354,7 +313,7 @@ describe('S9-12 — etykieta szyny nN producenta DER (klasa C-8: opis nie udaje 
   ]);
 
   it('L2: obie szyny producentów opisane zamkniętą gramatyką nN („Szyna nN · V kV"), zero „Sekcja” poza stacjami', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const producerLabels = scene.labels.filter((l) => l.ownerRef.endsWith('#producer-bus-voltage'));
     expect(producerLabels).toHaveLength(2);
     expect(producerLabels.every((l) => /^Szyna nN(?: · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
@@ -362,12 +321,12 @@ describe('S9-12 — etykieta szyny nN producenta DER (klasa C-8: opis nie udaje 
   });
 
   it('L2: wyrocznia busbarLabelGaps bez luk — etykieta producenta sparowana ze SWOIM odcinkiem #lv-bus', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(busbarLabelGaps(scene)).toEqual([]);
   });
 
   it('(test negatywny a): etykieta producenta bez odcinka szyny ⇒ label-without-bus zgłoszony', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const producerLabel = scene.labels.find((l) => l.ownerRef.endsWith('#producer-bus-voltage'))!;
     const busRef = producerLabel.ownerRef.replace(/#producer-bus-voltage$/, '#lv-bus');
     const sabotaged = {
@@ -378,7 +337,7 @@ describe('S9-12 — etykieta szyny nN producenta DER (klasa C-8: opis nie udaje 
   });
 
   it('(test negatywny b): powrót tekstu „Sekcja 1 · 0,4 kV" na szynie producenta ⇒ malformed-text zgłoszony', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const producerLabel = scene.labels.find((l) => l.ownerRef.endsWith('#producer-bus-voltage'))!;
     const sabotaged = {
       ...scene,

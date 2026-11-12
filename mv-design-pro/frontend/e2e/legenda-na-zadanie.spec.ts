@@ -231,19 +231,10 @@ async function openSldWithActiveCase(
     );
   }, seed);
 
-  // Rozmiar viewportu WPŁYWA na dobór poziomu szczegółu (LOD, karta
-  // BUGI-PRODUKTU-E2E, diagnoza root-cause bramki (b)). Kanwa v3 auto-
-  // dopasowuje kamerę do treści przy starcie; przy DOMYŚLNYM viewporcie
-  // Playwrighta (1280×720, `playwright.config.ts`) ta MAŁA sieć referencyjna
-  // (GPZ + 1 stacja) mieści się w kadrze przy skali odpowiadającej L0
-  // („Przegląd sieci" — stacja/GPZ jako symbol ZBIORCZY, `stationCollapsed`/
-  // `gpzCollapsed`; zero aparatury pola, w tym `transformer2W`, w scenie tego
-  // LOD — `buildMeasureInput`, `SldCanvasV3.tsx`). Pomiar: identyczna sieć,
-  // identyczna sekwencja kliknięć, RÓŻNI się WYŁĄCZNIE viewport — 1280×720 daje
-  // legendę (6) bez `transformer2W`/pól SN, 1600×900 daje legendę (13) z pełną
-  // aparaturą. Pozostałe specy potrzebujące szczegółu pola (np. `kd8-motyw-
-  // jedna-prawda.spec.ts`) już ustawiają 1600×900 z tego samego powodu — ta
-  // sama, jedna przyczyna źródłowa, ten sam zaradczy wzorzec.
+  // Viewport 1600×900 (jak `kd8-motyw-jedna-prawda.spec.ts`). Dawniej rozmiar okna wybierał
+  // poziom szczegółu (przy 1280×720 przegląd ze zwiniętymi symbolami stacji/GPZ i legendą bez
+  // aparatury pola — karta BUGI-PRODUKTU-E2E). Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1)
+  // niesie aparaturę pola przy każdej skali; rozmiar zostaje dla porównywalności kadrów.
   await page.setViewportSize({ width: 1600, height: 900 });
 
   await page.goto('/#sld', { waitUntil: 'commit' });

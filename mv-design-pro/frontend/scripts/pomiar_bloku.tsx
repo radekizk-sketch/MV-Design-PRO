@@ -295,7 +295,7 @@ console.log('');
 
 let ostatnie: readonly PomiarBloku[] = [];
 for (const lod of [0, 1, 2] as const) {
-  const scene = buildSceneV3(enm, lod);
+  const scene = buildSceneV3(enm);
   const tusz = tuszSceny(scene);
   const nazwy = nazwyBlokow(scene);
   const pomiary = blokiSceny(scene)

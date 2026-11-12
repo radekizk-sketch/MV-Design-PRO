@@ -2,8 +2,8 @@
  * SCHEMAT-10 R1 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.1–5, §11; program
  * WYNIKI-SLD R1) — dowód wizualny KONTEKSTOWEJ treści warstwy wynikowej na L2:
  * etykiety zależne od (typ elementu × analiza=rozpływ) z UNIWERSALNEGO REJESTRU
- * szablonów (`resultLabelTemplates.ts`), zwijane wg LOD. REALNA scena
- * `buildSceneV3(sldSubstrate52s, L2)` + warstwa liczb zbudowana produkcyjnym
+ * szablonów (`resultLabelTemplates.ts`). REALNA scena
+ * `buildSceneV3(sldSubstrate52s)` + warstwa liczb zbudowana produkcyjnym
  * potokiem (`buildResultLabelsFromScene` → `computeResultLabelPlacements`, ta
  * sama funkcja co kanwa). Rysunek bazowy NIETKNIĘTY — warstwa liczb NAD sceną
  * (§11 inwariant geometrii).
@@ -18,7 +18,9 @@
  *  - źródło: P +6,5468 MW (ten sam realny bieg NR).
  * Q/S/ΔU/cosφ oraz metryki źródła NIE są w kontrakcie LF (rejestr braków R1 —
  * patrz `resultLabelTemplates.ts` nagłówek) → świadomie NIE rysowane (zero
- * fabrykacji). Panel C pokazuje zwijanie LOD tej samej etykiety (wym. 5).
+ * fabrykacji). Dawny panel C („zwijanie wg LOD”, wym. 5) usunięty z kartą
+ * SLD-SKALA-I-NAWIGACJA (R1/R3): jedna scena, etykieta wyniku ma zawsze pełną
+ * treść, a o jej widoczności decyduje rozmiar ekranowy pisma.
  *
  * Uruchomienie (cwd: mv-design-pro/frontend):
  *   CANON_OUT=<dir> npx vite-node scripts/render_schemat10_r1.tsx
@@ -35,7 +37,6 @@ import { SYMBOL_DEFS, type SymbolId } from '../src/ui/sld/v3/symbols/defs';
 import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
 import { buildResultLabelsFromScene, orientedSegmentRefs } from '../src/ui/sld/v3/canvas/resultLabels';
 import { computeResultLabelPlacements } from '../src/ui/sld/v3/canvas/SldCanvasV3';
-import { resultLabelLinesForLod } from '../src/ui/sld/v3/canvas/resultLabelTemplates';
 import type { EnergyNetworkModel } from '../src/types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../src/ui/sld-overlay/rawResultOverlayStore';
 
@@ -46,7 +47,7 @@ mkdirSync(OUT, { recursive: true });
 const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 // Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
 // zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
 // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
@@ -78,9 +79,9 @@ for (const ref of branchRefs) {
 const payload: RawOverlayPayload = { run_id: 'r1-proof', analysis_type: 'load_flow', elements };
 
 const resultLabelsByOwnerRef = buildResultLabelsFromScene(scene, payload, singleHop);
-const placements = computeResultLabelPlacements(scene, resultLabelsByOwnerRef, [], 2);
+const placements = computeResultLabelPlacements(scene, resultLabelsByOwnerRef, []);
 
-// Przęsło do zbliżenia/LOD: pierwsze o etykiecie 3-liniowej (pełny kontekst).
+// Przęsło do zbliżenia: pierwsze o etykiecie 3-liniowej (pełny kontekst).
 const branchEntry = branchRefs.map((r) => resultLabelsByOwnerRef[r]).find((e) => e && e.lines.length >= 3);
 const branchZoomRef = branchEntry?.ownerRef;
 const branchSeg = scene.segments.find((s) => s.meta?.ownerRef === branchZoomRef);
@@ -116,10 +117,8 @@ function inZoom(x: number, y: number, w = 0, h = 0): boolean {
   return x + w >= zMinX && x <= zMinX + ZOOM_W && y + h >= zMinY && y <= zMinY + ZOOM_H;
 }
 
-// Panel C (LOD strip) — stała wysokość
-const LOD_H = 190;
 const W = Math.max(OVERVIEW_W, ZOOM_W) + 40;
-const H = HEADER + overviewH + 60 + ZOOM_H + 60 + LOD_H + 40;
+const H = HEADER + overviewH + 60 + ZOOM_H + 40;
 
 const WIRE = '#8FA8BE';
 const TXT = '#E8EEF4';
@@ -192,41 +191,11 @@ for (const p of placements) {
   });
 }
 
-// ---- PANEL C: ZWIJANIE LOD (wym. 5) tej samej etykiety przęsła ----
-const CY = BY + ZOOM_H + 60;
-parts.push(
-  `<text x="16" y="${CY - 8}" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700" fill="${TXT}">` +
-    `C · Zwijanie wg LOD (histereza S8) — ta sama etykieta przęsła: L0 nic · L1 jedna wartość · L2 2–3 wartości</text>`,
-);
-const lodBox = (label: string, lines: readonly { readonly prefix: string; readonly text: string }[], x: number): void => {
-  const boxW = 210;
-  const boxH = LOD_H - 40;
-  parts.push(`<rect x="${x}" y="${CY}" width="${boxW}" height="${boxH}" rx="4" fill="none" stroke="#25384A" stroke-width="1"/>`);
-  parts.push(
-    `<text x="${x + boxW / 2}" y="${CY + 20}" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700" fill="${SUB}">${escapeXml(label)}</text>`,
-  );
-  if (lines.length === 0) {
-    parts.push(
-      `<text x="${x + boxW / 2}" y="${CY + boxH / 2 + 10}" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" fill="${SUB}" opacity="0.6">(bez etykiet)</text>`,
-    );
-    return;
-  }
-  lines.forEach((line, i) => {
-    parts.push(
-      `<text x="${x + boxW / 2}" y="${CY + 46 + i * 20}" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="${RESULT}">${escapeXml(`${line.prefix} ${line.text}`)}</text>`,
-    );
-  });
-};
-const entryLines = branchEntry?.lines ?? [];
-lodBox('L0', resultLabelLinesForLod(entryLines, 0), 20);
-lodBox('L1', resultLabelLinesForLod(entryLines, 1), 250);
-lodBox('L2', resultLabelLinesForLod(entryLines, 2), 480);
-
 const title =
   `<text x="16" y="30" font-family="Inter, system-ui, sans-serif" font-size="19" font-weight="700" fill="${TXT}">` +
   `R1 · Warstwa wynikowa KONTEKSTOWA (rozpływ) na L2 — treść wg typu elementu × analizy, scena realna sldSubstrate52s</text>` +
   `<text x="16" y="52" font-family="Inter, system-ui, sans-serif" font-size="12" fill="${SUB}">` +
-  `Rejestr szablonów (typ elementu × analiza) → treść zależna od elementu; znak +/− = kierunek (§wym.3); zwijanie wg LOD (§wym.5); geometria bazowa nietknięta (§11).</text>` +
+  `Rejestr szablonów (typ elementu × analiza) → treść zależna od elementu; znak +/− = kierunek (§wym.3); geometria bazowa nietknięta (§11).</text>` +
   `<text x="16" y="72" font-family="Inter, system-ui, sans-serif" font-size="11" fill="${SUB}">` +
   `Źródło liczb: obc. 72,5 % + I 350 A — test_result_contract_v1.py; P +6,5468 MW — sldSubstrate52s.powerflow.json (bieg NR). Wartości 1:1 (§0), zero fizyki w UI.</text>`;
 

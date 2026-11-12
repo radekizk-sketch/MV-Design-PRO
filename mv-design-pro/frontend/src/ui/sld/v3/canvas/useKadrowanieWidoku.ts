@@ -20,7 +20,7 @@
  *  - poprzednia/następna stacja (`opcje.przeglad`) wewnątrz kadru stacji NIE
  *    odkłada wpisu: całe przeglądanie stacji to jeden wpis powrotu;
  *  - poziom „Sieć" ścieżki wraca do wpisu sprzed wejścia w cel
- *    (`zdejmijDoWejscia`) — kamera, poziom szczegółu i zaznaczenie jak przed
+ *    (`zdejmijDoWejscia`) — kamera i zaznaczenie jak przed
  *    dwuklikiem. Escape bez zmian (zdejmuje zaznaczenie, nie widok).
  */
 import { nazwaObiektuPl } from '../../../shared/nazwaObiektu';
@@ -31,8 +31,7 @@ import {
   pobierzTorElementu,
   type TorElementuOdpowiedz,
 } from '../../../../ui2/adapters/topologiaZasilenia';
-import type { SceneLod } from '../scene/buildScene';
-import { scenaSld, scenyWszystkichPoziomow } from '../scene/scenaSld';
+import { scenaSld } from '../scene/scenaSld';
 import type { ViewportTransform } from './camera';
 import {
   dolozDoHistorii,
@@ -67,12 +66,11 @@ export interface KomunikatKadru {
 
 export interface StanKameryWorkspace {
   readonly transform: ViewportTransform;
-  readonly lod: SceneLod;
   /** Viewport kanwy, w którym `transform` obowiązuje (para z jednego stanu kamery). */
   readonly viewportSize: { readonly width: number; readonly height: number };
 }
 
-const NIE_NARYSOWANY = 'Zakres nie jest narysowany na schemacie na żadnym poziomie szczegółu.';
+const NIE_NARYSOWANY = 'Zakres nie jest narysowany na schemacie.';
 
 /**
  * Opis odpowiedzi toru tekstem — drogi warunkowe i przyczyny wprost z backendu.
@@ -185,16 +183,16 @@ export function useKadrowanieWidoku(opcje: {
   const historiaRef = useRef(historia);
   historiaRef.current = historia;
 
-  const sceny = useMemo(() => (snapshot ? scenyWszystkichPoziomow(snapshot) : null), [snapshot]);
+  const scena = useMemo(() => (snapshot ? scenaSld(snapshot) : null), [snapshot]);
 
   const wynikCelu = useCallback(
     (cel: Exclude<CelKadru, 'tor'>, kontekst: readonly string[]): WynikZakresu => {
-      if (!snapshot || !sceny) return { dostepny: false, przyczyna: 'Brak modelu sieci — nie ma czego kadrować.' };
-      const wynik = zakresCelu(cel, snapshot, kontekst, sceny[2]);
-      if (wynik.dostepny && !zakresNarysowany(sceny, wynik.zakres)) return { dostepny: false, przyczyna: NIE_NARYSOWANY };
+      if (!snapshot || !scena) return { dostepny: false, przyczyna: 'Brak modelu sieci — nie ma czego kadrować.' };
+      const wynik = zakresCelu(cel, snapshot, kontekst, scena);
+      if (wynik.dostepny && !zakresNarysowany(scena, wynik.zakres)) return { dostepny: false, przyczyna: NIE_NARYSOWANY };
       return wynik;
     },
-    [snapshot, sceny],
+    [snapshot, scena],
   );
 
   const dostepnosc = useMemo<Readonly<Record<CelKadru, DostepnoscCelu>>>(() => {
@@ -226,7 +224,6 @@ export function useKadrowanieWidoku(opcje: {
     if (!teraz) return;
     const stos = dolozDoHistorii(historiaRef.current, {
       transform: teraz.transform,
-      lod: teraz.lod,
       viewportSize: teraz.viewportSize,
       sciezka: sciezkaRef.current,
       zaznaczenie: zaznaczeniePrzed ?? zaznaczenieWidokuRef.current.pobierz(),
@@ -256,7 +253,7 @@ export function useKadrowanieWidoku(opcje: {
 
   const kadrujTor = useCallback(
     (ref: string) => {
-      if (!snapshot || !sceny || !caseId) return;
+      if (!snapshot || !scena || !caseId) return;
       zapytanieToru.current += 1;
       const numer = zapytanieToru.current;
       setTorWToku(true);
@@ -270,7 +267,7 @@ export function useKadrowanieWidoku(opcje: {
             setKomunikat(opis);
             return;
           }
-          if (!zakresNarysowany(sceny, wynik.zakres)) {
+          if (!zakresNarysowany(scena, wynik.zakres)) {
             setKomunikat({ ...opis, rodzaj: 'ostrzezenie', szczegoly: [...opis.szczegoly, NIE_NARYSOWANY] });
             return;
           }
@@ -292,7 +289,7 @@ export function useKadrowanieWidoku(opcje: {
           if (numer === zapytanieToru.current) setTorWToku(false);
         });
     },
-    [snapshot, sceny, caseId, wykonajKadr],
+    [snapshot, scena, caseId, wykonajKadr],
   );
 
   const kadrujCel = useCallback(
@@ -314,7 +311,7 @@ export function useKadrowanieWidoku(opcje: {
   /** Odtworzenie wpisu historii: kamera, ścieżka, kurtyna i zaznaczenie. */
   const przywrocWpis = useCallback((wpis: WpisHistoriiKadru) => {
     seq.current += 1;
-    setPrzywrocenieKamery({ transform: wpis.transform, lod: wpis.lod, viewportSize: wpis.viewportSize, seq: seq.current });
+    setPrzywrocenieKamery({ transform: wpis.transform, viewportSize: wpis.viewportSize, seq: seq.current });
     sciezkaRef.current = wpis.sciezka;
     setSciezka(wpis.sciezka);
     refyKurtynyRef.current = wpis.kurtyna;
@@ -364,7 +361,7 @@ export function useKadrowanieWidoku(opcje: {
   const zamknijKomunikat = useCallback(() => setKomunikat(null), []);
 
   const stacjeObchodu = useMemo(
-    () => (snapshot ? scenaSld(snapshot, 2).meta.stationTraversalOrder : []),
+    () => (snapshot ? scenaSld(snapshot).meta.stationTraversalOrder : []),
     [snapshot],
   );
   const indeksStacji = useMemo(() => {

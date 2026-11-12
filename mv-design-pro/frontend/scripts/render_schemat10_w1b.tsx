@@ -2,7 +2,7 @@
  * SCHEMAT-10 W1b (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwagi 4/5/6/11-15) —
  * dowód wizualny SEMANTYKI TORU na L2. Renderuje macierz wariantów §20 (część
  * W1b) POGRUPOWANĄ funkcjonalnie (liniowe / transformatorowe, uwaga 15) z
- * REALNEGO potoku `buildSceneV3(fixtura, L2)`. W przeciwieństwie do renderu W1
+ * REALNEGO potoku `buildSceneV3(fixtura)`. W przeciwieństwie do renderu W1
  * (same glify) — W1b rysuje PEŁNĄ geometrię toru każdego pola z danych sceny:
  *  - oś toru głównego (ciągła, spina aparaty — uwaga 4/6),
  *  - GŁOWICĘ na styku kabla (kikut kablowy pod głowicą, uwaga 4),
@@ -35,7 +35,7 @@ const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 mkdirSync(OUT, { recursive: true });
 
 const { enm, targets } = buildW1MatrixFixture();
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 
 const LATERAL_SET = new Set<SymbolId>(['earthSwitch', 'voltageTransformer', 'surgeArrester']);
 

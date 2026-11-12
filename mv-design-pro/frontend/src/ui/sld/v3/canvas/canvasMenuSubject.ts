@@ -409,7 +409,6 @@ interface Kotwica {
  * Zbiór klas uchwytu jest jeden: `KLASY_UCHWYTU` wyżej.
  */
 const KOTWICE_DOZWOLONE_DLA_KLASY = {
-  stacja: ['stacja'],
   aparat: ['pole', 'galaz', 'transformator'],
   transformator: ['transformator', 'pole'],
   zrodlo: ['zrodlo'],

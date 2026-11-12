@@ -132,39 +132,31 @@ cd mv-design-pro/frontend
 npx vite-node scripts/sld_v3_render_roles.mjs
 ```
 
-Generuje 5 plików PNG w `mv-design-pro/docs/sld/renders/v3/`:
+Generuje 4 pliki PNG w `mv-design-pro/docs/sld/renders/v3/` (jedna scena niezależna
+od skali — karta SLD-SKALA-I-NAWIGACJA, `SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0; dawne
+role per poziom szczegółu „operator L1” i „audytor L0” nie mają przedmiotu):
 
-| Plik | Rola | LOD | Treść |
-|---|---|---|---|
-| `projektant_L2_full.png` | Projektant | 2 | Cała sieć, pełny szczegół (fit-to-view). |
-| `projektant_L2_zoom_gpz.png` | Projektant | 2 | Zoom na GPZ (pole liniowe + pole transformatorowe + szyna WN). |
-| `projektant_L2_zoom_stacja.png` | Projektant | 2 | Zoom na stację ciągu głównego — typ/przekrój/długość kabla, oznaczniki Q/TR, moc transformatora, nazwa/kod stacji. |
-| `operator_L1_overlay.png` | Operator | 1 | Pełne symbole (bez etykiet segmentów/kierunku), z nakładką energizacji `SldV3Overlay` — część symboli zielona (pod napięciem), część wygaszona. |
-| `audytor_L0_plan.png` | Audytor | 0 | Pełny plan sieci — stacje jako symbol zbiorczy + kod, ramka arkusza + legenda IEC. |
+| Plik | Rola | Treść |
+|---|---|---|
+| `projektant_pelny.png` | Projektant | Cała sieć, kadr dopasowania (fit-to-view). |
+| `projektant_zoom_gpz.png` | Projektant | Zoom na GPZ (pole liniowe + pole transformatorowe + szyna WN). |
+| `projektant_zoom_stacja.png` | Projektant | Zoom na stację ciągu głównego — typ/przekrój/długość kabla, oznaczniki Q/TR, moc transformatora, nazwa/kod stacji. |
+| `operator_nakladka.png` | Operator | Kadr dopasowania z nakładką energizacji `SldV3Overlay` — część symboli zielona (pod napięciem), część wygaszona. |
 
 ### Mechanizm (żeby zrozumieć liczby w skrypcie)
 
 Skrypt renderuje REALNY `SldCanvasV3` przez `renderToStaticMarkup` (jak
 wzorzec nadzorcy z `SLD_CAD_SCADA_QUALITY_PLAN.md` §3), zapisuje statyczny
 HTML (pośredni artefakt — w scratchpadzie, NIE w repo), a następnie
-rasteryzuje Playwrightem (`chromium`, `executablePath: '/opt/pw-browsers/chromium'`).
+rasteryzuje Playwrightem.
 
-Zoomy (`clip`) są liczone przez REUŻYCIE tej samej matematyki kamery, którą
-`SldCanvasV3` wykonuje wewnętrznie (`canvas/camera.ts`
-`computeInitialCameraState` + `boundingBoxOfRect`, zero duplikacji) —
-świat→ekran przez `worldToScreen` (`v2/viewport/ViewportController.ts`).
-Region zoomu (świat) to bbox symboli/etykiet GPZ (`testId` zawierające
-`gpz`) lub stacji wybranej (`testId`/`ownerRef` zawierające hash stacji z
-`meta.mainTrunkStationIds[4]`).
-
-**Ważne, k4 (patrz `SLD_CAD_REBUILD_PLAN_V3.md` F6b-2 i STOP-notatka niżej):**
-kamera `SldCanvasV3` fituje ZAWSZE do bboxa sceny LOD 2, niezależnie od
-`lodOverride` przekazanego do komponentu. Dla `operator_L1_overlay` i
-`audytor_L0_plan` (LOD 1/0, bboxy MNIEJSZE niż LOD 2) to oznacza, że bez
-korekty treść wychodzi mała, w rogu płótna 1920×1080. Skrypt KOMPENSUJE to
-na poziomie harnessu (kadr do WŁASNEGO bboxa danego LOD + supersampling
-`deviceScaleFactor`) — **nie zmienia produkcyjnej kamery** (poza zakresem
-F7; zmiana kamery to decyzja cutoveru F8, patrz notatka k4 w planie).
+Zoomy (`clip`) liczy transformacja kamery ODCZYTANA z `viewBox` wyrenderowanej
+kanwy (`cameraTransformFor`) — ta sama, którą kanwa narysowała, zero drugiej
+implementacji dopasowania; punkt sceny → świat kamery przez
+`scenePointToCameraWorld`, świat→ekran przez `worldToScreen`
+(`v2/viewport/ViewportController.ts`). Region zoomu to bbox symboli/etykiet GPZ
+(`testId` zawierające `gpz`) lub stacji wybranej (`testId`/`ownerRef` zawierające
+hash stacji z `meta.mainTrunkStationIds[4]`).
 
 Treść jest wektorowa (SVG) — `deviceScaleFactor` (Playwright) dobierany
 dynamicznie per zoom (`dsfFor`, cel: krótszy wymiar clipu × dsf ≥ ~900px),
@@ -370,7 +362,7 @@ bezkolizyjna pozycja). Brak zmiany kodu. Udokumentowane tu i w
 
 - **k1** (`canvas/overlay.ts`): nakładka energizacji koloruje WYŁĄCZNIE
   symbole i odcinki GPZ (mają `meta.testId`) — odcinki magistrali/stacji
-  (poza GPZ) nie niosą `testId`, więc `operator_L1_overlay.png` nie pokazuje
+  (poza GPZ) nie niosą `testId`, więc `operator_nakladka.png` nie pokazuje
   koloru na przewodach spoza GPZ. Widoczne na renderze: kolor tylko na
   aparatach (kwadraty/kółka), nie na liniach.
 - **k4** (`canvas/SldCanvasV3.tsx`): ROZWIĄZANE w F8a (k4.1) — kamera fituje
@@ -443,8 +435,8 @@ Sondy nazwane wpięte do `accept:sld-v3`, per LOD 0/1/2 na fixturze `sldSubstrat
 | trunk_thickness_probe | §22.4 (D3-6) | PASS (F13.4 — `snTrunk` 2.4 > `sn` 1.6; histogram DOM: 12×2.4 na L2) |
 
 Rendery finalne (odświeżone 2026-07-16, `docs/sld/renders/v3/` — 5 szt.): każda klasa pola
-OBECNA w danych fixtury ma zoom — `projektant_L2_zoom_gpz.png` (Pole liniowe GPZ),
-`projektant_L2_zoom_stacja.png` (pole liniowe ×3 + pole transformatorowe + DER z podpisami).
+OBECNA w danych fixtury ma zoom — `projektant_zoom_gpz.png` (Pole liniowe GPZ),
+`projektant_zoom_stacja.png` (pole liniowe ×3 + pole transformatorowe + DER z podpisami).
 Klasy „pole sprzęgłowe"/„pole pomiarowe" NIE występują w danych `sldSubstrate52s`
 (uczciwy brak — nie fabrykujemy pól bez danych); ich sylwetki/podpisy pokrywa
 `fieldSilhouettesAreInjective` + `fieldFunctionalDesignation` (testy jednostkowe compose).

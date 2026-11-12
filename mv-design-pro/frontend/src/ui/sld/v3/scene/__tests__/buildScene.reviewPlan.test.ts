@@ -44,16 +44,14 @@ describe('bay_equipment_probe (GEOMETRIA-STACJI §0 pkt 4; zastępuje bay_templa
 
   it('pozytyw: fikstura surowa, z rekordami i z polem bez rekordów — zero luk na L1/L2', () => {
     for (const model of [enm, zRekordami, bezRekordow]) {
-      for (const lod of [1, 2] as const) {
-        const scene = buildSceneV3(model, lod);
-        expect(bayEquipmentGaps(scene)).toEqual([]);
-        expect(allBayEquipmentTruthful(scene)).toBe(true);
-      }
+      const scene = buildSceneV3(model);
+      expect(bayEquipmentGaps(scene)).toEqual([]);
+      expect(allBayEquipmentTruthful(scene)).toBe(true);
     }
   });
 
   it('pola stacji z rekordami RMU niosą rozłącznik i uziemnik z rekordów, ZERO wyłącznika i przekładnika', () => {
-    const scene = buildSceneV3(zRekordami, 2);
+    const scene = buildSceneV3(zRekordami);
     const aparatyStacji = scene.symbols.filter(
       (s) => s.meta?.apparatusSource === 'dane' && (s.meta?.ownerRef ?? '').startsWith('stn/'),
     );
@@ -72,31 +70,31 @@ describe('bay_equipment_probe (GEOMETRIA-STACJI §0 pkt 4; zastępuje bay_templa
   }
 
   it('NEGATYW: aparat stosu z danych bez refu rekordu ⇒ dane-bez-rekordu', () => {
-    const scene = buildSceneV3(zRekordami, 2);
+    const scene = buildSceneV3(zRekordami);
     const zly = sabotaz(scene, 'dane', (s) => ({ ...s, symbolId: 'breaker', meta: { ...s.meta, deviceRef: undefined } }));
     expect(bayEquipmentGaps(zly).some((g) => g.reason === 'dane-bez-rekordu')).toBe(true);
   });
 
   it('NEGATYW: sylwetka braku danych w stosie z danych ⇒ dane-z-sylwetka-braku', () => {
-    const scene = buildSceneV3(zRekordami, 2);
+    const scene = buildSceneV3(zRekordami);
     const zly = sabotaz(scene, 'dane', (s) => ({ ...s, symbolId: 'bayNoEquipment' }));
     expect(bayEquipmentGaps(zly).some((g) => g.reason === 'dane-z-sylwetka-braku')).toBe(true);
   });
 
   it('NEGATYW: druga sylwetka w stosie bez danych ⇒ brak-bez-sylwetki', () => {
-    const scene = buildSceneV3(bezRekordow, 2);
+    const scene = buildSceneV3(bezRekordow);
     const zly = sabotaz(scene, 'brak', (s) => ({ ...s }));
     expect(bayEquipmentGaps(zly).some((g) => g.reason === 'brak-bez-sylwetki')).toBe(true);
   });
 
   it('NEGATYW: aparat z konwencji w stosie bez danych ⇒ brak-z-aparatem', () => {
-    const scene = buildSceneV3(bezRekordow, 2);
+    const scene = buildSceneV3(bezRekordow);
     const zly = sabotaz(scene, 'brak', (s) => ({ ...s, symbolId: 'loadBreakSwitch' }));
     expect(bayEquipmentGaps(zly).some((g) => g.reason === 'brak-z-aparatem')).toBe(true);
   });
 
   it('NEGATYW: stan łącznika w stosie bez danych ⇒ brak-ze-stanem', () => {
-    const scene = buildSceneV3(bezRekordow, 2);
+    const scene = buildSceneV3(bezRekordow);
     const cel = scene.symbols.find((s) => s.symbolId === 'bayNoEquipment' && s.meta?.apparatusSource === 'brak')!;
     const zly: SceneV3 = { ...scene, symbols: scene.symbols.map((s) => (s === cel ? { ...s, state: 'closed' } : s)) };
     expect(bayEquipmentGaps(zly).some((g) => g.reason === 'brak-ze-stanem')).toBe(true);
@@ -105,7 +103,7 @@ describe('bay_equipment_probe (GEOMETRIA-STACJI §0 pkt 4; zastępuje bay_templa
 
 describe('strona nN w paśmie nazw (spec §12.5, recenzja NO-GO pkt 6)', () => {
   it('każda stacja z polem TR niesie wiersz „Szyna nN · 0,4 kV" + ODBIÓR zagregowany z rekordów Load (fixtura z realnego backendu je niesie) + strzałkę odbioru na szynie nN', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const texts = scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.text);
     const lvRows = texts.filter((t) => t.startsWith('Szyna nN'));
     const loadRows = texts.filter((t) => t.startsWith('Odbiór ΣP'));
@@ -121,7 +119,7 @@ describe('strona nN w paśmie nazw (spec §12.5, recenzja NO-GO pkt 6)', () => {
 
   it('stacja BEZ rekordów Load ⇒ jawna granica modelu zamiast fabrykowanego odbioru (pkt 6/9: „…albo jawne granice modelu")', () => {
     const stripped: EnergyNetworkModel = { ...enm, loads: [] };
-    const scene = buildSceneV3(stripped, 2);
+    const scene = buildSceneV3(stripped);
     const texts = scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.text);
     expect(texts.filter((t) => t.includes('granica modelu')).length).toBe(2);
     expect(texts.some((t) => t.startsWith('Odbiór ΣP'))).toBe(false);
@@ -131,7 +129,7 @@ describe('strona nN w paśmie nazw (spec §12.5, recenzja NO-GO pkt 6)', () => {
 
 describe('etykieta przęsła z parą końców (spec §12.5, recenzja NO-GO pkt 13; W3-KABLE-ETYKIETY §7)', () => {
   it('etykieta segmentu GPZ→S01 niesie parę końców „GPZ ↔ S01 · …" (L2, separator §7 „ · ")', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const spanTexts = scene.labels
       .filter((l) => l.ownerKind === 'segment-span')
       .map((l) => l.text);

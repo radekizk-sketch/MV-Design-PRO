@@ -112,8 +112,7 @@ export const SLD_V2_COLORS = {
  *   - branch (odgałęzienie): 2 px
  *   - detail (cable run):    1.5 px (najcieńsze, ostatnia mila)
  *
- * Aliasy: te wartości są referencyjne dla v2 renderer base sizes
- * (per `frontend/src/ui/sld/v2/lod/lodScaling.ts:BASE_STROKE_WIDTHS`).
+ * Aliasy: te wartości są referencyjne dla bazowych grubości renderera.
  * Tokens-first API: gdy renderer potrzebuje grubości w stylu CAD
  * industrial, używa SLD_STROKE_PX.<role> zamiast magic-number.
  */

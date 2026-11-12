@@ -48,8 +48,10 @@ function rectAround(centerX: number, centerY: number, halfSize: number): LassoRe
 
 describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po SYMBOL_DEFS)', () => {
   it('trafia symbol, którego środek bboxa (world) wpada w rect (IDENTITY_TRANSFORM ⇒ world===screen)', () => {
-    const scene = buildSceneV3(enm, 0);
-    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind === 'station');
+    const scene = buildSceneV3(enm);
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA, R1): stacja nie ma już zwiniętego symbolu
+    // przeglądu — celem lassa jest symbol transformatora stacji (element z tożsamością domenową).
+    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind === 'transformer');
     expect(target).toBeTruthy();
     const def = SYMBOL_DEFS[target!.symbolId];
     const centerX = target!.x + def.width / 2;
@@ -57,11 +59,11 @@ describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po 
 
     const hits = symbolsInLassoRect(scene, rectAround(centerX, centerY, 4), IDENTITY_TRANSFORM);
 
-    expect(hits.some((h) => h.ownerRef === target!.meta!.ownerRef && h.elementKind === 'station')).toBe(true);
+    expect(hits.some((h) => h.ownerRef === target!.meta!.ownerRef && h.elementKind === 'transformer')).toBe(true);
   });
 
   it('NIE trafia symboli spoza rect', () => {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     // Rect daleko poza bboxem sceny (scena zaczyna się blisko origin, dodatnie
     // współrzędne — punkt (-100000,-100000) jest poza jakąkolwiek geometrią).
     const hits = symbolsInLassoRect(scene, rectAround(-100000, -100000, 10), IDENTITY_TRANSFORM);
@@ -69,7 +71,7 @@ describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po 
   });
 
   it('rect obejmujący CAŁY bbox sceny trafia WIELE symboli z unikalnymi ownerRef (deduplikacja)', () => {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const bigRect: LassoRect = {
       x: scene.bbox.x - 10,
       y: scene.bbox.y - 10,
@@ -86,7 +88,7 @@ describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po 
   });
 
   it('pomija symbole bez ownerRef/elementKind (adnotacje bez identyfikatora domenowego) — zero zgadywania', () => {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const bareSymbol = { symbolId: scene.symbols[0].symbolId, x: 500, y: 500 };
     const sceneWithBareSymbol = { ...scene, symbols: [...scene.symbols, bareSymbol] };
     const def = SYMBOL_DEFS[bareSymbol.symbolId];
@@ -99,8 +101,10 @@ describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po 
   });
 
   it('respektuje transform (scale+translate) — worldToScreen mapuje world→screen przed testem trafienia', () => {
-    const scene = buildSceneV3(enm, 0);
-    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind === 'station');
+    const scene = buildSceneV3(enm);
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA, R1): stacja nie ma już zwiniętego symbolu
+    // przeglądu — celem lassa jest symbol transformatora stacji (element z tożsamością domenową).
+    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind === 'transformer');
     expect(target).toBeTruthy();
     const def = SYMBOL_DEFS[target!.symbolId];
     const worldCenterX = target!.x + def.width / 2;

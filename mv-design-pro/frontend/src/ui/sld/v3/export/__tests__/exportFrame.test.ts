@@ -58,13 +58,11 @@ describe('exportFrame — computeContentFitFrame (D12 reszta)', () => {
 });
 
 describe('exportFrame — contentFitRatio (D12: martwe pola ≤20% kadru ⇔ ratio ≥ 0,8)', () => {
-  for (const lod of [0, 1] as const) {
-    it(`LOD ${lod}: sieć referencyjna 52+ stacji — ratio ≥ 0,8`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const ratio = contentFitRatio(scene);
-      expect(ratio).toBeGreaterThanOrEqual(0.8);
-    });
-  }
+  it(`sieć referencyjna 52+ stacji — ratio ≥ 0,8`, () => {
+    const scene = buildSceneV3(enm);
+    const ratio = contentFitRatio(scene);
+    expect(ratio).toBeGreaterThanOrEqual(0.8);
+  });
 
   it('rośnie w kierunku 1 wraz z rozmiarem treści (margines jest stałą MAŁĄ)', () => {
     const small = contentFitRatio(fakeScene({ x: 0, y: 0, width: 100, height: 100 }));

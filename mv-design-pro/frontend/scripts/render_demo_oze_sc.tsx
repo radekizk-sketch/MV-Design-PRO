@@ -101,7 +101,7 @@ function seedKey(ref: string): string {
 }
 
 // --- Sceny L2 (raz) ---------------------------------------------------------
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 
 // ===========================================================================
 // (A) GALERIA SZCZEGOLOW STACJI — 12 kadrow zoom, kazda z wlasna konfiguracja OZE.

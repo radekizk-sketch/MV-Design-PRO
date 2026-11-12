@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { PreviewSegment, PreviewSegmentKind } from '../../compose/preview';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { jestZnacznikiemToru, RODZAJE_ZNACZNIKOW_TORU } from '../../scene/znacznikiToru';
 import {
   orientedSegmentRefs,
@@ -84,7 +84,7 @@ describe('grot tylko na biegu — rodzaj odcinka × nakładka', () => {
   for (const kind of WSZYSTKIE_RODZAJE) {
     const oczekiwane = ZNACZNIKI.includes(kind) ? 0 : 1;
     it(`${kind}: przepływ mocy → ${oczekiwane} grot(ów)`, () => {
-      const wynik = computeFlowOverlayPlacements(scena([odcinek(kind, 0)]), { [REF]: przeplyw(REF) }, null);
+      const wynik = computeFlowOverlayPlacements(scena([odcinek(kind, 0)]), { [REF]: przeplyw(REF) }, true);
       expect(wynik.length).toBe(oczekiwane);
     });
     it(`${kind}: strzałka zwarciowa → ${oczekiwane} strzałek`, () => {
@@ -96,7 +96,7 @@ describe('grot tylko na biegu — rodzaj odcinka × nakładka', () => {
   for (const znacznik of ZNACZNIKI) {
     it(`ten sam ownerRef na biegu i na znaczniku ${znacznik}: grot wyłącznie na biegu`, () => {
       const segmenty = [odcinek(znacznik, 0), odcinek('sn', 200), odcinek(znacznik, 400)];
-      const groty = computeFlowOverlayPlacements(scena(segmenty), { [REF]: przeplyw(REF) }, null);
+      const groty = computeFlowOverlayPlacements(scena(segmenty), { [REF]: przeplyw(REF) }, true);
       expect(groty.map((g) => g.segmentIndex)).toEqual([1]);
       const strzalki = computeFaultFlowPlacements(scena(segmenty), { [REF]: zwarcie(REF) });
       expect(strzalki.map((s) => s.segmentIndex)).toEqual([1]);
@@ -132,20 +132,18 @@ describe('substrat 52 stacji — rezerwa pierścieniowa narysowana znakami powi�
     expect(orientedSegmentRefs(enm).has(PIERSCIEN)).toBe(false);
   });
 
-  for (const lod of [0, 1, 2] as const satisfies readonly SceneLod[]) {
-    it(`LOD ${lod}: wpis przepływu dla KAŻDEJ gałęzi nie daje grota na żadnym znaczniku`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const znaczniki = scene.segments.filter((s) => s.meta?.ownerRef === PIERSCIEN);
-      expect(znaczniki.length).toBeGreaterThan(0);
-      expect(znaczniki.every((s) => s.meta?.kind === 'tieMarker')).toBe(true);
-      const wpisy: Record<string, SegmentFlowOverlay> = {};
-      for (const galaz of enm.branches ?? []) wpisy[galaz.ref_id] = przeplyw(galaz.ref_id);
-      const groty = computeFlowOverlayPlacements(scene, wpisy, null);
-      expect(groty.length).toBeGreaterThan(0);
-      for (const grot of groty) {
-        expect(jestZnacznikiemToru(scene.segments[grot.segmentIndex]), grot.ownerRef).toBe(false);
-      }
-      expect(groty.some((g) => g.ownerRef === PIERSCIEN)).toBe(false);
-    });
-  }
+  it(`wpis przepływu dla KAŻDEJ gałęzi nie daje grota na żadnym znaczniku`, () => {
+    const scene = buildSceneV3(enm);
+    const znaczniki = scene.segments.filter((s) => s.meta?.ownerRef === PIERSCIEN);
+    expect(znaczniki.length).toBeGreaterThan(0);
+    expect(znaczniki.every((s) => s.meta?.kind === 'tieMarker')).toBe(true);
+    const wpisy: Record<string, SegmentFlowOverlay> = {};
+    for (const galaz of enm.branches ?? []) wpisy[galaz.ref_id] = przeplyw(galaz.ref_id);
+    const groty = computeFlowOverlayPlacements(scene, wpisy, true);
+    expect(groty.length).toBeGreaterThan(0);
+    for (const grot of groty) {
+      expect(jestZnacznikiemToru(scene.segments[grot.segmentIndex]), grot.ownerRef).toBe(false);
+    }
+    expect(groty.some((g) => g.ownerRef === PIERSCIEN)).toBe(false);
+  });
 });

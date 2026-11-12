@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel, SwitchBranch } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../buildScene';
+import { buildSceneV3, type SceneV3 } from '../buildScene';
 import { OVERHEAD_LINE_DASHARRAY, segmentDasharray } from '../../compose/preview';
 import { computeProjectLegendEntries } from '../../sheet/projectLegend';
 import { kandydaciNaPunktPodzialu, punktyPodzialu } from '../../../../shared/stanLacznika';
@@ -40,7 +40,6 @@ const wczytaj = (): EnergyNetworkModel =>
     ) as { enm: EnergyNetworkModel }
   ).enm;
 const enm = wczytaj();
-const LODY: readonly SceneLod[] = [0, 1, 2];
 const baza = (ref: string | undefined) => (ref ?? '').split('#')[0];
 const NOP_FIKSTURY = punktyPodzialu(enm).map((g) => g.ref_id);
 
@@ -90,41 +89,31 @@ describe('punkt podziału z `SwitchBranch.normal_state` na każdym poziomie szcz
     ['inny łącznik pola (ostatni kandydat)', PRZENIESIONY_OSTATNI, zNop(PRZENIESIONY_OSTATNI)],
   ];
   for (const [nazwa, ref, model] of PRZYPADKI) {
-    for (const lod of LODY) {
-      it(`${nazwa} · L${lod}: dokładnie jedna reprezentacja (łącznika albo znacznika NO jego stacji), ${lod === 0 ? 'bez podpisu (GS-1)' : 'jeden podpis „NO"'}, bez notatki o pominięciu`, () => {
-        const sc = buildSceneV3(model, lod);
-        const stacja = stacjaPola(ref);
-        const glifStacji = sc.symbols.some((s) => s.meta?.ownerRef === stacja && s.meta?.stationGlyph?.noOpen === true);
-        const reprezentacje = [
-          ...sc.symbols.filter((s) => s.symbolId === 'noPoint'),
-          ...(glifStacji ? ['glif L0 stacji'] : []),
-        ];
-        // Jeden punkt podziału = jedna reprezentacja w CAŁEJ scenie: symbol łącznika
-        // z sekcji 6z ALBO znacznik NO stacji, który adapter wyprowadza z tego samego łącznika.
-        expect(reprezentacje, 'reprezentacje punktu podziału').toHaveLength(1);
-        const symbol = sc.symbols.find((s) => s.symbolId === 'noPoint');
-        if (symbol) {
-          expect([ref, stacja]).toContain(symbol.meta?.ownerRef);
-          expect(symbol.meta?.testId).toBe(`sld-v3-nop-${symbol.meta?.ownerRef}`);
-          expect(symbol.meta?.elementKind).toBe('apparatus');
-        } else {
-          expect(lod, 'brak symbolu dopuszczalny wyłącznie na L0 z glifem stacji').toBe(0);
-        }
-        const podpisy = sc.labels.filter((l) => l.text === 'NO');
-        expect(podpisy).toHaveLength(lod === 0 ? 0 : 1);
-        if (lod !== 0) expect(podpisy[0]!.labelClass).toBe('t3');
-        expect(sc.meta.stopNotes.some((n) => n.includes(ref))).toBe(false);
-      });
-    }
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): punkt podziału ma zawsze symbol `noPoint`
+    // i podpis „NO" — dawny glif stacji widoku L0 (znacznik NO zwiniętej stacji) zniknął.
+    // Przy małej skali N.O. nie znika: symbol jest torem (bez klasy informacji), a podpis „NO"
+    // należy do klasy oznaczeń (`canvas/gestoscInformacji.ts`).
+    it(`${nazwa}: dokładnie jedna reprezentacja (symbol NO), jeden podpis „NO", bez notatki o pominięciu`, () => {
+      const sc = buildSceneV3(model);
+      const stacja = stacjaPola(ref);
+      const symbole = sc.symbols.filter((s) => s.symbolId === 'noPoint');
+      expect(symbole, 'reprezentacje punktu podziału').toHaveLength(1);
+      const symbol = symbole[0]!;
+      expect([ref, stacja]).toContain(symbol.meta?.ownerRef);
+      expect(symbol.meta?.testId).toBe(`sld-v3-nop-${symbol.meta?.ownerRef}`);
+      expect(symbol.meta?.elementKind).toBe('apparatus');
+      const podpisy = sc.labels.filter((l) => l.text === 'NO');
+      expect(podpisy).toHaveLength(1);
+      expect(podpisy[0]!.labelClass).toBe('t3');
+      expect(sc.meta.stopNotes.some((n) => n.includes(ref))).toBe(false);
+    });
   }
 
   it('brak punktu podziału: żaden symbol noPoint, żaden podpis „NO", żadna notatka o pominięciu', () => {
-    for (const lod of LODY) {
-      const sc = buildSceneV3(bezNop(), lod);
-      expect(sc.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
-      expect(sc.labels.some((l) => l.text === 'NO')).toBe(false);
-      expect(sc.meta.stopNotes.some((n) => n.includes('normalnie otwarty'))).toBe(false);
-    }
+    const sc = buildSceneV3(bezNop());
+    expect(sc.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+    expect(sc.labels.some((l) => l.text === 'NO')).toBe(false);
+    expect(sc.meta.stopNotes.some((n) => n.includes('normalnie otwarty'))).toBe(false);
   });
 
   it('symbol i podpis NO nie wypychają z rysunku żadnej INNEJ etykiety (pomiar: podpis pod łącznikiem toru odrzucał jego nazwę na L2)', () => {
@@ -132,11 +121,9 @@ describe('punkt podziału z `SwitchBranch.normal_state` na każdym poziomie szcz
       new Set(sc.meta.stopNotes.filter((n) => n.startsWith('label.declutter')).flatMap((n) => n.match(/[a-z-]+:[^ ,()]+#[a-z-]+/g) ?? []));
     const model0 = bezNop();
     for (const [nazwa, ref, model] of PRZYPADKI) {
-      for (const lod of LODY) {
-        const przed = odrzucone(buildSceneV3(model0, lod));
-        const po = [...odrzucone(buildSceneV3(model, lod))].filter((k) => !k.endsWith(`${ref}#no-point`));
-        expect(po.filter((k) => !przed.has(k)), `${nazwa} · L${lod}`).toEqual([]);
-      }
+      const przed = odrzucone(buildSceneV3(model0));
+      const po = [...odrzucone(buildSceneV3(model))].filter((k) => !k.endsWith(`${ref}#no-point`));
+      expect(po.filter((k) => !przed.has(k)), `${nazwa}`).toEqual([]);
     }
   });
 
@@ -152,57 +139,49 @@ describe('punkt podziału z `SwitchBranch.normal_state` na każdym poziomie szcz
       to_bus_ref: 'bus/nie-ma-takiej-szyny/b',
       normal_state: 'open',
     } as SwitchBranch);
-    for (const lod of LODY) {
-      const sc = buildSceneV3(model, lod);
-      expect(nop(sc, ref).symbole).toHaveLength(0);
-      expect(sc.meta.stopNotes.some((n) => n.includes(ref))).toBe(true);
-    }
+    const sc = buildSceneV3(model);
+    expect(nop(sc, ref).symbole).toHaveLength(0);
+    expect(sc.meta.stopNotes.some((n) => n.includes(ref))).toBe(true);
   });
 
   it('determinizm: dwa budowania tej samej migawki z przeniesionym punktem podziału — identyczne sceny', () => {
-    for (const lod of LODY) {
-      expect(JSON.stringify(buildSceneV3(zNop(PRZENIESIONY_OSTATNI), lod))).toBe(
-        JSON.stringify(buildSceneV3(zNop(PRZENIESIONY_OSTATNI), lod)),
-      );
-    }
+    expect(JSON.stringify(buildSceneV3(zNop(PRZENIESIONY_OSTATNI)))).toBe(
+      JSON.stringify(buildSceneV3(zNop(PRZENIESIONY_OSTATNI))),
+    );
   });
 });
 
 describe('kabel ciągły, linia napowietrzna przerywana — z `Branch.type` przez adapter', () => {
   const napowietrzne = new Set(enm.branches.filter((b) => b.type === 'line_overhead').map((b) => b.ref_id));
   const kablowe = new Set(enm.branches.filter((b) => b.type === 'cable').map((b) => b.ref_id));
-  for (const lod of LODY) {
-    it(`L${lod}: każdy odcinek SN linii napowietrznej ma lineType 'overhead' i kreskę ${OVERHEAD_LINE_DASHARRAY}; żaden odcinek kabla jej nie ma`, () => {
-      const sc = buildSceneV3(enm, lod);
-      let napow = 0;
-      for (const s of sc.segments) {
-        const rodzaj = s.meta?.kind ?? 'sn';
-        if (rodzaj !== 'sn' && rodzaj !== 'snTrunk') continue;
-        const ref = baza(s.meta?.ownerRef);
-        if (napowietrzne.has(ref)) {
-          napow += 1;
-          expect(s.meta?.lineType, ref).toBe('overhead');
-          expect(segmentDasharray(s)).toBe(OVERHEAD_LINE_DASHARRAY);
-        }
-        if (kablowe.has(ref)) {
-          expect(s.meta?.lineType, ref).toBeUndefined();
-          expect(segmentDasharray(s)).toBeUndefined();
-        }
+  it(`każdy odcinek SN linii napowietrznej ma lineType 'overhead' i kreskę ${OVERHEAD_LINE_DASHARRAY}; żaden odcinek kabla jej nie ma`, () => {
+    const sc = buildSceneV3(enm);
+    let napow = 0;
+    for (const s of sc.segments) {
+      const rodzaj = s.meta?.kind ?? 'sn';
+      if (rodzaj !== 'sn' && rodzaj !== 'snTrunk') continue;
+      const ref = baza(s.meta?.ownerRef);
+      if (napowietrzne.has(ref)) {
+        napow += 1;
+        expect(s.meta?.lineType, ref).toBe('overhead');
+        expect(segmentDasharray(s)).toBe(OVERHEAD_LINE_DASHARRAY);
       }
-      expect(napow, 'fikstura musi rysować linie napowietrzne').toBeGreaterThan(0);
-      const legenda = computeProjectLegendEntries(sc).filter((e) => e.kind === 'line').map((e) => e.id);
-      expect(legenda).toContain('overhead');
-      expect(legenda).toContain('cable');
-    });
-  }
+      if (kablowe.has(ref)) {
+        expect(s.meta?.lineType, ref).toBeUndefined();
+        expect(segmentDasharray(s)).toBeUndefined();
+      }
+    }
+    expect(napow, 'fikstura musi rysować linie napowietrzne').toBeGreaterThan(0);
+    const legenda = computeProjectLegendEntries(sc).filter((e) => e.kind === 'line').map((e) => e.id);
+    expect(legenda).toContain('overhead');
+    expect(legenda).toContain('cable');
+  });
 
   it('model bez linii napowietrznych: żaden odcinek nie jest przerywany, legenda bez pozycji linii napowietrznej', () => {
     const kopia = structuredClone(enm);
     for (const b of kopia.branches) if (b.type === 'line_overhead') (b as { type: string }).type = 'cable';
-    for (const lod of LODY) {
-      const sc = buildSceneV3(kopia, lod);
-      expect(sc.segments.some((s) => s.meta?.lineType === 'overhead')).toBe(false);
-      expect(computeProjectLegendEntries(sc).some((e) => e.id === 'overhead')).toBe(false);
-    }
+    const sc = buildSceneV3(kopia);
+    expect(sc.segments.some((s) => s.meta?.lineType === 'overhead')).toBe(false);
+    expect(computeProjectLegendEntries(sc).some((e) => e.id === 'overhead')).toBe(false);
   });
 });

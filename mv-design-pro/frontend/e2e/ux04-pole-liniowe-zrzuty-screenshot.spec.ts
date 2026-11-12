@@ -27,7 +27,7 @@
  *    ze znakiem „?" = stan nieznany; kolory identyczne w obu motywach; aparat nie-łącznik bez
  *    kafla; oznaczenie aparatu przy symbolu (podpis stanu nie zastępuje koloru);
  *  - menu aparatu działa na TYM aparacie (odłącznik i uziemnik pola nie przełączają wyłącznika);
- *  - WYMIAR KAFLA (wymaganie właściciela 2026-10-29 pkt 1 i 7): w każdym kadrze pola (LOD2)
+ *  - WYMIAR KAFLA (wymaganie właściciela 2026-10-29 pkt 1 i 7): w każdym kadrze pola (skala czytania)
  *    `getBBox()` kafla każdego łącznika = 48 × 48 w świecie (jedna stała), a `boundingBox()`
  *    na ekranie: w = h i wszystkie kafle kadru równe w granicy 1 px — iloczyn rodzaj
  *    {wyłącznik, łącznik trójpołożeniowy, odłącznik, uziemnik} × stan {zamknięty, otwarty,
@@ -60,6 +60,8 @@
  * z `ZRZUTY_DO_DOKUMENTACJI=1`, inaczej `test-results/zrzuty-dokumentacji/…`).
  */
 import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+
+import { SKALA_CZYTANIA, SKALA_POSREDNIA, przyblizDoSkali, skalaKamery } from './skalaKamery';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -86,7 +88,7 @@ const SZABLON_Z11_STALY = 'bay_template_gpz_line_enea_z11_staly_z_odlacznikiem';
 // kanwy, eksportu, legendy i inspektora; testy jednostkowe pilnują lustra w kodzie).
 const KAFEL = { zamkniety: '#C62828', otwarty: '#2E7D32', nieustalony: '#6B7280' } as const;
 type StanKafla = keyof typeof KAFEL;
-// Bok kafla stanu łącznika QET w jednostkach świata (skala LOD2) — lustro
+// Bok kafla stanu łącznika QET w jednostkach świata (skala czytania) — lustro
 // `sld/v3/cad/qet/qetPoleSn.ts::QET_BOK_KAFLA_STANU` (wymaganie właściciela 2026-10-29: kafel
 // to kwadrat 48 × 48 z JEDNEJ stałej; stan zmienia kolor i styk, nigdy wymiar). Lustro w kodzie
 // pilnuje `symbols/__tests__/kafelStanu.test.tsx`.
@@ -279,7 +281,7 @@ async function punktNaTrasie(uchwyt: Locator): Promise<{ x: number; y: number }>
 }
 
 /** Przybliżenie kółkiem, aż uchwyt trafienia aparatu pola ma ≥ 16 px i leży w kadrze kanwy
- *  (LOD z kamery). Kursor kółka celuje w aparat (przycięty do kanwy) — punkt pod kursorem
+ *  (skala kamery). Kursor kółka celuje w aparat (przycięty do kanwy) — punkt pod kursorem
  *  zostaje w miejscu, więc aparat wchodzi do kadru, zamiast z niego uciekać. */
 async function przyblizDoAparatu(page: Page, deviceRef: string): Promise<Locator> {
   const uchwyt = page.locator(`[data-hit-klasa="aparat"][data-hit-device-ref="${deviceRef}"]`).first();
@@ -450,7 +452,7 @@ async function kafel(page: Page, deviceRef: string): Promise<{ stan: string; fil
 type PomiarKafla = {
   kadr: string;
   motyw: string;
-  lod: string | null;
+  skala: number;
   deviceRef: string;
   oznaczenie: string;
   symbol: string;
@@ -477,7 +479,7 @@ const POMIARY_KAFLI: PomiarKafla[] = [];
 async function zmierzKafle(page: Page, kadr: string, pole: Pole): Promise<PomiarKafla[]> {
   const svg = page.locator('svg[data-testid="sld-canvas-v3"]');
   const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
-  const lod = await svg.getAttribute('data-scene-lod');
+  const skala = await skalaKamery(svg);
   const pomiary: PomiarKafla[] = [];
   for (const a of pole.primary_devices ?? []) {
     const grupa = svg.locator(`g[data-device-ref="${a.device_ref}"] [data-kafel-stanu]`);
@@ -496,7 +498,7 @@ async function zmierzKafle(page: Page, kadr: string, pole: Pole): Promise<Pomiar
     pomiary.push({
       kadr,
       motyw,
-      lod,
+      skala,
       deviceRef: a.device_ref,
       oznaczenie: a.designation ?? '',
       symbol: (await grupa.getAttribute('data-kafel-symbol')) ?? '',
@@ -871,7 +873,7 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
   }
   // Decyzja architekta §11.7 pkt 7 na podpisach aparatów (Q1, PF0, GK1 — przewaga wielkich
   // liter): szerokość na ekranie = tabela posuwów kroju × pismo × skala kamery, ± 1 px. Blok
-  // przekaźnika niesie po karcie bloku LOD2 wyłącznie kody zabezpieczeń (przewaga cyfr), więc
+  // przekaźnika niesie po karcie bloku wyłącznie kody zabezpieczeń (przewaga cyfr), więc
   // komórkę „wielkie litery" iloczynu pkt 7 mierzą podpisy aparatów tego samego kadru.
   for (const p of podpisy) {
     const zTabeli = szerokoscZTabeliEm(p.tekst, p.fontWeight) * p.fontSize * p.skala;
@@ -887,7 +889,7 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
  *  prostokąt liczy tabela posuwów kroju (wiersze bloku przekaźnika, tabliczka przekładnika T1),
  *  z przewagą {cyfr, wielkich liter} × motyw {ciemny, jasny} — każda komórka zmierzona
  *  (asercja szerokości ± 1 px w `zmierzBlokPrzekaznika` i `sprawdzPrzekladnikPradowy`), więc
- *  test nie jest pusty. Blok LOD2 niesie wszystkie kody funkcji pola w ramce bez okręgu (odbiór
+ *  test nie jest pusty. Blok niesie wszystkie kody funkcji pola w ramce bez okręgu (odbiór
  *  B-02 2026-11-04 z korektą v2, bez licznika „+n"); wiersze bloku i tabliczka T1 niosą przewagę cyfr;
  *  komórkę wielkich liter niosą podpisy aparatów pola (Q1, PF0, GK1 — `zmierzPodpisyPola`). */
 function oczekujPokryciaKlasSzerokosci(prefiksKadru: string): void {
@@ -1129,10 +1131,9 @@ function zapiszOdcisk(nazwa: string, bufor: Buffer): void {
  *  kadruje całe pole na środku kanwy, sąsiedzi pod kurtyną. Aparat celu poza kurtyną i w
  *  środkowej części kanwy (każdy zrzut kadruje SWOJE pole — pomiar 2026-10-29: przybliżanie
  *  kółkiem zostawiało kamerę z poprzedniego zrzutu, dwa zrzuty były identyczne bajt w bajt).
- *  `dobijDoLod2`: pole, które w całości mieści się w kanwie dopiero poniżej progu LOD2 (Z.11 —
- *  pomiar 2026-11-05 przy oknie 1600 × 1000: kadr pola kończy na LOD1 także na drzewie sprzed
- *  karty; kadr pola ma dolną granicę LOD1, `zakresKadru.ts`), projektant dobija kółkiem wokół
- *  środka pola do LOD2 — ta sama ścieżka tutaj; kadr zrzutu pozostaje kadrem pola przyciętym
+ *  `dobijDoSkaliCzytania`: pole, które w całości mieści się w kanwie dopiero poniżej skali
+ *  czytania (Z.11 — pomiar 2026-11-05 przy oknie 1600 × 1000), projektant dobija kółkiem wokół
+ *  środka pola do skali czytania — ta sama ścieżka tutaj; kadr zrzutu pozostaje kadrem pola przyciętym
  *  do kanwy. */
 async function zrzut(
   page: Page,
@@ -1140,7 +1141,7 @@ async function zrzut(
   deviceRef: string,
   pole: Pole,
   oznaczenia: readonly string[] = [],
-  dobijDoLod2 = false,
+  dobijDoSkaliCzytania = false,
 ): Promise<void> {
   const aparatyPola = (pole.primary_devices ?? []).map((d) => d.device_ref);
   await klikAparatu(page, deviceRef);
@@ -1149,7 +1150,7 @@ async function zrzut(
   await expect(page.getByTestId('sld-v3-sciezka-kadru')).toBeVisible({ timeout: 15000 });
   const uchwyt = page.locator(`[data-hit-klasa="aparat"][data-hit-device-ref="${deviceRef}"]`).first();
   await czekajNaStabilnaGeometrie(uchwyt);
-  // Kadr pola trwa do zrzutu: ścieżka kadru widoczna i aparat narysowany (LOD pola). Jawna
+  // Kadr pola trwa do zrzutu: ścieżka kadru widoczna i aparat narysowany (skala pola). Jawna
   // asercja zamiast milczącego limitu `boundingBox` — porzucony kadr (np. przeładowanie
   // strony) ma być nazwany w raporcie biegu.
   await expect(page.getByTestId('sld-v3-sciezka-kadru'), `${nazwa}: kadr pola aktywny`).toBeVisible();
@@ -1163,9 +1164,9 @@ async function zrzut(
   // Escape zdejmuje zaznaczenie, nie kadr (K2b §0.3) — zrzut bez ramki zaznaczenia.
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
-  if (dobijDoLod2) {
+  if (dobijDoSkaliCzytania) {
     const svg = page.locator(KANWA);
-    for (let i = 0; i < 12 && (await svg.getAttribute('data-scene-lod')) !== '2'; i += 1) {
+    for (let i = 0; i < 12 && (await skalaKamery(svg)) < SKALA_CZYTANIA; i += 1) {
       const p = await kadrPola(page, aparatyPola);
       await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2);
       await page.mouse.wheel(0, -120);
@@ -1178,8 +1179,8 @@ async function zrzut(
   for (const ozn of oznaczenia) {
     await expect(page.locator('svg[data-testid="sld-canvas-v3"] text', { hasText: new RegExp(`^${ozn}$`) }).first(), `${nazwa}: oznaczenie ${ozn}`).toBeVisible();
   }
-  // Kadr pola = poziom szczegółu pola (LOD2): tam obowiązuje bok kafla 48 × 48 w świecie.
-  await expect(page.locator('svg[data-testid="sld-canvas-v3"]'), `${nazwa}: kadr pola na LOD2`).toHaveAttribute('data-scene-lod', '2');
+  // Kadr pola = skala czytania: tam obowiązuje bok kafla 48 × 48 w świecie.
+  await expect.poll(() => skalaKamery(page.locator('svg[data-testid="sld-canvas-v3"]')), { message: `${nazwa}: kadr pola w skali czytania` }).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
   await zmierzKafle(page, nazwa, pole);
   // Kadr pola niesie blok przekaźnika SWOJEGO pola (pole z funkcjami EAZ i powiązaniami).
   expect((await zmierzBlokPrzekaznika(page, nazwa)).length, `${nazwa}: blok przekaźnika w kadrze`).toBeGreaterThan(0);
@@ -1190,53 +1191,39 @@ async function zrzut(
 }
 
 /**
- * Zrzut pola na poziomie szczegółu LOD0 albo LOD1 kamery (odbiór B-02 właściciela 2026-11-04 pkt 5
- * i 6): z widoku całej sieci kółko kamery wokół aparatu pola, aż kanwa rysuje żądany LOD. Pin
- * opisów przekładników wg LOD: LOD1 — oznaczenia aparatów (T1) bez przekładni; LOD0 — same symbole
- * (bez oznaczeń i przekładni). Kadr zrzutu — ten sam co kadr pola (`kadrPola`).
+ * Zrzut pola w skali POŚREDNIEJ albo w PRZEGLĄDZIE (odbiór B-02 właściciela 2026-11-04 pkt 5
+ * i 6). Jedna scena (karta SLD-SKALA-I-NAWIGACJA, R1): nie ma poziomów szczegółu, jest skala
+ * kamery. Z widoku całej sieci kółko kamery wokół aparatu pola do skali pośredniej
+ * (`SKALA_POSREDNIA`) albo zostaje widok całej sieci. Pin opisów przekładników (intencja
+ * odbioru bez zmian): w skali pośredniej — oznaczenia aparatów (T1) bez przekładni; w
+ * przeglądzie — same symbole (bez oznaczeń i przekładni). Nazwy plików zrzutów (`lod1`/`lod0`)
+ * zostają — są cytowane w dokumentacji wzorca pola.
  */
 async function zrzutLod(page: Page, nazwa: string, deviceRef: string, pole: Pole, lod: 0 | 1): Promise<void> {
   await widokCalejSieci(page);
   const svg = page.locator(KANWA);
   const uchwyt = page.locator(`[data-hit-klasa="aparat"][data-hit-device-ref="${deviceRef}"]`).first();
-  for (let i = 0; i < 24; i += 1) {
-    const biezacy = Number(await svg.getAttribute('data-scene-lod'));
-    if (biezacy === lod) break;
+  if (lod === 1) {
     const box = await uchwyt.boundingBox();
     const k = (await svg.boundingBox())!;
-    await page.mouse.move(box ? box.x + box.width / 2 : k.x + k.width / 2, box ? box.y + box.height / 2 : k.y + k.height / 2);
-    await page.mouse.wheel(0, biezacy > lod ? 120 : -120);
-    await page.waitForTimeout(200);
-  }
-  await expect(svg, `${nazwa}: poziom szczegółu LOD${lod}`).toHaveAttribute('data-scene-lod', String(lod));
-  // LOD0: GPZ zwinięty do widoku przeglądowego (pola reprezentowane kaflem, bez aparatów toru —
-  // `sld-gpz-zwiniety`), więc zrzut obejmuje kanwę, a pin opisów sprawdza brak przekładni i oznaczeń przekładników.
-  if (lod === 0) {
-    await czekajNaStabilnyWidok(page);
-  } else {
+    await przyblizDoSkali(page, svg, box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : { x: k.x + k.width / 2, y: k.y + k.height / 2 }, SKALA_POSREDNIA);
     await czekajNaStabilnaGeometrie(uchwyt);
+  } else {
+    await czekajNaStabilnyWidok(page);
   }
   const przekladnie = (pole.primary_devices ?? []).filter((d) => d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0);
   for (const ct of przekladnie) {
     const tekst = ct.rdzenie![0].przekladnia.trim().replace(/\s*-\s*/g, '–').replace(/\s*\/\s*/g, '/').replace(/\s*A$/, '');
-    await expect(svg.locator('text', { hasText: tekst }), `${nazwa}: bez przekładni ${tekst} na LOD${lod}`).toHaveCount(0);
+    await expect(svg.locator('text', { hasText: tekst }), `${nazwa}: bez przekładni ${tekst} (${lod === 1 ? 'skala pośrednia' : 'przegląd'})`).toHaveCount(0);
   }
   const oznaczeniaCt = przekladnie.map((d) => d.designation ?? '').filter((o) => o !== '');
   for (const ozn of oznaczeniaCt) {
     const napis = svg.locator('[data-owner-ref*="#etykieta-aparatu-"] text', { hasText: new RegExp(`^${ozn}$`) });
-    if (lod === 1) await expect(napis.first(), `${nazwa}: oznaczenie ${ozn} na LOD1`).toBeVisible();
-    else await expect(napis, `${nazwa}: bez oznaczenia ${ozn} na LOD0`).toHaveCount(0);
+    if (lod === 1) await expect(napis.first(), `${nazwa}: oznaczenie ${ozn} w skali pośredniej`).toBeVisible();
+    else await expect(napis, `${nazwa}: bez oznaczenia ${ozn} w przeglądzie`).toHaveCount(0);
   }
   const clip = lod === 0 ? (await svg.boundingBox())! : await kadrPola(page, (pole.primary_devices ?? []).map((d) => d.device_ref));
   zapiszOdcisk(nazwa, await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip }));
-  // Histereza LOD (`canvas/camera.ts`): po zejściu do LOD0 widok całej sieci w paśmie histerezy
-  // zostałby na LOD0 (GPZ zwinięty, bez uchwytów aparatów) — kamera wraca najpierw do LOD2.
-  for (let i = 0; i < 40 && (await svg.getAttribute('data-scene-lod')) !== '2'; i += 1) {
-    const k = (await svg.boundingBox())!;
-    await page.mouse.move(k.x + k.width / 2, k.y + k.height / 2);
-    await page.mouse.wheel(0, -120);
-    await page.waitForTimeout(150);
-  }
   await widokCalejSieci(page);
 }
 
@@ -1534,29 +1521,29 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
     await zrzut(page, `pole-z10-wylacznik-zamkniety-uziemnik-otwarty-${klucz}`, q0Staly.device_ref, poleStalePo, ['Q1', 'Q0', 'Q8']);
   }
 
-  // ---- 7. Zbliżenie: kamera kółkiem na wyłącznik pola (LOD szczegółu z kamery) ------------
+  // ---- 7. Zbliżenie: kamera kółkiem na wyłącznik pola (skala czytania z kamery) ------------
   await ustawMotyw(page, 'dark_scada');
   await widokCalejSieci(page);
   const uchwytQ0 = await przyblizDoAparatu(page, q0Staly.device_ref);
-  // Zbliżenie = poziom szczegółu pola (LOD2) i kafel wyraźnie większy niż w kadrze pola
-  // (pomiar 2026-10-29: próg 40 px kończył zbliżenie na LOD1 — kafel 48 j.św. osiągał go przy
+  // Zbliżenie = skala czytania i kafel wyraźnie większy niż w kadrze pola
+  // (pomiar 2026-10-29: próg 40 px kończył zbliżenie poniżej skali czytania — kafel 48 j.św. osiągał go przy
   // skali ok. 0,85, więc zrzut pokazywał przekaźnik bez kodów i bez linii powiązań).
   const svgZblizenia = page.locator(KANWA);
   for (let i = 0; i < 12; i += 1) {
     const box = (await uchwytQ0.boundingBox())!;
-    if (Math.min(box.width, box.height) >= 3 * BOK_KAFLA_SWIATA && (await svgZblizenia.getAttribute('data-scene-lod')) === '2') break;
+    if (Math.min(box.width, box.height) >= 3 * BOK_KAFLA_SWIATA && (await skalaKamery(svgZblizenia)) >= SKALA_CZYTANIA) break;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, -240);
     await page.waitForTimeout(200);
   }
   await czekajNaStabilnaGeometrie(uchwytQ0);
-  await expect(svgZblizenia, 'zbliżenie: poziom szczegółu pola').toHaveAttribute('data-scene-lod', '2');
+  await expect.poll(() => skalaKamery(svgZblizenia), { message: 'zbliżenie: poziom szczegółu pola' }).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
   const boxZblizenia = (await uchwytQ0.boundingBox())!;
   expect(Math.min(boxZblizenia.width, boxZblizenia.height), 'zbliżenie: uchwyt Q0 ≥ 3 × 48 px').toBeGreaterThanOrEqual(3 * BOK_KAFLA_SWIATA - TOLERANCJA_EKRANU_PX);
   await oczekujKafla(page, q0Staly.device_ref, 'zamkniety', 'zbliżenie: Q0 zamknięty');
   zapiszOdcisk('pole-z10-zblizenie-ciemny', await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, 'pole-z10-zblizenie-ciemny.png'), clip: await kadrPola(page, aparatyStalego) }));
 
-  // ---- 7a. Poziomy szczegółu LOD1 i LOD0 kamery (odbiór B-02 pkt 5 i 6), oba motywy -------
+  // ---- 7a. Skala pośrednia i przegląd (odbiór B-02 pkt 5 i 6), oba motywy -----------------
   for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
     await ustawMotyw(page, theme);
     for (const lod of [1, 0] as const) await zrzutLod(page, `pole-z10-lod${lod}-${klucz}`, q0.device_ref, poleZajete, lod);
@@ -1715,7 +1702,7 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
       await oczekujKafla(page, a.device_ref, stanKaflaZModelu(polozenieAparatu(enm, a.device_ref)), `${klucz}: ${a.designation} wg rekordu położenia`);
     }
     await zrzut(page, `pole-z11-1-stan-wyjsciowy-${klucz}`, q0.device_ref, poleZ11Po, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);
-    // Poziomy szczegółu LOD1 i LOD0 kamery (odbiór B-02 pkt 5 i 6).
+    // Skala pośrednia i przegląd (odbiór B-02 pkt 5 i 6).
     for (const lod of [1, 0] as const) await zrzutLod(page, `pole-z11-1-lod${lod}-${klucz}`, q0.device_ref, poleZ11Po, lod);
   }
 
@@ -1758,12 +1745,12 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
  * Akceptacja z wyjątkiem opisów które mogą być po lewej stronie wtedy wszystko stanie się
  * czytelniejsze i bez kolizji”): opisy kolumny odgałęzienia PO LEWEJ jej symboli także w polu Z.11
  * (ENEA Zeszyt 1 s.90) — wykonanie z wyłącznikiem stałym i odłącznikiem, gdzie odgałęzienie niesie
- * dwa aparaty boczne (uziemnik Q51 i przekładnik napięciowy T3). Zrzuty LOD2 (kadr pola) i LOD1
+ * dwa aparaty boczne (uziemnik Q51 i przekładnik napięciowy T3). Zrzuty w skali czytania (kadr pola) i w skali pośredniej
  * w obu motywach; sprawdzenia kadru (`zrzut`): kafle stanu, blok zabezpieczeń z kodami
  * niezasłoniętymi, wspólna krawędź podpisów w każdej kolumnie i podpisy odgałęzienia na lewo od
  * jego symboli.
  */
-test('UX-04 — pole liniowe Z.11 GPZ: opisy pola po lewej — kolumna oznaczeń i kolumna przekładni (oba motywy, LOD2 i LOD1)', async ({ page, request }) => {
+test('UX-04 — pole liniowe Z.11 GPZ: opisy pola po lewej — kolumna oznaczeń i kolumna przekładni (oba motywy, skala czytania i pośrednia)', async ({ page, request }) => {
   test.setTimeout(900_000);
   mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   const { caseId } = await otworzAplikacje(page, request, 'Z.11');

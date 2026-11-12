@@ -9,7 +9,7 @@
  * na scenie, kolizje z sond sceny (`labelCollisions`, `labelWireCollisions`).
  *
  * Iloczyn cech: wzorzec pola (Z.10 sekcja 1 × Z.10 sekcja 2 × Z.11 z odgałęzieniem i Z.11.1)
- * × poziom szczegółu (L0 × L1 × L2) × porty przekładnika (komplet × brak × port bez węzła ×
+ * × porty przekładnika (komplet × brak × port bez węzła ×
  * zamienione `we`/`wy` × aparat poza torem) × rdzenie (jeden × trzy × brak) × szerokość toru
  * (z przekładnikiem Ferrantiego szerszym od pierścienia × bez niego — przekładnik najszerszy)
  * × przewód przy zacisku po stronie oznaczeń (żaden × odczep uziemnika z węzła zacisku dolnego
@@ -169,20 +169,17 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
       }
     });
 
-    for (const lod of [0, 1, 2] as const) {
-      it(`${nazwa} × L${lod}: oznaczenia wyłącznie na L2, zero kolizji`, () => {
-        const scena = buildSceneV3(enm, lod);
-        for (const bay of polaLiniowe(enm)) {
-          if (lod === 2) sprawdzPole(scena, bay, true, true);
-          else expect(etykietyZaciskow(scena, bay.ref_id), `${bay.ref_id} L${lod}`).toEqual([]);
-        }
-        expect(kolizjeNowychEtykiet(scena)).toEqual([]);
-      });
-    }
+    it(`${nazwa}: oznaczenia zacisków w każdym polu liniowym, zero kolizji`, () => {
+      const scena = buildSceneV3(enm);
+      for (const bay of polaLiniowe(enm)) {
+        sprawdzPole(scena, bay, true, true);
+      }
+      expect(kolizjeNowychEtykiet(scena)).toEqual([]);
+    });
 
     it(`${nazwa}: Z.11 trzy rdzenie — wyłącznie krótka przekładnia (bez „/5/5”, klas i zaczepu)`, () => {
       const trojrdzeniowe = polaLiniowe(enm).filter((b) => (przekladnik(b).rdzenie?.length ?? 0) === 3);
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       for (const bay of trojrdzeniowe) {
         expect(tabliczka(scena, bay.ref_id, przekladnik(bay).device_ref).map((l) => l.text)).toEqual([
           '200–400/5',
@@ -238,7 +235,7 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
     for (const [opis, zmiana, zaciski, tab, strony] of WARIANTY) {
       it(`${nazwa} × ${opis}`, () => {
         const zmieniony = zmiana(enm);
-        const scena = buildSceneV3(zmieniony, 2);
+        const scena = buildSceneV3(zmieniony);
         for (const bay of polaLiniowe(zmieniony)) sprawdzPole(scena, bay, zaciski, tab, strony?.(nazwa));
         expect(kolizjeNowychEtykiet(scena)).toEqual([]);
       });
@@ -247,7 +244,7 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
 
   it('iniekcja dawnego zaczepu (po lewej, wiersz całkiem nad zaciskiem górnym i całkiem pod dolnym) — wyrocznia czerwona', () => {
     for (const [nazwa, enm] of FIKSTURY) {
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       for (const bay of polaLiniowe(enm)) {
         const ct = przekladnik(bay);
         const sym = symbolCt(scena, ct.device_ref);
@@ -270,7 +267,7 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
 
   it('iniekcja stanu sprzed korekty v2 (oznaczenia zacisków pierwotnych po prawej symbolu) — wyrocznia czerwona', () => {
     for (const [nazwa, enm] of FIKSTURY) {
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       for (const bay of polaLiniowe(enm)) {
         const ct = przekladnik(bay);
         const sym = symbolCt(scena, ct.device_ref);
@@ -290,6 +287,6 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
     const [, enm] = FIKSTURY[2];
     const zrzut = (s: SceneV3) =>
       s.labels.filter((l) => l.ownerRef.includes(ZNACZNIK_ZACISKU_PRZEKLADNIKA) || l.ownerRef.includes('#ct-rating-')).map((l) => [l.ownerRef, l.text, l.rect]);
-    expect(zrzut(buildSceneV3(enm, 2))).toEqual(zrzut(buildSceneV3(enm, 2)));
+    expect(zrzut(buildSceneV3(enm))).toEqual(zrzut(buildSceneV3(enm)));
   });
 });

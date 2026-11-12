@@ -1,7 +1,7 @@
 /**
  * SCHEMAT-10 S6 (V12K-137) — pomiar layoutu (KOMPLET 18 metryk wg
  * WARUNKI_ODBIORU_S6 §3 + §6) na REALNEJ fixturze referencyjnej (53 stacje),
- * per LOD. Deterministyczny, bez skutków ubocznych. Uruchomienie (cwd
+ * (jedna scena). Deterministyczny, bez skutków ubocznych. Uruchomienie (cwd
  * frontend): npx vite-node scripts/s6_measure.mjs
  *
  * Służy do wypełnienia tabeli przed/po w raporcie karty S6 i do ustalenia
@@ -22,9 +22,10 @@ const fixturePath = resolve(
 const enm = JSON.parse(readFileSync(fixturePath, 'utf8')).enm;
 
 console.log(`COLUMN_GAP (światło pasa górnego, layout/segments.ts) = ${COLUMN_GAP}px`);
-for (const lod of [0, 1, 2]) {
-  const m = layoutMetricsReport(buildSceneV3(enm, lod));
-  console.log(`\n=== LOD ${lod} ===`);
+// Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1).
+{
+  const m = layoutMetricsReport(buildSceneV3(enm));
+  console.log('\n=== SCENA ===');
   console.log(`verticalLength        = ${m.verticalLength}`);
   console.log(`horizontalLength      = ${m.horizontalLength}`);
   console.log(`totalOrthogonalLength = ${m.totalOrthogonalLength}`);

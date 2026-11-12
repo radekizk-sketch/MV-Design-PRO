@@ -62,7 +62,6 @@ import {
   buildSceneV3,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import { buildCanvasHitAreas } from '../../canvas/hitAreas';
@@ -215,25 +214,23 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // polem TR zmienia ten podpis. Wartość NIE jest wpisana na sztywno (byłaby
   // zaklęciem) — porównujemy scenę z tą samą sceną policzoną dwa razy ORAZ
   // sprawdzamy niezmienniki, które karta zobowiązała się utrzymać.
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: transformator nadal wewnątrz stosu pola TR — bez markera i bez wiersza braku`, () => {
-      const scene = buildSceneV3(enmZPolem, lod);
-      const tr = transformatoryStacji(scene);
-      expect(tr.length).toBe(1);
-      // Kluczowanie po POLU (aparat stosu), nie po refie transformatora —
-      // dowód, że ścieżka polowa nie została podmieniona na nową.
-      expect(tr[0].meta?.ownerRef).toContain('/sn_field/');
-      expect(tr[0].meta?.transformerFieldGap).toBeUndefined();
-      expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
-      expect(
-        scene.meta.stopNotes.some((n) => n.includes('skonfigurowanego pola transformatorowego')),
-      ).toBe(false);
-    });
-  }
+  it(`transformator nadal wewnątrz stosu pola TR — bez markera i bez wiersza braku`, () => {
+    const scene = buildSceneV3(enmZPolem);
+    const tr = transformatoryStacji(scene);
+    expect(tr.length).toBe(1);
+    // Kluczowanie po POLU (aparat stosu), nie po refie transformatora —
+    // dowód, że ścieżka polowa nie została podmieniona na nową.
+    expect(tr[0].meta?.ownerRef).toContain('/sn_field/');
+    expect(tr[0].meta?.transformerFieldGap).toBeUndefined();
+    expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
+    expect(
+      scene.meta.stopNotes.some((n) => n.includes('skonfigurowanego pola transformatorowego')),
+    ).toBe(false);
+  });
 
   it('L2: pełny podpis sceny stacji Z polem TR jest STABILNY (determinizm rysunku)', () => {
-    const a = JSON.stringify(buildSceneV3(enmZPolem, 2));
-    const b = JSON.stringify(buildSceneV3(clone(enmZPolem), 2));
+    const a = JSON.stringify(buildSceneV3(enmZPolem));
+    const b = JSON.stringify(buildSceneV3(clone(enmZPolem)));
     expect(a).toBe(b);
   });
 
@@ -360,24 +357,22 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   //    dodatkowo blok zabezpieczeń pola wyjściowego bez 67N (decyzja właściciela 2026-10-29 —
   //    67N wyłącznie przy potwierdzonym źródle 3U₀) i kody technologiczne pola TR
   //    „Buchholz/temp/ciśnienie" → „63/26/63P" (IEEE C37.2, jedna nomenklatura funkcji EAZ).
-  const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '52598908cb7dfc885fad4ee2496aebeb',
-    2: '9b30e827fb77dd95b2e25577760c1f48',
-  };
-  for (const lod of [1, 2] as const) {
-    it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
-      const odcisk = createHash('sha256')
-        .update(sceneSignature(buildSceneV3(enmZPolem, lod)))
-        .digest('hex')
-        .slice(0, 32);
-      expect(odcisk).toBe(ODCISK_Z_POLEM_TR[lod]);
-    });
-  }
+  // SLD-SKALA-I-NAWIGACJA R1 (2026-11-11): jedna scena = dawny pełny szczegół — jeden odcisk,
+  // równy dawnemu L2 (sygnatura elementów sceny nie niesie poziomu); odcisk L1 52598908… zniknął
+  // razem z poziomem.
+  const ODCISK_Z_POLEM_TR = '9b30e827fb77dd95b2e25577760c1f48';
+  it(`odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
+    const odcisk = createHash('sha256')
+      .update(sceneSignature(buildSceneV3(enmZPolem)))
+      .digest('hex')
+      .slice(0, 32);
+    expect(odcisk).toBe(ODCISK_Z_POLEM_TR);
+  });
 
   // GEOMETRIA-STACJI (§0 pkt 4): aparatura pola TR to rekord modelu — w tej migawce gałąź
   // wyłącznika pola (dawniej konwencja RMU: bezpiecznik + uziemnik, których model nie ma).
   it('L2: aparatura pola TR z modelu (wyłącznik z gałęzi pola) i transformator NADAL na rysunku', () => {
-    const scene = buildSceneV3(enmZPolem, 2);
+    const scene = buildSceneV3(enmZPolem);
     const poleTr = (enmZPolem.bays ?? []).find((b) => b.bay_role === 'TR' && b.ref_id.includes('/sn_field/'))!;
     // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok zabezpieczeń pola (kody funkcji z modelu) to
     // adnotacja obok toru, nie aparat — aparatura toru porównywana bez niego, blok osobno.
@@ -407,86 +402,81 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
     expect((enm.transformers ?? []).some((t) => t.ref_id.includes('/transformer'))).toBe(true);
   });
 
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: symbol transformatora WIDOCZNY i kluczowany REALNYM Transformer.ref_id`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const tr = transformatoryStacji(scene);
-      expect(tr.length).toBe(1);
-      const ref = tr[0].meta?.ownerRef ?? '';
-      expect((enm.transformers ?? []).some((t) => t.ref_id === ref)).toBe(true);
-    });
-
-    it(`L${lod}: szyna nN WIDOCZNA (strona nN wynika z modelu, nie z pola rozdzielni)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(segmentyKonczaceSie(scene, '#lv-bus').length).toBe(1);
-    });
-
-    it(`L${lod}: OSTRZEŻENIE o stanie niekompletnym obecne (marker + zdanie + ślad audytu)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(transformatoryStacji(scene)[0].meta?.transformerFieldGap).toBe(true);
-      // ZDANIE NIE JEST ETYKIETĄ RYSUNKU — i to jest rozstrzygnięcie, nie
-      // przeoczenie. Pomiar: wiersz pasma nazw z tym zdaniem (239 j.św. w t4)
-      // był SZERSZY niż najszerszy dotychczasowy wiersz bloku, a
-      // `requiredStationWidth` bierze `max()` po wierszach — jedno zdanie
-      // adnotacji dyktowałoby szerokość kolumny każdej stacji bez pola TR
-      // (+30%), przez co „Dopasuj widok" skracał podpis tożsamości GPZ i
-      // wypełnienie osi spadało poniżej progu (bramki KD-11 i K11-A padły na
-      // pełnej suicie e2e). Ta sama reguła co §20.3 dla ostrzeżeń
-      // topologicznych: rysunek niesie SYGNAŁ, treść żyje w podpowiedzi
-      // obiektu (`canvas/hitAreas.ts` → `<title>`) i w `stopNotes`.
-      expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
-      const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
-      expect(
-        scene.meta.stopNotes.some(
-          (n) => n.includes(trRef) && n.includes('skonfigurowanego pola transformatorowego'),
-        ),
-      ).toBe(true);
-    });
-
-    it(`L${lod}: ZERO fabrykowanej aparatury pola — kolumna transformatora niesie SAM transformator`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
-      // Nic innego nie może być kluczowane refem transformatora: żaden
-      // wyłącznik, rozłącznik, rozłącznik bezpiecznikowy, bezpiecznik, CT, VT,
-      // uziemnik ani przekaźnik (§0.C.4 „zakaz fabrykacji").
-      const przyTransformatorze = scene.symbols.filter(
-        (s) => s.meta?.ownerRef === trRef && s.symbolId !== 'transformer2W',
-      );
-      expect(przyTransformatorze.map((s) => s.symbolId)).toEqual([]);
-      // …ani liczba aparatów stacji nie może urosnąć względem wariantu, w
-      // którym transformatora nie ma wcale (poza samym transformatorem).
-      const bezTr = buildSceneV3(bezTransformatora(enmZPolem), lod);
-      // LV Domain Projection (po B-02): portal domeny nN stoi na zacisku nN
-      // KAŻDEJ stacji z transformatorem — nie jest aparatem pola, więc nie
-      // wchodzi do liczności aparatury (jak strzałka odbioru).
-      const aparaty = (sc: SceneV3): number =>
-        sc.symbols.filter(
-          (s) => s.symbolId !== 'transformer2W' && s.symbolId !== 'loadArrow' && s.symbolId !== 'lvPortal',
-        ).length;
-      expect(aparaty(scene)).toBe(aparaty(bezTr));
-    });
-
-    it(`L${lod}: pion z szyny SN do transformatora istnieje (tor przyłączenia narysowany)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
-      const zejscie = scene.segments.find((s) => s.meta?.ownerRef === `${trRef}#descent`);
-      expect(zejscie).toBeDefined();
-      expect(zejscie!.points.length).toBe(2);
-      // Pion: ta sama współrzędna X u góry i u dołu.
-      expect(zejscie!.points[0].x).toBe(zejscie!.points[1].x);
-    });
-  }
-
-  it('L0: stacja zwinięta — kontrakt LOD bez zmian (żadnych symboli aparatów, jak przy polu TR)', () => {
-    const bezPola = buildSceneV3(enm, 0);
-    const zPolem = buildSceneV3(enmZPolem, 0);
-    const symbole = (sc: SceneV3): string[] => sc.symbols.map((s) => s.symbolId).sort();
-    expect(symbole(bezPola)).toEqual(symbole(zPolem));
+  it(`symbol transformatora WIDOCZNY i kluczowany REALNYM Transformer.ref_id`, () => {
+    const scene = buildSceneV3(enm);
+    const tr = transformatoryStacji(scene);
+    expect(tr.length).toBe(1);
+    const ref = tr[0].meta?.ownerRef ?? '';
+    expect((enm.transformers ?? []).some((t) => t.ref_id === ref)).toBe(true);
   });
 
+  it(`szyna nN WIDOCZNA (strona nN wynika z modelu, nie z pola rozdzielni)`, () => {
+    const scene = buildSceneV3(enm);
+    expect(segmentyKonczaceSie(scene, '#lv-bus').length).toBe(1);
+  });
+
+  it(`OSTRZEŻENIE o stanie niekompletnym obecne (marker + zdanie + ślad audytu)`, () => {
+    const scene = buildSceneV3(enm);
+    expect(transformatoryStacji(scene)[0].meta?.transformerFieldGap).toBe(true);
+    // ZDANIE NIE JEST ETYKIETĄ RYSUNKU — i to jest rozstrzygnięcie, nie
+    // przeoczenie. Pomiar: wiersz pasma nazw z tym zdaniem (239 j.św. w t4)
+    // był SZERSZY niż najszerszy dotychczasowy wiersz bloku, a
+    // `requiredStationWidth` bierze `max()` po wierszach — jedno zdanie
+    // adnotacji dyktowałoby szerokość kolumny każdej stacji bez pola TR
+    // (+30%), przez co „Dopasuj widok" skracał podpis tożsamości GPZ i
+    // wypełnienie osi spadało poniżej progu (bramki KD-11 i K11-A padły na
+    // pełnej suicie e2e). Ta sama reguła co §20.3 dla ostrzeżeń
+    // topologicznych: rysunek niesie SYGNAŁ, treść żyje w podpowiedzi
+    // obiektu (`canvas/hitAreas.ts` → `<title>`) i w `stopNotes`.
+    expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
+    const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
+    expect(
+      scene.meta.stopNotes.some(
+        (n) => n.includes(trRef) && n.includes('skonfigurowanego pola transformatorowego'),
+      ),
+    ).toBe(true);
+  });
+
+  it(`ZERO fabrykowanej aparatury pola — kolumna transformatora niesie SAM transformator`, () => {
+    const scene = buildSceneV3(enm);
+    const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
+    // Nic innego nie może być kluczowane refem transformatora: żaden
+    // wyłącznik, rozłącznik, rozłącznik bezpiecznikowy, bezpiecznik, CT, VT,
+    // uziemnik ani przekaźnik (§0.C.4 „zakaz fabrykacji").
+    const przyTransformatorze = scene.symbols.filter(
+      (s) => s.meta?.ownerRef === trRef && s.symbolId !== 'transformer2W',
+    );
+    expect(przyTransformatorze.map((s) => s.symbolId)).toEqual([]);
+    // …ani liczba aparatów stacji nie może urosnąć względem wariantu, w
+    // którym transformatora nie ma wcale (poza samym transformatorem).
+    const bezTr = buildSceneV3(bezTransformatora(enmZPolem));
+    // LV Domain Projection (po B-02): portal domeny nN stoi na zacisku nN
+    // KAŻDEJ stacji z transformatorem — nie jest aparatem pola, więc nie
+    // wchodzi do liczności aparatury (jak strzałka odbioru).
+    const aparaty = (sc: SceneV3): number =>
+      sc.symbols.filter(
+        (s) => s.symbolId !== 'transformer2W' && s.symbolId !== 'loadArrow' && s.symbolId !== 'lvPortal',
+      ).length;
+    expect(aparaty(scene)).toBe(aparaty(bezTr));
+  });
+
+  it(`pion z szyny SN do transformatora istnieje (tor przyłączenia narysowany)`, () => {
+    const scene = buildSceneV3(enm);
+    const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
+    const zejscie = scene.segments.find((s) => s.meta?.ownerRef === `${trRef}#descent`);
+    expect(zejscie).toBeDefined();
+    expect(zejscie!.points.length).toBe(2);
+    // Pion: ta sama współrzędna X u góry i u dołu.
+    expect(zejscie!.points[0].x).toBe(zejscie!.points[1].x);
+  });
+
+  // Dawny test „L0: stacja zwinięta — te same symbole z polem TR i bez" usunięty razem z formą
+  // zwiniętą (karta SLD-SKALA-I-NAWIGACJA, R1: jedna scena). Intencja — brak pola TR nie
+  // zmienia rysunku poza kolumną transformatora — pilnują testy T2 wyżej i wyrocznie niżej.
+
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {
-    expect(JSON.stringify(buildSceneV3(enm, 2))).toBe(
-      JSON.stringify(buildSceneV3(bezPolaTr(enmZPolem), 2)),
+    expect(JSON.stringify(buildSceneV3(enm))).toBe(
+      JSON.stringify(buildSceneV3(bezPolaTr(enmZPolem))),
     );
   });
 
@@ -494,54 +484,48 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
   // nowa kolumna wchodzi w te same wyrocznie rysunku, co każda inna. Bez tego
   // „transformator jest widoczny" mogłoby znaczyć „leży na sąsiedniej kolumnie
   // / poza siatką / bez zakotwiczonego pionu".
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: wyrocznie rysunku ZIELONE dla kolumny transformatora bez pola`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(allSceneGeometryOnGrid(scene)).toBe(true);
-      expect(noSceneSymbolOverlaps(scene)).toBe(true);
-      expect(noSymbolWireCollisions(scene)).toBe(true);
-      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
-      expect(allVerticalsAttributed(scene)).toBe(true);
-      expect(allBusbarLabelsValid(scene)).toBe(true);
-      expect(allSwitchSymbolsUnambiguous(scene)).toBe(true);
-      // Oznaczniki aparatów żyją WYŁĄCZNIE na L2 (kontrakt LOD §17.4) — na L1
-      // ta wyrocznia zwraca `false` także dla stacji Z polem TR (zmierzone na
-      // TEJ SAMEJ fixturze przed przekształceniem), więc asercja jest L2-only.
-      if (lod === 2) expect(allApparatusIdentifiersValid(scene)).toBe(true);
-    });
-  }
+  it(`wyrocznie rysunku ZIELONE dla kolumny transformatora bez pola`, () => {
+    const scene = buildSceneV3(enm);
+    expect(allSceneGeometryOnGrid(scene)).toBe(true);
+    expect(noSceneSymbolOverlaps(scene)).toBe(true);
+    expect(noSymbolWireCollisions(scene)).toBe(true);
+    expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+    expect(allVerticalsAttributed(scene)).toBe(true);
+    expect(allBusbarLabelsValid(scene)).toBe(true);
+    expect(allSwitchSymbolsUnambiguous(scene)).toBe(true);
+    // Oznaczniki aparatów są w jednej scenie zawsze (dawniej wyłącznie L2, kontrakt LOD §17.4).
+    expect(allApparatusIdentifiersValid(scene)).toBe(true);
+  });
 
   // §0.C.5: PODPOWIEDŹ obiektu niesie pełne zdanie stanu — i wisi na kształcie
   // TRAFIENIA, bo to on odbiera wskazanie kursorem (warstwa trafień leży NAD
   // rysunkiem). Podpowiedź na grupie rysunkowej byłaby kontrolką-widmem:
   // istniałaby w DOM i nigdy nie pokazała się użytkownikowi.
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: kształt trafienia transformatora niesie podpowiedź ze zdaniem stanu`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const obszary = buildCanvasHitAreas({
-        symbols: scene.symbols,
-        segments: scene.segments,
-        labels: [],
-        resultMarkers: [],
-        scale: 1,
-      });
-      const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
-      const zPodpowiedzia = obszary.filter((a) => a.tytul === STATION_TR_FIELD_GAP_TEXT);
-      expect(zPodpowiedzia).toHaveLength(1);
-      expect(zPodpowiedzia[0].ownerRef).toBe(trRef);
-      // Kontrola negatywna: poza zdaniem stanu TR podpowiedź niesie WYŁĄCZNIE
-      // portal domeny nN (LV Domain Projection po B-02, `LV_PORTAL_TITLE_TEXT`
-      // na KAŻDYM symbolu `lvPortal`) albo stan obiektu aparatu z rekordem (karta
-      // UX-04: istniejący / projektowany) — zero pustych/fałszywych `<title>`.
-      const portale = obszary.filter((a) => a.tytul === LV_PORTAL_TITLE_TEXT);
-      expect(portale.every((a) => a.klasa === 'portal-nn')).toBe(true);
-      expect(portale.length).toBe(scene.symbols.filter((sym) => sym.symbolId === 'lvPortal').length);
-      expect(obszaryBezObcychPodpowiedzi(obszary, scene)).toBe(true);
+  it(`kształt trafienia transformatora niesie podpowiedź ze zdaniem stanu`, () => {
+    const scene = buildSceneV3(enm);
+    const obszary = buildCanvasHitAreas({
+      symbols: scene.symbols,
+      segments: scene.segments,
+      labels: [],
+      resultMarkers: [],
+      scale: 1,
     });
-  }
+    const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
+    const zPodpowiedzia = obszary.filter((a) => a.tytul === STATION_TR_FIELD_GAP_TEXT);
+    expect(zPodpowiedzia).toHaveLength(1);
+    expect(zPodpowiedzia[0].ownerRef).toBe(trRef);
+    // Kontrola negatywna: poza zdaniem stanu TR podpowiedź niesie WYŁĄCZNIE
+    // portal domeny nN (LV Domain Projection po B-02, `LV_PORTAL_TITLE_TEXT`
+    // na KAŻDYM symbolu `lvPortal`) albo stan obiektu aparatu z rekordem (karta
+    // UX-04: istniejący / projektowany) — zero pustych/fałszywych `<title>`.
+    const portale = obszary.filter((a) => a.tytul === LV_PORTAL_TITLE_TEXT);
+    expect(portale.every((a) => a.klasa === 'portal-nn')).toBe(true);
+    expect(portale.length).toBe(scene.symbols.filter((sym) => sym.symbolId === 'lvPortal').length);
+    expect(obszaryBezObcychPodpowiedzi(obszary, scene)).toBe(true);
+  });
 
   it('stacja Z polem TR: ZERO podpowiedzi o braku pola (predykat parami)', () => {
-    const scene = buildSceneV3(enmZPolem, 2);
+    const scene = buildSceneV3(enmZPolem);
     const obszary = buildCanvasHitAreas({
       symbols: scene.symbols,
       segments: scene.segments,
@@ -558,7 +542,7 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
   // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (inspektor
   // obiektu kanwy rozwiązuje rekord `Transformer` wprost), a nie w „nic".
   it('L2: symbol niesie kategorię `transformer` i realny ownerRef — cel kliku istnieje', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const tr = transformatoryStacji(scene)[0];
     expect(tr.meta?.elementKind).toBe('transformer');
     expect((enm.transformers ?? []).some((t) => t.ref_id === tr.meta?.ownerRef)).toBe(true);
@@ -573,14 +557,12 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
 describe('TR2W-BEZ-POLA T3 — brak transformatora w modelu', () => {
   const enm = bezTransformatora(enmZPolem);
 
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: ZERO symboli transformatora stacji i ZERO szyny nN`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(transformatoryStacji(scene).length).toBe(0);
-      expect(segmentyKonczaceSie(scene, '#lv-bus').length).toBe(0);
-      expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
-    });
-  }
+  it(`ZERO symboli transformatora stacji i ZERO szyny nN`, () => {
+    const scene = buildSceneV3(enm);
+    expect(transformatoryStacji(scene).length).toBe(0);
+    expect(segmentyKonczaceSie(scene, '#lv-bus').length).toBe(0);
+    expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -590,21 +572,19 @@ describe('TR2W-BEZ-POLA T3 — brak transformatora w modelu', () => {
 describe('TR2W-BEZ-POLA T6 — transformator bez pola + DER na nN: pełny tor', () => {
   const enm = zDerNaNn(enmZPolem);
 
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: SN → transformator → szyna nN → źródło DER (każde ogniwo obecne)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const tr = transformatoryStacji(scene);
-      expect(tr.length).toBe(1);
-      expect(segmentyKonczaceSie(scene, '#descent').length).toBeGreaterThan(0);
-      expect(segmentyKonczaceSie(scene, '#lv-bus').length).toBe(1);
-      // Źródło DER zaczepione za transformatorem (rząd nN).
-      const der = scene.symbols.filter((s) => (s.meta?.ownerRef ?? '').startsWith('gen/test/'));
-      expect(der.length).toBe(1);
-      expect(segmentyKonczaceSie(scene, '#der-row-bus').length).toBeGreaterThan(0);
-      // …i nie zgubiliśmy przy tym ostrzeżenia o braku pola.
-      expect(tr[0].meta?.transformerFieldGap).toBe(true);
-    });
-  }
+  it(`SN → transformator → szyna nN → źródło DER (każde ogniwo obecne)`, () => {
+    const scene = buildSceneV3(enm);
+    const tr = transformatoryStacji(scene);
+    expect(tr.length).toBe(1);
+    expect(segmentyKonczaceSie(scene, '#descent').length).toBeGreaterThan(0);
+    expect(segmentyKonczaceSie(scene, '#lv-bus').length).toBe(1);
+    // Źródło DER zaczepione za transformatorem (rząd nN).
+    const der = scene.symbols.filter((s) => (s.meta?.ownerRef ?? '').startsWith('gen/test/'));
+    expect(der.length).toBe(1);
+    expect(segmentyKonczaceSie(scene, '#der-row-bus').length).toBeGreaterThan(0);
+    // …i nie zgubiliśmy przy tym ostrzeżenia o braku pola.
+    expect(tr[0].meta?.transformerFieldGap).toBe(true);
+  });
 });
 
 describe('TR2W-BEZ-POLA T7 — transformator bez pola, ZERO rekordów Load', () => {
@@ -615,26 +595,22 @@ describe('TR2W-BEZ-POLA T7 — transformator bez pola, ZERO rekordów Load', () 
     expect((enm.loads ?? []).some((l) => l.bus_ref === busRef)).toBe(false);
   });
 
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: ZERO strzałek odbioru — rysunek pisze jawną granicę modelu, nie fikcyjny odbiór`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.symbols.filter((s) => s.symbolId === 'loadArrow').length).toBe(0);
-      expect(segmentyKonczaceSie(scene, '#lv-load-drop').length).toBe(0);
-      expect(scene.labels.some((l) => l.text === 'granica modelu — bez odbiorów nN')).toBe(true);
-    });
-  }
+  it(`ZERO strzałek odbioru — rysunek pisze jawną granicę modelu, nie fikcyjny odbiór`, () => {
+    const scene = buildSceneV3(enm);
+    expect(scene.symbols.filter((s) => s.symbolId === 'loadArrow').length).toBe(0);
+    expect(segmentyKonczaceSie(scene, '#lv-load-drop').length).toBe(0);
+    expect(scene.labels.some((l) => l.text === 'granica modelu — bez odbiorów nN')).toBe(true);
+  });
 });
 
 describe('TR2W-BEZ-POLA T8 — potrzeby własne stacji W MODELU', () => {
   const enm = zPotrzebamiWlasnymi(enmZPolem);
 
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: odbiór nN WIDOCZNY (strzałka + pion z szyny nN)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.symbols.filter((s) => s.symbolId === 'loadArrow').length).toBe(1);
-      expect(segmentyKonczaceSie(scene, '#lv-load-drop').length).toBe(1);
-      // Granica modelu ZNIKA, gdy odbiór jest realny (predykat parami).
-      expect(scene.labels.some((l) => l.text === 'granica modelu — bez odbiorów nN')).toBe(false);
-    });
-  }
+  it(`odbiór nN WIDOCZNY (strzałka + pion z szyny nN)`, () => {
+    const scene = buildSceneV3(enm);
+    expect(scene.symbols.filter((s) => s.symbolId === 'loadArrow').length).toBe(1);
+    expect(segmentyKonczaceSie(scene, '#lv-load-drop').length).toBe(1);
+    // Granica modelu ZNIKA, gdy odbiór jest realny (predykat parami).
+    expect(scene.labels.some((l) => l.text === 'granica modelu — bez odbiorów nN')).toBe(false);
+  });
 });

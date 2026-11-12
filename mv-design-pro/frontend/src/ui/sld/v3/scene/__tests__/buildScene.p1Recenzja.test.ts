@@ -15,8 +15,8 @@
  *       silnika).
  *  P1.3 FIXTURY WIELKOSKALOWE (rodzina H, WYTYCZNE §3) — syntetyczne sieci SN
  *       ~100/250/500 stacji (magistrala + laterale + TR + DER + NO, replikacja
- *       realnej topologii): zero-defekt L0/L1/L2, determinizm, niezmienniczość
- *       na permutację rekordów, „jedna kotwica", budżety czasu (WYTYCZNE §10).
+ *       realnej topologii): zero-defekt jednej sceny, determinizm, niezmienniczość
+ *       na permutację rekordów, budżety czasu (WYTYCZNE §10).
  *  P1.4 LOKALNOŚĆ (+1 stacja, WYTYCZNE §5/§9) — `anchorDisplacementMetrics`:
  *       dodanie 1 stacji na ogonie magistrali przesuwa kotwice TYLKO tam, gdzie
  *       wymusza reguła ogólna (poziome upakowanie footprintu), reszta bit-
@@ -35,11 +35,10 @@ import {
   topBandFieldClearances,
   allTopBandFieldsClearance,
   anchorDisplacementMetrics,
-  stationCollapsedAnchors,
+  stationAnchors,
   noSceneSymbolOverlaps,
   allSceneSegmentEndpointsAnchored,
   allSourcesConnected,
-  type SceneLod,
   sheetRowStationIds,
 } from '../buildScene';
 import { crossingBusGaps } from '../crossings';
@@ -48,7 +47,6 @@ import { requiredStationWidth, type StationMeasureInput } from '../../layout/mea
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
 import {
-  LODS,
   loadEnm,
   synthLargeTrunk,
   appendUnitToTrunk,
@@ -71,63 +69,55 @@ const openTrunkChain = loadEnm(resolve(smallDir, 'openTrunkChain.enm.json'));
 // P1.1 — GĘSTOŚĆ LOKALNA (rozkład zajętości arkusza)
 // ---------------------------------------------------------------------------
 describe('RECENZJA EKSPERCKA — metryki gęstości lokalnej (rozkład zajętości arkusza)', () => {
-  it('deterministyczna: dwa biegi tej samej sceny ⇒ identyczny raport gęstości (każdy LOD)', () => {
-    for (const lod of LODS) {
-      const a = localDensityMetrics(buildSceneV3(bigEnm, lod));
-      const b = localDensityMetrics(buildSceneV3(bigEnm, lod));
-      expect(a).toEqual(b);
-    }
+  it('deterministyczna: dwa biegi tej samej sceny ⇒ identyczny raport gęstości', () => {
+    const a = localDensityMetrics(buildSceneV3(bigEnm));
+    const b = localDensityMetrics(buildSceneV3(bigEnm));
+    expect(a).toEqual(b);
   });
 
   it('sanity: okna niepuste, wartości skończone w [0,1], maks ≥ średnia, pustka ∈ [0,1]', () => {
-    for (const lod of LODS) {
-      const d = localDensityMetrics(buildSceneV3(bigEnm, lod));
-      expect(d.windowCells).toBe(LOCAL_DENSITY_WINDOW_CELLS);
-      expect(d.windowCount).toBeGreaterThan(0);
-      for (const v of [d.meanDensity, d.maxLocalDensity, d.densityStdDev, d.voidRatio]) {
-        expect(Number.isFinite(v)).toBe(true);
-      }
-      expect(d.meanDensity).toBeGreaterThanOrEqual(0);
-      expect(d.maxLocalDensity).toBeGreaterThanOrEqual(d.meanDensity);
-      expect(d.maxLocalDensity).toBeLessThanOrEqual(1);
-      expect(d.voidRatio).toBeGreaterThanOrEqual(0);
-      expect(d.voidRatio).toBeLessThanOrEqual(1);
+    const d = localDensityMetrics(buildSceneV3(bigEnm));
+    expect(d.windowCells).toBe(LOCAL_DENSITY_WINDOW_CELLS);
+    expect(d.windowCount).toBeGreaterThan(0);
+    for (const v of [d.meanDensity, d.maxLocalDensity, d.densityStdDev, d.voidRatio]) {
+      expect(Number.isFinite(v)).toBe(true);
     }
+    expect(d.meanDensity).toBeGreaterThanOrEqual(0);
+    expect(d.maxLocalDensity).toBeGreaterThanOrEqual(d.meanDensity);
+    expect(d.maxLocalDensity).toBeLessThanOrEqual(1);
+    expect(d.voidRatio).toBeGreaterThanOrEqual(0);
+    expect(d.voidRatio).toBeLessThanOrEqual(1);
   });
 
   it('RAPORT wartości bazowych (fixtura referencyjna, uczciwy pomiar bazy — bez twardego progu)', () => {
-    const rows: string[] = [];
-    for (const lod of LODS) {
-      const d = localDensityMetrics(buildSceneV3(bigEnm, lod));
-      rows.push(
-        `  L${lod}: okna=${d.windowCount} średnia=${d.meanDensity.toFixed(6)} maks=${d.maxLocalDensity.toFixed(6)} ` +
-          `odch=${d.densityStdDev.toFixed(6)} pustka=${d.voidRatio.toFixed(6)}`,
-      );
-    }
-    console.log('[RECENZJA EKSPERCKA gęstość lokalna — baza sldSubstrate52s]\n' + rows.join('\n'));
-    expect(rows.length).toBe(3);
+    const d = localDensityMetrics(buildSceneV3(bigEnm));
+    const wiersz =
+      `okna=${d.windowCount} średnia=${d.meanDensity.toFixed(6)} maks=${d.maxLocalDensity.toFixed(6)} ` +
+        `odch=${d.densityStdDev.toFixed(6)} pustka=${d.voidRatio.toFixed(6)}`;
+    console.log('[RECENZJA EKSPERCKA gęstość lokalna — baza sldSubstrate52s]\n' + wiersz);
+    expect(d.windowCount).toBeGreaterThan(0);
   });
 
-  it('miara GRYZIE: gęstsza scena (więcej detalu L2>L0) ma wyższą średnią i niższą pustkę niż L0', () => {
-    // Rozkład reaguje na realną treść: L2 (pełen detal) jest gęstszy niż L0
-    // (kompaktowy przegląd), więc pustka spada, a średnia rośnie — dowód, że
-    // miara nie zwraca stałej.
-    const l0 = localDensityMetrics(buildSceneV3(bigEnm, 0));
-    const l2 = localDensityMetrics(buildSceneV3(bigEnm, 2));
-    expect(l2.meanDensity).toBeGreaterThan(l0.meanDensity);
-    expect(l2.voidRatio).toBeLessThan(l0.voidRatio);
+  it('miara GRYZIE: scena bez symboli i napisów (ten sam arkusz) ma niższą średnią i wyższą pustkę', () => {
+    // Rozkład reaguje na realną treść — dowód, że miara nie zwraca stałej.
+    // INTENCJA po karcie SLD-SKALA-I-NAWIGACJA (R1): dawniej porównywano L2
+    // (pełen detal) z L0 (zwinięty przegląd); jest jedna scena, więc treść
+    // zdejmujemy wprost, przy tym samym obrysie arkusza.
+    const scena = buildSceneV3(bigEnm);
+    const pelna = localDensityMetrics(scena);
+    const rzadka = localDensityMetrics({ ...scena, symbols: [], labels: [] });
+    expect(pelna.meanDensity).toBeGreaterThan(rzadka.meanDensity);
+    expect(pelna.voidRatio).toBeLessThan(rzadka.voidRatio);
   });
 
   it('raport metryk layoutu niesie pola gęstości lokalnej (spójne z `localDensityMetrics`)', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(bigEnm, lod);
-      const rep = layoutMetricsReport(scene);
-      const d = localDensityMetrics(scene);
-      expect(rep.localDensityMean).toBe(d.meanDensity);
-      expect(rep.localDensityMax).toBe(d.maxLocalDensity);
-      expect(rep.localDensityStdDev).toBe(d.densityStdDev);
-      expect(rep.localDensityVoidRatio).toBe(d.voidRatio);
-    }
+    const scene = buildSceneV3(bigEnm);
+    const rep = layoutMetricsReport(scene);
+    const d = localDensityMetrics(scene);
+    expect(rep.localDensityMean).toBe(d.meanDensity);
+    expect(rep.localDensityMax).toBe(d.maxLocalDensity);
+    expect(rep.localDensityStdDev).toBe(d.densityStdDev);
+    expect(rep.localDensityVoidRatio).toBe(d.voidRatio);
   });
 });
 
@@ -158,7 +148,7 @@ describe('RECENZJA EKSPERCKA — rozstaw stacji z realnego footprintu (dowód, n
 
   it('scena: pola pasa górnego mają RÓŻNE szerokości footprintu (treść steruje kolumną)', () => {
     // Gdyby rozstaw był stałym slotem, wszystkie pola miałyby jednakową szerokość.
-    const ext = topBandFieldExtents(buildSceneV3(bigEnm, 2));
+    const ext = topBandFieldExtents(buildSceneV3(bigEnm));
     expect(ext.length).toBeGreaterThan(1);
     const distinctWidths = new Set(ext.map((e) => e.width));
     expect(distinctWidths.size).toBeGreaterThan(1);
@@ -169,13 +159,11 @@ describe('RECENZJA EKSPERCKA — rozstaw stacji z realnego footprintu (dowód, n
     // (upakowanie ciasne do minimalnego światła) ORAZ szerokości pól SĄ RÓŻNE
     // (test wyżej), to rozstaw środek-do-środka WYNIKA z footprintu każdej stacji,
     // nie ze stałego slotu (stały slot ⇒ stały rozstaw niezależny od footprintu).
-    for (const lod of LODS) {
-      const scene = buildSceneV3(bigEnm, lod);
-      const gaps = topBandFieldClearances(scene).map((g) => g.gap);
-      if (gaps.length === 0) continue; // pas górny <2 pola (małe sceny) — pomijamy
-      for (const g of gaps) expect(g).toBe(TOP_LEVEL_FIELD_CLEARANCE);
-      expect(allTopBandFieldsClearance(scene)).toBe(true);
-    }
+    const scene = buildSceneV3(bigEnm);
+    const gaps = topBandFieldClearances(scene).map((g) => g.gap);
+    expect(gaps.length, 'sieć referencyjna ma ≥ 2 pola w pasie górnym').toBeGreaterThan(0);
+    for (const g of gaps) expect(g).toBe(TOP_LEVEL_FIELD_CLEARANCE);
+    expect(allTopBandFieldsClearance(scene)).toBe(true);
   });
 });
 
@@ -186,17 +174,15 @@ interface ScaleCase {
   readonly nazwa: string;
   readonly copies: number;
   readonly minStations: number;
-  /** Budżet czasu 3×LOD [ms] — ~2–4× pomiaru (WYTYCZNE §10, zapas na CI). */
+  /** Budżet czasu budowy JEDNEJ sceny [ms] — ~2–4× pomiaru (WYTYCZNE §10, zapas na CI). */
   readonly budgetMs: number;
-  /** Pełny determinizm/permutacja na wszystkich LOD (małe/średnie) vs tylko L2
-   *  (duże — koszt budowy; L2 = najgorszy przypadek pełnego detalu). */
-  readonly fullLodInvariance: boolean;
 }
 const SCALE_CASES: readonly ScaleCase[] = [
-  // Budżety = ~2–3× pomiaru warm (538/2970/11369 ms) + zapas na zimny build / CI.
-  { nazwa: '~100', copies: 2, minStations: 100, budgetMs: 5000, fullLodInvariance: true },
-  { nazwa: '~250', copies: 5, minStations: 250, budgetMs: 12000, fullLodInvariance: true },
-  { nazwa: '~500', copies: 10, minStations: 500, budgetMs: 30000, fullLodInvariance: false },
+  // Budżety = ~3× pomiaru JEDNEJ sceny (karta SLD-SKALA-I-NAWIGACJA, 2026-11-11:
+  // 619/1696/3532 ms procesora; dawniej trzy sceny, budżety 5000/12000/30000).
+  { nazwa: '~100', copies: 2, minStations: 100, budgetMs: 2000 },
+  { nazwa: '~250', copies: 5, minStations: 250, budgetMs: 5000 },
+  { nazwa: '~500', copies: 10, minStations: 500, budgetMs: 11000 },
 ];
 
 describe('RECENZJA EKSPERCKA — fixtury wielkoskalowe rodzina H (~100/250/500 stacji)', () => {
@@ -205,74 +191,53 @@ describe('RECENZJA EKSPERCKA — fixtury wielkoskalowe rodzina H (~100/250/500 s
       const enm = synthLargeTrunk(bigEnm, sc.copies);
       // Sceny bazowe zbudowane RAZ (deterministyczne) i reużyte w zero-defekt /
       // JEDNA KOTWICA — ogranicza koszt budowy przy dużej skali (WYTYCZNE §10).
-      const scenes = LODS.map((lod) => buildSceneV3(enm, lod));
+      const scene = buildSceneV3(enm);
 
       it(`ma ≥ ${sc.minStations} stacji na jednej magistrali (skala WYTYCZNE §3 H)`, () => {
-        expect(scenes[0].meta.stationCount).toBeGreaterThanOrEqual(sc.minStations);
-        expect(scenes[0].meta.mainTrunkStationIds.length).toBeGreaterThan(1);
+        expect(scene.meta.stationCount).toBeGreaterThanOrEqual(sc.minStations);
+        expect(scene.meta.mainTrunkStationIds.length).toBeGreaterThan(1);
       });
 
-      for (const lod of LODS) {
-        it(`L${lod}: buduje bez wyjątku, ZERO-DEFEKT (przecięcie bez mostka/kropka bez węzła/kolizje/przecięcia/nieortog/niejedn=0)`, () => {
-          const scene = scenes[lod];
-          const m = layoutMetricsReport(scene);
-          // Rozstrzygnięcie S7-P2 (2026-10-30): przecięcie dwóch kabli bez węzła modelu jest
-          // skrzyżowaniem z mostkiem §22.1 — warunkiem jest mostek na każdym przecięciu
-          // i zero kropek bez węzła modelu, nie zerowa liczba przecięć.
-          expect(m.crossingWithoutBridgeCount).toBe(0);
-          expect(m.junctionDotGapCount).toBe(0);
-          expect(m.labelCollisionCount).toBe(0);
-          expect(m.subtreeIntersectionCount).toBe(0);
-          expect(m.nonOrthogonalSegmentCount).toBe(0);
-          expect(m.ambiguousConnectionCount).toBe(0);
-          expect(noSceneSymbolOverlaps(scene)).toBe(true);
-          expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
-          expect(allSourcesConnected(scene)).toBe(true);
-          expect(allTopBandFieldsClearance(scene)).toBe(true);
-        });
-      }
+      it(`buduje bez wyjątku, ZERO-DEFEKT (przecięcie bez mostka/kropka bez węzła/kolizje/przecięcia/nieortog/niejedn=0)`, () => {
+        const m = layoutMetricsReport(scene);
+        // Rozstrzygnięcie S7-P2 (2026-10-30): przecięcie dwóch kabli bez węzła modelu jest
+        // skrzyżowaniem z mostkiem §22.1 — warunkiem jest mostek na każdym przecięciu
+        // i zero kropek bez węzła modelu, nie zerowa liczba przecięć.
+        expect(m.crossingWithoutBridgeCount).toBe(0);
+        expect(m.junctionDotGapCount).toBe(0);
+        expect(m.labelCollisionCount).toBe(0);
+        expect(m.subtreeIntersectionCount).toBe(0);
+        expect(m.nonOrthogonalSegmentCount).toBe(0);
+        expect(m.ambiguousConnectionCount).toBe(0);
+        expect(noSceneSymbolOverlaps(scene)).toBe(true);
+        expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+        expect(allSourcesConnected(scene)).toBe(true);
+        expect(allTopBandFieldsClearance(scene)).toBe(true);
+      });
 
       it('determinizm: dwa biegi ⇒ podpis bajt-identyczny', () => {
-        const lods = sc.fullLodInvariance ? LODS : ([2] as const);
-        for (const lod of lods) {
-          expect(sceneSignature(buildSceneV3(enm, lod as SceneLod))).toBe(sceneSignature(scenes[lod]));
-        }
+        expect(sceneSignature(buildSceneV3(enm))).toBe(sceneSignature(scene));
       });
 
       it('permutacja rekordów wejściowych ⇒ scena bajt-identyczna (silnik nieczuły na kolejność w pamięci)', () => {
         const permuted = permuteRecords(enm);
-        const lods = sc.fullLodInvariance ? LODS : ([2] as const);
-        for (const lod of lods) {
-          expect(
-            sceneSignature(buildSceneV3(permuted, lod as SceneLod)),
-            `permutacja zmieniła scenę na L${lod} (zależność od kolejności w pamięci)`,
-          ).toBe(sceneSignature(scenes[lod]));
-        }
+        expect(
+          sceneSignature(buildSceneV3(permuted)),
+          `permutacja zmieniła scenę na (zależność od kolejności w pamięci)`,
+        ).toBe(sceneSignature(scene));
       });
 
-      it('JEDNA KOTWICA: kolejność i liczba stacji magistrali identyczne L0/L1/L2', () => {
-        expect(scenes[1].meta.mainTrunkStationIds).toEqual(scenes[0].meta.mainTrunkStationIds);
-        expect(scenes[2].meta.mainTrunkStationIds).toEqual(scenes[0].meta.mainTrunkStationIds);
-      });
-
-      it(`czas budowy 3×LOD w budżecie ${sc.budgetMs} ms (raport, WYTYCZNE §10)`, () => {
-        buildSceneV3(enm, 2); // rozgrzewka JIT (poza pomiarem)
+      it(`czas budowy sceny w budżecie ${sc.budgetMs} ms (raport, WYTYCZNE §10)`, () => {
+        buildSceneV3(enm); // rozgrzewka JIT (poza pomiarem)
         // Czas PROCESORA (`src/test/czasProcesora.ts`), nie zegara — budżet łapie złożoność
         // kodu, nie obciążenie maszyny współdzielonej.
-        const perLod: number[] = [];
         let stations = 0;
-        for (const lod of LODS) {
-          perLod.push(
-            czasProcesoraMs(() => {
-              stations = buildSceneV3(enm, lod as SceneLod).meta.stationCount;
-            }),
-          );
-        }
-        const elapsed = perLod.reduce((suma, ms) => suma + ms, 0);
-        const ms = (wartosc: number): string => `${Math.round(wartosc)}ms`;
+        const elapsed = czasProcesoraMs(() => {
+          stations = buildSceneV3(enm).meta.stationCount;
+        });
         console.log(
           `[RECENZJA EKSPERCKA §10 wydajność] H ${sc.nazwa}: ${stations} stacji · czas procesora ` +
-            `L0=${ms(perLod[0])} L1=${ms(perLod[1])} L2=${ms(perLod[2])} total=${ms(elapsed)} (budżet ${sc.budgetMs}ms)`,
+            `${Math.round(elapsed)}ms (budżet ${sc.budgetMs}ms)`,
         );
         expect(elapsed).toBeLessThan(sc.budgetMs);
       });
@@ -290,26 +255,24 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
   const plusOne = appendUnitToTrunk(mediumEnm, openTrunkChain);
 
   it('operacja dodaje DOKŁADNIE 1 stację (kontrakt metamorficzny +1)', () => {
-    const before = buildSceneV3(mediumEnm, 0).meta.stationCount;
-    const after = buildSceneV3(plusOne, 0).meta.stationCount;
+    const before = buildSceneV3(mediumEnm).meta.stationCount;
+    const after = buildSceneV3(plusOne).meta.stationCount;
     expect(after).toBe(before + 1);
   });
 
-  it('zero-defekt zachowany po dodaniu stacji (każdy LOD)', () => {
-    for (const lod of LODS) {
-      const m = layoutMetricsReport(buildSceneV3(plusOne, lod as SceneLod));
-      expect(m.crossingWithoutBridgeCount).toBe(0);
-      expect(m.junctionDotGapCount).toBe(0);
-      expect(m.labelCollisionCount).toBe(0);
-      expect(m.subtreeIntersectionCount).toBe(0);
-      expect(m.nonOrthogonalSegmentCount).toBe(0);
-      expect(m.ambiguousConnectionCount).toBe(0);
-    }
+  it('zero-defekt zachowany po dodaniu stacji', () => {
+    const m = layoutMetricsReport(buildSceneV3(plusOne));
+    expect(m.crossingWithoutBridgeCount).toBe(0);
+    expect(m.junctionDotGapCount).toBe(0);
+    expect(m.labelCollisionCount).toBe(0);
+    expect(m.subtreeIntersectionCount).toBe(0);
+    expect(m.nonOrthogonalSegmentCount).toBe(0);
+    expect(m.ambiguousConnectionCount).toBe(0);
   });
 
   it('kotwice stacji przesunięte TYLKO tam, gdzie wymusza reguła ogólna (poziome upakowanie footprintu)', () => {
-    const before = buildSceneV3(mediumEnm, 0);
-    const after = buildSceneV3(plusOne, 0);
+    const before = buildSceneV3(mediumEnm);
+    const after = buildSceneV3(plusOne);
     const stab = anchorDisplacementMetrics(before, after);
 
     // Raport (przyczyna udokumentowana LICZBĄ, nie przymiotnikiem — WYTYCZNE §9).
@@ -388,21 +351,21 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
       }
     }
     // Bilans: każda zachowana stacja jest albo nieruszona, albo policzona jako ruch.
-    const retained = [...stationCollapsedAnchors(before).keys()].filter((k) =>
-      stationCollapsedAnchors(after).has(k),
+    const retained = [...stationAnchors(before).keys()].filter((k) =>
+      stationAnchors(after).has(k),
     ).length;
     expect(stab.anchorMovementCount + stab.unchangedSubtreeMovementCount).toBe(retained);
   });
 
   it('determinizm operacji: dwukrotne zbudowanie sceny +1 ⇒ identyczne miary przemieszczeń', () => {
-    const before = buildSceneV3(mediumEnm, 0);
-    const a = anchorDisplacementMetrics(before, buildSceneV3(plusOne, 0));
-    const b = anchorDisplacementMetrics(before, buildSceneV3(plusOne, 0));
+    const before = buildSceneV3(mediumEnm);
+    const a = anchorDisplacementMetrics(before, buildSceneV3(plusOne));
+    const b = anchorDisplacementMetrics(before, buildSceneV3(plusOne));
     expect(a).toEqual(b);
   });
 
   it('miara GRYZIE: scena porównana SAMA ZE SOBĄ ⇒ zero ruchu (nie fałszywy dodatni)', () => {
-    const scene = buildSceneV3(mediumEnm, 0);
+    const scene = buildSceneV3(mediumEnm);
     const stab = anchorDisplacementMetrics(scene, scene);
     expect(stab.anchorMovementCount).toBe(0);
     expect(stab.totalAnchorDisplacement).toBe(0);
@@ -472,9 +435,9 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
   for (const topo of topologies) {
     for (const edit of edits) {
       it(`${topo.nazwa} × ${edit.nazwa}: podział wierszy niezmieniony ⇒ Δy=0 dla zachowanych kotwic`, () => {
-        const before = buildSceneV3(topo.network, 0);
+        const before = buildSceneV3(topo.network);
         const edited = edit.apply(topo.network);
-        const after = buildSceneV3(edited, 0);
+        const after = buildSceneV3(edited);
         const stab = anchorDisplacementMetrics(before, after);
         const rowsBefore = sheetRowStationIds(before).map((r) => r.length);
         const rowsAfter = sheetRowStationIds(after).map((r) => r.length);
@@ -487,8 +450,8 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
 
         // Bilans: każda zachowana stacja jest albo nieruszona, albo policzona
         // jako ruch (TA SAMA asercja co P1.4 — dowód, że miara nie gubi stacji).
-        const retained = [...stationCollapsedAnchors(before).keys()].filter((k) =>
-          stationCollapsedAnchors(after).has(k),
+        const retained = [...stationAnchors(before).keys()].filter((k) =>
+          stationAnchors(after).has(k),
         ).length;
         expect(stab.anchorMovementCount + stab.unchangedSubtreeMovementCount).toBe(retained);
 
@@ -538,19 +501,17 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
   // innej pary stacji ma mostek §22.1 (rozstrzygnięcie S7-P2, 2026-10-30), a kropka stoi tylko
   // na węźle modelu.
   for (const topo of topologies) {
-    for (const lod of LODS) {
-      it(`${topo.nazwa} × +1 odgałęzienie (stacja z 2. odgałęzieniem) × L${lod}: zero przecięć odgałęzień stacji i toru stacji, mostek na każdym skrzyżowaniu`, () => {
-        const model = appendLateralBranch(topo.network, openTrunkChain);
-        const after = buildSceneV3(model, lod);
-        const m = layoutMetricsReport(after);
-        expect(m.crossingWithoutBridgeCount).toBe(0);
-        expect(m.junctionDotGapCount).toBe(0);
-        // Przecięcia z szyną (pion głębszego lateralu przez szynę SN stacji wiersza
-        // płytszego — pomiar przed naprawą: 1 dla +1 odgałęzienia).
-        expect(crossingBusGaps(after.segments)).toEqual([]);
-        expect(przecieciaToruStacji(after)).toEqual([]);
-        expect(przecieciaMiedzyOdgalezieniamiStacji(model, after)).toEqual([]);
-      });
-    }
+    it(`${topo.nazwa} × +1 odgałęzienie (stacja z 2. odgałęzieniem): zero przecięć odgałęzień stacji i toru stacji, mostek na każdym skrzyżowaniu`, () => {
+      const model = appendLateralBranch(topo.network, openTrunkChain);
+      const after = buildSceneV3(model);
+      const m = layoutMetricsReport(after);
+      expect(m.crossingWithoutBridgeCount).toBe(0);
+      expect(m.junctionDotGapCount).toBe(0);
+      // Przecięcia z szyną (pion głębszego lateralu przez szynę SN stacji wiersza
+      // płytszego — pomiar przed naprawą: 1 dla +1 odgałęzienia).
+      expect(crossingBusGaps(after.segments)).toEqual([]);
+      expect(przecieciaToruStacji(after)).toEqual([]);
+      expect(przecieciaMiedzyOdgalezieniamiStacji(model, after)).toEqual([]);
+    });
   }
 });

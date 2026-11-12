@@ -33,7 +33,7 @@ const ENM: EnergyNetworkModel = {
 
 function markup(paletteMode?: 'dark_scada' | 'light_technical'): string {
   return renderToStaticMarkup(
-    <SldCanvasV3 snapshot={ENM} width={800} height={500} lodOverride={0} paletteMode={paletteMode} />,
+    <SldCanvasV3 snapshot={ENM} width={800} height={500} paletteMode={paletteMode} />,
   );
 }
 

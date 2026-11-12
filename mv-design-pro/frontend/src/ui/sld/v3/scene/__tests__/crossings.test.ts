@@ -64,7 +64,7 @@ describe('F13.2 A — interiorCrossings (detekcja)', () => {
     // Historia: baza P-1 audytu D3 — 24 przecięcia; V12K-137 rozcinało kabel poziomy w
     // punkcie styku pionu i stawiało kropkę „węzła T" (24 → 21 → 18 węzłów); kropka bez
     // węzła w modelu rysowała połączenie, którego w sieci nie ma — skasowana. Te same 18
-    // miejsc są dziś skrzyżowaniami z mostkiem (pomiar `buildSceneV3(enm, 2)`).
+    // miejsc są dziś skrzyżowaniami z mostkiem (pomiar `buildSceneV3(enm)`).
     // 18 → 19 (regeneracja fikstury 2026-10-30, rozstrzygnięcie architekta: jedna postać
     // `starting_port_ref`): ładunek operacji `start_branch_segment_sn` niesie port pola zamiast
     // `….BRANCH`, więc identyfikatory korytarzy odgałęzień są nowe, a remis `id.localeCompare`
@@ -73,7 +73,7 @@ describe('F13.2 A — interiorCrossings (detekcja)', () => {
     // `starting_port_ref` i kodami EAZ (same nowe identyfikatory) — 19. Różnica wyłącznie
     // w skrzyżowaniach odgałęzienie × odgałęzienie (7 → 8); 11 skrzyżowań ciągu z zejściami
     // odgałęzień bez zmian; każde z mostkiem (asercje niżej).
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const crossings = interiorCrossings(scene.segments);
     expect(crossings.filter((c) => c.involvesBus)).toHaveLength(0);
     // 19 → 16 (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ, 2026-11-05): stacje z blokiem
@@ -87,7 +87,7 @@ describe('F13.2 A — interiorCrossings (detekcja)', () => {
   });
 
   it('determinizm: dwa wywołania dają identyczny JSON, posortowany po (y,x)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const a = interiorCrossings(scene.segments);
     const b = interiorCrossings(scene.segments);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
@@ -157,7 +157,7 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
   it('fixtura L2: kropki wyłącznie na węzłach modelu (odczepy pól), zero T-styków kabli bez węzła — 0 luk', async () => {
     const { SYMBOL_DEFS } = await import('../../symbols/defs');
     const { externalBranchNodes, lateralBranchNodes, junctionDotGaps, wezlyModeluEnm } = await import('../crossings');
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     // Golden przepisany do kanonu S7-P2 z 2026-10-30 (intencja zachowana: obustronna
     // spójność kropka⇔węzeł). Dawne 18 „węzłów T" tras (V12K-137) stało na przecięciach
     // kabli bez węzła w modelu — dziś to skrzyżowania z mostkiem (test wyżej), a T-styk
@@ -203,7 +203,7 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
   it('test negatywny (b): kropka fabrykowana poza węzłem ⇒ kropka-bez-wezla-modelu; z węzłem, ale obok toru ⇒ kropka-poza-torem', async () => {
     const { SYMBOL_DEFS } = await import('../../symbols/defs');
     const { junctionDotGaps } = await import('../crossings');
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const withFake = {
       segments: scene.segments,
       symbols: [...scene.symbols, { symbolId: 'junction', x: 99991, y: 99991 }],
@@ -255,7 +255,7 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
 
 describe('F13.2 C — testy negatywne (kontrakt gryzie)', () => {
   it('scena z fabrykowanym przecięciem pion×SZYNA ⇒ crossingBusGaps zgłasza lukę', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const corrupted: PreviewSegment[] = [
       ...scene.segments,
       // pion przecinający pierwszą napotkaną szynę w jej interiorze
@@ -275,13 +275,11 @@ describe('F13.2 C — testy negatywne (kontrakt gryzie)', () => {
 
 describe('F13.3 — bus_band_clearance_probe (§22.3, D3-4/P-5)', () => {
   it('fixtura L0/L1/L2: 0 obcych pionów w pasie ±2×GRID żadnej szyny (przed F13.3 było 12 na L1/L2 — pomiar P-5)', () => {
-    for (const lod of [0, 1, 2] as const) {
-      expect(busBandClearanceGaps(buildSceneV3(enm, lod).segments)).toEqual([]);
-    }
+    expect(busBandClearanceGaps(buildSceneV3(enm).segments)).toEqual([]);
   });
 
   it('NEGATYW (wyrocznia gryzie): pion trasy seg/ przez pas szyny stacji ⇒ luka z właścicielami', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const bus = scene.segments.find((s) => (s.meta?.kind ?? '') === 'bus' && (s.meta?.ownerRef ?? '').startsWith('stn/'))!;
     const p = bus.points[0];
     const q = bus.points[bus.points.length - 1];
@@ -293,7 +291,7 @@ describe('F13.3 — bus_band_clearance_probe (§22.3, D3-4/P-5)', () => {
   });
 
   it('pion WŁASNEGO pola tej szyny w pasie jest LEGALNY (zejścia pól — spec §22.3)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const bus = scene.segments.find((s) => (s.meta?.kind ?? '') === 'bus' && (s.meta?.ownerRef ?? '').startsWith('stn/'))!;
     const scope = (bus.meta?.ownerRef ?? '').split('/').slice(0, 2).join('/');
     const p = bus.points[0];
@@ -306,9 +304,7 @@ describe('F13.3 — bus_band_clearance_probe (§22.3, D3-4/P-5)', () => {
 
 describe('F13.3 — entry_collinearity_probe (D3-15, audyt §6a)', () => {
   it('fixtura L0/L1/L2: 0 pokryć pion-zewnętrzny×pion-wewnętrzny (przed F13.3 było 12 na L1/L2)', () => {
-    for (const lod of [0, 1, 2] as const) {
-      expect(entryCollinearityGaps(buildSceneV3(enm, lod).segments)).toEqual([]);
-    }
+    expect(entryCollinearityGaps(buildSceneV3(enm).segments)).toEqual([]);
   });
 
   it('NEGATYW (wyrocznia gryzie): pion seg/ współliniowy z pionem pola stn/ ⇒ luka; styk samym końcem ⇒ zero', () => {

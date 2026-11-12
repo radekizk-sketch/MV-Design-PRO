@@ -298,10 +298,9 @@ jobs:
       - name: Potwierdzenie sukcesu operacji kanonicznych
         run: $GUARD_PY scripts/success_toast_guard.py
 
-      # === SLD: struktura i zakres identyfikatorow warstw ===
-      - name: SLD — zakres SldLayerId (tylko renderer)
-        run: $GUARD_PY scripts/sld_layer_id_scope_guard.py
-
+      # === SLD ===
+      # (Dawny strażnik zakresu `SldLayerId` skasowany razem z polityką poziomów szczegółu v2 —
+      # karta SLD-SKALA-I-NAWIGACJA: typ nie istnieje, strażnik nie miał czego pilnować.)
       - name: SLD — kontrakt przylaczenia DER
         run: $GUARD_PY scripts/der_pcc_guard.py
 

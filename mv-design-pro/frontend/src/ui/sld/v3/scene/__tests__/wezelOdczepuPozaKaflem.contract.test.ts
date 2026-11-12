@@ -17,7 +17,7 @@
  *  (kol-a…e) kolumny opisów pola (wzorzec właściciela 2026-11-05, `naruszeniaKolumnOpisow`).
  *
  * Iloczyn cech: fikstura (64 pliki z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
- * plus macierz W1c pól stacji) × LOD {0, 1, 2} × wyrocznia (a)–(d). Iniekcje: kropka i odczep
+ * plus macierz W1c pól stacji) × wyrocznia (a)–(d) (jedna scena). Iniekcje: kropka i odczep
  * przesunięte na port wyłącznika, opis nałożony na symbol, napis i przewód.
  */
 import { readdirSync, readFileSync } from 'node:fs';
@@ -75,7 +75,6 @@ const FIKSTURY: readonly (readonly [string, EnergyNetworkModel])[] = [
   ['macierz W1c (pola stacji)', buildW1cMatrixFixture().enm] as const,
 ];
 
-const LODY = [0, 1, 2] as const;
 
 type Punkt = { readonly x: number; readonly y: number };
 type SymbolSceny = SceneV3['symbols'][number];
@@ -145,9 +144,9 @@ function naruszenia(scena: SceneV3): string[] {
   return n;
 }
 
-const SCENY = FIKSTURY.flatMap(([nazwa, enm]) => LODY.map((lod) => [nazwa, lod, enm] as const));
+const SCENY = FIKSTURY.map(([nazwa, enm]) => [nazwa, enm] as const);
 
-describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstura × LOD', () => {
+describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstura', () => {
   it('kontrola wejścia: 66 fikstur i macierz W1c', () => {
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 60 → 64 — sceny generatora
     // `gpz110kvPolaSzablonow`, `gpz110kvPoleZu{Z13,Z14,Z15}` (public/test-fixtures).
@@ -158,15 +157,15 @@ describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstu
     expect(FIKSTURY).toHaveLength(67);
   });
 
-  it.each(SCENY)('%s L%i', (_nazwa, lod, enm) => {
-    expect(naruszenia(buildSceneV3(enm, lod))).toEqual([]);
+  it.each(SCENY)('%s', (_nazwa, enm) => {
+    expect(naruszenia(buildSceneV3(enm))).toEqual([]);
   });
 
   it('zbiór nie jest pusty z konstrukcji: kropki przy aparatach z kaflem, opisy każdego rodzaju', () => {
     let kropkiPrzyKaflu = 0;
     const rodzaje = new Set<string>();
-    for (const [, lod, enm] of SCENY) {
-      const scena = buildSceneV3(enm, lod);
+    for (const [, enm] of SCENY) {
+      const scena = buildSceneV3(enm);
       const kafle = scena.symbols.filter(zKaflem).map(kafelNaScenie);
       for (const kropka of scena.symbols.filter((s) => s.symbolId === 'junction')) {
         const c = { x: kropka.x + SYMBOL_DEFS.junction.width / 2, y: kropka.y + SYMBOL_DEFS.junction.height / 2 };
@@ -179,32 +178,29 @@ describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstu
       }
     }
     expect(kropkiPrzyKaflu).toBeGreaterThan(0);
-    // (kol-…) ćwiczy iloczyn: rodzaj pola (GPZ, stacja) × LOD {1, 2} × opis (oznaczenie aparatu
-    // toru głównego, aparatu kolumny odgałęzienia, aparatu bocznego; opis przekładnika — LOD2).
+    // (kol-…) ćwiczy iloczyn: rodzaj pola (GPZ, stacja) × opis (oznaczenie aparatu toru głównego,
+    // aparatu kolumny odgałęzienia, aparatu bocznego; opis przekładnika). Jedna scena (karta
+    // SLD-SKALA-I-NAWIGACJA R1) — dawny wymiar poziomu szczegółu {1, 2} zniknął.
     const pokrycieKolumn = new Set<string>();
-    for (const [, lod, enm] of SCENY) {
-      const scena = buildSceneV3(enm, lod);
+    for (const [, enm] of SCENY) {
+      const scena = buildSceneV3(enm);
       for (const [pole, { oznaczenia, przekladnie }] of kolumnyOpisowPol(scena)) {
         const rodzaj = pole.startsWith('gpz/') ? 'gpz' : 'stacja';
         for (const l of oznaczenia) {
           const s = scena.symbols.find((x) => x.meta?.ownerRef === pole && l.symbolOpisu && x.x === l.symbolOpisu.x && x.y === l.symbolOpisu.y);
           const tor = s?.meta?.odgalezienieToru != null ? 'odgałęzienie' : 'tor';
-          pokrycieKolumn.add(`${rodzaj}·L${lod}·oznaczenie·${tor}`);
+          pokrycieKolumn.add(`${rodzaj}·oznaczenie·${tor}`);
         }
-        if (przekladnie.length > 0) pokrycieKolumn.add(`${rodzaj}·L${lod}·przekładnia`);
+        if (przekladnie.length > 0) pokrycieKolumn.add(`${rodzaj}·przekładnia`);
       }
     }
     expect([...pokrycieKolumn].sort()).toEqual([
-      'gpz·L1·oznaczenie·odgałęzienie',
-      'gpz·L1·oznaczenie·tor',
-      'gpz·L2·oznaczenie·odgałęzienie',
-      'gpz·L2·oznaczenie·tor',
-      'gpz·L2·przekładnia',
-      'stacja·L1·oznaczenie·odgałęzienie',
-      'stacja·L1·oznaczenie·tor',
-      'stacja·L2·oznaczenie·odgałęzienie',
-      'stacja·L2·oznaczenie·tor',
-      'stacja·L2·przekładnia',
+      'gpz·oznaczenie·odgałęzienie',
+      'gpz·oznaczenie·tor',
+      'gpz·przekładnia',
+      'stacja·oznaczenie·odgałęzienie',
+      'stacja·oznaczenie·tor',
+      'stacja·przekładnia',
     ]);
     expect([...rodzaje].sort()).toEqual(['cbct-rating-', 'ct-rating-', 'protection-codes-full', 'vt-rating-', 'zacisk-przekladnika-']);
   });
@@ -212,7 +208,7 @@ describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstu
 
 describe('wyrocznie kontraktu — iniekcje na realnej scenie pola Z.11', () => {
   const enm = FIKSTURY.find(([n]) => n.endsWith('pole_liniowe_z11_gpz_odgalezienie.json'))![1];
-  const scena = buildSceneV3(enm, 2);
+  const scena = buildSceneV3(enm);
   const kropka = scena.symbols.find((s) => s.symbolId === 'junction')!;
   const wylacznik = scena.symbols.find((s) => zKaflem(s) && SYMBOL_DEFS[s.symbolId].ports.length === 2)!;
   const portS = portyNaScenie(wylacznik).sort((a, b) => b.y - a.y)[0];

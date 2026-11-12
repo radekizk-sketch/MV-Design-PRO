@@ -468,13 +468,13 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
 
 describe('gpzHvColumnGaps / gpzDominanceGaps — F13.1 wyrocznie (spec §21, D3-1/D3-2)', () => {
   it('pozytyw: fixtura referencyjna sldSubstrate52s (TR WN/SN + szyna 110 kV + źródło) ⇒ gpzHvColumnGaps = []', () => {
-    const scene = buildSceneV3(referenceEnm, 2);
+    const scene = buildSceneV3(referenceEnm);
     const gaps = gpzHvColumnGaps(scene, referenceEnm);
     expect(gaps).toEqual([]);
   });
 
   it('test negatywny (dowód, że wyrocznia gryzie): ENM dalej niesie TR WN/SN, ale SCENA go nie ma (usunięty symbol transformer2W) ⇒ gap', () => {
-    const scene = buildSceneV3(referenceEnm, 2);
+    const scene = buildSceneV3(referenceEnm);
     const strippedScene = {
       ...scene,
       symbols: scene.symbols.filter((s) => s.symbolId !== 'transformer2W' || !s.meta?.testId?.includes('gpz-canonical')),
@@ -490,14 +490,14 @@ describe('gpzHvColumnGaps / gpzDominanceGaps — F13.1 wyrocznie (spec §21, D3-
   });
 
   it('pozytyw: bbox strefy GPZ ≥ bbox największej stacji na fixturze referencyjnej', () => {
-    const scene = buildSceneV3(referenceEnm, 2);
+    const scene = buildSceneV3(referenceEnm);
     const gaps = gpzDominanceGaps(scene);
     const bboxGap = gaps.find((g) => g.reason.includes('powierzchnia'));
     expect(bboxGap).toBeUndefined();
   });
 
   it('test negatywny: scena BEZ szyny busGpz (GPZ ma sekcje SN) ⇒ gpzDominanceGaps zgłasza lukę grubości', () => {
-    const scene = buildSceneV3(referenceEnm, 2);
+    const scene = buildSceneV3(referenceEnm);
     const stripped = {
       ...scene,
       segments: scene.segments.map((seg) => (seg.meta?.kind === 'busGpz' ? { ...seg, meta: { ...seg.meta, kind: 'bus' as const } } : seg)),
@@ -506,27 +506,15 @@ describe('gpzHvColumnGaps / gpzDominanceGaps — F13.1 wyrocznie (spec §21, D3-
     expect(gaps.some((g) => g.reason.includes('busGpz'))).toBe(true);
   });
 
-  // KD-7 (Zero-Debt, dług zastany po KD-5): wyrocznie §21 opisują RYSUNEK
-  // rozdzielni. KD-5 wprowadziło kanon bloku ZWINIĘTEGO na przeglądzie (cała
-  // geometria wewnętrzna świadomie w jednym symbolu), a wyroczni nie
-  // zaktualizowano — `accept:sld-v3` (krok BLOKUJĄCY w CI) był czerwony od
-  // `5bd044f2`: 2 luki na L0, L1/L2 czyste (zmierzone 2026-07-31).
-  it('blok GPZ ZWINIĘTY (przegląd) ⇒ obie wyrocznie milczą — §21 opisuje rysunek rozwinięty', () => {
-    const sceneL0 = buildSceneV3(referenceEnm, 0);
-    expect(sceneL0.symbols.some((s) => s.symbolId === 'gpzCollapsed')).toBe(true);
-    expect(gpzHvColumnGaps(sceneL0, referenceEnm)).toEqual([]);
-    expect(gpzDominanceGaps(sceneL0).filter((g) => g.reason.includes('busGpz'))).toEqual([]);
-  });
-
-  it('zwolnienie jest przywiązane do SYMBOLU zwinięcia, nie do poziomu szczegółu — bez niego wyrocznie gryzą', () => {
-    // Ta sama scena przeglądowa BEZ symbolu `gpzCollapsed`: rysunek nie ma ani
-    // kolumny WN, ani szyny `busGpz`, a nic nie tłumaczy ich nieobecności ⇒
-    // obie wyrocznie MUSZĄ zgłosić braki. Inaczej zwolnienie z KD-7 byłoby
-    // furtką do wyciszenia §21 na dowolnej scenie.
-    const sceneL0 = buildSceneV3(referenceEnm, 0);
-    const bezBloku = { ...sceneL0, symbols: sceneL0.symbols.filter((s) => s.symbolId !== 'gpzCollapsed') };
-    expect(gpzHvColumnGaps(bezBloku, referenceEnm).length).toBeGreaterThan(0);
-    expect(gpzDominanceGaps(bezBloku).some((g) => g.reason.includes('busGpz'))).toBe(true);
+  // KD-7 (zwolnienie wyroczni §21 dla bloku ZWINIĘTEGO GPZ przeglądu) usunięte razem z blokiem
+  // zwiniętym: jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) zawsze rysuje rozdzielnię GPZ w pełnym
+  // szczególe, więc wyrocznie §21 obowiązują bez wyjątku. Przypadek niżej przypina, że scena sieci
+  // referencyjnej ma kolumnę WN i szynę `busGpz` (wyrocznie milczą, bo rysunek jest pełny), a
+  // przypadek wyżej („stripped") — że bez nich wyrocznie gryzą.
+  it('jedna scena sieci referencyjnej: kolumna WN i szyna GPZ zawsze narysowane — obie wyrocznie milczą', () => {
+    const scena = buildSceneV3(referenceEnm);
+    expect(gpzHvColumnGaps(scena, referenceEnm)).toEqual([]);
+    expect(gpzDominanceGaps(scena).filter((g) => g.reason.includes('busGpz'))).toEqual([]);
   });
 });
 

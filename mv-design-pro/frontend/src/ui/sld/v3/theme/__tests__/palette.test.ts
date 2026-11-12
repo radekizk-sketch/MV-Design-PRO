@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { toLightTechnicalExportSvg } from '../../export/exportPalette';
 import {
   DARK_SCADA_SLD_PALETTE,
@@ -257,30 +257,28 @@ describe('paleta rysunku — kafle stanu łącznika (konwencja dyspozytorska, re
 describe('paleta rysunku — determinizm geometrii NIEZALEŻNY od motywu', () => {
   const enm = loadEnm();
 
-  for (const lod of [0, 1, 2] as readonly SceneLod[]) {
-    it(`LOD ${lod}: hash geometrii sceny identyczny niezależnie od aktywnej palety`, () => {
-      // Scena jest budowana BEZ jakiegokolwiek argumentu koloru — dowód, że
-      // paleta nie ma jak wpłynąć na geometrię, jest KONSTRUKCYJNY. Hash liczymy
-      // z pełnego zrzutu sceny po dwóch przebiegach rozdzielonych zmianą palety
-      // (gdyby kolor kiedykolwiek wsiąkł do sceny, hash by się rozjechał).
-      const przedZmiana = buildSceneV3(enm, lod);
-      const paleta = sldPaletteForTheme('light_technical');
-      expect(paleta).toBe(LIGHT_TECHNICAL_SLD_PALETTE);
-      const poZmianie = buildSceneV3(enm, lod);
-      const hash = (scene: unknown) => createHash('sha256').update(JSON.stringify(scene)).digest('hex');
-      expect(hash(poZmianie)).toBe(hash(przedZmiana));
-    });
+  it(`hash geometrii sceny identyczny niezależnie od aktywnej palety`, () => {
+    // Scena jest budowana BEZ jakiegokolwiek argumentu koloru — dowód, że
+    // paleta nie ma jak wpłynąć na geometrię, jest KONSTRUKCYJNY. Hash liczymy
+    // z pełnego zrzutu sceny po dwóch przebiegach rozdzielonych zmianą palety
+    // (gdyby kolor kiedykolwiek wsiąkł do sceny, hash by się rozjechał).
+    const przedZmiana = buildSceneV3(enm);
+    const paleta = sldPaletteForTheme('light_technical');
+    expect(paleta).toBe(LIGHT_TECHNICAL_SLD_PALETTE);
+    const poZmianie = buildSceneV3(enm);
+    const hash = (scene: unknown) => createHash('sha256').update(JSON.stringify(scene)).digest('hex');
+    expect(hash(poZmianie)).toBe(hash(przedZmiana));
+  });
 
-    it(`LOD ${lod}: scena nie niesie ŻADNEJ wartości koloru`, () => {
-      const zrzut = JSON.stringify(buildSceneV3(enm, lod));
-      expect(zrzut.match(/#[0-9A-Fa-f]{6}/g) ?? []).toEqual([]);
-      for (const p of [DARK_SCADA_SLD_PALETTE, LIGHT_TECHNICAL_SLD_PALETTE]) {
-        for (const [key, value] of allTokens(p)) {
-          expect(zrzut.includes(value), `scena niesie token ${key}`).toBe(false);
-        }
+  it(`scena nie niesie ŻADNEJ wartości koloru`, () => {
+    const zrzut = JSON.stringify(buildSceneV3(enm));
+    expect(zrzut.match(/#[0-9A-Fa-f]{6}/g) ?? []).toEqual([]);
+    for (const p of [DARK_SCADA_SLD_PALETTE, LIGHT_TECHNICAL_SLD_PALETTE]) {
+      for (const [key, value] of allTokens(p)) {
+        expect(zrzut.includes(value), `scena niesie token ${key}`).toBe(false);
       }
-    });
-  }
+    }
+  });
 });
 
 describe('eksport — paleta DOKUMENTOWA niezależna od motywu ekranu', () => {

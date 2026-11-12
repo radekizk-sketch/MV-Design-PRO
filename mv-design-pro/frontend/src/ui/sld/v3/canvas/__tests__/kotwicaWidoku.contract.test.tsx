@@ -11,7 +11,7 @@
  * Po operacji, która zmieniła model i WSKAZAŁA obiekt:
  *  · przybliżenie projektanta ZOSTAJE (skala niezmieniona, dopóki wskazany
  *    obiekt mieści się w kadrze),
- *  · poziom szczegółu ZOSTAJE (praca na L2 nie spada do L0),
+ *  · przybliżenie ZOSTAJE (praca przybliżona nie spada do kadru całej sieci),
  *  · wskazany obiekt jest CAŁY w kadrze i wyśrodkowany.
  * Stan sprzed karty (bezwarunkowy `'refit'`), zmierzony tym samym narzędziem:
  * oddalenie 9,01× i L2→L0 przy pracy na pełnym szczególe (sieć 50→51 stacji).
@@ -22,7 +22,7 @@
  *  {droga operacji: 5 realnych operacji budowy}
  *    × {rozmiar sieci: mała 3→4 stacje (jeden wiersz arkusza)
  *                    · duża 14→15 stacji (5 wierszy, arkusz łamany)}
- *    × {poziom pracy: L0 przegląd · L1 operatorski · L2 aparatura}.
+ *    × {kadr: dopasowanie startowe · przybliżenie kółkiem} (jedna scena — karta SLD-SKALA-I-NAWIGACJA).
  * Do tego trzy stany brzegowe tej samej maszynerii: migawka o TYM SAMYM haszu
  * (odświeżenie bez zmiany modelu), wskazanie z `zoom_to: false` oraz brak
  * wskazania (fallback do refitu).
@@ -41,7 +41,7 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { at } from '../../../../../test/arrayAt';
 
 import type { EnergyNetworkModel, SelectionHint } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3, sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { kotwicaWidoku, prostokatElementuWScenie } from '../viewAnchor';
@@ -88,17 +88,16 @@ function kadrZDom(container: HTMLElement): { x: number; y: number; width: number
   return { x, y, width, height };
 }
 
-/** Prostokąt wskazanego obiektu w świecie kamery, na poziomie `lod`. */
-function prostokatWskazanego(enm: EnergyNetworkModel, ref: string, lod: SceneLod) {
-  const box = prostokatElementuWScenie(buildSceneV3(enm, lod), ref);
+/** Prostokąt wskazanego obiektu w świecie kamery. */
+function prostokatWskazanego(enm: EnergyNetworkModel, ref: string) {
+  const box = prostokatElementuWScenie(buildSceneV3(enm), ref);
   return box ? sceneBoxToCameraWorld(box) : null;
 }
 
 function refKotwicy(enm: EnergyNetworkModel, operacja: OdpowiedzOperacji): string {
   const wskazanie = wskazanieOperacji(operacja.selection_hint, operacja.changes);
   expect(wskazanie, 'operacja niesie wskazanie obiektu').not.toBeNull();
-  const sceneByLod = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
-  const kotwica = kotwicaWidoku(sceneByLod, wskazanie!.kandydaci, sceneBoxToCameraWorld);
+  const kotwica = kotwicaWidoku(buildSceneV3(enm), wskazanie!.kandydaci, sceneBoxToCameraWorld);
   expect(kotwica, 'wskazanie rozwiązywalne na rysunku').not.toBeNull();
   return kotwica!.ref;
 }
@@ -110,79 +109,70 @@ function wskazanieDoPropu(operacja: OdpowiedzOperacji) {
 
 describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
   for (const siec of SIECI) {
-    for (const lod of [0, 1, 2] as const) {
-      it(`${siec.nazwa} · praca na L${lod}: przybliżenie i poziom szczegółu zostają, wskazany obiekt jest cały w kadrze`, () => {
-        const anchor = wskazanieDoPropu(siec.operacja);
-        // Praca projektanta odwzorowana `lodOverride` — kanwa fituje do świata
-        // TEGO poziomu (k4.1), więc kadr przed operacją jest kadrem roboczym
-        // danego poziomu szczegółu.
-        const { container, rerender } = render(
-          <SldCanvasV3
-            snapshot={siec.przed}
-            width={KANWA.width}
-            height={KANWA.height}
-            lodOverride={lod}
-            viewAnchor={null}
-          />,
-        );
-        const kadrPrzed = kadrZDom(container);
-        const skalaPrzed = KANWA.width / kadrPrzed.width;
+    it(`${siec.nazwa}: przybliżenie zostaje, wskazany obiekt jest cały w kadrze`, () => {
+      const anchor = wskazanieDoPropu(siec.operacja);
+      const { container, rerender } = render(
+        <SldCanvasV3
+          snapshot={siec.przed}
+          width={KANWA.width}
+          height={KANWA.height}
+          viewAnchor={null}
+        />,
+      );
+      const kadrPrzed = kadrZDom(container);
+      const skalaPrzed = KANWA.width / kadrPrzed.width;
 
-        // Zmiana migawki = odpowiedź operacji domenowej (store podaje migawkę
-        // i wskazanie w jednym zapisie — tu w jednym renderze).
-        rerender(
-          <SldCanvasV3
-            snapshot={siec.po}
-            width={KANWA.width}
-            height={KANWA.height}
-            lodOverride={lod}
-            viewAnchor={anchor}
-          />,
-        );
-        const kadrPo = kadrZDom(container);
-        const skalaPo = KANWA.width / kadrPo.width;
+      // Zmiana migawki = odpowiedź operacji domenowej (store podaje migawkę
+      // i wskazanie w jednym zapisie — tu w jednym renderze).
+      rerender(
+        <SldCanvasV3
+          snapshot={siec.po}
+          width={KANWA.width}
+          height={KANWA.height}
+          viewAnchor={anchor}
+        />,
+      );
+      const kadrPo = kadrZDom(container);
+      const skalaPo = KANWA.width / kadrPo.width;
 
-        // 1. Przybliżenie projektanta ZOSTAJE (wskazany obiekt mieści się w
-        //    kadrze na każdym z tych poziomów, więc kamera nie ma powodu
-        //    oddalać). Sprzed karty: skala spadała do skali fitu całej sieci.
-        expect(skalaPo).toBeCloseTo(skalaPrzed, 6);
+      // 1. Przybliżenie projektanta ZOSTAJE (wskazany obiekt mieści się w
+      //    kadrze na każdym z tych poziomów, więc kamera nie ma powodu
+      //    oddalać). Sprzed karty: skala spadała do skali fitu całej sieci.
+      expect(skalaPo).toBeCloseTo(skalaPrzed, 6);
 
-        // 2. Wskazany obiekt jest CAŁY w kadrze — i wyśrodkowany.
-        const ref = refKotwicy(siec.po, siec.operacja);
-        const box = prostokatWskazanego(siec.po, ref, lod)!;
-        expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
-        expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
-        expect(box.minY).toBeGreaterThanOrEqual(kadrPo.y);
-        expect(box.maxY).toBeLessThanOrEqual(kadrPo.y + kadrPo.height);
-        expect((box.minX + box.maxX) / 2).toBeCloseTo(kadrPo.x + kadrPo.width / 2, 3);
-      });
-    }
+      // 2. Wskazany obiekt jest CAŁY w kadrze — i wyśrodkowany.
+      const ref = refKotwicy(siec.po, siec.operacja);
+      const box = prostokatWskazanego(siec.po, ref)!;
+      expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
+      expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
+      expect(box.minY).toBeGreaterThanOrEqual(kadrPo.y);
+      expect(box.maxY).toBeLessThanOrEqual(kadrPo.y + kadrPo.height);
+      expect((box.minX + box.maxX) / 2).toBeCloseTo(kadrPo.x + kadrPo.width / 2, 3);
+    });
   }
 
   /**
-   * ŚCIEŻKA PRODUKCYJNA (bez `lodOverride`): poziom szczegółu wybiera KAMERA
-   * progami zoomu. Projektant przybliża się kółkiem — natywnym zdarzeniem, nie
+   * ŚCIEŻKA PRODUKCYJNA: projektant przybliża się kółkiem — natywnym zdarzeniem, nie
    * podmianą stanu (Zero-Debt pkt 5: obejście realnej ścieżki zamaskowałoby
    * dokładnie ten defekt, który karta naprawia) — a potem zapisuje operację.
-   * Sprzed karty: skala wracała do fitu całej sieci, a poziom spadał do L0
-   * (pomiar: 9,01× oddalenia, L2 → L0).
+   * Sprzed karty: skala wracała do fitu całej sieci (pomiar: 9,01× oddalenia).
    */
   for (const siec of SIECI) {
-    it(`${siec.nazwa} · realna ścieżka (kółko myszy, poziom z kamery): zoom i poziom szczegółu przeżywają zapis operacji`, () => {
+    it(`${siec.nazwa} · realna ścieżka (kółko myszy): przybliżenie przeżywa zapis operacji`, () => {
       const { container, rerender } = render(
         <SldCanvasV3 snapshot={siec.przed} width={KANWA.width} height={KANWA.height} viewAnchor={null} />,
       );
       const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
-      const poziom = () => Number(svg.getAttribute('data-scene-lod'));
-      const poziomStartowy = poziom();
-      // Przybliżenie aż kamera podniesie poziom szczegółu.
-      let obrot = 0;
-      while (poziom() === poziomStartowy && obrot < 60) {
+      const skala = () => Number(svg.getAttribute('data-skala-kamery'));
+      const skalaStartowa = skala();
+      // Karta SLD-SKALA-I-NAWIGACJA (R1): jedna scena — dawniej przybliżano aż kamera
+      // podniesie poziom szczegółu; teraz do półtorakrotności skali startowej (praca
+      // przybliżona, przy której wskazany obiekt nadal mieści się w kadrze — gdyby nie
+      // mieścił się, kotwica SŁUSZNIE oddala do jego rozmiaru, test wyżej).
+      for (let obrot = 0; skala() < skalaStartowa * 1.5 && obrot < 20; obrot += 1) {
         fireEvent.wheel(svg, { clientX: KANWA.width / 2, clientY: KANWA.height / 2, deltaY: -140 });
-        obrot += 1;
       }
-      expect(poziom()).toBeGreaterThan(poziomStartowy);
-      const poziomRoboczy = poziom();
+      expect(skala()).toBeGreaterThanOrEqual(skalaStartowa * 1.5);
       const kadrRoboczy = kadrZDom(container);
       const skalaRobocza = KANWA.width / kadrRoboczy.width;
 
@@ -197,9 +187,8 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
       const kadrPo = kadrZDom(container);
       const skalaPo = KANWA.width / kadrPo.width;
 
-      expect(poziom()).toBe(poziomRoboczy);
       expect(skalaPo).toBeCloseTo(skalaRobocza, 6);
-      const box = prostokatWskazanego(siec.po, refKotwicy(siec.po, siec.operacja), poziomRoboczy as SceneLod)!;
+      const box = prostokatWskazanego(siec.po, refKotwicy(siec.po, siec.operacja))!;
       expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
       expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
       expect(box.minY).toBeGreaterThanOrEqual(kadrPo.y);
@@ -210,14 +199,14 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
   it('bez kotwicy kamera zachowuje się jak przed kartą — pełny refit do całej sieci', () => {
     const siec = SIECI[1];
     const { container, rerender } = render(
-      <SldCanvasV3 snapshot={siec.przed} width={KANWA.width} height={KANWA.height} lodOverride={2} viewAnchor={null} />,
+      <SldCanvasV3 snapshot={siec.przed} width={KANWA.width} height={KANWA.height} viewAnchor={null} />,
     );
     rerender(
-      <SldCanvasV3 snapshot={siec.po} width={KANWA.width} height={KANWA.height} lodOverride={2} viewAnchor={null} />,
+      <SldCanvasV3 snapshot={siec.po} width={KANWA.width} height={KANWA.height} viewAnchor={null} />,
     );
     const kadrPo = kadrZDom(container);
     // Refit celuje w CAŁĄ treść: kadr musi obejmować skrajne punkty sceny.
-    const scene = buildSceneV3(siec.po, 2);
+    const scene = buildSceneV3(siec.po);
     const bbox = sceneBoxToCameraWorld({
       minX: scene.bbox.x, minY: scene.bbox.y,
       maxX: scene.bbox.x + scene.bbox.width, maxY: scene.bbox.y + scene.bbox.height,
@@ -229,7 +218,7 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
     const siec = SIECI[1];
     const wskazanie = wskazanieOperacji(siec.operacja.selection_hint, siec.operacja.changes)!;
     const { container, rerender } = render(
-      <SldCanvasV3 snapshot={siec.przed} width={KANWA.width} height={KANWA.height} lodOverride={2} viewAnchor={null} />,
+      <SldCanvasV3 snapshot={siec.przed} width={KANWA.width} height={KANWA.height} viewAnchor={null} />,
     );
     const kadrPrzed = kadrZDom(container);
     rerender(
@@ -237,7 +226,6 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
         snapshot={siec.po}
         width={KANWA.width}
         height={KANWA.height}
-        lodOverride={2}
         viewAnchor={{ kandydaci: wskazanie.kandydaci, przenosKadr: false }}
       />,
     );
@@ -270,32 +258,9 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
     expect(kadrZDom(container)).toEqual(kadrPoZoomie);
   });
 
-  it('kandydat narysowany TYLKO na części poziomów jest odrzucany (wymóg kompletu LOD ma strażnika)', () => {
-    // ODBIÓR B-2 (nadzorca, 2026-08-07): nagłówek `kotwicaWidoku` deklaruje, że
-    // wymóg „narysowany na WSZYSTKICH trzech poziomach" jest CELOWY — kamera przy
-    // kotwiczeniu może zmienić poziom, więc kotwica ważna tylko na jednym byłaby
-    // pułapką (kadr celowałby w prostokąt z innego świata). Iniekcja odbiorcza
-    // (zamiana warunku na `if (!l2) continue;`) przeszła CAŁĄ suitę kanwy na
-    // zielono — deklaracja nie miała strażnika. Ten test jest tym strażnikiem:
-    // sprawdza go NA WYROCZNI, nie na przykładzie — kandydat, którego brakuje na
-    // dowolnym poziomie, nie może zostać kotwicą.
-    const enm = wczytajEnm('b2Droga-continue_trunk_segment_sn.enm.json');
-    const sceneByLod = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
-
-    const narysowanyWszedzie = (ref: string): boolean =>
-      ([0, 1, 2] as const).every((lod) => prostokatElementuWScenie(sceneByLod[lod as SceneLod], ref) !== null);
-
-    // Szukamy w MODELU refu, który rysunek nosi na części poziomów — jeśli taki
-    // istnieje, kotwica MUSI go pominąć; jeśli nie istnieje, sprawdzamy wprost,
-    // że sam kandydat bez kompletu nie przechodzi.
-    const czesciowy = ([0, 1, 2] as const)
-      .flatMap((lod) => buildSceneV3(enm, lod as SceneLod).symbols.map((s) => s.meta?.ownerRef ?? ''))
-      .filter((ref) => ref && !narysowanyWszedzie(ref));
-
-    const kandydat = czesciowy[0] ?? 'ref/ktorego-rysunek-nie-nosi';
-    expect(narysowanyWszedzie(kandydat)).toBe(false);
-    expect(kotwicaWidoku(sceneByLod, [kandydat], sceneBoxToCameraWorld)).toBeNull();
-  });
+  // Dawny test „kandydat narysowany TYLKO na części poziomów jest odrzucany" skasowany
+  // z intencją (karta SLD-SKALA-I-NAWIGACJA R1): jest jedna scena, więc kandydat jest
+  // narysowany albo nie — przypadek „nierozwiązywalny ⇒ następny" pilnuje test niżej.
 
   it('kandydat nierozwiązywalny na rysunku jest pomijany na rzecz następnego (droga „przedłuż magistralę")', () => {
     // Pomiar 2026-08-07: `continue_trunk_segment_sn` wskazuje `bus/…/downstream`,
@@ -303,10 +268,10 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
     const drogi = wczytajJson<Record<string, { wskazanie: string; utworzone: string[] }>>('b2DrogiOperacji.json');
     const droga = drogi.continue_trunk_segment_sn;
     const enm = wczytajEnm('b2Droga-continue_trunk_segment_sn.enm.json');
-    const sceneByLod = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
-    expect(prostokatElementuWScenie(sceneByLod[2], droga.wskazanie)).toBeNull();
+    const scena = buildSceneV3(enm);
+    expect(prostokatElementuWScenie(scena, droga.wskazanie)).toBeNull();
     const kotwica = kotwicaWidoku(
-      sceneByLod,
+      scena,
       wskazanieOperacji({ element_id: droga.wskazanie, element_type: 'bus', zoom_to: true }, { created_element_ids: droga.utworzone })!.kandydaci,
       sceneBoxToCameraWorld,
     );
@@ -344,17 +309,12 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
    *  na pola), więc ref bierzemy stamtąd — kotwica i kadr działają na
    *  wszystkich trzech poziomach. */
   function refOstatniejStacji(): string {
-    const scene = buildSceneV3(enmDuza, 0);
-    const refyStacji = [...scene.symbols]
-      .filter((s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef)
-      .map((s) => s.meta!.ownerRef!)
-      .sort();
+    const scene = buildSceneV3(enmDuza);
+    const refyStacji = [...scene.meta.stationTraversalOrder].sort();
     const ref = at(refyStacji, -1)!;
-    expect(ref, 'fixtura ma symbole stacji na poziomie przeglądu').toBeTruthy();
+    expect(ref, 'fixtura ma stacje na rysunku').toBeTruthy();
     return ref;
   }
-  const poziomZDom = (container: HTMLElement): SceneLod =>
-    Number(container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-scene-lod')) as SceneLod;
 
   it("tryb 'kotwicz' (skutek uboczny edycji, drzewo): kadr przesuwa się na stację i ją centruje", () => {
     const { container } = render(<SldCanvasV3Workspace />);
@@ -367,7 +327,7 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
 
     const kadrPo = kadrZDom(container);
     expect(kadrPo).not.toEqual(kadrPrzed);
-    const box = prostokatWskazanego(enmDuza, refStacji, poziomZDom(container))!;
+    const box = prostokatWskazanego(enmDuza, refStacji)!;
     // Wskazany element jest w kadrze i wyśrodkowany w poziomie.
     expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
     expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
@@ -376,10 +336,10 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
 
   // K2 (UI-04, §0.5–0.6): intencja testu B-2 zostaje — wskazanie z wyników albo
   // gotowości PRZENOSI kadr na element — ale domyślny tryb wskazania to teraz
-  // KADR ('kadruj'): stacja z polami i aparatami, na poziomie ≥ L1, w całości
+  // KADR ('kadruj'): stacja z polami i aparatami w całości
   // w kadrze (środek może ustąpić sąsiadom — W5-UI-15), zamiast samego
   // przesunięcia bloku stacji do środka bez zmiany skali.
-  it('wskazanie stacji ze sklepu selekcji (domyślnie kadr) pokazuje CAŁĄ stację na poziomie ≥ L1', () => {
+  it('wskazanie stacji ze sklepu selekcji (domyślnie kadr) pokazuje CAŁĄ stację', () => {
     const { container } = render(<SldCanvasV3Workspace />);
     const kadrPrzed = kadrZDom(container);
     const refStacji = refOstatniejStacji();
@@ -390,13 +350,11 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
 
     const kadrPo = kadrZDom(container);
     expect(kadrPo).not.toEqual(kadrPrzed);
-    const poziom = poziomZDom(container);
-    expect(poziom).toBeGreaterThanOrEqual(1);
-    const sceny = { 0: buildSceneV3(enmDuza, 0), 1: buildSceneV3(enmDuza, 1), 2: buildSceneV3(enmDuza, 2) } as const;
-    const wynik = zakresCelu('stacja', enmDuza, [refStacji], sceny[2]);
+    const scena = buildSceneV3(enmDuza);
+    const wynik = zakresCelu('stacja', enmDuza, [refStacji], scena);
     expect(wynik.dostepny).toBe(true);
     if (!wynik.dostepny) return;
-    const box = prostokatyZakresu(sceny, wynik.zakres, sceneBoxToCameraWorld).celByLod[poziom]!;
+    const box = prostokatyZakresu(scena, wynik.zakres, sceneBoxToCameraWorld).cel!;
     expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x - 1e-6);
     expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width + 1e-6);
     expect(box.minY).toBeGreaterThanOrEqual(kadrPo.y - 1e-6);
@@ -436,21 +394,18 @@ describe('B-2 — każda droga operacji budowy ma kotwicę na KAŻDYM poziomie s
   }>>('b2DrogiOperacji.json');
 
   for (const [operacja, dane] of Object.entries(drogi)) {
-    it(`${operacja}: wskazanie backendu prowadzi do obiektu narysowanego na L0/L1/L2`, () => {
+    it(`${operacja}: wskazanie backendu prowadzi do obiektu narysowanego na rysunku`, () => {
       const enm = wczytajEnm(`b2Droga-${operacja}.enm.json`);
-      const sceneByLod = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
       const wskazanie = wskazanieOperacji(
         dane.wskazanie ? { element_id: dane.wskazanie, element_type: dane.typ ?? '', zoom_to: dane.zoom_to ?? true } : null,
         { created_element_ids: dane.utworzone },
       );
       expect(wskazanie, 'operacja niesie wskazanie').not.toBeNull();
-      const kotwica = kotwicaWidoku(sceneByLod, wskazanie!.kandydaci, sceneBoxToCameraWorld);
-      expect(kotwica, 'kotwica rozwiązywalna na wszystkich poziomach').not.toBeNull();
-      for (const lod of [0, 1, 2] as const) {
-        const box = kotwica!.boxByLod[lod];
-        expect(box.maxX - box.minX).toBeGreaterThan(0);
-        expect(box.maxY - box.minY).toBeGreaterThan(0);
-      }
+      const kotwica = kotwicaWidoku(buildSceneV3(enm), wskazanie!.kandydaci, sceneBoxToCameraWorld);
+      expect(kotwica, 'kotwica rozwiązywalna na rysunku').not.toBeNull();
+      const box = kotwica!.box;
+      expect(box.maxX - box.minX).toBeGreaterThan(0);
+      expect(box.maxY - box.minY).toBeGreaterThan(0);
     });
   }
 });

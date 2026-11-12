@@ -7,14 +7,14 @@
  * symbole, że nie ma niezamierzonych importów z V1, i że adaptery
  * snapshot→props zwracają deterministyczne pustki dla pustego ENM-u.
  *
- * Test NIE testuje renderingu (to robią testy substratu geometrii) ani
- * decyzji LOD (LodPolicy.test.ts) — pełni rolę tripwire dla bramki
- * wejściowej Phase -1.
+ * Test NIE testuje renderingu (to robią testy substratu geometrii) — pełni
+ * rolę tripwire dla bramki wejściowej Phase -1. Polityka poziomów szczegółu v2
+ * (`lod/**`) skasowana kartą SLD-SKALA-I-NAWIGACJA (R9): jedna scena niezależna
+ * od skali, gęstość napisów rozstrzyga `v3/canvas/gestoscInformacji.ts`.
  */
 
 import { describe, expect, it } from 'vitest';
 
-import * as Lod from '../lod/LodPolicy';
 import * as Ports from '../core/ports';
 import * as Routing from '../geometry/routing';
 import * as Slot from '../geometry/slot';
@@ -24,15 +24,6 @@ import * as Adapter from '../canvas/enmToSldAdapter';
 import * as Command from '../command/SldCommandService';
 
 describe('SLD V2 build gate — public API surface', () => {
-  it('LodPolicy publiczne API', () => {
-    expect(typeof Lod.inferLodFromScale).toBe('function');
-    expect(typeof Lod.isVisibleAtLod).toBe('function');
-    expect(typeof Lod.effectiveLodForElement).toBe('function');
-    expect(Lod.LOD_ZOOM_THRESHOLDS).toBeDefined();
-    expect(Lod.DEFAULT_LAYER_VISIBILITY).toBeDefined();
-    expect(Lod.LAYER_LABELS_PL).toBeDefined();
-  });
-
   it('ports.ts ma listę 15 kinds first-class', () => {
     expect(Ports.ALL_PORT_KINDS).toBeDefined();
     expect(Array.isArray(Ports.ALL_PORT_KINDS)).toBe(true);

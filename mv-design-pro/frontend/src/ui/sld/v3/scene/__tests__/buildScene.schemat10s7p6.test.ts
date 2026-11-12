@@ -15,10 +15,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { buildSceneV3, totalVerticalSegmentLength, type LateralShelfRecord, type SceneLod } from '../buildScene';
+import { buildSceneV3, totalVerticalSegmentLength, type LateralShelfRecord } from '../buildScene';
 import { MIN_SUBTREE_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
-import { LODS, loadEnm as loadEnmH, synthLargeTrunk } from './syntheticNetworks';
+import { loadEnm as loadEnmH, synthLargeTrunk } from './syntheticNetworks';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 
@@ -41,8 +41,6 @@ const FIXTURES: ReadonlyArray<{ readonly klasa: string; readonly enm: EnergyNetw
   { klasa: 'E (wieloźródłowa 53 st.) sldSubstrate52s', enm: bigEnm },
 ];
 
-const ALL_LODS: readonly SceneLod[] = [0, 1, 2];
-
 /** Nadmiar światła ponad kontraktowe minimum: gapAbove > contractMin + GRID
  *  (kwant siatki tolerancji na dosnapowanie). Zwraca listę wyjątków z LICZBĄ. */
 function excessShelves(shelves: readonly LateralShelfRecord[]): readonly LateralShelfRecord[] {
@@ -55,27 +53,25 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
   });
 
   for (const fx of FIXTURES) {
-    for (const lod of ALL_LODS) {
-      it(`${fx.klasa} · L${lod}: żaden pas > minimum + kwant siatki (lista wyjątków z przyczyną)`, () => {
-        const scene = buildSceneV3(fx.enm, lod);
-        const shelves = scene.meta.lateralShelves ?? [];
-        const excess = excessShelves(shelves);
-        // Raport LICZBOWY wyjątków (przyczyna routingu wymagana dla każdego).
-        const report = excess.map(
-          (s) => `${s.runId}: gapAbove=${s.gapAbove} > contractMin=${s.contractMin}+GRID(${GRID}) (footprint=${s.footprintHeight}, corridor=${s.corridorHeight})`,
-        );
-        expect(report).toEqual([]);
-        // Każdy istniejący pas ma gap == contractMin == MIN_SUBTREE_CLEARANCE.
-        for (const s of shelves) {
-          expect(s.contractMin).toBe(4 * GRID);
-          expect(s.gapAbove).toBe(s.contractMin);
-        }
-      });
-    }
+    it(`${fx.klasa}: żaden pas > minimum + kwant siatki (lista wyjątków z przyczyną)`, () => {
+      const scene = buildSceneV3(fx.enm);
+      const shelves = scene.meta.lateralShelves ?? [];
+      const excess = excessShelves(shelves);
+      // Raport LICZBOWY wyjątków (przyczyna routingu wymagana dla każdego).
+      const report = excess.map(
+        (s) => `${s.runId}: gapAbove=${s.gapAbove} > contractMin=${s.contractMin}+GRID(${GRID}) (footprint=${s.footprintHeight}, corridor=${s.corridorHeight})`,
+      );
+      expect(report).toEqual([]);
+      // Każdy istniejący pas ma gap == contractMin == MIN_SUBTREE_CLEARANCE.
+      for (const s of shelves) {
+        expect(s.contractMin).toBe(4 * GRID);
+        expect(s.gapAbove).toBe(s.contractMin);
+      }
+    });
   }
 
   it('fixtura referencyjna: 12 pasm lateralnych, WSZYSTKIE przy minimum (L1)', () => {
-    const shelves = buildSceneV3(bigEnm, 1).meta.lateralShelves ?? [];
+    const shelves = buildSceneV3(bigEnm).meta.lateralShelves ?? [];
     expect(shelves.length).toBe(12);
     expect(excessShelves(shelves)).toEqual([]);
     // Kompresja: suma nadmiaru = 0 (dawniej każdy gap = korytarz etykiety 248 px).
@@ -83,7 +79,7 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     expect(totalExcess).toBe(0);
   });
 
-  it('kompresja obniżyła piony vs korytarz-etykiety (fixtura referencyjna, wszystkie LOD)', () => {
+  it('kompresja obniżyła piony vs korytarz-etykiety (fixtura referencyjna)', () => {
     // Kontraktowe minimum światła jest WIELOKROTNIE mniejsze od korytarza etykiety
     // zejścia (obrócony `segment-lateral`, ~242 px) — dowód że gap NIE jest już
     // dyktowany długością etykiety. Po S7.6: 21976/38920/38920; po W3-KABLE-
@@ -199,14 +195,14 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // pin został na czubku karty pola liniowego czerwony (krok budżetowy `--mode budzety`, pomiar
     // 2026-11-11 na `git archive` czubka: 20616 zamiast 19976); scalenie do drzewa integracji
     // wyrównuje go do tej samej, zmierzonej wartości (drzewo scalone: 20616/46432/46432).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(20616);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(46432);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(46432);
+    // SLD-SKALA-I-NAWIGACJA R1 (2026-11-11): jedna scena = dawny pełny szczegół (L2) —
+    // jedna wartość 46432 (L0 20616 znika razem z widokiem zwiniętym).
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm))).toBe(46432);
   });
 
-  it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {
-    const a = JSON.stringify(buildSceneV3(bigEnm, 2).meta.lateralShelves ?? []);
-    const b = JSON.stringify(buildSceneV3(bigEnm, 2).meta.lateralShelves ?? []);
+  it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna)', () => {
+    const a = JSON.stringify(buildSceneV3(bigEnm).meta.lateralShelves ?? []);
+    const b = JSON.stringify(buildSceneV3(bigEnm).meta.lateralShelves ?? []);
     expect(a).toBe(b);
   });
 });
@@ -219,16 +215,14 @@ describe('SCHEMAT-10 S7.6 — kompresja generalizuje na rodzinę H (106/265/530 
   ];
   const hFixtureEnm = loadEnmH(bigFixturePath);
   for (const sc of SCALES) {
-    it(`H ${sc.nazwa}: zero pasm z nadmiarem światła, 3×LOD, w budżecie ${sc.budgetMs} ms`, () => {
+    it(`H ${sc.nazwa}: zero pasm z nadmiarem światła, w budżecie ${sc.budgetMs} ms`, () => {
       const enm = synthLargeTrunk(hFixtureEnm, sc.copies);
       // Budżet w CZASIE PROCESORA (`src/test/czasProcesora.ts`) — zegar ścienny mierzy też
       // obciążenie maszyny, a bramka łapie niekontrolowaną złożoność kodu.
       const ms = czasProcesoraMs(() => {
-        for (const lod of LODS) {
-          const shelves = buildSceneV3(enm, lod).meta.lateralShelves ?? [];
-          expect(shelves.length).toBeGreaterThan(0);
-          expect(excessShelves(shelves)).toEqual([]);
-        }
+        const shelves = buildSceneV3(enm).meta.lateralShelves ?? [];
+        expect(shelves.length).toBeGreaterThan(0);
+        expect(excessShelves(shelves)).toEqual([]);
       });
       expect(ms).toBeLessThan(sc.budgetMs);
     });

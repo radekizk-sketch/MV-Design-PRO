@@ -32,11 +32,9 @@ import {
   V3_STROKE_APPARATUS,
   type GlifBaterii,
   type GlyphProps,
-  type StationDerGlyphKind,
   type SwitchState,
 } from '../symbols/glyphs';
 import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
-import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY, SLD_FONT_FAMILY, SLD_TEXT_STYLE } from '../core/text';
 import { wyrownanieEtykiety, zaczepTekstuEtykiety, type OwnedLabel } from '../layout/labels';
@@ -449,70 +447,6 @@ export interface PreviewElementMeta {
    *  (`kind==='openTerminal'`) — wyrocznia `openTerminalGaps`
    *  (`scene/buildScene.ts`); zwykły wolny koniec dalej obcina `port_probe`. */
   readonly openTerminal?: boolean;
-  /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): podsumowanie sylwetki stacji dla
-   *  glifu mini-RMU na L0 — WYŁĄCZNIE dla symboli `stationCollapsed`. Steruje
-   *  markerami typu/TR/DER/NO w `StationCollapsedGlyph` (`symbols/glyphs.tsx`),
-   *  przekazane 1:1 do `GlyphProps` (wzór `meterQuantity`).
-   *  Rodzaj stacji WYPROWADZONY z TYPU elementów (topologia/sprzęgło/TR/DER/NO),
-   *  nie z nazw (spec §19.3, macierz §3). */
-  readonly stationGlyph?: StationCompactGlyphSummary;
-  /** KD-5 (dług nazwany w V12K-285): podsumowanie sylwetki BLOKU GPZ dla glifu
-   *  zwiniętego na L0 — WYŁĄCZNIE dla symboli `gpzCollapsed`. Steruje sekcjami/
-   *  transformatorem/polami odejściowymi w `GpzCollapsedGlyph`
-   *  (`symbols/glyphs.tsx`), przekazane 1:1 do `GlyphProps` (wzór
-   *  `stationGlyph`). Liczby WYPROWADZONE z realnej kompozycji GPZ
-   *  (`GpzComposition.sections`/`transformers` + pola liniowe SN), nie z nazw. */
-  readonly gpzGlyph?: GpzCompactGlyphSummary;
-  /** Rozstrzygnięcie architekta KD-5 (2026-10-30): porty ZEJŚĆ bloku zwiniętego na L0
-   *  (współrzędne świata) — WYŁĄCZNIE dla `gpzCollapsed` i `stationCollapsed`. Zejście
-   *  każdego pola liniowego GPZ (wachlarz) i każdego pola odgałęźnego stacji wychodzi
-   *  z WŁASNEGO punktu dolnej (albo bocznej) krawędzi bloku, bez wspólnego pionu. Kompozycja
-   *  wylicza punkty raz i deklaruje je tutaj; wyrocznia końców odcinków
-   *  (`sceneSegmentEndpointGaps`) przyjmuje je jako porty bloku tylko, gdy leżą na jego
-   *  krawędzi dolnej albo bocznej. */
-  readonly portyZejscBloku?: readonly { readonly x: number; readonly y: number }[];
-}
-
-/** KD-5: kompaktowe cechy bloku GPZ rysowane sylwetką na L0. Wszystkie pola
- *  WYPROWADZONE z realnej kompozycji GPZ (zero fabrykacji — patrz
- *  `MiniGpzFeatures`, `symbols/miniRmuGrammar.ts`). */
-export interface GpzCompactGlyphSummary {
-  /** Liczba sekcji szyn SN (>1 ⇒ sprzęgło sekcyjne w sylwetce). */
-  readonly sections: number;
-  /** Liczba transformatorów WN/SN (0 ⇒ sylwetka bez uzwojeń). */
-  readonly transformers: number;
-  /** Liczba pól odejściowych (liniowych) SN. */
-  readonly feeders: number;
-}
-
-/** SCHEMAT-10 GS-1 (V12K-137): kompaktowe cechy stacji rysowane sylwetką
- *  mini-RMU na L0 (`AUDYT_SCHEMATOW_OD_ZERA_2026-07` §3 „Stacja"). Wszystkie
- *  pola WYPROWADZONE z realnej topologii/danych stacji (zero fabrykacji). */
-export interface StationCompactGlyphSummary {
-  /** Stacja sekcyjna (sprzęgło w rozdzielnicy — rodzaj z `ui/shared/rodzajStacji.ts`). */
-  readonly sectioned: boolean;
-  /** GS-5 (uwaga właściciela 2026-07-23): topologia pól liniowych sylwetki z
-   *  RODZAJU stacji — TA SAMA reguła co podpis L1/L2 (jedna reguła produktu
-   *  `ui/shared/rodzajStacji.ts`, §19.3; przelotowa ⇔ oba pola liniowe
-   *  połączone, recenzja NO-GO pkt 7): 'końcowa' = tylko pole WE (zero
-   *  fantomowego toru na wylot), 'przelotowa' = dwa pola, 'odgałęźna' = dwa
-   *  pola + węzeł odgałęzienia na szynie. Sekcyjna ⇒ 'przelotowa' (dwustronna
-   *  z definicji) + `sectioned`. */
-  readonly lineTopology: MiniRmuLineTopology;
-  /** Stacja SN/nN z transformatorem (odróżnia od rozdzielni sieciowej bez TR). */
-  readonly hasTransformer: boolean;
-  /** GS-4 (recenzja 2026-07-23): dominujący rodzaj DER przyłączonego do SZYNY
-   *  SN stacji (`connectionSide` 'sn'/'unknown' — strona nieznana NIE jest
-   *  zgadywana jako nN; rysunek od szyny rozdzielnicy = uczciwy punkt
-   *  przyłączenia stacji), `null` gdy brak. */
-  readonly derOnMv: StationDerGlyphKind | null;
-  /** GS-4: dominujący rodzaj DER ZA TRANSFORMATOREM (strona nN, `connection
-   *  Side==='nn'` z REALNEJ szyny ENM) — znak przy gałęzi pola TR, INNA
-   *  kotwica niż DER na SN. NIEZALEŻNE od `derOnMv`. Wymaga `hasTransformer`
-   *  (sprzeczność ⇒ stopNote w `buildScene`, glif nie rysuje nN bez TR). */
-  readonly derBehindTr: StationDerGlyphKind | null;
-  /** Stacja niesie punkt/łącznik normalnie otwarty (`isNop`). */
-  readonly noOpen: boolean;
 }
 
 export interface PreviewSymbol {
@@ -537,8 +471,7 @@ export interface PreviewSymbol {
  * danych, które symbol sceny przekazuje glifowi, wspólna dla kanwy (`SldCanvasV3`)
  * i harnessu kompozycji. Przed kartą kanwa i harness niosły DWIE ręczne listy
  * propsów i obie gubiły pola: kanwa nie przekazywała `earthingKind` (punkt
- * neutralny zawsze rysowany jako połączenie bezpośrednie) ani `gpzGlyph`
- * (zwinięty GPZ na L0 rysowany z jedną sekcją, bez TR i bez pól), harness gubił
+ * neutralny zawsze rysowany jako połączenie bezpośrednie), harness gubił
  * `earthingKind`. Kolor i skalę kreski dokłada wołający.
  */
 export function daneGlifuSymbolu(
@@ -556,15 +489,6 @@ export function daneGlifuSymbolu(
     // bez skonfigurowanego pola SN.
     hasFieldGapWarning: meta?.transformerFieldGap === true,
     meterQuantity: meta?.meterQuantity,
-    stationSectioned: meta?.stationGlyph?.sectioned,
-    stationLineTopology: meta?.stationGlyph?.lineTopology,
-    stationHasTransformer: meta?.stationGlyph?.hasTransformer,
-    stationDerOnMv: meta?.stationGlyph?.derOnMv,
-    stationDerBehindTr: meta?.stationGlyph?.derBehindTr,
-    stationNoOpen: meta?.stationGlyph?.noOpen,
-    gpzSections: meta?.gpzGlyph?.sections,
-    gpzTransformers: meta?.gpzGlyph?.transformers,
-    gpzFeeders: meta?.gpzGlyph?.feeders,
   };
 }
 

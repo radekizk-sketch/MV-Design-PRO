@@ -23,6 +23,8 @@
  *   node ./scripts/playwright-run-real.mjs e2e/s913-porownanie-z-kanwy.spec.ts
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+
+import { przyblizDoSkali, srodekRamki } from './skalaKamery';
 import { wykonajBiegDoKonca } from './biegi';
 import { mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -276,24 +278,15 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
     .toBe(docelowy);
 }
 
-/** Podnosi LOD kanwy do L2 NATYWNYM kółkiem (bez wymuszania stanu). */
+/** Przybliża kanwę NATYWNYM kółkiem do skali czytania (bez wymuszania stanu;
+ *  jedna scena niezależna od skali — karta SLD-SKALA-I-NAWIGACJA, R1). Nazwy
+ *  zrzutów „-L2-” zostają (pliki dokumentacji), treścią jest zbliżenie. */
 async function przyblizDoL2(page: Page): Promise<void> {
   const kanwa = page.getByTestId('sld-canvas-v3');
-  const box = await kanwa.boundingBox();
-  expect(box).toBeTruthy();
-  const cx = box!.x + box!.width / 2;
-  const cy = box!.y + box!.height / 2;
-  await page.mouse.move(cx, cy);
-  for (let i = 0; i < 40; i += 1) {
-    const lod = await kanwa.getAttribute('data-scene-lod');
-    if (lod === '2') return;
-    await page.mouse.wheel(0, -400);
-    await page.waitForTimeout(80);
-  }
-  await expect.poll(async () => kanwa.getAttribute('data-scene-lod'), { timeout: 5000 }).toBe('2');
+  await przyblizDoSkali(page, kanwa, await srodekRamki(kanwa));
 }
 
-test('S9-13: porównanie A/B osiągalne z kanwy — blokada bez drugiego biegu, różnice po wyborze pary, zrzuty L2', async ({
+test('S9-13: porównanie A/B osiągalne z kanwy — blokada bez drugiego biegu, różnice po wyborze pary, zrzuty w zbliżeniu', async ({
   page,
   request,
 }) => {

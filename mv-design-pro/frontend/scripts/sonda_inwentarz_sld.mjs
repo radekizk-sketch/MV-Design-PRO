@@ -44,10 +44,10 @@ const pokaz = (tytul, pary, limit = 40) => {
   if (pary.length > limit) console.log(`  … +${pary.length - limit}`);
 };
 
-const scena = buildSceneV3(enm, 2);
+const scena = buildSceneV3(enm);
 
-pokaz('SYMBOLE W SCENIE (L2)', licz(scena.symbols, (s) => s.symbolId));
-pokaz('ETYKIETY W SCENIE (L2) wg ownerKind', licz(scena.labels, (l) => l.ownerKind));
+pokaz('SYMBOLE W SCENIE', licz(scena.symbols, (s) => s.symbolId));
+pokaz('ETYKIETY W SCENIE wg ownerKind', licz(scena.labels, (l) => l.ownerKind));
 
 // --- KOLOR: czy rysunek koduje poziom napięcia? -----------------------------
 const kolorySeg = licz(scena.segments, (s) => s.stroke ?? s.style ?? s.kind ?? '(brak)');

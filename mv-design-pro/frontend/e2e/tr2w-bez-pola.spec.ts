@@ -44,6 +44,8 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
+import { przyblizDoSkali } from './skalaKamery';
+
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const ARCHIWUM = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -269,24 +271,17 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     await expect(uchwyt.first()).toBeAttached();
     await expect(uchwyt.locator('title', { hasText: TEKST_BRAKU_POLA }).first()).toBeAttached();
 
-    // …a marker NIE znika przy zmianie poziomu szczegółu (§0.C.8: transformator
-    // bez pola żyje na TYCH SAMYCH poziomach co transformator z polem).
-    // Ta sama mechanika kadrowania co `kd11-zrzuty-screenshot.spec.ts`.
+    // …a marker NIE znika przy zmianie skali (§0.C.8; jedna scena niezależna
+    // od skali — karta SLD-SKALA-I-NAWIGACJA, R1): przybliżenie natywnym kółkiem
+    // nad transformatorem do skali czytania.
     const symbolBox = await transformator.boundingBox();
     const kadr = (await canvas.boundingBox())!;
     const kursor = symbolBox
       ? { x: symbolBox.x + symbolBox.width / 2, y: symbolBox.y + symbolBox.height / 2 }
       : { x: kadr.x + kadr.width / 2, y: kadr.y + kadr.height / 2 };
-    await page.mouse.move(kursor.x, kursor.y);
-    let poziom = await canvas.getAttribute('data-scene-lod');
-    for (let krok = 0; krok < 12 && poziom !== '2'; krok++) {
-      await page.mouse.wheel(0, -200);
-      await page.waitForTimeout(150);
-      poziom = await canvas.getAttribute('data-scene-lod');
-    }
-    await expect(canvas).toHaveAttribute('data-scene-lod', '2');
+    await przyblizDoSkali(page, canvas, kursor);
     await expect(canvas.locator('g[data-field-gap-warning="true"]')).toHaveCount(1);
-    // Podpowiedź żyje także na pełnym szczególe (kontrakt niezależny od kadru).
+    // Podpowiedź żyje także w zbliżeniu (kontrakt niezależny od kadru).
     await expect(
       canvas.locator(`[data-hit-owner-ref="${transformerRef}"] title`).first(),
     ).toHaveText(TEKST_BRAKU_POLA);

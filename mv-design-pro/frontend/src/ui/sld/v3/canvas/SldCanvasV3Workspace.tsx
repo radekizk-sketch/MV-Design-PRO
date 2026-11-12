@@ -62,7 +62,7 @@
  *    zasilania jest aktywny"). v3 woła `buildSupplyPathHighlight` PROSTO
  *    (lżej niż budowanie całego `SldDataPayload`) — sam wynik jest identyczny.
  *    Mapowanie ref→testId używa `meta.ownerRef` (F8b-1 A) — WYŁĄCZNIE dla
- *    `elementKind` 'station'/'bus'/'segment' (spec §6 P5: stan łącznika to
+ *    `elementKind` 'bus'/'segment' (spec §6 P5: stan łącznika to
  *    GEOMETRIA glifu, NIE nakładka koloru — aparaty/transformatory/DER mają
  *    `ownerRef=bayRef`, który nie jest bus/branch/substation/generator refem
  *    w `SupplyPathHighlight`, więc próba dopasowania dałaby fałszywe „false"
@@ -165,7 +165,7 @@ import {
 } from './minimap';
 import { SldMinimapPanel } from './SldMinimapPanel';
 import type { V3Rect } from '../core/grid';
-import { SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import type { SceneV3 } from '../scene/buildScene';
 import { scenaSld } from '../scene/scenaSld';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
@@ -306,17 +306,10 @@ export interface SldCanvasV3WorkspaceProps {
   readonly width?: number;
   /** Override wysokości kanwy — używane w testach/wbudowaniu. */
   readonly height?: number;
-  /** Przelotowy prop do `SldCanvasV3.lodOverride` (escape hatch testowy/
-   *  embedding, patrz docstring tam) — Workspace go dotąd nie eksponował.
-   *  Dodany F8c pkt 3/4 wyłącznie żeby testy mogły deterministycznie
-   *  wymusić LOD z widocznymi DER/aparaturą bez symulowania zoomu kółkiem
-   *  (domyślny LOD Workspace to 0 — tylko topologia). Brak propa = brak
-   *  zmiany zachowania (LOD wynika z kamery jak dziś). */
-  readonly lodOverride?: SceneLod;
 }
 
 /** `testId` aparatury ma postać `${bayRef}#${symbolId}` (`buildScene.ts`);
- *  L0/NOP mają testId syntetyczne (`sld-v3-l0-*`/`sld-v3-nop-*`) bez `#`.
+ *  NOP ma testId syntetyczne (`sld-v3-nop-*`) bez `#`.
  *  Wycinamy prefiks przed `#`, żeby dla aparatury `id` odpowiadał realnemu
  *  ENM `ref_id` (jak w v2). FALLBACK — używany WYŁĄCZNIE, gdy klik nie niesie
  *  `meta.ownerRef` (F8b-1 A pokrywa dziś WSZYSTKIE symbole sceny, więc to jest
@@ -331,7 +324,7 @@ function elementIdFromTestId(testId: string): string {
  *
  * Dawna tabela `elementKindForMenu` (`PreviewElementKind` → kategoria menu)
  * została ZASTĄPIONA rozstrzyganiem tematu w `canvas/canvasMenuSubject.ts`.
- * Powód jest pomiarowy, nie estetyczny (sieć referencyjna 52 stacji, LOD 0/1/2):
+ * Powód jest pomiarowy, nie estetyczny (sieć referencyjna 52 stacji):
  *
  *  - 350 z 468 odcinków rysowanych jako „tor SN" NIE MA gałęzi w modelu
  *    (zejścia pól, wyprowadzenia boczne) — dawna tabela dawała im PEŁNE menu
@@ -347,22 +340,18 @@ function elementIdFromTestId(testId: string): string {
  * `canvasMenuSubject.menuKindDer` — jedno miejsce rozstrzygania kategorii.
  */
 
-const ALL_SCENE_LODS: readonly SceneLod[] = [0, 1, 2];
-
 /**
  * F8b-1 C: nakładka energizacji — patrz uzasadnienie źródła w nagłówku pliku.
- * Buduje `energizedByTestId` dla WSZYSTKICH TRZECH LOD naraz (scena ma inny
- * zestaw testId per LOD — L0 ma `stationCollapsed`, L1/L2 mają aparaturę per
- * pole — kanwa wybiera efektywny LOD z kamery, więc nakładka musi pokrywać
- * wszystkie possible testId, nie tylko jednego LOD). WYŁĄCZNIE `elementKind`
- * 'station'/'bus'/'segment' — apparatus/transformer/der mają `ownerRef=bayRef`,
+ * Buduje stan energizacji dla JEDNEJ sceny migawki (`scenaSld`, ta sama, którą
+ * rysuje kanwa w każdej skali). WYŁĄCZNIE `elementKind`
+ * 'bus'/'segment' (rysunek nie ma symbolu stacji — stację niosą jej szyny) — apparatus/transformer/der mają `ownerRef=bayRef`,
  * który nie odpowiada żadnej kategorii `SupplyPathHighlight` (patrz nagłówek).
  * `ownerRef` bywa kompozytem zakotwiczonym w realnym refie z sufiksem `#...`
  * (konwencja `compose/station.ts`/`compose/gpz.ts`, np. `${busRef}#sn-bus`)
  * — bazowy ref (przed `#`) jest tym, co `SupplyPathHighlight` faktycznie niesie
  * (stację/gałąź/szynę), więc dopasowanie odcina sufiks.
  */
-const OVERLAY_ELIGIBLE_KINDS: ReadonlySet<PreviewElementKind> = new Set(['station', 'bus', 'segment']);
+const OVERLAY_ELIGIBLE_KINDS: ReadonlySet<PreviewElementKind> = new Set(['bus', 'segment']);
 
 function baseRefOf(ownerRef: string): string {
   const hashIndex = ownerRef.indexOf('#');
@@ -371,16 +360,12 @@ function baseRefOf(ownerRef: string): string {
 
 export function buildEnergizationOverlay(snapshot: EnergyNetworkModel): SldV3Overlay {
   const highlight: SupplyPathHighlight = buildSupplyPathHighlight(snapshot);
-  // F8b-1 FIX (recenzja): klucz = meta.ownerRef (tożsamość LOD-niezależna),
-  // NIE testId — fallback testId dla odcinków jest indeksowy
-  // (`sld-v3-segment-${index}`) i KOLIDUJE między LOD-ami (60 vs 390
-  // odcinków): słownik z trzech LOD-ów nadpisywał wpisy CUDZYCH elementów
-  // (odcinek LOD0 #5 dostawał stan odcinka LOD2 #5). Ten sam ownerRef na
-  // różnych LOD-ach to TEN SAM element sieci — nadpisanie identycznego
-  // wpisu jest neutralne. Kanwa preferuje `energizedByOwnerRef`.
+  // F8b-1 FIX (recenzja): klucz = meta.ownerRef (tożsamość modelu), NIE testId
+  // — fallback testId dla odcinków jest indeksowy (`sld-v3-segment-${index}`).
+  // Kanwa preferuje `energizedByOwnerRef`.
   const energizedByOwnerRef: Record<string, boolean> = {};
-  for (const lod of ALL_SCENE_LODS) {
-    const scene = scenaSld(snapshot, lod);
+  {
+    const scene = scenaSld(snapshot);
     scene.symbols.forEach((symbol) => {
       const meta = symbol.meta;
       if (!meta?.ownerRef || !meta.elementKind || !OVERLAY_ELIGIBLE_KINDS.has(meta.elementKind)) return;
@@ -407,20 +392,16 @@ export function buildEnergizationOverlay(snapshot: EnergyNetworkModel): SldV3Ove
 
 const EMPTY_OVERLAY: SldV3Overlay = { energizedByTestId: {} };
 
-/** F8b-1 C: memoizowana na `snapshot` (buduje 3 sceny — koszt akceptowalny,
- *  ta sama skala co `SldCanvasV3`'s `sceneByLod`, jednorazowo przy zmianie
- *  sieci, nie per-frame). */
+/** F8b-1 C: memoizowana na `snapshot` (scena z pamięci podręcznej migawki,
+ *  jednorazowo przy zmianie sieci, nie per-frame). */
 function useEnergizationOverlay(snapshot: EnergyNetworkModel | null): SldV3Overlay {
   return useMemo(() => (snapshot ? buildEnergizationOverlay(snapshot) : EMPTY_OVERLAY), [snapshot]);
 }
 
 /**
  * F9.5 (spec §14.2, „Nakładka przepływu mocy"): łączy `buildFlowOverlayFromScene`
- * (`overlay.ts`, budowniczy CZYSTY jednej sceny) ze WSZYSTKICH TRZECH LOD
- * naraz — TEN SAM wzorzec co `buildEnergizationOverlay` wyżej (ownerRef jest
- * tożsamością LOD-niezależną, patrz `overlay.ts` nagłówek, więc scalanie
- * trzech słowników jest neutralne: ten sam `ownerRef` na różnych LOD daje
- * identyczny wpis). Źródło `payload`: `useRawResultOverlayStore` — prawdziwy,
+ * (`overlay.ts`, budowniczy CZYSTY jednej sceny) z JEDNĄ sceną migawki — TEN
+ * SAM wzorzec co `buildEnergizationOverlay` wyżej (klucz `ownerRef`). Źródło `payload`: `useRawResultOverlayStore` — prawdziwy,
  * produkcyjnie zasilany przez `App.tsx` store (patrz `overlay.ts` nagłówek
  * F9.5 dla pełnego uzasadnienia wyboru kanału i UDOKUMENTOWANEJ luki
  * backendu, przez którą ten kanał jest DZIŚ pusty dla gałęzi na KAŻDYM
@@ -436,11 +417,7 @@ export function buildFlowOverlayForSnapshot(
   // buildSceneV3) — kierunek emitowany wyłącznie dla przęseł o udowodnionej
   // tożsamości gałęzi, patrz `overlay.ts::orientedSegmentRefs`.
   const orientation = orientedSegmentRefs(snapshot);
-  const merged: Record<string, SegmentFlowOverlay> = {};
-  for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFlowOverlayFromScene(scenaSld(snapshot, lod), payload, orientation));
-  }
-  return merged;
+  return buildFlowOverlayFromScene(scenaSld(snapshot), payload, orientation);
 }
 
 /** Memoizowana na `snapshot`+`payload` (zmiana wyniku solvera — nowy przebieg
@@ -457,9 +434,8 @@ function useFlowOverlay(
 }
 
 /**
- * F4/SLD (V12K-092): badge wynikowy OLTC ze WSZYSTKICH trzech LOD — TEN SAM
- * wzorzec co `buildFlowOverlayForSnapshot` (ownerRef = tożsamość
- * LOD-niezależna). Źródło `payload`: `useRawResultOverlayStore` (produkcyjnie
+ * F4/SLD (V12K-092): badge wynikowy OLTC z jednej sceny migawki — TEN SAM
+ * wzorzec co `buildFlowOverlayForSnapshot` (klucz `ownerRef`). Źródło `payload`: `useRawResultOverlayStore` (produkcyjnie
  * zasilany przez `App.tsx`, ten sam kanał co flow overlay). Przebieg nie-LF /
  * brak metryk OLTC ⇒ `{}` (badge wyłączony, §14.2).
  */
@@ -468,11 +444,7 @@ export function buildOltcOverlayForSnapshot(
   payload: RawOverlayPayload | null,
 ): Readonly<Record<string, TransformerOltcOverlay>> {
   if (!payload) return {};
-  const merged: Record<string, TransformerOltcOverlay> = {};
-  for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildOltcOverlayFromScene(scenaSld(snapshot, lod), payload));
-  }
-  return merged;
+  return buildOltcOverlayFromScene(scenaSld(snapshot), payload);
 }
 
 function useOltcOverlay(
@@ -486,9 +458,9 @@ function useOltcOverlay(
 }
 
 /**
- * W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): LICZBOWE etykiety wynikowe ze
- * WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
- * (ownerRef = tożsamość LOD-niezależna, scalanie neutralne). Bramka przęseł =
+ * W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): LICZBOWE etykiety wynikowe
+ * z jednej sceny migawki — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
+ * (klucz `ownerRef`). Bramka przęseł =
  * klucze `orientedSegmentRefs` (udowodniona tożsamość gałęzi, jak flow). Źródło
  * `payload`: `useRawResultOverlayStore` (produkcyjnie z `App.tsx`). Brak
  * wyniku/metryk ⇒ `{}` (warstwa wyłączona, §8 „gdy wyniki są").
@@ -500,18 +472,11 @@ export function buildResultLabelsForSnapshot(
 ): Readonly<Record<string, ResultLabelEntry>> {
   if (!payload) return {};
   // S9-2: TA SAMA bramka przęseł co nakładka przepływu (klucze mapy orientacji)
-  // + MOST REFÓW (szyny stacji, blok stacji L0, transformator stacji) — patrz
+  // + MOST REFÓW (szyny stacji, transformator stacji) — patrz
   // `resultRefBridge.ts`. Obie struktury liczone RAZ per wywołanie.
   const trustedRefs = new Set(orientedSegmentRefs(snapshot).keys());
   const bridge = buildResultRefBridge(snapshot);
-  const merged: Record<string, ResultLabelEntry> = {};
-  for (const lod of ALL_SCENE_LODS) {
-    Object.assign(
-      merged,
-      buildResultLabelsFromScene(scenaSld(snapshot, lod), payload, trustedRefs, comparison, bridge),
-    );
-  }
-  return merged;
+  return buildResultLabelsFromScene(scenaSld(snapshot), payload, trustedRefs, comparison, bridge);
 }
 
 function useResultLabelsOverlay(
@@ -527,26 +492,17 @@ function useResultLabelsOverlay(
 
 /**
  * Karta S-B (ZWARCIA-PRO pkt 7): strzałki kierunku rozpływu prądu zwarciowego
- * ze WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
- * (ownerRef = tożsamość LOD-niezależna; bramka `orientedSegmentRefs` —
+ * z jednej sceny migawki — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
+ * (klucz `ownerRef`; bramka `orientedSegmentRefs` —
  * kierunek emitowany wyłącznie dla przęseł o udowodnionej orientacji
  * względem gałęzi modelu). Źródło `input`: kanał `useOverlayStore.faultFlow`
  * (wiersz kanoniczny `branch_contributions`, ekran zwarć „Pokaż na
  * schemacie"). Brak kanału ⇒ `{}` (strzałki wyłączone, §14.2).
  *
  * GAP V12K-121 (karta SLD-W): bramka rozszerzona o `multiHopFaultFlowSegmentRefs`
- * — przedstawiciel przęsła wielokawałkowego liczony RAZ, na scenie
- * NAJPEŁNIEJSZEGO LOD (`ALL_SCENE_LODS` ostatni = 2, najdrobniejsza geometria
- * — §16-v3 dzieli tam kawałki na WSZYSTKIE człony łańcucha, `connectRowStations`
- * „lod === 2" = etykiety/szczegół pełny), NIE per LOD w pętli niżej: `ownerRef`
- * MUSI pozostać tożsamością LOD-niezależną (kontrakt tego pliku) — licząc
- * przedstawiciela osobno na każdym LOD, różne LOD-y mogłyby wybrać RÓŻNYCH
- * członów tej samej grupy (podział §16-v3 jest proporcjonalny do długości
- * TRASY TEGO LOD, nie do realnej elektrycznej długości członu), a scalony
- * słownik niósłby WIĘCEJ niż jeden wpis na przęsło — dwie strzałki zamiast
- * jednej. Ten sam, RAZ wybrany zbiór jest dokładany do `trustedRefs` na
- * WSZYSTKICH trzech przebiegach pętli — przepływ mocy (`buildFlowOverlayForSnapshot`
- * wyżej) NIETKNIĘTY.
+ * — przedstawiciel przęsła wielokawałkowego liczony RAZ na scenie migawki
+ * (§16-v3 dzieli tam kawałki na WSZYSTKIE człony łańcucha); przepływ mocy
+ * (`buildFlowOverlayForSnapshot` wyżej) NIETKNIĘTY.
  */
 export function buildFaultFlowOverlayForSnapshot(
   snapshot: EnergyNetworkModel,
@@ -559,16 +515,12 @@ export function buildFaultFlowOverlayForSnapshot(
   // zna ich orientacji, obowiązuje reguła sprzed karty (`points[0]` po stronie
   // „from"), więc zachowanie tej gałęzi jest niezmienione.
   const orientation = new Map(orientedSegmentRefs(snapshot));
-  const richestLod = ALL_SCENE_LODS[ALL_SCENE_LODS.length - 1];
-  const chainRefs = multiHopFaultFlowSegmentRefs(scenaSld(snapshot, richestLod), snapshot);
+  const scene = scenaSld(snapshot);
+  const chainRefs = multiHopFaultFlowSegmentRefs(scene, snapshot);
   for (const ref of chainRefs) {
     if (!orientation.has(ref)) orientation.set(ref, true);
   }
-  const merged: Record<string, SegmentFaultFlowOverlay> = {};
-  for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFaultFlowOverlayFromScene(scenaSld(snapshot, lod), input, orientation));
-  }
-  return merged;
+  return buildFaultFlowOverlayFromScene(scene, input, orientation);
 }
 
 function useFaultFlowOverlay(
@@ -588,7 +540,7 @@ function useFaultFlowOverlay(
 // `v2/canvas/LassoSelector.test.tsx`) — v2 renderuje prostokąt lasso wyłącznie
 // WIZUALNIE, nigdy nie liczy trafień. v3 dostarcza REALNY hit-test (nie
 // odtworzenie martwego kodu v2, tylko dokończenie funkcji zgodnie ze spec
-// §10.1 F12-B pkt 5: „symbole sceny efektywnego LOD, których środek bboxa
+// §10.1 F12-B pkt 5: „symbole sceny, których środek bboxa
 // (przez SYMBOL_DEFS) po transformacji kamery (worldToScreen) wpada w rect").
 // ---------------------------------------------------------------------------
 
@@ -598,7 +550,7 @@ export interface LassoSelectionCandidate {
 }
 
 /**
- * Symbole sceny (LOD efektywny wołającego), których środek bboxa (world,
+ * Symbole sceny, których środek bboxa (world,
  * `gabarytSymbolu` — definicja symbolu, a dla bloku zabezpieczeń jego ramka) po `worldToScreen(point, transform)`
  * wpada w `rect` (screen-space, ten sam układ co `LassoRect` z pointer
  * eventów kanwy — `transform` mapuje 1:1 world→CSS-px kanwy, bo
@@ -635,11 +587,8 @@ export function symbolsInLassoRect(
 
 // ---------------------------------------------------------------------------
 // F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny filtr"):
-// panel warstw v3 — WŁASNY lekki komponent (NIE `v2/lod/LayerTogglePanel`,
-// który jest sprzężony z `LodPolicy`/13-warstwowym słownikiem v2 —
-// niekompatybilny, patrz `v3/canvas/layers.ts` nagłówek). Wizualnie wzorowany
-// na `LayerTogglePanel` (checkboxy, PL, reset) — inny stan/inny zestaw
-// warstw.
+// panel warstw v3 — WŁASNY lekki komponent (13-warstwowy słownik v2 skasowany,
+// patrz `v3/canvas/layers.ts` nagłówek): checkboxy, PL, reset.
 // ---------------------------------------------------------------------------
 
 function SldV3LayerTogglePanel(props: {
@@ -1261,7 +1210,7 @@ const TESTID_GRUPY: Readonly<Record<CanvasToolbarGroupId, string>> = {
 };
 
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
-  const { width: widthOverride, height: heightOverride, lodOverride } = props;
+  const { width: widthOverride, height: heightOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   // KD-8 poz. 1: paleta MOTYWU EKRANU — źródło substytucji przy eksporcie
   // (ten sam sterownik motywu co kanwa: `useThemeModeStore`).
@@ -1445,7 +1394,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         resultPointsInStationNnBoard(snapshot),
         // GPZ-PARYTET: wiersze pól i bilansu GPZ są opisane w tabeli bloku GPZ
         // (scena rozwinięta L2 — ten sam zbiór kart, który rysuje kanwa).
-        resultPointsInGpzTable(labelsPayload && snapshot ? scenaSld(snapshot, 2) : null),
+        resultPointsInGpzTable(labelsPayload && snapshot ? scenaSld(snapshot) : null),
       ),
     [labelsPayload, resultLabelsByOwnerRef, snapshot],
   );
@@ -1805,47 +1754,29 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setComparisonMode(mode);
   }, []);
 
-  // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): stan kamery (transform+
-  // LOD) zgłaszany przez `SldCanvasV3.onCameraChange` — jedyny sposób, w jaki
+  // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): stan kamery (transform
+  // i viewport) zgłaszany przez `SldCanvasV3.onCameraChange` — jedyny sposób, w jaki
   // ten workspace może poznać AKTUALNY `ViewportTransform` (kamera jest
   // stanem WEWNĘTRZNYM kanwy od F6b), potrzebny do `worldToScreen` w
   // `symbolsInLassoRect` (hit-test wyżej).
   const [cameraState, setCameraState] = useState<StanKameryWorkspace | null>(null);
   const handleCameraChange = useCallback(
-    (transform: ViewportTransform, lod: SceneLod, viewportSize: StanKameryWorkspace['viewportSize']) => {
+    (transform: ViewportTransform, viewportSize: StanKameryWorkspace['viewportSize']) => {
       setCameraState((prev) =>
-        prev && prev.transform === transform && prev.lod === lod && prev.viewportSize === viewportSize
-          ? prev
-          : { transform, lod, viewportSize },
+        prev && prev.transform === transform && prev.viewportSize === viewportSize ? prev : { transform, viewportSize },
       );
     },
     [],
   );
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie".
-  // Scena WŁASNA tej funkcji (WZORZEC 1:1 z `handleExportSvg` niżej — TA SAMA
-  // formuła rozwiązania LOD, `lodOverride ?? cameraState?.lod ?? 2` — panel i
-  // eksport-z-legendą liczą TĘ SAMĄ treść z TEGO SAMEGO poziomu szczegółu).
-  // `SldCanvasV3` nie eksponuje swojej sceny wewnętrznej (stan prywatny od
-  // F6b) — ten sam kompromis co `handleExportSvg`: przebudowa SCENY (nie
-  // modelu) z `snapshot`, czysta funkcja, tania względem repaintu kanwy.
-  //
-  // K11-B: scena AKTYWNEGO LOD jest teraz WSPÓŁDZIELONA (legenda + prostokąt
-  // kadru minimapy potrzebują dokładnie tego samego) — stąd neutralna nazwa.
-  // NAPRAWA U ŹRÓDŁA (Zero-Debt, dług znaleziony przy tej karcie): memo miało
-  // w zależnościach CAŁY `cameraState`, który zmienia się przy KAŻDEJ zmianie
-  // transformu — czyli przy każdej klatce pan/zoom przebudowywana była cała
-  // scena (765 symboli / 690 odcinków na sieci referencyjnej), choć jej treść
-  // zależy WYŁĄCZNIE od poziomu szczegółu. Zależność zawężona do rozwiązanego
-  // `activeLod`; treść memo bez zmian.
-  const activeLod: SceneLod = lodOverride ?? cameraState?.lod ?? 2;
-  const activeLodScene = useMemo<SceneV3 | null>(
-    () => (snapshot ? scenaSld(snapshot, activeLod) : null),
-    [snapshot, activeLod],
-  );
+  // JEDNA scena migawki (`scenaSld`, karta SLD-SKALA-I-NAWIGACJA R1) zasila
+  // legendę, eksport, nawigator i lasso — ta sama, którą rysuje kanwa w każdej
+  // skali. Memo wyłącznie na `snapshot`: ruch kamery nie przebudowuje sceny.
+  const scenaMigawki = useMemo<SceneV3 | null>(() => (snapshot ? scenaSld(snapshot) : null), [snapshot]);
   const legendEntries = useMemo<readonly SheetLegendEntry[]>(
-    () => (activeLodScene ? computeProjectLegendEntries(activeLodScene) : []),
-    [activeLodScene],
+    () => (scenaMigawki ? computeProjectLegendEntries(scenaMigawki) : []),
+    [scenaMigawki],
   );
   const [legendPanelOpen, setLegendPanelOpen] = useState(false);
 
@@ -1854,10 +1785,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // MINIMAPA (nawigator) — projekcja TEJ SAMEJ sceny, interakcja WYŁĄCZNIE na
   // kamerze.
   //
-  // Scena nawigatora: `scenaSld(snapshot, 0)` — poziom NAJZGRUBSZY (stacje
-  // jako mini-RMU + magistrala + laterale), ten sam builder co kanwa, czysty i
-  // memoizowany na `snapshot` (wzorzec `buildEnergizationOverlay` wyżej w tym
-  // pliku). Zero drugiej prawdy geometrii: nawigator nie zna ENM.
+  // Scena nawigatora: TA SAMA scena migawki co kanwa (`scenaMigawki`, karta
+  // SLD-SKALA-I-NAWIGACJA R7: nawigator rysuje z tej samej sceny obrysy
+  // stacji, szyny i magistrale). Zero drugiej prawdy geometrii: nawigator nie
+  // zna ENM.
   //
   // Prostokąt kadru: liczony z `viewBox` kamery — DOKŁADNIE tą samą funkcją
   // (`cameraViewBox`), której kanwa używa do narysowania siebie, na tym samym
@@ -1986,13 +1917,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, [snapshot, kadrowanie.stacjeObchodu]);
   const sciezkaWidoczna = kadrowanie.sciezka.length >= 2;
   const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);
-  // Scena nawigatora liczona TYLKO gdy panel jest rozwinięty — zwinięty
-  // nawigator nie kosztuje ani jednego przebiegu buildera (memo przeliczane
+  // Kształty nawigatora liczone TYLKO gdy panel jest rozwinięty — zwinięty
+  // nawigator nie kosztuje ani jednego przebiegu projekcji (memo przeliczane
   // przy zmianie sieci, nie per-klatkę).
-  const minimapScene = useMemo<SceneV3 | null>(
-    () => (snapshot && minimapOpen ? scenaSld(snapshot, 0) : null),
-    [snapshot, minimapOpen],
-  );
+  const minimapScene = minimapOpen ? scenaMigawki : null;
   const minimapProjection = useMemo<MinimapProjection | null>(
     () => (minimapScene ? minimapProjectionOf(minimapScene.bbox) : null),
     [minimapScene],
@@ -2001,37 +1929,37 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     () => (minimapScene && minimapProjection ? minimapShapesOf(minimapScene, minimapProjection) : []),
     [minimapScene, minimapProjection],
   );
-  /** Kadr kamery w świecie AKTYWNEGO LOD — `null` przed pierwszym pomiarem
+  /** Kadr kamery w świecie sceny — `null` przed pierwszym pomiarem
    *  kamery/układu (uczciwy brak: nie rysujemy zgadywanego prostokąta). */
   const cameraWorldRect = useMemo<V3Rect | null>(() => {
     if (!cameraState || size.width <= 0 || size.height <= 0) return null;
     return parseCameraViewBox(cameraViewBox(cameraState.transform, size));
   }, [cameraState, size]);
-  /** KD-7: bbox świata AKTYWNEGO LOD w układzie KAMERY (scena przesunięta o
+  /** KD-7: bbox świata sceny w układzie KAMERY (scena przesunięta o
    *  `FRAME_MARGIN` przez `SheetFrame`) — `cameraWorldRect` pochodzi z
    *  `viewBox`, więc obie strony renormalizacji muszą być w tym samym
    *  układzie; wcześniej minimapa mieszała świat sceny ze światem kamery i
    *  prostokąt kadru dryfował o margines arkusza. */
-  const activeLodCameraBbox = useMemo<V3Rect | null>(
+  const scenaCameraBbox = useMemo<V3Rect | null>(
     () =>
-      activeLodScene
-        ? { ...activeLodScene.bbox, x: activeLodScene.bbox.x + FRAME_MARGIN, y: activeLodScene.bbox.y + FRAME_MARGIN }
+      scenaMigawki
+        ? { ...scenaMigawki.bbox, x: scenaMigawki.bbox.x + FRAME_MARGIN, y: scenaMigawki.bbox.y + FRAME_MARGIN }
         : null,
-    [activeLodScene],
+    [scenaMigawki],
   );
   const minimapFrame = useMemo<MinimapRect | null>(() => {
-    if (!minimapProjection || !cameraWorldRect || !activeLodCameraBbox) return null;
-    return worldRectToMinimap(cameraWorldRect, activeLodCameraBbox, minimapProjection);
-  }, [minimapProjection, cameraWorldRect, activeLodCameraBbox]);
-  /** Wskazanie w panelu → punkt świata aktywnego LOD → żądanie `'center'` do
-   *  kamery. JEDYNE wyjście minimapy: współrzędna. Skala/LOD/scena nietknięte. */
+    if (!minimapProjection || !cameraWorldRect || !scenaCameraBbox) return null;
+    return worldRectToMinimap(cameraWorldRect, scenaCameraBbox, minimapProjection);
+  }, [minimapProjection, cameraWorldRect, scenaCameraBbox]);
+  /** Wskazanie w panelu → punkt świata sceny → żądanie `'center'` do kamery.
+   *  JEDYNE wyjście minimapy: współrzędna. Skala i scena nietknięte. */
   const handleMinimapNavigate = useCallback(
     (point: { readonly x: number; readonly y: number }) => {
-      if (!minimapProjection || !activeLodCameraBbox) return;
-      const world = minimapPointToWorld(point, activeLodCameraBbox, minimapProjection);
+      if (!minimapProjection || !scenaCameraBbox) return;
+      const world = minimapPointToWorld(point, scenaCameraBbox, minimapProjection);
       setCenterRequest((prev) => ({ x: world.x, y: world.y, seq: (prev?.seq ?? 0) + 1 }));
     },
-    [minimapProjection, activeLodCameraBbox],
+    [minimapProjection, scenaCameraBbox],
   );
   // S9-6 (audyt E-4 „Legenda domyślnie wyłączona"): domyślnie WŁĄCZONA.
   // Rysunek techniczny bez klucza symboli nie jest dokumentem — projektant,
@@ -2052,7 +1980,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // przyciski eksportu SVG (ten button + dropdown niżej) dawały DWA różne
   // (i oba niepełne) wyniki. Teraz: JEDNA funkcja, poprawna end-to-end —
   // (1) klon węzła ekranu (NIE żywy — kadr/paleta eksportu nie mogą zmieniać
-  // widoku użytkownika), (2) kadr fit-do-treści z bboxa sceny AKTUALNEGO LOD
+  // widoku użytkownika), (2) kadr fit-do-treści z bboxa sceny
   // (`applyContentFitFrame`, D12 „reszta" — ignoruje kamerę/aspekt
   // kontenera), (3) paleta jasna (`toLightTechnicalExportSvg`, D11) na
   // zserializowanym markupie. JEDNA implementacja zasila OBA punkty wejścia
@@ -2066,10 +1994,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `handleExport` (`export/sldExport.ts`).
   const buildExportSheetMarkup = useCallback((): string | null => {
     const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
-    // K11-B: TA SAMA scena aktywnego LOD co legenda (`activeLodScene` wyżej) —
+    // K11-B: TA SAMA scena co legenda (`scenaMigawki` wyżej) —
     // dawniej ta funkcja budowała ją drugi raz TĄ SAMĄ formułą; scalone w jedno
     // źródło (dyrektywa właściciela 7 „reużycie zamiast duplikacji").
-    const scene = activeLodScene;
+    const scene = scenaMigawki;
     if (!svgEl || !scene) return null;
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
     // Karta S9-4: warstwa TRAFIEŃ (`sld-v3-trafienia`) jest wyłącznie
@@ -2078,9 +2006,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     // pozostał rysunkiem (i nie urósł o kilka tysięcy niewidocznych węzłów).
     clone.querySelectorAll('[data-testid="sld-v3-trafienia"]').forEach((node) => node.remove());
     applyContentFitFrame(clone, scene);
-    // S9-6: dokument nie animuje — węzły SMIL (`<animate>` crossfade LOD,
-    // karta S8) są cechą KANWY, na arkuszu dawałyby plik, który po otwarciu
-    // najpierw jest przezroczysty. Usuwane z KLONU (ekran nietknięty).
+    // S9-6: dokument nie animuje — węzły SMIL (`<animate>`, np. pulsowanie
+    // znacznika miejsca zwarcia) są cechą KANWY, na arkuszu dawałyby plik
+    // zmienny w czasie. Usuwane z KLONU (ekran nietknięty).
     for (const node of Array.from(clone.querySelectorAll('animate'))) node.remove();
     // S9-6: `data-theme-mode` opisuje motyw EKRANU projektanta. Arkusz wychodzi
     // zawsze w palecie dokumentowej, więc niesienie tego znacznika w pliku było
@@ -2099,7 +2027,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     // K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — kanwa ekranowa NIGDY nie
     // rysuje legendy (`SldCanvasV3` → `legend={[]}`), więc klon jest z
     // definicji BEZ niej; gdy zaznaczone, dorysowujemy ją WYŁĄCZNIE na
-    // KLONIE (kadr eksportu), licząc treść z TEJ SAMEJ sceny/LOD co reszta
+    // KLONIE (kadr eksportu), licząc treść z TEJ SAMEJ sceny co reszta
     // eksportu (zero rozjazdu między tym, co widać w podglądzie panelu, a
     // tym, co trafia do pliku). Reużycie `SheetLegend` (`sheet/Frame.tsx`,
     // TA SAMA funkcja, co arkusz drukowany) przez `renderToStaticMarkup` —
@@ -2138,7 +2066,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       stationCount: scene.meta.stationCount,
       atrybucjaSymboli: atrybucjaSymboliSceny(scene),
       sheetAspect: contentFrame.height > 0 ? contentFrame.width / contentFrame.height : 0,
-      lodLabelPl: SCENE_LOD_LABELS_PL[scene.meta.lod],
     });
     const sheetSize = sheetSizeFor(scene);
     appendToDrawingArea(
@@ -2151,7 +2078,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     );
     const serializer = new XMLSerializer();
     return toLightTechnicalExportSvg(serializer.serializeToString(clone), screenPalette);
-  }, [activeCaseName, activeLodScene, activeProjectName, includeLegendInExport, screenPalette, snapshot]);
+  }, [activeCaseName, scenaMigawki, activeProjectName, includeLegendInExport, screenPalette, snapshot]);
 
   /**
    * S9-6: jedno wyjście dla KAŻDEGO formatu z menu (`SLD_EXPORT_FORMATS`).
@@ -2254,8 +2181,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     const activeRect = lassoStartRef.current ? lassoRect : null;
     lassoStartRef.current = null;
     if (activeRect && snapshot && cameraState) {
-      const lod = lodOverride ?? cameraState.lod;
-      const scene = scenaSld(snapshot, lod);
+      const scene = scenaSld(snapshot);
       const hits = symbolsInLassoRect(scene, activeRect, cameraState.transform);
       // Zaznaczenie WIELOKROTNE (spec §10.1 F12-B pkt 5: „jeżeli store ma API
       // multi-select, użyj go") — `useSelectionStore.selectElements` istnieje
@@ -2272,7 +2198,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       }
     }
     setLassoRect(null);
-  }, [snapshot, cameraState, lodOverride, lassoRect, selectElements]);
+  }, [snapshot, cameraState, lassoRect, selectElements]);
 
   // PORTAL DOMENY nN (architektura LV Domain Projection po B-02, `docs/sld/
   // PROJEKCJA_SN_NN_PORTAL_V1.md`): projekcja nN stacji otwiera się z JAWNEGO
@@ -2329,7 +2255,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     (testId: string, meta?: SldElementClickMeta) => {
       if (!snapshot) return;
       const id = meta?.ownerRef ?? elementIdFromTestId(testId);
-      if (!zakresCelu('stacja', snapshot, [id], scenaSld(snapshot, 2)).dostepny) return;
+      if (!zakresCelu('stacja', snapshot, [id], scenaSld(snapshot)).dostepny) return;
       // Dwuklik = WEJŚCIE do stacji: kadr dostaje całą kanwę (pierwszy klik
       // tego gestu zaznacza stację i odsłania jej dane w inspektorze powłoki).
       // Historia zapamiętuje zaznaczenie sprzed gestu (K2b §0.3).
@@ -2354,7 +2280,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // Dla trafienia w UCHWYT (etykieta, znacznik wyniku) ta tabela nie jest
       // orzeczeniem o obiekcie modelu, tylko o rodzaju NAPISU — a jeden
       // `OwnerKind:'station-name'` obsługuje wiersz nazwy STACJI, TRANSFORMATORA
-      // i ŹRÓDŁA. Zmierzone skutki na sieci referencyjnej (LOD 1/2):
+      // i ŹRÓDŁA. Zmierzone skutki na sieci referencyjnej:
       //  * napis „TR1" transformatora GPZ deklarował `'station'`, więc (a) NIE
       //    odpalało się rozwiązanie realnego refu transformatora — deklaracja
       //    §16-v3 niżej („selekcja transformatora niesie REALNY ref") była
@@ -2591,7 +2517,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           data-testid="sld-v3-hierarchy-tree-toggle"
           aria-label={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Otwórz drzewo układu'}
           title={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Drzewo układu sieci'}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
         >
           {hierarchyPanelOpen ? '◂ Drzewo układu' : '▸ Drzewo układu'}
         </button>
@@ -2672,7 +2598,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             }}
             data-testid="sld-v3-fit-sheet"
             title="Pokaż cały arkusz rysunkowy"
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+            className={KLASA_PRZYCISKU_DOKU}
           >
             Cały arkusz
           </button>
@@ -2699,7 +2625,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             aria-expanded={legendPanelOpen}
             aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
             title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+            className={KLASA_PRZYCISKU_DOKU}
           >
             {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
           </button>
@@ -2717,7 +2643,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             disabled={snapshot === null}
             aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
             title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40"
+            className={KLASA_PRZYCISKU_DOKU}
           >
             {minimapOpen ? '▾ Nawigator' : '▸ Nawigator'}
           </button>
@@ -2732,7 +2658,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           onClick={handleExportSvg}
           data-testid="sld-v3-export-svg"
           title="Eksportuj schemat SLD jako plik SVG"
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
         >
           ↓ SVG
         </button>
@@ -2749,7 +2675,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             eksportu SVG — button + dropdown „SVG (light_technical)" powyżej
             współdzielą TĘ SAMĄ implementację), zero wpływu na kanwę ekranową. */}
         <label
-          className="flex h-7 cursor-pointer items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
+          className="flex h-7 cursor-pointer items-center gap-1 whitespace-nowrap rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
           title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
         >
           <input
@@ -2778,10 +2704,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           height={size.height}
           overlay={overlay}
           onElementClick={handleElementClick}
-          onPrzedPoleceniemWidoku={kadrowanie.zapamietajPrzedPoleceniem}
           onElementDoubleClick={handleElementDoubleClick}
           onElementContextMenu={handleElementContextMenu}
-          lodOverride={lodOverride}
           layerVisibility={layerVisibility}
           onResultLabelActivate={handleResultLabelActivate}
           onBackgroundClick={handleBackgroundClick}
@@ -2973,7 +2897,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               aria-expanded={toolbarMenuOpen}
               aria-label={toolbarMenuOpen ? 'Zamknij menu narzędzi kanwy' : 'Otwórz menu narzędzi kanwy'}
               title="Narzędzia kanwy zwinięte przy tej szerokości"
-              className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+              className={KLASA_PRZYCISKU_DOKU}
             >
               {toolbarMenuOpen ? '▾ Narzędzia' : '▸ Narzędzia'}
             </button>
@@ -3034,7 +2958,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           aria-expanded={proofPanelOpen}
           aria-label={proofPanelOpen ? 'Zamknij panel dowodów inżynierskich' : 'Otwórz panel dowodów inżynierskich'}
           title={proofPanelOpen ? 'Zamknij panel dowodów' : 'Dowody inżynierskie (8)'}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
         >
           {proofPanelOpen ? '▾ Dowody (8)' : '▸ Dowody (8)'}
         </button>
@@ -3059,7 +2983,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           data-testid="sld-v3-layer-panel-toggle"
           aria-label={layerPanelOpen ? 'Zamknij panel warstw' : `Otwórz panel warstw (${CANVAS_LAYER_IDS.length})`}
           title={layerPanelOpen ? 'Zamknij panel warstw' : `Warstwy (${CANVAS_LAYER_IDS.length})`}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
         >
           {layerPanelOpen ? '▾ Warstwy' : `▴ Warstwy (${CANVAS_LAYER_IDS.length})`}
         </button>

@@ -1,6 +1,6 @@
 /**
  * SCHEMAT-10 R4 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.10/13/15/18; program
- * WYNIKI-SLD R4) — dowód wizualny FINAŁU warstwy wynikowej na L2:
+ * WYNIKI-SLD R4) — dowód wizualny FINAŁU warstwy wynikowej (scena pełna):
  *  A · WARSTWY ANALITYCZNE na WSPÓLNYM rejestrze (wym.13): ta sama szyna, ten
  *      sam builder — payload LF ⇒ „U/δ", payload SC ⇒ „Ik″/ip/Ith/Sk". Żadnych
  *      forków renderera; przełączenie analizy = przełączenie payloadu.
@@ -42,7 +42,7 @@ mkdirSync(OUT, { recursive: true });
 const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 // Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
 // zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
 // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
@@ -114,7 +114,7 @@ const branchDelta = buildResultLabelsFromScene(scene, branchCurrent, singleHop, 
 const branchPrev = buildResultLabelsFromScene(scene, branchCurrent, singleHop, cmpPrev)[branchRef];
 
 // ---- PANEL C: EKSPORT — dowód, że warstwa jest w klonie sceny (te same pozycje) ----
-const exportLayout = layoutResultLabels(scene, buildResultLabelsFromScene(scene, branchCurrent, singleHop), [], 2);
+const exportLayout = layoutResultLabels(scene, buildResultLabelsFromScene(scene, branchCurrent, singleHop), []);
 const exportPlacement = exportLayout.placements.find((p) => p.ownerRef === branchRef) ?? exportLayout.placements[0];
 
 // ---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ parts.push(`<text x="360" y="${CY + 144}" font-family="Inter, system-ui, sans-se
 
 const title =
   `<text x="16" y="30" font-family="Inter, system-ui, sans-serif" font-size="19" font-weight="700" fill="${TXT}">` +
-  `R4 · Warstwa wynikowa FINAŁ — warstwy analityczne na wspólnym rejestrze + tryb porównawczy z trendem + eksport bez utraty pozycji (scena realna sldSubstrate52s, L2)</text>` +
+  `R4 · Warstwa wynikowa FINAŁ — warstwy analityczne na wspólnym rejestrze + tryb porównawczy z trendem + eksport bez utraty pozycji (scena realna sldSubstrate52s)</text>` +
   `<text x="16" y="52" font-family="Inter, system-ui, sans-serif" font-size="12" fill="${SUB}">` +
   `Jeden builder/rejestr dla LF i SC (wym.13); Δ/poprzednia→bieżąca + trend ↑/↓/→ (wym.10/15); eksport tą samą serializacją co ekran (wym.18). ZERO fizyki w UI; geometria bazowa nietknięta (§6).</text>` +
   `<text x="16" y="72" font-family="Inter, system-ui, sans-serif" font-size="11" fill="${SUB}">` +

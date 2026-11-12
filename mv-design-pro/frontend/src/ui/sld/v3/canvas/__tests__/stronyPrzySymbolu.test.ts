@@ -189,8 +189,8 @@ describe('obrys kotwicy w scenie — para z symbolem sceny (jedno źródło)', (
         enm: EnergyNetworkModel;
       }
     ).enm;
-    it.each([0, 1, 2] as const)(`${plik}, L%i: każdy obrys kotwicy jest prostokątem symbolu sceny; każdy podpis DER i „NO" go niesie`, (lod) => {
-      const scena = buildSceneV3(enm, lod);
+    it(`${plik}, każdy obrys kotwicy jest prostokątem symbolu sceny; każdy podpis DER i „NO" go niesie`, () => {
+      const scena = buildSceneV3(enm);
       // Gabaryt symbolu z jednego źródła (`gabarytSymbolu`). Dawniej indeks pierwszych
       // `symbols.length` przeszkód sceny — założenie „jedna przeszkoda na symbol" przestało być
       // prawdą, gdy blok zabezpieczeń daje cztery krawędzie ramki (`przeszkodySymbolu`).
@@ -204,7 +204,7 @@ describe('obrys kotwicy w scenie — para z symbolem sceny (jedno źródło)', (
         zObrysem += 1;
         expect(prostokatySymboli.has(JSON.stringify(l.obrysKotwicy)), `${l.ownerRef}: obrys nie jest symbolem sceny`).toBe(true);
       }
-      if (lod !== 0) expect(zObrysem).toBeGreaterThan(0);
+      expect(zObrysem).toBeGreaterThan(0);
     });
   }
 });

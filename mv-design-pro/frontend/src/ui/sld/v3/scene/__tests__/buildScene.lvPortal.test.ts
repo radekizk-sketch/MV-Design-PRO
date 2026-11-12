@@ -5,7 +5,7 @@
  *
  * Przypięte na REALNEJ fixturze referencyjnej (53 stacje, 20/20 DER na nN)
  * i na fixturze „Stacja B" z PEŁNĄ rozdzielnicą nN w modelu:
- *  (1) L1/L2: KAŻDA stacja z zaciskiem nN (`#lv-bus`) ma DOKŁADNIE jeden
+ *  (1) KAŻDA stacja z zaciskiem nN (`#lv-bus`) ma DOKŁADNIE jeden
  *      portal; pion `#lv-portal-drop` ma kind='lv' i dotyka zacisku;
  *  (2) portal niesie tożsamość stacji (`meta.lvPortalStationRef`,
  *      `ownerRef` = `${stationRef}#lv-portal`, `elementKind='lvPortal'`);
@@ -14,7 +14,7 @@
  *      elementami sceny SN; graf elektryczny nadal waliduje CAŁĄ sieć);
  *  (4) źródła strony nN (20/20 na fixturze) POZOSTAJĄ widoczne w rzędzie DER
  *      na zacisku (nigdy nie ukrywamy źródeł) — `sourceCoverageGaps` puste;
- *  (5) L0: zero portali (blok zwinięty), kotwice stacji identyczne L0/L1/L2;
+ *  (5) jedna scena (karta SLD-SKALA-I-NAWIGACJA): portal w scenie zawsze, kotwice deterministyczne;
  *  (6) multi-TR: druga jednostka transformatorowa tej samej stacji ⇒ dwa
  *      symbole TR, dwa zejścia LV, JEDEN portal;
  *  (7) determinizm.
@@ -29,7 +29,7 @@ import type { EnergyNetworkModel, Generator, Transformer } from '../../../../../
 import { lvPortalOwnerRef } from '../../compose/station';
 import { buildStacjaBFixture, STACJA_B_REFS } from '../../electrical/__tests__/fixtures/stacjaB';
 import type { PreviewSymbol } from '../../compose/preview';
-import { buildSceneV3, sourceCoverageGaps, type SceneLod, type SceneV3 } from '../buildScene';
+import { buildSceneV3, sourceCoverageGaps, type SceneV3 } from '../buildScene';
 import { interiorCrossings } from '../crossings';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -49,98 +49,72 @@ function segmentsEndingWith(scene: SceneV3, suffix: string) {
 const NN_INTERIOR_SYMBOLS = new Set(['nnBreaker', 'nnFuseSwitch']);
 
 describe('PORTAL nN — scena referencyjna (53 stacje, 20/20 DER na nN)', () => {
-  for (const lod of [1, 2] as const) {
-    it(`L${lod}: liczba portali == liczba zacisków nN (#lv-bus); każdy portal z tożsamością stacji i pionem kind='lv' NA zacisku`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const lvBuses = segmentsEndingWith(scene, '#lv-bus');
-      expect(lvBuses.length).toBeGreaterThan(40);
-      const portalSymbols = portals(scene);
-      expect(portalSymbols).toHaveLength(lvBuses.length);
-      const drops = segmentsEndingWith(scene, '#lv-portal-drop');
-      expect(drops).toHaveLength(lvBuses.length);
-      for (const drop of drops) expect(drop.meta?.kind).toBe('lv');
+  it(`liczba portali == liczba zacisków nN (#lv-bus); każdy portal z tożsamością stacji i pionem kind='lv' NA zacisku`, () => {
+    const scene = buildSceneV3(enm);
+    const lvBuses = segmentsEndingWith(scene, '#lv-bus');
+    expect(lvBuses.length).toBeGreaterThan(40);
+    const portalSymbols = portals(scene);
+    expect(portalSymbols).toHaveLength(lvBuses.length);
+    const drops = segmentsEndingWith(scene, '#lv-portal-drop');
+    expect(drops).toHaveLength(lvBuses.length);
+    for (const drop of drops) expect(drop.meta?.kind).toBe('lv');
 
-      for (const portal of portalSymbols) {
-        expect(portal.meta?.elementKind).toBe('lvPortal');
-        const stationRef = portal.meta?.lvPortalStationRef;
-        expect(stationRef).toBeTruthy();
-        expect(portal.meta?.ownerRef).toBe(lvPortalOwnerRef(stationRef!));
-        expect(portal.meta?.testId).toBe(`${lvPortalOwnerRef(stationRef!)}#lvPortal`);
-        const lvBus = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#lv-bus`)!;
-        const drop = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#lv-portal-drop`)!;
-        expect(lvBus).toBeDefined();
-        expect(drop).toBeDefined();
-        expect(drop.points[0].y).toBe(lvBus.points[0].y);
-        // Port `top` portalu = koniec pionu (ciągłość geometryczna).
-        expect(drop.points[1].x).toBe(portal.x + 16);
-        expect(drop.points[1].y).toBe(portal.y);
-      }
-    });
-
-    it(`L${lod}: ZERO wnętrza nN w projekcji SN (aparaty nN) — źródła nN (20/20) widoczne w rzędach DER na zaciskach, zero luk pokrycia`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.symbols.filter((s) => NN_INTERIOR_SYMBOLS.has(s.symbolId))).toHaveLength(0);
-      const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
-      expect(derSymbols.length).toBeGreaterThanOrEqual(20);
-      expect(segmentsEndingWith(scene, '#der-row-bus').length).toBeGreaterThan(0);
-      expect(sourceCoverageGaps(scene)).toEqual([]);
-      // Każdy rząd DER (trunk + szyna rzędu) leży CAŁY na prawo od portalu
-      // swojej stacji — zero przecięć z pionem portalu (fałszywy węzeł T).
-      for (const portal of portals(scene)) {
-        const stationRef = portal.meta!.lvPortalStationRef!;
-        const rowBus = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#der-row-bus`);
-        const trunk = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#der-row-trunk`);
-        if (!rowBus || !trunk) continue;
-        expect(Math.min(rowBus.points[0].x, rowBus.points[1].x)).toBeGreaterThanOrEqual(portal.x + 32 + 8);
-        expect(trunk.points[0].x).toBeGreaterThanOrEqual(portal.x + 32 + 8);
-      }
-      // Zero przecięć szyny rzędu DER z innym odcinkiem (dawniej mierzone liczbą
-      // rozcięć `#tee-`; rozcinanie skasowane rozstrzygnięciem S7-P2, więc mierzymy
-      // samo przecięcie — to ono rysowałoby fałszywy węzeł albo mostek na szynie rzędu).
-      expect(
-        interiorCrossings(scene.segments).filter((c) =>
-          [c.hOwnerRef, c.vOwnerRef].some((o) => (o ?? '').endsWith('#der-row-bus'))),
-      ).toEqual([]);
-    });
-  }
-
-  it('L0: zero portali i zero zacisków (blok zwinięty) — wejściem jest dwuklik w blok stacji', () => {
-    const scene = buildSceneV3(enm, 0);
-    expect(portals(scene)).toHaveLength(0);
-    expect(segmentsEndingWith(scene, '#lv-bus')).toHaveLength(0);
-  });
-
-  it('kotwica stacji IDENTYCZNA L0/L1/L2 (portal nie przesuwa kotwic — KD-5/S1 „jedna kotwica")', () => {
-    const anchors = (lod: SceneLod): Map<string, string> => {
-      const scene = buildSceneV3(enm, lod);
-      const m = new Map<string, string>();
-      for (const label of scene.labels) {
-        if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0') && label.ownerRef.startsWith('stn/')) {
-          m.set(label.ownerRef, `${label.rect.x + label.rect.width / 2},${label.rect.y},${label.rezerwacjaSzerokosci}`);
-        }
-      }
-      return m;
-    };
-    const a0 = anchors(0);
-    const a1 = anchors(1);
-    const a2 = anchors(2);
-    expect(a0.size).toBeGreaterThan(50);
-    for (const [ref, pos] of a0) {
-      expect(a1.get(ref), ref).toBe(pos);
-      expect(a2.get(ref), ref).toBe(pos);
+    for (const portal of portalSymbols) {
+      expect(portal.meta?.elementKind).toBe('lvPortal');
+      const stationRef = portal.meta?.lvPortalStationRef;
+      expect(stationRef).toBeTruthy();
+      expect(portal.meta?.ownerRef).toBe(lvPortalOwnerRef(stationRef!));
+      expect(portal.meta?.testId).toBe(`${lvPortalOwnerRef(stationRef!)}#lvPortal`);
+      const lvBus = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#lv-bus`)!;
+      const drop = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#lv-portal-drop`)!;
+      expect(lvBus).toBeDefined();
+      expect(drop).toBeDefined();
+      expect(drop.points[0].y).toBe(lvBus.points[0].y);
+      // Port `top` portalu = koniec pionu (ciągłość geometryczna).
+      expect(drop.points[1].x).toBe(portal.x + 16);
+      expect(drop.points[1].y).toBe(portal.y);
     }
   });
 
-  it('determinizm: scena 2× identyczna na L1 i L2', () => {
-    for (const lod of [1, 2] as const) {
-      expect(JSON.stringify(buildSceneV3(enm, lod))).toBe(JSON.stringify(buildSceneV3(enm, lod)));
+  it(`ZERO wnętrza nN w projekcji SN (aparaty nN) — źródła nN (20/20) widoczne w rzędach DER na zaciskach, zero luk pokrycia`, () => {
+    const scene = buildSceneV3(enm);
+    expect(scene.symbols.filter((s) => NN_INTERIOR_SYMBOLS.has(s.symbolId))).toHaveLength(0);
+    const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
+    expect(derSymbols.length).toBeGreaterThanOrEqual(20);
+    expect(segmentsEndingWith(scene, '#der-row-bus').length).toBeGreaterThan(0);
+    expect(sourceCoverageGaps(scene)).toEqual([]);
+    // Każdy rząd DER (trunk + szyna rzędu) leży CAŁY na prawo od portalu
+    // swojej stacji — zero przecięć z pionem portalu (fałszywy węzeł T).
+    for (const portal of portals(scene)) {
+      const stationRef = portal.meta!.lvPortalStationRef!;
+      const rowBus = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#der-row-bus`);
+      const trunk = scene.segments.find((s) => s.meta?.ownerRef === `${stationRef}#der-row-trunk`);
+      if (!rowBus || !trunk) continue;
+      expect(Math.min(rowBus.points[0].x, rowBus.points[1].x)).toBeGreaterThanOrEqual(portal.x + 32 + 8);
+      expect(trunk.points[0].x).toBeGreaterThanOrEqual(portal.x + 32 + 8);
     }
+    // Zero przecięć szyny rzędu DER z innym odcinkiem (dawniej mierzone liczbą
+    // rozcięć `#tee-`; rozcinanie skasowane rozstrzygnięciem S7-P2, więc mierzymy
+    // samo przecięcie — to ono rysowałoby fałszywy węzeł albo mostek na szynie rzędu).
+    expect(
+      interiorCrossings(scene.segments).filter((c) =>
+        [c.hOwnerRef, c.vOwnerRef].some((o) => (o ?? '').endsWith('#der-row-bus'))),
+    ).toEqual([]);
+  });
+
+  // Dawne przypadki „L0: zero portali (blok zwinięty)" i „kotwica stacji IDENTYCZNA L0/L1/L2"
+  // usunięte: jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) nie ma bloku zwiniętego ani scen per
+  // poziom. Portal i zacisk nN stoją w scenie zawsze (przypadki wyżej), a stałość kotwic pilnuje
+  // determinizm sceny niżej oraz `buildScene.w2GS4b.test.ts` (dwie niezależne budowy).
+
+  it('determinizm: scena 2× identyczna', () => {
+    expect(JSON.stringify(buildSceneV3(enm))).toBe(JSON.stringify(buildSceneV3(enm)));
   });
 });
 
 describe('PORTAL nN — Stacja B (model z PEŁNĄ rozdzielnicą nN): wnętrze nN żyje w projekcji nN, nie w SN', () => {
   const stacjaB = buildStacjaBFixture();
-  const scene = buildSceneV3(stacjaB, 2);
+  const scene = buildSceneV3(stacjaB);
   const stationRef = STACJA_B_REFS.stationRef;
 
   it('scena SN niesie transformator T1, zacisk nN (kind=bus) i DOKŁADNIE jeden portal stacji', () => {
@@ -191,7 +165,7 @@ describe('PORTAL nN — Stacja B (model z PEŁNĄ rozdzielnicą nN): wnętrze nN
       connection_variant: 'nn_side',
       station_ref: stationRef,
     } as unknown as Generator);
-    const withDer = buildSceneV3({ ...stacjaB, generators }, 2);
+    const withDer = buildSceneV3({ ...stacjaB, generators });
     const der = withDer.symbols.filter((s) => s.meta?.elementKind === 'der');
     expect(der).toHaveLength(1);
     const portal = portals(withDer).find((p) => p.meta?.lvPortalStationRef === stationRef)!;
@@ -222,7 +196,7 @@ describe('PORTAL nN — Stacja B (model z PEŁNĄ rozdzielnicą nN): wnętrze nN
     ];
     station.transformer_refs = [...(station.transformer_refs ?? []), secondRef];
 
-    const multi = buildSceneV3(out, 2);
+    const multi = buildSceneV3(out);
     // Transformatory TEJ stacji (GPZ ma własny TR WN/SN — poza pomiarem).
     const trs = multi.symbols.filter(
       (s) => s.symbolId === 'transformer2W' && s.meta?.elementKind === 'transformer' && (s.meta?.ownerRef ?? '').startsWith('stn/'),

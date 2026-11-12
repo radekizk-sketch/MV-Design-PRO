@@ -138,7 +138,6 @@ interface WynikEksportu {
 
 async function eksportuj(
   format: SldExportFormat,
-  lod: 0 | 1 | 2,
   motyw: ThemeMode,
   serwer: OdpowiedzSerwera = serwerOddajePlik(),
 ): Promise<WynikEksportu> {
@@ -151,7 +150,7 @@ async function eksportuj(
   useThemeModeStore.getState().setMode(motyw);
   const { pliki } = przechwycPobranie();
   const fetchSpy = podstawSerwer(serwer);
-  render(<SldCanvasV3Workspace width={900} height={700} lodOverride={lod} />);
+  render(<SldCanvasV3Workspace width={900} height={700} />);
   rozwinZwinieteNarzedzia();
   fireEvent.click(screen.getByTestId('sld-export-menu-toggle'));
   fireEvent.click(screen.getByTestId(`sld-export-format-${format}`));
@@ -206,42 +205,38 @@ const DOWOD_TRESCI: Readonly<Record<FormatRysunku, (tresc: string) => boolean>> 
 
 const FORMATY_RYSUNKU = SLD_EXPORT_FORMATS.filter((d) => d.source === 'rysunek');
 
-describe('S9-6 odbiór: każdy format rysunku × każdy poziom szczegółu zwraca plik z treścią', () => {
+describe('S9-6 odbiór: każdy format rysunku zwraca plik z treścią', () => {
   it('rejestr rozdziela formaty na rysunek (svg, pdf, dxf) i model (cgmes)', () => {
     expect(FORMATY_RYSUNKU.map((d) => d.id)).toEqual(['svg', 'pdf', 'dxf']);
     expect(SLD_EXPORT_FORMATS.filter((d) => d.source === 'model').map((d) => d.id)).toEqual(['cgmes']);
   });
 
   for (const descriptor of FORMATY_RYSUNKU) {
-    for (const lod of [0, 1, 2] as const) {
-      it(`format ${descriptor.id} @ LOD ${lod} — plik > ${PROG_ROZMIARU_B} B ze strukturą sceny, bez wołania serwera`, async () => {
-        const { plik, fetchSpy } = await eksportuj(descriptor.id, lod, 'dark_scada');
+    it(`format ${descriptor.id} — plik > ${PROG_ROZMIARU_B} B ze strukturą sceny, bez wołania serwera`, async () => {
+      const { plik, fetchSpy } = await eksportuj(descriptor.id, 'dark_scada');
 
-        expect(plik.tresc.length).toBeGreaterThan(PROG_ROZMIARU_B);
-        expect(DOWOD_TRESCI[descriptor.id as FormatRysunku](plik.tresc)).toBe(true);
-        expect(plik.mime).toContain(descriptor.mime);
-        expect(plik.nazwa.endsWith(`.${descriptor.extension}`)).toBe(true);
-        expect(fetchSpy).not.toHaveBeenCalled();
-      }, LIMIT_EKSPORTU_MS);
-    }
+      expect(plik.tresc.length).toBeGreaterThan(PROG_ROZMIARU_B);
+      expect(DOWOD_TRESCI[descriptor.id as FormatRysunku](plik.tresc)).toBe(true);
+      expect(plik.mime).toContain(descriptor.mime);
+      expect(plik.nazwa.endsWith(`.${descriptor.extension}`)).toBe(true);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    }, LIMIT_EKSPORTU_MS);
   }
 });
 
 describe('Eksport CGMES: model sieci z serwera dla aktywnego przypadku', () => {
-  for (const lod of [0, 1, 2] as const) {
-    it(`LOD ${lod} — zapisuje NIEZMIENIONE bajty serwera, jako ZIP, z końcówki aktywnego przypadku`, async () => {
-      const { plik, fetchSpy } = await eksportuj('cgmes', lod, 'dark_scada');
+  it(`— zapisuje NIEZMIENIONE bajty serwera, jako ZIP, z końcówki aktywnego przypadku`, async () => {
+    const { plik, fetchSpy } = await eksportuj('cgmes', 'dark_scada');
 
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(fetchSpy.mock.calls[0][0]).toBe('/api/cases/przypadek-1/enm/eksport-cgmes');
-      expect(plik.tresc).toBe(ARCHIWUM_SERWERA);
-      expect(plik.mime).toBe('application/zip');
-      expect(plik.nazwa.endsWith('.cgmes.zip')).toBe(true);
-    }, LIMIT_EKSPORTU_MS);
-  }
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0][0]).toBe('/api/cases/przypadek-1/enm/eksport-cgmes');
+    expect(plik.tresc).toBe(ARCHIWUM_SERWERA);
+    expect(plik.mime).toBe('application/zip');
+    expect(plik.nazwa.endsWith('.cgmes.zip')).toBe(true);
+  }, LIMIT_EKSPORTU_MS);
 
   it('nazwa pliku niesie wersję modelu PODANĄ PRZEZ SERWER, nie wersję migawki przeglądarki', async () => {
-    const { plik } = await eksportuj('cgmes', 1, 'dark_scada', serwerOddajePlik(enm.header.revision + 5, 'fedcba9876543210'));
+    const { plik } = await eksportuj('cgmes', 'dark_scada', serwerOddajePlik(enm.header.revision + 5, 'fedcba9876543210'));
 
     expect(plik.nazwa).toBe(`schemat-sld_Siec_Wschod_Zwarcie_maksymalne_rew${enm.header.revision + 5}-fedcba98.cgmes.zip`);
   }, LIMIT_EKSPORTU_MS);
@@ -253,7 +248,7 @@ describe('Eksport CGMES: model sieci z serwera dla aktywnego przypadku', () => {
     vi.unstubAllGlobals();
     const { pliki } = przechwycPobranie();
     podstawSerwer({ status: 422, cialo: JSON.stringify({ detail: odmowa }), naglowki: { 'content-type': 'application/json' } });
-    render(<SldCanvasV3Workspace width={900} height={700} lodOverride={1} />);
+    render(<SldCanvasV3Workspace width={900} height={700} />);
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-export-menu-toggle'));
     fireEvent.click(screen.getByTestId('sld-export-format-cgmes'));
@@ -270,7 +265,7 @@ describe('Eksport CGMES: model sieci z serwera dla aktywnego przypadku', () => {
     useSnapshotStore.setState({ snapshot: enm });
     const { pliki } = przechwycPobranie();
     const fetchSpy = podstawSerwer(serwerOddajePlik());
-    render(<SldCanvasV3Workspace width={900} height={700} lodOverride={1} />);
+    render(<SldCanvasV3Workspace width={900} height={700} />);
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-export-menu-toggle'));
     fireEvent.click(screen.getByTestId('sld-export-format-cgmes'));
@@ -288,7 +283,7 @@ describe('Eksport CGMES: model sieci z serwera dla aktywnego przypadku', () => {
 describe('S9-6 odbiór: jedna konwencja nazw dla wszystkich formatów', () => {
   it('nazwa niesie projekt, przypadek i wersję modelu — ten sam trzon w każdym formacie', async () => {
     const nazwy: string[] = [];
-    for (const d of SLD_EXPORT_FORMATS) nazwy.push((await eksportuj(d.id, 1, 'dark_scada')).plik.nazwa);
+    for (const d of SLD_EXPORT_FORMATS) nazwy.push((await eksportuj(d.id, 'dark_scada')).plik.nazwa);
     for (const nazwa of nazwy) {
       expect(nazwa).toMatch(/^schemat-sld_Siec_Wschod_Zwarcie_maksymalne_rew\d+-[0-9a-f]+\./);
     }
@@ -304,8 +299,8 @@ describe('S9-6 odbiór: jedna konwencja nazw dla wszystkich formatów', () => {
 describe('S9-6 odbiór: arkusz dokumentowy nie zależy od motywu ekranu', () => {
   for (const format of ['svg', 'pdf', 'dxf'] as const) {
     it(`${format} — bajt-identyczny w motywie ciemnym i jasnym`, async () => {
-      const ciemny = (await eksportuj(format, 1, 'dark_scada')).plik;
-      const jasny = (await eksportuj(format, 1, 'light_technical')).plik;
+      const ciemny = (await eksportuj(format, 'dark_scada')).plik;
+      const jasny = (await eksportuj(format, 'light_technical')).plik;
 
       expect(jasny.tresc).toBe(ciemny.tresc);
       expect(jasny.nazwa).toBe(ciemny.nazwa);
@@ -315,7 +310,7 @@ describe('S9-6 odbiór: arkusz dokumentowy nie zależy od motywu ekranu', () => 
 
 describe('S9-6 odbiór: tabliczka rysunkowa z danymi REALNYMI', () => {
   it('SVG niesie nazwę projektu, przypadku, sieci, wersję modelu i liczbę stacji z modelu', async () => {
-    const { plik } = await eksportuj('svg', 1, 'dark_scada');
+    const { plik } = await eksportuj('svg', 'dark_scada');
 
     expect(plik.tresc).toContain('SCHEMAT JEDNOKRESKOWY SIECI SN');
     expect(plik.tresc).toContain(PROJEKT);
@@ -328,7 +323,7 @@ describe('S9-6 odbiór: tabliczka rysunkowa z danymi REALNYMI', () => {
   }, LIMIT_EKSPORTU_MS);
 
   it('PDF niesie te same dane tabliczki (jedna implementacja metryki dla obu formatów)', async () => {
-    const { plik } = await eksportuj('pdf', 1, 'dark_scada');
+    const { plik } = await eksportuj('pdf', 'dark_scada');
 
     expect(plik.tresc).toContain('SCHEMAT JEDNOKRESKOWY SIECI SN');
     // Polskie znaki nie są transliterowane — „Sieć" ma kod `/Differences`.
@@ -338,7 +333,7 @@ describe('S9-6 odbiór: tabliczka rysunkowa z danymi REALNYMI', () => {
   it('brak nazwy projektu/przypadku ⇒ PUSTE POLE z etykietą, nigdy wymyślona wartość', async () => {
     useAppStateStore.getState().setActiveProject(null, null);
     useSnapshotStore.setState({ snapshot: enm });
-    const { plik } = await eksportuj('svg', 1, 'dark_scada');
+    const { plik } = await eksportuj('svg', 'dark_scada');
 
     expect(plik.tresc).toContain('Projekt:');
     expect(plik.tresc).toContain('data-brak-danej="true"');

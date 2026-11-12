@@ -61,7 +61,11 @@ export const IDENTITY_TRANSFORM: ViewportTransform = {
   translateY: 0,
 };
 
-export const MIN_SCALE = 0.05 as const;
+/** Techniczna osłona przed skalą zerową/ujemną — NIE granica użytkowa. Dolną
+ *  granicę skali kanwy wyprowadza kamera v3 z dopasowania całej sieci
+ *  (`v3/canvas/camera.ts` `skalaMinimalna`, karta SLD-SKALA-I-NAWIGACJA R2);
+ *  dawna podłoga 0,05 nie pozwalała zmieścić w kadrze sieci rozległej. */
+export const MIN_SCALE = 0.001 as const;
 export const MAX_SCALE = 8.0 as const;
 
 /** Konwersja screen → world coordinates. */

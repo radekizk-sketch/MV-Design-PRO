@@ -3,7 +3,7 @@
  *
  * Iloczyn cech (reguła KLASA §2): {deklaracja `station_type`: zgodna z topologią, niezgodna,
  * brak rodzaju (`mv_lv`), funkcja (`customer`), wartość nieznana, brak pola} × {konsument:
- * schemat L0/L1/L2, drzewo panelu „Schemat", tożsamość publiczna (karta stacji, wyszukiwarka,
+ * schemat (jedna scena), drzewo panelu „Schemat", tożsamość publiczna (karta stacji, wyszukiwarka,
  * inspektor legacy, przegląd masowy), karta techniczna, inspektor ui2, panel procesu,
  * konfigurator stacji}. Model: fikstura B-2 z trzema stacjami, z których KAŻDA ma pola WE, WY,
  * ODG i TR (3 pola liniowe ⇒ odgałęźna) — dokładnie sytuacja kadru karty, w której schemat
@@ -113,16 +113,14 @@ describe('rodzaj stacji — każdy konsument czyta jedną regułę (iloczyn dekl
   }
 
   for (const deklaracja of DEKLARACJE_SCHEMATU) {
-    it(`deklaracja ${deklaracja}: schemat L0 (sylwetka), L1 i L2 (podpis) — odgałęźna`, () => {
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): sylwetka stacji widoku ogólnego (dawny
+    // glif zwiniętej stacji z `stationGlyph.lineTopology`) nie istnieje; rodzaj stacji niesie podpis
+    // rodzaju na schemacie — ten sam w każdej skali.
+    it(`deklaracja ${deklaracja}: schemat (podpis rodzaju) — odgałęźna`, () => {
       const model = zDeklaracja(deklaracja);
-      for (const lod of [1, 2] as const) {
-        const podpisy = stationTypeLabels(buildSceneV3(model, lod));
-        expect(podpisy.map(([ref]) => ref).sort()).toEqual(stacjePol.map((s) => s.ref_id).sort());
-        expect(new Set(podpisy.map(([, tekst]) => tekst))).toEqual(new Set(['stacja odgałęźna']));
-      }
-      const sylwetki = buildSceneV3(model, 0).symbols.filter((s) => s.symbolId === 'stationCollapsed');
-      expect(sylwetki).toHaveLength(3);
-      for (const s of sylwetki) expect(s.meta?.stationGlyph?.lineTopology).toBe('odgałęźna');
+      const podpisy = stationTypeLabels(buildSceneV3(model));
+      expect(podpisy.map(([ref]) => ref).sort()).toEqual(stacjePol.map((s) => s.ref_id).sort());
+      expect(new Set(podpisy.map(([, tekst]) => tekst))).toEqual(new Set(['stacja odgałęźna']));
     });
   }
 

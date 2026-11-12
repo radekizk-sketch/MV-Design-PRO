@@ -1,7 +1,7 @@
 /**
  * SLD V3 F7 — skrypt render-odbioru: wszystkie wyrocznie spec §11/§9/§16
- * uruchomione na REALNEJ fixturze `sldSubstrate52s` (v2, 53 stacje), per LOD
- * 0/1/2. Reużywa WYŁĄCZNIE wyrocznie eksportowane z produkcyjnego kodu v3
+ * uruchomione na REALNEJ fixturze `sldSubstrate52s` (v2, 53 stacje) — jedna scena
+ * niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1). Reużywa WYŁĄCZNIE wyrocznie eksportowane z produkcyjnego kodu v3
  * (`scene/buildScene.ts`, `layout/labels.ts`) — nie duplikuje logiki testów,
  * przenosi asercje §16 (ciągłość elektryczna) z
  * `scene/__tests__/buildScene.test.ts` sekcja E na te same funkcje.
@@ -10,9 +10,9 @@
  *   npx vite-node scripts/sld_v3_acceptance.mjs
  *   npm run accept:sld-v3
  *
- * Exit code: 0 gdy WSZYSTKIE wyrocznie na WSZYSTKICH LOD są zielone; 1 gdy
- * jakikolwiek FAIL (włącznie z wyjątkiem rzuconym przez buildSceneV3 — łapany
- * per LOD, żeby raport pozostałych LOD i tak się wypisał).
+ * Exit code: 0 gdy WSZYSTKIE wyrocznie są zielone; 1 gdy jakikolwiek FAIL
+ * (włącznie z wyjątkiem rzuconym przez buildSceneV3 — łapany, żeby raport i tak
+ * się wypisał).
  *
  * Determinizm RAPORTU (nie tylko sceny): zero `Date.now()`/`Math.random()`/
  * UUID w treści wypisywanej — dwa uruchomienia na tym samym kodzie dają
@@ -54,11 +54,9 @@ import {
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
   busbarLabelPathClearanceGaps,
-  noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
   ctAnnotationGaps,
-  protectionAnnotationAtLod1IsBareFrame,
   protectionMarkingGaps,
   allSecondaryLinksValid,
   secondaryLinkDualityGaps,
@@ -89,8 +87,6 @@ import {
   allVerticalsAttributed,
   verticalAuditGaps,
   verticalCauseBreakdown,
-  allLod0ElementsReadable,
-  lod0ReadabilityGaps,
   localDensityMetrics,
   LOCAL_DENSITY_WINDOW_CELLS,
   minParallelCableClearance,
@@ -105,8 +101,9 @@ import {
   plannedLabelsBelowScreenFloor,
   plannedLabelsOutsideSheet,
 } from '../src/ui/sld/v3/canvas/labelLegibility.ts';
-import { MIN_TEXT_SCREEN_PX, screenFixedFontSize } from '../src/ui/sld/v3/core/text.ts';
-import { LABEL_PLAN_PRODUCTION_SCALES, MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
+import { LABEL_TYPOGRAPHY, MIN_TEXT_SCREEN_PX, screenFixedFontSize } from '../src/ui/sld/v3/core/text.ts';
+import { SKALE_ODBIORU_PLANU_ETYKIET, MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
+import { czytelnyNaEkranie } from '../src/ui/sld/v3/canvas/gestoscInformacji.ts';
 import {
   SHEET_MAX_ASPECT,
   SHEET_TARGET_ASPECT,
@@ -129,11 +126,6 @@ import { symbolePolaBezDanych } from '../src/ui/sld/v3/compose/apparatusSequence
 import { FIELD_ROLE } from '../src/ui/sld/v2/domain/apparatusContracts.ts';
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
-import {
-  miniRmuPathContinuityGaps,
-  miniRmuMarkerSpacingGaps,
-  transformerInteriorHeightRatio,
-} from '../src/ui/sld/v3/symbols/miniRmuGrammar.ts';
 import {
   busBandClearanceGaps,
   crossingBusGaps,
@@ -207,7 +199,9 @@ const here = dirname(fileURLToPath(import.meta.url));
  * się liczb). Ukryte etykiety ≤ budżet per LOD (zmierzone na fixturze
  * referencyjnej z PEŁNYM payloadem rozpływu: L0=0, L1=0, L2=15 — budżet z
  * zapasem chroni przed regresją „chowamy za dużo"; spadek dozwolony). */
-const RESULT_LABEL_HIDDEN_BUDGET = { 0: 0, 1: 5, 2: 25 };
+// Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
+// przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
+const RESULT_LABEL_HIDDEN_BUDGET = 25;
 
 /** Napięcie znamionowe szyn modelu — `Bus.ref_id → voltage_kv`. Jedyne źródło
  *  wartości U w syntetycznym payloadzie niżej i miara `bus_result_voltage_level_probe`. */
@@ -358,12 +352,11 @@ const widokiLogiczneEnm = JSON.parse(
 const RESULT_REF_BRIDGE = buildResultRefBridge(enm);
 const BUS_VOLTAGE_BY_REF = busVoltageIndex(enm);
 
-const LODS = [0, 1, 2];
 const EXPECTED_STATION_COUNT = 53;
 
 /**
  * F9.7 (§15.1 `vertical_length_probe`): baseline PIERWSZEGO wpięcia — wartość
- * `totalVerticalSegmentLength(buildSceneV3(enm, lod))` zmierzona na TEJ
+ * `totalVerticalSegmentLength(buildSceneV3(enm))` zmierzona na TEJ
  * fixturze w chwili dostawy F9.7 (2026-07-15), po analizie optymalizacyjnej
  * (patrz raport agenta — pkt B: żaden bezpieczny/tani skrót nie znaleziony
  * bez ryzyka regresji w `layout/bands.ts`/`layout/measure.ts`, geometria
@@ -401,8 +394,7 @@ const EXPECTED_STATION_COUNT = 53;
 // WŁASNEGO wiersza pasma B2 (`stationBusbarLabelHeight`, `layout/measure.ts`)
 // nad podpisem kierunku pola, doliczanego JEDNOLICIE do KAŻDEGO wiersza
 // stacji z ≥1 polem SN (`composeStation` rysuje szynę/etykietę TYLKO gdy
-// `snBays` niepuste — L0 nie niesie `snBays` z konstrukcji, kolaps do
-// `stationCollapsed`, więc L0 BEZ zmian). Świadome odstępstwo od reguły
+// `snBays` niepuste). Świadome odstępstwo od reguły
 // „nie-rosnąca" (jak F9.10 — czytelność/zero-anonimowej-treści ma
 // pierwszeństwo, spec §15.1 „redukcja jest ograniczeniem MIĘKKIM"): ZERO
 // nowych kolizji jakiegokolwiek rodzaju na fixturze referencyjnej po tej
@@ -637,7 +629,9 @@ const EXPECTED_STATION_COUNT = 53;
 // w `compose/station.ts`); „rezerwacja-kanalu" 19648/40736/40736 → 20224/43264/43264
 // (+576/+2528 — wyższe i szersze stacje, dłuższe kanały pasm między wierszami);
 // „jog-trasy" 88/160/160 → 152/176/176; „slupek-terminalny" bez zmian.
-const VERTICAL_LENGTH_BASELINE = { 0: 20616, 1: 46432, 2: 46432 };
+// Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
+// przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
+const VERTICAL_LENGTH_BASELINE = 46432;
 
 // Rozstrzygnięcie architekta S7-P2 (2026-10-30): skrzyżowania toru mocy z mostkiem §22.1
 // na fiksturze referencyjnej, zmierzone po skasowaniu rozcinania kabli „węzłem T" (dawniej
@@ -648,7 +642,9 @@ const VERTICAL_LENGTH_BASELINE = { 0: 20616, 1: 46432, 2: 46432 };
 // przy obu szerokościach tekstu, fikstura po regeneracji 8/19/19 przy obu; nowe
 // identyfikatory korytarzy układają wiersze odgałęzień w innej kolejności remisu i przybywa
 // jedno skrzyżowanie odgałęzienie × odgałęzienie na każdym LOD, z mostkiem (0 bez mostka).
-const CROSSING_WITH_BRIDGE_BASELINE = { 0: 8, 1: 19, 2: 19 };
+// Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
+// przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
+const CROSSING_WITH_BRIDGE_BASELINE = 19;
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -715,9 +711,8 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // tabela 19648/40736/40736. footprint i „slupek-terminalny" bez zmian w każdym wariancie.
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
   // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (2026-11-05): atrybucja przy `VERTICAL_LENGTH_BASELINE`.
-  0: { footprint: 32, 'rezerwacja-kanalu': 20224, 'jog-trasy': 152, 'slupek-terminalny': 208 },
-  1: { footprint: 2784, 'rezerwacja-kanalu': 43264, 'jog-trasy': 176, 'slupek-terminalny': 208 },
-  2: { footprint: 2784, 'rezerwacja-kanalu': 43264, 'jog-trasy': 176, 'slupek-terminalny': 208 },
+  // Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena — wartości dawnej L2.
+  footprint: 2784, 'rezerwacja-kanalu': 43264, 'jog-trasy': 176, 'slupek-terminalny': 208,
 };
 
 /**
@@ -813,8 +808,12 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // kolumny pól z blokiem poszerzone o ramkę obok toru, więc dłuższe szyny SN stacji i przęsła
 // między stacjami; L0 dzieli położenia stacji z L1/L2 (ciągłość poziomów szczegółu), więc
 // rośnie razem z nimi. Załamania bez zmian (43/171/171).
-const HORIZONTAL_LENGTH_BASELINE = { 0: 60216, 1: 78608, 2: 82560 };
-const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
+// Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
+// przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
+const HORIZONTAL_LENGTH_BASELINE = 82560;
+// Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
+// przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
+const BEND_COUNT_BASELINE = 171;
 
 /**
  * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza
@@ -872,7 +871,9 @@ const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 // bloków — pokrycie komórek spada), L1/L2 PODNIESIONE 0.02476/0.02555 → 0.03025/0.03081
 // (zaryglowanie zysku: ramki i wiersze kodów to realna treść w komórkach arkusza). Podłoga =
 // zmierzona wartość minus ~0.00005 (reguła S7-P1/P4).
-const SHEET_FILL_FLOOR = { 0: 0.01384, 1: 0.03025, 2: 0.03081 };
+// Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): jedna scena niezależna od skali — stała
+// przyjmuje wartość dawnego pełnego szczegółu L2 (zmierzone: scena jedna == dawna L2).
+const SHEET_FILL_FLOOR = 0.03081;
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -1053,32 +1054,6 @@ check(
   sourceKindSymbolsAreInjective(),
 );
 
-// SCHEMAT-10 GS-2 (V12K-137, `GRAMATYKA_MINI_RMU_2026-07` reguły 2–4, 5–7, 10,
-// 12): gramatyka konstrukcyjna sylwetki mini-RMU jest WŁAŚCIWOŚCIĄ GLOBALNĄ
-// (stałe `MINI_RMU`, `symbols/miniRmuGrammar.ts`) — nie zależy od fixtury/sceny.
-line('');
-line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne — poza pętlą LOD) ===');
-{
-  const contGaps = miniRmuPathContinuityGaps();
-  check(
-    'mini_rmu_path_continuity_probe (reguły 2–4): szyna SN na wylot port W↔E przez enklozurę (tor ciągły, glif = fragment toru)',
-    contGaps.length === 0,
-    contGaps.length ? contGaps.join(' | ') : 'ciągłość toru zachowana',
-  );
-  const spGaps = miniRmuMarkerSpacingGaps();
-  check(
-    'mini_rmu_marker_spacing_probe (reguły 5–7, 10): markery wewnątrz enklozury, rozłączne, kanał routingu x=24 czysty',
-    spGaps.length === 0,
-    spGaps.length ? spGaps.join(' | ') : 'kotwice/odstępy zachowane',
-  );
-  const trRatio = transformerInteriorHeightRatio();
-  check(
-    'mini_rmu_transformer_proportion_probe (reguła 12): TR uzupełniający — ≤0,5 wysokości wnętrza',
-    trRatio <= 0.5,
-    `udział=${trRatio.toFixed(4)}`,
-  );
-}
-
 // F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ:
 // station_type_topology_probe — (a) podpis rodzaju KAŻDEJ stacji na scenie == rodzaj
 // wyprowadzony z topologii JEDNĄ regułą produktu (`ui/shared/rodzajStacji.ts`, lustro
@@ -1088,7 +1063,7 @@ line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne �
 // polami liniowymi jest podpisana „stacja odgałęźna" — na fiksturze referencyjnej są takie
 // stacje (źródła lateralów); (d) determinizm — dwie budowy sceny, te same podpisy.
 {
-  const scenaRodzaju = buildSceneV3(enm, 2);
+  const scenaRodzaju = buildSceneV3(enm);
   const luki = stationTypeLabelGaps(scenaRodzaju, enm);
   const podpisy = stationTypeLabels(scenaRodzaju);
   check(
@@ -1101,7 +1076,7 @@ line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne �
     ...enm,
     substations: enm.substations.map((s) => (s.station_type in zamiana ? { ...s, station_type: zamiana[s.station_type] } : s)),
   };
-  const podpisyPoPodmianie = stationTypeLabels(buildSceneV3(podmienione, 2));
+  const podpisyPoPodmianie = stationTypeLabels(buildSceneV3(podmienione));
   check(
     'station_type_topology_probe (§19.3 b): podmiana deklaracji station_type KAŻDEJ stacji nie zmienia żadnego podpisu rodzaju',
     JSON.stringify(podpisyPoPodmianie) === JSON.stringify(podpisy),
@@ -1112,27 +1087,26 @@ line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne �
   );
   check(
     'station_type_topology_probe (§19.3 d): determinizm podpisów rodzaju',
-    JSON.stringify(stationTypeLabels(buildSceneV3(enm, 2))) === JSON.stringify(podpisy),
+    JSON.stringify(stationTypeLabels(buildSceneV3(enm))) === JSON.stringify(podpisy),
   );
 }
 
-// F9.7 (§15.2 lod_path_probe): sygnatury topologii ciągu głównego per LOD —
-// porównywane PO pętli (poniżej), żeby dowieść „ten sam zbiór połączeń
-// topologicznych" niezależnie od LOD (LOD zmienia TYLKO szczegółowość
-// etykiet, spec §15.2/§7).
-const mainTrunkSignatureByLod = {};
+// Karta SLD-SKALA-I-NAWIGACJA (R1): JEDNA scena na migawkę, niezależna od skali
+// kamery — dawna pętla po poziomach szczegółu L0/L1/L2 (i porównanie sygnatur
+// topologii MIĘDZY poziomami, `lod_path_probe`) nie ma przedmiotu. Niezależność
+// sceny od skali pilnuje strażnik `scripts/sld_scena_niezalezna_od_skali_guard.py`
+// i test ciągłości toru `scene/__tests__/ciagloscToru.test.ts`.
+let scene = null;
+try {
+  scene = buildSceneV3(enm);
+} catch (err) {
+  anyFail = true;
+  line(`  [FAIL] buildSceneV3(enm) rzucił wyjątek — ${err instanceof Error ? err.message : String(err)}`);
+}
 
-for (const lod of LODS) {
+if (scene) {
   line('');
-  line(`=== LOD ${lod} ===`);
-  let scene;
-  try {
-    scene = buildSceneV3(enm, lod);
-  } catch (err) {
-    anyFail = true;
-    line(`  [FAIL] buildSceneV3(enm, ${lod}) rzucił wyjątek — ${err instanceof Error ? err.message : String(err)}`);
-    continue;
-  }
+  line('=== SCENA (jedna, niezależna od skali) ===');
 
   line(
     `  liczby: symbole=${scene.symbols.length} segmenty=${scene.segments.length} etykiety=${scene.labels.length} stacje=${scene.meta.stationCount}`,
@@ -1191,7 +1165,7 @@ for (const lod of LODS) {
   // konsekwencja f92-1) — na TEJ fixturze KAŻDY aparat pola musi nieść
   // `apparatusSource==='konwencja'` (gałąź „dane" jest przetestowana w
   // `compose/__tests__/station.test.ts` na fixturze syntetycznej).
-  if (lod !== 0) {
+  {
     // `apparatusSource` jest ustawiane WYŁĄCZNIE przez `compose/station.ts`
     // (F9.3) — GPZ (`compose/gpz.ts`, poza autoryzacją F9.3) NIE niesie tego
     // pola, więc filtrujemy po jego OBECNOŚCI (nie po `elementKind`, który
@@ -1215,15 +1189,10 @@ for (const lod of LODS) {
   );
 
   // -- §19.1 (F10.2, V12K-035) apparatus_identifier_probe --------------------
-  // Wyrocznia idzie na L2, bo tam identyfikatory są RYSOWANE. Warunek był dotąd
-  // `lod !== 0` i dobrany do tego, gdzie istnieją SYMBOLE aparatów (L0 =
-  // stationCollapsed, zero aparatów) — a mierzy ETYKIETY tych symboli. Rozjazd
-  // ujawnił audyt powykonawczy SLD (V12K-212): kontrakt LOD §6 przypisuje
-  // identyfikatory aparatów do pełnego detalu, więc od tej zmiany L1 ich nie ma
-  // i probe raportował 0 etykiet wobec 395 aparatów. Intencja §19.1 zostaje bez
-  // zmian — „każdy uprawniony aparat niesie identyfikator funkcyjny ze znacznikiem
-  // konwencji" — przenosi się tylko poziom, na którym da się ją sprawdzić.
-  if (lod === 2) {
+  // Jedna scena niesie identyfikatory wszystkich aparatów (karta SLD-SKALA-I-NAWIGACJA,
+  // R1). Intencja §19.1 — „każdy uprawniony aparat niesie identyfikator funkcyjny ze
+  // znacznikiem konwencji".
+  {
     const idGaps = apparatusIdentifierGaps(scene);
     check(
       'apparatus_identifier_probe (§19.1 a-d): oznaczenie pola FUNKCYJNE (nie surowe Q\\d+/T\\d+), każdy aparat uprawniony (CB/DS/rozłącznik/uziemnik/TR) niesie identyfikator Q/QE/T ze znacznikiem konwencji',
@@ -1234,28 +1203,7 @@ for (const lod of LODS) {
   // Kontrola ODWROTNA (V12K-212): na L1 identyfikatorów aparatów nie ma, a symbole
   // owszem. Bez tej pary regresja w drugą stronę — powrót etykiet Q na „sieć
   // terenową" — byłaby niewykrywalna, bo probe §19.1 wtedy tylko by się ucieszył.
-  if (lod === 1) {
-    const idLabels = scene.labels.filter(
-      (l) => l.ownerKind === 'apparatus' && l.ownerRef.includes('#apparatus-id-'),
-    );
-    // TA SAMA wyrocznia „aparatu uprawnionego" co §19.1 (`apparatusIdentifierGaps`):
-    // `elementKind` + znacznik `apparatusSource` ustawiany wyłącznie przez
-    // `compose/station.ts`. Pierwsza wersja licznika pytała o `meta.kind` (pole,
-    // którego symbole nie mają) i raportowała 0 aparatów przy 395 obecnych —
-    // liczba w raporcie audytowym nie może kłamać, nawet gdy asercja obok jest
-    // poprawna.
-    const apparatusSymbols = scene.symbols.filter(
-      (sym) =>
-        (sym.meta?.elementKind === 'apparatus' || sym.meta?.elementKind === 'transformer') &&
-        sym.meta?.apparatusSource != null,
-    ).length;
-    check(
-      'apparatus_identifier_lod_probe (kontrakt LOD §6): L1 („sieć terenowa") niesie SYMBOLE aparatów, ale NIE ich identyfikatory — te należą do pełnego detalu',
-      idLabels.length === 0,
-      `etykiety_identyfikatorow=${idLabels.length} symbole_aparatow=${apparatusSymbols}`,
-    );
-  }
-  if (lod === 2) {
+  {
     // Test negatywny — dowód, że wyrocznia GRYZIE: etykieta oznaczenia pola
     // fabrykowana jako surowe „Q1" MUSI dać FAIL (a).
     const fabricatedFieldRole = {
@@ -1290,9 +1238,7 @@ for (const lod of LODS) {
   }
 
   // -- §18.4 (F10.3, D2-4) busbar_label_probe --------------------------------
-  // Szyna SN istnieje WYŁĄCZNIE na lod>=1 (L0 = stationCollapsed, zero pól/
-  // szyn — ta sama gałąź co apparatus_identifier_probe wyżej).
-  if (lod !== 0) {
+  {
     const busGaps = busbarLabelGaps(scene);
     check(
       'busbar_label_probe (§18.4 a-b): każda szyna SN (stacji „#sn-bus", sekcji GPZ „#bus-primary") ma DOKŁADNIE JEDNĄ etykietę napięcie+sekcja o poprawnym formacie',
@@ -1300,7 +1246,7 @@ for (const lod of LODS) {
       `luki=${busGaps.length}${busGaps.length ? ' np. ' + JSON.stringify(busGaps[0]) : ''}`,
     );
   }
-  if (lod === 2) {
+  {
     // Dowód POZYTYWNY: fixtura referencyjna niesie realne napięcie SN (15 kV,
     // `ENM Bus.voltage_kv` przez `Substation.bus_refs`) — co najmniej JEDNA
     // etykieta stacji MUSI nieść „· 15 kV" (nie tylko degradację „Sekcja 1"),
@@ -1373,7 +1319,7 @@ for (const lod of LODS) {
 
   // -- §18.5 (F10.3, D2-4) switch_symbol_unambiguity_probe -------------------
   // Symbole łącznika istnieją WYŁĄCZNIE na lod>=1 (ta sama gałąź co wyżej).
-  if (lod !== 0) {
+  {
     const switchGaps = switchSymbolUnambiguityGaps(scene);
     check(
       'switch_symbol_unambiguity_probe (§18.5 a-c): mapowanie kind→symbol jednoznaczne (poza LOAD_SWITCH→disconnector udokumentowanym), stan łącznika toru głównego zawsze legalny (closed/open/unknown/undefined), „52" wyłącznie przy wyłączniku',
@@ -1397,7 +1343,7 @@ for (const lod of LODS) {
       `łączniki=${mainPathSwitches.length} zdeterminowane=${withDeterminateState.length}`,
     );
   }
-  if (lod === 2) {
+  {
     // Test negatywny — dowód, że wyrocznia GRYZIE: łącznik toru głównego z
     // `state` PODMIENIONYM na string spoza {closed,open,unknown} MUSI dać
     // FAIL (b) — `undefined` jest LEGALNY (Invariant 9), więc negatyw musi
@@ -1464,7 +1410,7 @@ for (const lod of LODS) {
   // -- §19.2 (F10.2, D2) line_bay_caption_probe -------------------------------
   // Podpisy kierunku pola (`bayDirectionCaptions`) istnieją WYŁĄCZNIE na L2
   // (spec §7).
-  if (lod === 2) {
+  {
     const captionGaps = lineBayCaptionGaps(scene);
     check(
       'line_bay_caption_probe (§19.2): każdy podpis pola liniowego ma format „⟨numer linii⟩ · kier./odg. ⟨kod⟩" lub degradację „kier./odg. ⟨kod⟩"',
@@ -1515,9 +1461,6 @@ for (const lod of LODS) {
     unreachedHeads.length === expectedDeadEnds,
     `nieosiągnięte=${unreachedHeads.length} oczekiwane=${expectedDeadEnds}`,
   );
-  if (lod === 0) {
-    check('field_entry_probe (LOD 0): allFieldEntryConnectionsReachCableHead zielone (GPZ zawsze połączony z magistralą)', allFieldEntryConnectionsReachCableHead(scene));
-  }
 
   // -- §18.1/§18.2/§18.6 (F10.1, dyrektywa D2-5/D2-6/D2-1) ------------------
   const esGaps = earthSwitchLateralGaps(scene);
@@ -1532,7 +1475,7 @@ for (const lod of LODS) {
     allVtParallel(scene),
     `luki=${vtGaps.length}${vtGaps.length ? ' np. ' + JSON.stringify(vtGaps[0]) : ''}`,
   );
-  if (lod === 2) {
+  {
     const termGaps = pathTerminationLabelGaps(scene);
     check(
       'path_termination_labeled_probe (§18.6): każde fizyczne zakończenie toru (głowica bez trasy) ma JAWNĄ etykietę na scenie',
@@ -1597,31 +1540,6 @@ for (const lod of LODS) {
       `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
     );
   }
-  if (lod === 0) {
-    const gpzInFull = buildSceneV3(enm, 1).symbols.some(
-      (s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'),
-    );
-    const collapsedCount = scene.symbols.filter((s) => s.symbolId === 'gpzCollapsed').length;
-    const internalExtra = scene.symbols.filter(
-      (s) =>
-        (s.meta?.ownerRef ?? '').startsWith('gpz/') &&
-        s.symbolId !== 'gpzCollapsed' &&
-        s.symbolId !== 'gridSource' &&
-        // GEOMETRIA-STACJI (§0 pkt 4): aparat ciągłości pola L0 pochodzi z rekordu modelu
-        // (zbiór `CONTINUITY_APPARATUS_SYMBOL_IDS` — to samo źródło co kompozycja L0
-        // w `buildScene.ts`), a pole bez rekordów rysuje sylwetkę `bayNoEquipment`.
-        // Dawniej sonda wpuszczała wyłącznie `breaker`, bo L0 dorysowywał wyłącznik
-        // z konwencji roli niezależnie od danych pola (fabrykacja aparatu).
-        !CONTINUITY_APPARATUS_SYMBOL_IDS.includes(s.symbolId) &&
-        s.symbolId !== 'bayNoEquipment',
-    );
-    check(
-      'gpz_collapsed_probe (§21.3, V12K-293): L0 rysuje GPZ ZWINIĘTY — dokładnie jeden gpzCollapsed (gdy pełny detal niesie pasmo gpz/), a poza nim wyłącznie glif źródła i aparaty ciągłości pól',
-      (!gpzInFull && collapsedCount === 0) ||
-        (gpzInFull && collapsedCount === 1 && internalExtra.length === 0),
-      `gpz_w_pelnym_detalu=${gpzInFull} zwiniete=${collapsedCount} wewnetrzne_nadmiarowe=${internalExtra.length}${internalExtra.length ? ' np. ' + JSON.stringify(internalExtra[0]?.symbolId) : ''}`,
-    );
-  }
 
   // -- GEOMETRIA-STACJI §0 pkt 4: rysunek pola mówi prawdę o danych wyposażenia --
   const equipmentGaps = bayEquipmentGaps(scene);
@@ -1630,7 +1548,7 @@ for (const lod of LODS) {
     allBayEquipmentTruthful(scene) && equipmentGaps.length === 0,
     `luki=${equipmentGaps.length}${equipmentGaps.length ? ' np. ' + JSON.stringify(equipmentGaps[0]) : ''}`,
   );
-  if (lod === 2) {
+  {
     // Testy negatywne — dowód, że wyrocznia gryzie (sabotaż na kopii sceny). Fixtura niesie
     // rekordy aparatów (gałęzie łączeniowe pól), więc pole „bez danych" jest wstrzykiwane:
     // (1) aparat z konwencji obok sylwetki braku danych, (2) stan na sylwetce braku danych,
@@ -1676,8 +1594,8 @@ for (const lod of LODS) {
   const busCrossGaps = crossingBusGaps(scene.segments);
   const bezMostka = przecieciaBezMostka(scene.segments);
   check(
-    `crossing_probe (§22.1, S7-P2): każde przecięcie toru mocy sn×sn z mostkiem (0 bez mostka) ORAZ 0 z SZYNĄ (mostek na szynie zakazany); skrzyżowania z mostkiem = ${CROSSING_WITH_BRIDGE_BASELINE[lod]} (przypięte, zmierzone 2026-10-30)`,
-    bezMostka.length === 0 && busCrossGaps.length === 0 && snCrossings.length === CROSSING_WITH_BRIDGE_BASELINE[lod],
+    `crossing_probe (§22.1, S7-P2): każde przecięcie toru mocy sn×sn z mostkiem (0 bez mostka) ORAZ 0 z SZYNĄ (mostek na szynie zakazany); skrzyżowania z mostkiem = ${CROSSING_WITH_BRIDGE_BASELINE} (przypięte, zmierzone 2026-10-30)`,
+    bezMostka.length === 0 && busCrossGaps.length === 0 && snCrossings.length === CROSSING_WITH_BRIDGE_BASELINE,
     `przecięcia_sn×sn=${snCrossings.length} bez_mostka=${bezMostka.length} przecięcia_z_szyną=${busCrossGaps.length}${bezMostka.length ? ' np. ' + JSON.stringify(bezMostka[0]) : ''}`,
   );
   // Sabotaż: krótki pion (±BRIDGE_RADIUS/2) przez środek poziomu toru mocy — półłuk się nie
@@ -1770,12 +1688,12 @@ for (const lod of LODS) {
       scene.symbols.every((s) => s.meta?.operationalState === undefined),
     `luki=${stateGaps.length}`,
   );
-  if (lod >= 1) {
+  {
     const withMode = JSON.parse(JSON.stringify(enm));
     const targetGen = withMode.generators?.[0];
     if (targetGen) {
       targetGen.meta = { ...targetGen.meta, operating_mode: 'odstawione' };
-      const overlaidScene = buildSceneV3(withMode, lod);
+      const overlaidScene = buildSceneV3(withMode);
       const derSymbol = overlaidScene.symbols.find(
         (s) => s.meta?.elementKind === 'der' && s.meta?.ownerRef === targetGen.ref_id,
       );
@@ -1812,7 +1730,7 @@ for (const lod of LODS) {
   const flowCandidateRef = scene.segments.find(
     (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && oriented.has(s.meta.ownerRef),
   )?.meta?.ownerRef;
-  if (check('flow_overlay_probe: scena LOD ' + lod + ' zawiera odcinek z realnym segmentRef o udowodnionej orientacji (kandydat do sondy b/c/negatyw)', flowCandidateRef != null)) {
+  if (check('flow_overlay_probe: scena zawiera odcinek z realnym segmentRef o udowodnionej orientacji (kandydat do sondy b/c/negatyw)', flowCandidateRef != null)) {
     const syntheticMetricsOf = (ref) => ({
       ref_id: ref,
       kind: 'branch',
@@ -1881,7 +1799,7 @@ for (const lod of LODS) {
     // (LOD…)" (bbox-y wprost, nie flaga `labelPlaced`) — przeniesiona/
     // zduplikowana tu celowo (dwa niezależne konsumenty tego samego
     // kontraktu `FlowPlacement`, nie jeden punkt prawdy o poprawności).
-    if (lod !== 0) {
+    {
       const fullElements = {};
       for (const s of scene.segments) {
         const ref = s.meta?.ownerRef;
@@ -1889,7 +1807,7 @@ for (const lod of LODS) {
       }
       const fullPayload = { run_id: 'accept-sld-v3-synthetic', analysis_type: 'LOAD_FLOW', elements: fullElements };
       const fullFlow = buildFlowOverlayFromScene(scene, fullPayload, oriented);
-      const placements = computeFlowOverlayPlacements(scene, fullFlow, lod === 1 ? 'p-only' : 'full');
+      const placements = computeFlowOverlayPlacements(scene, fullFlow, true);
 
       // Flaga wewnętrzna algorytmu (informacyjna — NIE jedyna podstawa PASS).
       const unplaced = placements.filter((p) => p.label && !p.labelPlaced);
@@ -1936,33 +1854,33 @@ for (const lod of LODS) {
     const rlPayload = buildFullResultPayload(scene, oriented, BUS_VOLTAGE_BY_REF, RESULT_REF_BRIDGE);
     const rlByRef = buildResultLabelsFromScene(scene, rlPayload, new Set(oriented.keys()), undefined, RESULT_REF_BRIDGE);
     const t0 = performance.now();
-    const layout = layoutResultLabels(scene, rlByRef, [], lod);
+    const layout = layoutResultLabels(scene, rlByRef, []);
     const layoutMs = performance.now() - t0;
     const m = layout.metrics;
     line(
-      `  result_label_metrics (LOD ${lod}): etykiety=${m.labelCount} ulokowane=${layout.placements.length} `
+      `  result_label_metrics: etykiety=${m.labelCount} ulokowane=${layout.placements.length} `
       + `agregaty=${m.aggregateCount} ukryte=${m.hiddenCount} callouty=${m.calloutCount} `
       + `kolizje(wykryte=${m.collisionsDetected} rozwiązane=${m.collisionsResolved} końcowe=${m.collisionsFinal}) `
       + `odl_kotwica(śr=${m.avgAnchorDistance.toFixed(1)} maks=${m.maxAnchorDistance.toFixed(1)}) czas=${layoutMs.toFixed(2)}ms`,
     );
     check(
-      `result_label_metrics_probe (§wym.19): kolizje KOŃCOWE = 0 (warstwa nie renderuje nakładających się liczb) na LOD ${lod}`,
+      `result_label_metrics_probe (§wym.19): kolizje KOŃCOWE = 0 (warstwa nie renderuje nakładających się liczb)`,
       m.collisionsFinal === 0,
       `końcowe=${m.collisionsFinal}`,
     );
     check(
-      `result_label_metrics_probe (§wym.19): ukryte ≤ budżet (${RESULT_LABEL_HIDDEN_BUDGET[lod]}) na LOD ${lod}`,
-      m.hiddenCount <= RESULT_LABEL_HIDDEN_BUDGET[lod],
+      `result_label_metrics_probe (§wym.19): ukryte ≤ budżet (${RESULT_LABEL_HIDDEN_BUDGET})`,
+      m.hiddenCount <= RESULT_LABEL_HIDDEN_BUDGET,
       `ukryte=${m.hiddenCount}`,
     );
     check(
-      `result_label_metrics_probe (§wym.19): bilans etykiet = ulokowane + ukryte + Σ członków agregatów na LOD ${lod}`,
+      `result_label_metrics_probe (§wym.19): bilans etykiet = ulokowane + ukryte + Σ członków agregatów`,
       layout.placements.length + m.hiddenCount + layout.aggregates.reduce((s, a) => s + a.count, 0) === m.labelCount,
     );
     // Determinizm rozmieszczania (bez czasu) — dwa wywołania identyczne.
-    const layoutAgain = layoutResultLabels(scene, rlByRef, [], lod);
+    const layoutAgain = layoutResultLabels(scene, rlByRef, []);
     check(
-      `result_label_metrics_probe (§wym.19): determinizm rozmieszczania (placements+agregaty+ukryte+metryki identyczne) na LOD ${lod}`,
+      `result_label_metrics_probe (§wym.19): determinizm rozmieszczania (placements+agregaty+ukryte+metryki identyczne)`,
       JSON.stringify(layout) === JSON.stringify(layoutAgain),
     );
     // -- WN-WYNIK: bus_result_voltage_level_probe ---------------------------
@@ -1970,7 +1888,7 @@ for (const lod of LODS) {
     {
       const naruszenia = naruszeniaPoziomuNapiecia(rlByRef, BUS_VOLTAGE_BY_REF);
       check(
-        `bus_result_voltage_level_probe (WN-WYNIK a): U etykiety == poziom napięcia szyny (|U/Un−1| < 0,5) dla WSZYSTKICH szyn na LOD ${lod}`,
+        `bus_result_voltage_level_probe (WN-WYNIK a): U etykiety == poziom napięcia szyny (|U/Un−1| < 0,5) dla WSZYSTKICH szyn`,
         naruszenia.length === 0,
         naruszenia.length === 0 ? undefined : `naruszenia=${naruszenia.length}, np. ${naruszenia.slice(0, 3).join(' | ')}`,
       );
@@ -1985,9 +1903,9 @@ for (const lod of LODS) {
         const un = BUS_VOLTAGE_BY_REF.get(e.resultRef);
         if (un != null) poziomy.add(un);
       }
-      if (lod !== 0) {
+      {
         check(
-          `bus_result_voltage_level_probe (WN-WYNIK b, dowód pozytywny): etykiety szyn obejmują ≥ 2 poziomy napięcia na LOD ${lod}`,
+          `bus_result_voltage_level_probe (WN-WYNIK b, dowód pozytywny): etykiety szyn obejmują ≥ 2 poziomy napięcia`,
           poziomy.size >= 2,
           `poziomy=${[...poziomy].sort((x, y) => x - y).join('/')} kV`,
         );
@@ -1995,7 +1913,7 @@ for (const lod of LODS) {
       // (c) test NEGATYWNY — dowód, że wyrocznia gryzie: podmieniamy odczyt
       // szyny WN na wartość szyny SN (dokładnie defekt zgłoszony przez
       // właściciela: „U 15,02 kV" na szynie 110 kV). Sonda MUSI zgłosić.
-      if (lod !== 0) {
+      {
         const wnRef = [...BUS_VOLTAGE_BY_REF.entries()].filter(([, u]) => u > 60).map(([r]) => r).sort()[0];
         const wpisWn = wnRef ? Object.keys(rlByRef).find((o) => rlByRef[o].resultRef === wnRef) : undefined;
         if (wpisWn) {
@@ -2007,12 +1925,12 @@ for (const lod of LODS) {
             },
           };
           check(
-            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): odczyt SN wstrzyknięty na szynę WN MUSI dać naruszenie (LOD ${lod})`,
+            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): odczyt SN wstrzyknięty na szynę WN MUSI dać naruszenie`,
             naruszeniaPoziomuNapiecia(podmieniony, BUS_VOLTAGE_BY_REF).length > 0,
           );
         } else {
           check(
-            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): szyna WN obecna w warstwie wynikowej (LOD ${lod})`,
+            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): szyna WN obecna w warstwie wynikowej`,
             false,
             `brak wpisu dla szyny WN „${wnRef ?? '(brak szyny WN w modelu)'}"`,
           );
@@ -2022,10 +1940,10 @@ for (const lod of LODS) {
 
     // Priorytet (wym. 12): źródła/transformatory NIGDY ukryte, gdy niżej-
     // priorytetowe klasy obecne — dowód, że wyrocznia mierzy realny priorytet.
-    if (lod !== 0) {
+    {
       const hiddenHighPri = layout.hiddenRefs.filter((r) => rlByRef[r]?.kind === 'source' || rlByRef[r]?.kind === 'transformer');
       check(
-        `result_label_metrics_probe (§wym.12): 0 źródeł/transformatorów ukrytych (klasa właściciela rozstrzyga kolizję) na LOD ${lod}`,
+        `result_label_metrics_probe (§wym.12): 0 źródeł/transformatorów ukrytych (klasa właściciela rozstrzyga kolizję)`,
         hiddenHighPri.length === 0,
         `ukryte_wysokopriorytetowe=${hiddenHighPri.length}`,
       );
@@ -2033,13 +1951,13 @@ for (const lod of LODS) {
   }
 
   // -- determinizm (dwa wywołania → identyczny JSON) -------------------------
-  const sceneAgain = buildSceneV3(enm, lod);
-  check('determinizm: buildSceneV3(enm, lod) wywołane dwukrotnie daje identyczny JSON.stringify', JSON.stringify(scene) === JSON.stringify(sceneAgain));
+  const sceneAgain = buildSceneV3(enm);
+  check('determinizm: buildSceneV3(enm) wywołane dwukrotnie daje identyczny JSON.stringify', JSON.stringify(scene) === JSON.stringify(sceneAgain));
 
   // -- §11.3 port_probe (F9.7, pierwsze wpięcie do accept:sld-v3) -----------
   const endpointGaps = sceneSegmentEndpointGaps(scene);
   check(
-    'port_probe (§11.3): 100% końców odcinków sceny to port symbolu, dotyk innego odcinka, lub (L0) środek stationCollapsed',
+    'port_probe (§11.3): 100% końców odcinków sceny to port symbolu, lub dotyk innego odcinka',
     allSceneSegmentEndpointsAnchored(scene) && endpointGaps.length === 0,
     `luki=${endpointGaps.length}`,
   );
@@ -2079,7 +1997,7 @@ for (const lod of LODS) {
 
   // -- §15.1 vertical_length_probe (F9.7, pierwsze wpięcie) ------------------
   const verticalLength = totalVerticalSegmentLength(scene);
-  const verticalBaseline = VERTICAL_LENGTH_BASELINE[lod];
+  const verticalBaseline = VERTICAL_LENGTH_BASELINE;
   check(
     `vertical_length_probe (§15.1): suma długości pionów nie-rosnąca względem baseline=${verticalBaseline}`,
     verticalLength <= verticalBaseline,
@@ -2110,7 +2028,7 @@ for (const lod of LODS) {
   // negatywny niżej wołał DOKŁADNIE tę samą logikę porównania na sabotowanych
   // danych, zamiast dublować warunek osobną (i potencjalnie rozjeżdżającą się)
   // asercją arytmetyczną.
-  const causeBaseline = VERTICAL_LENGTH_BY_CAUSE_BASELINE[lod];
+  const causeBaseline = VERTICAL_LENGTH_BY_CAUSE_BASELINE;
   const causeLengthGatePasses = (breakdown, cause) => (breakdown[cause]?.length ?? 0) <= causeBaseline[cause];
   for (const cause of Object.keys(causeBaseline)) {
     const measuredCauseLength = vBreak[cause]?.length ?? 0;
@@ -2145,28 +2063,6 @@ for (const lod of LODS) {
   // mocy z wagą, tożsamość stacji, źródło) ROZSZERZONY o TYP STACJI · TR ·
   // MARKER DER · STAN NO (sylwetka mini-RMU niesie `meta.stationGlyph`). Bramka
   // WYŁĄCZNIE na L0 (semantyka „Przegląd sieci").
-  if (lod === 0) {
-    const l0Gaps = lod0ReadabilityGaps(scene);
-    check(
-      'lod0_readability_probe (S7-P4 §9 P0 pkt 3 + GS-1 §10.4): tor mocy(waga) + tożsamość + źródło + typ/TR/DER/NO sylwetki rozpoznawalne na L0',
-      allLod0ElementsReadable(scene),
-      l0Gaps.length === 0
-        ? 'zbiór §3 „nigdy nie znika" (z rozszerzeniem GS-1) obecny na L0'
-        : `luki=${l0Gaps.length}: ${l0Gaps.slice(0, 5).map((g) => `${g.element}: ${g.reason}`).join(' | ')}`,
-    );
-    // Test negatywny (GS-1): usunięcie podsumowania sylwetki (`meta.stationGlyph`)
-    // MUSI dać lukę „sylwetka stacji" — dowód, że rozszerzenie §10.4 gryzie.
-    const sabotaged = {
-      ...scene,
-      symbols: scene.symbols.map((s) =>
-        s.symbolId === 'stationCollapsed' ? { ...s, meta: { ...s.meta, stationGlyph: undefined } } : s,
-      ),
-    };
-    check(
-      'lod0_readability_probe (GS-1, test negatywny — dowód, że wyrocznia gryzie): sylwetka bez typ/TR/DER/NO MUSI dać lukę',
-      lod0ReadabilityGaps(sabotaged).some((g) => g.element === 'sylwetka stacji') && !allLod0ElementsReadable(sabotaged),
-    );
-  }
 
   // -- S9-1 (ŁAMANIE ARKUSZA, audyt C-1 wagi 3) — PROPORCJA ARKUSZA ----------
   // Kryterium odbioru karty: bbox arkusza NIE MOŻE przekroczyć 2 : 1 na ŻADNYM
@@ -2189,14 +2085,14 @@ for (const lod of LODS) {
 
   // -- S6 (V12K-137) funkcja kosztu layoutu: poziomy + załamania (pkt 3) ------
   const horizontalLength = totalHorizontalSegmentLength(scene);
-  const horizontalBaseline = HORIZONTAL_LENGTH_BASELINE[lod];
+  const horizontalBaseline = HORIZONTAL_LENGTH_BASELINE;
   check(
     `layout_cost_probe (S6 pkt 3, poziomy): łączna długość poziomów nie-rosnąca względem baseline=${horizontalBaseline}`,
     horizontalLength <= horizontalBaseline,
     `wartość=${horizontalLength} baseline=${horizontalBaseline}`,
   );
   const bends = orthogonalBendCount(scene);
-  const bendBaseline = BEND_COUNT_BASELINE[lod];
+  const bendBaseline = BEND_COUNT_BASELINE;
   check(
     `layout_cost_probe (S6 pkt 3, załamania): liczba rogów tras nie-rosnąca względem baseline=${bendBaseline}`,
     bends <= bendBaseline,
@@ -2204,7 +2100,7 @@ for (const lod of LODS) {
   );
   // -- S6 (V12K-137) wykorzystanie arkusza: podłoga (pkt 10) ------------------
   const fill = sheetFillRatio(scene);
-  const fillFloor = SHEET_FILL_FLOOR[lod];
+  const fillFloor = SHEET_FILL_FLOOR;
   check(
     `sheet_fill_probe (S6 pkt 10): wykorzystanie arkusza nie-spadające poniżej podłogi=${fillFloor}`,
     fill >= fillFloor,
@@ -2216,7 +2112,7 @@ for (const lod of LODS) {
   // dopiero po uczciwym pomiarze bazy (recenzja P1). Sanity: okna niepuste,
   // wartości skończone w [0,1], maks ≥ średnia. Deterministyczne (2× ⇒ identyczne).
   const density = localDensityMetrics(scene);
-  const densityAgain = localDensityMetrics(buildSceneV3(enm, lod));
+  const densityAgain = localDensityMetrics(buildSceneV3(enm));
   const densitySane =
     density.windowCount > 0 &&
     [density.meanDensity, density.maxLocalDensity, density.densityStdDev, density.voidRatio].every(
@@ -2267,20 +2163,9 @@ for (const lod of LODS) {
   const tripLineCount = scene.segments.filter((s) => s.meta?.kind === 'protectionTrip').length;
   const markingGaps = protectionMarkingGaps(scene);
   check(
-    'protection_marking_probe (§17.5 a-c): każdy przekaźnik to ramka bloku zabezpieczeń z ownerRef (na L2 z wierszami kodów wewnątrz ramki), tory wyzwalania kończą się na REJESTROWANYM porcie wyłącznika i wejściu ramki bloku TEGO SAMEGO pola',
+    'protection_marking_probe (§17.5 a-c): każdy przekaźnik to ramka bloku zabezpieczeń z ownerRef (z wierszami kodów wewnątrz ramki), tory wyzwalania kończą się na REJESTROWANYM porcie wyłącznika i wejściu ramki bloku TEGO SAMEGO pola',
     allProtectionMarkingsValid(scene),
     `bloki=${relayCount} mierniki=${meterCount} tory=${tripLineCount} luki=${markingGaps.length}`,
-  );
-  check(
-    'protection_marking_probe (§17.5e): L0 bez warstwy adnotacji zabezpieczeń',
-    noProtectionAnnotationAtLod0(scene),
-  );
-  // B-1 (§17.4 L1): goła ramka bloku (bez kodów/linii pomiarowych/„52"/„M") — na tej fixturze
-  // pusto-prawdziwe (0 danych §17.2); dowód POZYTYWNY + negatywy na scenach
-  // syntetycznych w `buildScene.test.ts` (wymóg recenzji F9.9).
-  check(
-    'protection_marking_probe (§17.4 L1, B-1): warstwa adnotacji na L1 = goła ramka bloku zabezpieczeń (bez kodów/linii pomiarowych/„52"/„M")',
-    protectionAnnotationAtLod1IsBareFrame(scene),
   );
 
   // -- §18.3 ct_annotation_probe (F10.4) -------------------------------------
@@ -2344,10 +2229,8 @@ for (const lod of LODS) {
     `mierniki=${meterCount} luki=${meterGaps.length}`,
   );
 
-  // -- §16/§15.2 ciągłość elektryczna + lod_path_probe -----------------------
-  // F9.7: rozszerzone z „WYŁĄCZNIE LOD 2" na WSZYSTKIE LOD (patrz docstring
-  // `checkContinuity` — dowód empiryczny, spec §15.2 wymaga tego na L0/L1/L2).
-  mainTrunkSignatureByLod[lod] = checkContinuity(scene);
+  // -- §16 ciągłość elektryczna ciągu głównego --------------------------------
+  checkContinuity(scene);
 }
 
 // -- protection_marking_probe (negatyw obowiązkowy, §17.5a) ----------------
@@ -2355,7 +2238,7 @@ for (const lod of LODS) {
 // zabezpieczeń fabrykowana BEZ wierszy kodów, (2) przekaźnik BEZ ramki (dawny okrąg) — każdy
 // MUSI failować `allProtectionMarkingsValid` (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ).
 {
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
   const zPrzekaznikiem = (meta) => ({
     ...scene,
     symbols: [...scene.symbols, { symbolId: 'protectionRelay', x: 0, y: 0, meta: { ownerRef: 'accept-sld-v3-fabricated', elementKind: 'protectionAnnotation', ...meta } }],
@@ -2375,7 +2258,7 @@ for (const lod of LODS) {
 // odpowiadającego symbolu `currentTransformer` na scenie MUSI failować
 // `allCtAnnotationsValid` (wzorzec `protection_marking_probe` wyżej).
 {
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
   const fabricated = {
     ...scene,
     labels: [
@@ -2402,7 +2285,7 @@ for (const lod of LODS) {
 // dokładnie to, czego §20.1 zakazuje) MUSI failować `allSecondaryLinksValid`
 // (wzorzec `protection_marking_probe` wyżej).
 {
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
   const breaker = scene.symbols.find((s) => s.symbolId === 'breaker');
   if (breaker) {
     const port = { x: breaker.x + SYMBOL_DEFS.breaker.width / 2, y: breaker.y };
@@ -2444,22 +2327,22 @@ for (const lod of LODS) {
 line('');
 line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===');
 {
-  const SKALE_PRODUKCYJNE = LABEL_PLAN_PRODUCTION_SCALES;
-  for (const lod of LODS) {
-    const scene = buildSceneV3(enm, lod);
+  const SKALE_PRODUKCYJNE = SKALE_ODBIORU_PLANU_ETYKIET;
+  {
+    const scene = buildSceneV3(enm);
     const obstacles = sceneObstacleRects(scene);
     const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc').length;
     check(
-      `identity_label_probe (KD-11) L${lod}: scena niesie etykiety tożsamości i KAŻDA ma zadeklarowaną stronę kotwicy`,
+      `identity_label_probe (KD-11): scena niesie etykiety tożsamości i KAŻDA ma zadeklarowaną stronę kotwicy`,
       tozsamosci > 0 &&
         scene.labels.every((l) => l.labelRole !== 'tozsamosc' || l.placement !== undefined),
       `${tozsamosci} etykiet tożsamości`,
     );
-    for (const scale of SKALE_PRODUKCYJNE[lod]) {
+    for (const scale of SKALE_PRODUKCYJNE) {
       const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
       const narysowaneTozsamosci = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc').length;
       check(
-        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 porzuconych tożsamości`,
+        `identity_label_probe (KD-11) @ ${scale}: 0 porzuconych tożsamości`,
         plan.droppedIdentity.length === 0,
         `${narysowaneTozsamosci}/${tozsamosci} narysowanych, porzucone: ${plan.droppedIdentity
           .slice(0, 3)
@@ -2468,25 +2351,25 @@ line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===
       );
       const pary = plannedLabelCollisions(plan);
       check(
-        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 nachodzeń etykieta↔etykieta`,
+        `identity_label_probe (KD-11) @ ${scale}: 0 nachodzeń etykieta↔etykieta`,
         pary.length === 0,
         `${pary.length} par`,
       );
       const naRysunku = plannedLabelObstacleCollisions(plan, obstacles);
       check(
-        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 nachodzeń etykieta↔rysunek (symbol/tor)`,
+        `identity_label_probe (KD-11) @ ${scale}: 0 nachodzeń etykieta↔rysunek (symbol/tor)`,
         naRysunku.length === 0,
         `${naRysunku.length} etykiet`,
       );
       check(
-        `identity_label_probe (KD-11) L${lod} @ ${scale}: licznik „Ukryto N opisów" liczy WYŁĄCZNIE dane szczegółowe`,
+        `identity_label_probe (KD-11) @ ${scale}: licznik „Ukryto N opisów" liczy WYŁĄCZNIE dane szczegółowe`,
         plan.hiddenDetail.every((l) => l.labelRole === 'dane'),
         `${plan.hiddenDetail.length} ukrytych opisów`,
       );
     }
   }
   // Negatyw obowiązkowy: wyrocznia kolizji MUSI gryźć na planie sfabrykowanym.
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
   const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1.02, sheetSizeFor(scene));
   const sabotaz = {
     ...plan,
@@ -2513,14 +2396,14 @@ line('=== screen_text_floor_probe (S9-7, C-4: zero napisów < 8 px ekranu) ===')
 {
   // Skale: dolny kraniec kamery, wpasowanie sieci dużej, 1:1, górny kraniec.
   const SKALE_EKRANOWE = [MIN_SCALE, 0.13, 1, MAX_SCALE];
-  for (const lod of LODS) {
-    const scene = buildSceneV3(enm, lod);
+  {
+    const scene = buildSceneV3(enm);
     const obstacles = sceneObstacleRects(scene);
     for (const scale of SKALE_EKRANOWE) {
       const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
       const ponizej = plannedLabelsBelowScreenFloor(plan, scale, MIN_TEXT_SCREEN_PX);
       check(
-        `screen_text_floor_probe (S9-7, treść rysunku) L${lod} @ ${scale}: 0 narysowanych napisów < ${MIN_TEXT_SCREEN_PX} px ekranu`,
+        `screen_text_floor_probe (S9-7, treść rysunku) @ ${scale}: 0 narysowanych napisów < ${MIN_TEXT_SCREEN_PX} px ekranu`,
         ponizej.length === 0,
         `narysowanych=${plan.drawn.length} poniżej=${ponizej.length}` +
           (ponizej.length > 0 ? ` np. ${ponizej[0].ownerRef} @${ponizej[0].screenPx.toFixed(2)}px` : '') +
@@ -2545,7 +2428,7 @@ line('=== screen_text_floor_probe (S9-7, C-4: zero napisów < 8 px ekranu) ===')
   // wprost poniżej progu MUSI zostać zgłoszony (bez tego sonda mogłaby być
   // zielona dlatego, że nic nie mierzy).
   {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
     const sabotaz = { ...plan, drawn: [{ ...plan.drawn[0], fontSize: 2 }] };
     check(
@@ -2567,19 +2450,19 @@ line('');
 line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkusza) ===');
 {
   const SKALE_OBRYSU = [MIN_SCALE, 0.1, 0.14, 0.3, 0.5, 0.6923076923076923, 1, 2, MAX_SCALE];
-  for (const lod of LODS) {
-    const scene = buildSceneV3(enm, lod);
+  {
+    const scene = buildSceneV3(enm);
     const obstacles = sceneObstacleRects(scene);
     const sheet = sheetSizeFor(scene);
     check(
-      `sheet_outline_probe L${lod}: arkusz zaczyna się w (0,0) — `
+      `sheet_outline_probe: arkusz zaczyna się w (0,0) — `
         + 'inaczej `sheetSizeFor` nie opisuje prostokąta, który rysuje ramka',
       scene.bbox.x >= 0 && scene.bbox.y >= 0,
       `bbox=(${scene.bbox.x},${scene.bbox.y})`,
     );
     const rezerwacjePoza = scene.labels.filter((l) => !rectWithinSheet(labelReservationRect(l), sheet));
     check(
-      `sheet_outline_probe L${lod} (WEJŚCIE): 0 rezerwacji etykiet poza arkuszem ${sheet.width}×${sheet.height}`,
+      `sheet_outline_probe (WEJŚCIE): 0 rezerwacji etykiet poza arkuszem ${sheet.width}×${sheet.height}`,
       rezerwacjePoza.length === 0,
       `etykiet=${scene.labels.length} poza=${rezerwacjePoza.length}`,
     );
@@ -2587,7 +2470,7 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
       const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
       const poza = plannedLabelsOutsideSheet(plan, sheet);
       check(
-        `sheet_outline_probe L${lod} @ ${scale} (WYJŚCIE): 0 narysowanych napisów poza obrysem arkusza`,
+        `sheet_outline_probe @ ${scale} (WYJŚCIE): 0 narysowanych napisów poza obrysem arkusza`,
         poza.length === 0,
         `narysowanych=${plan.drawn.length} powiększonych=${plan.drawn.filter((p) => p.enlarged).length}`
           + ` poza=${poza.length}`
@@ -2598,11 +2481,16 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
   // Test negatywny OBOWIĄZKOWY — plan liczony z arkuszem NIESKOŃCZONYM musi
   // przywrócić zmierzony przelew (dowód, że sonda mierzy naprawę, a nie zbieg
   // okoliczności), a etykiet przy tym NIE ubywa (tożsamość jest PRZESUWANA).
+  // Skala 0,08 (karta SLD-SKALA-I-NAWIGACJA, 2026-11): na jednej scenie (dawna
+  // L2) powiększone nazwy stacji ostatniego wiersza przelewają się poza dolną
+  // krawędź przy 0,08 (40,5 j.św., pomiar sondy) — dawne 0,181 dotyczyło sceny
+  // zwiniętej L0, której już nie ma.
+  const SKALA_PRZELEWU = 0.08;
   {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const obstacles = sceneObstacleRects(scene);
     const sheet = sheetSizeFor(scene);
-    const bezGranicy = planSceneLabels(scene.labels, obstacles, 0.181, {
+    const bezGranicy = planSceneLabels(scene.labels, obstacles, SKALA_PRZELEWU, {
       width: Number.MAX_SAFE_INTEGER,
       height: Number.MAX_SAFE_INTEGER,
     });
@@ -2612,7 +2500,7 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
       przelewy.length > 0 && Math.max(...przelewy.map((p) => p.overflow)) > 30,
       `przelewów=${przelewy.length} max=${przelewy.length ? Math.max(...przelewy.map((p) => p.overflow)).toFixed(1) : 'n/d'} j.św.`,
     );
-    const zGranica = planSceneLabels(scene.labels, obstacles, 0.181, sheet);
+    const zGranica = planSceneLabels(scene.labels, obstacles, SKALA_PRZELEWU, sheet);
     check(
       'sheet_outline_probe: granica arkusza NIE zabiera tożsamości — ta sama liczba napisów co bez granicy',
       zGranica.drawn.length === bezGranicy.drawn.length
@@ -2630,14 +2518,14 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
 line('');
 line('=== sheet_grid_probe (S9-7 strefy z formatu arkusza) + stroke_rank_probe (S9-8) ===');
 {
-  for (const lod of LODS) {
-    const scene = buildSceneV3(enm, lod);
+  {
+    const scene = buildSceneV3(enm);
     const wiersze = sheetRowStationIds(scene).length;
     const pasy = sheetRowBandsOf(scene);
     const dol = pasy.length > 0 ? pasy[pasy.length - 1].y + pasy[pasy.length - 1].height : 0;
     const ciagle = pasy.every((b, i) => i === 0 || Math.abs(b.y - (pasy[i - 1].y + pasy[i - 1].height)) < 1e-9);
     check(
-      `sheet_grid_probe (S9-7) L${lod}: pasy stref == wiersze arkusza, rozłączne i pokrywające bbox`,
+      `sheet_grid_probe (S9-7): pasy stref == wiersze arkusza, rozłączne i pokrywające bbox`,
       pasy.length === wiersze &&
         ciagle &&
         pasy.every((b) => b.height > 0) &&
@@ -2647,7 +2535,7 @@ line('=== sheet_grid_probe (S9-7 strefy z formatu arkusza) + stroke_rank_probe (
     );
     const kolumn = Math.max(1, Math.ceil((scene.bbox.x + scene.bbox.width) / SHEET_WIDTH_QUANTUM));
     check(
-      `sheet_grid_probe (S9-7) L${lod}: kolumn stref liczonych KWANTEM formatu (${SHEET_WIDTH_QUANTUM} px), nie stałą oderwaną od łamania`,
+      `sheet_grid_probe (S9-7): kolumn stref liczonych KWANTEM formatu (${SHEET_WIDTH_QUANTUM} px), nie stałą oderwaną od łamania`,
       kolumn >= 1 && kolumn <= 32,
       `kolumn=${kolumn} (dawna stała 400 px dałaby ${Math.ceil((scene.bbox.x + scene.bbox.width) / 400)})`,
     );
@@ -2718,8 +2606,8 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
   );
   const orientedRefs = orientedSegmentRefs(enm);
 
-  for (const lod of LODS) {
-    const scene = buildSceneV3(enm, lod);
+  {
+    const scene = buildSceneV3(enm);
     // Warstwa wynikowa WŁĄCZONA — znaczniki S9-2 są obiektami kanwy tak samo
     // jak symbol czy tor, więc podlegają temu samemu minimum i tej samej
     // tożsamości (bez payloadu ta klasa nie byłaby w ogóle zmierzona).
@@ -2740,7 +2628,7 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
     ];
     const powtorzone = wszystkieTestId.filter((t, i) => wszystkieTestId.indexOf(t) !== i);
     check(
-      `hit_identity_probe (S9-4, P-2) LOD ${lod}: każdy obiekt kanwy ma NIEPOWTARZALNĄ tożsamość (testId)`,
+      `hit_identity_probe (S9-4, P-2): każdy obiekt kanwy ma NIEPOWTARZALNĄ tożsamość (testId)`,
       powtorzone.length === 0,
       powtorzone.length === 0 ? `obiektów=${wszystkieTestId.length}` : `powtórzone=${[...new Set(powtorzone)].join(', ')}`,
     );
@@ -2751,19 +2639,19 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
           snapshot: enm,
           width: widok.width,
           height: widok.height,
-          lodOverride: lod,
           overlay,
           onElementClick: () => {},
           onElementContextMenu: () => {},
           onResultLabelActivate: () => {},
-          animateLodTransitions: false,
         }),
       );
       const svg = new JSDOM(`<body>${markup}</body>`).window.document.querySelector('[data-testid="sld-canvas-v3"]');
       const viewBox = (svg.getAttribute('viewBox') ?? '0 0 1 1').split(' ').map(Number);
       const scale = widok.width / viewBox[2];
       const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
-      const layoutWynikow = layoutResultLabels(scene, rlByRef, [], lod);
+      // Te same reguły co kanwa: warstwa wyników jest na rysunku, gdy pismo t4
+      // jest czytelne na ekranie (gęstość informacji R3, `gestoscInformacji.ts`).
+      const layoutWynikow = layoutResultLabels(scene, rlByRef, [], czytelnyNaEkranie(LABEL_TYPOGRAPHY.t4.fontSize, scale));
       const oczekiwane = buildCanvasHitAreas({
         symbols: scene.symbols,
         segments: scene.segments,
@@ -2780,7 +2668,7 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
       });
       const zDrzewa = hitAreasFromDom(svg);
       const wynik = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: zDrzewa, minEkranPx: PROG_MIN_PX_EKRANU });
-      const etykieta = `LOD ${lod} · zoom ${widok.nazwa} (skala ${scale.toFixed(4)})`;
+      const etykieta = `zoom ${widok.nazwa} (skala ${scale.toFixed(4)})`;
 
       // (a) Kolejność warstw uchwytów — bez niej rozszerzenie kradnie klik obrysowi.
       const porzadek = hitLayerOrderingInDom(svg);
@@ -2839,7 +2727,7 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
         const bezEtykiet = zDrzewa.filter((a) => a.klasa !== 'etykieta');
         const wynikBez = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: bezEtykiet, minEkranPx: PROG_MIN_PX_EKRANU });
         check(
-          `hit_grid_probe (test negatywny — dowód, że wyrocznia gryzie) LOD ${lod}: uchwyty etykiet usunięte z drzewa MUSZĄ zbić skuteczność poniżej progu`,
+          `hit_grid_probe (test negatywny — dowód, że wyrocznia gryzie): uchwyty etykiet usunięte z drzewa MUSZĄ zbić skuteczność poniżej progu`,
           wynikBez.skutecznosc < PROG_SKUTECZNOSCI,
           `${(100 * wynikBez.skutecznosc).toFixed(2)} % (bez ${zDrzewa.length - bezEtykiet.length} uchwytów etykiet)`,
         );
@@ -2913,10 +2801,12 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
   //      pozycję kontynuacji (dawniej tylko GPZ i sekcja — stacja uciekała).
   for (const [menuKind, akcjeRejestru] of Object.entries(SLD_MENU_REGISTRY)) {
     for (const akcja of akcjeRejestru.filter((a) => isTrunkContinuationAction(a.id))) {
-      // Aparat: głowica kablowa (jedyny aparat, z którego ciąg w ogóle wychodzi) —
-      // inaczej wcześniejsza bramka rodzaju aparatu zasłoniłaby bramkę startu.
+      // Aparat: punkt wyprowadzenia ciągu (głowica kablowa / port odpływu pola SN —
+      // `aparatWyprowadzaCiag`, jedyny klucz tej bramki w `getMenuActions`) — inaczej
+      // wcześniejsza bramka rodzaju aparatu zasłoniłaby bramkę startu. Dawny klucz
+      // `apparatusKind` nie miał już czytelnika: sonda mierzyła bramkę rodzaju, nie startu.
       const pozycja = getMenuActions(menuKind, {
-        apparatusKind: 'cable_head',
+        aparatWyprowadzaCiag: true,
         trunkStartAvailable: { [akcja.id]: false },
       })
         .find((a) => a.id === akcja.id);
@@ -2939,8 +2829,8 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     return mapa;
   };
 
-  for (const lod of LODS) {
-    const scene = buildSceneV3(enm, lod);
+  {
+    const scene = buildSceneV3(enm);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
     const busRefy = busRefSceny(scene);
     const obszary = buildCanvasHitAreas({
@@ -2972,7 +2862,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
 
     // (b) ZERO FABRYKACJI: żaden otwarty temat menu nie wskazuje refu spoza modelu.
     check(
-      `menu_ref_probe (S9-5, B-4) LOD ${lod}: 0 tematów menu z refem spoza modelu`,
+      `menu_ref_probe (S9-5, B-4): 0 tematów menu z refem spoza modelu`,
       refySpozaModelu === 0,
       refySpozaModelu === 0 ? `tematów=${[...wgKlasy.values()].reduce((s, w) => s + w.tematow, 0)}` : `złych=${refySpozaModelu}, np. ${pierwszyZlyRef}`,
     );
@@ -3002,28 +2892,14 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
       const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
       return w.stan === 'temat' && w.temat.kotwica === 'galaz';
     }).length;
-    if (lod === 0) {
-      check(
-        `menu_chain_probe (S9-5, kryterium odbioru) LOD 0: ≥ ${PROG_STACJI} stacji z menu stacji na rysunku`,
-        stacjeZMenu.length >= PROG_STACJI,
-        `stacji=${stacjeZMenu.length}`,
-      );
-      check(
-        'menu_chain_probe (S9-5, POLE-ZAJĘTE) LOD 0: wejście „kontynuuj ciąg" KAŻDEJ stacji = wolne pole liniowe wg line_fields',
-        rozjazdyWejscia.length === 0,
-        rozjazdyWejscia.length === 0
-          ? `stacji=${stacjeZMenu.length}, z wolnym polem=${stacjeZMenu.filter(wolnePoleStacji).length}`
-          : `rozjazdów=${rozjazdyWejscia.length}, np. ${rozjazdyWejscia[0]}`,
-      );
-    }
     check(
-      `menu_chain_probe (S9-5) LOD ${lod}: ≥ ${PROG_STACJI} odcinków z wejściem „zakończ odcinek stacją"`,
+      `menu_chain_probe (S9-5): ≥ ${PROG_STACJI} odcinków z wejściem „zakończ odcinek stacją"`,
       odcinkiZWejsciem >= PROG_STACJI,
       `odcinków=${odcinkiZWejsciem}`,
     );
 
     line(
-      `  menu_subject (LOD ${lod}) wg klasy: `
+      `  menu_subject wg klasy: `
       + HIT_OBJECT_CLASSES.filter((k) => (wgKlasy.get(k)?.obiektow ?? 0) > 0)
         .map((k) => {
           const w = wgKlasy.get(k);
@@ -3037,7 +2913,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
   // (c2) KRYTERIUM ODBIORU S9-5 na scenie W BUDOWIE (karta PARTIA-6-FRONT): etapy ciągu
   //      z generatora backendu (`tests/reference_networks/scena_ciagu_w_budowie.py`) — na
   //      etapie k stacja startu (GPZ albo koniec ciągu) jest wejściem kontynuacji na kanwie
-  //      LOD 0, a operacja z menu niesie pole startu, z którego BACKEND zbudował etap k+1.
+  //      (jedna scena), a operacja z menu niesie pole startu, z którego BACKEND zbudował etap k+1.
   {
     const ciag = JSON.parse(
       readFileSync(resolve(here, '..', 'src', 'harness-fixtures', 'generated', 'ciag_w_budowie_etapy.json'), 'utf8'),
@@ -3046,7 +2922,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     let pierwszeZerwane = null;
     for (const etap of ciag.etapy) {
       if (etap.pole_startu === null) continue;
-      const scena = buildSceneV3(etap.snapshot, 0);
+      const scena = buildSceneV3(etap.snapshot);
       const planEtapu = planSceneLabels(scena.labels, sceneObstacleRects(scena), 1, sheetSizeFor(scena));
       const busRefyEtapu = busRefSceny(scena);
       const obszaryEtapu = buildCanvasHitAreas({
@@ -3085,7 +2961,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
 
   // (d) Rodzina gałęzi rozstrzyga kategorię — obie rodziny obecne i ROZŁĄCZNE.
   {
-    const sceneL2 = buildSceneV3(enm, 2);
+    const sceneL2 = buildSceneV3(enm);
     const obszaryL2 = buildCanvasHitAreas({
       symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
     });
@@ -3116,7 +2992,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
   //     inaczej sonda mierzyłaby samą deklarację, nie zachowanie.
   {
     const pustyIndex = buildCanvasModelIndex(null);
-    const sceneL2 = buildSceneV3(enm, 2);
+    const sceneL2 = buildSceneV3(enm);
     const obszaryL2 = buildCanvasHitAreas({
       symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
     });
@@ -3130,18 +3006,6 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     );
   }
 }
-
-// -- §15.2 lod_path_probe: „pokrywa TE SAME połączenia topologiczne" -------
-// Porównanie sygnatur (kolejność mainTrunkStationIds) MIĘDZY LOD — dowód, że
-// LOD zmienia WYŁĄCZNIE szczegółowość rysunku/etykiet, NIGDY topologię ścieżki.
-line('');
-line('=== lod_path_probe (§15.2, porównanie topologii MIĘDZY LOD) ===');
-const signatures = LODS.map((lod) => mainTrunkSignatureByLod[lod]);
-check(
-  'lod_path_probe (§15.2): sygnatura topologii ciągu głównego (kolejność stacji) identyczna na L0/L1/L2',
-  signatures.every((s) => s != null) && signatures.every((s) => s === signatures[0]),
-  `L0=${signatures[0]} L1=${signatures[1]} L2=${signatures[2]}`,
-);
 
 line('');
 line(anyFail ? '=== WYNIK: FAIL — patrz [FAIL] powyżej ===' : '=== WYNIK: ALL PASS ===');

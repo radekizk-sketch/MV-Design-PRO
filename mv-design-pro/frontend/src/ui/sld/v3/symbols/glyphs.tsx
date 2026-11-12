@@ -27,7 +27,6 @@ import {
   type QetSymbolPolaSnId,
 } from '../cad/qet/qetPoleSn';
 import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/colorTokens';
-import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
 import type { UkladPolaczenBaterii } from '../../../../types/enm';
 import {
@@ -37,7 +36,6 @@ import {
 } from '../compose/rodzajeAparatuPola';
 import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
 import { MIN_TEXT_SCREEN_PX, SLD_FONT_FAMILY, posuwZnakuEm, zasiegPionowyTuszu } from '../core/text';
-import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../canvas/camera';
 import { RAMKA_BLOKU_BEZ_KODOW } from './blokZabezpieczen';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
@@ -136,12 +134,6 @@ export function polozenieGeometrii(id: SymbolId, state: SwitchState | undefined)
   return geometria === 'earthed' ? 'unknown' : geometria;
 }
 
-/** SCHEMAT-10 GS-1/GS-2 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU
- *  na L0. Źródło definicji = `miniRmuGrammar.ts` (gramatyka konstrukcyjna),
- *  re-eksport tu zachowuje istniejące importy; `'unknown'` mapuje wołający na
- *  `'generator'` (glif generyczny, jak `DER_SOURCE_KIND_SYMBOL`). */
-export type { StationDerGlyphKind } from './miniRmuGrammar';
-
 export interface GlyphProps {
   readonly x: number;
   readonly y: number;
@@ -199,49 +191,6 @@ export interface GlyphProps {
    *  pole (wzorzec `hasTopologyWarning`). Brak danych ⇒ fallback „M" (rozstrzygany
    *  wpisem legendy arkusza). */
   readonly meterQuantity?: 'A' | 'V';
-  /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): stacja SEKCYJNA (sprzęgło w
-   *  topologii, rodzaj z `ui/shared/rodzajStacji.ts`) — WYŁĄCZNIE `Station
-   *  CollapsedGlyph` rysuje przerwę sekcyjną na szynie (wzór `hasTopologyWarning`).
-   *  Rodzaj stacji (SN/nN · rozdzielnia sieciowa · sekcyjna) WYPROWADZONY z
-   *  TYPU elementów, nie z nazw (spec §19.3). */
-  readonly stationSectioned?: boolean;
-  /** GS-1: stacja SN/nN z transformatorem (`Substation.hasTransformer`/
-   *  `transformerRatedKva`) — mini-glif TR zwieszony pod szyną. Odróżnia
-   *  stację transformatorową od rozdzielni sieciowej (bez TR). */
-  readonly stationHasTransformer?: boolean;
-  /** GS-4 (recenzja 2026-07-23; baza GS-1 §10.4): dominujący rodzaj DER
-   *  przyłączonego do SZYNY SN stacji — pole DER nad szyną (`poleDer`).
-   *  `null`/brak = zero DER na SN. Pozycja symbolu DER wynika z RZECZYWISTEGO
-   *  miejsca przyłączenia (nie z samego faktu obecności). */
-  readonly stationDerOnMv?: StationDerGlyphKind | null;
-  /** GS-4: dominujący rodzaj DER ZA TRANSFORMATOREM (strona nN) — znak przy
-   *  gałęzi pola TR PONIŻEJ uzwojeń (`poleTr.derNn`, INNA kotwica niż DER na
-   *  SN). Wymaga `stationHasTransformer` (bez TR nie istnieje strona nN —
-   *  sprzeczność raportuje `buildScene`, glif jej nie rysuje). NIEZALEŻNE od
-   *  `stationDerOnMv` — oba mogą wystąpić naraz. */
-  readonly stationDerBehindTr?: StationDerGlyphKind | null;
-  /** GS-1: stacja niesie punkt/łącznik NORMALNIE OTWARTY (`Substation.isNop`)
-   *  — marker otwartego łącznika na szynie (odróżnialny od zamkniętego). */
-  readonly stationNoOpen?: boolean;
-  /** GS-5 (uwaga właściciela 2026-07-23: „render zakłada, że większość stacji
-   *  to przelotowe, a w realnej sieci to końcowe z odgałęzień"): topologia
-   *  pól liniowych sylwetki z REALNEJ roli stacji w ciągu (spec §19.3 +
-   *  prezentacja stacji ostatniej w ciągu): `'końcowa'` = TYLKO pole WE,
-   *  szyna kończy się w rozdzielnicy (zero fantomowego toru na wylot);
-   *  `'przelotowa'` = dwa pola (zachowanie dotychczasowe = default dla
-   *  wołających bez podsumowania); `'odgałęźna'` = dwa pola + węzeł
-   *  odgałęzienia na szynie (kabel zejścia rysuje scena; pełne pole
-   *  odgałęźne od L1 — uzasadnienie przestrzenne w `miniRmuGrammar.ts`). */
-  readonly stationLineTopology?: MiniRmuLineTopology;
-  /** KD-5: liczba SEKCJI szyn SN bloku GPZ — WYŁĄCZNIE `GpzCollapsedGlyph`
-   *  (wzór `stationSectioned`). >1 ⇒ sprzęgło sekcyjne w sylwetce. */
-  readonly gpzSections?: number;
-  /** KD-5: liczba transformatorów WN/SN bloku GPZ — 0 ⇒ sylwetka bez uzwojeń
-   *  (uczciwy obraz danych: GPZ bez TR w modelu nie dostaje fantomowego TR). */
-  readonly gpzTransformers?: number;
-  /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
-   *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
-  readonly gpzFeeders?: number;
   /** Karta GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu —
    *  WYŁĄCZNIE `Transformer2WGlyph`. `undefined` = wołający nie rozwiązuje grupy dla
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
@@ -257,12 +206,13 @@ export interface GlyphProps {
    *  wyłącznie wykonanie stałe / wysuwne — więc kanwa nie podaje wartości i kafle członu
    *  rysują się w stanie nieustalonym (brak danych ≠ stan). Brak = `'nieustalony'`. */
   readonly stanCzlonu?: StanKafla;
-  /** Poziom szczegółu kanwy (LOD0/LOD1/LOD2) — wybiera DETALE kafla z jednej tabeli
-   *  `DETALE_KAFLA_WG_LOD` (uwaga właściciela 2026-11-04, odbiór B-02 pkt 5). Brak = LOD2
-   *  (legenda, eksport, podgląd kreatora — pełny rysunek). */
-  readonly lod?: 0 | 1 | 2;
+  /** Skala kamery kanwy — rozstrzyga, które DETALE kafla są czytelne na ekranie
+   *  (`detalCzytelny`, karta SLD-SKALA-I-NAWIGACJA R3: gęstość informacji wynika z rozmiaru
+   *  ekranowego, nie z poziomu). Brak = rysunek świata (legenda, eksport, podgląd kreatora —
+   *  wszystkie detale). */
+  readonly skalaKamery?: number;
   /** Mnożnik boku ZNACZNIKA RODZAJU APARATU na kaflu stanu (`skalaZnacznikaKafla`, rozstrzygnięcie
-   *  architekta 2026-10-30 pkt 1: podłoga 8 px na LOD1). Kanwa podaje go z tego samego miejsca co
+   *  architekta 2026-10-30 pkt 1: podłoga 8 px ekranu). Kanwa podaje go z tego samego miejsca co
    *  `strokeScale`; brak = 1 (rysunek świata: legenda, harness, eksport bez kamery). */
   readonly skalaZnacznika?: number;
   /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów z modelu — WYŁĄCZNIE
@@ -302,17 +252,6 @@ function stroke(props: GlyphProps): string {
 function grubosc(props: GlyphProps, base: number): number {
   const k = props.strokeScale;
   return Number.isFinite(k) && (k as number) > 0 ? base * (k as number) : base;
-}
-
-/** PROPORCJE — ten sam mnożnik nałożony na CAŁY rekord wag sylwetki zwiniętej
- *  (`MINI_RMU.stroke` / `MINI_GPZ.stroke`: tor, szyna, marker, obrys).
- *  Jednorodnie, jednym przebiegiem — wzmocnienie samego toru przy nietkniętym
- *  obrysie zmieniłoby WEWNĘTRZNE proporcje sylwetki, a nie tylko jej wagę
- *  wobec reszty rysunku. */
-function skalujWagi<T extends Readonly<Record<string, number>>>(props: GlyphProps, wagi: T): T {
-  const wynik: Record<string, number> = {};
-  for (const klucz of Object.keys(wagi)) wynik[klucz] = grubosc(props, wagi[klucz]);
-  return wynik as unknown as T;
 }
 
 export function BreakerGlyph(props: GlyphProps): JSX.Element {
@@ -1031,236 +970,13 @@ export function GridSourceGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
-/** GS-3 (K4/K5): marker RODZAJU DER — pomocniczy. Trójkąt jest ZAREZERWOWANY
- *  dla głowicy kablowej, więc PV=romb, BESS=bateria, FW/gen=okrąg. GS-4:
- *  kotwica (cx,cy,h) parametryzowana — TEN SAM kształt rodzaju w polu DER na
- *  SN (`poleDer`) i za TR na nN (`poleTr.derNn`); różni się WYŁĄCZNIE miejsce
- *  przyłączenia (topologia), nigdy notacja rodzaju. */
-function derMiniMarker(props: GlyphProps, kind: StationDerGlyphKind, s: string, cx: number, cy: number, h: number): JSX.Element {
-  const w = grubosc(props, MINI_RMU.stroke.marker);
-  const shape = DER_MARKER_SHAPE[kind];
-  if (shape === 'diamond') {
-    return <path d={`M${cx},${cy - h} L${cx + h},${cy} L${cx},${cy + h} L${cx - h},${cy} Z`} fill="none" stroke={s} strokeWidth={w} />;
-  }
-  if (shape === 'battery') {
-    // Prostokąt bateryjny 2:1 z kreską wewnętrzną (NIE kwadrat aparatu).
-    return (
-      <g>
-        <rect x={cx - h} y={cy - h / 2} width={2 * h} height={h} fill="none" stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy - h / 2} x2={cx} y2={cy + h / 2} stroke={s} strokeWidth={w} />
-      </g>
-    );
-  }
-  if (shape === 'circle-spokes') {
-    // Wirnik: okrąg + 3 ramiona (Y).
-    return (
-      <g>
-        <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy} x2={cx} y2={cy - h} stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy} x2={cx - 0.87 * h} y2={cy + 0.5 * h} stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy} x2={cx + 0.87 * h} y2={cy + 0.5 * h} stroke={s} strokeWidth={w} />
-      </g>
-    );
-  }
-  // Generator: okrąg z kropką centralną.
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />
-      <circle cx={cx} cy={cy} r={0.35} fill={s} stroke="none" />
-    </g>
-  );
-}
-
-/** Głowica kablowa (K1/K4): trójkąt wierzchołkiem ku wnętrzu pola. */
-function glowica(xBase: number, xTip: number, y: number, halfH: number, s: string, w: number): JSX.Element {
-  return <path d={`M${xTip},${y} L${xBase},${y - halfH} L${xBase},${y + halfH} Z`} fill="none" stroke={s} strokeWidth={w} />;
-}
-
-/**
- * GS-3 (V12K-137, werdykt NO-GO recenzji GS-2 — `GRAMATYKA_MINI_RMU_2026-07.md`
- * K1–K7): stacja SN/nN na L0 = MINIATUROWY SLD ROZDZIELNICY — kompozycja PÓL,
- * nie ikona na linii. Tor: kabel → △głowica → aparat pola → SZYNA WEWNĘTRZNA
- * (nie wychodzi poza enklozurę, K2) → aparat → △głowica → kabel. Pola TR/DER
- * jako własne odgałęzienia z aparatem (K3/K5); sekcja/NO = stan aparatu W TORZE
- * szyny (K6, NO = realna przerwa). Obrys wtórny (K7). Geometria WYŁĄCZNIE z
- * `MINI_RMU` (reguła 13). Mono (P5) — stan/rodzaj = geometria, nie kolor.
- */
-export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
-  const s = stroke(props);
-  const { enclosure: e, bus, linia: L, poleTr: tr, poleDer: der, sprzeglo: sp, odgalezienie: od, stroke: swBazowe } = MINI_RMU;
-  const sw = skalujWagi(props, swBazowe);
-  const y = L.y;
-  const busBroken = props.stationNoOpen === true;
-  // GS-5: topologia pól liniowych z roli stacji w ciągu; brak danych =
-  // 'przelotowa' (zachowanie dotychczasowe — sylwetka bazowa bez podsumowania).
-  const lineTopology = props.stationLineTopology ?? 'przelotowa';
-  const drawRightField = lineTopology !== 'końcowa';
-  return (
-    <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu" data-station-line-topology={lineTopology}>
-      {/* Obrys enklozury — WTÓRNY (K7): najlżejsza kreska, bez wypełnienia. */}
-      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-station-outline="true" />
-      {/* POLE LINIOWE L1: kabel → głowica → aparat → łącznik do szyny (K1). */}
-      <line x1={L.stubL.x1} y1={y} x2={L.stubL.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-      {glowica(L.glowicaL.xBase, L.glowicaL.xTip, y, L.glowicaL.halfH, s, sw.path)}
-      <rect x={L.aparatL.x - L.aparatL.size / 2} y={y - L.aparatL.size / 2} width={L.aparatL.size} height={L.aparatL.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L1" />
-      <line x1={L.glowicaL.xTip} y1={y} x2={L.aparatL.x - L.aparatL.size / 2} y2={y} stroke={s} strokeWidth={sw.path} />
-      <line x1={L.linkL.x1} y1={y} x2={L.linkL.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-      {/* SZYNA WEWNĘTRZNA (K2) — najgrubsza; przy NO realna PRZERWA (K6). */}
-      {busBroken ? (
-        <g data-station-no="true">
-          <line x1={bus.x1} y1={y} x2={sp.x - sp.gapHalf} y2={y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
-          <line x1={sp.x + sp.gapHalf} y1={y} x2={bus.x2} y2={y} stroke={s} strokeWidth={sw.bus} />
-          {/* Otwarty styk aparatu: kreska odchylona od osi (stan OTWARTY). */}
-          <line x1={sp.x - sp.gapHalf} y1={y} x2={sp.x + sp.gapHalf} y2={y - 2 * sp.gapHalf} stroke={s} strokeWidth={sw.path} />
-        </g>
-      ) : (
-        <line x1={bus.x1} y1={y} x2={bus.x2} y2={y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
-      )}
-      {/* Rodzina APARAT SEKCYJNY (K6): stan ZAMKNIĘTY = te same styki co stan
-          otwarty (NO), człon ruchomy DOMKNIĘTY na osi (ciągłość); zmienia się
-          wyłącznie położenie członu — jedna rodzina glifu, jedna kotwica. */}
-      {props.stationSectioned && !busBroken && (
-        <g data-station-sectioned="true">
-          <line x1={sp.x - sp.gapHalf} y1={y - 2} x2={sp.x - sp.gapHalf} y2={y + 2} stroke={s} strokeWidth={sw.path} />
-          <line x1={sp.x + sp.gapHalf} y1={y - 2} x2={sp.x + sp.gapHalf} y2={y + 2} stroke={s} strokeWidth={sw.path} />
-        </g>
-      )}
-      {props.stationSectioned && busBroken && <g data-station-sectioned="true" />}
-      {/* POLE LINIOWE L2 (lustrzane) — TYLKO gdy tor kontynuuje (GS-5):
-          stacja KOŃCOWA nie dostaje fantomowego pola na wylot; szyna kończy
-          się w rozdzielnicy (rezerwa/koniec ciągu — uczciwy obraz roli). */}
-      {drawRightField && (
-        <g data-station-field-out="true">
-          <line x1={L.linkR.x1} y1={y} x2={L.linkR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-          <rect x={L.aparatR.x - L.aparatR.size / 2} y={y - L.aparatR.size / 2} width={L.aparatR.size} height={L.aparatR.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L2" />
-          <line x1={L.aparatR.x + L.aparatR.size / 2} y1={y} x2={L.glowicaR.xTip} y2={y} stroke={s} strokeWidth={sw.path} />
-          {glowica(L.glowicaR.xBase, L.glowicaR.xTip, y, L.glowicaR.halfH, s, sw.path)}
-          <line x1={L.stubR.x1} y1={y} x2={L.stubR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-        </g>
-      )}
-      {/* GS-5: WĘZEŁ ODGAŁĘZIENIA na szynie (stacja odgałęźna, ≥3 pola
-          liniowe §19.3) — kropka węzłowa (junction); kabel zejścia rysuje
-          scena. Przy NO (przerwa szyny w środku) kropka NIE jest rysowana —
-          punkt środka leży w realnej przerwie; odgałęzienie pozostaje
-          widoczne kablem sceny. */}
-      {lineTopology === 'odgałęźna' && !busBroken && (
-        <circle cx={od.x} cy={y} r={od.r} fill={s} stroke="none" data-station-branch-node="true" />
-      )}
-      {/* POLE TR (K3): szyna → aparat pola TR → transformator (dwuuzwojeniowy). */}
-      {props.stationHasTransformer && (
-        <g data-station-transformer="true">
-          <line x1={tr.x} y1={tr.stub1.y1} x2={tr.x} y2={tr.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          <rect x={tr.x - tr.aparat.size / 2} y={tr.aparat.y} width={tr.aparat.size} height={tr.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="TR" />
-          <line x1={tr.x} y1={tr.stub2.y1} x2={tr.x} y2={tr.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          {/* GS-4: DER ZA TRANSFORMATOREM (strona nN) — znak źródła przy
-              gałęzi pola TR PONIŻEJ uzwojeń, POZA enklozurą (nN na zewnątrz
-              rozdzielnicy SN). ZAKAZ renderu z szyny SN, gdy model mówi nN.
-              Guard `stationHasTransformer` z konstrukcji: blok żyje WEWNĄTRZ
-              grupy TR (bez TR strona nN nie istnieje). */}
-          {props.stationDerBehindTr && (
-            <g data-station-der-nn={props.stationDerBehindTr}>
-              <line x1={tr.x} y1={tr.derNn.stub.y1} x2={tr.x} y2={tr.derNn.stub.y2} stroke={s} strokeWidth={sw.path} />
-              {derMiniMarker(props, props.stationDerBehindTr, s, tr.x, tr.derNn.markerCY, tr.derNn.markerHalf)}
-            </g>
-          )}
-        </g>
-      )}
-      {/* POLE DER na SN (K5): szyna → aparat pola DER → marker rodzaju. */}
-      {props.stationDerOnMv && (
-        <g data-station-der-sn={props.stationDerOnMv}>
-          <line x1={der.x} y1={der.stub1.y1} x2={der.x} y2={der.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          <rect x={der.x - der.aparat.size / 2} y={der.aparat.y} width={der.aparat.size} height={der.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="DER" />
-          <line x1={der.x} y1={der.stub2.y1} x2={der.x} y2={der.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {derMiniMarker(props, props.stationDerOnMv, s, der.x, der.markerCY, der.markerHalf)}
-        </g>
-      )}
-    </g>
-  );
-}
-
-/**
- * KD-5 (dług nazwany w V12K-285): BLOK GPZ ZWINIĘTY na L0 — miniatura
- * gramatyki GPZ (spec §3), nie plakietka. Rysunek WYŁĄCZNIE z `MINI_GPZ`
- * (`miniRmuGrammar.ts`, reguła 13: zero literałów geometrii w rendererze).
- *
- * Tor czytany z kształtu, z góry na dół: zejście od sieci zewnętrznej → SZYNA
- * WN → pole WN (aparat) → TRANSFORMATOR → pole TR (aparat) → SZYNA SN → POLA
- * ODEJŚCIOWE; pole magistrali schodzi portem S do toru magistrali sceny.
- * Liczby sekcji/transformatorów/pól pochodzą z REALNEJ kompozycji GPZ
- * (`meta.gpzGlyph`, `scene/buildScene.ts`) — brak danych ⇒ element nie jest
- * rysowany (zero fantomu), a nie rysowany „domyślnie".
- */
-export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
-  const s = stroke(props);
-  const { enclosure: e, zrodlo, szynaWn, poleWn, transformator: tr, poleTr, szynaSn, polaOdejsciowe: po, sprzeglo: sp, stroke: swBazowe } = MINI_GPZ;
-  const sw = skalujWagi(props, swBazowe);
-  const sections = props.gpzSections ?? 1;
-  const transformers = props.gpzTransformers ?? 0;
-  const feeders = props.gpzFeeders ?? 0;
-  const drawnFeeders = po.xs.slice(0, Math.max(0, Math.min(feeders, po.xs.length)));
-  const sectioned = sections > 1;
-  const aparat = (x: number, y: number, size: number, testId: string): JSX.Element => (
-    <rect x={x - size / 2} y={y} width={size} height={size} fill="none" stroke={s} strokeWidth={sw.path} data-gpz-aparat={testId} />
-  );
-  return (
-    <g {...glyphGroupProps('gpzCollapsed', props)} data-gpz-silhouette="mini-gpz" data-gpz-sections={sections}>
-      {/* Obrys rozdzielni — WTÓRNY (K7). */}
-      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-gpz-outline="true" />
-      {/* Zejście od sieci zewnętrznej (port N) do szyny WN. */}
-      <line x1={MINI_GPZ.axis} y1={zrodlo.stub.y1} x2={MINI_GPZ.axis} y2={zrodlo.stub.y2} stroke={s} strokeWidth={sw.path} />
-      {/* SZYNA WN. */}
-      <line x1={szynaWn.x1} y1={szynaWn.y} x2={szynaWn.x2} y2={szynaWn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="wn" />
-      {/* Pole WN transformatora (aparat w torze). */}
-      {transformers > 0 && (
-        <g data-gpz-transformer="true">
-          <line x1={poleWn.x} y1={poleWn.stub1.y1} x2={poleWn.x} y2={poleWn.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          {aparat(poleWn.x, poleWn.aparat.y, poleWn.aparat.size, 'WN')}
-          <line x1={poleWn.x} y1={poleWn.stub2.y1} x2={poleWn.x} y2={poleWn.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {/* TRANSFORMATOR — dwa uzwojenia (ta sama notacja co pole TR mini-RMU). */}
-          <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          {/* Pole TR po stronie SN (aparat w torze). */}
-          <line x1={poleTr.x} y1={poleTr.stub1.y1} x2={poleTr.x} y2={poleTr.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          {aparat(poleTr.x, poleTr.aparat.y, poleTr.aparat.size, 'TR')}
-          <line x1={poleTr.x} y1={poleTr.stub2.y1} x2={poleTr.x} y2={poleTr.stub2.y2} stroke={s} strokeWidth={sw.path} />
-        </g>
-      )}
-      {/* SZYNA SN — przy >1 sekcji realna PRZERWA + styki sprzęgła (wzór K6). */}
-      {sectioned ? (
-        <g data-gpz-sectioned="true">
-          <line x1={szynaSn.x1} y1={szynaSn.y} x2={sp.x - sp.gapHalf} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
-          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} />
-          <line x1={sp.x - sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x - sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
-          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x + sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
-        </g>
-      ) : (
-        <line x1={szynaSn.x1} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
-      )}
-      {/* POLA ODEJŚCIOWE: pierwsze (na osi) schodzi na wylot do magistrali. */}
-      {drawnFeeders.map((x, i) => (
-        <g key={`pole-${x}`} data-gpz-feeder={i === 0 ? 'magistrala' : 'liniowe'}>
-          <line x1={x} y1={po.stub1.y1} x2={x} y2={po.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          {aparat(x, po.aparat.y, po.aparat.size, i === 0 ? 'POLE-MAGISTRALA' : 'POLE')}
-          <line x1={x} y1={po.stub2.y1} x2={x} y2={po.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {i === 0 ? (
-            <line x1={x} y1={po.wyjscie.y1} x2={x} y2={po.wyjscie.y2} stroke={s} strokeWidth={sw.path} />
-          ) : (
-            <line x1={x} y1={po.stubKoncowy.y1} x2={x} y2={po.stubKoncowy.y2} stroke={s} strokeWidth={sw.path} />
-          )}
-        </g>
-      ))}
-    </g>
-  );
-}
 
 /**
  * F9.9 (spec §17.1/§17.3), karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela
  * 2026-11-05: „tak ma być ramka we wszystkich tak samo”): przekaźnik/sterownik pola to BLOK
  * ZABEZPIECZEŃ — wyłącznie prostokątna ramka, BEZ okręgu. Kody funkcji ANSI/IEEE C37.2 są
- * wierszami etykiet sceny wewnątrz ramki (LOD2, dwie kolumny — `compose/blokZabezpieczenPola.ts`),
- * na LOD1 ramka tego samego kształtu bez kodów. Ramkę podaje meta sceny
+ * wierszami etykiet sceny wewnątrz ramki (dwie kolumny — `compose/blokZabezpieczenPola.ts`),
+ * widocznymi wg czytelności na ekranie (kanwa, plan etykiet). Ramkę podaje meta sceny
  * (`ramkaBlokuPrzekaznika`, zależy od liczby i treści kodów); glif bez meta (podgląd składu pola
  * w kreatorze, katalog symboli) rysuje ramkę gabarytu definicji symbolu
  * (`RAMKA_BLOKU_BEZ_KODOW`, `symbols/blokZabezpieczen.ts`). Brak wypełnienia (P5: rysunek
@@ -1467,7 +1183,7 @@ export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonl
 }
 
 /** Wysokość znaku „?"/„!" kafla [px świata]: jedna czwarta krótszego boku kafla, nie mniej
- *  niż podłoga czytelności S9-7 (`MIN_TEXT_SCREEN_PX` = 8 px przy wejściu w LOD 2 — decyzja
+ *  niż podłoga czytelności S9-7 (`MIN_TEXT_SCREEN_PX` = 8 px w skali czytania — decyzja
  *  §11.7 pkt 5 karty UX-04/POLE-LINIOWE-WZORZEC: podłoga obejmuje litery symboli) i nie więcej
  *  niż 12 — znak stanu niepewnego czytelny na kaflu każdego rozmiaru, w narożniku kafla. */
 export function rozmiarZnakuKafla(r: { readonly width: number; readonly height: number }): number {
@@ -1482,10 +1198,10 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
     const stan = kafle ? stanKaflaLacznika(id, props.state) : null;
     if (!kafle || !stan) return <Glyph {...props} />;
     const r = prostokatKaflaStanu(id);
-    const znak = DETALE_KAFLA_WG_LOD[props.lod ?? 2].znakNiepewny ? ZNAK_KAFLA[stan] : undefined;
+    const znak = detalCzytelny(rozmiarZnakuKafla(r), props.skalaKamery) ? ZNAK_KAFLA[stan] : undefined;
     // Człon wysuwny (decyzja właściciela 2026-11-04, synoptyka e²TANGO): OSOBNE kafle nad i pod
     // kaflem wyłącznika, ta sama szerokość, stykające się krawędziami; kolor = stan członu
-    // (`stanCzlonu`), nie stan wyłącznika. Kafle członu zostają na każdym LOD (kształt).
+    // (`stanCzlonu`), nie stan wyłącznika. Kafle członu zostają w każdej skali (kształt).
     const czlon = czySymbolQet(id) ? QET_SYMBOLE_POLA_SN[id].czlon : null;
     const stanCzlonu: StanKafla = props.stanCzlonu ?? 'nieustalony';
     const kafleCzlonu = czlon
@@ -1569,12 +1285,12 @@ export function prymitywyNozaQet(noz: QetNozSymbolu, polozenie: QetPolozenieNoza
  * DLACZEGO PIKTOGRAM KAFLA NIE BIERZE KOMPENSACJI. Decyzja właściciela 2026-10-30 (znacznik rodzaju
  * aparatu przy styku stałym) wiąże geometrię kafla w jednostkach świata: znacznik 22–28 % boku
  * kafla, kreska znacznika = kreska noża, margines tuszu znacznika od krawędzi kafla ≥ 4 j.św.
- * i brak kolizji znacznika z nożem w każdym stanie, sprawdzane na LOD1 i LOD2, „te same proporcje
+ * i brak kolizji znacznika z nożem w każdym stanie, sprawdzane w całym zakresie skali kamery, „te same proporcje
  * w każdym rodzaju aparatu, w każdym stanie i w obu motywach". Kompensacja PROPORCJE
- * (`strokeScaleFactor`: ×1,23 na dolnym brzegu LOD2, ×1,81 przy wejściu w LOD1, ×2,45 na dolnym
- * brzegu LOD1) pogrubiała kreskę piktogramu względem kafla, który kompensacji nie ma (wypełniony
- * kwadrat): tusz okręgu odłącznika schodził do 3,78 j.św. od krawędzi kafla już na LOD2, a ramiona
- * krzyżyka wyłącznika zlewały się z nożem na LOD1 (pomiar w `znacznikRodzajuLacznika.test.tsx`).
+ * (`strokeScaleFactor`: ×1,23 przy skali 1,02, ×1,81 przy 0,69, ×2,45 przy 0,51) pogrubiała
+ * kreskę piktogramu względem kafla, który kompensacji nie ma (wypełniony kwadrat): tusz okręgu
+ * odłącznika schodził do 3,78 j.św. od krawędzi kafla już przy skali 1,02, a ramiona krzyżyka
+ * wyłącznika zlewały się z nożem przy 0,51–0,69 (pomiar w `znacznikRodzajuLacznika.test.tsx`).
  * Czytelność piktogramu daje kontrast białego glifu z wypełnionym kaflem, nie waga kreski względem
  * toru; przewody toru w kaflu i każdy rysunek poza kaflem zostają w lejku `grubosc`. Rozstrzygnięcie
  * dwóch reguł właściciela: `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz UX04-KRESKA-PIKTOGRAMU-KAFLA.
@@ -1583,47 +1299,72 @@ function kreskaPiktogramuKafla(props: GlyphProps, symbol: QetSymbolPolaSn): numb
   return symbol.kafel ? QET_KRESKA_GLIFU : grubosc(props, QET_KRESKA_GLIFU);
 }
 
-/** Podłoga ekranu boku znacznika rodzaju aparatu na LOD1 [px] (rozstrzygnięcie architekta
- *  2026-10-30 pkt 1). Na LOD2 obowiązuje udział `QET_ZNACZNIK_STYKU.udzial` i ≥ 10 px, które
- *  daje sam udział (12 j.św. × 1,02 = 12,2 px na dolnym brzegu LOD2). */
-export const PODLOGA_ZNACZNIKA_LOD1_PX = 8;
+/** Podłoga ekranu boku znacznika rodzaju aparatu [px] (rozstrzygnięcie architekta 2026-10-30
+ *  pkt 1). Przy skali, w której udział `QET_ZNACZNIK_STYKU.udzial` daje więcej, obowiązuje udział
+ *  (proporcje świata). */
+export const PODLOGA_ZNACZNIKA_PX = 8;
 
 /**
- * DETALE KAFLA WG LOD — JEDNA tabela (uwaga właściciela 2026-11-04, odbiór B-02 pkt 5): przy
- * oddaleniu kafel zdejmuje DETALE, a kształt rozróżniający aparat (znacznik „×”, kreska „⊤”,
- * kreska z okręgiem, ziemia, szewrony członu wysuwnego) zostaje zawsze i rośnie do podłogi
- * czytelności (`skalaZnacznikaKafla`, `skalaKsztaltuWKaflu`) zamiast maleć razem z kaflem.
- *  • `naped` — kwalifikator napędu „M” (atrybut łącznika; pełna informacja w inspektorze);
- *  • `znakNiepewny` — znak „?”/„!” w narożniku kafla stanu nieustalonego/błędnego (drugim
- *    nośnikiem obok koloru zostaje geometria noża: skrócony nóż w połowie kąta otwarcia).
+ * DETAL KAFLA CZYTELNY — JEDNA reguła (karta SLD-SKALA-I-NAWIGACJA R3; uwaga właściciela
+ * 2026-11-04, odbiór B-02 pkt 5): detal kafla, który jest PISMEM (kwalifikator napędu „M”,
+ * znak „?”/„!” stanu nieustalonego/błędnego), rysuje się wtedy, gdy jego pismo ma na ekranie
+ * co najmniej podłogę czytelności liter symboli `MIN_TEXT_SCREEN_PX`. Poniżej detal znika
+ * (pełna informacja zostaje w dymku i inspektorze), a kształt rozróżniający aparat (znacznik
+ * „×”, kreska „⊤”, kreska z okręgiem, ziemia, szewrony członu) zostaje zawsze i rośnie do
+ * podłogi (`skalaZnacznikaKafla`). Drugim nośnikiem stanu niepewnego obok koloru zostaje
+ * geometria noża (skrócony nóż w połowie kąta otwarcia). `skalaKamery` nieobecna = rysunek
+ * świata — detal zawsze.
  */
-export const DETALE_KAFLA_WG_LOD: Readonly<Record<0 | 1 | 2, { readonly naped: boolean; readonly znakNiepewny: boolean }>> = {
-  2: { naped: true, znakNiepewny: true },
-  1: { naped: false, znakNiepewny: true },
-  0: { naped: false, znakNiepewny: false },
-};
+export function detalCzytelny(wysokoscPismaSwiata: number, skalaKamery: number | undefined): boolean {
+  if (skalaKamery === undefined || !Number.isFinite(skalaKamery)) return true;
+  return wysokoscPismaSwiata * skalaKamery >= MIN_TEXT_SCREEN_PX;
+}
+
+/** Rozmiar świata detalu napędu w osprzęcie łącznika [j.św.] — wielkość porównywana z podłogą
+ *  czytelności `MIN_TEXT_SCREEN_PX` (`detalCzytelny`). Osprzęt z kwalifikatorem „M” (prymityw
+ *  `letter`, `cad/qet/qetPoleSn.ts`) — wysokość pisma; osprzęt bez litery (skrzynka napędu
+ *  łącznika trójpołożeniowego, kwadrat 8 j.św.) — krótszy bok obrysu jego prostokątów `path`
+ *  (współrzędne bezwzględne M/L). Dawniej osprzęt bez litery miał rozmiar 0 i znikał przy
+ *  KAŻDEJ skali kamery — defekt usunięty w karcie SLD-SKALA-I-NAWIGACJA. Brak osprzętu = 0. */
+function rozmiarDetaluOsprzetu(prims: readonly CadPrimitive[]): number {
+  let litera = 0;
+  let skrzynka = 0;
+  for (const p of prims) {
+    if (p.k === 'letter') litera = Math.max(litera, p.size);
+    else if (p.k === 'path') {
+      const liczby = (p.d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+      const xs = liczby.filter((_, i) => i % 2 === 0);
+      const ys = liczby.filter((_, i) => i % 2 === 1);
+      if (xs.length > 1 && ys.length > 1) {
+        const bok = Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+        skrzynka = Math.max(skrzynka, bok);
+      }
+    }
+  }
+  return litera > 0 ? litera : skrzynka;
+}
+
+/**
+ * Najmniejsza skala, dla której mnożnik znacznika jest liczony z podłogi (pomiar
+ * w `znacznikRodzajuLacznika.test.tsx`): znacznik ma wtedy 15,7 j.św. = 33 % kafla — największy,
+ * przy którym nie nachodzi na nóż w żadnym położeniu (mnożnik z podłogi na skali 0,45 daje
+ * krzyżyk na nożu otwartym). Poniżej tej skali kształt w kaflu już nie rośnie, a kafel maleje
+ * razem z rysunkiem.
+ */
+export const SKALA_NAJWIEKSZEGO_ZNACZNIKA = 0.51;
 
 /**
  * Mnożnik boku znacznika rodzaju aparatu (JEDNO źródło dla kanwy, tablicy łączników i testów):
- * bok na ekranie = max(udział · bok kafla · skala, 8 px) na LOD1 — podłoga wygrywa z udziałem
- * 22–28 % (rozstrzygnięcie architekta 2026-10-30 pkt 1; przy skali 0,51, dolnym brzegu LOD1,
- * znacznik ma 15,7 j.św. = 33 % kafla). Na LOD2 — 1 (proporcje świata). Na LOD0 (uwaga właściciela
- * 2026-11-04, odbiór B-02 pkt 5: przy oddaleniu kształt rozróżniający nie maleje względem kafla,
- * detale znikają wg `DETALE_KAFLA_WG_LOD`) — mnożnik dolnego brzegu LOD1 (`SKALA_DOLNA_LOD1`):
- * kształt ma w kaflu wielkość z dolnego brzegu LOD1 (15,7 j.św. = 33 % kafla) — największą, przy
- * której znacznik nie nachodzi na nóż w żadnym położeniu (pomiar w `znacznikRodzajuLacznika.test.tsx`:
- * mnożnik z podłogi na skali 0,45 daje krzyżyk na nożu otwartym). Na ekranie LOD0 kształt ma więc
- * 15,7 j.św. × skala (< 8 px poniżej skali 0,51 — kafel 48 j.św. ma wtedy < 24,5 px). Znacznik rośnie
- * wokół swojej kotwicy (punktu styku), kreska zostaje kreską noża (`QET_KRESKA_GLIFU`).
+ * bok na ekranie = max(udział · bok kafla · skala, 8 px) — podłoga wygrywa z udziałem 22–28 %
+ * przy oddaleniu (rozstrzygnięcie architekta 2026-10-30 pkt 1), aż do skali
+ * `SKALA_NAJWIEKSZEGO_ZNACZNIKA`, poniżej której mnożnik zostaje stały. Funkcja samej skali —
+ * bez poziomów. Znacznik rośnie wokół swojej kotwicy (punktu styku), kreska zostaje kreską noża.
  */
-export function skalaZnacznikaKafla(cameraScale: number, lod: 0 | 1 | 2): number {
-  if (lod === 2 || !Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
-  const s = lod === 0 ? Math.max(cameraScale, SKALA_DOLNA_LOD1) : cameraScale;
-  return Math.max(1, PODLOGA_ZNACZNIKA_LOD1_PX / (QET_ZNACZNIK_STYKU.bok * s));
+export function skalaZnacznikaKafla(cameraScale: number): number {
+  if (!Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
+  const s = Math.max(cameraScale, SKALA_NAJWIEKSZEGO_ZNACZNIKA);
+  return Math.max(1, PODLOGA_ZNACZNIKA_PX / (QET_ZNACZNIK_STYKU.bok * s));
 }
-
-/** Dolny brzeg LOD1 (zejście do LOD0, `l0Max · (1 − margines histerezy)` = 0,51). */
-export const SKALA_DOLNA_LOD1 = DEFAULT_LOD_THRESHOLDS.l0Max * (1 - LOD_HYSTERESIS_MARGIN);
 
 /** Prostokąt osiowy. */
 interface Obwiednia {
@@ -1748,9 +1489,9 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
     const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
     const prymitywyNoza = noz && polozenie ? prymitywyNozaQet(noz, polozenie) : [];
     // Kształty rozróżniające rosną do podłogi czytelności w obrębie kafla / pasma członu;
-    // detale (napęd) wg jednej tabeli LOD (`DETALE_KAFLA_WG_LOD`).
+    // detal pisma (napęd „M”) wg czytelności na ekranie (`detalCzytelny`).
     const f = props.skalaZnacznika ?? 1;
-    const detale = DETALE_KAFLA_WG_LOD[props.lod ?? 2];
+    const napedCzytelny = detalCzytelny(rozmiarDetaluOsprzetu(symbol.osprzet), props.skalaKamery);
     const kafel = symbol.kafel ?? { x: 0, y: 0, width: symbol.szerokosc, height: symbol.wysokosc };
     const pasmaCzlonu = symbol.czlon
       ? ([
@@ -1806,7 +1547,7 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
             />
           </g>
         )}
-        {detale.naped && symbol.osprzet.length > 0 && (
+        {napedCzytelny && symbol.osprzet.length > 0 && (
           <g data-qet="osprzet">
             <CadPrimitiveLayer prims={symbol.osprzet} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
           </g>
@@ -1983,8 +1724,6 @@ const GLIFY_SYMBOLI: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Elemen
   derUnknown: DerUnknownGlyph,
   bayNoEquipment: BayNoEquipmentGlyph,
   gridSource: GridSourceGlyph,
-  stationCollapsed: StationCollapsedGlyph,
-  gpzCollapsed: GpzCollapsedGlyph,
   protectionRelay: ProtectionRelayGlyph,
   meter: MeterGlyph,
   nnBreaker: NnBreakerGlyph,

@@ -2,13 +2,14 @@
  * Kontrakt JEDNEJ NOTACJI BLOKU ZABEZPIECZEŃ (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ, decyzja
  * właściciela 2026-11-05: „tak ma być ramka we wszystkich tak samo”; UX04 §11.20): przekaźnik
  * albo sterownik pola jest na całym schemacie tą samą prostokątną ramką z kodami funkcji
- * w dwóch kolumnach (LOD2), gołą ramką (LOD1), nieobecną na LOD0; ramka stoi na wysokości
+ * w dwóch kolumnach (jedna scena — karta SLD-SKALA-I-NAWIGACJA R1; dawne odmiany „goła ramka"
+ * L1 i „brak bloku" L0 zniknęły razem z poziomami szczegółu); ramka stoi na wysokości
  * łącznika, który zabezpieczenie wyłącza (albo — model nie wskazuje łącznika wyłączanego —
  * pierwszego łącznika pola).
  *
  * Iloczyn cech: rodzaj pola {GPZ z powiązaniami obwodów wtórnych, GPZ bez powiązań, pole
  * liniowe stacji SN, sprzęgło, pole transformatorowe, pole źródła OZE, pole źródła OZE w GPZ,
- * pole toru transformatora GPZ} × liczba kodów {0, 1, 2, 7} × LOD {0, 1, 2} × motyw {ciemny,
+ * pole toru transformatora GPZ} × liczba kodów {0, 1, 2, 7} × motyw {ciemny,
  * jasny}. Fikstury pól — `fixtures/polaZFunkcjamiEaz.ts` (jedno źródło z kontraktem kolumny
  * opisów pola, `kolumnaOpisowPolaKlasa.contract.test.ts`).
  *
@@ -16,8 +17,8 @@
  *  (a) na scenie nie ma okręgu przekaźnika — każdy symbol `protectionRelay` niesie ramkę, glif
  *      każdego bloku w obu motywach rysuje wyłącznie prostokąt ramki (zero `circle`, zero tekstu);
  *  (b) geometria ramki z jednej funkcji — ramka sceny jest punktem stałym `ramkaBlokuZWierszy`
- *      dla wierszy kodów z prostokątami sceny (LOD2), gabaryt symbolu = ramka, ramka na LOD1 ma
- *      ten sam kształt co na LOD2, wiersze = kody pola w kolejności danych;
+ *      dla wierszy kodów z prostokątami sceny, gabaryt symbolu = ramka, wiersze = kody pola
+ *      w kolejności danych;
  *  (c) środek ramki na wysokości łącznika ±1 oczko (łącznik wyłączany: zacisk cewki albo środek
  *      symbolu; bez wskazania — pierwszy łącznik pola) albo — gdy oś wypada ponad rysunkiem
  *      aparatów pola — górna krawędź ramki w górnej krawędzi rysunku aparatów (ramka nie
@@ -73,7 +74,6 @@ const KODY: Readonly<Record<0 | 1 | 2 | 7, readonly string[]>> = {
   7: ['50', '51', '51N', '67N', '46', '49', '79'],
 };
 const LICZBY_KODOW = [0, 1, 2, 7] as const;
-const LODY = [0, 1, 2] as const;
 const MOTYWY: readonly ThemeMode[] = ['dark_scada', 'light_technical'];
 
 type RodzajPola =
@@ -176,34 +176,28 @@ function goraAparatowPola(scena: SceneV3, bayRef: string): number {
 /** Wyrocznie (a)–(d) dla pola `bayRef` z `kody` na scenie `scena`. */
 function naruszenia(scena: SceneV3, bayRef: string, kody: readonly string[]): string[] {
   const n: string[] = [];
-  const lod = scena.meta.lod;
   const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay');
   // (a) każdy przekaźnik sceny to ramka bloku (okrąg nie istnieje), glif w obu motywach.
   for (const s of bloki) {
     if (!ramkaBlokuSymbolu(s)) n.push(`(a) przekaźnik bez ramki bloku ${s.meta?.ownerRef ?? '—'}`);
     for (const motyw of MOTYWY) n.push(...naruszeniaGlifu(glifWMotywie(s, motyw), s, motyw));
   }
-  if (lod === 0 && bloki.length > 0) n.push(`(a) ${bloki.length} bloków zabezpieczeń na LOD0`);
   for (const g of protectionMarkingGaps(scena)) n.push(`(a/b) sonda sceny: ${g.reason} ${g.ownerRef ?? '—'}`);
   const wlasne = bloki.filter((s) => s.meta?.ownerRef === bayRef);
-  const oczekiwane = lod === 0 || kody.length === 0 ? 0 : 1;
+  const oczekiwane = kody.length === 0 ? 0 : 1;
   if (wlasne.length !== oczekiwane) n.push(`(a) pole ${bayRef}: ${wlasne.length} bloków, oczekiwano ${oczekiwane}`);
   for (const blok of wlasne) {
     const ramka = ramkaBlokuSymbolu(blok);
     if (!ramka) continue; // brak ramki zgłoszony już jako (a) — geometria (b)/(c) bez ramki nie istnieje
     const wiersze = scena.labels.filter((l) => WIERSZ_KODU(bayRef)(l.ownerRef));
     // (b) jedna funkcja geometrii: gabaryt symbolu = ramka; wiersze = kody pola w kolejności
-    // danych; ramka = punkt stały `ramkaBlokuZWierszy` dla wierszy sceny (LOD2).
+    // danych; ramka = punkt stały `ramkaBlokuZWierszy` dla wierszy sceny.
     const gabaryt = gabarytSymbolu(blok);
     if (JSON.stringify(gabaryt) !== JSON.stringify(ramka)) n.push(`(b) gabaryt ${JSON.stringify(gabaryt)} ≠ ramka ${JSON.stringify(ramka)}`);
-    if (lod === 2) {
-      const teksty = wiersze.map((l) => l.text);
-      if (teksty.join(',') !== kody.join(',')) n.push(`(b) wiersze ${teksty.join(',')} ≠ kody pola ${kody.join(',')}`);
-      const zFunkcji = ramkaBlokuZWierszy(wiersze.map((l) => l.rect), ramka.x, ramka.y, ramka.width);
-      if (JSON.stringify(zFunkcji) !== JSON.stringify(ramka)) n.push(`(b) ramka sceny ${JSON.stringify(ramka)} ≠ ramkaBlokuZWierszy ${JSON.stringify(zFunkcji)}`);
-    } else if (wiersze.length > 0) {
-      n.push(`(b) ${wiersze.length} wierszy kodów na LOD${lod}`);
-    }
+    const teksty = wiersze.map((l) => l.text);
+    if (teksty.join(',') !== kody.join(',')) n.push(`(b) wiersze ${teksty.join(',')} ≠ kody pola ${kody.join(',')}`);
+    const zFunkcji = ramkaBlokuZWierszy(wiersze.map((l) => l.rect), ramka.x, ramka.y, ramka.width);
+    if (JSON.stringify(zFunkcji) !== JSON.stringify(ramka)) n.push(`(b) ramka sceny ${JSON.stringify(ramka)} ≠ ramkaBlokuZWierszy ${JSON.stringify(zFunkcji)}`);
     // (c) środek ramki na wysokości łącznika ±1 oczko (albo ramka dosunięta do góry rysunku pola).
     const os = osBloku(scena, bayRef);
     if (os === null) {
@@ -253,53 +247,45 @@ function rozjazdyRezerwacjiWysokosci(enm: EnergyNetworkModel, scena: SceneV3): s
   return n;
 }
 
-/** Ramka bloku pola na scenie (do porównania kształtu LOD1 ↔ LOD2). */
+/** Ramka bloku pola na scenie. */
 function ramkaPola(scena: SceneV3, bayRef: string): V3Rect | null {
   const blok = scena.symbols.find((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === bayRef);
   return blok ? ramkaBlokuSymbolu(blok) : null;
 }
 
-describe('jedna notacja bloku zabezpieczeń — rodzaj pola × liczba kodów × LOD × motyw', () => {
+describe('jedna notacja bloku zabezpieczeń — rodzaj pola × liczba kodów × motyw', () => {
   for (const [rodzaj, przypadek] of RODZAJE) {
     for (const liczba of LICZBY_KODOW) {
-      it(`${rodzaj} · ${liczba} kodów · LOD 0/1/2 · oba motywy`, () => {
+      it(`${rodzaj} · ${liczba} kodów · oba motywy`, () => {
         const { enm, bayRef } = przypadek(KODY[liczba]);
-        const sceny = LODY.map((lod) => buildSceneV3(enm, lod));
-        for (const scena of sceny) {
-          expect(naruszenia(scena, bayRef, KODY[liczba]), `LOD${scena.meta.lod}`).toEqual([]);
-        }
-        // (b) ramka LOD1 ma ten sam kształt co ramka LOD2 (goła ramka bez kodów).
-        const l1 = ramkaPola(sceny[1], bayRef);
-        const l2 = ramkaPola(sceny[2], bayRef);
-        expect(l1 && { width: l1.width, height: l1.height }).toEqual(l2 && { width: l2.width, height: l2.height });
-        if (liczba > 0) expect(l2, 'blok pola na LOD2').not.toBeNull();
-        for (const scena of sceny) expect(rozjazdyRezerwacjiWysokosci(enm, scena), `LOD${scena.meta.lod}`).toEqual([]);
+        const scena = buildSceneV3(enm);
+        expect(naruszenia(scena, bayRef, KODY[liczba])).toEqual([]);
+        if (liczba > 0) expect(ramkaPola(scena, bayRef), 'blok pola').not.toBeNull();
+        expect(rozjazdyRezerwacjiWysokosci(enm, scena)).toEqual([]);
       });
     }
   }
 });
 
-describe('fikstura 52 stacji — każdy blok stacji × LOD 1/2', () => {
-  for (const lod of [1, 2] as const) {
-    it(`LOD${lod}: (a)–(e) na każdym bloku, rezerwacja wysokości kolumny = rysunek`, () => {
-      const scena = buildSceneV3(BAZA_STACJI, lod);
-      const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay');
-      // Warunek wstępny: fikstura niesie bloki stacji (pola z kodami funkcji w modelu).
-      expect(bloki.length).toBeGreaterThan(100);
-      const n: string[] = [];
-      for (const blok of bloki) {
-        const bayRef = blok.meta!.ownerRef!;
-        n.push(...naruszenia(scena, bayRef, kodyPola(BAZA_STACJI, bayRef)));
-      }
-      expect([...new Set(n)]).toEqual([]);
-      expect(rozjazdyRezerwacjiWysokosci(BAZA_STACJI, scena)).toEqual([]);
-    });
-  }
+describe('fikstura 52 stacji — każdy blok stacji', () => {
+  it(`(a)–(e) na każdym bloku, rezerwacja wysokości kolumny = rysunek`, () => {
+    const scena = buildSceneV3(BAZA_STACJI);
+    const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay');
+    // Warunek wstępny: fikstura niesie bloki stacji (pola z kodami funkcji w modelu).
+    expect(bloki.length).toBeGreaterThan(100);
+    const n: string[] = [];
+    for (const blok of bloki) {
+      const bayRef = blok.meta!.ownerRef!;
+      n.push(...naruszenia(scena, bayRef, kodyPola(BAZA_STACJI, bayRef)));
+    }
+    expect([...new Set(n)]).toEqual([]);
+    expect(rozjazdyRezerwacjiWysokosci(BAZA_STACJI, scena)).toEqual([]);
+  });
 });
 
 describe('wyrocznie kontraktu gryzą — iniekcje na realnej scenie', () => {
   const { enm, bayRef } = RODZAJE.find(([r]) => r === 'pole liniowe stacji SN')![1](KODY[7]);
-  const scena = buildSceneV3(enm, 2);
+  const scena = buildSceneV3(enm);
   const blok = scena.symbols.find((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === bayRef)!;
   const zBlokiem = (meta: Partial<NonNullable<SymbolSceny['meta']>>, przesuniecie: Punkt = { x: 0, y: 0 }): SceneV3 => ({
     ...scena,
@@ -401,7 +387,7 @@ describe('UX04 §11.20 — pole bez wskazania łącznika wyłączanego w modelu'
     // macierz wyzwoleń sterownika) — model nie wskazuje łącznika wyłączanego.
     const { enm, bayRef } = poleStacji('kanoniczny:bay_template_line_out', KODY[2]);
     ustawFunkcjePola(enm, bayRef, KODY[2], { bezPowiazan: true });
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     expect(scena.segments.filter((g) => g.meta?.ownerRef === `${bayRef}#trip-line`)).toHaveLength(0);
     expect(scena.segments.filter((g) => (g.meta?.ownerRef ?? '').startsWith(`${bayRef}#measurement-link`))).toHaveLength(0);
     expect(naruszenia(scena, bayRef, KODY[2])).toEqual([]);

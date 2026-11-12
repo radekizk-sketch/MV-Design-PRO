@@ -8,14 +8,15 @@
  *
  * Iloczyn: rodzaj {wyłącznik (bez i z napędem), odłącznik, rozłącznik (sam i z bezpiecznikami),
  * uziemnik, trójpołożeniowy (bez i z napędem), człon wysuwny} × stan {zamknięty, otwarty,
- * uziemiony, nieustalony, awaria, brak stanu} × motyw {ciemny, jasny} × poziom szczegółu
- * {LOD1 — skala wejścia `l0Max·(1+m)`, LOD2 — dolny brzeg aktywnego `l1Max·(1−m)`}. Glif jest
+ * uziemiony, nieustalony, awaria, brak stanu} × motyw {ciemny, jasny} × skala kamery
+ * {0,30 · 0,45 · 0,51 · 0,69 · 1,02} (jedna scena — karta SLD-SKALA-I-NAWIGACJA; skale dawnych
+ * brzegów poziomów szczegółu zostają jako punkty iloczynu, bo tam zmieniała się reguła). Glif jest
  * rysowany tak jak na kanwie: z mnożnikiem kreski `strokeScaleFactor(skala)` (kanwa podaje go
  * każdemu glifowi — `proporcjeRysunku.test.tsx`).
  *
  * Wyrocznia mierzy WYRENDEROWANY SVG (grupy `data-qet="znacznik"`, nóż `data-qet="noz"`
  * z transformacją `rotate`, tło kafla) — nie czyta geometrii z `qetPoleSn.ts` ani z importera:
- *  · rozmiar znacznika 22–28 % boku kafla i podłoga ekranu (LOD2 ≥ 10 px, LOD1 ≥ 8 px);
+ *  · rozmiar znacznika 22–28 % boku kafla i podłoga ekranu 8 px (jedna reguła skali);
  *  · margines tuszu znacznika od krawędzi kafla ≥ 4 j.św.;
  *  · brak kolizji z nożem: tusz znacznika ≥ 1 j.św. od tuszu noża poza strefą styku 5 j.św.
  *    wokół punktu, w którym nóż spoczywa na styku w danym położeniu (styk to zamierzone
@@ -23,7 +24,9 @@
  *  · kreska znacznika = kreska noża, kolor znacznika = kolor noża = kolor glifu kafla, kontrast
  *    glifu z kaflem czerwonym, zielonym, szarym i fioletowym ≥ 4,5:1;
  *  · rodzaj rozpoznawalny po znaczniku: sygnatura kształtu jednoznaczna dla rodzaju, ta sama
- *    w każdym symbolu, stanie, motywie i LOD, zgodna z tabelą właściciela.
+ *    w każdym symbolu, stanie, motywie i skali, zgodna z tabelą właściciela;
+ *  · detal-pismo kafla (napęd „M”, znak „?”/„!”) rysowany wtedy i tylko wtedy, gdy jego pismo ma
+ *    na ekranie ≥ `MIN_TEXT_SCREEN_PX` (jedna funkcja rozmiaru ekranowego — R3).
  * Iniekcje (każda czerwona): znacznik za mały, za duży, brak znacznika, znacznik zsunięty na nóż,
  * kreska znacznika ≠ kreska noża, kolor znacznika ≠ kolor noża, zamieniony rodzaj, kompensacja
  * kreski nałożona na piktogram kafla (stan sprzed wiersza UX04-KRESKA-PIKTOGRAMU-KAFLA rejestru
@@ -42,11 +45,11 @@ import { QET_BOK_KAFLA_STANU, QET_KRESKA_GLIFU, QET_SYMBOLE_POLA_SN, type QetSym
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import { WARIANT_RYSUNKU_QET, symbolIdForPrimaryDeviceKind, symboleRodzajuAparatu } from '../../compose/apparatusSequence';
 import { strokeScaleFactor } from '../../compose/preview';
-import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../../canvas/camera';
+import { MIN_TEXT_SCREEN_PX } from '../../core/text';
 import { DARK_SCADA_SLD_PALETTE, STATE_COLOR, STANY_KAFLA, type KafleStanuLacznika } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { czySymbolQet, type SymbolId } from '../defs';
-import { PODLOGA_ZNACZNIKA_LOD1_PX, SYMBOL_GLYPHS, skalaZnacznikaKafla, type SwitchState } from '../glyphs';
+import { PODLOGA_ZNACZNIKA_PX, SKALA_NAJWIEKSZEGO_ZNACZNIKA, SYMBOL_GLYPHS, skalaZnacznikaKafla, type SwitchState } from '../glyphs';
 
 type P = readonly [number, number];
 type RodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik';
@@ -99,37 +102,39 @@ const UDZIAL: readonly [number, number] = [0.22, 0.28];
 const MARGINES = 4;
 const ODSTEP = 1;
 const STREFA_STYKU = 5;
-const PODLOGA_PX = { L0: 8, L1: 8, L2: 10 } as const;
+/** Podłoga ekranu boku znacznika [px] — wyrocznia jawna rozstrzygnięcia architekta 2026-10-30
+ *  pkt 1 (jedna wartość dla każdej skali, karta SLD-SKALA-I-NAWIGACJA). */
+const PODLOGA_PX = 8;
+/** Skala, poniżej której kształt w kaflu już nie rośnie (uwaga właściciela 2026-11-04 pkt 5:
+ *  „symbol uproszczony, nie pomniejszony” — wielkość z dawnego dolnego brzegu poziomu 1). */
+const SKALA_KSZTALTU_MAKS = 0.51;
 
-/** Poziomy szczegółu: nazwa przypadku, LOD, skala kamery. LOD1 sprawdzany na OBU brzegach — dolnym
- *  (zejście do LOD0, `l0Max·(1−m)` = 0,51, podłoga 8 px czynna) i wejściu (`l0Max·(1+m)` = 0,69);
- *  LOD2 na dolnym brzegu aktywnego (`l1Max·(1−m)` = 1,02); LOD0 (uwaga właściciela 2026-11-04,
- *  odbiór B-02 pkt 5) na skali 0,45 (kafel 21,6 px — kształt rozróżniający rośnie do podłogi 8 px)
- *  i 0,3 (kafel 14,4 px — kształt rośnie do granicy kafla). */
-const LODY = [
-  ['L0 dół', 'L0', 0.3],
-  ['L0', 'L0', 0.45],
-  ['L1 dół', 'L1', DEFAULT_LOD_THRESHOLDS.l0Max * (1 - LOD_HYSTERESIS_MARGIN)],
-  ['L1', 'L1', DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN)],
-  ['L2', 'L2', DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN)],
+/** Skale kamery iloczynu: nazwa przypadku i skala. 0,30 (kafel 14,4 px — kształt rośnie do
+ *  granicy kafla), 0,45 (kafel 21,6 px — kształt rośnie do podłogi 8 px), 0,51 (podłoga czynna,
+ *  największy kształt), 0,69 (podłoga czynna), 1,02 (proporcje świata). */
+const SKALE = [
+  ['0,30', 0.3],
+  ['0,45', 0.45],
+  ['0,51', 0.51],
+  ['0,69', 0.69],
+  ['1,02', 1.02],
 ] as const;
-const NUMER_LOD = { L0: 0, L1: 1, L2: 2 } as const;
 
-/** Detale kafla wg LOD — wyrocznia jawna uwagi właściciela 2026-11-04 (odbiór B-02 pkt 5): napęd
- *  „M” wyłącznie na LOD2, znak „?”/„!” na LOD2 i LOD1, na LOD0 bez znaku (nośnikiem zostaje
- *  geometria noża). */
-const DETALE_WG_LOD = {
-  L0: { naped: false, znak: false },
-  L1: { naped: false, znak: true },
-  L2: { naped: true, znak: true },
-} as const;
+/** Rozmiary świata detali kafla [j.św.] — wyrocznia jawna (liczby przepisane z rysunku, nie
+ *  liczone z kodu): kwalifikator napędu „M” wyłącznika (pismo 8,4), skrzynka napędu łącznika
+ *  trójpołożeniowego bez litery (kwadrat 8 × 8), znak „?”/„!” kafla 48 j.św. (12). */
+const ROZMIAR_NAPEDU: Readonly<Record<string, number>> = {
+  qetBreakerZNapedem: 8.4,
+  qetBreakerWysuwnyZNapedem: 8.4,
+  qetThreePositionSwitchZNapedem: 8,
+};
+const PISMO_ZNAKU = 12;
+const detalWidoczny = (pismo: number, skala: number): boolean => pismo * skala >= MIN_TEXT_SCREEN_PX;
 
-/** Oczekiwany bok znacznika [j.św.] — wyrocznia jawna rozstrzygnięcia architekta 2026-10-30 pkt 1
- *  i uwagi właściciela 2026-11-04 pkt 5: LOD0/LOD1 — max(udział · bok kafla · skala, 8 px) / skala
- *  (kształt nie maleje razem z kaflem); LOD2 — udział · bok kafla (12 j.św.). */
-function bokOczekiwany(lod: keyof typeof PODLOGA_PX, skala: number): number {
-  // LOD0: wielkość z dolnego brzegu LOD1 (0,51) — kształt nie maleje względem kafla.
-  return lod === 'L2' ? 12 : Math.max(12, PODLOGA_PX.L1 / (lod === 'L0' ? Math.max(skala, 0.51) : skala));
+/** Oczekiwany bok znacznika [j.św.] — max(udział · bok kafla · skala, 8 px) / skala, skala
+ *  ograniczona od dołu przez `SKALA_KSZTALTU_MAKS` (kształt nie maleje razem z kaflem). */
+function bokOczekiwany(skala: number): number {
+  return Math.max(12, PODLOGA_PX / Math.max(skala, SKALA_KSZTALTU_MAKS));
 }
 
 /** Największy mnożnik kształtu rosnącego wokół kotwicy `k` (obwiednia `o` w skali 1), przy którym
@@ -146,7 +151,7 @@ function mnoznikGraniczny(o: { x0: number; y0: number; x1: number; y1: number },
   for (const [zasieg, miejsce] of pary) if (zasieg > 1e-9) f = Math.min(f, miejsce / zasieg);
   return f;
 }
-const podlogaKafla = (lod: keyof typeof PODLOGA_PX, skala: number): boolean => bokOczekiwany(lod, skala) > 12 + 1e-9;
+const podlogaKafla = (skala: number): boolean => bokOczekiwany(skala) > 12 + 1e-9;
 const MOTYWY = [
   ['ciemny', DARK_SCADA_SLD_PALETTE.state],
   ['jasny', LIGHT_TECHNICAL_SLD_PALETTE.state],
@@ -160,13 +165,13 @@ function rysuj(
   state: SwitchState | undefined,
   kafle: KafleStanuLacznika,
   skala: number,
-  lod: keyof typeof PODLOGA_PX,
-  skalaZnacznika: number = skalaZnacznikaKafla(skala, NUMER_LOD[lod]),
+  skalaZnacznika: number = skalaZnacznikaKafla(skala),
+  skalaKamery: number | undefined = skala,
 ): Document {
   const Glyph = SYMBOL_GLYPHS[id];
   const markup = renderToStaticMarkup(
     <svg xmlns="http://www.w3.org/2000/svg">
-      <Glyph x={0} y={0} stroke="#123456" state={state} kafleStanu={kafle} strokeScale={strokeScaleFactor(skala)} skalaZnacznika={skalaZnacznika} lod={NUMER_LOD[lod]} />
+      <Glyph x={0} y={0} stroke="#123456" state={state} kafleStanu={kafle} strokeScale={strokeScaleFactor(skala)} skalaZnacznika={skalaZnacznika} skalaKamery={skalaKamery} />
     </svg>,
   );
   return new DOMParser().parseFromString(markup, 'image/svg+xml');
@@ -235,7 +240,6 @@ function naruszenia(
   doc: Document,
   id: QetSymbolPolaSnId,
   kafle: KafleStanuLacznika,
-  lod: keyof typeof PODLOGA_PX,
   skala: number,
 ): string[] {
   const wiersz = TABELA_WLASCICIELA.find((w) => w.symbole.includes(id))!;
@@ -272,17 +276,17 @@ function naruszenia(
     const o = obwiednia(z);
     const bok = Math.max(o.x1 - o.x0, o.y1 - o.y0);
     const udzial = bok / kafel.w;
-    // Granica kafla (LOD0 przy skali, na której kafel nie mieści znacznika 8 px): kształt rośnie
+    // Granica kafla (przy skali, na której kafel nie mieści znacznika 8 px): kształt rośnie
     // do tuszu na krawędzi kafla — nigdy poniżej proporcji świata (12 j.św.).
     const zrodlo = symbol.znaczniki.find((q) => q.styk === styk);
-    let bokWymagany = bokOczekiwany(lod, skala);
+    let bokWymagany = bokOczekiwany(skala);
     if (zrodlo) {
       const prim = zrodlo.prymitywy;
       const xs = prim.flatMap((q) => (q.k === 'line' ? [q.x1, q.x2] : q.k === 'circle' ? [q.cx - q.r, q.cx + q.r] : []));
       const ys = prim.flatMap((q) => (q.k === 'line' ? [q.y1, q.y2] : q.k === 'circle' ? [q.cy - q.r, q.cy + q.r] : []));
       const fGr = mnoznikGraniczny({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }, [zrodlo.kotwica.x, zrodlo.kotwica.y], kafel, QET_KRESKA_GLIFU / 2);
       if (12 * fGr < bokWymagany) {
-        if (lod !== 'L0') bledy.push(`${opis}: granica kafla ogranicza znacznik na ${lod} — podłoga ${PODLOGA_PX[lod]} px nieosiągnięta`);
+        if (skala >= SKALA_KSZTALTU_MAKS) bledy.push(`${opis}: granica kafla ogranicza znacznik przy skali ${skala} — podłoga ${PODLOGA_PX} px nieosiągnięta`);
         bokWymagany = Math.max(12, 12 * fGr);
       }
     }
@@ -290,13 +294,13 @@ function naruszenia(
     const podlogaCzynna = bokWymagany > 12 + 1e-9;
     const gornyUdzial = podlogaCzynna ? bokWymagany / kafel.w : UDZIAL[1];
     if (udzial < UDZIAL[0] - 1e-9 || udzial > gornyUdzial + 1e-9) bledy.push(`${opis}: ${bok.toFixed(2)} j.św. = ${(udzial * 100).toFixed(1)} % boku kafla poza 22–28 %`);
-    if (bok * skala < Math.min(PODLOGA_PX[lod], bokWymagany * skala) - 1e-9 || bok < bokWymagany - 1e-9) bledy.push(`${opis}: ${(bok * skala).toFixed(2)} px na ${lod} < ${PODLOGA_PX[lod]} px`);
-    if (Math.abs(bok - bokWymagany) > 1e-6) bledy.push(`${opis}: bok ${bok.toFixed(3)} j.św. ≠ max(udział · kafel, ${PODLOGA_PX.L1} px / skala) w granicy kafla = ${bokWymagany.toFixed(3)}`);
+    if (bok * skala < Math.min(PODLOGA_PX, bokWymagany * skala) - 1e-9 || bok < bokWymagany - 1e-9) bledy.push(`${opis}: ${(bok * skala).toFixed(2)} px przy skali ${skala} < ${PODLOGA_PX} px`);
+    if (Math.abs(bok - bokWymagany) > 1e-6) bledy.push(`${opis}: bok ${bok.toFixed(3)} j.św. ≠ max(udział · kafel, ${PODLOGA_PX} px / skala) w granicy kafla = ${bokWymagany.toFixed(3)}`);
     for (const w of z.kreski) if (Math.abs(w - kreskaNoza) > 1e-9) bledy.push(`${opis}: kreska ${w} ≠ kreska noża ${kreskaNoza}`);
     for (const c of [...z.kolory, ...noz.kolory]) if (c !== kafle.glif) bledy.push(`${opis}: kolor ${c} ≠ kolor noża i glifu kafla ${kafle.glif}`);
     const polKreski = Math.max(...z.kreski) / 2;
     const margines = Math.min(o.x0 - kafel.x, o.y0 - kafel.y, kafel.x + kafel.w - o.x1, kafel.y + kafel.h - o.y1) - polKreski;
-    // Margines 4 j.św. wiąże proporcje świata; gdy podłoga LOD1 powiększa znacznik, wymagany jest
+    // Margines 4 j.św. wiąże proporcje świata; gdy podłoga ekranu powiększa znacznik, wymagany jest
     // tusz w kaflu (≥ 0) — kafel 24,5 px na skali 0,51 nie mieści znacznika 8 px z marginesem 4 j.św.
     const marginesWymagany = podlogaCzynna ? 0 : MARGINES;
     if (margines < marginesWymagany - 1e-9) bledy.push(`${opis}: tusz ${margines.toFixed(2)} j.św. od krawędzi kafla < ${marginesWymagany}`);
@@ -319,7 +323,7 @@ function naruszenia(
       let d = Infinity;
       for (const p of probki(a)) for (const q of pb) d = Math.min(d, Math.hypot(p[0] - q[0], p[1] - q[1]));
       const tusz = d - Math.max(...a.kreski) / 2 - Math.max(...b.kreski) / 2;
-      const wymagany = podlogaKafla(lod, skala) ? 0 : ODSTEP;
+      const wymagany = podlogaKafla(skala) ? 0 : ODSTEP;
       if (tusz < wymagany - 0.05) {
         bledy.push(`znaczniki ${grupy[i].getAttribute('data-znacznik-rodzaj')} i ${grupy[j].getAttribute('data-znacznik-rodzaj')}: tusz ${tusz.toFixed(2)} j.św. < ${wymagany} — znaczniki nachodzą na siebie`);
       }
@@ -344,9 +348,9 @@ function naruszenia(
     const g0 = zr[0];
     const kz: P = g0.k === 'line' ? [(g0.x1 + g0.x2) / 2, g0.y1] : [0, 0];
     const fGr = mnoznikGraniczny({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }, kz, kafel, QET_KRESKA_GLIFU / 2);
-    const wymagana = lod === 'L2' ? 12 : Math.max(12, Math.min(bokOczekiwany(lod, skala), 12 * fGr));
-    if (Math.abs(szer - wymagana) > 1e-6) bledy.push(`symbol ziemi: szerokość ${szer.toFixed(3)} j.św. ≠ ${wymagana.toFixed(3)} (podłoga ${PODLOGA_PX.L1} px w granicy kafla)`);
-    if (lod === 'L1' && szer * skala < PODLOGA_PX.L1 - 1e-9) bledy.push(`symbol ziemi: ${(szer * skala).toFixed(2)} px na L1 < 8 px`);
+    const wymagana = Math.max(12, Math.min(bokOczekiwany(skala), 12 * fGr));
+    if (Math.abs(szer - wymagana) > 1e-6) bledy.push(`symbol ziemi: szerokość ${szer.toFixed(3)} j.św. ≠ ${wymagana.toFixed(3)} (podłoga ${PODLOGA_PX} px w granicy kafla)`);
+    if (skala >= SKALA_KSZTALTU_MAKS && skala < 1 && szer * skala < PODLOGA_PX - 1e-9) bledy.push(`symbol ziemi: ${(szer * skala).toFixed(2)} px przy skali ${skala} < 8 px`);
   }
   // Człon wysuwny: szewrony nad (w górę) i pod kaflem (w dół), szerokość z podłogą w granicy
   // pasma. Intencja „szewrony nie niosą stanu wyłącznika” (uwaga właściciela 2026-11-04 pkt 3)
@@ -388,23 +392,26 @@ function naruszenia(
       const fGr = mnoznikGraniczny({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }, [symbol.szerokosc / 2, y0 + symbol.czlon.pasmo / 2], obszar, QET_KRESKA_GLIFU / 2);
       // Szewron kafla członu ma w proporcjach świata szerokość z rysunku (`szer0`, pół boku kafla
       // członu wg manifestu) i rośnie TYM SAMYM mnożnikiem co znacznik rodzaju na kaflu wyłącznika
-      // (bok znacznika / 12) — proporcja szewron : „×” jest ta sama na każdym LOD (kształt zostaje),
+      // (bok znacznika / 12) — proporcja szewron : „×” jest ta sama przy każdej skali (kształt zostaje),
       // w granicy kafla członu.
       const szer0 = Math.max(...xs) - Math.min(...xs);
-      const mnoznik = lod === 'L2' ? 1 : Math.max(1, Math.min(bokOczekiwany(lod, skala) / 12, fGr));
+      const mnoznik = Math.max(1, Math.min(bokOczekiwany(skala) / 12, fGr));
       const wymagana = szer0 * mnoznik;
       if (Math.abs(szer - wymagana) > 1e-6) bledy.push(`człon wysuwny: szewron ${szer.toFixed(3)} j.św. ≠ ${wymagana.toFixed(3)} (mnożnik znacznika w granicy kafla członu)`);
       if (szer < szer0 - 1e-6) bledy.push(`człon wysuwny: szewron ${szer.toFixed(2)} j.św. mniejszy niż w proporcjach świata (${szer0}) — pomniejszony zamiast uproszczony`);
     }
   }
-  // Detale wg LOD (jedna tabela): napęd i znak niepewnego stanu.
+  // Detale-pismo kafla (jedna reguła rozmiaru ekranowego): napęd i znak niepewnego stanu.
   const naped = doc.querySelector('[data-qet="osprzet"]');
   const zNapedem = symbol.osprzet.length > 0;
-  if (Boolean(naped) !== (zNapedem && DETALE_WG_LOD[lod].naped)) bledy.push(`napęd „M” ${naped ? 'rysowany' : 'zdjęty'} na ${lod} — tabela detali LOD: ${zNapedem && DETALE_WG_LOD[lod].naped ? 'rysowany' : 'zdjęty'}`);
+  const rozmiarNapedu = ROZMIAR_NAPEDU[id];
+  if (zNapedem && rozmiarNapedu === undefined) bledy.push(`${id}: osprzęt napędu bez wpisu w wyroczni ROZMIAR_NAPEDU`);
+  const napedWymagany = zNapedem && detalWidoczny(rozmiarNapedu ?? Number.NaN, skala);
+  if (Boolean(naped) !== napedWymagany) bledy.push(`napęd „M” ${naped ? 'rysowany' : 'zdjęty'} przy skali ${skala} — reguła pisma: ${napedWymagany ? 'rysowany' : 'zdjęty'}`);
   const stan = doc.querySelector('[data-kafel-stanu]')?.getAttribute('data-kafel-stanu');
   const znak = doc.querySelector('[data-kafel="znak"]');
-  const znakWymagany = DETALE_WG_LOD[lod].znak && (stan === 'nieustalony' || stan === 'bledny');
-  if (Boolean(znak) !== znakWymagany) bledy.push(`znak stanu niepewnego ${znak ? 'rysowany' : 'zdjęty'} na ${lod} (kafel ${stan}) — tabela detali LOD: ${znakWymagany ? 'rysowany' : 'zdjęty'}`);
+  const znakWymagany = detalWidoczny(PISMO_ZNAKU, skala) && (stan === 'nieustalony' || stan === 'bledny');
+  if (Boolean(znak) !== znakWymagany) bledy.push(`znak stanu niepewnego ${znak ? 'rysowany' : 'zdjęty'} przy skali ${skala} (kafel ${stan}) — reguła pisma: ${znakWymagany ? 'rysowany' : 'zdjęty'}`);
   return bledy;
 }
 
@@ -460,22 +467,22 @@ describe('znacznik rodzaju aparatu — tabela właściciela pokrywa każdy łąc
   }
 });
 
-describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', () => {
+describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × skala', () => {
   const sygnatury = new Map<RodzajZnacznika, Set<string>>();
   const rozmiary = new Map<string, Set<string>>();
   for (const [wiersz, id] of SYMBOLE) {
     for (const state of STANY) {
       for (const [motyw, kafle] of MOTYWY) {
-        for (const [nazwaLod, lod, skala] of LODY) {
-          it(`${wiersz.rodzaj} (${id}) · ${state ?? 'brak stanu'} · ${motyw} · ${nazwaLod} (skala ${skala.toFixed(2)})`, () => {
-            const doc = rysuj(id, state, kafle, skala, lod);
-            expect(naruszenia(doc, id, kafle, lod, skala)).toEqual([]);
+        for (const [nazwaSkali, skala] of SKALE) {
+          it(`${wiersz.rodzaj} (${id}) · ${state ?? 'brak stanu'} · ${motyw} · skala ${nazwaSkali}`, () => {
+            const doc = rysuj(id, state, kafle, skala);
+            expect(naruszenia(doc, id, kafle, skala)).toEqual([]);
             for (const g of doc.querySelectorAll('[data-qet="znacznik"]')) {
               const rodzaj = g.getAttribute('data-znacznik-rodzaj') as RodzajZnacznika;
               const z = ksztalt(g);
               const o = obwiednia(z);
               if (!sygnatury.has(rodzaj)) sygnatury.set(rodzaj, new Set());
-              const klucz = `${rodzaj}@${nazwaLod}`;
+              const klucz = `${rodzaj}@${nazwaSkali}`;
               if (!rozmiary.has(klucz)) rozmiary.set(klucz, new Set());
               sygnatury.get(rodzaj)!.add(sygnatura(z));
               // Proporcje rodzaju: bok obwiedni (większy wymiar) i stosunek boków (okrąg, krzyżyk
@@ -490,17 +497,17 @@ describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', 
     }
   }
 
-  it('spójność: ten sam rodzaj = ta sama sygnatura w każdym LOD i te same proporcje w każdym symbolu, stanie i motywie danego LOD; różne rodzaje rozróżnialne', () => {
+  it('spójność: ten sam rodzaj = ta sama sygnatura w każdej skali i te same proporcje w każdym symbolu, stanie i motywie danej skali; różne rodzaje rozróżnialne', () => {
     expect([...sygnatury.keys()].sort()).toEqual(['odlacznik', 'rozlacznik', 'uziemnik', 'wylacznik']);
     for (const [rodzaj, zbior] of sygnatury) expect([...zbior], rodzaj).toEqual([SYGNATURA[rodzaj]]);
     for (const [rodzaj, zbior] of rozmiary) expect(zbior.size, `${rodzaj}: ${[...zbior].join(' · ')}`).toBe(1);
-    // Wszystkie rodzaje mają ten sam bok znacznika na danym poziomie (jeden rozmiar kafla);
-    // stosunek boków rodzaju jest ten sam na każdym poziomie (znacznik rośnie jednokładnie).
-    // LOD0 na skali 0,3: granica kafla zatrzymuje każdy rodzaj w innym miejscu (kotwica rodzaju) —
+    // Wszystkie rodzaje mają ten sam bok znacznika przy danej skali (jeden rozmiar kafla);
+    // stosunek boków rodzaju jest ten sam przy każdej skali (znacznik rośnie jednokładnie).
+    // Skala 0,3: granica kafla zatrzymuje każdy rodzaj w innym miejscu (kotwica rodzaju) —
     // bok wiąże wyrocznia granicy w `naruszenia`, nie równość rodzajów.
-    for (const [nazwaLod] of LODY.filter(([n]) => n !== 'L0 dół')) {
-      const boki = [...rozmiary].filter(([k]) => k.endsWith(`@${nazwaLod}`)).map(([, z]) => [...z][0].split(':')[0]);
-      expect(new Set(boki).size, nazwaLod).toBe(1);
+    for (const [nazwaSkali] of SKALE.filter(([n]) => n !== '0,30')) {
+      const boki = [...rozmiary].filter(([k]) => k.endsWith(`@${nazwaSkali}`)).map(([, z]) => [...z][0].split(':')[0]);
+      expect(new Set(boki).size, nazwaSkali).toBe(1);
     }
     for (const r of sygnatury.keys()) {
       const stosunki = [...rozmiary].filter(([k]) => k.startsWith(`${r}@`)).map(([, z]) => [...z][0].split(':')[1]);
@@ -516,7 +523,7 @@ describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', 
 
 describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
   const [, kafle] = MOTYWY[0];
-  const [, lod, skala] = LODY[4];
+  const [, skala] = SKALE[4];
 
   function skaluj(g: Element, k: number): void {
     const o = obwiednia(ksztalt(g));
@@ -616,72 +623,74 @@ describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
 
   for (const [opis, id, state, psuj, oczekiwany] of PRZYPADKI) {
     it(opis, () => {
-      const doc = rysuj(id, state, kafle, skala, lod);
-      expect(naruszenia(doc, id, kafle, lod, skala), 'przed iniekcją').toEqual([]);
+      const doc = rysuj(id, state, kafle, skala);
+      expect(naruszenia(doc, id, kafle, skala), 'przed iniekcją').toEqual([]);
       psuj(doc);
-      const wynik = naruszenia(doc, id, kafle, lod, skala);
+      const wynik = naruszenia(doc, id, kafle, skala);
       expect(wynik.join('\n')).toMatch(oczekiwany);
     });
   }
 
   // Stan sprzed rozstrzygnięcia UX04-KRESKA-PIKTOGRAMU-KAFLA: piktogram kafla dostawał kompensację
-  // kreski kanwy (`strokeScaleFactor`). Na dolnym brzegu LOD2 tusz okręgu odłącznika schodzi pod
-  // margines 4 j.św., a przy wejściu w LOD1 ramiona krzyżyka wyłącznika zlewają się z nożem.
-  for (const [lodI, skalaI, idI, oczekiwanyI] of [
-    ['L2', LODY[4][2], 'qetThreePositionSwitch', /od krawędzi kafla < 4/],
-    ['L1', LODY[3][2], 'qetBreaker', /nachodzi na nóż/],
+  // kreski kanwy (`strokeScaleFactor`). Przy skali 1,02 tusz okręgu odłącznika schodzi pod
+  // margines 4 j.św., a przy 0,69 ramiona krzyżyka wyłącznika zlewają się z nożem.
+  for (const [nazwaI, skalaI, idI, oczekiwanyI] of [
+    ['1,02', SKALE[4][1], 'qetThreePositionSwitch', /od krawędzi kafla < 4/],
+    ['0,69', SKALE[3][1], 'qetBreaker', /nachodzi na nóż/],
   ] as const) {
-    it(`kompensacja kreski na piktogramie kafla (${lodI}, ${idI}) — czerwony`, () => {
-      const doc = rysuj(idI, 'closed', kafle, skalaI, lodI);
-      expect(naruszenia(doc, idI, kafle, lodI, skalaI), 'przed iniekcją').toEqual([]);
+    it(`kompensacja kreski na piktogramie kafla (skala ${nazwaI}, ${idI}) — czerwony`, () => {
+      const doc = rysuj(idI, 'closed', kafle, skalaI);
+      expect(naruszenia(doc, idI, kafle, skalaI), 'przed iniekcją').toEqual([]);
       const k = strokeScaleFactor(skalaI);
       expect(k).toBeGreaterThan(1);
       for (const n of doc.querySelectorAll('[data-qet="noz"] [stroke-width], [data-qet="znacznik"] [stroke-width]')) {
         n.setAttribute('stroke-width', String(liczba(n, 'stroke-width') * k));
       }
-      expect(naruszenia(doc, idI, kafle, lodI, skalaI).join('\n')).toMatch(oczekiwanyI);
+      expect(naruszenia(doc, idI, kafle, skalaI).join('\n')).toMatch(oczekiwanyI);
     });
   }
 
-  it('podłoga ekranu: znacznik 12 j.św. na dolnym brzegu LOD2 ma 12,24 px (≥ 10), przy wejściu w LOD1 8,28 px (≥ 8)', () => {
-    expect(12 * LODY[4][2]).toBeCloseTo(12.24, 9);
-    expect(12 * LODY[3][2]).toBeCloseTo(8.28, 9);
-    // Iniekcja: znacznik o dolnym brzegu przedziału udziału (22 % → 10,56 j.św.) przy wejściu
-    // w LOD1 ma 7,29 px < 8 — podłoga LOD1 jest czynna, nie trywialna.
-    expect(0.22 * QET_BOK_KAFLA_STANU * LODY[3][2]).toBeLessThan(PODLOGA_PX.L1);
-    expect(PODLOGA_ZNACZNIKA_LOD1_PX).toBe(PODLOGA_PX.L1);
-    // Dolny brzeg LOD1 (0,51): znacznik ma 8 px = 15,69 j.św. = 32,7 % kafla.
-    expect(skalaZnacznikaKafla(LODY[2][2], 1) * 12 * LODY[2][2]).toBeCloseTo(8, 9);
-    // LOD0 — wielkość z dolnego brzegu LOD1 (uwaga właściciela 2026-11-04 pkt 5); LOD2 — proporcje świata.
-    expect(skalaZnacznikaKafla(LODY[1][2], 0) * 12 * 0.51).toBeCloseTo(8, 9);
-    expect(skalaZnacznikaKafla(LODY[4][2], 2)).toBe(1);
+  it('podłoga ekranu: znacznik 12 j.św. przy skali 1,02 ma 12,24 px, przy 0,69 — 8,28 px (≥ 8)', () => {
+    expect(12 * SKALE[4][1]).toBeCloseTo(12.24, 9);
+    expect(12 * SKALE[3][1]).toBeCloseTo(8.28, 9);
+    // Iniekcja: znacznik o dolnym brzegu przedziału udziału (22 % → 10,56 j.św.) przy 0,69
+    // ma 7,29 px < 8 — podłoga jest czynna, nie trywialna.
+    expect(0.22 * QET_BOK_KAFLA_STANU * SKALE[3][1]).toBeLessThan(PODLOGA_PX);
+    expect(PODLOGA_ZNACZNIKA_PX).toBe(PODLOGA_PX);
+    expect(SKALA_NAJWIEKSZEGO_ZNACZNIKA).toBe(SKALA_KSZTALTU_MAKS);
+    // 0,51: znacznik ma 8 px = 15,69 j.św. = 32,7 % kafla.
+    expect(skalaZnacznikaKafla(SKALE[2][1]) * 12 * SKALE[2][1]).toBeCloseTo(8, 9);
+    // 0,45 — wielkość z 0,51 (uwaga właściciela 2026-11-04 pkt 5); 1,02 — proporcje świata.
+    expect(skalaZnacznikaKafla(SKALE[1][1]) * 12 * 0.51).toBeCloseTo(8, 9);
+    expect(skalaZnacznikaKafla(SKALE[4][1])).toBe(1);
   });
 
-  // Iniekcja „symbol pomniejszony zamiast uproszczony” (uwaga właściciela 2026-11-04 pkt 5): na LOD0
-  // kafel rysowany jak na LOD2 — znacznik w proporcjach świata (bez podłogi) i z pełnym detalem.
+  // Iniekcja „symbol pomniejszony zamiast uproszczony” (uwaga właściciela 2026-11-04 pkt 5): przy
+  // skali 0,45 kafel rysowany jak bez kamery — znacznik w proporcjach świata (bez podłogi) i z
+  // pełnym detalem.
   for (const id of ['qetBreakerZNapedem', 'qetDisconnector', 'qetBreakerWysuwny', 'qetEarthSwitch'] as const) {
-    it(`LOD0: symbol pomniejszony zamiast uproszczonego (${id}) — czerwony`, () => {
-      const [, lodD, skalaD] = LODY[1];
-      expect(naruszenia(rysuj(id, 'unknown', kafle, skalaD, lodD), id, kafle, lodD, skalaD)).toEqual([]);
+    it(`skala 0,45: symbol pomniejszony zamiast uproszczonego (${id}) — czerwony`, () => {
+      const [, skalaD] = SKALE[1];
+      expect(naruszenia(rysuj(id, 'unknown', kafle, skalaD), id, kafle, skalaD)).toEqual([]);
       const markup = renderToStaticMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
           {(() => {
             const Glyph = SYMBOL_GLYPHS[id];
-            return <Glyph x={0} y={0} stroke="#123456" state="unknown" kafleStanu={kafle} strokeScale={strokeScaleFactor(skalaD)} skalaZnacznika={1} lod={2} />;
+            return <Glyph x={0} y={0} stroke="#123456" state="unknown" kafleStanu={kafle} strokeScale={strokeScaleFactor(skalaD)} skalaZnacznika={1} />;
           })()}
         </svg>,
       );
       const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
-      expect(naruszenia(doc, id, kafle, lodD, skalaD).join('\n')).toMatch(/px na L0 < 8 px|szewron .* ≠|szerokość .* ≠|napęd „M” rysowany|znak stanu niepewnego rysowany/);
+      expect(naruszenia(doc, id, kafle, skalaD).join('\n')).toMatch(/px przy skali 0.45 < 8 px|szewron .* ≠|szerokość .* ≠|napęd „M” rysowany|znak stanu niepewnego rysowany/);
     });
   }
 
   for (const id of ['qetBreaker', 'qetDisconnector', 'qetThreePositionSwitch'] as const) {
-    it(`podłoga LOD1 wyłączona (mnożnik 1 na skali 0,51, ${id}) — czerwony`, () => {
-      const [, lodD, skalaD] = LODY[2];
-      expect(naruszenia(rysuj(id, 'open', kafle, skalaD, lodD), id, kafle, lodD, skalaD)).toEqual([]);
-      const doc = rysuj(id, 'open', kafle, skalaD, lodD, 1);
-      expect(naruszenia(doc, id, kafle, lodD, skalaD).join('\n')).toMatch(/px na L1 < 8 px/);
+    it(`podłoga wyłączona (mnożnik 1 na skali 0,51, ${id}) — czerwony`, () => {
+      const [, skalaD] = SKALE[2];
+      expect(naruszenia(rysuj(id, 'open', kafle, skalaD), id, kafle, skalaD)).toEqual([]);
+      const doc = rysuj(id, 'open', kafle, skalaD, 1);
+      expect(naruszenia(doc, id, kafle, skalaD).join('\n')).toMatch(/px przy skali 0.51 < 8 px/);
     });
   }
 });

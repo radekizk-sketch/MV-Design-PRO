@@ -122,7 +122,7 @@ function renderKanwyZInspektorem(enm: EnergyNetworkModel) {
   useSnapshotStore.setState({ snapshot: enm });
   const wynik = render(
     <>
-      <SldCanvasV3Workspace width={SZER} height={WYS} lodOverride={2} />
+      <SldCanvasV3Workspace width={SZER} height={WYS} />
       <InspektorKanwyTestowy />
     </>,
   );
@@ -142,7 +142,7 @@ describe('funkcja tylko w rejestrze — karta pola, edytor nastaw, blok przekaź
   });
 
   it.each([true, false])('blok przekaźnika na schemacie × funkcja włączona=%s', (wlaczona) => {
-    const scena = buildSceneV3(model(zFunkcjaRejestru(wlaczona)), 2);
+    const scena = buildSceneV3(model(zFunkcjaRejestru(wlaczona)));
     const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === POLE && s.symbolId === 'protectionRelay');
     expect(przekaznik, 'przekaźnik pola na scenie').toBeDefined();
     const wiersze = scena.labels.filter((l) => /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${POLE}#`));

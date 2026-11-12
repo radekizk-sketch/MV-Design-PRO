@@ -47,38 +47,31 @@ const fixturePath = resolve(
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const LODS = [0, 1, 2] as const;
 
 describe('SCHEMAT-10 S2 — wyrocznia ZERO-KOLIZJI (D2, sieć 52+ stacji)', () => {
-  for (const lod of LODS) {
-    it(`LOD ${lod}: zero kolizji etykieta↔etykieta i etykieta↔symbol`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const cols = labelCollisions(scene);
-      // Diagnostyka czytelna przy regresji (pierwsze 5 par).
-      expect(cols.slice(0, 5), JSON.stringify(cols.slice(0, 5))).toEqual([]);
-      expect(noLabelCollisions(scene)).toBe(true);
-    });
-  }
+  it(`zero kolizji etykieta↔etykieta i etykieta↔symbol`, () => {
+    const scene = buildSceneV3(enm);
+    const cols = labelCollisions(scene);
+    // Diagnostyka czytelna przy regresji (pierwsze 5 par).
+    expect(cols.slice(0, 5), JSON.stringify(cols.slice(0, 5))).toEqual([]);
+    expect(noLabelCollisions(scene)).toBe(true);
+  });
 });
 
 describe('SCHEMAT-10 S2 — słownik PL enumów (D4, brak surowych enumów)', () => {
-  for (const lod of LODS) {
-    it(`LOD ${lod}: zero surowych enumów (OVERHEAD/…) w treści etykiet`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(rawEnumTokenLabels(scene).map((l) => l.text)).toEqual([]);
-      expect(noRawEnumTokensInLabels(scene)).toBe(true);
-    });
-  }
+  it(`zero surowych enumów (OVERHEAD/…) w treści etykiet`, () => {
+    const scene = buildSceneV3(enm);
+    expect(rawEnumTokenLabels(scene).map((l) => l.text)).toEqual([]);
+    expect(noRawEnumTokensInLabels(scene)).toBe(true);
+  });
 });
 
 describe('SCHEMAT-10 S2 — manhattanizacja (D5, zero ukośnych odcinków)', () => {
-  for (const lod of LODS) {
-    it(`LOD ${lod}: wszystkie segmenty ortogonalne`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(nonOrthogonalSegmentIndices(scene)).toEqual([]);
-      expect(allSegmentsOrthogonal(scene)).toBe(true);
-    });
-  }
+  it(`wszystkie segmenty ortogonalne`, () => {
+    const scene = buildSceneV3(enm);
+    expect(nonOrthogonalSegmentIndices(scene)).toEqual([]);
+    expect(allSegmentsOrthogonal(scene)).toBe(true);
+  });
 });
 
 describe('SCHEMAT-10 S2 — kontrola negatywna (wyrocznie nie są martwe)', () => {
@@ -100,13 +93,13 @@ describe('SCHEMAT-10 S2 — kontrola negatywna (wyrocznie nie są martwe)', () =
       junctions: [],
       crossings: [],
       bbox: { x: 0, y: 0, width: 0, height: 0 },
-      meta: buildSceneV3(enm, 0).meta,
+      meta: buildSceneV3(enm).meta,
     };
     expect(noRawEnumTokensInLabels(scene)).toBe(false);
   });
 
   it('ukośny odcinek OBLEWA D5', () => {
-    const base = buildSceneV3(enm, 0);
+    const base = buildSceneV3(enm);
     const scene: SceneV3 = {
       ...base,
       segments: [{ points: [{ x: 0, y: 0 }, { x: 40, y: 40 }] }],
@@ -115,7 +108,7 @@ describe('SCHEMAT-10 S2 — kontrola negatywna (wyrocznie nie są martwe)', () =
   });
 
   it('nachodzące etykiety OBLEWAJĄ D2', () => {
-    const base = buildSceneV3(enm, 0);
+    const base = buildSceneV3(enm);
     const scene: SceneV3 = {
       ...base,
       symbols: [],
@@ -128,33 +121,24 @@ describe('SCHEMAT-10 S2 — kontrola negatywna (wyrocznie nie są martwe)', () =
   });
 });
 
-describe('SCHEMAT-10 S2 — reguły gęstości (D3: pełne podpisy przęseł TYLKO na L2)', () => {
+// Reguła D3 (pełne podpisy przęseł tylko na poziomie pełnego szczegółu) przeszła z SCENY do
+// GĘSTOŚCI INFORMACJI kanwy: jedna scena (karta SLD-SKALA-I-NAWIGACJA R1/R3) niesie podpis każdego
+// przęsła zawsze, a kanwa rysuje go wtedy, gdy jego pismo jest czytelne na ekranie
+// (`canvas/gestoscInformacji.ts`). Dawne przypadki „L0/L1: zero podpisów przęseł" przypinały
+// zależność sceny od poziomu — tej już nie ma.
+describe('SCHEMAT-10 S2 — podpisy przęseł w jednej scenie', () => {
   const spanCount = (scene: SceneV3): number =>
     scene.labels.filter((l) => l.ownerKind === 'segment-span' || l.ownerKind === 'segment-lateral').length;
 
-  it('L0: zero podpisów katalogowych przęseł (≤1× na korytarz trywialnie spełnione)', () => {
-    expect(spanCount(buildSceneV3(enm, 0))).toBe(0);
-  });
-
-  it('L1 „Widok operatorski": brak pełnych podpisów per przęsło (agregacja ≤1× na korytarz — dziś 0)', () => {
-    // Reguła D3/§3: pełne podpisy per przęsło (typ·przekrój·długość) są WYŁĄCZNIE
-    // na L2. Na L1 liczba etykiet przęseł per korytarz ≤1 — dziś 0 (spełnia ≤1);
-    // emisja pojedynczego zagregowanego typu korytarza na L1 to osobna decyzja
-    // wizualna (przegląd właściciela), patrz raport S2.
-    expect(spanCount(buildSceneV3(enm, 1))).toBe(0);
-  });
-
-  it('L2 „Stacje i aparatura": pełne podpisy per przęsło OBECNE (i tylko tu)', () => {
-    expect(spanCount(buildSceneV3(enm, 2))).toBeGreaterThan(0);
+  it('pełne podpisy per przęsło OBECNE w scenie', () => {
+    expect(spanCount(buildSceneV3(enm))).toBeGreaterThan(0);
   });
 });
 
 describe('SCHEMAT-10 S2 — silnik declutter jest TOŻSAMOŚCIĄ na czystej fixturze', () => {
-  for (const lod of LODS) {
-    it(`LOD ${lod}: brak notatki label.declutter (0 odrzuconych)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const declutterNotes = scene.meta.stopNotes.filter((n) => n.startsWith('label.declutter'));
-      expect(declutterNotes).toEqual([]);
-    });
-  }
+  it(`brak notatki label.declutter (0 odrzuconych)`, () => {
+    const scene = buildSceneV3(enm);
+    const declutterNotes = scene.meta.stopNotes.filter((n) => n.startsWith('label.declutter'));
+    expect(declutterNotes).toEqual([]);
+  });
 });

@@ -554,9 +554,9 @@ export interface ElementyBlokuPola {
 const ODSTEP_NUMERU_URZADZENIA_OD_LINII = 2;
 
 /**
- * Elementy bloku na poziomie szczegółu: `'full'` (LOD2) — ramka, wiersze, linia wyłączania,
- * „52", linie pomiarowe i braki danych; `'circle-only'` (LOD1) — ramka tego samego kształtu
- * bez wierszy i linia wyłączania (blok połączony z łącznikiem, który wyłącza).
+ * Elementy bloku — ramka, wiersze, linia wyłączania, „52", linie pomiarowe i braki danych.
+ * Jedna postać bloku w każdej skali (R1 karty SLD-SKALA-I-NAWIGACJA): o czytelności kodów
+ * decyduje plan etykiet kanwy wg rozmiaru ekranowego pisma, nie odmiana bloku.
  *
  * Braki danych (bez zmian semantyki): brak łącznika wyłączanego — `trip_link_unresolved`; pole
  * z powiązaniami — źródło bez zacisku wtórnego (`measurement_source_port_absent:<ref>`) i brak
@@ -566,45 +566,41 @@ const ODSTEP_NUMERU_URZADZENIA_OD_LINII = 2;
 export function elementyBlokuZabezpieczen(
   w: WejscieBlokuPola,
   uklad: UkladBlokuPola,
-  annotationDetail: 'full' | 'circle-only',
 ): ElementyBlokuPola {
-  const pelny = annotationDetail === 'full';
   const { ramka } = uklad;
-  const wiersze = pelny ? uklad.wiersze : [];
+  const wiersze = uklad.wiersze;
   const wejscia: RouteVertex[] = [];
   if (uklad.liniaWylaczania) wejscia.push(uklad.liniaWylaczania[uklad.liniaWylaczania.length - 1]);
-  if (pelny) for (const t of uklad.liniePomiarowe) wejscia.push(t[t.length - 1]);
+  for (const t of uklad.liniePomiarowe) wejscia.push(t[t.length - 1]);
   const missingData: string[] = [];
   let numerUrzadzenia: SimpleAnchoredOwnerInput | null = null;
   const wylacznik = w.marking.tripTarget;
-  if (pelny) {
-    if (!wylacznik) missingData.push('bay.protection.trip_link_unresolved');
-    if (w.powiazany) {
-      for (const zrodlo of uklad.zrodlaBezZacisku) {
-        missingData.push(`bay.protection.measurement_source_port_absent:${zrodlo.deviceRef ?? zrodlo.symbolId}`);
-      }
-      if (w.marking.zrodlaPomiaru.length === 0) missingData.push('bay.protection.measurement_link_unresolved');
-    } else if (!w.marking.ctAnchor) {
-      missingData.push('bay.protection.measurement_link_unresolved');
+  if (!wylacznik) missingData.push('bay.protection.trip_link_unresolved');
+  if (w.powiazany) {
+    for (const zrodlo of uklad.zrodlaBezZacisku) {
+      missingData.push(`bay.protection.measurement_source_port_absent:${zrodlo.deviceRef ?? zrodlo.symbolId}`);
     }
-    // Numer urządzenia „52" (§17.1) przy wyłączniku — WYŁĄCZNIE gdy linia wyłączania kończy się
-    // na porcie toru łącznika; linia do cewki wyłączającej sama wskazuje aparat. Napis stoi NAD
-    // linią wyłączania przy wyłączniku (strona `above`: pismo powiększane rośnie w górę, od
-    // linii) — kotwica na wysokości linii ze stroną `right` centrowała napis na linii, więc
-    // linia przekreślała numer z konstrukcji (plan etykiet: kolizja napis↔tor na każdym polu
-    // z linią wyłączania do portu toru).
-    if (wylacznik && uklad.liniaWylaczania && !uklad.liniaDoCewki) {
-      numerUrzadzenia = {
-        ownerRef: `${w.bayRef}#device-number`,
-        ownerKind: 'protection',
-        text: '52',
-        labelClass: 't4',
-        anchor: { x: wylacznik.x + SYMBOL_DEFS[wylacznik.symbolId].width, y: uklad.liniaWylaczania[0].y },
-        placement: 'above',
-        clearance: ODSTEP_NUMERU_URZADZENIA_OD_LINII,
-        wyrownanieTekstu: 'poczatek',
-      };
-    }
+    if (w.marking.zrodlaPomiaru.length === 0) missingData.push('bay.protection.measurement_link_unresolved');
+  } else if (!w.marking.ctAnchor) {
+    missingData.push('bay.protection.measurement_link_unresolved');
+  }
+  // Numer urządzenia „52" (§17.1) przy wyłączniku — WYŁĄCZNIE gdy linia wyłączania kończy się
+  // na porcie toru łącznika; linia do cewki wyłączającej sama wskazuje aparat. Napis stoi NAD
+  // linią wyłączania przy wyłączniku (strona `above`: pismo powiększane rośnie w górę, od
+  // linii) — kotwica na wysokości linii ze stroną `right` centrowała napis na linii, więc
+  // linia przekreślała numer z konstrukcji (plan etykiet: kolizja napis↔tor na każdym polu
+  // z linią wyłączania do portu toru).
+  if (wylacznik && uklad.liniaWylaczania && !uklad.liniaDoCewki) {
+    numerUrzadzenia = {
+      ownerRef: `${w.bayRef}#device-number`,
+      ownerKind: 'protection',
+      text: '52',
+      labelClass: 't4',
+      anchor: { x: wylacznik.x + SYMBOL_DEFS[wylacznik.symbolId].width, y: uklad.liniaWylaczania[0].y },
+      placement: 'above',
+      clearance: ODSTEP_NUMERU_URZADZENIA_OD_LINII,
+      wyrownanieTekstu: 'poczatek',
+    };
   }
   return {
     symbol: {
@@ -617,9 +613,10 @@ export function elementyBlokuZabezpieczen(
     wiersze,
     liniaWylaczania: uklad.liniaWylaczania ? { ownerRef: `${w.bayRef}#trip-line`, points: uklad.liniaWylaczania } : null,
     numerUrzadzenia,
-    liniePomiarowe: pelny
-      ? uklad.liniePomiarowe.map((points, i) => ({ ownerRef: `${w.bayRef}#measurement-link${i === 0 ? '' : `-${i + 1}`}`, points }))
-      : [],
+    liniePomiarowe: uklad.liniePomiarowe.map((points, i) => ({
+      ownerRef: `${w.bayRef}#measurement-link${i === 0 ? '' : `-${i + 1}`}`,
+      points,
+    })),
     missingData,
   };
 }

@@ -25,8 +25,7 @@ import {
   busbarLabelPathClearanceGaps,
   noLabelCollisions,
   noLabelWireCollisions,
-  type SceneLod,
-} from '../buildScene';
+  } from '../buildScene';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../../layout/clearances';
 import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX, isLabelReadableAtScale } from '../../core/text';
 
@@ -44,25 +43,22 @@ const FIXTURY: readonly (readonly [string, EnergyNetworkModel])[] = [
   ['openTrunkChain', loadEnm('openTrunkChain.enm.json')],
 ];
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
 
 describe('prześwit etykiet szyn od toru mocy (KD-8 poz. 5)', () => {
   for (const [nazwa, enm] of FIXTURY) {
-    for (const lod of LODS) {
-      it(`${nazwa} LOD ${lod}: każda etykieta szyny trzyma ≥ ${BUSBAR_LABEL_PATH_CLEARANCE} px świata`, () => {
-        const scene = buildSceneV3(enm, lod);
-        const gaps = busbarLabelPathClearanceGaps(scene, BUSBAR_LABEL_PATH_CLEARANCE);
-        expect(
-          gaps,
-          gaps.map((g) => `${g.text} (${g.ownerRef}) = ${g.clearance} px przy ${g.segmentOwnerRef}`).join('; '),
-        ).toEqual([]);
-        expect(allBusbarLabelsClearOfPath(scene, BUSBAR_LABEL_PATH_CLEARANCE)).toBe(true);
-      });
-    }
+    it(`${nazwa}: każda etykieta szyny trzyma ≥ ${BUSBAR_LABEL_PATH_CLEARANCE} px świata`, () => {
+      const scene = buildSceneV3(enm);
+      const gaps = busbarLabelPathClearanceGaps(scene, BUSBAR_LABEL_PATH_CLEARANCE);
+      expect(
+        gaps,
+        gaps.map((g) => `${g.text} (${g.ownerRef}) = ${g.clearance} px przy ${g.segmentOwnerRef}`).join('; '),
+      ).toEqual([]);
+      expect(allBusbarLabelsClearOfPath(scene, BUSBAR_LABEL_PATH_CLEARANCE)).toBe(true);
+    });
   }
 
   it('wyrocznia GRYZIE: próg wyższy niż zmierzony prześwit MUSI dać naruszenie', () => {
-    const scene = buildSceneV3(FIXTURY[0][1], 1);
+    const scene = buildSceneV3(FIXTURY[0][1]);
     const gaps = busbarLabelPathClearanceGaps(scene, BUSBAR_LABEL_PATH_CLEARANCE * 4);
     expect(gaps.length).toBeGreaterThan(0);
     expect(gaps[0].clearance).toBeGreaterThanOrEqual(BUSBAR_LABEL_PATH_CLEARANCE);
@@ -75,11 +71,9 @@ describe('prześwit etykiet szyn od toru mocy (KD-8 poz. 5)', () => {
 
   for (const [nazwa, enm] of FIXTURY) {
     it(`${nazwa}: podniesiony prześwit NIE wprowadził kolizji etykieta↔etykieta/symbol/przewód`, () => {
-      for (const lod of LODS) {
-        const scene = buildSceneV3(enm, lod);
-        expect(noLabelCollisions(scene), `${nazwa} LOD ${lod} kolizje etykiet`).toBe(true);
-        expect(noLabelWireCollisions(scene), `${nazwa} LOD ${lod} kolizje z przewodem`).toBe(true);
-      }
+      const scene = buildSceneV3(enm);
+      expect(noLabelCollisions(scene), `${nazwa} kolizje etykiet`).toBe(true);
+      expect(noLabelWireCollisions(scene), `${nazwa} kolizje z przewodem`).toBe(true);
     });
   }
 });

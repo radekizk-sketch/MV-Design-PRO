@@ -19,6 +19,8 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
+import { przyblizDoSkali } from './skalaKamery';
+
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
@@ -222,12 +224,11 @@ test('nawigator: rozwijanie z doku, prostokąt kadru zgodny z viewBox, klik prze
   // musi zmniejszyć prostokąt kadru DOKŁADNIE tym samym czynnikiem (prostokąt
   // jest projekcją viewBox, nie osobnym stanem).
   //
-  // Porównanie ma sens WYŁĄCZNIE w obrębie jednego świata LOD (świat wyższego
-  // poziomu ma własny bbox, więc rzut na minimapę zmienia proporcję razem z
-  // poziomem). Dlatego najpierw wjeżdżamy na poziom NAJWYŻSZY (L2) — nad nim
-  // nie ma czego przełączyć, więc kolejny zoom-in poziomu nie ruszy i pomiar
-  // jest uczciwy. Pętla przy okazji dowodzi, że drabina LOD działa na żywej
-  // aplikacji (K11-B §0.2: reprezentacja przełącza się z zoomem).
+  // Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1): świat
+  // nawigatora jest ten sam przy każdym zoomie, więc proporcja prostokąta
+  // nawigatora do kadru kanwy jest stała. Najpierw natywnie przybliżamy do skali
+  // czytania (kadr węższy niż cała sieć — prostokąt nawigatora ma się z czego
+  // zawęzić), potem mierzymy jeden krok kółka.
   const canvas = page.locator('svg[data-testid="sld-canvas-v3"]');
   const canvasBox = await canvas.boundingBox();
   expect(canvasBox).not.toBeNull();
@@ -235,14 +236,7 @@ test('nawigator: rozwijanie z doku, prostokąt kadru zgodny z viewBox, klik prze
     x: canvasBox!.x + canvasBox!.width / 2,
     y: canvasBox!.y + canvasBox!.height / 2,
   };
-  await page.mouse.move(srodekKanwy.x, srodekKanwy.y);
-  let poziom = await canvas.getAttribute('data-scene-lod');
-  for (let krok = 0; krok < 12 && poziom !== '2'; krok++) {
-    await page.mouse.wheel(0, -200);
-    await page.waitForTimeout(150);
-    poziom = await canvas.getAttribute('data-scene-lod');
-  }
-  expect(poziom).toBe('2');
+  await przyblizDoSkali(page, canvas, srodekKanwy);
 
   const ramkaPrzedZoom = await ramkaNawigatora(page);
   const vbPrzedZoom = await viewBoxKamery(page);
@@ -251,8 +245,6 @@ test('nawigator: rozwijanie z doku, prostokąt kadru zgodny z viewBox, klik prze
   const ramkaPoZoom = await ramkaNawigatora(page);
   const vbPoZoom = await viewBoxKamery(page);
 
-  // Poziom szczegółu bez zmian (L2 to szczyt) ⇒ porównanie w jednym świecie.
-  expect(await canvas.getAttribute('data-scene-lod')).toBe('2');
   // Zoom faktycznie zawęził kadr…
   expect(vbPoZoom.width).toBeLessThan(vbPrzedZoom.width);
   // …i prostokąt nawigatora zawęził się w TEJ SAMEJ proporcji (tolerancja 2%

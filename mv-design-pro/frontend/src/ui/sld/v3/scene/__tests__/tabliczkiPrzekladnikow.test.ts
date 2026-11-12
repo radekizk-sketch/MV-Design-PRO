@@ -170,7 +170,7 @@ function naruszeniaTabliczek(enm: EnergyNetworkModel, scena: SceneV3, rodzaj: Ro
   return n;
 }
 
-const SCENY = new Map(FIKSTURY.map(([nazwa, enm]) => [nazwa, buildSceneV3(enm, 2)] as const));
+const SCENY = new Map(FIKSTURY.map(([nazwa, enm]) => [nazwa, buildSceneV3(enm)] as const));
 
 describe('tabliczki przekładników przy symbolach — scena LOD2 (iloczyn fikstura × rodzaj)', () => {
   for (const [nazwa, enm] of FIKSTURY) {
@@ -184,38 +184,29 @@ describe('tabliczki przekładników przy symbolach — scena LOD2 (iloczyn fikst
   }
 });
 
-describe('odbiór B-02 (pkt 6): opis przekładnika wg LOD (iloczyn fikstura × LOD × rodzaj)', () => {
-  // LOD0 — same symbole; LOD1 — oznaczenia (T1, T2, T3), bez przekładni; LOD2 — oznaczenia
-  // i krótkie przekładnie. Pozostałe podpisy aparatów (Q0, Q1…) — wyłącznie LOD2.
+describe('odbiór B-02 (pkt 6): opis przekładnika w scenie (iloczyn fikstura × rodzaj)', () => {
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) niesie oznaczenia (T1, T2, T3) i krótkie
+  // przekładnie; dawne odmiany „same symbole" (L0) i „oznaczenia bez przekładni" (L1)
+  // zastąpiła gęstość informacji kanwy (klasy „oznaczenia" i „parametry" wg rozmiaru pisma).
   for (const [nazwa, enm] of FIKSTURY) {
-    for (const lod of [0, 1, 2] as const) {
-      it(`${nazwa} · LOD${lod}`, () => {
-        const scena = lod === 2 ? SCENY.get(nazwa)! : buildSceneV3(enm, lod);
-        const n: string[] = [];
-        for (const rodzaj of RODZAJE) {
-          const w = WZORCE[rodzaj];
-          for (const bay of enm.bays ?? []) {
-            for (const d of (bay.primary_devices ?? []).filter(w.maTabliczke)) {
-              const oznaczenie = scena.labels.filter((l) => l.ownerRef === `${bay.ref_id}#etykieta-aparatu-${d.device_ref}`);
-              const tabliczka = scena.labels.filter((l) => l.ownerRef === `${bay.ref_id}#${w.przyrostek}-${d.device_ref}`);
-              const oczekOznaczenie = lod >= 1 && !!d.designation ? 1 : 0;
-              if (oznaczenie.length !== oczekOznaczenie) n.push(`${d.device_ref}: ${oznaczenie.length} oznaczeń (oczekiwano ${oczekOznaczenie})`);
-              if (oczekOznaczenie && oznaczenie[0].text !== d.designation) n.push(`${d.device_ref}: oznaczenie „${oznaczenie[0].text}" ≠ „${d.designation}"`);
-              if (tabliczka.length !== (lod === 2 ? 1 : 0)) n.push(`${d.device_ref}: ${tabliczka.length} przekładni na LOD${lod}`);
-            }
+    it(`${nazwa}`, () => {
+      const scena = SCENY.get(nazwa)!;
+      const n: string[] = [];
+      for (const rodzaj of RODZAJE) {
+        const w = WZORCE[rodzaj];
+        for (const bay of enm.bays ?? []) {
+          for (const d of (bay.primary_devices ?? []).filter(w.maTabliczke)) {
+            const oznaczenie = scena.labels.filter((l) => l.ownerRef === `${bay.ref_id}#etykieta-aparatu-${d.device_ref}`);
+            const tabliczka = scena.labels.filter((l) => l.ownerRef === `${bay.ref_id}#${w.przyrostek}-${d.device_ref}`);
+            const oczekOznaczenie = d.designation ? 1 : 0;
+            if (oznaczenie.length !== oczekOznaczenie) n.push(`${d.device_ref}: ${oznaczenie.length} oznaczeń (oczekiwano ${oczekOznaczenie})`);
+            if (oczekOznaczenie && oznaczenie[0].text !== d.designation) n.push(`${d.device_ref}: oznaczenie „${oznaczenie[0].text}" ≠ „${d.designation}"`);
+            if (tabliczka.length !== 1) n.push(`${d.device_ref}: ${tabliczka.length} przekładni na`);
           }
         }
-        if (lod < 2) {
-          const przekladnikowe = new Set(
-            (enm.bays ?? []).flatMap((b) => (b.primary_devices ?? []).filter((d) => RODZAJE.some((r) => WZORCE[r].maTabliczke(d))).map((d) => `${b.ref_id}#etykieta-aparatu-${d.device_ref}`)),
-          );
-          for (const l of scena.labels) {
-            if (l.ownerRef.includes('#etykieta-aparatu-') && !przekladnikowe.has(l.ownerRef) && !l.unresolved) n.push(`LOD${lod}: podpis aparatu ${l.text} poza przekładnikami`);
-          }
-        }
-        expect(n).toEqual([]);
-      });
-    }
+      }
+      expect(n).toEqual([]);
+    });
   }
 });
 

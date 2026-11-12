@@ -63,7 +63,7 @@ const sceny = new Map<string, SceneV3>();
 function scena(snapshot: EnergyNetworkModel, klucz: string): SceneV3 {
   const gotowa = sceny.get(klucz);
   if (gotowa) return gotowa;
-  const nowa = buildSceneV3(snapshot, 2);
+  const nowa = buildSceneV3(snapshot);
   sceny.set(klucz, nowa);
   return nowa;
 }
@@ -185,9 +185,8 @@ describe('GEOMETRIA-STACJI — sekcje szyn SN z modelu (rodzaj × liczba sekcji 
         for (const ref of szyny) {
           expect(most.get(`${ref}#sn-bus`)).toEqual({ resultRef: ref, kind: 'bus' });
         }
-        // Blok L0 stacji wielosekcyjnej nie dostaje wyniku jednej z sekcji (byłby domysłem).
-        if (szyny.length > 1) expect(most.has(st.ref_id)).toBe(false);
-        else expect(most.get(st.ref_id)?.resultRef).toBe(szyny[0]);
+        // Jedna scena bez symbolu stacji: ref stacji nie jest kluczem mostu (wartość stoi na szynie).
+        expect(most.has(st.ref_id)).toBe(false);
       }
     });
 
@@ -369,7 +368,7 @@ describe('GEOMETRIA-STACJI — aparat {z modelu, brak danych} (tożsamość ze z
     const poleSprzegla = polaSn(bazowy, st).find((p) => p.bay_role === 'COUPLER')!;
     const bezPola = { ...bazowy, bays: (bazowy.bays ?? []).filter((b) => b.ref_id !== poleSprzegla.ref_id) } as EnergyNetworkModel;
     const sprzeglo = (bazowy.branches ?? []).find((g) => g.type === 'bus_coupler' && (st.bus_refs ?? []).includes(g.from_bus_ref ?? ''))!;
-    const symbol = buildSceneV3(bezPola, 2).symbols.find((s) => s.meta?.ownerRef === sprzeglo.ref_id);
+    const symbol = buildSceneV3(bezPola).symbols.find((s) => s.meta?.ownerRef === sprzeglo.ref_id);
     expect(symbol?.state).toBe('closed');
   });
 });
@@ -384,7 +383,7 @@ describe('GEOMETRIA-STACJI — stan sprzęgła {zamknięte, otwarte, nieznane}: 
         ...bazowy,
         branches: (bazowy.branches ?? []).map((g) => (g.ref_id === sprzegloRef ? { ...g, status } : g)),
       } as EnergyNetworkModel;
-      return buildSceneV3(snap, 2).symbols.find((s) => s.meta?.ownerRef === sprzegloRef)?.state;
+      return buildSceneV3(snap).symbols.find((s) => s.meta?.ownerRef === sprzegloRef)?.state;
     });
     expect(stany).toEqual(['closed', 'open', 'unknown']);
   });
@@ -413,7 +412,7 @@ describe('GEOMETRIA-STACJI — stan sprzęgła {zamknięte, otwarte, nieznane}: 
         branches: (bazowy.branches ?? []).map((g) => (g.ref_id === sprzegloRef ? { ...g, status } : g)),
         bays: (bazowy.bays ?? []).map((b) => (b.ref_id === poleSprzegla.ref_id ? { ...b, primary_devices: [aparat] } : b)),
       } as EnergyNetworkModel;
-      return buildSceneV3(snap, 2).symbols.find((s) => s.meta?.ownerRef === sprzegloRef)?.state;
+      return buildSceneV3(snap).symbols.find((s) => s.meta?.ownerRef === sprzegloRef)?.state;
     };
     expect([
       wynik('closed', 'zamkniety'),
@@ -434,7 +433,7 @@ describe('GEOMETRIA-STACJI — GPZ: sprzęgło z gałęzi, szyna WN z szyn model
   it('sprzęgło GPZ rysowane z gałęzi bus_coupler, chociaż model nie ma pola COUPLER', () => {
     expect((GPZ_DWIE_SEKCJE.bays ?? []).some((b) => b.bay_role === 'COUPLER')).toBe(false);
     const sprzeglo = (GPZ_DWIE_SEKCJE.branches ?? []).find((g) => g.type === 'bus_coupler')!;
-    const sc = buildSceneV3(GPZ_DWIE_SEKCJE, 2);
+    const sc = buildSceneV3(GPZ_DWIE_SEKCJE);
     const symbol = sc.symbols.find((s) => s.meta?.ownerRef === sprzeglo.ref_id || s.meta?.deviceRef === sprzeglo.ref_id);
     expect(symbol).toBeDefined();
     expect(symbol!.state).toBe('closed');
@@ -444,7 +443,7 @@ describe('GEOMETRIA-STACJI — GPZ: sprzęgło z gałęzi, szyna WN z szyn model
     expect(szynyWn(GPZ_110KV)).toHaveLength(1);
     expect((GPZ_110KV.transformers ?? []).map((t) => t.lv_bus_ref).filter((v, i, a) => a.indexOf(v) === i)).toHaveLength(2);
     expect((GPZ_110KV.sources ?? []).map((s) => s.bus_ref)).toEqual(szynyWn(GPZ_110KV));
-    const odcinki = odcinkiWn(buildSceneV3(GPZ_110KV, 2));
+    const odcinki = odcinkiWn(buildSceneV3(GPZ_110KV));
     expect(odcinki).toHaveLength(1);
     expect(odcinki[0].meta?.busResultRef).toBe(szynyWn(GPZ_110KV)[0]);
   });
@@ -463,7 +462,7 @@ describe('GEOMETRIA-STACJI — GPZ: sprzęgło z gałęzi, szyna WN z szyn model
       ),
       transformers: (GPZ_110KV.transformers ?? []).map((t) => (t.ref_id === tr2.ref_id ? { ...t, hv_bus_ref: druga } : t)),
     } as EnergyNetworkModel;
-    const odcinki = odcinkiWn(buildSceneV3(dwieSzyny, 2));
+    const odcinki = odcinkiWn(buildSceneV3(dwieSzyny));
     expect(szynyWn(dwieSzyny)).toHaveLength(2);
     expect(odcinki.map((s) => s.meta?.busResultRef).sort()).toEqual(szynyWn(dwieSzyny));
     const zakresy = odcinki
@@ -475,7 +474,7 @@ describe('GEOMETRIA-STACJI — GPZ: sprzęgło z gałęzi, szyna WN z szyn model
 
   it('GPZ z równoważnikiem na szynach SN: bez transformatorów i bez szyny WN na rysunku', () => {
     expect(GPZ_DWIE_SEKCJE.transformers ?? []).toEqual([]);
-    expect(odcinkiWn(buildSceneV3(GPZ_DWIE_SEKCJE, 2))).toEqual([]);
+    expect(odcinkiWn(buildSceneV3(GPZ_DWIE_SEKCJE))).toEqual([]);
   });
 });
 

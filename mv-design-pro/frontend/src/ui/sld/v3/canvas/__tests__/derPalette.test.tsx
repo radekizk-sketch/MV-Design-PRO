@@ -19,6 +19,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
+import { stacjeZUchwytem } from './uchwytStacji';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
@@ -77,17 +78,16 @@ beforeEach(() => {
 
 describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
   it('(a) startDrag (klik przycisku PV) + drop (klik stacji) zaznacza stację i otwiera w INSPEKTORZE formularz DER z pre-fillem {stationId, kind}', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
-    const stationOwnerRef = scene.symbols[stationIndex].meta?.ownerRef;
-    expect(stationOwnerRef).toBeTruthy();
-
+    const scene = buildSceneV3(enm);
     const { container } = render(
       <>
         <SldCanvasV3Workspace width={800} height={600} />
         <InspektorKanwyTestowy />
       </>,
     );
+    const stacja = stacjeZUchwytem(container, scene)[0];
+    expect(stacja, 'stacja z uchwytem w kadrze startowym').toBeDefined();
+    const stationOwnerRef = stacja.ref;
     rozwinZwinieteNarzedzia();
 
     fireEvent.click(screen.getByTestId('der-palette-btn-PV'));
@@ -96,10 +96,7 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
     // Karta S9-4: rysunek jest bierny, celem kliku jest UCHWYT obiektu
     // (warstwa `sld-v3-trafienia`) — ten sam węzeł, w który trafia mysz
     // użytkownika. Intencja testu (drop DER na stację) bez zmian.
-    const stationTestId = scene.symbols[stationIndex].meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
-    const stationHit = container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`);
-    expect(stationHit, 'stacja ma uchwyt trafienia').toBeTruthy();
-    fireEvent.click(stationHit!);
+    fireEvent.click(stacja.el);
 
     // Uzbrojenie skonsumowane (drop wykonany) — wskaźnik „▸ Wskaż stację" znika.
     expect(screen.queryByTestId('sld-v3-der-cancel')).toBeNull();
@@ -115,7 +112,7 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
   });
 
   it('(b) drop poza stacją (klik w aparaturę) = anuluj bez akcji — uzbrojenie znika, formularz DER NIE otwiera się', () => {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const apparatusIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'apparatus');
     expect(apparatusIndex).toBeGreaterThanOrEqual(0);
 
@@ -148,38 +145,24 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
   });
 
   it('(c) szkic DER żyje tylko przy swojej stacji: klik innej stacji porzuca szkic, a „Anuluj" w inspektorze go zamyka', () => {
-    const scene = buildSceneV3(enm, 0);
-    // Dwie RÓŻNE stacje (pierwszy symbol każdej) — testId sceny albo indeks symbolu.
-    const stacje = scene.symbols
-      .map((symbol, index) => ({ symbol, testId: symbol.meta?.testId ?? `sld-v3-symbol-${index}` }))
-      // Zwinięty blok GPZ pominięty: klik w niego rozwija GPZ (KD-5) — to polecenie widoku.
-      .filter(({ symbol }) => symbol.meta?.elementKind === 'station' && symbol.meta?.ownerRef && symbol.symbolId !== 'gpzCollapsed')
-      .filter((wpis, i, wszystkie) => wszystkie.findIndex((w) => w.symbol.meta!.ownerRef === wpis.symbol.meta!.ownerRef) === i)
-      .map(({ symbol, testId }) => ({ meta: { ownerRef: symbol.meta!.ownerRef!, testId } }));
+    const scene = buildSceneV3(enm);
     const { container } = render(
       <>
         <SldCanvasV3Workspace width={800} height={600} />
         <InspektorKanwyTestowy />
       </>,
     );
-    // Tylko stacje z uchwytem trafienia w tym kadrze (stacje poza arkuszem go nie mają).
-    const zUchwytem = stacje.filter((st) =>
-      container.querySelector(`[data-hit-for="${st.meta.testId}"][data-hit-role="obrys"]`) !== null,
-    );
-    stacje.splice(0, stacje.length, ...zUchwytem);
+    // Dwie RÓŻNE stacje z uchwytem w tym kadrze (stacje poza arkuszem go nie mają).
+    const stacje = stacjeZUchwytem(container, scene);
     expect(stacje.length).toBeGreaterThanOrEqual(2);
-    const uchwytStacji = (kontener: HTMLElement, i: number) => {
-      const el = kontener.querySelector(`[data-hit-for="${stacje[i].meta.testId}"][data-hit-role="obrys"]`);
-      expect(el, `uchwyt stacji ${stacje[i].meta.ownerRef}`).not.toBeNull();
-      return el!;
-    };
+    const uchwytStacji = (_kontener: HTMLElement, i: number) => stacje[i].el;
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('der-palette-btn-FW'));
     fireEvent.click(uchwytStacji(container, 0));
     expect(screen.getByTestId('inspektor-der-typ')).toHaveValue('FW');
 
     fireEvent.click(uchwytStacji(container, 1));
-    expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([stacje[1].meta.ownerRef]);
+    expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([stacje[1].ref]);
     expect(screen.queryByTestId('inspektor-der-formularz')).toBeNull();
     expect(useKontekstElementuKanwy.getState().szkicDer).toBeNull();
 
@@ -190,29 +173,26 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
     fireEvent.click(screen.getByTestId('inspektor-der-anuluj'));
     expect(screen.queryByTestId('inspektor-der-formularz')).toBeNull();
     // Anulowanie szkicu nie zdejmuje wskazania stacji.
-    expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([stacje[1].meta.ownerRef]);
+    expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([stacje[1].ref]);
   });
   it('(d) wskazanie INNEGO obiektu spoza kanwy (drzewo układu) chowa formularz szkicu — szkic nie wisi przy cudzym obiekcie', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stacje = scene.symbols
-      .map((symbol, index) => ({ symbol, testId: symbol.meta?.testId ?? `sld-v3-symbol-${index}` }))
-      .filter(({ symbol }) => symbol.meta?.elementKind === 'station' && symbol.meta?.ownerRef && symbol.symbolId !== 'gpzCollapsed');
+    const scene = buildSceneV3(enm);
     const { container } = render(
       <>
         <SldCanvasV3Workspace width={800} height={600} />
         <InspektorKanwyTestowy />
       </>,
     );
-    const zUchwytem = stacje.filter((st) => container.querySelector(`[data-hit-for="${st.testId}"][data-hit-role="obrys"]`) !== null);
+    const zUchwytem = stacjeZUchwytem(container, scene);
     expect(zUchwytem.length).toBeGreaterThanOrEqual(1);
     const stacja = zUchwytem[0];
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('der-palette-btn-BESS'));
-    fireEvent.click(container.querySelector(`[data-hit-for="${stacja.testId}"][data-hit-role="obrys"]`)!);
+    fireEvent.click(stacja.el);
     expect(screen.getByTestId('inspektor-der-typ')).toHaveValue('BESS');
     // Drzewo układu wskazuje obiekt TYM SAMYM wywołaniem magazynu selekcji, które
     // wykonuje jego wiersz (`selectElement`) — bez kontekstu kliknięcia kanwy.
-    const innaStacja = (enm.substations ?? []).find((st) => st.ref_id !== stacja.symbol.meta!.ownerRef)!;
+    const innaStacja = (enm.substations ?? []).find((st) => st.ref_id !== stacja.ref)!;
     act(() => useSelectionStore.getState().selectElement({ id: innaStacja.ref_id, type: 'Station', name: innaStacja.name ?? innaStacja.ref_id }));
     expect(screen.queryByTestId('inspektor-der-formularz')).toBeNull();
   });

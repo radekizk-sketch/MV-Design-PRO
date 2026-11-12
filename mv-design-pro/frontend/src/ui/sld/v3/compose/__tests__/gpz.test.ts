@@ -1025,19 +1025,11 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): blok zabezpieczeń bez 
     );
   });
 
-  it('B-1 (§17.4 L1, circle-only): goła ramka bloku BEZ wierszy, zero etykiet protection', () => {
-    const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN, [], 'circle-only');
-    expect(composition.protectionSymbols).toHaveLength(1);
-    expect(composition.protectionSymbols[0].ramkaBloku).toBeDefined();
-    expect(composition.protectionSymbols[0].wierszeBloku).toEqual([]);
-    expect(composition.labels.protection).toHaveLength(0);
-  });
-
-  it('B-1 (§17.4 L0, none): warstwa adnotacji nieobecna mimo kodów w danych', () => {
-    const composition = composeGpz(propsWithCodes(['51']), ORIGIN, [], 'none');
-    expect(composition.protectionSymbols).toHaveLength(0);
-    expect(composition.labels.protection).toHaveLength(0);
-  });
+  // Dawne przypadki B-1 „L1 circle-only: goła ramka bloku BEZ wierszy" i „L0 none: warstwa adnotacji
+  // nieobecna" usunięte: jedna scena (karta SLD-SKALA-I-NAWIGACJA R1) komponuje GPZ zawsze w pełnym
+  // szczególe, a rama bez treści jest zakazana w każdej skali (werdykt właściciela 2026-11-11:
+  // „puste prostokąty bez funkcji są niedopuszczalne"). Wiersze kodów znikają z rysunku tylko
+  // decyzją klasy informacji w kanwie — razem z ramką (`canvas/gestoscInformacji.ts`).
 
   it('istniejące wyrocznie GPZ (grid/overlap/porty/parity) pozostają zielone przy polu z kodami — okrąg nie zaburza toru mocy', () => {
     const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN);

@@ -51,7 +51,7 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 
 const CANVAS_W = 1024;
 const CANVAS_H = 640;
-const sceneL2 = buildSceneV3(enm, 2);
+const sceneL2 = buildSceneV3(enm);
 const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 /** Szyna ze sceny — kotwica etykiety i kanoniczny ref wyniku (zero fabrykacji). */
@@ -314,7 +314,7 @@ describe('Kanwa w trybie różnic A/B', () => {
     useRawResultOverlayStore.getState().setPayload(payloadZwarciowy('sc-run-b'));
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaJednaLinia() });
 
-    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
 
     const tresc = trescWarstwyWynikowej(container);
     expect(tresc).toContain('Δ Ik″');
@@ -325,7 +325,7 @@ describe('Kanwa w trybie różnic A/B', () => {
 
   it('pochodzenie deklaruje OBA przebiegi pary', () => {
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaFixture() });
-    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
 
     const badge = container.querySelector('[data-testid="sld-v3-overlay-provenance"]');
     expect(badge).toBeTruthy();
@@ -340,7 +340,7 @@ describe('Kanwa w trybie różnic A/B', () => {
     // Karta K8: model zmieniony po biegu B — rewizja biegu ≠ rewizja modelu (jeden predykat).
     zasiejBiegiNieaktualne([{ id: 'sc-run-b', analysisType: 'SC_3F' }]);
 
-    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
 
     const warstwa = container.querySelector('[data-testid="sld-v3-result-labels"]')!;
     const znaczniki = Array.from(warstwa.querySelectorAll('[data-result-stale]'));
@@ -353,7 +353,7 @@ describe('Kanwa w trybie różnic A/B', () => {
     useRawResultOverlayStore.getState().setPayload(payloadZwarciowy('sc-run-b'));
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaFixture() });
 
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.getByTestId('sld-v3-result-comparison').getAttribute('data-comparison-available')).toBe('false');
@@ -362,7 +362,7 @@ describe('Kanwa w trybie różnic A/B', () => {
 
   it('panel pokazuje parę, rozkład punktów i legendę z backendu', () => {
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaFixture() });
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.getByTestId('sld-v3-result-roznice-para').textContent).toContain('sc-run-a');
@@ -376,7 +376,7 @@ describe('Kanwa w trybie różnic A/B', () => {
 
   it('sekcja różnic nie istnieje, gdy tryb różnic nie trwa (zero martwej kontrolki)', () => {
     useRawResultOverlayStore.getState().setPayload(payloadZwarciowy('sc-run-b'));
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.queryByTestId('sld-v3-result-roznice')).toBeNull();
@@ -387,7 +387,7 @@ describe('Kanwa w trybie różnic A/B', () => {
     useRawResultOverlayStore.getState().setPayload(payloadZwarciowy('sc-run-b'));
     useSldDeltaOverlayStore.setState({ nakladka: nakladkaJednaLinia() });
 
-    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     await user.click(screen.getByTestId('sld-v3-result-roznice-wylacz'));

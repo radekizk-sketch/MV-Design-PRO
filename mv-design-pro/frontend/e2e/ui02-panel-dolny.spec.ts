@@ -13,6 +13,8 @@
  * drzewa repo bez `ZRZUTY_DO_DOKUMENTACJI=1`). Spec NIE wystawia werdyktu wizualnego (B-02).
  */
 import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+
+import { SKALA_CZYTANIA, skalaKamery } from './skalaKamery';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
@@ -186,15 +188,16 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
     .toBe(docelowy);
 }
 
-/** Kadr kamery schematu: poziom szczegółu sceny i skala (jednostki rysunku na piksel ekranu). */
-async function kadr(kanwa: Locator): Promise<{ lod: string | null; skala: number }> {
-  const lod = await kanwa.getAttribute('data-scene-lod');
+/** Kadr kamery schematu: skala kamery z atrybutu kanwy (px ekranu / j.św., jedna scena
+ *  niezależna od skali — karta SLD-SKALA-I-NAWIGACJA) i skala viewBox (jednostki rysunku na
+ *  piksel ekranu). */
+async function kadr(kanwa: Locator): Promise<{ skalaKamery: number; skala: number }> {
   const skala = await kanwa.evaluate((svg) => {
     const vb = (svg as SVGSVGElement).viewBox.baseVal;
     const szerokosc = svg.getBoundingClientRect().width;
     return szerokosc > 0 ? vb.width / szerokosc : Number.NaN;
   });
-  return { lod, skala };
+  return { skalaKamery: await skalaKamery(kanwa), skala };
 }
 
 /** Indeks kolumny tabeli wyników po kluczu nagłówka (`mvd-wyn-th-<klucz>`). */
@@ -254,7 +257,7 @@ test('UI-02 — panel dolny: stan przed biegiem, wyniki → zaznaczenie z zachow
   const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${refStacji}#name-row"]`).first();
   await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
   for (let i = 0; i < 12; i += 1) {
-    if ((await kanwa.getAttribute('data-scene-lod')) !== '0') break;
+    if ((await skalaKamery(kanwa)) >= SKALA_CZYTANIA) break;
     const box = await uchwyt.boundingBox();
     if (!box) break;
     await page.mouse.move(box.x + box.width / 2, box.y - 6 * box.height);
@@ -278,7 +281,7 @@ test('UI-02 — panel dolny: stan przed biegiem, wyniki → zaznaczenie z zachow
   await expect(kanwa).toBeVisible();
   await expect(inspektor).toContainText(NAZWA_STACJI);
   const kadrPanelu = await kadr(kanwa);
-  expect(kadrPanelu.lod, 'poziom szczegółu po otwarciu panelu').toBe(kadrPrzed.lod);
+  expect(kadrPanelu.skalaKamery, 'skala kamery po otwarciu panelu (bez oddalenia)').toBeGreaterThanOrEqual(kadrPrzed.skalaKamery * 0.95);
   expect(kadrPanelu.skala, 'skala kamery po otwarciu panelu').toBeLessThanOrEqual(kadrPrzed.skala * 1.05);
 
   // Domyślnie najnowszy bieg (zwarcia); licznik = liczba wierszy wyniku.
@@ -344,7 +347,7 @@ test('UI-02 — panel dolny: stan przed biegiem, wyniki → zaznaczenie z zachow
     }, { message: 'element wskazany wierszem w całości na kanwie', timeout: 10000 })
     .toBe(true);
   const kadrPoKliku = await kadr(kanwa);
-  expect(kadrPoKliku.lod, 'poziom szczegółu po kliku wiersza (bez skoku do widoku całej sieci)').toBe(kadrPrzed.lod);
+  expect(kadrPoKliku.skalaKamery, 'skala kamery po kliku wiersza (bez skoku do widoku całej sieci)').toBeGreaterThanOrEqual(kadrPrzed.skalaKamery * 0.95);
 
   // Filtr tekstowy zawęża do zaznaczonego elementu.
   await page.getByTestId('mvd-wyniki-filtr-tekst').fill(nazwaWiersza);

@@ -11,7 +11,7 @@
  * węzłów sceny) — niezależna od kompozycji. Iloczyn cech: wzorzec pola (Z.10 sekcja 1 × Z.10
  * sekcja 2 × Z.11.1 i Z.11 z uziemnikiem Q51 w kolumnie odgałęzienia) × położenie uziemnika
  * {zamknięty, otwarty, brak stanu} × przyłączenie uziemnika {fikstura (węzeł za wyłącznikiem) ×
- * węzeł zacisku dolnego przekładnika T1} × poziom szczegółu {L0, L1, L2}.
+ * węzeł zacisku dolnego przekładnika T1} (jedna scena — skala kamery nie zmienia geometrii, karta SLD-SKALA-I-NAWIGACJA).
  *
  * Iniekcja produkcyjna (zapisana w meldunku karty): `zwisAparatuBocznego` = 0 (uziemnik na
  * wysokości węzła, jak przed odbiorem) — testy doprowadzenia czerwone.
@@ -143,24 +143,16 @@ describe('odczep uziemnika pola: węzeł → poziomo → pionowo w górny styk (
   for (const [nazwa, enm] of FIKSTURY) {
     for (const stan of STANY) {
       for (const przylaczenie of PRZYLACZENIA) {
-        for (const lod of [0, 1, 2] as const) {
-          it(`${nazwa} × uziemnik ${stan} × ${przylaczenie} × L${lod}`, () => {
-            const scena = buildSceneV3(wariant(enm, stan, przylaczenie), lod);
-            for (const bay of polaLiniowe(enm).filter((b) => (b.primary_devices ?? []).some((d) => d.kind === 'ES'))) {
-              const uziemniki = uziemnikiPola(scena, bay.ref_id);
-              // L0: GPZ zwinięty do widoku przeglądowego (pole = kafel wyłącznika, bez aparatów
-              // toru — `SLD_LOD_SPEC_OPERATOR_GRADE.md` §2); odczepu nie ma czego sprawdzać.
-              if (lod === 0) {
-                expect(uziemniki, `${bay.ref_id}: L0 bez aparatów toru`).toEqual([]);
-                continue;
-              }
-              expect(uziemniki.length, `${bay.ref_id}: uziemniki pola na scenie`).toBeGreaterThan(0);
-              for (const s of uziemniki) {
-                expect(naruszeniaDoprowadzenia(scena, s), `${bay.ref_id} ${s.meta?.deviceRef}`).toEqual([]);
-              }
+        it(`${nazwa} × uziemnik ${stan} × ${przylaczenie}`, () => {
+          const scena = buildSceneV3(wariant(enm, stan, przylaczenie));
+          for (const bay of polaLiniowe(enm).filter((b) => (b.primary_devices ?? []).some((d) => d.kind === 'ES'))) {
+            const uziemniki = uziemnikiPola(scena, bay.ref_id);
+            expect(uziemniki.length, `${bay.ref_id}: uziemniki pola na scenie`).toBeGreaterThan(0);
+            for (const s of uziemniki) {
+              expect(naruszeniaDoprowadzenia(scena, s), `${bay.ref_id} ${s.meta?.deviceRef}`).toEqual([]);
             }
-          });
-        }
+          }
+        });
       }
     }
   }
@@ -169,8 +161,8 @@ describe('odczep uziemnika pola: węzeł → poziomo → pionowo w górny styk (
 describe(`oznaczenia ${ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne.join('/')} × przekładnia T1 × odgałęzienie Q8 — rozłączne (uwaga właściciela 2026-11-04 pkt 3)`, () => {
   for (const [nazwa, enm] of FIKSTURY) {
     for (const przylaczenie of PRZYLACZENIA) {
-      it(`${nazwa} × ${przylaczenie} × L2`, () => {
-        const scena = buildSceneV3(wariant(enm, 'otwarty', przylaczenie), 2);
+      it(`${nazwa} × ${przylaczenie}`, () => {
+        const scena = buildSceneV3(wariant(enm, 'otwarty', przylaczenie));
         for (const bay of polaLiniowe(enm).filter((b) => (b.primary_devices ?? []).some((d) => d.designation === 'Q8'))) {
           const ct = bay.primary_devices!.find((d) => d.kind === 'CT')!;
           const zaciski = scena.labels.filter((l) => l.ownerRef.startsWith(`${bay.ref_id}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}`));

@@ -101,7 +101,7 @@ interface EtykietaKanwy {
  *  przekraczają próg czytelności i są rysowane (przy 1600 × 900 plan ukrywa je licznikiem
  *  „Ukryto N opisów", a test pokrywałby wyłącznie podpisy aparatów). */
 function etykietyKanwy(enm: EnergyNetworkModel): EtykietaKanwy[] {
-  const { container } = render(<SldCanvasV3 snapshot={enm} width={16000} height={9000} lodOverride={2} animateLodTransitions={false} />);
+  const { container } = render(<SldCanvasV3 snapshot={enm} width={16000} height={9000} />);
   const wynik = [...container.querySelectorAll('g[data-testid^="sld-v3-label-"]')].map((g) => {
     const t = g.querySelector('text')!;
     const ownerRef = g.getAttribute('data-owner-ref') ?? '';

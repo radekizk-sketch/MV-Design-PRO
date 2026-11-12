@@ -170,11 +170,11 @@ describe('SldCanvasV3Workspace — F12-B pkt 3: panel dowodów', () => {
 
 describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr renderu', () => {
   it('odznaczenie warstwy "Źródła i układy PV/BESS/FW" usuwa symbole der z DOM; zaznaczenie przywraca', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const derIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der');
     expect(derIndex).toBeGreaterThanOrEqual(0);
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const symbolsGroup = () => container.querySelector('[data-testid="sld-v3-symbols"]')!;
 
     // Widoczne domyślnie (brak layerVisibility jawnego = wszystko widoczne).
@@ -201,7 +201,7 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
   });
 
   it('reset przywraca wszystkie warstwy do widoczności domyślnej', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     const derCheckbox = screen.getByTestId('sld-v3-layer-toggle-derSources') as HTMLInputElement;
     fireEvent.click(derCheckbox);
@@ -216,19 +216,19 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
     // `layerVisibility` w ogóle (parametr istnieje WYŁĄCZNIE na `SldCanvasV3`/
     // renderze) — wołanie z tym samym snapshot+LOD zawsze daje TĘ SAMĄ liczbę
     // symboli/segmentów, niezależnie od jakiegokolwiek stanu UI warstw.
-    const sceneA = buildSceneV3(enm, 2);
-    const sceneB = buildSceneV3(enm, 2);
+    const sceneA = buildSceneV3(enm);
+    const sceneB = buildSceneV3(enm);
     expect(sceneB.symbols.length).toBe(sceneA.symbols.length);
     expect(sceneB.segments.length).toBe(sceneA.segments.length);
 
     // Dowód end-to-end: po ukryciu warstwy DOM traci węzły, ale scena
     // bazowa (rebudowana niezależnie od UI) ma identyczną liczebność.
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     fireEvent.click(screen.getByTestId('sld-v3-layer-toggle-derSources'));
     fireEvent.click(screen.getByTestId('sld-v3-layer-toggle-stationsApparatus'));
 
-    const sceneAfterUiToggle = buildSceneV3(enm, 2);
+    const sceneAfterUiToggle = buildSceneV3(enm);
     expect(sceneAfterUiToggle.symbols.length).toBe(sceneA.symbols.length);
     expect(sceneAfterUiToggle.segments.length).toBe(sceneA.segments.length);
     // DOM natomiast REALNIE straciło węzły (stationsApparatus jest
@@ -240,7 +240,7 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
 
 describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widoczność, geometria bez dryfu)', () => {
   it('master-toggle podwarstwy L2-A ukrywa WSZYSTKIE warstwy członkowskie (stacje/aparatura + DER)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const derIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der');
     const apparatusIndex = scene.symbols.findIndex((s) =>
       ['station', 'apparatus', 'transformer', 'bus'].includes(s.meta?.elementKind ?? ''),
@@ -248,7 +248,7 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
     expect(derIndex).toBeGreaterThanOrEqual(0);
     expect(apparatusIndex).toBeGreaterThanOrEqual(0);
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const symbolsGroup = () => container.querySelector('[data-testid="sld-v3-symbols"]')!;
     const baseCount = symbolsGroup().children.length;
 
@@ -271,7 +271,7 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
   });
 
   it('odznaczenie JEDNEGO członka podwarstwy → master w stanie „mixed" (indeterminate)', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
 
     fireEvent.click(screen.getByTestId('sld-v3-layer-toggle-derSources'));
@@ -281,16 +281,16 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
   });
 
   it('geometria BAJT-INWARIANTNA: scena buildSceneV3 identyczna niezależnie od stanu KAŻDEJ podwarstwy L2', () => {
-    const base = buildSceneV3(enm, 2);
+    const base = buildSceneV3(enm);
 
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
 
     // Przełącz WSZYSTKIE cztery podwarstwy — scena bazowa (rebudowana niezależnie
     // od UI) MUSI mieć tę samą liczebność i bbox (§18 „kotwica stacji niezmienna").
     for (const id of ['L2A', 'L2B', 'L2C', 'L2D']) {
       fireEvent.click(screen.getByTestId(`sld-v3-l2-sublayer-toggle-${id}`));
-      const after = buildSceneV3(enm, 2);
+      const after = buildSceneV3(enm);
       expect(after.symbols.length, `${id}: symbole`).toBe(base.symbols.length);
       expect(after.segments.length, `${id}: segmenty`).toBe(base.segments.length);
       expect(after.labels.length, `${id}: etykiety`).toBe(base.labels.length);
@@ -299,7 +299,7 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
   });
 
   it('reset przywraca wszystkie podwarstwy L2 do stanu „on"', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     fireEvent.click(screen.getByTestId('sld-v3-l2-sublayer-toggle-L2B'));
     expect(
@@ -324,7 +324,7 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
 
 describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
   it('domyślnie (bez interakcji) legenda NIE jest częścią kanwy — brak grupy `sld-sheet-legend` w DOM', () => {
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(container.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
     // Dok istnieje i przycisk informuje o liczbie wpisów — fixtura ma
     // symbole/odcinki, więc panel nie byłby pusty, gdyby otworzyć.
@@ -334,14 +334,14 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
   });
 
   it('otwarcie panelu (dok `sld-v3-view-dock`) pokazuje WYŁĄCZNIE symbole obecne w fixturze — fixtura ma agregat (loads[]), więc "Odbiór (zagregowany)" jest obecny', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
 
     fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
 
     const panel = screen.getByTestId('sld-v3-legend-panel');
     expect(panel).toBeInTheDocument();
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const presentIds = new Set(scene.symbols.map((s) => s.symbolId));
     // Fixtura `sldSubstrate52s` niesie rekordy `Load` (126 — magazyn modelu dokłada
     // odbiór katalogowy każdemu odpływowi nN) — agregat 0,4 kV
@@ -375,15 +375,15 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
   // jest przerywany, więc intencja „zero fabrykacji" brzmi teraz: wpis jest
   // DOKŁADNIE wtedy, gdy scena ma odcinek napowietrzny (fikstura ma 8 linii).
   it('"overhead" (linia napowietrzna) jest w panelu dokładnie wtedy, gdy scena rysuje odcinek napowietrzny', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(scene.segments.some((seg) => seg.meta?.lineType === 'overhead')).toBe(true);
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
     expect(screen.getByTestId('sld-v3-legend-panel-item-overhead')).toBeInTheDocument();
   });
 
   it('zamknięcie panelu (drugi klik) przywraca kanwę do stanu bez legendy — dok zostaje, panel znika', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     const toggle = screen.getByTestId('sld-v3-legend-toggle');
 
     fireEvent.click(toggle);
@@ -404,7 +404,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
     vi.stubGlobal('Blob', blobCtorSpy);
 
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     rozwinZwinieteNarzedzia();
     const checkbox = screen.getByTestId('sld-v3-export-include-legend') as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
@@ -430,7 +430,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
     vi.stubGlobal('Blob', blobCtorSpy);
 
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-v3-export-include-legend'));
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
@@ -449,7 +449,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
 
 describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', () => {
   it('domyślnie nawigator jest ZWINIĘTY — schemat nie traci ani piksela', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(screen.queryByTestId('sld-v3-minimap-dock')).toBeNull();
     expect(screen.queryByTestId('sld-v3-minimap-panel')).toBeNull();
     // Przełącznik żyje w TYM SAMYM doku widoku co „Dopasuj widok"/„Legenda"
@@ -459,7 +459,7 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
   });
 
   it('rozwinięcie pokazuje nawigator z kształtami REALNEJ sceny i prostokątem kadru', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
 
     const panel = screen.getByTestId('sld-v3-minimap-panel');
@@ -467,7 +467,7 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
     const svg = within(panel).getByTestId('sld-v3-minimap-svg');
     // Kształty pochodzą ze sceny LOD 0 — liczba węzłów rysunku odpowiada
     // liczbie elementów tej sceny (nawigator niczego nie dorysowuje).
-    const sceneL0 = buildSceneV3(enm, 0);
+    const sceneL0 = buildSceneV3(enm);
     expect(svg.querySelectorAll('polyline').length).toBe(
       sceneL0.segments.filter((s) => s.points.length >= 2).length,
     );
@@ -477,7 +477,7 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
   });
 
   it('wskazanie w nawigatorze PRZESUWA kadr kamery, NIE zmieniając skali (kontrakt K11-B §0.1)', () => {
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
 
     const canvas = container.querySelector('[data-testid="sld-canvas-v3"]')!;
@@ -513,7 +513,7 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
   });
 
   it('zwinięcie (drugi klik) chowa nawigator — dok zostaje', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={800} height={600} />);
     const toggle = screen.getByTestId('sld-v3-minimap-toggle');
     fireEvent.click(toggle);
     expect(screen.getByTestId('sld-v3-minimap-panel')).toBeInTheDocument();

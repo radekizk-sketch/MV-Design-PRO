@@ -9,7 +9,7 @@
  *
  *  1. render buduje uchwyty TĄ SAMĄ funkcją, którą czyta sonda
  *     (`buildCanvasHitAreas`) — geometria co do bajta, nie „mniej więcej";
- *  2. każdy RODZAJ obiektu kanwy ma uchwyt (iloczyn cech {rodzaj} × {LOD});
+ *  2. każdy RODZAJ obiektu kanwy ma uchwyt (iloczyn cech {rodzaj} × {skala kamery} — R6);
  *  3. rysunek jest BIERNY — żaden napis/nakładka nie łapie kliku;
  *  4. klik NATYWNY (`userEvent`, pełna sekwencja pointer/mouse/click przez DOM
  *     — nie `dispatchEvent` na handlerze) niesie `ownerRef` KLIKNIĘTEGO
@@ -30,7 +30,7 @@ import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
 import { planSceneLabels } from '../labelLegibility';
 import { sheetSizeFor } from '../../sheet/outline';
 import { SldCanvasV3 } from '../SldCanvasV3';
@@ -94,7 +94,7 @@ describe('S9-4 — nazwy atrybutów kanału trafień', () => {
       deviceRef: 'data-hit-device-ref',
     });
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
     );
     const dowolny = container.querySelector(`[${HIT_ATTR.for}]`);
     expect(dowolny, 'warstwa trafień renderuje węzły z kanałem audytu').toBeTruthy();
@@ -104,19 +104,16 @@ describe('S9-4 — nazwy atrybutów kanału trafień', () => {
 });
 
 describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda', () => {
-  it.each([0, 1, 2] as SceneLod[])(
-    'LOD %s: geometria uchwytów w DOM == `buildCanvasHitAreas` (co do wartości, nie „mniej więcej")',
-    (lod) => {
+  it('geometria uchwytów w DOM == `buildCanvasHitAreas` (co do wartości, nie „mniej więcej")', () => {
       const { container } = render(
         <SldCanvasV3
           snapshot={enm}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          lodOverride={lod}
           onElementClick={() => {}}
         />,
       );
-      const scene = buildSceneV3(enm, lod);
+      const scene = buildSceneV3(enm);
       const scale = scaleOf(container);
       const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
       const oczekiwane = buildCanvasHitAreas({
@@ -158,15 +155,14 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
 });
 
 describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24 px ekranu', () => {
-  /** Iloczyn cech {rodzaj obiektu} × {LOD}: na L0 są bloki stacji i łączniki
-   *  wierszy arkusza (S9-1), na L1/L2 aparaty pól, transformatory, szyny i
-   *  układy DER. Rodzaj nieobecny na danym poziomie nie jest błędem —
-   *  błędem jest rodzaj OBECNY na scenie i BEZ uchwytu. */
-  it.each([0, 1, 2] as SceneLod[])('LOD %s: żaden rodzaj obiektu sceny nie zostaje bez uchwytu', (lod) => {
+  /** Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): łączniki wierszy arkusza (S9-1), napisy
+   *  stacji, aparaty pól, transformatory, szyny i układy DER są w scenie w każdej skali.
+   *  Błędem jest rodzaj OBECNY na scenie i BEZ uchwytu. */
+  it('żaden rodzaj obiektu sceny nie zostaje bez uchwytu', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
     );
-    const scene = buildSceneV3(enm, lod);
+    const scene = buildSceneV3(enm);
     const scale = scaleOf(container);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const oczekiwane = buildCanvasHitAreas({
@@ -195,28 +191,29 @@ describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24
     }
   });
 
-  it('L0 niesie łączniki wierszy arkusza (S9-1) i bloki stacji — oba z uchwytem', () => {
+  it('przegląd (dopasowanie FHD) niesie łączniki wierszy arkusza (S9-1) i napisy stacji — oba z uchwytem', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_FHD_WIDTH} height={CANVAS_FHD_HEIGHT} lodOverride={0} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_FHD_WIDTH} height={CANVAS_FHD_HEIGHT} onElementClick={() => {}} />,
     );
     const zDrzewa = hitAreasFromDom(svgOf(container) as unknown as HitDomNode);
     expect(zDrzewa.filter((a) => a.klasa === 'lacznik-wiersza').length).toBeGreaterThan(0);
-    expect(zDrzewa.filter((a) => a.klasa === 'stacja').length).toBeGreaterThan(0);
-    expect(zDrzewa.filter((a) => a.klasa === 'etykieta').length).toBeGreaterThan(0);
+    // Stację w przeglądzie wskazuje napis identyfikacji (`<ref>#name-row-0`) — dawny blok
+    // zwinięty widoku L0 nie istnieje.
+    expect(zDrzewa.filter((a) => a.klasa === 'etykieta' && (a.ownerRef ?? '').endsWith('#name-row-0')).length).toBeGreaterThan(0);
   });
 });
 
 describe('S9-4 — rysunek jest bierny (nic poza uchwytami nie łapie kliku)', () => {
-  it.each([0, 1, 2] as SceneLod[])('LOD %s: 0 węzłów rysunku łapiących zdarzenia wskaźnika', (lod) => {
+  it('0 węzłów rysunku łapiących zdarzenia wskaźnika', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
     );
     expect(pointerBlockersInDom(svgOf(container) as unknown as HitDomNode)).toEqual([]);
   });
 
   it('obszary rozszerzone leżą POD obrysami — rozszerzenie nie kradnie kliku obrysowi sąsiada', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
     );
     const porzadek = hitLayerOrderingInDom(svgOf(container) as unknown as HitDomNode);
     expect(porzadek).not.toBeNull();
@@ -225,7 +222,7 @@ describe('S9-4 — rysunek jest bierny (nic poza uchwytami nie łapie kliku)', (
 
   it('REGRESJA WSTRZYKNIĘTA: zdjęcie bierności z warstwy rysunku MUSI dać blokery', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={() => {}} />,
     );
     const rysunek = container.querySelector('[data-testid="sld-v3-rysunek"]')!;
     expect(rysunek.getAttribute('pointer-events')).toBe('none');
@@ -239,13 +236,13 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     const user = userEvent.setup();
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
     );
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const aparat = scene.symbols.find(
       (s) => s.meta?.elementKind === 'apparatus' && s.meta?.ownerRef && s.meta?.testId,
     )!;
-    expect(aparat, 'scena L2 zawiera aparat pola z realnym refem').toBeTruthy();
+    expect(aparat, 'scena zawiera aparat pola z realnym refem').toBeTruthy();
     const wezel = hitNode(container, aparat.meta!.testId!, 'obrys');
     expect(wezel, 'aparat ma uchwyt obrysu').toBeTruthy();
     await user.click(wezel!);
@@ -274,9 +271,9 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     const user = userEvent.setup();
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
     );
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const index = scene.segments.findIndex((s) => s.meta?.elementKind === 'segment' && s.meta?.ownerRef);
     const odcinek = scene.segments[index];
     const testId = odcinek.meta?.testId ?? `sld-v3-segment-${index}`;
@@ -293,9 +290,9 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     const user = userEvent.setup();
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} onElementClick={onElementClick} />,
     );
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const index = scene.segments.findIndex((s) => s.meta?.elementKind === 'bus');
     const szyna = scene.segments[index];
     const testId = szyna.meta?.testId ?? `sld-v3-segment-${index}`;
@@ -313,9 +310,9 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     const user = userEvent.setup();
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_FHD_WIDTH} height={CANVAS_FHD_HEIGHT} lodOverride={2} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_FHD_WIDTH} height={CANVAS_FHD_HEIGHT} onElementClick={onElementClick} />,
     );
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const scale = scaleOf(container, CANVAS_FHD_WIDTH);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const etykieta = plan.drawn.find((p) => p.label.ownerKind === 'apparatus')
@@ -327,7 +324,7 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
   });
 
   it('dwa aparaty tego samego rodzaju w JEDNYM polu mają RÓŻNE tożsamości (odłącznik szynowy vs liniowy)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const wgTestId = new Map<string, number>();
     for (const [i, s] of scene.symbols.entries()) {
       const t = s.meta?.testId ?? `sld-v3-symbol-${i}`;
@@ -356,7 +353,6 @@ describe('S9-4 — klik w tło (audyt P-6)', () => {
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={0}
         onElementClick={onElementClick}
         onBackgroundClick={onBackgroundClick}
       />,
@@ -378,14 +374,15 @@ describe('S9-4 — klik w tło (audyt P-6)', () => {
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={0}
         onElementClick={onElementClick}
         onBackgroundClick={onBackgroundClick}
       />,
     );
-    const scene = buildSceneV3(enm, 0);
-    const stacja = scene.symbols.find((s) => s.symbolId === 'stationCollapsed')!;
-    await user.click(hitNode(container, stacja.meta!.testId!, 'obrys')!);
+    // Obiekt: pierwszy aparat sceny (dawniej zwinięty symbol stacji widoku L0 — jedna scena,
+    // karta SLD-SKALA-I-NAWIGACJA R1).
+    const scene = buildSceneV3(enm);
+    const aparat = scene.symbols.find((s) => s.meta?.elementKind === 'apparatus' && s.meta?.testId)!;
+    await user.click(hitNode(container, aparat.meta!.testId!, 'obrys')!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
     expect(onBackgroundClick).not.toHaveBeenCalled();
   });
@@ -401,7 +398,6 @@ describe('S9-4 — tryb motywu podany wprost (dowód dla harnessu zrzutowego)', 
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={0}
         paletteMode="light_technical"
       />,
     );
@@ -411,7 +407,7 @@ describe('S9-4 — tryb motywu podany wprost (dowód dla harnessu zrzutowego)', 
     expect(svgOf(jasny).getAttribute('style')).toContain('rgb(255, 255, 255)');
 
     const { container: bezPropa } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
     expect(svgOf(bezPropa).getAttribute('data-theme-mode')).toBe('dark_scada');
   });

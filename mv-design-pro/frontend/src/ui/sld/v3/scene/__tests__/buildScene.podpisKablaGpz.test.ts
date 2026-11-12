@@ -78,7 +78,7 @@ describe('GPZ-MODEL — podpis kabla wychodzącego z GPZ (L2)', () => {
       // Przedrostek tożsamości GPZ (`gpz/<ziarno>/`): ref stacji to `gpz/<ziarno>/substation`,
       // a aparaty, pola i źródło niosą `gpz/<ziarno>/…` w `ownerRef`/`testId`.
       const gpzRef = enm.substations!.find((s) => s.station_type === 'gpz')!.ref_id.replace(/substation$/, '');
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       const symboleGpz = scena.symbols
         .filter((s) => (s.meta?.ownerRef ?? '').startsWith(gpzRef) || (s.meta?.testId ?? '').includes(gpzRef))
         .map((s) => ({ s, rect: { x: s.x, y: s.y, width: SYMBOL_DEFS[s.symbolId].width, height: SYMBOL_DEFS[s.symbolId].height } }));
@@ -99,7 +99,7 @@ describe('GPZ-MODEL — podpis kabla wychodzącego z GPZ (L2)', () => {
 
   it('gpzFeeder: oba kable z GPZ (ciąg główny i pole odpływowe) mają podpis na L2', () => {
     const { enm } = przypadki.find((p) => p.nazwa === 'gpzFeeder.enm.json')!;
-    const podpisy = buildSceneV3(enm, 2).labels.filter((l) => l.ownerKind === 'segment-span' && l.text.startsWith('GPZ ↔'));
+    const podpisy = buildSceneV3(enm).labels.filter((l) => l.ownerKind === 'segment-span' && l.text.startsWith('GPZ ↔'));
     expect(podpisy.map((l) => l.text.split(' · ')[0]).sort()).toEqual(['GPZ ↔ S01', 'GPZ ↔ S02']);
   });
 });

@@ -183,11 +183,10 @@ test.describe('zwarcia-schemat:screenshot', () => {
       page.on('pageerror', (err) => consoleErrors.push(`PAGEERROR: ${err.message}`));
 
       await page.setViewportSize({ width: 1440, height: 900 });
-      // `lod=0` wymuszony: znacznik pulse dopasowuje się do symbolu STACJI
-      // (`stationCollapsed`), obecnego WYŁĄCZNIE na LOD 0 (na LOD 1/2 stacja
-      // rozwija się w aparaturę — zweryfikowane sondą na realnej scenie).
+      // Jedna scena (karta SLD-SKALA-I-NAWIGACJA, R1): punkt zwarcia wskazany refem STACJI
+      // stoi na jej szynie SN (`computeFaultPointMarkerPlacement`), w każdej skali.
       await page.goto(
-        `${SCREENSHOT_HARNESS_URL}?fixture=gpzFeeder&overlay=faultflow&lod=0&theme=${theme}`,
+        `${SCREENSHOT_HARNESS_URL}?fixture=gpzFeeder&overlay=faultflow&theme=${theme}`,
         { waitUntil: 'domcontentloaded', timeout: 40000 },
       );
       const root = page.locator('[data-testid="sld-harness-root"]').first();

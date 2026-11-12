@@ -35,7 +35,7 @@ import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../../../../types/enm';
 import { jestRodzajemGaleziAparatu } from '../../../../types/rodzajeGalezi';
 import type { TorElementuOdpowiedz } from '../../../../ui2/adapters/topologiaZasilenia';
-import { sceneObstacleRects, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import { sceneObstacleRects, type SceneV3 } from '../scene/buildScene';
 import { MIN_OPIS_CELU_KADRU_PX } from '../core/text';
 import { sheetSizeFor } from '../sheet/outline';
 import { pickStationBus, stationSnSectionBusRefs, type StationBusSide } from '../../shared/stationBusResolution';
@@ -82,8 +82,6 @@ export interface ZakresKadru {
   /** Refy RYSUNKU objęte kadrem (unikalne, posortowane). Pusta lista dla celu
    *  `siec` — całą sieć kadruje istniejący refit „treść". */
   readonly refy: readonly string[];
-  /** Najniższy poziom szczegółu kadru (stacja, sekcja, pole: wnętrze ⇒ 1). */
-  readonly minLod: SceneLod;
   /** Obiekty sąsiednie, których kadr ma unikać (inne stacje przy kadrze stacji),
    *  posortowane po `ref`. */
   readonly przeszkody: readonly PrzeszkodaKadru[];
@@ -478,16 +476,6 @@ function refyElementu(ix: IndeksModelu, ref: string): string[] {
   return [ref];
 }
 
-/** Minimalny poziom szczegółu, na którym element jest czytelny jako on sam:
- *  wnętrze stacji (pole, szyna stacji, aparat, sekcja, stacja) istnieje od L1. */
-function minLodElementu(ix: IndeksModelu, ref: string): SceneLod {
-  const baza = refBazowy(ref);
-  if (ix.stacje.has(baza) || ix.pola.has(baza) || ix.sekcjeGpz.has(baza) || ix.poleUrzadzenia.has(baza)) return 1;
-  if (ix.szyny.has(baza) && ix.stacjaSzyny.has(baza)) return 1;
-  if (ix.polaTransformatora.has(baza)) return 1;
-  return 0;
-}
-
 // ---------------------------------------------------------------------------
 // Ścieżka kontekstu
 // ---------------------------------------------------------------------------
@@ -551,7 +539,6 @@ const BRAK_ZAZNACZENIA = 'Brak zaznaczenia — zaznacz element na schemacie, w d
 function zakres(
   cel: CelKadru,
   refy: Iterable<string>,
-  minLod: SceneLod,
   sciezka: readonly PoziomSciezki[],
   przeszkody: readonly PrzeszkodaKadru[] = [],
 ): WynikZakresu {
@@ -560,7 +547,6 @@ function zakres(
     zakres: {
       cel,
       refy: unikalnePosortowane(refy),
-      minLod,
       przeszkody: [...przeszkody].sort((a, b) => a.ref.localeCompare(b.ref)),
       sciezka,
     },
@@ -626,7 +612,7 @@ export function zakresCelu(
   scenaL2: SceneV3,
 ): WynikZakresu {
   const ix = indeksModelu(snapshot);
-  if (cel === 'siec') return zakres('siec', [], 0, [POZIOM_SIECI]);
+  if (cel === 'siec') return zakres('siec', [], [POZIOM_SIECI]);
 
   if (cel === 'magistrala') {
     const stacje = scenaL2.meta.mainTrunkStationIds;
@@ -641,7 +627,7 @@ export function zakresCelu(
     for (const seg of scenaL2.segments) {
       if (seg.meta?.kind === 'snTrunk' && seg.meta.ownerRef) refy.push(refBazowy(seg.meta.ownerRef));
     }
-    return zakres('magistrala', refy, 0, [POZIOM_SIECI, { cel: 'magistrala', kontekst: [], etykieta: 'Magistrala' }]);
+    return zakres('magistrala', refy, [POZIOM_SIECI, { cel: 'magistrala', kontekst: [], etykieta: 'Magistrala' }]);
   }
 
   if (kontekst.length === 0) {
@@ -670,7 +656,7 @@ export function zakresCelu(
       stacje.length === 1
         ? [POZIOM_SIECI, { cel: 'stacja', kontekst: stacje, etykieta: nazwa(ix, stacje[0]) }]
         : [POZIOM_SIECI, { cel: 'stacja', kontekst: stacje, etykieta: `Stacje (${stacje.length})` }];
-    return zakres('stacja', refy, 1, sciezka, przeszkody);
+    return zakres('stacja', refy, sciezka, przeszkody);
   }
 
   if (cel === 'sekcja') {
@@ -698,7 +684,7 @@ export function zakresCelu(
         etykieta: lista.length === 1 ? etykietaSekcji(ix, pierwsza) : `Sekcje (${lista.length})`,
       },
     ];
-    return zakres('sekcja', refy, 1, sciezka);
+    return zakres('sekcja', refy, sciezka);
   }
 
   if (cel === 'pole') {
@@ -713,14 +699,13 @@ export function zakresCelu(
       kontekst: pola,
       etykieta: pola.length === 1 ? nazwa(ix, pola[0]) : `Pola (${pola.length})`,
     });
-    return zakres('pole', refy, 1, sciezka);
+    return zakres('pole', refy, sciezka);
   }
 
   // cel === 'zaznaczenie': każdy element swoim zakresem rysunku (stacja ⇒ cała
   // stacja, pole ⇒ pole z aparatami, inne ⇒ ich własny rysunek).
   const posortowane = unikalnePosortowane(kontekst);
   const refy = posortowane.flatMap((r) => refyElementu(ix, r));
-  const minLod = posortowane.reduce<SceneLod>((acc, r) => (minLodElementu(ix, r) > acc ? minLodElementu(ix, r) : acc), 0);
   const sciezka =
     posortowane.length === 1
       ? sciezkaElementu(ix, posortowane[0])
@@ -732,7 +717,7 @@ export function zakresCelu(
     posortowane.map((r) => stacjaElementu(ix, r)).filter((r): r is string => !!r),
   );
   const przeszkody = przeszkodyStacji(ix, stacjeZaznaczenia);
-  return zakres('zaznaczenie', refy, minLod, sciezka, przeszkody);
+  return zakres('zaznaczenie', refy, sciezka, przeszkody);
 }
 
 /**
@@ -756,7 +741,7 @@ export function zakresToru(snapshot: EnergyNetworkModel, tor: TorElementuOdpowie
       if (el.pole_ref) refy.push(...refyPola(ix, el.pole_ref));
     }
   }
-  return zakres('tor', refy, 0, [
+  return zakres('tor', refy, [
     POZIOM_SIECI,
     { cel: 'tor', kontekst: [tor.element.ref_id], etykieta: `Tor zasilania: ${nazwaObiektuPl(tor.element.nazwa, 'element')}` },
   ]);
@@ -767,10 +752,10 @@ export function zakresToru(snapshot: EnergyNetworkModel, tor: TorElementuOdpowie
 // ---------------------------------------------------------------------------
 
 export interface ProstokatyZakresu {
-  /** Prostokąt celu na każdym poziomie (układ podany przez `przelicz`); `null` =
-   *  na tym poziomie nic z zakresu nie jest narysowane. */
-  readonly celByLod: Readonly<Record<SceneLod, BoundingBox | null>>;
-  readonly przeszkodyByLod: Readonly<Record<SceneLod, readonly BoundingBox[]>>;
+  /** Prostokąt celu (układ podany przez `przelicz`); `null` = nic z zakresu nie
+   *  jest narysowane. */
+  readonly cel: BoundingBox | null;
+  readonly przeszkody: readonly BoundingBox[];
   /**
    * Tusz ETYKIET celu i każdej przeszkody przy skali kamery `scale` — z TEGO
    * SAMEGO planu etykiet, który rysuje kanwa (`planSceneLabels` na całej scenie
@@ -779,44 +764,37 @@ export interface ProstokatyZakresu {
    * POWIĘKSZONYM, więc przy oddaleniu wystaje poza swój slot w scenie
    * (pomiar e2e K2, okno 1440×900: napis „FT1 · transformatorowe" stacji
    * przelotowej wystawał 73 px poza kadr policzony z samych slotów). Kolejność
-   * `przeszkody` = kolejność `przeszkodyByLod[lod]` (jedno filtrowanie, niżej).
+   * `przeszkody` = kolejność `przeszkody` wyżej (jedno filtrowanie, niżej).
    */
-  readonly tuszEtykiet: (lod: SceneLod, scale: number) => TuszEtykietKadru;
+  readonly tuszEtykiet: (scale: number) => TuszEtykietKadru;
 }
 
 /**
- * Prostokąty zakresu na scenach trzech poziomów — czytane z indeksu
- * przynależności sceny (jedno przejście, pamiętane per scena). `przelicz` mostkuje
- * układ sceny na świat kamery (`sceneBoxToCameraWorld`).
+ * Prostokąty zakresu na scenie — czytane z indeksu przynależności sceny (jedno
+ * przejście, pamiętane per scena). `przelicz` mostkuje układ sceny na świat
+ * kamery (`sceneBoxToCameraWorld`).
  */
 export function prostokatyZakresu(
-  sceneByLod: Readonly<Record<SceneLod, SceneV3>>,
+  scena: SceneV3,
   zakresKadru: ZakresKadru,
   przelicz: (bbox: BoundingBox) => BoundingBox = (b) => b,
 ): ProstokatyZakresu {
-  const naPoziomie = (lod: SceneLod): BoundingBox | null => {
-    const box = prostokatRefowWScenie(sceneByLod[lod], zakresKadru.refy);
-    return box ? przelicz(box) : null;
-  };
-  // Predykaty parami: przeszkody z prostokątem na poziomie — JEDNA lista, z której
-  // powstają i prostokąty przeszkód, i przypisanie tuszu etykiet.
-  const narysowanePrzeszkody = (lod: SceneLod): readonly { readonly przeszkoda: PrzeszkodaKadru; readonly box: BoundingBox }[] =>
+  const celSceny = prostokatRefowWScenie(scena, zakresKadru.refy);
+  // Predykaty parami: przeszkody z prostokątem — JEDNA lista, z której powstają
+  // i prostokąty przeszkód, i przypisanie tuszu etykiet.
+  const lista: readonly { readonly przeszkoda: PrzeszkodaKadru; readonly box: BoundingBox }[] =
     zakresKadru.przeszkody.flatMap((przeszkoda) => {
-      const box = prostokatRefowWScenie(sceneByLod[lod], przeszkoda.refy);
+      const box = prostokatRefowWScenie(scena, przeszkoda.refy);
       return box ? [{ przeszkoda, box }] : [];
     });
-  const przeszkody = (lod: SceneLod): readonly BoundingBox[] => narysowanePrzeszkody(lod).map(({ box }) => przelicz(box));
   const refyCelu = new Set(zakresKadru.refy);
   // Podłoga opisów celu tylko dla kadru z kurtyną (cel ≠ sieć) — dokładnie ten
   // warunek stosuje kanwa (`SldCanvasV3`, `refyKadru` puste ⇒ brak podłogi).
   const podloga = refyCelu.size > 0 ? podlogaOpisowCelu(refyCelu) : undefined;
-  const pamiec = new Map<string, TuszEtykietKadru>();
-  const tuszEtykiet = (lod: SceneLod, scale: number): TuszEtykietKadru => {
-    const klucz = `${lod}|${scale}`;
-    const zapamietany = pamiec.get(klucz);
+  const pamiec = new Map<number, TuszEtykietKadru>();
+  const tuszEtykiet = (scale: number): TuszEtykietKadru => {
+    const zapamietany = pamiec.get(scale);
     if (zapamietany) return zapamietany;
-    const scena = sceneByLod[lod];
-    const lista = narysowanePrzeszkody(lod);
     const indeksPrzeszkody = new Map<string, number>();
     lista.forEach(({ przeszkoda }, i) => {
       for (const ref of przeszkoda.refy) indeksPrzeszkody.set(ref, i);
@@ -845,22 +823,18 @@ export function prostokatyZakresu(
       cel: cel ? przelicz(cel) : null,
       przeszkody: tuszPrzeszkod.map((b) => (b ? przelicz(b) : null)),
     };
-    pamiec.set(klucz, wynik);
+    pamiec.set(scale, wynik);
     return wynik;
   };
   return {
-    celByLod: { 0: naPoziomie(0), 1: naPoziomie(1), 2: naPoziomie(2) },
-    przeszkodyByLod: { 0: przeszkody(0), 1: przeszkody(1), 2: przeszkody(2) },
+    cel: celSceny ? przelicz(celSceny) : null,
+    przeszkody: lista.map(({ box }) => przelicz(box)),
     tuszEtykiet,
   };
 }
 
-/** Czy zakres jest narysowany na którymkolwiek dopuszczalnym poziomie (≥ `minLod`). */
-export function zakresNarysowany(
-  sceneByLod: Readonly<Record<SceneLod, SceneV3>>,
-  zakresKadru: ZakresKadru,
-): boolean {
+/** Czy zakres jest narysowany na scenie. */
+export function zakresNarysowany(scena: SceneV3, zakresKadru: ZakresKadru): boolean {
   if (zakresKadru.cel === 'siec') return true;
-  const { celByLod } = prostokatyZakresu(sceneByLod, zakresKadru);
-  return ([0, 1, 2] as const).some((lod) => lod >= zakresKadru.minLod && celByLod[lod] !== null);
+  return prostokatRefowWScenie(scena, zakresKadru.refy) !== null;
 }

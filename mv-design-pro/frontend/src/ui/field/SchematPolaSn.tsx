@@ -33,14 +33,11 @@ interface SchematPolaSnProps {
   readonly snapshot: EnergyNetworkModel | null;
 }
 
-/** Poziom szczegółu sceny z aparatami pól (ten sam co kanwa przy pracy z bliska). */
-const LOD_POLA = 2;
-
 export function SchematPolaSn({ item, snapshot }: SchematPolaSnProps): JSX.Element {
   const themeMode = useThemeModeStore((state) => state.mode);
   const palette = sldPaletteForTheme(themeMode);
   const kadr = useMemo(
-    () => (snapshot ? kadrPolaZeSceny(buildSceneV3(snapshot, LOD_POLA), item.bay_ref) : null),
+    () => (snapshot ? kadrPolaZeSceny(buildSceneV3(snapshot), item.bay_ref) : null),
     [snapshot, item.bay_ref],
   );
   const role = item.canonical_model.base_model.bay_role;

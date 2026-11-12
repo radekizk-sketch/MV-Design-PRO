@@ -135,7 +135,7 @@ describe('menu stanu łącznika na symbolu aparatu pola — aparat × położeni
         it(`${a.opis} × ${p} × ${akcja}`, () => {
           const { model, bayRef, aparat } = zPolozeniem(a, p);
           useSnapshotStore.setState({ snapshot: model, executeDomainOperation: wykonaj } as never);
-          const { container } = render(<SldCanvasV3Workspace width={1400} height={900} lodOverride={2} />);
+          const { container } = render(<SldCanvasV3Workspace width={1400} height={900} />);
           const uchwyt = container.querySelector(`[data-hit-klasa="aparat"][data-hit-device-ref="${aparat.device_ref}"]`);
           expect(uchwyt, `uchwyt aparatu ${a.oznaczenie}`).toBeTruthy();
           fireEvent.contextMenu(uchwyt!, { clientX: 120, clientY: 80 });

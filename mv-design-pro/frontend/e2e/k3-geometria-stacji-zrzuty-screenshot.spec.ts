@@ -25,6 +25,8 @@
  * motywy + sprzęgło otwarte × dwa motywy.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+
+import { SKALA_CZYTANIA, skalaKamery } from './skalaKamery';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -118,7 +120,9 @@ async function kadrStacji(page: Page, st: Stacja): Promise<void> {
   await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
   await uchwyt.dblclick();
   await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(st.name ?? '', { timeout: 10000 });
-  await expect(page.getByTestId('sld-canvas-v3')).not.toHaveAttribute('data-scene-lod', '0');
+  // Kadr stacji jest w skali czytania (jedna scena niezależna od skali — karta
+  // SLD-SKALA-I-NAWIGACJA; dawniej: „poziom szczegółu ≠ przegląd”).
+  await expect.poll(() => skalaKamery(page.getByTestId('sld-canvas-v3'))).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
   await page.waitForTimeout(400);
 }
 

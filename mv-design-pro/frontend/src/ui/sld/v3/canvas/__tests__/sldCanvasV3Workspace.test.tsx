@@ -30,6 +30,7 @@ import {
 import { resultRefForSegment } from '../resultLabels';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
+import { pierwszaStacjaZUchwytem } from './uchwytStacji';
 import type {
   ShortCircuitBranchFlowV1,
   ShortCircuitFlowOverlayInput,
@@ -110,7 +111,7 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
 
   it('klik w symbol woła globalną selekcję (useSelectionStore) z id wywiedzionym z testId', () => {
     useSnapshotStore.setState({ snapshot: enm });
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const firstSymbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.firstElementChild;
     expect(firstSymbolGroup).toBeTruthy();
@@ -129,26 +130,26 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     expect(selected?.id).toBe(scene.symbols[0].meta?.ownerRef);
     // F8b-1 B: typ selekcji pochodzi teraz z elementKind (nie zawsze
     // 'DescriptiveElement' — patrz test dedykowany niżej).
-    // KD-5: pierwszym symbolem sceny L0 jest ZWINIĘTY BLOK GPZ
-    // (`elementKind: 'station'`), a nie aparat pola GPZ (dawniej odłącznik →
-    // 'Switch'). Intencja testu (klik → selekcja z id z `ownerRef` i typem z
-    // `elementKind`) bez zmian; oczekiwanie wyprowadzamy ze sceny, żeby test
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): pierwszym symbolem jest symbol pola GPZ,
+    // nie dawny zwinięty blok GPZ widoku L0. Intencja testu (klik → selekcja z id z `ownerRef`
+    // i typem z `elementKind`) bez zmian; oczekiwanie wyprowadzamy ze sceny, żeby test
     // nie przybijał kolejności symboli.
     expect(selected?.type).toBe(elementTypeForKind(scene.symbols[0].meta?.elementKind));
-    expect(selected?.type).toBe('Station');
+    expect(selected?.type).not.toBe('Station');
   });
 
   describe('F8b-1 B — selekcja z realnym typem (elementKind → ElementType v2)', () => {
-    it('klik w symbol L0 (stationCollapsed) → SelectedElement.type = "Station", id = station ref', () => {
+    it('klik w napis identyfikacji stacji → SelectedElement.type = "Station", id = station ref', () => {
+      // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): dawny zwinięty symbol stacji L0 nie
+      // istnieje — stację wskazuje napis identyfikacji `<ref>#name-row-0`.
       useSnapshotStore.setState({ snapshot: enm });
-      const scene = buildSceneV3(enm, 0);
-      const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
-      expect(stationIndex).toBeGreaterThanOrEqual(0);
+      const scene = buildSceneV3(enm);
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
+      const stacja = pierwszaStacjaZUchwytem(container, scene);
+      fireEvent.click(stacja.el);
       const selected = useSelectionStore.getState().selectedElement;
       expect(selected?.type).toBe('Station');
-      expect(selected?.id).toBe(scene.symbols[stationIndex].meta?.ownerRef);
+      expect(selected?.id).toBe(stacja.ref);
     });
 
     it('elementTypeForKind: mapowanie na CAŁĄ małą unię PreviewElementKind + fallback undefined dla nieznanego/braku', () => {
@@ -164,12 +165,11 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
 
     it('S9-4 (audyt P-6): klik w TŁO arkusza CZYŚCI zaznaczenie — pusty arkusz nie jest obiektem', () => {
       useSnapshotStore.setState({ snapshot: enm });
-      const scene = buildSceneV3(enm, 0);
-      const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+      const scene = buildSceneV3(enm);
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
       // Najpierw REALNE zaznaczenie (żeby było co czyścić — inaczej test
       // przechodziłby na pustym stanie i niczego nie dowodził).
-      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
+      fireEvent.click(pierwszaStacjaZUchwytem(container, scene).el);
       expect(useSelectionStore.getState().selectedElement).not.toBeNull();
 
       // Klik w korzeń kanwy = tło: cały rysunek jest bierny, więc w
@@ -187,9 +187,9 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       // przypadkiem się pokrywały (KD-5 je rozjechało). Naprawa u źródła: węzeł
       // wyszukiwany po REALNYM `data-testid` sceny, którą kanwa faktycznie
       // rysuje — test przestaje zależeć od kolejności symboli.
-      const scene = buildSceneV3(enm, 0);
+      const scene = buildSceneV3(enm);
       const source = scene.symbols.find((s) => s.symbolId === 'gridSource');
-      expect(source, 'glif sieci zewnętrznej widoczny na KAŻDYM LOD (§13.1)').toBeTruthy();
+      expect(source, 'glif sieci zewnętrznej w scenie (§13.1)').toBeTruthy();
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
       const sourceGroup = uchwytTrafienia(container, source!.meta!.testId!);
       expect(sourceGroup, 'symbol sieci zewnętrznej ma uchwyt trafienia').toBeTruthy();
@@ -207,12 +207,16 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
     expect(container.querySelector('[data-testid="sld-canvas-v3"]')).toBeNull();
   });
 
-  it('GPZ + stacje ciągu głównego są energizowane (topologia od źródła przez zamknięte łączniki) → symbol stationCollapsed (L0) ma nakładkę koloru (stroke != base)', () => {
+  it('GPZ + stacje ciągu głównego są energizowane (topologia od źródła przez zamknięte łączniki) → aparat pola stacji ma nakładkę koloru (stroke != base)', () => {
     useSnapshotStore.setState({ snapshot: enm });
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+    const scene = buildSceneV3(enm);
+    // Jedna scena: nakładka siedzi na aparatach pól stacji (dawniej na zwiniętym symbolu L0).
+    const aparat = scene.symbols.find((s) => s.meta?.elementKind === 'apparatus' && (s.meta?.ownerRef ?? '').startsWith('stn/') && s.meta?.testId);
+    expect(aparat, 'scena niesie aparat pola stacji').toBeDefined();
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    const stationGroup = [...(container.querySelector('[data-testid="sld-v3-symbols"]')?.querySelectorAll('[data-testid]') ?? [])].find(
+      (n) => n.getAttribute('data-testid') === aparat!.meta!.testId,
+    );
     // Nakładka rysuje stroke NA GLIFIE (potomek grupy), nie na samej grupie —
     // wystarczy, że jakiś potomek ma stroke ustawiony na kolor akcentu (nie
     // wartość bazową V3_STROKE_BASE '#E8EEF4') LUB wygaszenia ('#5B6B76') —
@@ -236,22 +240,20 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
       expect(key.startsWith('sld-v3-segment-')).toBe(false);
       expect(key.startsWith('sld-v3-symbol-')).toBe(false);
     }
-    for (const lod of [0, 1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      for (const segment of scene.segments) {
-        const meta = segment.meta;
-        if (!meta?.ownerRef || !meta.elementKind) continue;
-        if (!['station', 'bus', 'segment'].includes(meta.elementKind)) continue;
-        const base = meta.ownerRef.includes('#') ? meta.ownerRef.slice(0, meta.ownerRef.indexOf('#')) : meta.ownerRef;
-        // WN-WYNIK: intencja bez zmian („stan wpisu = stan JEGO WŁASNEGO
-        // elementu"), zmienił się sposób wskazania tego elementu. Dla szyn GPZ
-        // element modelu niesie kanoniczny `busResultRef`; `baseRefOf` dawał tam
-        // identyfikator SEKCJI, którego `SupplyPathHighlight` nie zna — a
-        // `isElementEnergized` nie ma „nie wiem" i zwracał `false`, czyli szyna
-        // pod napięciem dostawała zdanie „beznapięciowa".
-        const elementModelu = resultRefForSegment(meta) ?? base;
-        expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, elementModelu));
-      }
+    const scene = buildSceneV3(enm);
+    for (const segment of scene.segments) {
+      const meta = segment.meta;
+      if (!meta?.ownerRef || !meta.elementKind) continue;
+      if (!['station', 'bus', 'segment'].includes(meta.elementKind)) continue;
+      const base = meta.ownerRef.includes('#') ? meta.ownerRef.slice(0, meta.ownerRef.indexOf('#')) : meta.ownerRef;
+      // WN-WYNIK: intencja bez zmian („stan wpisu = stan JEGO WŁASNEGO
+      // elementu"), zmienił się sposób wskazania tego elementu. Dla szyn GPZ
+      // element modelu niesie kanoniczny `busResultRef`; `baseRefOf` dawał tam
+      // identyfikator SEKCJI, którego `SupplyPathHighlight` nie zna — a
+      // `isElementEnergized` nie ma „nie wiem" i zwracał `false`, czyli szyna
+      // pod napięciem dostawała zdanie „beznapięciowa".
+      const elementModelu = resultRefForSegment(meta) ?? base;
+      expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, elementModelu));
     }
   });
 
@@ -264,7 +266,7 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
      słowników: sprawdza kolor narysowanej szyny WN. */
   it('WN-WYNIK: szyna WN GPZ dostaje stan energizacji na kanwie (klucz odczytu == klucz budowy słownika)', () => {
     useSnapshotStore.setState({ snapshot: enm });
-    const { container } = render(<SldCanvasV3Workspace width={1200} height={900} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={900} />);
     const hvBus = container.querySelector('[data-testid="gpz-canonical-hv-bus"]');
     expect(hvBus).toBeTruthy();
     // Nakładka wpisała stan (pod napięciem / beznapięciowo) — kolor BAZOWY
@@ -286,7 +288,7 @@ describe('SldCanvasV3Workspace — F9.5: nakładka przepływu mocy (spec §14.2,
   // F-1 (recenzja Opusa): ref MUSI być z bramki jednokawałkowej — tylko takie
   // przechodzą przez `buildFlowOverlayForSnapshot` (kierunek udowodniony).
   const singleHop = new Set(orientedSegmentRefs(enm).keys());
-  const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
+  const realSegmentOwnerRef = buildSceneV3(enm).segments.find(
     (s) =>
       s.meta?.elementKind === 'segment' &&
       s.meta.ownerRef &&
@@ -353,7 +355,7 @@ describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarcio
   // ten sam dobor celu co blok F9.5 wyzej.
   const orientation = orientedSegmentRefs(enm);
   const singleHop = new Set(orientation.keys());
-  const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
+  const realSegmentOwnerRef = buildSceneV3(enm).segments.find(
     (s) =>
       s.meta?.elementKind === 'segment' &&
       s.meta.ownerRef &&
@@ -379,7 +381,7 @@ describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarcio
   it('ŚCIEŻKA PRODUKCYJNA: snapshot + loadFaultFlow (ekran zwarć „Pokaż na schemacie") ⇒ strzałka w DOM kanwy v3', () => {
     useSnapshotStore.setState({ snapshot: enm });
     useOverlayStore.getState().loadFaultFlow(faultInput());
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const layer = container.querySelector('[data-testid="sld-v3-fault-flow-overlay"]');
     expect(layer).toBeTruthy();
     expect(layer!.children.length).toBe(1);
@@ -389,14 +391,14 @@ describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarcio
 
   it('bez kanału kierunku (faultFlow=null — stan domyślny): warstwa strzałek PUSTA (zero atrap)', () => {
     useSnapshotStore.setState({ snapshot: enm });
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(container.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.children.length).toBe(0);
   });
 
   it('buildFaultFlowOverlayForSnapshot niesie wpis identyczny z buildFaultFlowOverlayFromScene wołanym wprost (zero rozjazdu wołający↔budowniczy) + wyrocznia PASS', () => {
     const input = faultInput('to_from');
     const merged = buildFaultFlowOverlayForSnapshot(enm, input);
-    const direct = buildFaultFlowOverlayFromScene(buildSceneV3(enm, 2), input, orientation);
+    const direct = buildFaultFlowOverlayFromScene(buildSceneV3(enm), input, orientation);
     expect(merged[realSegmentOwnerRef]).toEqual(direct[realSegmentOwnerRef]);
     expect(merged[realSegmentOwnerRef]?.forward).toBe(false);
     expect(faultFlowOverlayTracesToInput(merged, input)).toBe(true);

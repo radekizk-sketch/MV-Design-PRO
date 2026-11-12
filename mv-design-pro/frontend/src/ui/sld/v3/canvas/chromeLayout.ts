@@ -74,11 +74,6 @@ export function sheetScaleCaptionText(scaleLabel: string): string {
   return `Skala ${scaleLabel}`;
 }
 
-/** Treść podpisu poziomu szczegółu — jedno źródło (patrz wyżej). */
-export function sheetLodCaptionText(lodLabel: string): string {
-  return `Widok: ${lodLabel}`;
-}
-
 /** Treść wskaźnika ukrytych opisów — jedno źródło dla renderu i dla układu. */
 export function hiddenLabelsHintText(count: number): string {
   return `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`;
@@ -155,12 +150,10 @@ export interface SheetCaptionInput {
   /** Odmiana kroju podpisów arkusza (font-weight) — ta, którą rysuje `sheet/Frame.tsx`. */
   readonly captionFontWeight: number;
   readonly scaleLabel: string;
-  /** `undefined` ⇒ ramka nie rysuje podpisu poziomu szczegółu. */
-  readonly lodLabel?: string;
 }
 
 /** Element dolnego aparatu arkusza z tożsamością — do raportów i wyroczni. */
-export type SheetApparatusId = 'ramka' | 'skala' | 'widok';
+export type SheetApparatusId = 'ramka' | 'skala';
 export type SheetApparatusRect = ScreenRect & { readonly id: SheetApparatusId };
 
 /**
@@ -171,8 +164,8 @@ export type SheetApparatusRect = ScreenRect & { readonly id: SheetApparatusId };
  *     linia ramki, jest tak samo nieczytelny jak napis pod drugim napisem —
  *     i dokładnie to zobaczyłem na zrzucie po pierwszym podejściu do tej karty,
  *     gdzie wskaźnik ustąpił podpisom i wylądował NA krawędzi;
- *   · `skala`/`widok` — podpisy `SHEET_CAPTION_OFFSET_SCREEN_PX` pod ramką,
- *     „Skala" wyrównana do PRAWEJ krawędzi arkusza, „Widok" do LEWEJ.
+ *   · `skala` — podpis `SHEET_CAPTION_OFFSET_SCREEN_PX` pod ramką, wyrównany
+ *     do PRAWEJ krawędzi arkusza.
  *
  * Wysokość prostokąta napisu = wiersz pisma (pismo + interlinia 6), liczona
  * wokół linii bazowej tak, żeby obejmowała wydłużenia górne i dolne.
@@ -202,10 +195,6 @@ export function sheetCaptionScreenRects(
   const skala = sheetScaleCaptionText(input.scaleLabel);
   const szerSkali = metrics.measure(skala, captionFontPx, captionFontWeight);
   rects.push({ id: 'skala', x: prawa - szerSkali, y, width: szerSkali, height: wysokosc });
-  if (input.lodLabel !== undefined) {
-    const widok = sheetLodCaptionText(input.lodLabel);
-    rects.push({ id: 'widok', x: lewa, y, width: metrics.measure(widok, captionFontPx, captionFontWeight), height: wysokosc });
-  }
   return rects;
 }
 

@@ -32,7 +32,7 @@ import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { useNetworkBuildStore } from '../../networkBuildStore';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../../sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../../sld/v3/scene/buildScene';
 import { buildW1MatrixFixture } from '../../../sld/v3/scene/__tests__/fixtures/w1MatrixVariants';
 import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspace';
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
@@ -142,17 +142,24 @@ function jestPoleBezRekorduAparatu(s: SceneV3['symbols'][number]): boolean {
 interface Przypadek {
   readonly nazwa: string;
   readonly enm: EnergyNetworkModel;
-  readonly lod: SceneLod;
-  /** testId uchwytu trafienia obiektu w scenie danego poziomu. */
+  /** Selektor uchwytu trafienia obiektu na kanwie. */
   readonly uchwyt: (scena: SceneV3) => string;
   readonly rodzaj: string;
+}
+
+/** Uchwyt stacji jednej sceny (karta SLD-SKALA-I-NAWIGACJA R1): obrys trafienia napisu
+ *  identyfikacji `<ref>#name-row-0` — dawniej zwinięty symbol stacji widoku ogólnego. */
+function stacja(scena: SceneV3): string {
+  const ref = scena.meta.stationTraversalOrder[0];
+  expect(ref, 'stacja w scenie').toBeDefined();
+  return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
 }
 
 function symbol(predykat: (s: SceneV3['symbols'][number]) => boolean) {
   return (scena: SceneV3): string => {
     const i = scena.symbols.findIndex(predykat);
     expect(i, 'symbol w scenie').toBeGreaterThanOrEqual(0);
-    return scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`;
+    return `[data-hit-for="${scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`}"]`;
   };
 }
 
@@ -160,35 +167,30 @@ const PRZYPADKI: readonly Przypadek[] = [
   {
     nazwa: 'stacja',
     enm: SIEC,
-    lod: 0,
-    uchwyt: symbol((s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed'),
+    uchwyt: stacja,
     rodzaj: 'station',
   },
   {
     nazwa: 'pole',
     enm: SIEC,
-    lod: 2,
     uchwyt: symbol((s) => jestPoleBezRekorduAparatu(s)),
     rodzaj: 'apparatus',
   },
   {
     nazwa: 'aparat',
     enm: SIEC_APARATOW,
-    lod: 2,
     uchwyt: symbol((s) => s.meta?.elementKind === 'apparatus' && Boolean(s.meta?.deviceRef)),
     rodzaj: 'apparatus',
   },
   {
     nazwa: 'transformator',
     enm: SIEC,
-    lod: 2,
     uchwyt: symbol((s) => s.meta?.elementKind === 'transformer'),
     rodzaj: 'transformer',
   },
   {
     nazwa: 'źródło OZE',
     enm: SIEC,
-    lod: 2,
     uchwyt: symbol((s) => s.meta?.elementKind === 'der'),
     // K6: źródło OZE ma własny rodzaj danych panelu (karta techniczna źródła z torem
     // przyłączenia) — dawniej panel nie rozpoznawał rodzaju (pusty atrybut).
@@ -197,20 +199,18 @@ const PRZYPADKI: readonly Przypadek[] = [
   {
     nazwa: 'odcinek',
     enm: SIEC,
-    lod: 2,
     uchwyt: (scena) => {
       const i = scena.segments.findIndex(
         (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
       );
       expect(i).toBeGreaterThanOrEqual(0);
-      return scena.segments[i].meta?.testId ?? `sld-v3-segment-${i}`;
+      return `[data-hit-for="${scena.segments[i].meta?.testId ?? `sld-v3-segment-${i}`}"]`;
     },
     rodzaj: 'cable_run',
   },
   {
     nazwa: 'węzeł SN',
     enm: SIEC_ZKSN,
-    lod: 2,
     uchwyt: symbol((s) => s.meta?.elementKind === 'branchPoint'),
     rodzaj: 'node',
   },
@@ -243,13 +243,13 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
     useSnapshotStore.setState({ snapshot: przypadek.enm });
     const { container } = render(
       <>
-        <SldCanvasV3Workspace width={1322} height={696} lodOverride={przypadek.lod === 0 ? undefined : przypadek.lod} />
+        <SldCanvasV3Workspace width={1322} height={696} />
         <InspektorKanwyTestowy />
       </>,
     );
-    const testId = przypadek.uchwyt(buildSceneV3(przypadek.enm, przypadek.lod));
-    const uchwyt = container.querySelector(`[data-hit-for="${testId}"]`);
-    expect(uchwyt, `uchwyt trafienia ${testId}`).not.toBeNull();
+    const selektor = przypadek.uchwyt(buildSceneV3(przypadek.enm));
+    const uchwyt = container.querySelector(selektor);
+    expect(uchwyt, `uchwyt trafienia ${selektor}`).not.toBeNull();
     fireEvent.click(uchwyt!, { detail: 1 });
     const panel = screen.getByTestId('inspektor-element-kanwy');
     expect(panel).toHaveAttribute('data-rodzaj', przypadek.rodzaj);

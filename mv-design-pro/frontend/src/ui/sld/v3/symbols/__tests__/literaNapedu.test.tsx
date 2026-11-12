@@ -6,8 +6,8 @@
  * i `text-anchor: middle` w `CadPrimitiveLayer`) = środek okręgu.
  *
  * Iloczyn: każdy symbol z literą w okręgu osprzętu (wyłącznik z napędem, wyłącznik wysuwny
- * z napędem) × LOD {0, 1, 2}: na LOD2 litera jest i leży w środku okręgu (≤ 0,5 j.św. w obu osiach),
- * na LOD1 i LOD0 napęd jest DETALEM zdjętym wg `DETALE_KAFLA_WG_LOD` (nie pomniejszonym). Iniekcja
+ * z napędem): litera jest i leży w środku okręgu (≤ 0,5 j.św. w obu osiach); widoczność detalu
+ * wg pisma na ekranie przypina `znacznikRodzajuLacznika.test.tsx` (`detalCzytelny`). Iniekcja
  * przesunięcia litery o 1 j.św. — czerwona.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -33,44 +33,41 @@ const Z_LITERA = (Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[]).filte
   QET_SYMBOLE_POLA_SN[id].osprzet.some((p) => p.k === 'letter'),
 );
 
-describe('litera napędu „M” — środek okręgu, iloczyn rodzina × LOD', () => {
+describe('litera napędu „M” — środek okręgu w każdej rodzinie z napędem', () => {
   it('warunek wstępny: wyłącznik z napędem i wyłącznik wysuwny z napędem niosą literę w okręgu', () => {
     expect(Z_LITERA).toEqual(expect.arrayContaining(['qetBreakerZNapedem', 'qetBreakerWysuwnyZNapedem']));
   });
 
   for (const id of Z_LITERA) {
-    for (const lod of [0, 1, 2] as const) {
-      it(`${id} · LOD${lod}`, () => {
-        const Glyph = SYMBOL_GLYPHS[id];
-        const markup = renderToStaticMarkup(
-          <svg xmlns="http://www.w3.org/2000/svg">
-            <Glyph x={0} y={0} state="closed" stroke="#123456" kafleStanu={DARK_SCADA_SLD_PALETTE.state} lod={lod} />
-          </svg>,
-        );
-        const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
-        const osprzet = doc.querySelector('[data-qet="osprzet"]');
-        if (lod !== 2) {
-          expect(osprzet, 'napęd zdjęty jako detal').toBeNull();
-          return;
-        }
-        const t = osprzet!.querySelector('text')!;
-        const c = osprzet!.querySelector('circle')!;
-        expect(t.getAttribute('text-anchor')).toBe('middle');
-        expect(t.getAttribute('dominant-baseline')).toBe('central');
-        const [dx, dy] = odchylka(
-          { x: Number(t.getAttribute('x')), y: Number(t.getAttribute('y')), t: t.textContent ?? '', size: Number(t.getAttribute('font-size')) },
-          { cx: Number(c.getAttribute('cx')), cy: Number(c.getAttribute('cy')) },
-        );
-        expect(Math.abs(dx), 'poziom').toBeLessThanOrEqual(TOLERANCJA);
-        expect(Math.abs(dy), 'pion').toBeLessThanOrEqual(TOLERANCJA);
-        // Okrąg napędu cały w gabarycie symbolu (nie ucięty półokrąg).
-        const r = Number(c.getAttribute('r'));
-        const s = QET_SYMBOLE_POLA_SN[id];
-        expect(Number(c.getAttribute('cx')) - r).toBeGreaterThanOrEqual(0);
-        expect(Number(c.getAttribute('cy')) - r).toBeGreaterThanOrEqual(0);
-        expect(Number(c.getAttribute('cy')) + r).toBeLessThanOrEqual(s.wysokosc);
-      });
-    }
+    it(`${id}`, () => {
+      const Glyph = SYMBOL_GLYPHS[id];
+      const markup = renderToStaticMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <Glyph x={0} y={0} state="closed" stroke="#123456" kafleStanu={DARK_SCADA_SLD_PALETTE.state} />
+        </svg>,
+      );
+      const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+      const osprzet = doc.querySelector('[data-qet="osprzet"]');
+      // Rysunek świata (bez skali kamery): detal napędu zawsze — widoczność wg pisma na ekranie
+      // przypina `znacznikRodzajuLacznika.test.tsx` (karta SLD-SKALA-I-NAWIGACJA R3).
+      expect(osprzet, 'napęd narysowany').not.toBeNull();
+      const t = osprzet!.querySelector('text')!;
+      const c = osprzet!.querySelector('circle')!;
+      expect(t.getAttribute('text-anchor')).toBe('middle');
+      expect(t.getAttribute('dominant-baseline')).toBe('central');
+      const [dx, dy] = odchylka(
+        { x: Number(t.getAttribute('x')), y: Number(t.getAttribute('y')), t: t.textContent ?? '', size: Number(t.getAttribute('font-size')) },
+        { cx: Number(c.getAttribute('cx')), cy: Number(c.getAttribute('cy')) },
+      );
+      expect(Math.abs(dx), 'poziom').toBeLessThanOrEqual(TOLERANCJA);
+      expect(Math.abs(dy), 'pion').toBeLessThanOrEqual(TOLERANCJA);
+      // Okrąg napędu cały w gabarycie symbolu (nie ucięty półokrąg).
+      const r = Number(c.getAttribute('r'));
+      const s = QET_SYMBOLE_POLA_SN[id];
+      expect(Number(c.getAttribute('cx')) - r).toBeGreaterThanOrEqual(0);
+      expect(Number(c.getAttribute('cy')) - r).toBeGreaterThanOrEqual(0);
+      expect(Number(c.getAttribute('cy')) + r).toBeLessThanOrEqual(s.wysokosc);
+    });
   }
 
   it('iniekcja: litera przesunięta o 1 j.św. (dawne położenie ze źródła) — czerwona', () => {

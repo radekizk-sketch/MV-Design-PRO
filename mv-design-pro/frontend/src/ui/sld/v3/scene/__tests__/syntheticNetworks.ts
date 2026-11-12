@@ -13,9 +13,7 @@
 import { readFileSync } from 'node:fs';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import type { SceneLod, SceneV3 } from '../buildScene';
-
-export const LODS: readonly SceneLod[] = [0, 1, 2];
+import type { SceneV3 } from '../buildScene';
 
 export function loadEnm(path: string): EnergyNetworkModel {
   const parsed = JSON.parse(readFileSync(path, 'utf8')) as { readonly enm?: EnergyNetworkModel };

@@ -11,7 +11,7 @@
  *
  * Ten plik odpowiada na trzy pytania odbioru:
  *  A. INWENTARZ — co pokazuje menu dla KAŻDEJ klasy obiektu kanwy (iloczyn
- *     {klasa} × {LOD}), łącznie z obiektami świadomie bez menu;
+ *     {klasa}), łącznie z obiektami świadomie bez menu;
  *  B. ŁAŃCUCH BUDOWY — czy z samej kanwy da się przejść pełny cykl
  *     GPZ → ciąg → stacja na odcinku → kolejny ciąg / odgałęzienie, z REALNYM
  *     refem modelu w każdej operacji (kryterium „15 stacji wyłącznie z kanwy");
@@ -34,7 +34,7 @@ import {
   resolveTrunkStartAvailability,
 } from '../../../shared/sldActionExecutor';
 import { getMenuActions, powodBrakuStartuCiagu } from '../../../v2/command/SldCommandService';
-import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
 import { resultRefForSegment } from '../resultLabels';
 import type { DerSourceKind } from '../../compose/sourceKind';
 import { planSceneLabels } from '../labelLegibility';
@@ -112,12 +112,28 @@ interface Kanwa {
 /** Kanwa żywego workspace'u nad modelem ze store'u; `model` MUSI być tym samym modelem, który
  *  leży w store (domyślnie sieć referencyjna z `beforeEach`), bo obszary trafień liczymy z jego
  *  sceny. */
-function renderKanwe(lod: SceneLod, model: EnergyNetworkModel = enm): Kanwa {
-  const { container } = render(<SldCanvasV3Workspace width={W} height={H} lodOverride={lod} />);
+/** Wiersz nazwy stacji (`<ref>#name-row-0`) — uchwyt stacji jednej sceny (karta
+ *  SLD-SKALA-I-NAWIGACJA R1): dawniej klasa „stacja" zwiniętego symbolu widoku L0. */
+const WIERSZ_NAZWY = '#name-row-0';
+function jestWierszemNazwyStacji(a: CanvasHitArea): boolean {
+  return a.klasa === 'etykieta' && (a.ownerRef ?? '').endsWith(WIERSZ_NAZWY);
+}
+function refStacjiObszaru(a: CanvasHitArea): string {
+  return (a.ownerRef ?? '').slice(0, -WIERSZ_NAZWY.length);
+}
+function obszarStacji(kanwa: Kanwa, ref: string): CanvasHitArea | undefined {
+  return kanwa.obszary.find((a) => a.klasa === 'etykieta' && a.ownerRef === `${ref}${WIERSZ_NAZWY}`);
+}
+function pierwszaStacja(kanwa: Kanwa, prefiks: string): CanvasHitArea | undefined {
+  return kanwa.obszary.find((a) => jestWierszemNazwyStacji(a) && refStacjiObszaru(a).startsWith(prefiks));
+}
+
+function renderKanwe(model: EnergyNetworkModel = enm): Kanwa {
+  const { container } = render(<SldCanvasV3Workspace width={W} height={H} />);
   const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
   const viewBox = svg.getAttribute('viewBox')!.split(' ').map(Number);
   const scale = W / viewBox[2];
-  const scene = buildSceneV3(model, lod);
+  const scene = buildSceneV3(model);
   const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
   const obszary = buildCanvasHitAreas({
     symbols: scene.symbols,
@@ -246,10 +262,8 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
       'kreska/znacznik bez odpowiednika w modelu (zejście pola bez gałęzi, słupek terminalny) — operacja domenowa nie miałaby na czym pracować',
   };
 
-  it.each([0, 1, 2] as SceneLod[])(
-    'LOD %s: KAŻDA para {klasa obiektu × kotwica modelu} obecna na scenie otwiera menu SWOJEJ kategorii (prawy klik natywny)',
-    async (lod) => {
-      const kanwa = renderKanwe(lod);
+  it('KAŻDA para {klasa obiektu × kotwica modelu} obecna na scenie otwiera menu SWOJEJ kategorii (prawy klik natywny)', async () => {
+      const kanwa = renderKanwe();
       // Inwentarz par obecnych na tej scenie — liczony z DANYCH, nie z listy
       // wpisanej ręcznie (reguła KLASA pkt 1: inwentarz przed naprawą).
       const pary = new Map<string, CanvasHitArea>();
@@ -259,7 +273,7 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
         const klucz = `${area.klasa}|${kluczOczekiwania(temat)}`;
         if (!pary.has(klucz)) pary.set(klucz, area);
       }
-      expect(pary.size, `scena LOD ${lod} ma pary {klasa × kotwica}`).toBeGreaterThan(0);
+      expect(pary.size, `scena ma pary {klasa × kotwica}`).toBeGreaterThan(0);
 
       for (const [klucz, area] of [...pary.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
         const kluczKotwicy = klucz.split('|')[1];
@@ -285,7 +299,7 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
     );
     expect(wynikAdnotacji.stan === 'brak' && wynikAdnotacji.kod).toBe('adnotacja');
 
-    const kanwa = renderKanwe(2);
+    const kanwa = renderKanwe();
     const rysunkowy = kanwa.obszary.find(
       (a) => a.klasa === 'tor' && tematObiektu(kanwa, a) === null,
     );
@@ -294,7 +308,7 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
   }, 180000);
 
   it('kategoria menu odcinka idzie za RODZINĄ gałęzi: kabel i linia napowietrzna dostają RÓŻNE menu', async () => {
-    const kanwa = renderKanwe(2);
+    const kanwa = renderKanwe();
     const kabelArea = pierwszyZKotwica(kanwa, 'tor', 'galaz', 'cable');
     const napowietrznaArea = pierwszyZKotwica(kanwa, 'tor', 'galaz', 'line_overhead');
     // Sieć referencyjna niesie OBIE rodziny — inaczej test nie mierzyłby różnicy.
@@ -316,13 +330,15 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
   }, 180000);
 
   it('symbol i etykieta TEGO SAMEGO obiektu dają identyczne menu i identyczne blokady', async () => {
-    const kanwa = renderKanwe(0);
-    const symbol = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('stn/'));
+    const kanwa = renderKanwe();
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): stacja nie ma już symbolu zwiniętego widoku
+    // L0 — dwa uchwyty TEGO SAMEGO obiektu to dwa wiersze jego pasma nazw (nazwa i rodzaj stacji).
+    const symbol = pierwszaStacja(kanwa, 'stn/');
     expect(symbol).toBeTruthy();
     const etykieta = kanwa.obszary.find(
-      (a) => a.klasa === 'etykieta' && a.ownerRef?.startsWith(symbol!.ownerRef!),
+      (a) => a.klasa === 'etykieta' && a.ownerRef === `${refStacjiObszaru(symbol!)}#name-row-1`,
     );
-    expect(etykieta, 'stacja ma na scenie także etykietę-uchwyt').toBeTruthy();
+    expect(etykieta, 'stacja ma na scenie drugi wiersz pasma nazw').toBeTruthy();
 
     const zSymbolu = await prawyKlik(kanwa, symbol!.testId);
     const opisSymbolu = Array.from(zSymbolu!.querySelectorAll('[data-testid^="sld-menu-"]')).map(
@@ -355,7 +371,6 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     readonly klasa: HitObjectClass;
     readonly kotwica: MenuAnchorKind;
     readonly rodzina?: string;
-    readonly lod: SceneLod;
     readonly action: string;
     readonly op: string;
   }[] = [
@@ -366,19 +381,19 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     // fromRef` pusty dla KAŻDEJ kotwicy fixtur). Pozycja jest teraz uczciwie
     // ZABLOKOWANA (test niżej i describe S9-10), a wariant Z wolnym polem
     // pokrywa test pozytywny S9-10 (wstrzyknięte pole FEEDER).
-    { krok: 'stacja na odcinku kablowym', klasa: 'tor', kotwica: 'galaz', rodzina: 'cable', lod: 2, action: 'insert-station', op: 'insert_station_on_segment_sn' },
-    { krok: 'stacja na odcinku napowietrznym', klasa: 'tor', kotwica: 'galaz', rodzina: 'line_overhead', lod: 2, action: 'insert-station', op: 'insert_station_on_segment_sn' },
-    { krok: 'słup rozgałęźny na odcinku napowietrznym', klasa: 'tor', kotwica: 'galaz', rodzina: 'line_overhead', lod: 2, action: 'insert-pole', op: 'insert_branch_pole_on_segment_sn' },
-    { krok: 'dociągnięcie odcinka magistrali', klasa: 'tor', kotwica: 'galaz', rodzina: 'cable', lod: 2, action: 'continue-trunk-from-endpoint', op: 'continue_trunk_segment_sn' },
-    { krok: 'łącznik wiersza arkusza = ten sam odcinek', klasa: 'lacznik-wiersza', kotwica: 'galaz', lod: 0, action: 'insert-station', op: 'insert_station_on_segment_sn' },
+    { krok: 'stacja na odcinku kablowym', klasa: 'tor', kotwica: 'galaz', rodzina: 'cable', action: 'insert-station', op: 'insert_station_on_segment_sn' },
+    { krok: 'stacja na odcinku napowietrznym', klasa: 'tor', kotwica: 'galaz', rodzina: 'line_overhead', action: 'insert-station', op: 'insert_station_on_segment_sn' },
+    { krok: 'słup rozgałęźny na odcinku napowietrznym', klasa: 'tor', kotwica: 'galaz', rodzina: 'line_overhead', action: 'insert-pole', op: 'insert_branch_pole_on_segment_sn' },
+    { krok: 'dociągnięcie odcinka magistrali', klasa: 'tor', kotwica: 'galaz', rodzina: 'cable', action: 'continue-trunk-from-endpoint', op: 'continue_trunk_segment_sn' },
+    { krok: 'łącznik wiersza arkusza = ten sam odcinek', klasa: 'lacznik-wiersza', kotwica: 'galaz', action: 'insert-station', op: 'insert_station_on_segment_sn' },
   ];
 
   it.each(LANCUCH)(
     'krok „$krok": prawy klik w $klasa → „$action" otwiera operację $op z REALNYM refem modelu',
-    async ({ klasa, kotwica, rodzina, lod, action, op }) => {
+    async ({ klasa, kotwica, rodzina, action, op }) => {
       const openOperationForm = vi.fn();
       useNetworkBuildStore.setState({ openOperationForm } as never);
-      const kanwa = renderKanwe(lod);
+      const kanwa = renderKanwe();
       const area = pierwszyZKotwica(kanwa, klasa, kotwica, rodzina);
       expect(area, `scena zawiera obiekt klasy ${klasa} o kotwicy ${kotwica}${rodzina ? `/${rodzina}` : ''}`).toBeTruthy();
 
@@ -407,12 +422,12 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
    * DOCELOWYM — stan „wolne pole istnieje" pokrywa sekcja D.
    */
   it.each([
-    ['symbol GPZ', 'zrodlo' as HitObjectClass, 'zrodlo' as MenuAnchorKind, 2 as SceneLod],
-    ['szyna sekcji', 'szyna' as HitObjectClass, 'szyna' as MenuAnchorKind, 1 as SceneLod],
+    ['symbol GPZ', 'zrodlo' as HitObjectClass, 'zrodlo' as MenuAnchorKind],
+    ['szyna sekcji', 'szyna' as HitObjectClass, 'szyna' as MenuAnchorKind],
   ])(
     '%s na sieci z ZAJĘTYMI polami liniowymi: „Wyprowadź ciąg główny SN" jest zablokowany z powodem (nie martwy klik)',
-    async (_nazwa, klasa, kotwica, lod) => {
-      const kanwa = renderKanwe(lod);
+    async (_nazwa, klasa, kotwica) => {
+      const kanwa = renderKanwe();
       const area = pierwszyZKotwica(kanwa, klasa, kotwica)!;
       const menu = await prawyKlik(kanwa, area.testId);
       expect(menu).toBeTruthy();
@@ -445,9 +460,10 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     useSnapshotStore.setState({ snapshot: scena.snapshot, logicalViews: scena.logical_views });
     const openOperationForm = vi.fn();
     useNetworkBuildStore.setState({ openOperationForm } as never);
-    const kanwa = renderKanwe(0, scena.snapshot);
-    const stacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('stn/'));
-    expect(stacja, 'scena ma stację na kanwie').toBeTruthy();
+    const kanwa = renderKanwe(scena.snapshot);
+    const uchwyt = pierwszaStacja(kanwa, 'stn/');
+    expect(uchwyt, 'scena ma stację na kanwie').toBeTruthy();
+    const stacja = { ...uchwyt!, ownerRef: refStacjiObszaru(uchwyt!) };
     // Wyrocznia niezależna od resolvera: wolny wiersz OUT/FEEDER tej stacji w `line_fields`.
     const wolnePoleLiniowe = (scena.logical_views.line_fields ?? []).some(
       (w) => w.station_ref === stacja!.ownerRef && !w.occupied && ['OUT', 'FEEDER'].includes(String(w.bay_role)),
@@ -471,20 +487,20 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
    * kabel (zajętość z modelu odczytu backendu, karta POLE-ZAJĘTE). Właściwą odpowiedzią
    * produktu jest tu uczciwa blokada OBU pozycji budowy z powodem po polsku — zdolność
    * budowy dowodzi scena W BUDOWIE (sekcja E). Iloczyn {stacja środkowa / końcowa ciągu /
-   * GPZ rysowany symbolem stacji na LOD 0} × {kontynuacja / odgałęzienie}.
+   * GPZ wskazany napisem stacji} × {kontynuacja / odgałęzienie}.
    */
   it.each([
     ['środkowa ciągu', 'srodkowa' as const],
     ['końcowa ciągu', 'koncowa' as const],
-    ['GPZ (symbol stacji, LOD 0)', 'gpz' as const],
+    ['GPZ (napis stacji)', 'gpz' as const],
   ])('sieć GOTOWA, stacja %s: „Prowadź ciąg dalej" i „Rozpocznij odgałęzienie" zablokowane z powodem', async (_n, rola) => {
     const openOperationForm = vi.fn();
     useNetworkBuildStore.setState({ openOperationForm } as never);
-    const kanwa = renderKanwe(0);
+    const kanwa = renderKanwe();
     const stacjaRef = stacjeWgRoli(enm, widokiEnm)[rola][0];
     expect(stacjaRef, `sieć referencyjna ma stację roli ${rola}`).toBeTruthy();
-    const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === stacjaRef);
-    expect(obszar, `stacja ${stacjaRef} jest na kanwie LOD 0`).toBeTruthy();
+    const obszar = obszarStacji(kanwa, stacjaRef);
+    expect(obszar, `stacja ${stacjaRef} jest na kanwie`).toBeTruthy();
     const menu = await prawyKlik(kanwa, obszar!.testId);
     expect(menu, 'menu stacji otwarte').toBeTruthy();
     const kontynuacja = within(menu!).getByTestId('sld-menu-continue-trunk') as HTMLButtonElement;
@@ -509,14 +525,14 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
    * wejściem" przeczyła karcie POLE-ZAJĘTE: w tej sieci każde pole liniowe stacji jest zajęte.
    */
   it('pokrycie łańcucha na sieci referencyjnej: ≥ 15 odcinków z wejściem budowy, wejście stacji sparowane z zajętością backendu', async () => {
-    const kanwa = renderKanwe(0);
+    const kanwa = renderKanwe();
     const wolnePoleStacji = (stacjaRef: string): boolean => (widokiEnm.line_fields ?? []).some(
       (w) => w.station_ref === stacjaRef && !w.occupied && ['OUT', 'FEEDER'].includes(String(w.bay_role)),
     );
     // S95-START: „realne wejście" = temat menu stacji ORAZ punkt startu ciągu z TEGO SAMEGO
     // rozstrzygnięcia, którego użyje kreator.
     const stacjeNaKanwie = kanwa.obszary.flatMap((a) => {
-      if (a.klasa !== 'stacja') return [];
+      if (!jestWierszemNazwyStacji(a)) return [];
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
       return wynik.stan === 'temat' && wynik.temat.menuKind === 'station' ? [{ obszar: a, ref: wynik.temat.modelRef }] : [];
     });
@@ -527,7 +543,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
         `stacja ${ref}: wejście budowy = wolne pole liniowe wg line_fields`,
       ).toBe(wolnePoleStacji(ref));
     }
-    const gpzJakoStacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('gpz/'));
+    const gpzJakoStacja = pierwszaStacja(kanwa, 'gpz/');
     if (gpzJakoStacja) {
       const menuGpz = await prawyKlik(kanwa, gpzJakoStacja.testId);
       expect(pozycjaAktywna(menuGpz!, 'continue-trunk'), 'GPZ bez wolnego pola liniowego').toBe(false);
@@ -564,7 +580,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
 
 describe('S9-5 C — menu nie obiecuje operacji na obiektach spoza modelu', () => {
   it('kreska rysunku bez gałęzi w modelu NIE otwiera menu odcinka', async () => {
-    const kanwa = renderKanwe(2);
+    const kanwa = renderKanwe();
     const rysunkowy = kanwa.obszary.find(
       (a) =>
         a.klasa === 'tor' && resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu).stan === 'brak',
@@ -574,7 +590,7 @@ describe('S9-5 C — menu nie obiecuje operacji na obiektach spoza modelu', () =
     expect(menu).toBeNull();
   }, 120000);
 
-  it('KAŻDY otwarty temat menu niesie ref ISTNIEJĄCY w modelu (skan całej sceny, wszystkie LOD)', () => {
+  it('KAŻDY otwarty temat menu niesie ref ISTNIEJĄCY w modelu (skan całej sceny)', () => {
     const refyModelu = new Set<string>();
     for (const kolekcja of [enm.substations, enm.buses, enm.branches, enm.generators, enm.sources, enm.transformers, enm.bays]) {
       for (const el of kolekcja ?? []) {
@@ -585,28 +601,26 @@ describe('S9-5 C — menu nie obiecuje operacji na obiektach spoza modelu', () =
     }
 
     let tematow = 0;
-    for (const lod of [0, 1, 2] as SceneLod[]) {
-      const scene = buildSceneV3(enm, lod);
-      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
-      const obszary = buildCanvasHitAreas({
-        symbols: scene.symbols,
-        segments: scene.segments,
-        labels: plan.drawn,
-        resultMarkers: [],
-        scale: 1,
-      });
-      for (const area of obszary) {
-        const wynik = resolveCanvasMenuSubject(
-          { klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind },
-          indexModelu,
-        );
-        if (wynik.stan !== 'temat') continue;
-        tematow += 1;
-        expect(
-          refyModelu.has(wynik.temat.modelRef),
-          `temat menu obiektu ${area.testId} (${area.klasa}) wskazuje ref spoza modelu: ${wynik.temat.modelRef}`,
-        ).toBe(true);
-      }
+    const scene = buildSceneV3(enm);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
+    const obszary = buildCanvasHitAreas({
+      symbols: scene.symbols,
+      segments: scene.segments,
+      labels: plan.drawn,
+      resultMarkers: [],
+      scale: 1,
+    });
+    for (const area of obszary) {
+      const wynik = resolveCanvasMenuSubject(
+        { klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind },
+        indexModelu,
+      );
+      if (wynik.stan !== 'temat') continue;
+      tematow += 1;
+      expect(
+        refyModelu.has(wynik.temat.modelRef),
+        `temat menu obiektu ${area.testId} (${area.klasa}) wskazuje ref spoza modelu: ${wynik.temat.modelRef}`,
+      ).toBe(true);
     }
     // Sonda musi mieć co mierzyć — pusty przebieg przechodziłby trywialnie.
     expect(tematow).toBeGreaterThan(1000);
@@ -756,7 +770,7 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
   });
 
   it('NATYWNY prawy klik w etykietę stacji BEZ wolnego pola: pozycja ZABLOKOWANA z powodem', async () => {
-    const kanwa = renderKanwe(2);
+    const kanwa = renderKanwe();
     const etykietaStacji = kanwa.container.querySelector(
       `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}*="#name-row"][${HIT_ATTR.klasa}="etykieta"]`,
     );
@@ -773,7 +787,7 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
   it('NATYWNY prawy klik w etykietę stacji Z wolnym polem FEEDER: pozycja AKTYWNA', async () => {
     const { enm: zPolem, widoki, stationRef } = zWolnymPolemOdgaleznym();
     useSnapshotStore.setState({ snapshot: zPolem, logicalViews: widoki });
-    const { container } = render(<SldCanvasV3Workspace width={W} height={H} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={W} height={H} />);
     const etykieta = container.querySelector(
       `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(stationRef)}#name-row"]`,
     );
@@ -833,13 +847,13 @@ describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W
       ustawEtap(etap);
       const openOperationForm = vi.fn();
       useNetworkBuildStore.setState({ openOperationForm } as never);
-      const kanwa = renderKanwe(0, etap.snapshot);
+      const kanwa = renderKanwe(etap.snapshot);
       const indeks = buildCanvasModelIndex(etap.snapshot);
       // Pomiar TEJ SAMEJ funkcji co sonda odbioru `menu_chain_probe`: na scenie w budowie
       // wejściem kontynuacji jest stacja startu (koniec ciągu albo GPZ na etapie 0).
       expect(stacjeZWejsciemKontynuacji(wejsciaKanwy(kanwa), etap.snapshot, etap.logical_views, indeks))
         .toContain(etap.stacja_startu);
-      const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === etap.stacja_startu);
+      const obszar = obszarStacji(kanwa, etap.stacja_startu);
       expect(obszar, `stacja startu ${etap.stacja_startu} jest na kanwie`).toBeTruthy();
       const menu = await prawyKlik(kanwa, obszar!.testId);
       expect(menu, 'menu stacji startu otwarte').toBeTruthy();
@@ -878,7 +892,7 @@ describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W
   it.each([
     ['środkowa', 'srodkowa' as const, 'FEEDER', true],
     ['końcowa', 'koncowa' as const, 'OUT', true],
-    ['GPZ (symbol stacji, LOD 0)', 'gpz' as const, 'OUT', false],
+    ['GPZ (napis stacji)', 'gpz' as const, 'OUT', false],
   ])(
     'scena W BUDOWIE, stacja %s: kontynuacja z pola %s, odgałęzienie aktywne=%s — menu i kreator z jednego rozstrzygnięcia',
     async (_n, rola, rolaPolaKontynuacji, odgalezienieAktywne) => {
@@ -888,8 +902,8 @@ describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W
       const stacjaRef = roleKonca[rola][rola === 'srodkowa' ? 6 : 0];
       const poleKontynuacji = wolnePole(stacjaRef, rolaPolaKontynuacji);
       expect(poleKontynuacji, `stacja ${stacjaRef} ma wolne pole ${rolaPolaKontynuacji}`).toBeTruthy();
-      const kanwa = renderKanwe(0, koniec.snapshot);
-      const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === stacjaRef);
+      const kanwa = renderKanwe(koniec.snapshot);
+      const obszar = obszarStacji(kanwa, stacjaRef);
       expect(obszar, `stacja ${stacjaRef} jest na kanwie`).toBeTruthy();
 
       const menu = await prawyKlik(kanwa, obszar!.testId);

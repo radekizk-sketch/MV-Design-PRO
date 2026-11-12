@@ -1,10 +1,12 @@
 /**
- * SLD V3 F6b — `SldCanvasV3`: kanwa React renderująca `SceneV3` z
- * `buildSceneV3` (SLD_CAD_SPEC_V3 §6 „Hierarchia graficzna", §7 „Kontrakt
- * LOD"; REBUILD_PLAN_V3 F6b). Zero fizyki, zero mutacji modelu — WYŁĄCZNIE
- * mapowanie danych już policzonych przez `scene/buildScene.ts` na SVG +
- * kamera (pan/zoom/pinch) + LOD wynikające ze skali kamery + nakładka
- * energizacji (kolor, spec §6 P5 — geometria bez zmian).
+ * SLD V3 F6b — `SldCanvasV3`: kanwa React renderująca JEDNĄ scenę `SceneV3`
+ * z `buildSceneV3` (SLD_CAD_SPEC_V3 §6 „Hierarchia graficzna"; kontrakt skali
+ * `docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0). Zero fizyki, zero mutacji
+ * modelu — WYŁĄCZNIE mapowanie danych już policzonych przez
+ * `scene/buildScene.ts` na SVG + kamera (pan/zoom/pinch, czyste przekształcenie
+ * jednego świata) + gęstość napisów wg rozmiaru ekranowego
+ * (`canvas/gestoscInformacji.ts`) + nakładka energizacji (kolor, spec §6 P5 —
+ * geometria bez zmian).
  *
  * Warstwy (spec §6, kolejność rysowania — segmenty pod symbolami pod
  * etykietami, jak `CompositionPreview`/`compose/preview.tsx`, ten sam wzorzec
@@ -12,8 +14,7 @@
  * (`SheetFrame` — ramka arkusza, strefy, legenda, spec §2/§10).
  *
  * Kamera: patrz nagłówek `canvas/camera.ts` (reuse v2 `ViewportController`
- * dla matematyki pan/zoom/fit; własna histereza LOD 3-poziomowa; własny
- * pointer/pinch wiring — v2 nie ma ani eksportowanego hooka kamery, ani
+ * dla matematyki pan/zoom/fit; własny pointer/pinch wiring — v2 nie ma ani eksportowanego hooka kamery, ani
  * obsługi dotyku, patrz STOP-notatka tam).
  *
  * Nakładka stanu: patrz `canvas/overlay.ts` (`SldV3Overlay` — kontrakt
@@ -27,11 +28,9 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
   sceneObstacleRects,
   sheetRowBandsOf,
-  SCENE_LOD_LABELS_PL,
-  type SceneLod,
   type SceneV3,
 } from '../scene/buildScene';
-import { scenyWszystkichPoziomow } from '../scene/scenaSld';
+import { scenaSld } from '../scene/scenaSld';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import { SYMBOL_GLYPHS, skalaZnacznikaKafla } from '../symbols/glyphs';
@@ -92,8 +91,6 @@ import {
   type CameraState,
   pointerDistance,
   pointerMidpoint,
-  refScaleFor,
-  zoomFactorToEnterNextLod,
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
@@ -111,7 +108,8 @@ import {
 } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import { resultRefForSegment } from './resultLabels';
-import { resultLabelLinesForLod, RESULT_LABEL_TREND_GLYPH, type ResultLabelLod } from './resultLabelTemplates';
+import { resultLabelLines, RESULT_LABEL_TREND_GLYPH } from './resultLabelTemplates';
+import { czytelnyNaEkranie } from './gestoscInformacji';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
@@ -202,22 +200,12 @@ const SHEET_SCALE_LABEL = 'wg kamery';
  * nachodzą na siebie przy kadrze „Dopasuj widok" (pomiar: 12 na 12 kadrów).
  */
 
-/** Karta S8 (P2, płynność przejść LOD): czas trwania crossfade warstwy detalu
- *  przy zmianie LOD [s] — wyłącznie prezentacyjne, zero wpływu na determinizm
- *  danych (natywny SMIL `<animate>`, markup statyczny niezależny od czasu; ta
- *  sama kategoria co `FAULT_POINT_MARKER_PULSE_DURATION` niżej). Krótki
- *  (180 ms): dość, by oko odczytało „przedetalowanie" jako ciągłe, za krótki,
- *  by opóźnić interakcję pan/zoom po przełączeniu. */
-const LOD_CROSSFADE_DURATION = '0.18s';
-
 /**
  * F8b-1 (REBUILD_PLAN_V3 §F8b, zadanie „parytet funkcjonalny v3" — B:
  * selekcja z realnym typem): dane elementu przekazywane WRAZ z `testId` przy
  * kliku — `ownerRef`/`elementKind` z `PreviewSymbol.meta` (`scene/buildScene.ts`,
- * F8b-1 A). Kanwa jest JEDYNYM miejscem, które zna AKTUALNY (kamera-driven)
- * LOD sceny, więc rozwiązuje meta TU, nie w wołającym — unika duplikowania
- * `buildSceneV3` w `SldCanvasV3Workspace` i niezgodności LOD (testId ma inny
- * format per LOD, patrz `symbolTestId`/`buildScene.ts` L0 vs L1/L2).
+ * F8b-1 A). Kanwa rozwiązuje meta TU, nie w wołającym — unika duplikowania
+ * odczytu sceny w `SldCanvasV3Workspace`.
  */
 export interface SldElementClickMeta {
   readonly ownerRef?: string;
@@ -339,20 +327,9 @@ export interface SldCanvasV3Props {
     clientX: number,
     clientY: number,
   ) => void;
-  /** Escape hatch (test/harness/embedding, np. Results Browser centrujący na
-   *  konkretnym LOD): nadpisuje LOD wynikające z kamery. Domyślnie (brak
-   *  propa) LOD wynika z progów zoomu kamery (spec §7) — zachowanie
-   *  produkcyjne.
-   *  F8a (k4.1): gdy podany, kamera FITUJE do bboxa sceny TEGO LOD (nie
-   *  zawsze LOD2) — usuwa dawny defekt „mały rysunek w rogu" dla
-   *  embedderów przekazujących `lodOverride` (patrz SLD_V3_ACCEPTANCE.md
-   *  §3, znane ograniczenie k4 — ROZWIĄZANE). Zmiana propa PO mouncie
-   *  wywołuje pełny refit (nowy cel fitu = nowy świat kamery, k3). */
-  readonly lodOverride?: SceneLod;
   /**
    * PROPORCJE (karta PROPORCJE, 2026-08-07) — KAMERA NARZUCONA PRZY MONTAŻU
-   * (escape hatch tej samej klasy co `lodOverride`: zrzuty dokumentacyjne i
-   * eksport, ZERO ścieżki użytkownika).
+   * (escape hatch: zrzuty dokumentacyjne i eksport, ZERO ścieżki użytkownika).
    *
    * DLACZEGO ISTNIEJE. Skrypt zrzutów `scripts/render_b2_kotwica.tsx` renderował
    * kanwę z jej WŁASNĄ kamerą (dopasowanie całej sieci, skala 0,133), a POTEM
@@ -385,7 +362,7 @@ export interface SldCanvasV3Props {
    *  ścieżki danych). Brak propa = etykiety nieklikalne (kanwa jak dziś). */
   readonly onResultLabelActivate?: (ownerRef: string, kind: ResultLabelKind) => void;
   /** F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): wywoływany przy KAŻDEJ
-   *  zmianie transformu/LOD kamery — jedyny sposób, w jaki wołający
+   *  zmianie transformu kamery — jedyny sposób, w jaki wołający
    *  (`SldCanvasV3Workspace`) może poznać AKTUALNY `ViewportTransform` do
    *  mapowania świat→ekran (`worldToScreen`) na potrzeby hit-testu lasso
    *  (kamera jest stanem WEWNĘTRZNYM tej kanwy od F6b, świadomie — brak
@@ -401,7 +378,6 @@ export interface SldCanvasV3Props {
    *  FIX-E2E-PELNE). */
   readonly onCameraChange?: (
     transform: ViewportTransform,
-    lod: SceneLod,
     viewportSize: { readonly width: number; readonly height: number },
   ) => void;
   /** K11-A (dyrektywa SLD-first 2026-07-30): sygnał JAWNEGO dopasowania widoku
@@ -418,12 +394,12 @@ export interface SldCanvasV3Props {
    *  widoku. Geometria sceny NIETKNIĘTA — zmienia się wyłącznie viewBox. */
   readonly fitTarget?: 'tresc' | 'arkusz';
   /** K11-B (karta K11-B §0.1, minimapa): ŻĄDANIE PRZENIESIENIA KADRU na punkt
-   *  świata (współrzędne w świecie AKTUALNEGO LOD kamery — tym samym, w którym
-   *  liczony jest `viewBox`, patrz `canvas/minimap.ts`). `seq` (monotoniczny
+   *  świata (współrzędne świata kamery — tego samego, w którym liczony jest
+   *  `viewBox`, patrz `canvas/minimap.ts`). `seq` (monotoniczny
    *  licznik wołającego) odróżnia kolejne żądania o TYM SAMYM punkcie —
    *  wzorzec identyczny z `fitSignal` wyżej: kamera zostaje stanem wewnętrznym,
    *  wołający nie zna transformu, tylko żąda przeniesienia. Akcja `'center'`
-   *  (`camera.ts`) jest CZYSTĄ translacją: skala i LOD nietknięte, geometria
+   *  (`camera.ts`) jest CZYSTĄ translacją: skala nietknięta, geometria
    *  sceny nietknięta. Brak propa = zachowanie jak dotychczas. */
   readonly centerRequest?: { readonly x: number; readonly y: number; readonly seq: number } | null;
   /** B-2 (audyt §4.3 „kamera nie nadąża za miejscem edycji"): KOTWICA WIDOKU —
@@ -434,7 +410,7 @@ export interface SldCanvasV3Props {
    *
    *  Zachowanie przy zmianie `snapshot`:
    *   · kotwica podana i ROZWIĄZYWALNA na rysunku ⇒ akcja `'kotwicz'`
-   *     (przybliżenie i poziom szczegółu projektanta zostają, kadr wędruje na
+   *     (przybliżenie projektanta zostaje, kadr wędruje na
    *     wskazany obiekt);
    *   · `przenosKadr === false` (kontrakt `SelectionHint.zoom_to`) ⇒ kamera
    *     NIETKNIĘTA;
@@ -455,28 +431,20 @@ export interface SldCanvasV3Props {
   readonly pokazElement?: { readonly ref: string; readonly seq: number } | null;
   /** K2 (UI-04): ŻĄDANIE KADRU zakresu pracy — stacji, sekcji szyn, pola,
    *  magistrali, toru zasilania albo zaznaczenia (`zakresKadru.ts`). Kanwa
-   *  zamienia zakres na prostokąty trzech poziomów szczegółu (indeks
-   *  przynależności sceny) i wykonuje akcję kamery `'kadruj'`, która — inaczej
+   *  zamienia zakres na prostokąt celu i sąsiadów (indeks przynależności
+   *  sceny) i wykonuje akcję kamery `'kadruj'`, która — inaczej
    *  niż kotwica edycji — MOŻE przybliżyć. Cel `siec` kadruje treść sieci (ten
    *  sam refit co „Dopasuj widok" bez zaznaczenia). `seq` odróżnia kolejne
-   *  żądania (wzorzec `fitSignal`). Zakres nienarysowany na żadnym poziomie ≥
-   *  `minLod` ⇒ kamera NIETKNIĘTA. */
+   *  żądania (wzorzec `fitSignal`). Zakres nienarysowany ⇒ kamera NIETKNIĘTA. */
   readonly zadanieKadru?: { readonly zakres: ZakresKadru; readonly seq: number } | null;
   /** K2 („Poprzedni widok"): przywrócenie stanu kamery z historii kadrów
    *  wołającego (`historiaKadrow.ts`). `seq` jak wyżej. */
   readonly przywrocenieKamery?: {
     readonly transform: ViewportTransform;
-    readonly lod: SceneLod;
     /** Viewport, w którym zapamiętany transform obowiązywał. */
     readonly viewportSize: { readonly width: number; readonly height: number };
     readonly seq: number;
   } | null;
-  /** K2 („Poprzedni widok"): wołane TUŻ PRZED poleceniem widoku, które kanwa
-   *  wykonuje sama — rozwinięcie zwiniętego bloku GPZ klikiem (KD-5). Wołający
-   *  odkłada wtedy bieżący kadr do historii, więc „Wstecz" wraca także sprzed
-   *  rozwinięcia (bez tego dwuklik w zwinięty GPZ zapisywał w historii kadr PO
-   *  rozwinięciu, a widok sieci był nieosiągalny). */
-  readonly onPrzedPoleceniemWidoku?: () => void;
   /**
    * K2b §0.1 (c) — KURTYNA KADRU: refy rysunku celu bieżącego kadru
    * (`useKadrowanieWidoku().refyKurtyny`). Wszystko, co do celu nie należy
@@ -488,18 +456,6 @@ export interface SldCanvasV3Props {
   /** K2b §0.4: tryb widoku — `'arkusz'` (domyślnie: rama, strefy, tabliczka)
    *  albo `'roboczy'` (sama sieć). Eksport rysuje arkusz niezależnie od tego. */
   readonly trybWidoku?: 'arkusz' | 'roboczy';
-  /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
-   *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
-   *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
-   *  globalnego CSS, zero timerów w logice stanu). Animacja czysto
-   *  PREZENTACYJNA — geometria (kotwice) jest stała między LOD (JEDNA KOTWICA),
-   *  więc fade nie przesuwa świata, tylko wygładza „przedetalowanie".
-   *  Domyślnie `true` (produkcja). Eksport/SSR/harness screenshotów przekazują
-   *  `false` — deterministyczny statyczny kadr bez animacji (opacity bazowe 1,
-   *  brak węzła `<animate>`); w jsdom/SSR (brak silnika SMIL) i tak
-   *  renderowane jest opacity bazowe 1, więc `false` służy WYŁĄCZNIE jawnemu
-   *  usunięciu węzła animacji z markupu eksportu. */
-  readonly animateLodTransitions?: boolean;
   /** Tryb motywu PODANY WPROST — omija sterownik powłoki (`useThemeModeStore`).
    *  Potrzebny wszędzie tam, gdzie kanwa renderuje się POZA przeglądarką:
    *  `renderToStaticMarkup` czyta ze store'a Zustand STAN POCZĄTKOWY
@@ -529,8 +485,8 @@ function strokeForEnergization(energized: boolean | undefined, palette: SldPalet
 }
 
 /** Eksportowane (F8b-1): `SldCanvasV3Workspace` reużywa TĘ SAMĄ funkcję do
- *  wiązania nakładki energizacji (`ownerRef` → `testId`) po tym samym
- *  `buildSceneV3(snapshot, lod)` — zero duplikacji formatu testId. */
+ *  wiązania nakładki energizacji (`ownerRef` → `testId`) po tej samej scenie
+ *  `scenaSld(snapshot)` — zero duplikacji formatu testId. */
 export function symbolTestId(symbol: PreviewSymbol, index: number): string {
   return symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
 }
@@ -555,9 +511,6 @@ function SceneSymbolNode(props: {
    *  kreska aparatu 0,16 px (15,70× zamiast projektowych 3,33×) — zgłoszenie
    *  właściciela „tor prądowy grubszy od kreski aparatu ok. 8–10×". */
   readonly cameraScale: number;
-  /** Poziom szczegółu rysowanej sceny — podłoga ekranu znacznika rodzaju aparatu na LOD1
-   *  (`skalaZnacznikaKafla`, rozstrzygnięcie architekta 2026-10-30 pkt 1). */
-  readonly lod: SceneLod;
   /** Ramka bloku zabezpieczeń wg PLANU etykiet (`canvas/obrysyWgPlanu.ts`) — ramka sceny
    *  (`meta.ramkaBlokuPrzekaznika`) poszerzona o NARYSOWANE wiersze bloku; `undefined` = symbol
    *  nie jest blokiem zabezpieczeń. */
@@ -567,8 +520,8 @@ function SceneSymbolNode(props: {
   const palette = useSldPalette();
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
-  // F8b-1 FIX (recenzja): preferuj tożsamość LOD-niezależną (ownerRef) —
-  // indeksowy fallback testId koliduje między LOD-ami, patrz `overlay.ts`.
+  // F8b-1 FIX (recenzja): preferuj tożsamość modelu (ownerRef) przed indeksowym
+  // fallbackiem testId, patrz `overlay.ts`.
   const energizedSym = symbol.meta?.ownerRef != null
     ? overlay?.energizedByOwnerRef?.[symbol.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
     : overlay?.energizedByTestId[testId];
@@ -624,8 +577,8 @@ function SceneSymbolNode(props: {
         y={symbol.y}
         stroke={stroke}
         strokeScale={strokeScaleFactor(cameraScale)}
-        skalaZnacznika={skalaZnacznikaKafla(cameraScale, props.lod)}
-        lod={props.lod}
+        skalaZnacznika={skalaZnacznikaKafla(cameraScale)}
+        skalaKamery={cameraScale}
         {...daneGlifuSymbolu(symbol)}
         ramkaBloku={props.ramkaBloku}
         kafleStanu={palette.state}
@@ -861,22 +814,11 @@ function formatPlNumber(value: number, decimals: number): string {
  * `flowOverlayValuesTraceToPayload` porównuje wartości ŹRÓDŁOWE w kontrakcie,
  * nie sformatowany tekst).
  */
-export type FlowLabelDetail = 'p-only' | 'full';
-
-export function formatFlowLabelPl(flow: SegmentFlowOverlay, detail: FlowLabelDetail = 'full'): string {
+export function formatFlowLabelPl(flow: SegmentFlowOverlay): string {
   const parts: string[] = [];
   if (flow.p) parts.push(`${formatPlNumber(Math.abs(flow.p.value), 2)} ${flow.p.unit}`);
-  // Spec §15.2 (adaptacyjne etykiety LOD — „L1 nazwa+kVA+typ → L2 pełne
-  // specyfikacje"): `'p-only'` (L1) niesie TYLKO moc czynną; pełny odczyt
-  // P·Q·I na L2. Powód praktyczny (dowód empiryczny na fixturze): pełna
-  // etykieta (~134 px) NIE MIEŚCI SIĘ w kieszeni korytarza L1 między
-  // głowicami a pasmem nazw (bieg 136 px, pasmo nazw 8 px niżej) — krótsza
-  // etykieta wchodzi w kandydata „nad przewodem"; to selekcja SZCZEGÓŁÓW
-  // per LOD (dozwolona §15.2), nie utrata danych (L2 pokazuje wszystko).
-  if (detail === 'full') {
-    if (flow.q) parts.push(`${formatPlNumber(flow.q.value, 2)} ${flow.q.unit}`);
-    if (flow.i) parts.push(`${formatPlNumber(flow.i.value, 0)} ${flow.i.unit}`);
-  }
+  if (flow.q) parts.push(`${formatPlNumber(flow.q.value, 2)} ${flow.q.unit}`);
+  if (flow.i) parts.push(`${formatPlNumber(flow.i.value, 0)} ${flow.i.unit}`);
   return parts.join(' · ');
 }
 
@@ -1018,7 +960,7 @@ function flowLabelCandidates(
 }
 
 export interface FlowPlacement {
-  /** Indeks odcinka w `scene.segments` renderowanego LOD — spójny z testId. */
+  /** Indeks odcinka w `scene.segments` — spójny z testId. */
   readonly segmentIndex: number;
   readonly ownerRef: string;
   readonly forward: boolean;
@@ -1046,9 +988,9 @@ export interface FlowPlacement {
 export function computeFlowOverlayPlacements(
   scene: SceneV3,
   flowByOwnerRef: Readonly<Record<string, SegmentFlowOverlay>> | undefined,
-  /** `null` = bez etykiet (L0, sam grot — spec §15.2); `'p-only'` (L1) /
-   *  `'full'` (L2) — patrz `formatFlowLabelPl`. */
-  labelDetail: FlowLabelDetail | null,
+  /** `false` = sam grot, bez etykiety — pismo etykiety przepływu jest przy
+   *  bieżącej skali nieczytelne (klasa `wyniki`, `canvas/gestoscInformacji.ts`). */
+  etykiety: boolean,
 ): readonly FlowPlacement[] {
   if (!flowByOwnerRef) return [];
   const obstacles: FlowRect[] = [
@@ -1067,7 +1009,7 @@ export function computeFlowOverlayPlacements(
     if (!flow) return;
     const geometry = flowOverlayGeometry(segment.points, flow.forward);
     if (!geometry) return;
-    const label = labelDetail ? formatFlowLabelPl(flow, labelDetail) : '';
+    const label = etykiety ? formatFlowLabelPl(flow) : '';
     let labelX = 0;
     let labelY = 0;
     let labelRect: FlowRect = { x: 0, y: 0, width: 0, height: 0 };
@@ -1153,7 +1095,7 @@ function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): J
 // ---------------------------------------------------------------------------
 
 export interface FaultFlowPlacement {
-  /** Indeks odcinka w `scene.segments` renderowanego LOD — spójny z testId. */
+  /** Indeks odcinka w `scene.segments` — spójny z testId. */
   readonly segmentIndex: number;
   readonly ownerRef: string;
   readonly forward: boolean;
@@ -1283,14 +1225,19 @@ export interface FaultPointMarkerPlacement {
 /**
  * Rozmieszczenie znacznika punktu zwarcia — dopasowanie `faultPointMarkerRef`
  * (`overlay.faultPointMarkerRef`, TEN SAM ref co pierwszy element adaptera
- * W-C) do pozycji EKRANOWEJ w scenie EFEKTYWNEGO LOD. Szuka NAJPIERW wśród
- * symboli (`meta.ownerRef` — środek bboxa przez `SYMBOL_DEFS`, np. stacja/
+ * W-C) do pozycji EKRANOWEJ w scenie. Szuka NAJPIERW wśród
+ * symboli (`meta.ownerRef` — środek bboxa przez `SYMBOL_DEFS`, np.
  * transformator/DER/aparat), potem wśród odcinków GEOMETRYCZNYCH (`meta.
  * ownerRef`, z pominięciem `elementKind==='protectionAnnotation'` — warstwa
  * adnotacji, nie geometria toru/szyny — środek najdłuższego biegu polilinii,
- * TA SAMA selekcja co `computeFaultFlowPlacements`). Pierwsze trafienie w
- * kolejności sceny wygrywa (deterministyczne). Brak dopasowania (ref spoza
- * sceny/LOD) ⇒ `null` — znacznik wyłączony, zero fabrykacji pozycji.
+ * TA SAMA selekcja co `computeFaultFlowPlacements`). Dalej ref SZYNY modelu
+ * (`busResultRef` odcinka albo kompozyt `${busRef}#sn-bus`) i ref STACJI
+ * (jedyna sekcja szyny SN; stacja wielosekcyjna i stacja bez odcinka szyny —
+ * nazwa stacji). Rysunek ma jedną scenę bez symbolu stacji (karta
+ * SLD-SKALA-I-NAWIGACJA, R1), więc ref stacji z backendu nie ginie na żadnej
+ * skali. Pierwsze trafienie w kolejności sceny wygrywa (deterministyczne). Brak
+ * dopasowania (ref spoza sceny) ⇒ `null` — znacznik wyłączony, zero fabrykacji
+ * pozycji.
  */
 export function computeFaultPointMarkerPlacements(
   scene: SceneV3,
@@ -1307,35 +1254,84 @@ export function computeFaultPointMarkerPlacements(
   return out;
 }
 
+/** Środek najdłuższego biegu polilinii odcinka (ta sama selekcja co
+ *  `computeFaultFlowPlacements`); `null` dla odcinka bez biegu. */
+function srodekNajdluzszegoBiegu(points: readonly { readonly x: number; readonly y: number }[]): { x: number; y: number } | null {
+  if (points.length < 2) return null;
+  let bestIndex = -1;
+  let bestLength = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const length = Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
+    if (length > bestLength) {
+      bestLength = length;
+      bestIndex = i;
+    }
+  }
+  if (bestIndex < 0) return null;
+  const a = points[bestIndex];
+  const b = points[bestIndex + 1];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/** Pierwszy odcinek geometrii (nie adnotacja zabezpieczeń) spełniający predykat — jego środek. */
+function srodekOdcinka(
+  scene: SceneV3,
+  pasuje: (segment: SceneV3['segments'][number]) => boolean,
+): { x: number; y: number } | null {
+  for (const segment of scene.segments) {
+    if (segment.meta?.elementKind === 'protectionAnnotation') continue;
+    if (!pasuje(segment)) continue;
+    const srodek = srodekNajdluzszegoBiegu(segment.points);
+    if (srodek) return srodek;
+  }
+  return null;
+}
+
+/** Sufiks odcinka szyny SN stacji (`compose/station.ts`: `${busRef}#sn-bus`, kompozyt `${stationRef}#sn-bus`). */
+const ODCINEK_SZYNY_SN = '#sn-bus';
+/** Sufiks wiersza nazwy stacji (`compose/station.ts`) — uchwyt stacji na rysunku. */
+const WIERSZ_NAZWY_STACJI = '#name-row-0';
+
 export function computeFaultPointMarkerPlacement(
   scene: SceneV3,
   faultPointMarkerRef: string | undefined,
 ): FaultPointMarkerPlacement | null {
   if (!faultPointMarkerRef) return null;
+  const ref = faultPointMarkerRef;
+  const umiesc = (p: { x: number; y: number } | null): FaultPointMarkerPlacement | null =>
+    p ? { ownerRef: ref, x: p.x, y: p.y } : null;
+  // (1) symbol o tym refie — środek gabarytu.
   for (const symbol of scene.symbols) {
-    if (symbol.meta?.ownerRef !== faultPointMarkerRef) continue;
+    if (symbol.meta?.ownerRef !== ref) continue;
     const def = SYMBOL_DEFS[symbol.symbolId];
-    return { ownerRef: faultPointMarkerRef, x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 };
+    return { ownerRef: ref, x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 };
   }
-  for (const segment of scene.segments) {
-    if (segment.meta?.elementKind === 'protectionAnnotation') continue;
-    if (segment.meta?.ownerRef !== faultPointMarkerRef) continue;
-    const points = segment.points;
-    if (points.length < 2) continue;
-    let bestIndex = -1;
-    let bestLength = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      const length = Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
-      if (length > bestLength) {
-        bestLength = length;
-        bestIndex = i;
-      }
-    }
-    if (bestIndex < 0) continue;
-    const a = points[bestIndex];
-    const b = points[bestIndex + 1];
-    return { ownerRef: faultPointMarkerRef, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  // (2) odcinek o tym refie (tor, szyna sceny).
+  const wprost = srodekOdcinka(scene, (s) => s.meta?.ownerRef === ref);
+  if (wprost) return umiesc(wprost);
+  // (3) ref SZYNY modelu (`Bus.ref_id`): odcinek niesie go jako `busResultRef` (szyny GPZ)
+  // albo jako kompozyt `${busRef}#sn-bus` (sekcja szyn stacji SN).
+  const szyna = srodekOdcinka(
+    scene,
+    (s) => s.meta?.busResultRef === ref || s.meta?.ownerRef === `${ref}${ODCINEK_SZYNY_SN}`,
+  );
+  if (szyna) return umiesc(szyna);
+  // (4) ref STACJI (backend wskazuje punkt zwarcia stacją): rysunek nie ma symbolu stacji,
+  // więc nośnikiem jest jej szyna SN — WYŁĄCZNIE gdy jednoznaczna (jedna sekcja z
+  // `meta.stacjaSzynySekcji`, jedynej relacji szyna→stacja sceny). Stacja wielosekcyjna:
+  // wskazanie jednej sekcji byłoby domysłem (ta sama odmowa co most refów wyniku), więc
+  // znacznik stoi na NAZWIE stacji — uchwycie, który zawsze jest na rysunku.
+  const sekcje = Object.entries(scene.meta.stacjaSzynySekcji ?? {})
+    .filter(([, stacja]) => stacja === ref)
+    .map(([busRef]) => busRef)
+    .sort();
+  if (sekcje.length <= 1) {
+    const nosnik = sekcje.length === 1 ? `${sekcje[0]}${ODCINEK_SZYNY_SN}` : `${ref}${ODCINEK_SZYNY_SN}`;
+    const szynaStacji = srodekOdcinka(scene, (s) => s.meta?.ownerRef === nosnik);
+    if (szynaStacji) return umiesc(szynaStacji);
   }
+  const nazwa = scene.labels.find((l) => l.ownerRef === `${ref}${WIERSZ_NAZWY_STACJI}`);
+  if (nazwa) return umiesc({ x: nazwa.rect.x + nazwa.rect.width / 2, y: nazwa.rect.y + nazwa.rect.height / 2 });
   return null;
 }
 
@@ -1594,7 +1590,7 @@ export interface ResultLabelAggregatePlacement {
  *  kolejnych wersji). CZYSTE liczby (bez czasu — czas mierzy wołający sondy,
  *  poza kontraktem determinizmu; patrz `sld_v3_acceptance.mjs`). */
 export interface ResultLabelMetrics {
-  /** Liczba etykiet rozważanych (kotwica + ≥1 linia na tym LOD; przed agregacją). */
+  /** Liczba etykiet rozważanych (kotwica + ≥1 linia; przed agregacją). */
   readonly labelCount: number;
   /** Etykiety/agregaty, których pozycja PIERWOTNA kolidowała (wymagały deklutteru). */
   readonly collisionsDetected: number;
@@ -1723,7 +1719,7 @@ interface ResultLabelAnchor {
   readonly symbol: boolean;
 }
 
-/** Jednostka wejściowa rozmieszczenia (wpis o rozwiązanej kotwicy i liniach LOD). */
+/** Jednostka wejściowa rozmieszczenia (wpis o rozwiązanej kotwicy i liniach). */
 interface ResultLabelUnit {
   readonly ownerRef: string;
   readonly kind: ResultLabelKind;
@@ -1774,7 +1770,7 @@ function aggregateBlockSize(count: number): { readonly width: number; readonly h
  * wcześniej ulokowane bloki wyników.
  *
  * DETERMINIZM: iteracja wpisów w kolejności (priorytet, ownerRef) — niezależna
- * od kolejności kluczy obiektu. Ta sama scena+payload+LOD ⇒ identyczny wynik.
+ * od kolejności kluczy obiektu. Ta sama scena+payload ⇒ identyczny wynik.
  *
  * PRIORYTET (wym. 12): wpisy wyżej-priorytetowe plasowane WCZEŚNIEJ (zajmują
  * pozycję bezkolizyjną jako pierwsze). Niżej-priorytetowa, dla której żaden
@@ -1787,14 +1783,17 @@ function aggregateBlockSize(count: number): { readonly width: number; readonly h
  * (zakotwiczony w kotwicy członka o najwyższym priorytecie). Skupisko
  * 1-elementowe → zwykła etykieta.
  *
- * LOD (wym. 5): `resultLabelLinesForLod` przycina linie; L0 ⇒ 0 linii ⇒ wpis
- * pominięty. Domyślnie L2 (pełny szczegół) dla wołających bez kontekstu kamery.
+ * GĘSTOŚĆ (wym. 5): `resultLabelLines` przycina linie do trzech; `widoczne`
+ * = pismo etykiet wyników czytelne przy skali kamery (klasa `wyniki`,
+ * `canvas/gestoscInformacji.ts`) — `false` ⇒ żadnej etykiety (znaczniki stanu
+ * przekroczeń zostają w warstwie znaczników). Domyślnie `true` dla wołających
+ * bez kontekstu kamery (eksport, testy).
  */
 export function layoutResultLabels(
   scene: SceneV3,
   resultLabelsByOwnerRef: Readonly<Record<string, ResultLabelEntry>> | undefined,
   extraObstacles: readonly FlowRect[] = [],
-  lod: ResultLabelLod = 2,
+  widoczne = true,
 ): ResultLabelLayout {
   const EMPTY_METRICS: ResultLabelMetrics = {
     labelCount: 0,
@@ -1807,7 +1806,7 @@ export function layoutResultLabels(
     avgAnchorDistance: 0,
     maxAnchorDistance: 0,
   };
-  if (!resultLabelsByOwnerRef) {
+  if (!resultLabelsByOwnerRef || !widoczne) {
     return { placements: [], aggregates: [], hiddenRefs: [], metrics: EMPTY_METRICS };
   }
   const obstacles: FlowRect[] = [
@@ -1818,7 +1817,7 @@ export function layoutResultLabels(
     ...extraObstacles,
   ];
   // Kotwice: symbol (TR/źródło/DER) lub odcinek (szyna/przęsło) — indeks po
-  // ownerRef, pierwsze wystąpienie w scenie (LOD-niezależna tożsamość).
+  // ownerRef, pierwsze wystąpienie w scenie (tożsamość modelu).
   const symbolAnchor = new Map<string, { cx: number; cy: number; halfW: number; halfH: number }>();
   for (const s of scene.symbols) {
     const ref = s.meta?.ownerRef;
@@ -1835,12 +1834,12 @@ export function layoutResultLabels(
     segmentAnchor.set(ref, { cx: geom.runMidX, cy: geom.runMidY, horizontal: geom.horizontal });
   }
 
-  // Jednostki o rozwiązanej kotwicy i niepustych liniach LOD, uporządkowane
+  // Jednostki o rozwiązanej kotwicy i niepustych liniach, uporządkowane
   // wg (priorytet klasy, ownerRef) — wym. 12 + determinizm.
   const units: ResultLabelUnit[] = [];
   for (const ref of Object.keys(resultLabelsByOwnerRef).sort()) {
     const entry = resultLabelsByOwnerRef[ref];
-    const lines = resultLabelLinesForLod(entry.lines, lod);
+    const lines = resultLabelLines(entry.lines);
     if (lines.length === 0) continue;
     // S9-2: kotwica dobierana PREFERENCJĄ klasy, ale z zejściem do drugiego
     // rejestru. Powód: ta sama tożsamość wynikowa bywa narysowana raz odcinkiem,
@@ -2020,9 +2019,8 @@ export function computeResultLabelPlacements(
   scene: SceneV3,
   resultLabelsByOwnerRef: Readonly<Record<string, ResultLabelEntry>> | undefined,
   extraObstacles: readonly FlowRect[] = [],
-  lod: ResultLabelLod = 2,
 ): readonly ResultLabelPlacement[] {
-  return layoutResultLabels(scene, resultLabelsByOwnerRef, extraObstacles, lod).placements;
+  return layoutResultLabels(scene, resultLabelsByOwnerRef, extraObstacles).placements;
 }
 
 
@@ -2422,8 +2420,7 @@ export function contentBoundingBoxOf(scene: SceneV3): BoundingBox | null {
   for (const label of scene.labels) {
     // BLOK-PUSTY: cel dopasowania widoku obejmuje REZERWACJĘ etykiety, nie sam
     // tusz — inaczej skala „Dopasuj widok" zależałaby od tego, jak długie
-    // nazwy niesie akurat rysowany poziom szczegółu, i kamera skakałaby przy
-    // przejściu LOD (KD-5/S1). Patrz `layout/labels.ts` `labelReservationRect`.
+    // nazwy niesie akurat narysowany zbiór napisów. Patrz `layout/labels.ts` `labelReservationRect`.
     const rect = labelReservationRect(label);
     minX = Math.min(minX, rect.x);
     minY = Math.min(minY, rect.y);
@@ -2447,7 +2444,7 @@ export function contentBoundingBoxOf(scene: SceneV3): BoundingBox | null {
  * 2026-07-31 kadrze (skala 0,96) 32 jednostki świata to ~31 px ekranu, czyli
  * niemal cały 40-pikselowy padding fitu — treść zjeżdżała w prawo i w dół aż
  * do wyjścia poza kanwę przy niekorzystnej kolejności pomiaru kontenera.
- * Ruchy WZGLĘDNE kamery (pan/zoom, mapowanie skali LOD) są niezmiennicze na
+ * Ruchy WZGLĘDNE kamery (pan/zoom) są niezmiennicze na
  * translację, więc dotknięte były wyłącznie wartości BEZWZGLĘDNE: cel fitu,
  * punkt fokusu i punkt centrowania.
  */
@@ -2480,16 +2477,17 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
 }
 
 /**
- * Kanwa v3: renderuje `SceneV3` (`buildSceneV3`) do SVG. Kamera (pan/zoom/
- * pinch) steruje LOD progami zoomu (histereza, `canvas/camera.ts`) — scena
- * per LOD cache'owana `useMemo`. Interakcja minimalna: klik w symbol woła
+ * Kanwa v3: renderuje JEDNĄ scenę `SceneV3` (`scenaSld(snapshot)`, pamięć
+ * podręczna migawki) do SVG. Kamera (pan/zoom/pinch, `canvas/camera.ts`) jest
+ * czystym przekształceniem tego świata — ruch kamery nie przebudowuje sceny.
+ * Interakcja minimalna: klik w symbol woła
  * `onElementClick`; brak własnej selekcji/CAD-edycji (poza zakresem F6b).
  */
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
-    snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
+    snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu,
     cameraOverride,
-    layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
+    layerVisibility, onResultLabelActivate, onCameraChange, fitSignal,
     fitTarget = 'tresc', centerRequest, onBackgroundClick, zaznaczenieRefy,
   } = props;
   // S9-8: obszar bezpieczny kadru — doki własne kanwy plus (opcjonalnie)
@@ -2507,52 +2505,18 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const effectiveThemeMode = props.paletteMode ?? themeMode;
   const palette = useMemo(() => sldPaletteForTheme(effectiveThemeMode), [effectiveThemeMode]);
 
-  // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
-  // scena liczona dla WSZYSTKICH trzech LOD naraz (nie tylko `effectiveLod`) —
-  // światy L0/L1/L2 mają różne bboxy (osobne rezerwacje §7), a kamera musi
-  // znać wszystkie trzy, żeby: (k4.1) fitować do bboxa `lodOverride`, gdy
-  // podany (nie zawsze LOD2), i (k4.2) mapować skalę przy przejściach LOD
-  // wywołanych kamerą (`camera.ts` `applyLodScaleMapping`). Koszt: liczymy 3
-  // scen(y) zamiast 1 — akceptowalne (fixtura 53 stacje ≈ setki węzłów/LOD,
-  // memoizowane po `snapshot`, przeliczane tylko przy zmianie sieci).
-  // K2: sceny z WSPÓLNEJ pamięci podręcznej migawki (`scene/scenaSld.ts`) —
-  // przestrzeń robocza rozstrzyga zakres kadru na tych samych obiektach sceny.
-  const sceneByLod = useMemo<Readonly<Record<SceneLod, SceneV3>>>(
-    () => scenyWszystkichPoziomow(snapshot),
-    [snapshot],
-  );
-  const lodBboxes = useMemo<Readonly<Record<SceneLod, BoundingBox>>>(
-    () => ({
-      0: boundingBoxOfRect(sceneByLod[0].bbox),
-      1: boundingBoxOfRect(sceneByLod[1].bbox),
-      2: boundingBoxOfRect(sceneByLod[2].bbox),
-    }),
-    [sceneByLod],
-  );
+  // JEDNA scena migawki (karta SLD-SKALA-I-NAWIGACJA R1) z WSPÓLNEJ pamięci
+  // podręcznej (`scene/scenaSld.ts`) — przestrzeń robocza rozstrzyga zakres
+  // kadru na tych samych obiektach sceny. Kamera jej nie zmienia.
+  const scene = useMemo(() => scenaSld(snapshot), [snapshot]);
+  const sceneBbox = useMemo(() => boundingBoxOfRect(scene.bbox), [scene]);
+  const contentBbox = useMemo(() => contentBoundingBoxOf(scene), [scene]);
   const viewportSize = useMemo(() => ({ width, height }), [width, height]);
-
-  // (k4.1) Cel fitu: bbox LOD wskazanego przez `lodOverride`, gdy podany —
-  // domyślnie (produkcja, brak override) LOD2 (najpełniejsza scena), jak
-  // dawniej.
-  const fitTargetLod: SceneLod = lodOverride ?? 2;
-
-  const contentBboxByLod = useMemo<Readonly<Record<SceneLod, BoundingBox | null>>>(
-    () => ({
-      0: contentBoundingBoxOf(sceneByLod[0]),
-      1: contentBoundingBoxOf(sceneByLod[1]),
-      2: contentBoundingBoxOf(sceneByLod[2]),
-    }),
-    [sceneByLod],
-  );
 
   // KD-7: cel fitu przeliczony do ŚWIATA KAMERY (`sceneBoxToCameraWorld`) —
   // `contentBoundingBoxOf`/`scene.bbox` opisują scenę, a kamera kadruje układ
   // arkusza (scena przesunięta o `FRAME_MARGIN`).
-  const fitBbox = sceneBoxToCameraWorld(
-    fitTarget === 'arkusz'
-      ? lodBboxes[fitTargetLod]
-      : contentBboxByLod[fitTargetLod] ?? lodBboxes[fitTargetLod],
-  );
+  const fitBbox = sceneBoxToCameraWorld(fitTarget === 'arkusz' ? sceneBbox : contentBbox ?? sceneBbox);
 
   // F12-C (E15/E16 parytet z v2, spec §10 „kamera mobilna (portrait focus na
   // GPZ)"): środek bloku GPZ jako punkt fokusu kamery mobilnej — liczony ze
@@ -2561,7 +2525,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // kadrowania regionu GPZ). Brak symboli GPZ (sieć bez GPZ) ⇒ `null` ⇒
   // kamera zawsze w trybie „fit" (zero zmiany zachowania).
   const gpzFocusPoint = useMemo(() => {
-    const gpzSymbols = sceneByLod[fitTargetLod].symbols.filter((s) =>
+    const gpzSymbols = scene.symbols.filter((s) =>
       s.meta?.testId?.startsWith('gpz-canonical-'),
     );
     if (gpzSymbols.length === 0) return null;
@@ -2579,36 +2543,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     // KD-7: punkt fokusu to wartość BEZWZGLĘDNA kamery — jak cel fitu, w
     // świecie arkusza.
     return scenePointToCameraWorld({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
-  }, [sceneByLod, fitTargetLod]);
+  }, [scene]);
 
   const [camera, dispatch] = useReducer(
     cameraReducer,
-    { bbox: fitBbox, viewportSize, lodBboxes, focusPoint: gpzFocusPoint, cameraOverride },
+    { bbox: fitBbox, viewportSize, focusPoint: gpzFocusPoint, cameraOverride },
     (arg) =>
       // PROPORCJE: kadr narzucony (zrzuty/eksport) jest stanem POCZĄTKOWYM —
       // rysunek jest wtedy PLANOWANY dla tej samej skali, którą pokazuje.
       arg.cameraOverride
-      ?? computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint, effectiveSafeInsets),
+      ?? computeInitialCameraState(arg.bbox, arg.viewportSize, arg.focusPoint, effectiveSafeInsets),
   );
-
-  // (k3) 'refit' PEŁNY gdy zmienia się `lodOverride` (zmienia się CEL fitu,
-  // patrz k4.1) — pan/zoom użytkownika NIE jest zachowywany (świadomie,
-  // spec §F8). Efekt pomija pierwsze wywołanie po mouncie — stan startowy już
-  // policzony przez lazy-initializer `useReducer` wyżej z tym samym
-  // `fitBbox`/`lodBboxes`.
-  const skippedInitialRefit = useRef(false);
-  useEffect(() => {
-    if (!skippedInitialRefit.current) {
-      skippedInitialRefit.current = true;
-      return;
-    }
-    // F12-C (E15): refit z punktem fokusu GPZ — nowy cel fitu przechodzi przez
-    // tę samą semantykę kamery startowej co mount.
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
-    // `viewportSize` w akcji to viewport AKTUALNY w chwili refitu (nie w
-    // chwili montażu) — poprawne nawet gdy width/height zmieniły się w tym
-    // samym renderze co `lodOverride`.
-  }, [lodOverride]);
 
   // -------------------------------------------------------------------------
   // B-2 (audyt §4.3) — ZMIANA MIGAWKI: kotwiczenie na miejscu edycji zamiast
@@ -2616,8 +2561,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   //
   // Do tej karty każda zmiana `snapshot` (także taka, która modelu NIE ruszała
   // — `refresh_snapshot` po odzyskaniu połączenia) wywoływała pełny refit:
-  // kamera wracała do widoku całej sieci, kasując przybliżenie i poziom
-  // szczegółu projektanta (pomiar: 9,01× oddalenia i L2→L0 po wstawieniu stacji
+  // kamera wracała do widoku całej sieci, kasując przybliżenie projektanta
+  // (pomiar: 9,01× oddalenia po wstawieniu stacji
   // — `canvas/viewAnchor.ts`). Trzy drogi, JEDNA decyzja podejmowana w jednym
   // miejscu (predykaty parami — CLAUDE.md „KLASA, NIE INSTANCJA" pkt 3):
   //
@@ -2646,24 +2591,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     // Operacja jawnie prosi, żeby nie przenosić widoku (`selection_hint.zoom_to`).
     if (viewAnchor && !viewAnchor.przenosKadr) return;
     const kotwica = viewAnchor
-      ? kotwicaWidoku(sceneByLod, viewAnchor.kandydaci, sceneBoxToCameraWorld)
+      ? kotwicaWidoku(scene, viewAnchor.kandydaci, sceneBoxToCameraWorld)
       : null;
     // (2) Kotwiczenie na wskazanym obiekcie.
     if (kotwica) {
-      dispatch({
-        type: 'kotwicz',
-        anchorByLod: kotwica.boxByLod,
-        lodBboxes,
-        viewportSize,
-        safeInsets: effectiveSafeInsets,
-        // k4.1: gdy poziom szczegółu jest WYMUSZONY, kotwica celuje w geometrię
-        // tego samego świata, który jest renderowany (jak cel fitu wyżej).
-        wymuszonyLod: lodOverride,
-      });
+      dispatch({ type: 'kotwicz', anchor: kotwica.box, swiat: fitBbox, viewportSize, safeInsets: effectiveSafeInsets });
       return;
     }
     // (3) Fallback: zachowanie sprzed karty.
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+    dispatch({ type: 'refit', bbox: fitBbox, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
     // Efekt reaguje WYŁĄCZNIE na zmianę migawki — kotwica jest czytana w chwili
     // wywołania (ta sama dyscyplina co `fitSignal`/`centerRequest` niżej);
     // store dostarcza migawkę i wskazanie w JEDNYM zapisie, więc para jest
@@ -2678,7 +2614,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       skippedInitialFitSignal.current = false;
       return;
     }
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+    dispatch({ type: 'refit', bbox: fitBbox, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
   }, [fitSignal]);
 
@@ -2691,16 +2627,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   useEffect(() => {
     const ref = props.pokazElement?.ref;
     if (!ref) return;
-    const kotwica = kotwicaWidoku(sceneByLod, [ref], sceneBoxToCameraWorld);
+    const kotwica = kotwicaWidoku(scene, [ref], sceneBoxToCameraWorld);
     if (!kotwica) return;
-    dispatch({
-      type: 'kotwicz',
-      anchorByLod: kotwica.boxByLod,
-      lodBboxes,
-      viewportSize,
-      safeInsets: effectiveSafeInsets,
-      wymuszonyLod: lodOverride,
-    });
+    dispatch({ type: 'kotwicz', anchor: kotwica.box, swiat: fitBbox, viewportSize, safeInsets: effectiveSafeInsets });
     // Zależność wyłącznie od `seq` — ref czytany w chwili wywołania (ta sama
     // dyscyplina co `fitSignal`/`centerRequest`).
   }, [props.pokazElement?.seq]);
@@ -2714,34 +2643,24 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     const zadanie = props.zadanieKadru;
     if (!zadanie) return;
     if (zadanie.zakres.cel === 'siec') {
-      const trescSieci = sceneBoxToCameraWorld(contentBboxByLod[fitTargetLod] ?? lodBboxes[fitTargetLod]);
-      dispatch({ type: 'refit', bbox: trescSieci, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+      const trescSieci = sceneBoxToCameraWorld(contentBbox ?? sceneBbox);
+      dispatch({ type: 'refit', bbox: trescSieci, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
       return;
     }
-    const { celByLod, przeszkodyByLod, tuszEtykiet } = prostokatyZakresu(sceneByLod, zadanie.zakres, sceneBoxToCameraWorld);
-    dispatch({
-      type: 'kadruj',
-      anchorByLod: celByLod,
-      minLod: zadanie.zakres.minLod,
-      przeszkodyByLod,
-      tuszEtykiet,
-      lodBboxes,
-      viewportSize,
-      safeInsets: effectiveSafeInsets,
-      wymuszonyLod: lodOverride,
-    });
+    const { cel, przeszkody, tuszEtykiet } = prostokatyZakresu(scene, zadanie.zakres, sceneBoxToCameraWorld);
+    dispatch({ type: 'kadruj', anchor: cel, przeszkody, tuszEtykiet, viewportSize, safeInsets: effectiveSafeInsets });
     // Zależność wyłącznie od `seq` (dyscyplina `fitSignal`/`centerRequest`).
   }, [props.zadanieKadru?.seq]);
 
-  // K2: „Poprzedni widok" — przywrócenie transformu i poziomu z historii.
+  // K2: „Poprzedni widok" — przywrócenie transformu z historii.
   useEffect(() => {
     const wpis = props.przywrocenieKamery;
     if (!wpis) return;
-    dispatch({ type: 'przywroc', transform: wpis.transform, lod: wpis.lod, viewportSize: wpis.viewportSize });
+    dispatch({ type: 'przywroc', transform: wpis.transform, viewportSize: wpis.viewportSize });
   }, [props.przywrocenieKamery?.seq]);
 
-  // K11-B: przeniesienie kadru z minimapy — CZYSTA translacja kamery (skala i
-  // LOD nietknięte). Efekt reaguje WYŁĄCZNIE na `seq` (wzorzec `fitSignal`),
+  // K11-B: przeniesienie kadru z minimapy — CZYSTA translacja kamery (skala
+  // nietknięta). Efekt reaguje WYŁĄCZNIE na `seq` (wzorzec `fitSignal`),
   // żeby powtórzone wskazanie tego samego punktu też przeniosło kadr; brak
   // żądania (montaż/`null`) nie robi nic.
   useEffect(() => {
@@ -2768,16 +2687,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       return;
     }
     const refy = props.odslonRefy ?? [];
-    const naPoziomie = (lod: SceneLod): BoundingBox | null => {
-      const box = refy.length > 0 ? prostokatRefowWScenie(sceneByLod[lod], refy) : null;
-      return box ? sceneBoxToCameraWorld(box) : null;
-    };
-    const odslon = refy.length > 0 ? { 0: naPoziomie(0), 1: naPoziomie(1), 2: naPoziomie(2) } : undefined;
+    const box = refy.length > 0 ? prostokatRefowWScenie(scene, refy) : null;
+    const odslon = box ? sceneBoxToCameraWorld(box) : null;
     dispatch({ type: 'resize', viewportSize, safeInsets: effectiveSafeInsets, odslon });
   }, [width, height, kluczZaslon]);
 
-  const effectiveLod: SceneLod = lodOverride ?? camera.lod;
-  const scene = sceneByLod[effectiveLod];
   const obrysy = useMemo(
     () => obrysyZaznaczenia(scene, zaznaczenieRefy ?? []),
     [scene, zaznaczenieRefy],
@@ -2798,14 +2712,23 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // `scene.symbols` obstacles wewnątrz tej funkcji) NIETKNIĘTA.
   const resultOverlaysVisible = isLayerVisible('resultOverlays', layerVisibility);
   const effectiveOverlay = resultOverlaysVisible ? overlay : undefined;
-  // F9.5: rozmieszczenie nakładki przepływu — przeliczane przy zmianie
-  // sceny (LOD/snapshot) lub wyniku; szczegółowość etykiet per LOD
-  // (spec §15.2): L0 sam grot, L1 tylko P, L2 pełne P·Q·I.
+  // F9.5 + R3 (karta SLD-SKALA-I-NAWIGACJA): rozmieszczenie nakładki
+  // przepływu — przeliczane przy zmianie sceny lub wyniku. Etykiety przepływu
+  // i liczbowe etykiety wyników to klasa informacji `wyniki` w piśmie t4:
+  // widoczne, gdy pismo jest czytelne na ekranie (jedna funkcja gęstości
+  // z pasmem histerezy; stan „poprzednio widoczne” trzyma kanwa między
+  // klatkami). Poniżej — sam grot przepływu, a przekroczenia niesie warstwa
+  // znaczników. Kanwa rozstrzyga widoczność przy zmianie skali, nie przy
+  // przesunięciu (skala ta sama ⇒ ta sama wartość ⇒ memo nietknięte).
+  const wynikiWidoczneRef = useRef<boolean | undefined>(undefined);
+  const wynikiWidoczne = czytelnyNaEkranie(LABEL_TYPOGRAPHY.t4.fontSize, camera.transform.scale, wynikiWidoczneRef.current);
+  useEffect(() => {
+    wynikiWidoczneRef.current = wynikiWidoczne;
+  }, [wynikiWidoczne]);
   const flowByOwnerRef = effectiveOverlay?.flowByOwnerRef;
-  const flowLabelDetail: FlowLabelDetail | null = effectiveLod === 0 ? null : effectiveLod === 1 ? 'p-only' : 'full';
   const flowPlacements = useMemo(
-    () => computeFlowOverlayPlacements(scene, flowByOwnerRef, flowLabelDetail),
-    [scene, flowByOwnerRef, flowLabelDetail],
+    () => computeFlowOverlayPlacements(scene, flowByOwnerRef, wynikiWidoczne),
+    [scene, flowByOwnerRef, wynikiWidoczne],
   );
   // F4/SLD (V12K-092): badge wynikowy OLTC — ta sama warstwa „nakładki
   // wyników" co przepływ (filtr `effectiveOverlay` przez `resultOverlays`).
@@ -2854,9 +2777,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         scene,
         resultLabelsVisible ? overlay?.resultLabelsByOwnerRef : undefined,
         resultLabelExtraObstacles,
-        effectiveLod,
+        wynikiWidoczne,
       ),
-    [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles, effectiveLod],
+    [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles, wynikiWidoczne],
   );
   // R2 (wym. 8): status ważności wyników KONSUMOWANY z nakładki (workspace
   // liczy go predykatem świeżości biegu nakładki, karta K8 — zero równoległego trackera).
@@ -3021,12 +2944,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         captionFontPx: screenFixedFontSize('t2', camera.transform.scale) * camera.transform.scale,
         captionFontWeight: LABEL_TYPOGRAPHY.t2.fontWeight,
         scaleLabel: SHEET_SCALE_LABEL,
-        lodLabel: SCENE_LOD_LABELS_PL[effectiveLod],
       },
       { measure: measureTextWidth },
     );
     return hiddenLabelsHintScreenRect({ width, height }, hintTekst, captions, { measure: measureTextWidth });
-  }, [sheetSize, camera.transform, effectiveLod, hintTekst, width, height]);
+  }, [sheetSize, camera.transform, hintTekst, width, height]);
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
   // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
@@ -3107,17 +3029,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [scene, labelPlan, resultMarkerHits, camera.transform.scale, ukryteTestId],
   );
 
-  /** Symbole, których klik NIESIE też nawigację (KD-5: rozwinięcie zwiniętego
-   *  bloku GPZ na L0) — po `testId`, żeby warstwa trafień nie musiała znać
-   *  indeksów sceny. */
-  const rozwijalneSymbole = useMemo(() => {
-    const mapa = new Map<string, PreviewSymbol>();
-    scene.symbols.forEach((symbol, index) => {
-      if (symbol.symbolId === 'gpzCollapsed') mapa.set(symbolTestId(symbol, index), symbol);
-    });
-    return mapa;
-  }, [scene]);
-
   /** Meta kliku per obiekt sceny — TA SAMA treść, którą przed kartą S9-4
    *  budowały węzły `SceneSymbolNode`/`SceneSegmentNode` (tożsamość zaznaczenia:
    *  `ownerRef` klikniętego obiektu, nie jego kontenera). */
@@ -3190,13 +3101,13 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
-  // AKTUALNYM transformie/LOD kamery — jedyny sposób uzyskania go z zewnątrz
+  // AKTUALNYM transformie kamery — jedyny sposób uzyskania go z zewnątrz
   // (kamera jest stanem wewnętrznym od F6b). Wzorzec identyczny z
   // `SldCanvasV2`'s `onViewportTransformChange` (`useEffect` na zmianę
   // `transform`, patrz docstring propa wyżej).
   useEffect(() => {
-    onCameraChange?.(camera.transform, effectiveLod, camera.viewportSize);
-  }, [onCameraChange, camera.transform, effectiveLod, camera.viewportSize]);
+    onCameraChange?.(camera.transform, camera.viewportSize);
+  }, [onCameraChange, camera.transform, camera.viewportSize]);
 
   // Pointer tracking (pan 1 dotyk/mysz, pinch 2 dotyki) — Pointer Events
   // unifikują mysz/dotyk/pen, jeden kod ścieżki (patrz `canvas/camera.ts`
@@ -3306,48 +3217,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     return () => svg.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
-  /**
-   * KD-5 — ROZWINIĘCIE ZWINIĘTEGO BLOKU: klik (a więc i dwuklik, którego
-   * pierwszy człon jest klikiem) w blok GPZ na L0 przenosi kadr na blok i
-   * zbliża DOKŁADNIE do progu wejścia na następny poziom szczegółu.
-   *
-   * Reużyta ISTNIEJĄCA nawigacja kamery — zero nowego toru: akcja `'center'`
-   * (ta sama, którą wywołuje minimapa) + akcja `'zoom'` ze współczynnikiem
-   * z `zoomFactorToEnterNextLod` (progi z tej samej tabeli, co histereza
-   * kamery). Przełączenie LOD i przeliczenie skali robi `cameraReducer`, jak
-   * przy zwykłym kółku myszy.
-   *
-   * Bramka `camera.lod !== 0`: rozwijamy WYŁĄCZNIE z poziomu przeglądowego —
-   * drugi człon dwukliku (kamera jest już na L1) nie doda kolejnego skoku.
-   */
-  const onPrzedPoleceniemWidoku = props.onPrzedPoleceniemWidoku;
-  const expandCollapsedBlock = useCallback(
-    (symbol: PreviewSymbol) => {
-      if (camera.lod !== 0) return;
-      onPrzedPoleceniemWidoku?.();
-      const def = SYMBOL_DEFS[symbol.symbolId];
-      // KD-7: środek symbolu to współrzędna SCENY — kamera centruje w świecie
-      // arkusza (`scenePointToCameraWorld`).
-      dispatch({
-        type: 'center',
-        worldPoint: scenePointToCameraWorld({ x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 }),
-      });
-      const factor = zoomFactorToEnterNextLod(
-        refScaleFor(camera.transform.scale, camera.lod, camera.lodBboxes),
-        camera.lod,
-      );
-      if (factor > 1) {
-        // Kursor = ŚRODEK viewportu: po `'center'` blok leży dokładnie tam,
-        // więc zoom „do kursora" utrzymuje go w kadrze (zero dryfu).
-        dispatch({ type: 'zoom', cursor: { x: viewportSize.width / 2, y: viewportSize.height / 2 }, factor });
-      }
-    },
-    [camera, viewportSize, onPrzedPoleceniemWidoku],
-  );
-
   /** Karta S9-4: JEDYNY uchwyt lewego kliku na kanwie. Rozstrzyga po `testId`
-   *  obiektu, więc semantyka („znacznik wyniku aktywuje panel", „zwinięty blok
-   *  GPZ dodatkowo rozwija kadr", „reszta zaznacza") jest w jednym miejscu, a
+   *  obiektu, więc semantyka („znacznik wyniku aktywuje panel", „reszta
+   *  zaznacza") jest w jednym miejscu, a
    *  nie rozsypana po węzłach rysunku. */
   /** Karta S9-5: obszary trafienia po `testId` — meta kliku bierze KLASĘ i
    *  (dla obiektów spoza mapy `klikMeta`, np. znacznika wyniku) także
@@ -3381,11 +3253,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         aktywacja();
         return;
       }
-      const rozwijalny = rozwijalneSymbole.get(testId);
-      if (rozwijalny) expandCollapsedBlock(rozwijalny);
       onElementClick?.(testId, metaZTrafienia(testId));
     },
-    [aktywacjaZnacznika, rozwijalneSymbole, expandCollapsedBlock, onElementClick, metaZTrafienia],
+    [aktywacjaZnacznika, onElementClick, metaZTrafienia],
   );
 
   const handleHitContextMenu = useCallback(
@@ -3476,9 +3346,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     <svg
       ref={svgRef}
       data-testid="sld-canvas-v3"
-      data-scene-lod={effectiveLod}
       data-theme-mode={effectiveThemeMode}
       data-tryb-widoku={props.trybWidoku ?? 'arkusz'}
+      // Stan kamery na kanwie (karta SLD-SKALA-I-NAWIGACJA, R7): skala [px/j.św.]
+      // — jedyny parametr widoku, od którego zależy gęstość napisów; scena jest
+      // od niej niezależna (R1). Testy e2e czekają na skalę, nie na „poziom”.
+      data-skala-kamery={camera.transform.scale.toFixed(4)}
       data-kadr-aktywny={zbiorKadru ? 'true' : undefined}
       data-ukryte-opisy-celu={zbiorKadru ? opisyCelu.ukryte : undefined}
       data-opisy-celu-ponizej-podlogi={zbiorKadru ? opisyCelu.ponizejPodlogi : undefined}
@@ -3540,7 +3413,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         height={sheetSize.height}
         legend={SLD_V3_CANVAS_LEGEND}
         scaleLabel={SHEET_SCALE_LABEL}
-        lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
         // S9-7 (audyt C-4): aparat arkusza (strefy, podziałka, poziom
         // szczegółu) w PIKSELACH EKRANU — inaczej przy wpasowaniu sieci dużej
         // (skala ≈0,13) każdy z tych napisów ma 2 px. Pasy stref z tego samego
@@ -3622,33 +3494,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             />
           </g>
         )}
-        {/* Karta S8 (P2, płynność przejść LOD): WARSTWA DETALU (segmenty/
-         * symbole/etykiety — treść zależna od LOD) owinięta w jedną grupę z
-         * `key` = efektywny LOD. Zmiana LOD remontuje grupę ⇒ natywny SMIL
-         * `<animate>` odgrywa raz fade-in opacity 0→1 (crossfade nowego
-         * szczegółu na STAŁEJ kotwicy — JEDNA KOTWICA gwarantuje, że świat się
-         * nie przesuwa, fade tylko wygładza „przedetalowanie"). Overlays
-         * wyników (przepływ/zwarcia/OLTC) są PONIŻEJ, POZA tą grupą — nie
-         * migoczą przy zmianie LOD (ciągłość nakładek, karta S8 pkt 3).
-         * `opacity` bazowe 1: jsdom/SSR/eksport (brak silnika SMIL) i tryb
-         * `animateLodTransitions={false}` renderują pełną widoczność bez
-         * animacji. */}
-        <g
-          key={`sld-v3-detail-lod-${effectiveLod}`}
-          data-testid="sld-v3-detail-layer"
-          opacity={1}
-        >
-          {animateLodTransitions ? (
-            <animate
-              attributeName="opacity"
-              from="0"
-              to="1"
-              dur={LOD_CROSSFADE_DURATION}
-              begin="0s"
-              fill="freeze"
-              calcMode="linear"
-            />
-          ) : null}
+        {/* WARSTWA RYSUNKU SCENY (segmenty/symbole/etykiety) — jedna geometria
+         * w każdej skali (karta SLD-SKALA-I-NAWIGACJA R1); nakładki wyników
+         * (przepływ/zwarcia/OLTC) są PONIŻEJ, poza tą grupą. */}
+        <g data-testid="sld-v3-detail-layer">
         {/* F12-B pkt 4 (spec §10.1 ARCH-4): filtr WYŁĄCZNIE renderu —
          * `scene.segments`/`scene.symbols`/`scene.labels` (`buildSceneV3`)
          * NIETKNIĘTE (mapowane w PEŁNI, `index` zachowany dla każdego elementu
@@ -3681,10 +3530,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-symbols">
           {scene.symbols.map((symbol, index) => {
             if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
-            // KD-5: blok GPZ zwinięty jest jedynym symbolem, w którym klik
-            // NIESIE też nawigację (rozwinięcie = zbliżenie do progu LOD).
-            // Karta S9-4: ta reguła żyje teraz w `handleHitClick` (jedno miejsce
-            // rozstrzygania kliku), a węzeł symbolu jest czystym rysunkiem.
             const wezel = (
               <SceneSymbolNode
                 key={`symbol-${index}`}
@@ -3692,7 +3537,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 index={index}
                 overlay={effectiveOverlay}
                 cameraScale={camera.transform.scale}
-                lod={effectiveLod}
                 ramkaBloku={ramkiBlokow.get(index)}
               />
             );
@@ -3761,8 +3605,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
          * wyników" ukryta przez `layerVisibility` — `flowByOwnerRef` wtedy
          * `undefined`, patrz `effectiveOverlay` wyżej). Pozycje etykiet
          * liczone scenowo z unikaniem kolizji (V-1/V-2 recenzji —
-         * `computeFlowOverlayPlacements`). Wartości od L1 (spec §15.2: LOD
-         * steruje etykietami, nie kierunkiem). */}
+         * `computeFlowOverlayPlacements`). Wartości widoczne wg czytelności pisma
+         * (`canvas/gestoscInformacji.ts`); grot — w każdej skali. */}
         <g data-testid="sld-v3-flow-overlay">
           {flowPlacements.map((placement) => (
             <SceneFlowPlacementNode key={`flow-${placement.segmentIndex}`} placement={placement} />

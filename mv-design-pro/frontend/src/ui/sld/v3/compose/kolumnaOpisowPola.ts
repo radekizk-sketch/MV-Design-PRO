@@ -30,17 +30,6 @@ export interface OpisAparatuPola {
   readonly tabliczki: readonly string[];
 }
 
-/** Rodzaje aparatów pola, których oznaczenie (T1, T2, T3) jest na rysunku od LOD1 — odbiór B-02
- *  właściciela 2026-11-04 pkt 6: „LOD0 — same symbole; LOD1 — oznaczenia (T1, T2, T3); LOD2 —
- *  krótkie przekładnie”. Pozostałe oznaczenia aparatów i przekładnie — LOD2. JEDNA reguła pola
- *  GPZ (`compose/gpz.ts`) i pola stacji (`compose/station.ts`). */
-export const RODZAJE_PRZEKLADNIKOW_OD_LOD1: ReadonlySet<string> = new Set(['CT', 'VT', 'CORE_BALANCE_CT']);
-
-/** Opis aparatu pola stacji: oznaczenie, tabliczki i poziom szczegółu, od którego oznaczenie
- *  jest na rysunku (`odLod`; brak = LOD2). */
-export interface OpisAparatuPolaStacji extends OpisAparatuPola {
-  readonly odLod?: 1;
-}
 
 /** Szerokości kolumn opisów pola [j.św.]. `szerokosc` = suma — odległość lewej krawędzi pola
  *  od lewej krawędzi toru głównego (bez pasów własnych pola, np. oznaczeń zacisków P1/P2). */
@@ -174,7 +163,7 @@ export function opisyAparatowPolaStacji(
     MiniBlockBayDescriptor,
     'fieldRole' | 'primaryDevices' | 'reserve' | 'transformerRef' | 'ctRatingAnnotations' | 'vtMountingAnnotations'
   >,
-): readonly OpisAparatuPolaStacji[] {
+): readonly OpisAparatuPola[] {
   const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
   const devices = source === 'dane' ? rekordyToruPola(bay.primaryDevices).rekordy : [];
   const oznaczenia = apparatusIdentifiers(symbolIds, symbolIds.map((_, i) => devices[i]?.designation));
@@ -186,7 +175,6 @@ export function opisyAparatowPolaStacji(
       // karta RAMKA-PRZEKAZNIKA, następca 2026-11-11: pole stacji gubiło T1 i GK z danych).
       oznaczenie: oznaczenia[i] ?? (d?.designation?.trim() || null),
       tabliczki: d ? tekstyOpisowPrzekladnika(bay, { symbolId, deviceRef: d.deviceRef, linkedRef: d.linkedRef }) : [],
-      ...(d && RODZAJE_PRZEKLADNIKOW_OD_LOD1.has(d.kind) ? { odLod: 1 as const } : {}),
     };
   });
 }

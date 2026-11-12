@@ -1,6 +1,6 @@
 /**
  * SCHEMAT-10 R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.6/7/9/17; program
- * WYNIKI-SLD R3) — dowód wizualny czterech zdolności warstwy wynikowej na L2:
+ * WYNIKI-SLD R3) — dowód wizualny czterech zdolności warstwy wynikowej (scena pełna):
  *  A · INTERAKCJA + POCHODZENIE (wym.6/7): klik etykiety/członka agregatu →
  *      istniejący panel wyników elementu; popover agregatu z wierszem
  *      POCHODZENIA (moduł PL z analysis_type + przebieg run_id).
@@ -9,7 +9,7 @@
  *  C · PROGI KOLORYSTYCZNE (wym.9): severity backendu → istniejące tokeny
  *      statusów (żółty/bursztyn/czerwień) + znacznik „⚠” (kolor DODATKIEM).
  *
- * REALNA scena `buildSceneV3(sldSubstrate52s, L2)` + warstwa liczb zbudowana
+ * REALNA scena `buildSceneV3(sldSubstrate52s)` + warstwa liczb zbudowana
  * PRODUKCYJNYM potokiem (`buildResultLabelsFromScene`/`applyResultLabelFilter`/
  * `layoutResultLabels`/`resultSeverityColor` — te same funkcje co kanwa).
  * Rysunek bazowy NIETKNIĘTY (§11 inwariant geometrii — filtr działa na warstwie
@@ -51,7 +51,7 @@ mkdirSync(OUT, { recursive: true });
 const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 // Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
 // zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
 // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
@@ -89,12 +89,12 @@ for (const s of scene.segments) {
 }
 const payload: RawOverlayPayload = { run_id: 'run-2f8c14', analysis_type: 'load_flow', elements };
 const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-const layout = layoutResultLabels(scene, byRef, [], 2);
+const layout = layoutResultLabels(scene, byRef, []);
 
 // Filtry (panel B) — liczone REALNIE z produkcyjnej funkcji.
 const countLabels = (f: ResultLabelFilter): number => {
   const filtered = applyResultLabelFilter(byRef, f);
-  const lay = layoutResultLabels(scene, filtered, [], 2);
+  const lay = layoutResultLabels(scene, filtered, []);
   return lay.placements.length + lay.aggregates.reduce((s, a) => s + a.count, 0);
 };
 const onlyP: ResultLabelFilter = { ...DEFAULT_RESULT_LABEL_FILTER, quantities: { P: true, Q: false, S: false, I: false, U: false, loading: false } };
@@ -226,7 +226,7 @@ parts.push(`<text x="62" y="${CY + 102}" font-family="Inter, system-ui, sans-ser
 
 const title =
   `<text x="16" y="30" font-family="Inter, system-ui, sans-serif" font-size="19" font-weight="700" fill="${TXT}">` +
-  `R3 · Warstwa wynikowa — interakcja + pochodzenie wyniku + filtry widoczności + progi z kontraktów severity (scena realna sldSubstrate52s, L2)</text>` +
+  `R3 · Warstwa wynikowa — interakcja + pochodzenie wyniku + filtry widoczności + progi z kontraktów severity (scena realna sldSubstrate52s)</text>` +
   `<text x="16" y="52" font-family="Inter, system-ui, sans-serif" font-size="12" fill="${SUB}">` +
   `Klik etykiety → istniejący panel wyników (reuse, wym.6); pochodzenie z payloadu (moduł+przebieg, wym.7); filtry na warstwie etykiet (wym.17); progi z severity backendu (wym.9).</text>` +
   `<text x="16" y="72" font-family="Inter, system-ui, sans-serif" font-size="11" fill="${SUB}">` +

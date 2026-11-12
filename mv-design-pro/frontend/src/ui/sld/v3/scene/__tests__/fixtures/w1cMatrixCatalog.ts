@@ -243,7 +243,7 @@ function connectionSafeFieldRefs(baseEnm: EnergyNetworkModel): Set<string> {
     readonly points: readonly { x: number; y: number }[];
     readonly meta?: { ownerRef?: unknown };
   }
-  const scene = buildSceneV3(baseEnm, 2);
+  const scene = buildSceneV3(baseEnm);
   const segs = scene.segments as unknown as Seg[];
   const descentBottomByField = new Map<string, { x: number; y: number }>();
   const interEndpointYByColumn = new Map<number, number[]>();

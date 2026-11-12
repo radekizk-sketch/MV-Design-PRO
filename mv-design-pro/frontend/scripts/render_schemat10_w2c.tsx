@@ -1,7 +1,7 @@
 /**
  * SCHEMAT-10 W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, reguły 1–7) — bramka
  * dowodowa PLANU ETYKIET toru DER przyłączonego po stronie SN oraz dowód
- * wizualny tego toru na L2.
+ * wizualny tego toru (scena pełna).
  *
  * ŚCIEŻKA PRODUKCYJNA OD POCZĄTKU DO KOŃCA (karta W2C-PLAN-ETYKIET). Do tej
  * karty skrypt budował scenę WŁASNYM potokiem, który rozjeżdżał się z kanwą w
@@ -17,14 +17,15 @@
  * Teraz: fixtura ENM toru DER-SN (`w2cDerSnFixtures.ts`, lustro kształtu
  * snapshotu backendu) → `buildSceneV3` (adapter + kompozycja + resolver
  * etykiet produkcji) → `sceneObstacleRects` + `sheetSizeFor` (to samo, co
- * podaje `SldCanvasV3`) → `planSceneLabels` przy KAŻDEJ skali, przy której
- * dany LOD jest aktywny w kamerze (`LABEL_PLAN_PRODUCTION_SCALES`, ta sama
- * tabela co `accept:sld-v3`).
+ * podaje `SldCanvasV3`) → `planSceneLabels` przy KAŻDEJ skali odbioru planu
+ * etykiet (`SKALE_ODBIORU_PLANU_ETYKIET`; jedna scena niezależna od skali —
+ * karta SLD-SKALA-I-NAWIGACJA, R1).
  *
- * FAIL (kod wyjścia 1), gdy dla któregokolwiek przypadku × LOD × skali:
+ * FAIL (kod wyjścia 1), gdy dla któregokolwiek przypadku × skali:
  * kolizja etykieta↔etykieta, etykieta↔rysunek (symbol/tor), porzucona
  * tożsamość, napis poza obrysem arkusza, identyfikator aparatu narysowany w
- * postaci skróconej (np. „TV1" → „T…"), albo gdy na L2 pole źródłowe nie niesie
+ * postaci skróconej (np. „TV1" → „T…"), albo gdy od skali czytania
+ * (`SKALA_CZYTANIA`, 1 px/j.św.) pole źródłowe nie niesie
  * narysowanego identyfikatora każdego aparatu bocznego (bramka nie może przejść
  * „na pusto").
  *
@@ -36,7 +37,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { LABEL_PLAN_PRODUCTION_SCALES } from '../src/ui/sld/v3/canvas/camera';
+import { SKALA_CZYTANIA, SKALE_ODBIORU_PLANU_ETYKIET } from '../src/ui/sld/v3/canvas/camera';
 import {
   planSceneLabels,
   plannedLabelCollisions,
@@ -45,7 +46,7 @@ import {
   type LabelRenderPlan,
 } from '../src/ui/sld/v3/canvas/labelLegibility';
 import { LABEL_TYPOGRAPHY } from '../src/ui/sld/v3/core/text';
-import { buildSceneV3, sceneObstacleRects, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import {
   buildDerSnFixture,
   type DerSnInjectOptions,
@@ -100,10 +101,9 @@ const CASES: readonly W2cCase[] = [
   { id: 'w2c-6', injections: [{ technology: 'PV', lvSwitchgearVariant: 'integrated-skid' }], panel: null },
 ];
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
-/** Skala panelu dowodu wizualnego: NAJMNIEJSZA skala, przy której L2 jest
- *  aktywny w kamerze (najciaśniejszy przypadek planu etykiet na L2). */
-const PANEL_SCALE = LABEL_PLAN_PRODUCTION_SCALES[2][0];
+/** Skala panelu dowodu wizualnego: skala czytania — najciaśniejszy przypadek,
+ *  przy którym oznaczenia aparatów muszą być narysowane. */
+const PANEL_SCALE = SKALA_CZYTANIA;
 
 const rejections: string[] = [];
 const report: string[] = [];
@@ -117,26 +117,27 @@ function lateralIdLabels(scene: SceneV3, injected: readonly InjectedDer[]): read
 
 function gate(testCase: W2cCase): void {
   const { enm, injected } = buildDerSnFixture(testCase.injections);
-  for (const lod of LODS) {
-    const scene = buildSceneV3(enm, lod);
+  {
+    const scene = buildSceneV3(enm);
     const obstacles = sceneObstacleRects(scene);
     const sheet = sheetSizeFor(scene);
     const lateralIds = lateralIdLabels(scene, injected);
-    for (const scale of LABEL_PLAN_PRODUCTION_SCALES[lod]) {
+    for (const scale of SKALE_ODBIORU_PLANU_ETYKIET) {
+      const czytanie = scale >= SKALA_CZYTANIA;
       const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
       const collisions = plannedLabelCollisions(plan);
       const onDrawing = plannedLabelObstacleCollisions(plan, obstacles);
       const outside = plannedLabelsOutsideSheet(plan, sheet);
       const drawnRefs = new Set(plan.drawn.map((p) => p.label.ownerRef));
-      const lateralMissing = lod === 2 ? lateralIds.filter((ref) => !drawnRefs.has(ref)) : [];
-      const vacuous = lod === 2 && lateralIds.length === 0;
+      const lateralMissing = czytanie ? lateralIds.filter((ref) => !drawnRefs.has(ref)) : [];
+      const vacuous = czytanie && lateralIds.length === 0;
       // Identyfikator aparatu (Q1/QE1/TV1/F1) nie ma członu, który dałoby się
       // odciąć: skrót „T…" z „TV1" czyta się jak transformator.
       const truncatedIds = plan.drawn
         .filter((p) => p.label.ownerRef.includes('#apparatus-id-') && p.text !== p.label.text)
         .map((p) => `${p.label.text}→${p.text}`);
       const line =
-        `W2c ${testCase.id} L${lod} @${scale}: etykiety=${scene.labels.length}` +
+        `W2c ${testCase.id} @${scale}: etykiety=${scene.labels.length}` +
         ` narysowane=${plan.drawn.length} ukryte-dane=${plan.hiddenDetail.length}` +
         `, etykiety-kolizje=${collisions.length}` +
         `, etykiety-symbole=${onDrawing.length}${onDrawing.length ? ` [${onDrawing.join(', ')}]` : ''}` +
@@ -144,7 +145,7 @@ function gate(testCase: W2cCase): void {
         `${plan.droppedIdentity.length ? ` [${plan.droppedIdentity.map((l) => l.ownerRef).join(', ')}]` : ''}` +
         `, poza-arkuszem=${outside.length}` +
         `, skrócone-identyfikatory=${truncatedIds.length}${truncatedIds.length ? ` [${truncatedIds.join(', ')}]` : ''}` +
-        (lod === 2 ? `, identyfikatory-boczne=${lateralIds.length - lateralMissing.length}/${lateralIds.length}` : '');
+        (czytanie ? `, identyfikatory-boczne=${lateralIds.length - lateralMissing.length}/${lateralIds.length}` : '');
       const failed =
         collisions.length > 0 ||
         onDrawing.length > 0 ||
@@ -178,13 +179,13 @@ interface Panel {
 }
 
 /**
- * Panel = wycinek SCENY PRODUKCYJNEJ L2 obejmujący stację z torem DER, w skali
+ * Panel = wycinek SCENY PRODUKCYJNEJ obejmujący stację z torem DER, w skali
  * `PANEL_SCALE` (1 j.św. = `PANEL_SCALE` px), z etykietami WEDŁUG PLANU tej
  * skali — dokładnie to, co rysuje `SldCanvasV3` przy tym powiększeniu.
  */
 function renderPanel(testCase: W2cCase): Panel {
   const { enm, stationRef } = buildDerSnFixture(testCase.injections);
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
   const plan: LabelRenderPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), PANEL_SCALE, sheetSizeFor(scene));
   const prefix = `${stationRef.replace(/\/station$/, '')}/`;
   const owned = (ref: unknown): boolean => typeof ref === 'string' && ref.startsWith(prefix);
@@ -245,7 +246,7 @@ function renderPanel(testCase: W2cCase): Panel {
   const svg =
     `<rect x="4" y="4" width="${width - 8}" height="${height - 8}" rx="12" fill="#111C28" stroke="#25384A"/>` +
     `<text x="${width / 2}" y="34" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="700" fill="#E8EEF4">${xml(panel.title)}</text>` +
-    `<text x="${width / 2}" y="58" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#9FB3C8">${xml(panel.subtitle)} · L2 @${PANEL_SCALE}</text>` +
+    `<text x="${width / 2}" y="58" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#9FB3C8">${xml(panel.subtitle)} · @${PANEL_SCALE}</text>` +
     `<g transform="translate(${tx},${ty})">${segs}${glyphs}${captions}</g>`;
   return { width, height, svg };
 }
@@ -267,10 +268,10 @@ const placed = panels
   .join('');
 const verdictLine = rejections.length > 0
   ? `NIEZGODNE: ${rejections.length} kontroli planu etykiet nie przeszło — patrz raport CI`
-  : `Plan etykiet: ${report.length} kontroli (przypadek × LOD × skala aktywna w kamerze) bez kolizji i bez utraconych tożsamości`;
+  : `Plan etykiet: ${report.length} kontroli (przypadek × skala odbioru planu etykiet) bez kolizji i bez utraconych tożsamości`;
 const title =
   `<text x="20" y="34" font-family="Inter, system-ui, sans-serif" font-size="23" font-weight="700" fill="#E8EEF4">` +
-  `W2c · Tor DER przyłączony po stronie SN — scena produkcyjna L2, plan etykiet kanwy</text>` +
+  `W2c · Tor DER przyłączony po stronie SN — scena produkcyjna, plan etykiet kanwy</text>` +
   `<text x="20" y="60" font-family="Inter, system-ui, sans-serif" font-size="13" fill="${rejections.length > 0 ? '#FF5E5E' : '#9FB3C8'}">` +
   `${xml(verdictLine)}</text>`;
 const svg =

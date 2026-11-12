@@ -3,7 +3,7 @@
  * KOMPOZYTOWYM dostają wyniki U/δ dopiero po powiązaniu z KANONICZNYM `Bus.ref_id`
  * ze snapshotu ENM (metadana addytywna `busResultRef`).
  *
- * Dwa panele na REALNEJ scenie `buildSceneV3(sldSubstrate52s, L2)` z payloadem
+ * Dwa panele na REALNEJ scenie `buildSceneV3(sldSubstrate52s)` z payloadem
  * kluczowanym KANONICZNIE (jak backend — po `Bus.ref_id`):
  *   PRZED — warstwa wynikowa dopasowuje po `ownerRef` (kompozyt sceny);
  *           szyny GPZ (`#bus-primary`/`#hv-bus`) NIE mapują ⇒ węzły bez U/δ.
@@ -33,7 +33,7 @@ const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tes
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 const GPZ_PREFIX = 'gpz/1021aa18ea28ab398f1166359a58215a';
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 // Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
 // zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
 // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).

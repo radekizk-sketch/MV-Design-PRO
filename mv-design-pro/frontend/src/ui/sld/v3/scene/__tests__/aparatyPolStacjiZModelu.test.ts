@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod } from '../buildScene';
+import { buildSceneV3 } from '../buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const enm = (
@@ -70,31 +70,29 @@ describe('pole stacji SN rysuje każdy aparat z modelu', () => {
     }
   });
 
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: liczba glifów aparatów pola = liczba rekordów primary_devices (każda konstrukcja × funkcja)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      let zbadane = 0;
-      for (const pole of polaStacji) {
-        if (!(ROLE_KOLUMNY as readonly string[]).includes(pole.bay_role)) continue;
-        const rekordy = (pole.primary_devices ?? []).filter((d) => !POZA_KOLUMNA_POLA.has(d.kind));
-        if (rekordy.length === 0) continue;
-        const opis = `${stacje.get(pole.substation_ref ?? '')} / ${pole.bay_role}`;
-        const glify = scene.symbols.filter(
-          (s) => s.meta?.ownerRef === pole.ref_id && s.meta?.elementKind === 'apparatus',
-        );
-        expect(glify.length, `${opis}: liczba glifów`).toBe(rekordy.length);
-        expect(
-          glify.map((s) => s.meta?.deviceRef).sort(),
-          `${opis}: każdy glif to rekord aparatu modelu`,
-        ).toEqual(rekordy.map((d) => d.device_ref).sort());
-        zbadane += 1;
-      }
-      expect(zbadane).toBe(stacje.size * ROLE_KOLUMNY.length);
-    });
-  }
+  it(`liczba glifów aparatów pola = liczba rekordów primary_devices (każda konstrukcja × funkcja)`, () => {
+    const scene = buildSceneV3(enm);
+    let zbadane = 0;
+    for (const pole of polaStacji) {
+      if (!(ROLE_KOLUMNY as readonly string[]).includes(pole.bay_role)) continue;
+      const rekordy = (pole.primary_devices ?? []).filter((d) => !POZA_KOLUMNA_POLA.has(d.kind));
+      if (rekordy.length === 0) continue;
+      const opis = `${stacje.get(pole.substation_ref ?? '')} / ${pole.bay_role}`;
+      const glify = scene.symbols.filter(
+        (s) => s.meta?.ownerRef === pole.ref_id && s.meta?.elementKind === 'apparatus',
+      );
+      expect(glify.length, `${opis}: liczba glifów`).toBe(rekordy.length);
+      expect(
+        glify.map((s) => s.meta?.deviceRef).sort(),
+        `${opis}: każdy glif to rekord aparatu modelu`,
+      ).toEqual(rekordy.map((d) => d.device_ref).sort());
+      zbadane += 1;
+    }
+    expect(zbadane).toBe(stacje.size * ROLE_KOLUMNY.length);
+  });
 
   it('pole sprzęgła: glif toru poziomego gałęzi bus_coupler wg aparatu głównego rekordu pola', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     for (const pole of polaStacji.filter((b) => b.bay_role === 'COUPLER')) {
       const nazwa = stacje.get(pole.substation_ref ?? '');
       const [galaz] = pole.equipment_refs ?? [];
@@ -108,7 +106,7 @@ describe('pole stacji SN rysuje każdy aparat z modelu', () => {
   });
 
   it('konstrukcja rozłącznikowa nie rysuje przekładnika prądowego ani wyłącznika (pole RMU)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     for (const pole of polaStacji) {
       const nazwa = stacje.get(pole.substation_ref ?? '');
       if (nazwa === 'S-WYL' || !(pole.primary_devices ?? []).length) continue;
@@ -121,6 +119,6 @@ describe('pole stacji SN rysuje każdy aparat z modelu', () => {
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {
-    expect(JSON.stringify(buildSceneV3(enm, 2))).toBe(JSON.stringify(buildSceneV3(enm, 2)));
+    expect(JSON.stringify(buildSceneV3(enm))).toBe(JSON.stringify(buildSceneV3(enm)));
   });
 });

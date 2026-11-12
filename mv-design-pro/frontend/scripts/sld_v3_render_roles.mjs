@@ -14,16 +14,11 @@
  * decyzja o (nie)commitowaniu leży po stronie recenzenta/nadzorcy, ten skrypt
  * tylko zapisuje pliki). HTML pośrednie w scratchpadzie (NIE w repo).
  *
- * F8a-2 — FIX-2 (recenzja Opusa): dawna wersja tego harnessu zakładała, że
- * `SldCanvasV3` fituje kamerę ZAWSZE do bboxa LOD 2 (patrz historia k4,
- * REBUILD_PLAN_V3 F6b-2) i dorzucała WŁASNĄ kompensację clipem/dsf dla
- * L0/L1 (`toWorldRect(sceneL1.bbox)`/`buildSceneV3(enm, 0).bbox`), żeby
- * mały-rysunek-w-rogu był czytelny na PNG. Od F8a (k4.1, ROZWIĄZANE w
- * `canvas/SldCanvasV3.tsx`) kamera produkcyjna fituje do bboxa TEGO LOD, do
- * którego przekazano `lodOverride` — kompensacja harnessu jest teraz
- * SPRZECZNA z kamerą (kadrowałaby DRUGI RAZ to, co kamera już poprawnie
- * wykadrowała), usunięta. `cameraTransformFor` niżej reużywa 1:1 logikę
- * wyboru celu fitu z `SldCanvasV3`.
+ * Karta SLD-SKALA-I-NAWIGACJA (R1, 2026-11): kanwa ma JEDNĄ scenę niezależną od
+ * skali — dawne role per poziom szczegółu (operator L1, audytor L0) nie mają
+ * przedmiotu. Kamera zrzutu jest odczytywana z `viewBox` wyrenderowanej kanwy
+ * (`cameraTransformFor`), więc wycinki zoomu liczą się tą samą transformacją,
+ * którą narysowała kanwa — bez drugiej implementacji dopasowania.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -33,10 +28,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { chromium } from '../node_modules/@playwright/test/index.mjs';
 import { chromiumLaunchOptions } from './playwright-env.mjs';
 
-import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
+import { SldCanvasV3, scenePointToCameraWorld } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
 import { buildEnergizationOverlay } from '../src/ui/sld/v3/canvas/SldCanvasV3Workspace.tsx';
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene.ts';
-import { boundingBoxOfRect, computeInitialCameraState } from '../src/ui/sld/v3/canvas/camera.ts';
 import { worldToScreen } from '../src/ui/sld/v2/viewport/ViewportController.ts';
 import { GRID } from '../src/ui/sld/v3/core/grid.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
@@ -64,23 +58,17 @@ const enm = JSON.parse(readFileSync(fixturePath, 'utf8')).enm;
 const FULL_W = 1920;
 const FULL_H = 1080;
 
-/** Ten sam obliczenie kamery, co `SldCanvasV3` wykonuje WEWNĘTRZNIE przy
- *  mount — patrz `canvas/SldCanvasV3.tsx` (`fitTargetLod = lodOverride ?? 2`,
- *  `fitBbox = lodBboxes[fitTargetLod]`): F8a-2 (recenzja FIX-2) skoryguje
- *  dawne (BŁĘDNE) założenie tego harnessu, że kamera fituje ZAWSZE do bboxa
- *  LOD 2 — od F8a kamera fituje do bboxa TEGO LOD, do którego wołający
- *  przekazał `lodOverride` (k4.1, ROZWIĄZANE w produkcyjnym kodzie). Ten
- *  helper reużywa 1:1 tę samą logikę wyboru celu fitu, żeby przeliczyć
- *  world→screen dla obszarów zoomu BEZ duplikowania/zgadywania liczb
- *  pikseli. */
-function cameraTransformFor(viewportSize, lodOverride) {
-  const fitTargetLod = lodOverride ?? 2;
-  const lodBboxes = {
-    0: boundingBoxOfRect(buildSceneV3(enm, 0).bbox),
-    1: boundingBoxOfRect(buildSceneV3(enm, 1).bbox),
-    2: boundingBoxOfRect(buildSceneV3(enm, 2).bbox),
-  };
-  return computeInitialCameraState(lodBboxes[fitTargetLod], viewportSize, lodBboxes).transform;
+/** Transformacja kamery kanwy odczytana z `viewBox` wyrenderowanego SVG — ta
+ *  sama, którą kanwa narysowała (zero drugiej implementacji dopasowania). */
+function cameraTransformFor(viewportSize) {
+  const markup = renderToStaticMarkup(
+    React.createElement(SldCanvasV3, { snapshot: enm, width: viewportSize.width, height: viewportSize.height }),
+  );
+  const m = /viewBox="([-\d.e]+) ([-\d.e]+) ([-\d.e]+) ([-\d.e]+)"/.exec(markup);
+  if (!m) throw new Error('Kanwa bez viewBox — nie da się odczytać kamery zrzutu.');
+  const [vx, vy, vw] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const scale = viewportSize.width / vw;
+  return { scale, translateX: -vx * scale, translateY: -vy * scale };
 }
 
 function unionWorldRect(rects) {
@@ -91,15 +79,16 @@ function unionWorldRect(rects) {
   return { minX: Math.min(...xs0), minY: Math.min(...ys0), maxX: Math.max(...xs1), maxY: Math.max(...ys1) };
 }
 
-/** Screen-space clip (px) dla Playwright `page.screenshot({ clip })`, z world
- *  rect + margines w jednostkach świata, przeliczony przez TĘ SAMĄ kamerę,
- *  którą renderuje kanwa (`cameraTransformFor`) — domyślnie dla `lodOverride=2`
- *  (zoomy projektanta, LOD 2 zawsze), jawny `lodOverride` dla zoomów na
- *  scenach L0/L1. */
-function clipFor(worldRect, viewportSize, marginWorld = 4 * GRID, lodOverride = 2) {
-  const transform = cameraTransformFor(viewportSize, lodOverride);
-  const topLeft = worldToScreen({ x: worldRect.minX - marginWorld, y: worldRect.minY - marginWorld }, transform);
-  const bottomRight = worldToScreen({ x: worldRect.maxX + marginWorld, y: worldRect.maxY + marginWorld }, transform);
+/** Screen-space clip (px) dla Playwright `page.screenshot({ clip })`, z prostokąta
+ *  SCENY + margines w jednostkach świata, przeliczony przez TĘ SAMĄ kamerę,
+ *  którą renderuje kanwa (`cameraTransformFor`; punkt sceny → świat kamery przez
+ *  `scenePointToCameraWorld`, czyli z marginesem ramki arkusza). */
+function clipFor(worldRect, viewportSize, marginWorld = 4 * GRID) {
+  const transform = cameraTransformFor(viewportSize);
+  const lg = scenePointToCameraWorld({ x: worldRect.minX - marginWorld, y: worldRect.minY - marginWorld });
+  const pd = scenePointToCameraWorld({ x: worldRect.maxX + marginWorld, y: worldRect.maxY + marginWorld });
+  const topLeft = worldToScreen(lg, transform);
+  const bottomRight = worldToScreen(pd, transform);
   return {
     x: Math.max(0, Math.round(topLeft.x)),
     y: Math.max(0, Math.round(topLeft.y)),
@@ -125,7 +114,7 @@ function writeHtml(name, element, width, height, disclaimer = null) {
 // 1. Sceny + rejony świata dla zoomów (policzone RAZ, przed renderem HTML).
 // ---------------------------------------------------------------------------
 
-const sceneL2 = buildSceneV3(enm, 2);
+const scena = buildSceneV3(enm);
 
 /** Bbox symbolu (footprint z `SYMBOL_DEFS`, nie punkt 1×1) — inaczej glify
  *  szersze/wyższe niż origin (np. uziemnik, trafo) obcinają się na krawędzi
@@ -136,24 +125,24 @@ function symbolRect(s) {
 }
 
 const gpzRects = [
-  ...sceneL2.symbols.filter((s) => s.meta?.testId?.includes('gpz')).map(symbolRect),
-  ...sceneL2.segments
+  ...scena.symbols.filter((s) => s.meta?.testId?.includes('gpz')).map(symbolRect),
+  ...scena.segments
     .filter((seg) => seg.meta?.testId?.includes('gpz'))
     .flatMap((seg) => seg.points.map((p) => ({ x: p.x, y: p.y, width: 1, height: 1 }))),
 ];
-if (gpzRects.length === 0) throw new Error('Brak symboli/segmentów GPZ w scenie L2 — fixtura bez GPZ?');
+if (gpzRects.length === 0) throw new Error('Brak symboli/segmentów GPZ w scenie — fixtura bez GPZ?');
 const gpzWorldRect = unionWorldRect(gpzRects);
 
-const stationOfInterestId = sceneL2.meta.mainTrunkStationIds[4] ?? sceneL2.meta.mainTrunkStationIds[0];
+const stationOfInterestId = scena.meta.mainTrunkStationIds[4] ?? scena.meta.mainTrunkStationIds[0];
 function stationHash(stationId) {
   return stationId.split('/')[1] ?? stationId;
 }
 const stationHashOfInterest = stationHash(stationOfInterestId);
 const stationRects = [
-  ...sceneL2.symbols.filter((s) => s.meta?.testId?.includes(stationHashOfInterest)).map(symbolRect),
-  ...sceneL2.labels.filter((l) => l.ownerRef.includes(stationHashOfInterest)).map((l) => l.rect),
+  ...scena.symbols.filter((s) => s.meta?.testId?.includes(stationHashOfInterest)).map(symbolRect),
+  ...scena.labels.filter((l) => l.ownerRef.includes(stationHashOfInterest)).map((l) => l.rect),
 ];
-if (stationRects.length === 0) throw new Error(`Brak symboli/etykiet stacji „${stationOfInterestId}" w scenie L2.`);
+if (stationRects.length === 0) throw new Error(`Brak symboli/etykiet stacji „${stationOfInterestId}" w scenie.`);
 const stationWorldRect = unionWorldRect(stationRects);
 
 // ---------------------------------------------------------------------------
@@ -170,50 +159,36 @@ const operatorOverlay = buildEnergizationOverlay(enm);
 const jobs = [];
 
 jobs.push({
-  name: 'projektant_L2_full',
-  html: writeHtml('projektant_L2_full', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 2 }), FULL_W, FULL_H),
+  name: 'projektant_pelny',
+  html: writeHtml('projektant_pelny', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H }), FULL_W, FULL_H),
   viewport: { width: FULL_W, height: FULL_H },
   clip: null,
 });
 
 jobs.push({
-  name: 'projektant_L2_zoom_gpz',
-  html: writeHtml('projektant_L2_zoom_gpz', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 2 }), FULL_W, FULL_H),
+  name: 'projektant_zoom_gpz',
+  html: writeHtml('projektant_zoom_gpz', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H }), FULL_W, FULL_H),
   viewport: { width: FULL_W, height: FULL_H },
   clip: clipFor(gpzWorldRect, { width: FULL_W, height: FULL_H }),
 });
 
 jobs.push({
-  name: 'projektant_L2_zoom_stacja',
-  html: writeHtml('projektant_L2_zoom_stacja', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 2 }), FULL_W, FULL_H),
+  name: 'projektant_zoom_stacja',
+  html: writeHtml('projektant_zoom_stacja', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H }), FULL_W, FULL_H),
   viewport: { width: FULL_W, height: FULL_H },
   clip: clipFor(stationWorldRect, { width: FULL_W, height: FULL_H }),
 });
 
 jobs.push({
-  name: 'operator_L1_overlay',
+  name: 'operator_nakladka',
   html: writeHtml(
-    'operator_L1_overlay',
-    React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 1, overlay: operatorOverlay }),
+    'operator_nakladka',
+    React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, overlay: operatorOverlay }),
     FULL_W,
     FULL_H,
     'NAKŁADKA TOPOLOGICZNA ENM — NIE WYNIK ROZPŁYWU ANI POMIAR NAPIĘCIA',
   ),
   viewport: { width: FULL_W, height: FULL_H },
-  // F8a-2 — FIX-2: BRAK clipu — kamera produkcyjna fituje teraz (k4.1,
-  // ROZWIĄZANE) do bboxa L1 samego (nie L2), więc scena L1 wypełnia
-  // 1920×1080 poprawnie bez kompensacji harnessu (dawny clip do
-  // `toWorldRect(sceneL1.bbox)` kadrowałby DRUGI RAZ to, co kamera już
-  // wykadrowała — usunięty, patrz nagłówek pliku).
-  clip: null,
-});
-
-jobs.push({
-  name: 'audytor_L0_plan',
-  html: writeHtml('audytor_L0_plan', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 0 }), FULL_W, FULL_H),
-  viewport: { width: FULL_W, height: FULL_H },
-  // F8a-2 — FIX-2: BRAK clipu (jak wyżej dla L1) — kamera fituje do bboxa L0
-  // samego.
   clip: null,
 });
 
@@ -221,7 +196,7 @@ jobs.push({
 // 4. Rasteryzacja (Playwright, chromium lokalny — patrz QUALITY_PLAN §3).
 // ---------------------------------------------------------------------------
 
-/** Zoomy (`clip`) na sieci 4280×6125 world (LOD 2) zmieszczonej w 1920×1080
+/** Zoomy (`clip`) na sieci 4280×6125 world zmieszczonej w 1920×1080
  *  wypadają geometrycznie MAŁE w CSS px (scale fit ~0.16, przewidziany
  *  wynikiem `fitToView` — świat jest wysoki, bo grzebień 12 lateroli w dół).
  *  Zawartość jest wektorowa (SVG) — supersampling `deviceScaleFactor`

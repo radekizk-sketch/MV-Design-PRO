@@ -233,7 +233,7 @@ function Pakiet(): JSX.Element {
                   <div>{wiersz.uwagi}</div>
                   <div style={{ fontSize: 11, color: paleta.kreskaWygaszona, marginTop: 6 }}>{def.notes}</div>
                   <div style={{ fontSize: 11, color: paleta.kreskaWygaszona, marginTop: 6 }}>
-                    gabaryt {def.nominalWidth}×{def.nominalHeight} u · min {def.minimumSizePx} px · LOD: {def.lodPolicy} · zaciski: {def.terminals.map((t) => `${t.name}(${t.x},${t.y})`).join(' ')}
+                    gabaryt {def.nominalWidth}×{def.nominalHeight} u · min {def.minimumSizePx} px · zaciski: {def.terminals.map((t) => `${t.name}(${t.x},${t.y})`).join(' ')}
                   </div>
                 </td>
               </tr>

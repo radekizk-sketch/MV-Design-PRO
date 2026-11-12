@@ -58,7 +58,7 @@ afterEach(() => {
 
 describe('UX-04 — schemat pola w oknie pola = wycinek sceny kanwy (fikstura × pole × motyw)', () => {
   for (const [nazwa, enm] of FIKSTURY) {
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const pola = (enm.bays ?? []).filter((b) => (b.tags ?? []).includes('gpz_line_field'));
     it(`${nazwa}: fikstura ma cztery pola liniowe GPZ`, () => {
       expect(pola).toHaveLength(4);

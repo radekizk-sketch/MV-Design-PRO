@@ -58,7 +58,7 @@ function ownerRefsOf(scene: SceneV3): ReadonlySet<string | undefined> {
 
 describe('Stacja B — projekcja SN: T1 → zacisk nN → portal; wnętrze nN NIE jest elementem sceny SN', () => {
   const enm = buildStacjaBFixture();
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
 
   it('transformator T1 jest symbolem sceny (elementKind="transformer", granica jawna domen SN/nN)', () => {
     const tr = scene.symbols.find((s) => s.symbolId === 'transformer2W' && s.meta?.elementKind === 'transformer');
@@ -111,7 +111,7 @@ describe('Stacja B — DER za T1 (na szynie RGnN-1): widoczny w rzędzie DER na 
   }
 
   it('kontrola: fixtura z DER produkuje DOKŁADNIE jeden symbol elementKind="der" w rzędzie na zacisku (za portalem)', () => {
-    const scene = buildSceneV3(withDerOnRgnn1(), 2);
+    const scene = buildSceneV3(withDerOnRgnn1());
     const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
     expect(derSymbols).toHaveLength(1);
     expect(scene.segments.some((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#der-row-bus`)).toBe(true);
@@ -120,7 +120,7 @@ describe('Stacja B — DER za T1 (na szynie RGnN-1): widoczny w rzędzie DER na 
   });
 
   it('sourceConnectivityGaps([]) — DER na RGnN-1 (za T1) ma trasę do zacisku nN, NIE jest zgłoszony jako odcięty', () => {
-    const scene = buildSceneV3(withDerOnRgnn1(), 2);
+    const scene = buildSceneV3(withDerOnRgnn1());
     expect(sourceConnectivityGaps(scene)).toEqual([]);
     expect(allSourcesConnected(scene)).toBe(true);
   });
@@ -145,14 +145,14 @@ describe('Stacja B — UNRESOLVED aparatu nN: walidacja grafu obejmuje domenę n
     (branch as { catalog_ref: string | null }).catalog_ref = null;
     (branch as { catalog_namespace: string | null }).catalog_namespace = null;
     (branch as { materialized_params: Record<string, unknown> | null }).materialized_params = null;
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(scene.meta.electricalGraphStatus).toBe('SLD_VALID');
     // Partia integracji 10: ostrzeżenie nazywa aparat nazwą z modelu („QF-01”), nie refem.
     expect(scene.meta.stopNotes.some((n) => n.includes('„QF-01”'))).toBe(false);
   });
 
   it('status sceny SLD_INVALID z kodem UNRESOLVED_ACTIVE_APPARATUS (graf elektryczny CAŁEJ sieci)', () => {
-    const scene = buildSceneV3(withUnresolvedQf01(), 2);
+    const scene = buildSceneV3(withUnresolvedQf01());
     expect(scene.meta.electricalGraphStatus).toBe('SLD_INVALID');
     expect(scene.meta.electricalGraphViolations.some((v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS')).toBe(true);
   });
@@ -161,7 +161,7 @@ describe('Stacja B — UNRESOLVED aparatu nN: walidacja grafu obejmuje domenę n
     // Intencja bez zmian: ostrzeżenie jednoznacznie wskazuje aparat. Partia integracji 10:
     // treść nazywa go nazwą z modelu, ref zostaje w polu strukturalnym `elementRefs`
     // (z niego interfejs wiąże nawigację) i NIE trafia do zdania.
-    const scene = buildSceneV3(withUnresolvedQf01(), 2);
+    const scene = buildSceneV3(withUnresolvedQf01());
     expect(scene.meta.stopNotes.some((n) => n.includes('Gałąź „QF-01”'))).toBe(true);
     expect(scene.meta.stopNotes.some((n) => n.includes(STACJA_B_REFS.qf01Ref))).toBe(false);
     const naruszenie = scene.meta.electricalGraphViolations.find(
@@ -171,7 +171,7 @@ describe('Stacja B — UNRESOLVED aparatu nN: walidacja grafu obejmuje domenę n
   });
 
   it('projekcja SN NADAL nie rysuje aparatu nN (ani rozpoznanego, ani nierozpoznanego) — portal jest niezmienny', () => {
-    const scene = buildSceneV3(withUnresolvedQf01(), 2);
+    const scene = buildSceneV3(withUnresolvedQf01());
     expect(ownerRefsOf(scene).has(STACJA_B_REFS.qf01Ref)).toBe(false);
     expect(scene.symbols.filter((s) => s.symbolId === 'lvPortal')).toHaveLength(1);
   });
@@ -185,11 +185,11 @@ describe('Stacja B — mutacja topologiczna (QF-01 przepięty na szynę SN): SLD
   }
 
   it('scena NADAL się buduje (nie wyjątek/crash) — degradacja jawna, nie awaria cicha', () => {
-    expect(() => buildSceneV3(withQf01OnSnBus(), 2)).not.toThrow();
+    expect(() => buildSceneV3(withQf01OnSnBus())).not.toThrow();
   });
 
   it('status sceny SLD_INVALID z kodami EDGE_VOLTAGE_MISMATCH i LV_FEEDER_ON_MV_BUS', () => {
-    const scene = buildSceneV3(withQf01OnSnBus(), 2);
+    const scene = buildSceneV3(withQf01OnSnBus());
     expect(scene.meta.electricalGraphStatus).toBe('SLD_INVALID');
     const codes = scene.meta.electricalGraphViolations.map((v) => v.code);
     expect(codes).toContain('EDGE_VOLTAGE_MISMATCH');
@@ -197,7 +197,7 @@ describe('Stacja B — mutacja topologiczna (QF-01 przepięty na szynę SN): SLD
   });
 
   it('ostrzeżenie widoczne w stopNotes', () => {
-    const scene = buildSceneV3(withQf01OnSnBus(), 2);
+    const scene = buildSceneV3(withQf01OnSnBus());
     expect(scene.meta.stopNotes.some((n) => n.includes('EDGE_VOLTAGE_MISMATCH'))).toBe(true);
   });
 });
@@ -210,17 +210,17 @@ describe('Stacja B — mutacja KIERUNEK ODWROTNY (aparat pola TRANSFORMATOROWE S
   }
 
   it('scena NADAL się buduje', () => {
-    expect(() => buildSceneV3(withSnFieldOnNnBus(), 2)).not.toThrow();
+    expect(() => buildSceneV3(withSnFieldOnNnBus())).not.toThrow();
   });
 
   it('status sceny SLD_INVALID z kodem MV_FIELD_ON_LV_BUS', () => {
-    const scene = buildSceneV3(withSnFieldOnNnBus(), 2);
+    const scene = buildSceneV3(withSnFieldOnNnBus());
     expect(scene.meta.electricalGraphStatus).toBe('SLD_INVALID');
     expect(scene.meta.electricalGraphViolations.map((v) => v.code)).toContain('MV_FIELD_ON_LV_BUS');
   });
 
   it('ostrzeżenie widoczne w stopNotes', () => {
-    const scene = buildSceneV3(withSnFieldOnNnBus(), 2);
+    const scene = buildSceneV3(withSnFieldOnNnBus());
     expect(scene.meta.stopNotes.some((n) => n.includes('MV_FIELD_ON_LV_BUS'))).toBe(true);
   });
 });
@@ -228,8 +228,8 @@ describe('Stacja B — mutacja KIERUNEK ODWROTNY (aparat pola TRANSFORMATOROWE S
 describe('Stacja B — determinizm SHA sceny', () => {
   it('dwa biegi identycznego wejścia dają bajt-identyczną scenę (SHA + JSON pełny)', () => {
     const shaOf = (scene: SceneV3): string => createHash('sha256').update(JSON.stringify(scene)).digest('hex');
-    const sceneA = buildSceneV3(buildStacjaBFixture(), 2);
-    const sceneB = buildSceneV3(buildStacjaBFixture(), 2);
+    const sceneA = buildSceneV3(buildStacjaBFixture());
+    const sceneB = buildSceneV3(buildStacjaBFixture());
     expect(shaOf(sceneA)).toBe(shaOf(sceneB));
     expect(JSON.stringify(sceneA)).toBe(JSON.stringify(sceneB));
   });

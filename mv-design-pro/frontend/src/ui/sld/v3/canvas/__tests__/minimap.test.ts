@@ -38,8 +38,7 @@ const fixturePath = resolve(
   'sldSubstrate52s.enm.json',
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
-const sceneL0 = buildSceneV3(enm, 0);
-const sceneL2 = buildSceneV3(enm, 2);
+const scena = buildSceneV3(enm);
 
 const SQUARE: V3Rect = { x: 0, y: 0, width: 1000, height: 1000 };
 
@@ -50,12 +49,12 @@ describe('K11-B — projekcja minimapy', () => {
   });
 
   it('skala jest JEDNAKOWA na obu osiach — rysunek sieci nie może być rozciągnięty', () => {
-    const projection = minimapProjectionOf(sceneL0.bbox, 260);
+    const projection = minimapProjectionOf(scena.bbox, 260);
     expect(projection).not.toBeNull();
     // Jedna liczba `scale` z definicji typu; sprawdzamy, że mieści treść w obu
     // wymiarach panelu (a nie że przycina jeden z nich).
-    expect(sceneL0.bbox.width * projection!.scale).toBeLessThanOrEqual(projection!.width + 1e-9);
-    expect(sceneL0.bbox.height * projection!.scale).toBeLessThanOrEqual(projection!.height + 1e-9);
+    expect(scena.bbox.width * projection!.scale).toBeLessThanOrEqual(projection!.width + 1e-9);
+    expect(scena.bbox.height * projection!.scale).toBeLessThanOrEqual(projection!.height + 1e-9);
   });
 
   it('wysokość panelu wynika z proporcji sieci i mieści się w granicach', () => {
@@ -66,22 +65,20 @@ describe('K11-B — projekcja minimapy', () => {
   });
 
   it('kształty pochodzą WYŁĄCZNIE ze sceny — tyle samo odcinków i symboli, nic dorysowanego', () => {
-    const projection = minimapProjectionOf(sceneL0.bbox)!;
-    const shapes = minimapShapesOf(sceneL0, projection);
-    const segmenty = sceneL0.segments.filter((s) => s.points.length >= 2).length;
-    const symbole = sceneL0.symbols.length;
-    expect(shapes.length).toBe(segmenty + symbole);
+    const projection = minimapProjectionOf(scena.bbox)!;
+    const shapes = minimapShapesOf(scena, projection);
+    const segmenty = scena.segments.filter((s) => s.points.length >= 2).length;
+    const symbole = scena.symbols.length;
+    expect(shapes.length).toBe(segmenty + symbole + scena.meta.drawnStationIds.length);
     expect(shapes.filter((s) => 'points' in s).length).toBe(segmenty);
-    // KD-5: klasa „station" obejmuje TERAZ także zwinięty blok GPZ (stacja
-    // zasilająca) — nawigator klasyfikuje go tak samo jak stacje SN.
-    expect(shapes.filter((s) => s.kind === 'station').length).toBe(
-      sceneL0.symbols.filter((s) => s.symbolId === 'stationCollapsed' || s.symbolId === 'gpzCollapsed').length,
-    );
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R7): klasa „station" to obrys rysunku KAŻDEJ
+    // stacji narysowanej w scenie (w tym GPZ) — dawniej zliczany po zwiniętych symbolach widoku L0.
+    expect(shapes.filter((s) => s.kind === 'station').length).toBe(scena.meta.drawnStationIds.length);
   });
 
   it('każdy symbol ma na minimapie ślad co najmniej 1,5 px (stacja nie może zniknąć z nawigatora)', () => {
-    const projection = minimapProjectionOf(sceneL0.bbox)!;
-    for (const shape of minimapShapesOf(sceneL0, projection)) {
+    const projection = minimapProjectionOf(scena.bbox)!;
+    for (const shape of minimapShapesOf(scena, projection)) {
       if ('points' in shape) continue;
       expect(shape.rect.width).toBeGreaterThanOrEqual(1.5);
       expect(shape.rect.height).toBeGreaterThanOrEqual(1.5);
@@ -89,8 +86,8 @@ describe('K11-B — projekcja minimapy', () => {
   });
 
   it('determinizm: te same wejścia dają identyczny wynik', () => {
-    const a = minimapShapesOf(sceneL0, minimapProjectionOf(sceneL0.bbox)!);
-    const b = minimapShapesOf(sceneL0, minimapProjectionOf(sceneL0.bbox)!);
+    const a = minimapShapesOf(scena, minimapProjectionOf(scena.bbox)!);
+    const b = minimapShapesOf(scena, minimapProjectionOf(scena.bbox)!);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });
@@ -113,41 +110,35 @@ describe('K11-B — prostokąt kadru i odwzorowanie odwrotne', () => {
   });
 
   it('minimapPointToWorld jest ODWROTNOŚCIĄ rzutu (ten sam LOD) — punkt wraca na swoje miejsce', () => {
-    const projection = minimapProjectionOf(sceneL0.bbox)!;
+    const projection = minimapProjectionOf(scena.bbox)!;
     for (const probe of [
       { x: 0, y: 0 },
       { x: projection.width / 2, y: projection.height / 2 },
       { x: projection.width, y: projection.height },
     ]) {
-      const world = minimapPointToWorld(probe, sceneL0.bbox, projection);
-      const back = worldRectToMinimap({ x: world.x, y: world.y, width: 0, height: 0 }, sceneL0.bbox, projection);
+      const world = minimapPointToWorld(probe, scena.bbox, projection);
+      const back = worldRectToMinimap({ x: world.x, y: world.y, width: 0, height: 0 }, scena.bbox, projection);
       expect(back.x).toBeCloseTo(probe.x, 6);
       expect(back.y).toBeCloseTo(probe.y, 6);
     }
   });
 
-  it('MOSTEK LOD: kadr z innego świata mapuje się przez proporcje bboxów (i wraca)', () => {
-    // Światy L0 i L2 sieci referencyjnej mają tę samą szerokość, ale RÓŻNE
-    // wysokości — dokładnie przypadek, dla którego istnieje normalizacja.
-    expect(sceneL0.bbox.height).not.toBe(sceneL2.bbox.height);
-    const projection = minimapProjectionOf(sceneL0.bbox)!;
-    const srodekL2 = {
-      x: sceneL2.bbox.x + sceneL2.bbox.width / 2,
-      y: sceneL2.bbox.y + sceneL2.bbox.height / 2,
-    };
-    const frame = worldRectToMinimap(
-      { x: srodekL2.x, y: srodekL2.y, width: 0, height: 0 },
-      sceneL2.bbox,
-      projection,
-    );
-    // Środek świata L2 musi wypaść na środku treści panelu (proporcja 0,5).
-    expect(frame.x).toBeCloseTo(projection.offsetX + (sceneL0.bbox.width * projection.scale) / 2, 6);
-    expect(frame.y).toBeCloseTo(projection.offsetY + (sceneL0.bbox.height * projection.scale) / 2, 6);
-    // …i odwrotność wraca do świata L2, nie L0 (nawigator oddaje współrzędną
-    // w świecie AKTYWNEGO LOD — tego, w którym kamera liczy viewBox).
-    const back = minimapPointToWorld({ x: frame.x, y: frame.y }, sceneL2.bbox, projection);
-    expect(back.x).toBeCloseTo(srodekL2.x, 6);
-    expect(back.y).toBeCloseTo(srodekL2.y, 6);
+  it('świat kamery przesunięty o margines arkusza: środek sceny trafia w środek treści panelu (i wraca)', () => {
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA): dawny „mostek" między światami poziomów
+    // szczegółu jest przesunięciem o margines ramki — świat kamery ma ten sam rozmiar.
+    const projection = minimapProjectionOf(scena.bbox)!;
+    const swiatKamery = { ...scena.bbox, x: scena.bbox.x + 40, y: scena.bbox.y + 40 };
+    const srodek = { x: swiatKamery.x + swiatKamery.width / 2, y: swiatKamery.y + swiatKamery.height / 2 };
+    const frame = worldRectToMinimap({ x: srodek.x, y: srodek.y, width: 0, height: 0 }, swiatKamery, projection);
+    expect(frame.x).toBeCloseTo(projection.offsetX + (scena.bbox.width * projection.scale) / 2, 6);
+    expect(frame.y).toBeCloseTo(projection.offsetY + (scena.bbox.height * projection.scale) / 2, 6);
+    const back = minimapPointToWorld({ x: frame.x, y: frame.y }, swiatKamery, projection);
+    expect(back.x).toBeCloseTo(srodek.x, 6);
+    expect(back.y).toBeCloseTo(srodek.y, 6);
+    // Rozmiar kadru bez przeskalowania (ten sam świat).
+    const kadr = worldRectToMinimap({ x: srodek.x, y: srodek.y, width: 100, height: 50 }, swiatKamery, projection);
+    expect(kadr.width).toBeCloseTo(100 * projection.scale, 9);
+    expect(kadr.height).toBeCloseTo(50 * projection.scale, 9);
   });
 });
 

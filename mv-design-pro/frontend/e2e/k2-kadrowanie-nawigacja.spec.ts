@@ -33,6 +33,8 @@
  * `test-results/zrzuty-dokumentacji/…`).
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+
+import { SKALA_CZYTANIA, skalaKamery } from './skalaKamery';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -280,7 +282,9 @@ for (const motyw of [
       await wrocDoSieci(page);
       await dwuklikStacji(page, ref);
       await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(stacja.nazwa, { timeout: 10000 });
-      await expect(page.getByTestId('sld-canvas-v3')).not.toHaveAttribute('data-scene-lod', '0');
+      // Kadr stacji jest w skali czytania (jedna scena niezależna od skali — karta
+      // SLD-SKALA-I-NAWIGACJA; dawniej: „poziom szczegółu ≠ przegląd”).
+      await expect.poll(() => skalaKamery(page.getByTestId('sld-canvas-v3'))).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
       const vb = await kadrUstalony(page);
       const pomiar = await zmierzKadr(page, enm, ref);
       console.log(`K2b pomiar ${stacja.plik} ${motyw.klucz}: ${JSON.stringify({ ...pomiar, widoczneOwnerRef: pomiar.widoczneOwnerRef.length })}`);

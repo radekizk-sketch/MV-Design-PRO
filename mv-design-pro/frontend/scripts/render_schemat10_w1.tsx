@@ -1,7 +1,7 @@
 /**
  * SCHEMAT-10 W1 (RECENZJA_L2 §1/§6/§12/§15/§20, V12K-145) — dowód wizualny
  * MACIERZY WYPOSAŻENIA POLA na L2. Renderuje 6 wariantów §20 (część W1) —
- * REALNE stosy aparatów z potoku produkcyjnego `buildSceneV3(fixtura, L2)`
+ * REALNE stosy aparatów z potoku produkcyjnego `buildSceneV3(fixtura)`
  * (fixtura `w1MatrixVariants`, wstrzyknięte `primary_devices` w sieć
  * referencyjną), każdy powiększony ×3 z podpisem PL i znacznikiem źródła
  * „dane". Dowód: RÓŻNE konfiguracje ⇒ RÓŻNE stosy (koniec jednego szablonu),
@@ -27,7 +27,7 @@ const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 mkdirSync(OUT, { recursive: true });
 
 const { enm, targets } = buildW1MatrixFixture();
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 
 interface CellSym {
   readonly symbolId: SymbolId;

@@ -52,7 +52,6 @@ import {
   measureLabelWidth,
   measureTextWidth,
 } from '../core/text';
-import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../canvas/camera';
 import { SYMBOL_DEFS, obrysSymbolu, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { BayPrimaryDeviceKind, StanObiektu } from '../../../../types/enm';
@@ -126,12 +125,10 @@ import {
   tekstyOpisowPrzekladnika,
   type PlacedStackDevice,
   type ResolvedCtRatingAnnotation,
-  type ProtectionAnnotationDetail,
 } from './protectionMarking';
 import {
   pasyOpisowPola,
   prostokatSymbolu,
-  RODZAJE_PRZEKLADNIKOW_OD_LOD1,
   wierszeOpisowPola,
   type PasyOpisowPola,
 } from './kolumnaOpisowPola';
@@ -358,9 +355,9 @@ export interface ComposedGpzProtectionSymbol {
   /** Ramka BLOKU ZABEZPIECZEŃ (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ — jedna notacja pól GPZ
    *  z powiązaniami obwodów wtórnych i bez nich oraz pól stacji): prostokąt bez okręgu, wewnątrz
    *  wiersze kodów funkcji i odniesienie źródła 3U₀, względem (`x`, `y`) symbolu (lewy górny róg
-   *  ramki). Obecna na LOD1 i LOD2 (na LOD1 bez wierszy). */
+   *  ramki). Wiersze widoczne wg czytelności na ekranie (plan etykiet kanwy). */
   readonly ramkaBloku: V3Rect;
-  /** `ownerRef` wierszy bloku wewnątrz `ramkaBloku` (kolejność wierszy; pusta na LOD1) — JEDNA
+  /** `ownerRef` wierszy bloku wewnątrz `ramkaBloku` (kolejność wierszy) — JEDNA
    *  lista członków ramki dla sceny i kanwy: kanwa poszerza ramkę o NARYSOWANE wiersze planu
    *  etykiet (`canvas/obrysyWgPlanu.ts`, `ramkaBlokuPrzekaznika`). */
   readonly wierszeBloku: readonly string[];
@@ -1973,18 +1970,13 @@ export function composeGpz(
   props: CanonicalGpzProps,
   origin: { readonly x: number; readonly y: number },
   gridSources: readonly GpzGridSourceInput[] = [],
-  // F9.9 B-1/R-1 (spec §17.4): szczegółowość warstwy adnotacji zabezpieczeń —
-  // ten sam kontrakt co `ComposeStationInput.annotationDetail`
-  // (compose/station.ts). GPZ jest komponowany na KAŻDYM LOD (w tym L0,
-  // patrz `buildScene.ts` nagłówek), więc `'none'` jest tu realną gałęzią.
-  annotationDetail: ProtectionAnnotationDetail = 'full',
 ): GpzComposition {
   // Odbiór B-02 właściciela 2026-11-04 pkt 8 (zwężenie pola, topologia bez zmian): przebieg
-  // wstępny w PEŁNYM szczególe (geometria niezależna od LOD — Acceptance Invariant nr 6) mierzy
+  // wstępny w PEŁNYM szczególe (geometria niezależna od skali kamery — Acceptance Invariant nr 6) mierzy
   // rysunek każdego pola sekcji, przebieg właściwy układa kolumny na zmierzonej szerokości.
   const pomiar: PomiarKolumnPolGpz = { kolumny: new Map(), wyrownaneDoPrawej: new Set() };
-  const wstepna = composeGpzPrzebieg(props, origin, gridSources, 'full', undefined, pomiar);
-  return composeGpzPrzebieg(props, origin, gridSources, annotationDetail, szerokosciRysunkuPol(wstepna, pomiar), undefined);
+  const wstepna = composeGpzPrzebieg(props, origin, gridSources, undefined, pomiar);
+  return composeGpzPrzebieg(props, origin, gridSources, szerokosciRysunkuPol(wstepna, pomiar), undefined);
 }
 
 /** Lewa krawędź kolumny każdego pola sekcji (przed translacją końcową) i pola, których elementy
@@ -1995,20 +1987,22 @@ interface PomiarKolumnPolGpz {
   shiftX?: number;
 }
 
-/** Skala dolnej krawędzi LOD2 (wyjście L2→L1 z histerezą, `canvas/camera.ts`): najmniejsza skala,
- *  na której kamera rysuje scenę pełnego szczegółu — na niej podłoga opisów celu kadru
- *  (`MIN_OPIS_CELU_KADRU_PX`) powiększa pismo pola najbardziej. */
-const SKALA_DOLNA_LOD2 = DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN);
+/** Skala rezerwacji opisów kadru pola: pismo parametrów `t2` (11 px świata) ma przy niej 11,2 px
+ *  ekranu — dolna granica czytelności gęstych łańcuchów parametrów (≈ 1:1). Kolumna pola rezerwuje
+ *  miejsce na opisy celu kadru powiększone podłogą `MIN_OPIS_CELU_KADRU_PX` przy tej skali; przy
+ *  mniejszej skali kadr pola i tak nie pokazuje parametrów czytelnie, a geometria rysunku nie
+ *  zależy od skali kamery (karta SLD-SKALA-I-NAWIGACJA R1). */
+const SKALA_REZERWACJI_OPISOW_KADRU = 1.02;
 
-/** Prostokąt etykiety pola w piśmie POWIĘKSZONYM podłogą opisów celu kadru na dolnej krawędzi
- *  LOD2 — ta sama formuła pisma (`fontSizeForScreenFloorWithinProportion`) i ten sam kierunek
+/** Prostokąt etykiety pola w piśmie POWIĘKSZONYM podłogą opisów celu kadru przy skali
+ *  `SKALA_REZERWACJI_OPISOW_KADRU` — ta sama formuła pisma (`fontSizeForScreenFloorWithinProportion`) i ten sam kierunek
  *  wzrostu od kotwicy co plan czytelności (`canvas/labelLegibility.ts::anchoredRect`): „right”
  *  rośnie w prawo, „left” w lewo, „above”/„below” symetrycznie. Poza sufitem proporcji klasy
  *  plan nie powiększa — prostokąt naturalny. */
 function prostokatEtykietyWKadrze(e: SimpleAnchoredOwnerInput): V3Rect {
   const slot = prostokatEtykietyZakotwiczonej(e);
   const { fontSize: naturalny, fontWeight } = LABEL_TYPOGRAPHY[e.labelClass];
-  const pismo = fontSizeForScreenFloorWithinProportion(e.labelClass, SKALA_DOLNA_LOD2, MIN_OPIS_CELU_KADRU_PX) ?? naturalny;
+  const pismo = fontSizeForScreenFloorWithinProportion(e.labelClass, SKALA_REZERWACJI_OPISOW_KADRU, MIN_OPIS_CELU_KADRU_PX) ?? naturalny;
   if (pismo <= naturalny) return slot;
   const width = measureTextWidth(e.text, pismo, fontWeight);
   const height = slot.height * (pismo / naturalny);
@@ -2094,7 +2088,6 @@ function composeGpzPrzebieg(
   props: CanonicalGpzProps,
   origin: { readonly x: number; readonly y: number },
   gridSources: readonly GpzGridSourceInput[],
-  annotationDetail: ProtectionAnnotationDetail,
   szerokosciZmierzone: ReadonlyMap<string, RysunekPola> | undefined,
   pomiar: PomiarKolumnPolGpz | undefined,
 ): GpzComposition {
@@ -2315,7 +2308,6 @@ function composeGpzPrzebieg(
         clearance: 0,
         wyrownanieTekstu: 'poczatek',
         symbolOpisu: prostokatSymbolu(pozycja.instance),
-        ...(pozycja.spec.device && RODZAJE_PRZEKLADNIKOW_OD_LOD1.has(pozycja.spec.device.kind) ? { odLod: 1 as const } : {}),
       });
     });
     // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6, korekta po oględzinach
@@ -2398,9 +2390,8 @@ function composeGpzPrzebieg(
     // `protectionMarking`, dostaje blok bez linii — bez refów nie ma czego
     // rozwiązywać, `resolveStationProtectionMarking` i tak zwraca
     // `tripTarget`/`ctAnchor` puste). Blok w rezerwacji kolumny (`rightX`,
-    // `gpzBayAnnotationWidth` — jedna prawda rezerwacja↔rysunek). LOD §17.4:
-    // `'full'` ramka z kodami + tor + linie pomiarowe + „52" + adnotacje CT;
-    // `'circle-only'` ramka bez kodów + tor wyzwalania; `'none'` nic.
+    // `gpzBayAnnotationWidth` — jedna prawda rezerwacja↔rysunek): ramka z kodami + tor +
+    // linie pomiarowe + „52" + adnotacje CT w każdej skali (R1 karty SLD-SKALA-I-NAWIGACJA).
     const gpzCodes = bay.protectionMarking?.codes ?? bay.protectionCodes ?? [];
     const hasCtRatings = (bay.ctRatingAnnotations?.length ?? 0) > 0;
     const hasVtMountings = (bay.vtMountingAnnotations?.length ?? 0) > 0;
@@ -2408,7 +2399,7 @@ function composeGpzPrzebieg(
     // przekładników i przekaźnikiem: tabliczki omijają linie przekaźnika (poziome promienie od
     // zaczepów, niezależne od położenia przekaźnika), a przekaźnik staje za tabliczkami.
     const markingPola =
-      annotationDetail !== 'none' && gpzCodes.length > 0
+      gpzCodes.length > 0
         ? resolveStationProtectionMarking(
             {
               protectionMarking: {
@@ -2459,7 +2450,7 @@ function composeGpzPrzebieg(
     // w którym ramka i linie bloku nie wchodzą na aparaty, podpisy, tory pola i zarezerwowane
     // tabliczki; żadne — prawo-wyrównane do rezerwacji kolumny (`rightX`).
     const blokPola = (() => {
-      if (!markingPola || annotationDetail === 'none') return null;
+      if (!markingPola) return null;
       const wejscie: WejscieBlokuPola = {
         bayRef: bay.bayRef,
         marking: markingPola,
@@ -2485,7 +2476,7 @@ function composeGpzPrzebieg(
     // przekładni przy lewej krawędzi pola, w wierszu oznaczenia swojego aparatu
     // (`opisWKolumnie`) — położenie wyznacza kolumna; każde pole GPZ ma kolumnę (pole sekcji
     // i pole toru transformatora, `kolumnyOpisowPolaGpz`).
-    if (annotationDetail === 'full' && hasCtRatings) {
+    if (hasCtRatings) {
       const ctAnnotations = opisyCt;
       ctAnnotations.forEach((ann, ctIndex) => {
         const wKolumnie = opisWKolumnie(ctIndex, ann.text);
@@ -2512,7 +2503,7 @@ function composeGpzPrzebieg(
         missingData.push('bay.protection.ct_rating_anchor_unresolved');
       }
     }
-    if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings || hasVtMountings)) {
+    if ((gpzCodes.length > 0 || hasCtRatings || hasVtMountings)) {
       if (gpzCodes.length > 0) {
         // Wejście strukturalnie zgodne z `Pick<MiniBlockBayDescriptor,
         // 'protectionMarking'>` — `resolveStationProtectionMarking` nie
@@ -2522,7 +2513,7 @@ function composeGpzPrzebieg(
         const marking = markingPola;
         if (marking && blokPola) {
           // BLOK ZABEZPIECZEŃ pola — jedna notacja z polami stacji (`./blokZabezpieczenPola`):
-          // ramka bez okręgu, kody funkcji w dwóch kolumnach (LOD2), środek na wysokości
+          // ramka bez okręgu, kody funkcji w dwóch kolumnach, środek na wysokości
           // łącznika wyłączanego (albo pierwszego łącznika pola), linia wyłączania, linie
           // pomiarowe z powiązań obwodów wtórnych. Położenie wybrane przed tabliczkami (wyżej).
           // F10.5 (spec §20.2), parytet ze stacjami: braki topologiczne funkcji pola (67N bez
@@ -2530,12 +2521,12 @@ function composeGpzPrzebieg(
           // kontekst domenowy co `compose/station.ts` i nota arkusza (`brakiTopologiiFunkcjiPola`);
           // adnotacja „!" w narożniku ramki, kod w `missingData`. Wyłącznie na L2 (§17.4).
           const topologyGaps =
-            annotationDetail === 'full' ? brakiTopologiiFunkcjiPola(bay, marking.codes) : [];
+            brakiTopologiiFunkcjiPola(bay, marking.codes);
           topologyGaps.forEach((gap) => missingData.push(protectionTopologyGapCode(gap)));
           if (topologyGaps.length > 0) {
             brakiTopologiiPol.push({ bayRef: bay.bayRef, gaps: topologyGaps });
           }
-          const elementy = elementyBlokuZabezpieczen(blokPola.wejscie, blokPola.uklad, annotationDetail);
+          const elementy = elementyBlokuZabezpieczen(blokPola.wejscie, blokPola.uklad);
           protectionLabels.push(...elementy.wiersze);
           protectionSymbols.push({
             symbolId: 'protectionRelay',
@@ -2565,7 +2556,7 @@ function composeGpzPrzebieg(
       // TA SAMA funkcja co stacje (`resolveVtMountingAnnotations`), dopasowanie
       // na aparat `voltageTransformer` NARYSOWANEGO stosu przez `linked_ref`. W kolumnie
       // przekładni pola, w wierszu oznaczenia VT (`opisWKolumnie`).
-      if (annotationDetail === 'full' && hasVtMountings) {
+      if (hasVtMountings) {
         const vtAnnotations = opisyVt;
         vtAnnotations.forEach((ann, vtIndex) => {
           const wKolumnie = opisWKolumnie(opisyCt.length + vtIndex, ann.text);
@@ -2841,7 +2832,7 @@ function composeGpzPrzebieg(
       // oznaczenia WSZYSTKICH aparatów pola (tor główny, aparaty boczne, kolumna odgałęzienia i jej
       // aparaty boczne) wyrównane do lewej w jednej krawędzi, każde w wierszu swojego symbolu;
       // tabliczki przekładników i montaż VT — w kolumnie przekładni tuż za nią, w wierszu
-      // oznaczenia swojego aparatu (rysowane w `adnotacjePolaGpz`, LOD2). Kolumny zaczynają się
+      // oznaczenia swojego aparatu (rysowane w `adnotacjePolaGpz`). Kolumny zaczynają się
       // na lewej krawędzi pola — `pasyOpisowPolaGpz` przed torem głównym, ta sama funkcja co
       // rezerwacja kolumny i oś pola. Oznaczenie samo (położenie łącznika niesie kafel).
       const kolumnaPrzekladni = kolumnyOpisowPolaGpz(field.bay, spec, stack, field.centerX);

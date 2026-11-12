@@ -6,7 +6,7 @@
  * KAŻDY renderowalny przypadek (kanoniczny szablon + celka producencka) × wariant
  * stanu aparatu głównego staje się komórką macierzy. Komórki POGRUPOWANE
  * funkcjonalnie (uwaga 15), podpisane `config_id` (uwaga 10). Cała geometria z
- * REALNEGO potoku `buildSceneV3(fixtura, L2)` — zero fabrykacji renderu.
+ * REALNEGO potoku `buildSceneV3(fixtura)` — zero fabrykacji renderu.
  *
  * Uruchomienie (cwd: mv-design-pro/frontend):
  *   CANON_OUT=<dir> npx vite-node scripts/render_schemat10_w1c.tsx
@@ -34,7 +34,7 @@ const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 mkdirSync(OUT, { recursive: true });
 
 const { enm, targets } = buildW1cMatrixFixture();
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 const catalog = loadCatalog();
 
 const LATERAL_SET = new Set<SymbolId>(['earthSwitch', 'voltageTransformer', 'surgeArrester']);

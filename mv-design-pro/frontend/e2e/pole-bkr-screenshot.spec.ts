@@ -45,7 +45,7 @@ async function otworzHarness(page: Page, fikstura: string, theme: 'dark' | 'ligh
     if (msg.type() === 'error') bledy.push(msg.text());
   });
   page.on('pageerror', (err) => bledy.push(`PAGEERROR: ${err.message}`));
-  await page.goto(`${HARNESS_URL}?fixture=${fikstura}&lod=2&theme=${theme}`, {
+  await page.goto(`${HARNESS_URL}?fixture=${fikstura}&theme=${theme}`, {
     waitUntil: 'domcontentloaded',
     timeout: 60_000,
   });

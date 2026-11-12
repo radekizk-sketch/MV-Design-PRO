@@ -49,8 +49,8 @@ const fixturePath = resolve(
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-function renderCanvasMarkup(lod: 0 | 1 | 2): string {
-  const { container } = render(<SldCanvasV3 snapshot={enm} width={1200} height={900} lodOverride={lod} />);
+function renderCanvasMarkup(): string {
+  const { container } = render(<SldCanvasV3 snapshot={enm} width={1200} height={900} />);
   const svgEl = container.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
   if (!svgEl) throw new Error('test setup: brak <svg data-testid="sld-canvas-v3"> po renderze');
   return new XMLSerializer().serializeToString(svgEl);
@@ -67,21 +67,19 @@ function stripColorLiterals(markup: string): string {
 }
 
 describe('REGUŁA 18 (gramatyka mini-RMU) — JEDNA gramatyka SLD↔eksport, zero lokalnych wyjątków', () => {
-  for (const lod of [0, 1, 2] as const) {
-    it(`L${lod}: geometria/struktura eksportu == kanwy po zdjęciu kolorów (różni się WYŁĄCZNIE paletą)`, () => {
-      const dark = renderCanvasMarkup(lod);
-      const light = toLightTechnicalExportSvg(dark);
-      // Eksport = kanwa + wstrzyknięte tło + podmiana hex. Po zdjęciu literałów
-      // koloru z OBU (kanwa-z-tłem vs eksport) muszą być znak w znak identyczne
-      // — dowód, że eksport nie wprowadza drugiej gramatyki (żadnego lokalnego
-      // wyjątku w geometrii/strukturze).
-      const darkWithBg = injectExportBackground(dark);
-      expect(stripColorLiterals(light)).toBe(stripColorLiterals(darkWithBg));
-    });
-  }
+  it(`geometria/struktura eksportu == kanwy po zdjęciu kolorów (różni się WYŁĄCZNIE paletą)`, () => {
+    const dark = renderCanvasMarkup();
+    const light = toLightTechnicalExportSvg(dark);
+    // Eksport = kanwa + wstrzyknięte tło + podmiana hex. Po zdjęciu literałów
+    // koloru z OBU (kanwa-z-tłem vs eksport) muszą być znak w znak identyczne
+    // — dowód, że eksport nie wprowadza drugiej gramatyki (żadnego lokalnego
+    // wyjątku w geometrii/strukturze).
+    const darkWithBg = injectExportBackground(dark);
+    expect(stripColorLiterals(light)).toBe(stripColorLiterals(darkWithBg));
+  });
 
   it('wyrocznia GRYZIE (nie jest pusta): tor eksportu REALNIE podmienia paletę na jasną', () => {
-    const dark = renderCanvasMarkup(0);
+    const dark = renderCanvasMarkup();
     const light = toLightTechnicalExportSvg(dark);
     // Coś się zmieniło (inaczej test byłby wydmuszką)…
     expect(light).not.toBe(dark);

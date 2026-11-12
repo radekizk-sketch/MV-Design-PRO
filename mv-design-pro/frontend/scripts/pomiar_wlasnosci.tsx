@@ -190,7 +190,7 @@ console.log('rama = `prostokatElementuWScenie` (ta sama funkcja co kotwica B-2)'
 console.log('');
 
 for (const lod of [0, 1, 2] as const) {
-  const scene = buildSceneV3(enm, lod);
+  const scene = buildSceneV3(enm);
   const tusz = tuszSceny(scene);
   const nazwy = nazwyBlokow(scene);
   const bloki = blokiSceny(scene);
@@ -251,7 +251,7 @@ for (const lod of [0, 1, 2] as const) {
 // (rdzeń = prostokąt bez etykiet `segment-*`). Wypisuje surowe fakty, bez progu.
 console.log('=== L2 — ETYKIETY NIOSĄCE REF BLOKU, ROZBICIE PO SUFIKSIE REFU ===');
 {
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
   const licznik = new Map<string, { n: number; rodzaje: Set<string> }>();
   for (const l of scene.labels) {
     const sufiks = l.ownerRef.includes('#') ? `#${l.ownerRef.split('#')[1]}` : '(bez sufiksu)';
@@ -273,7 +273,7 @@ console.log('=== L2 — ETYKIETY NIOSĄCE REF BLOKU, ROZBICIE PO SUFIKSIE REFU =
 console.log('');
 console.log('=== R4 — KOTWICZENIE (B-2 wymaga rysunku na WSZYSTKICH trzech poziomach) ===');
 {
-  const sceneByLod = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
+  const sceneByLod = { 0: buildSceneV3(enm), 1: buildSceneV3(enm), 2: buildSceneV3(enm) } as const;
   const bloki = blokiSceny(sceneByLod[2]);
   const nazwy = nazwyBlokow(sceneByLod[2]);
 

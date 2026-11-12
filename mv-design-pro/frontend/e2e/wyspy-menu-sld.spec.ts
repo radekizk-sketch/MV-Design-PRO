@@ -21,6 +21,7 @@ import { test, expect, type APIRequestContext, type Locator, type Page } from '@
 import type { Bay } from '../src/types/enm';
 import { polaSnStacji } from '../src/ui/shared/polaStacji';
 import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
+import { selektorUchwytuStacji } from './skalaKamery';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -371,20 +372,16 @@ test('menu kanwy SLD otwiera kreatory kompensatora, ogranicznika i źródła dys
   await expect(page.getByTestId('mvd-kreator-ogranicznik')).toHaveCount(0);
 
   // ------------------------------------------------------------------
-  // 3. Agregat/UPS na stacji: symbol zbiorczy stacji żyje na L0 — realny
-  //    zoom-out kółkiem, potem prawy klik w stację.
+  // 3. Agregat/UPS na stacji: stację wskazuje napis identyfikacji (jedna scena, karta
+  //    SLD-SKALA-I-NAWIGACJA R1 — dawny symbol zbiorczy L0 nie istnieje); realny
+  //    zoom-out kółkiem do kadru całości, potem prawy klik w napis stacji.
   // ------------------------------------------------------------------
   await expect(page.locator('svg[data-testid="sld-canvas-v3"]')).toBeVisible();
-  // NAPRAWA (karta TESTY-DRYF-E2E poz. 2): selektor generyczny
-  // `[data-element-kind="station"]` łapał PIERWSZY pasujący symbol na
-  // kanwie — GPZ (`gpz/…/substation`) renderuje WŁASNY symbol zbiorczy L0
-  // z tym samym `data-element-kind="station"`, ale bez szyny nN (poprawnie
-  // — GPZ nie ma strony nN), więc menu poprawnie blokowało agregat/UPS dla
-  // ZŁEGO obiektu. Selektor zawężony do realnej stacji SN/nN (`stationRef`).
-  const stacja = await zoomujAzWidoczne(page, `[data-element-kind="station"][data-owner-ref="${stationRef}"]`, 320);
-  // NAPRAWA (karta TESTY-DRYF-E2E poz. 2, ta sama KLASA co punkty wyżej):
-  // hit-rect nadrzędnej grupy `sld-v3-trafienia` (`data-hit-klasa="stacja"`,
-  // ten sam `data-owner-ref`) przechwytuje wskaźnik nad `<g data-element-kind="station">`.
+  // Selektor zawężony do realnej stacji SN/nN (`stationRef`) — GPZ nie ma strony nN,
+  // więc menu GPZ poprawnie blokuje agregat/UPS (karta TESTY-DRYF-E2E poz. 2).
+  const stacja = await zoomujAzWidoczne(page, selektorUchwytuStacji(stationRef), 320);
+  // Uchwyt to obrys warstwy `sld-v3-trafienia` — `force` pomija wyłącznie sprawdzenie
+  // DOM-ancestry Playwrighta, nie zmienia współrzędnych kliku.
   await stacja.click({ button: 'right', force: true });
   const akcjaAgregatu = page.getByTestId('sld-menu-add-genset');
   await expect(akcjaAgregatu).toBeVisible();

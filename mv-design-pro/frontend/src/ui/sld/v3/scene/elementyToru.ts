@@ -58,7 +58,6 @@ const rowne = (a: RouteVertex, b: RouteVertex): boolean => a.x === b.x && a.y ==
 export function elementyToru(
   snapshot: EnergyNetworkModel,
   segments: readonly PreviewSegment[],
-  lod: 0 | 1 | 2,
 ): WynikElementowToru {
   const odcinki = [...segments];
   const kawalkiOdcinka = new Map<string, number[]>();
@@ -179,23 +178,21 @@ export function elementyToru(
     const portWy = odStronyKonca ? portPoczatku : portKonca;
     for (const ref of wchodzacy) przytnij(ref, a, portWe);
     for (const ref of wychodzacy) przytnij(ref, a, portWy);
-    if (lod === 2) {
-      labels.push({
-        ownerRef: `${galaz.ref_id}#name`,
-        ownerKind: 'lacznik-toru',
-        text: galaz.name,
-        labelClass: 't3',
-        anchor: poziomy
-          ? { x: a.x, y: y + def.height }
-          : { x: snapToGrid(x + def.width + GRID + measureLabelWidth(galaz.name, 't3') / 2), y: a.y },
-        placement: 'below',
-        // K2b×K3: obrys glifu łącznika — strony zastępcze planu etykiet stoją przy
-        // nim. Tylko łącznik na torze POZIOMYM: tam podpis stoi pod glifem; na
-        // torze pionowym stoi obok glifu (kotwica na prawo), więc „pod" nie jest
-        // stroną glifu i strony zastępcze zostają liczone od slotu.
-        ...(poziomy ? { obrysKotwicy: { x, y, width: def.width, height: def.height } } : {}),
-      });
-    }
+    labels.push({
+      ownerRef: `${galaz.ref_id}#name`,
+      ownerKind: 'lacznik-toru',
+      text: galaz.name,
+      labelClass: 't3',
+      anchor: poziomy
+        ? { x: a.x, y: y + def.height }
+        : { x: snapToGrid(x + def.width + GRID + measureLabelWidth(galaz.name, 't3') / 2), y: a.y },
+      placement: 'below',
+      // K2b×K3: obrys glifu łącznika — strony zastępcze planu etykiet stoją przy
+      // nim. Tylko łącznik na torze POZIOMYM: tam podpis stoi pod glifem; na
+      // torze pionowym stoi obok glifu (kotwica na prawo), więc „pod" nie jest
+      // stroną glifu i strony zastępcze zostają liczone od slotu.
+      ...(poziomy ? { obrysKotwicy: { x, y, width: def.width, height: def.height } } : {}),
+    });
   }
 
   function odcinkiWchodzace(busRef: string): string[] {
@@ -252,16 +249,14 @@ export function elementyToru(
       y: snapToGrid(p.y - def.height / 2),
       meta: { testId: `sld-v3-wezel-toru-${bus.ref_id}`, ownerRef: bus.ref_id, elementKind: 'bus', wezelModelu: bus.ref_id },
     });
-    if (lod !== 0) {
-      labels.push({
-        ownerRef: `${bus.ref_id}#name`,
-        ownerKind: 'busbar-voltage',
-        text: bus.name,
-        labelClass: 't3',
-        anchor: { x: p.x, y: p.y - GRID },
-        placement: 'above',
-      });
-    }
+    labels.push({
+      ownerRef: `${bus.ref_id}#name`,
+      ownerKind: 'busbar-voltage',
+      text: bus.name,
+      labelClass: 't3',
+      anchor: { x: p.x, y: p.y - GRID },
+      placement: 'above',
+    });
   }
 
   // -- (3) Powiązania: odcinek SN poza korytarzami (np. rezerwa pierścieniowa między

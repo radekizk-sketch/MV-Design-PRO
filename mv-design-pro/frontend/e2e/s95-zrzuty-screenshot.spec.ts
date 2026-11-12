@@ -133,10 +133,11 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
     .toBe(docelowy);
 }
 
+// Rysunek nie ma symbolu stacji (jedna scena, karta SLD-SKALA-I-NAWIGACJA): menu stacji
+// otwiera napis jej nazwy — klasa `etykieta` niżej; osobnej klasy trafienia `stacja` nie ma.
 const KLASY: readonly { readonly klasa: string; readonly plik: string }[] = [
   { klasa: 'zrodlo', plik: 'zrodlo' },
   { klasa: 'tor', plik: 'tor' },
-  { klasa: 'stacja', plik: 'stacja' },
   { klasa: 'szyna', plik: 'szyna' },
   { klasa: 'aparat', plik: 'aparat' },
   { klasa: 'etykieta', plik: 'etykieta' },

@@ -91,8 +91,6 @@ export type CadFunctionalClass =
 
 export type CadVerificationStatus = 'DRAFT' | 'ENGINEERING_REVIEWED' | 'NORMATIVE_VERIFIED';
 
-export type CadLodPolicy = 'zawsze' | 'od_sieci' | 'tylko_pelny';
-
 export interface CadSymbolDef {
   readonly symbolId: CadSymbolId;
   /** Typ domenowy ENM / klasa elementu projekcji, dla której symbol jest rysowany. */
@@ -121,7 +119,6 @@ export interface CadSymbolDef {
   readonly states?: Readonly<Record<CadSwitchState, readonly CadPrimitive[]>>;
   /** Minimalny rozmiar EKRANOWY wysokości symbolu [px] (czytelność CAD). */
   readonly minimumSizePx: number;
-  readonly lodPolicy: CadLodPolicy;
   readonly notes: string;
 }
 
@@ -362,7 +359,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     body: [przewodGorny(), przewodDolny()],
     states: stanyLacznika(KRZYZYK_WYLACZNIKA, (deg) => noz(deg)),
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Stan z geometrii noża (0° / −30° / −15°); krzyżyk nieruchomy na końcu styku stałego w osi (jak w pierwowzorze). Zakaz wypełnienia korpusu jako nośnika stanu.',
   },
   'cad.wylacznikInstalacyjny': {
@@ -379,7 +375,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     body: [przewodGorny(), przewodDolny()],
     states: stanyLacznika([], (deg) => noz(deg, PRZEGUB_Y, DLUGOSC_NOZA, WYZWALACZE_MCB)),
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Bez krzyżyka — funkcję wyłączania niosą wyzwalacze przy nożu (pierwowzór rysuje tak KAŻDY aparat modułowy B/C). Wybierany wyłącznie z danych katalogu (przestrzeń APARAT_NN_MCB).',
   },
   'cad.wylacznikRoznicowopradowy': {
@@ -396,7 +391,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     body: [przewodGorny(), przewodDolny(), ...RDZEN_RCD, ...SPRZEZENIE_RCD],
     states: stanyLacznika(KRZYZYK_WYLACZNIKA, (deg) => noz(deg)),
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Wybierany wyłącznie z danych katalogu (przestrzeń APARAT_NN_RCD), nie z typu gałęzi (RCD jest gałęzią switch). Parametry (znamionowy prąd różnicowy, typ, prąd znamionowy) opisuje etykieta aparatu z tabliczki katalogowej, nie symbol.',
   },
   'cad.odlacznik': {
@@ -413,7 +407,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     body: [przewodGorny(), przewodDolny()],
     states: stanyLacznika([poprzeczkaOdlacznika()], (deg) => noz(deg)),
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Bez zdolności łączenia prądu obciążenia — brak okręgu pod poprzeczką.',
   },
   'cad.rozlacznik': {
@@ -430,7 +423,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     body: [przewodGorny(), przewodDolny()],
     states: stanyLacznika([poprzeczkaOdlacznika(), okragRozlacznika()], (deg) => noz(deg)),
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Okrąg zawieszony pod poprzeczką styku stałego (pierwowzór), rysowany na wierzchu — zamknięty nóż przechodzi przez okrąg.',
   },
   'cad.lacznik': {
@@ -447,7 +439,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     body: [przewodGorny(), przewodDolny()],
     states: stanyLacznika([], (deg) => noz(deg)),
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Rysowany, gdy ENM mówi tylko „bus_coupler" bez klasy funkcjonalnej — audyt NN-AUD-18 nazywa brak danych; nie dorysowujemy wyłącznika, którego model nie deklaruje.',
   },
   'cad.uziemnik': {
@@ -478,7 +469,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       unknown: [{ k: 'pivot', cx: OS, cy: 4, deg: -KAT_NIEZNANY, prims: [{ k: 'line', x1: OS, y1: 4, x2: OS, y2: 14, nozStanu: true }] }],
     },
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Nóż osadzony na przewodzie, zamyka na styk stały strony uziemienia. Projekcja nN nie ma dziś elementu ENM tej klasy.',
   },
   'cad.bezpiecznik': {
@@ -497,7 +487,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { k: 'path', d: 'M 5.5 7 h 5 v 10 h -5 Z', fill: 'none' },
     ],
     minimumSizePx: 24,
-    lodPolicy: 'zawsze',
     notes: 'Bez stanu łączeniowego (przepalenie wkładki to zdarzenie, nie stan łącznika).',
   },
   'cad.rozlacznikBezpiecznikowy': {
@@ -518,7 +507,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { open: KAT_OTWARTY_WKLADKI, unknown: KAT_NIEZNANY_WKLADKI },
     ),
     minimumSizePx: 28,
-    lodPolicy: 'zawsze',
     notes: 'Wkładka (prostokąt na dolnej części noża, nóż przechodzi przez wkładkę) obraca się z nożem wokół przegubu u dołu; poprzeczka + okrąg na styku stałym u góry — geometria wprost z pierwowzoru. Rysowany wyłącznie, gdy model niesie klasę funkcjonalną (device_kind); goła wkładka WKLADKA_NN = cad.bezpiecznik.',
   },
   'cad.transformator2u': {
@@ -542,7 +530,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { k: 'line', x1: OS, y1: 25.5, x2: OS, y2: 28 },
     ],
     minimumSizePx: 40,
-    lodPolicy: 'zawsze',
     notes: 'Strona SN u góry (zacisk hv), nN u dołu (lv). Tabliczka ($S_{n}$, przekładnia, grupa, $u_{k}$) jest TEKSTEM obok — moc nie jest kodowana rozmiarem. Brak w pierwowzorze (instalacja nN bez transformatora).',
   },
   'cad.przekladnikPradowy': {
@@ -562,7 +549,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { k: 'line', x1: OS, y1: 19, x2: OS, y2: 24 },
     ],
     minimumSizePx: 22,
-    lodPolicy: 'zawsze',
     notes: 'Element toru pierwotnego: przewód wchodzi i wychodzi na osi, wnętrze okręgu puste (jak w pierwowzorze). Przekładnia, klasa, rdzenie — tekstem obok, nigdy w plakietce.',
   },
   'cad.przekladnikNapieciowy': {
@@ -583,7 +569,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { k: 'line', x1: OS, y1: 20, x2: OS, y2: 23 },
     ],
     minimumSizePx: 22,
-    lodPolicy: 'zawsze',
     notes: 'Odgałęzienie od toru (jeden zacisk), strona wtórna otwarta — jednoznacznie różny od CT (okrąg NA przewodzie) i od transformatora mocy (dwa zaciski, większy). Brak w pierwowzorze.',
   },
   'cad.przeksztaltnik': {
@@ -606,7 +591,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { k: 'line', x1: OS, y1: 18, x2: OS, y2: 24 },
     ],
     minimumSizePx: 26,
-    lodPolicy: 'zawsze',
     notes: 'Element ELEKTRYCZNY (nie technologia źródła). Zacisk AC u góry (tor do szyny), DC u dołu (do źródła) — jak w pierwowzorze, gdzie moduły PV wiszą pod falownikiem.',
   },
   'cad.zrodloPvZPrzeksztaltnikiem': {
@@ -627,7 +611,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       ...modulPv(22),
     ],
     minimumSizePx: 40,
-    lodPolicy: 'zawsze',
     notes: 'Kolejność jak w pierwowzorze: kabel AC → falownik → tor DC → moduły PV. ENM modeluje PV+falownik jako jeden generator; symbol jest złożeniem obu ogniw tego elementu (nie dorysowuje osobnego urządzenia). Opis obok: nazwa, moc, technologia, zdolność.',
   },
   'cad.magazynZPrzeksztaltnikiem': {
@@ -648,7 +631,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       ...bateria(22),
     ],
     minimumSizePx: 40,
-    lodPolicy: 'zawsze',
     notes: 'Kolejność jak w pierwowzorze: kabel AC → przekształtnik dwukierunkowy → tor DC → bateria; oba ogniwa jednego elementu ENM.',
   },
   'cad.generator': {
@@ -669,7 +651,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { k: 'line', x1: OS, y1: 16.5, x2: OS, y2: 24 },
     ],
     minimumSizePx: 30,
-    lodPolicy: 'zawsze',
     notes: 'Litera G i „~" są częścią symbolu IEC (kod literowy maszyny), nie etykietą. Brak w pierwowzorze.',
   },
   'cad.odplywOdbior': {
@@ -688,7 +669,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
       { k: 'path', d: 'M 4 9 L 12 9 L 8 16 Z', fill: 'ink' },
     ],
     minimumSizePx: 18,
-    lodPolicy: 'zawsze',
     notes: 'ENM Load jest obciążeniem zagregowanym (P, Q) — strzałka odpływu jest jego właściwym nośnikiem; jawny rodzaj odbiornika nie istnieje w modelu (pierwowzór rysuje odbiorniki jawne: gniazdo 1/N/PE — do rejestru po rozszerzeniu ENM).',
   },
   'cad.zacisk': {
@@ -704,7 +684,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     anchors: kotwice(8, 8),
     body: [{ k: 'circle', cx: 4, cy: 4, r: 2, fill: 'paper' }],
     minimumSizePx: 7,
-    lodPolicy: 'zawsze',
     notes: 'Punkt przyłączenia bez rozgałęzienia toru.',
   },
   'cad.wezel': {
@@ -720,7 +699,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     anchors: kotwice(8, 8),
     body: [{ k: 'circle', cx: 4, cy: 4, r: 2.2, fill: 'ink' }],
     minimumSizePx: 6,
-    lodPolicy: 'zawsze',
     notes: 'Kropka wypełniona = połączenie elektryczne przewodów.',
   },
   'cad.zabezpieczenie': {
@@ -736,7 +714,6 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     anchors: kotwice(16, 12),
     body: [{ k: 'path', d: 'M 0.5 0.5 h 15 v 11 h -15 Z', fill: 'paper' }],
     minimumSizePx: 14,
-    lodPolicy: 'od_sieci',
     notes: 'Prostokąt urządzenia wtórnego połączony kreską kropkowaną z torem (przy przekładniku/aparacie) — jak blok wyzwalacza w pierwowzorze. WEWNĄTRZ znaki funkcji w notacji IEC (I>, I>>, $I_{0}$>, U<, f<…) z danych przypisania — nanosi je renderer (`wnetrze`), maks. 2 wiersze, pełna lista w panelu odpływu.',
   },
 };

@@ -36,7 +36,6 @@ import {
   buildSceneV3,
   openTerminalGaps,
   sceneSegmentEndpointGaps,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import { interiorCrossings, junctionDotGaps, przecieciaBezMostka } from '../crossings';
@@ -53,7 +52,6 @@ function loadEnm(name: string): EnergyNetworkModel {
 const feederEnm = loadEnm('gpzFeeder.enm.json');
 const openBranchEnm = loadEnm('openBranch.enm.json');
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
 
 function allCorridorSegmentRefs(enm: EnergyNetworkModel): readonly string[] {
   const corridors = (enm as {
@@ -76,22 +74,20 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
     expect(refs.some((r) => r.includes('branch_segment'))).toBe(true);
   });
 
-  for (const lod of LODS) {
-    it(`LOD ${lod}: KAŻDY segment ENM obu korytarzy w scenie własnym ownerRef + wyrocznie zielone`, () => {
-      const scene = buildSceneV3(feederEnm, lod);
-      const sceneRefs = sceneSegmentOwnerRefs(scene);
-      for (const ref of refs) expect(sceneRefs, `brak ${ref}`).toContain(ref);
-      expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
-      expect(openTerminalGaps(scene)).toHaveLength(0);
-      expect(allSceneGeometryOnGrid(scene)).toBe(true);
-      expect(junctionDotGaps(scene, SYMBOL_DEFS)).toHaveLength(0);
-      // Obie stacje (magistrali i feederu) narysowane.
-      expect(scene.meta.stationCount).toBe(2);
-    });
-  }
+  it(`KAŻDY segment ENM obu korytarzy w scenie własnym ownerRef + wyrocznie zielone`, () => {
+    const scene = buildSceneV3(feederEnm);
+    const sceneRefs = sceneSegmentOwnerRefs(scene);
+    for (const ref of refs) expect(sceneRefs, `brak ${ref}`).toContain(ref);
+    expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
+    expect(openTerminalGaps(scene)).toHaveLength(0);
+    expect(allSceneGeometryOnGrid(scene)).toBe(true);
+    expect(junctionDotGaps(scene, SYMBOL_DEFS)).toHaveLength(0);
+    // Obie stacje (magistrali i feederu) narysowane.
+    expect(scene.meta.stationCount).toBe(2);
+  });
 
   it('kanon dedykowanych pól: feeder z WŁASNEGO pola (inna kolumna X niż magistrala); zejście feederu przez kabel magistrali = skrzyżowanie bez połączenia (mostek), zero kropek T', () => {
-    const scene = buildSceneV3(feederEnm, 2);
+    const scene = buildSceneV3(feederEnm);
     // Karta UX-04/POLE-LINIOWE-WZORZEC (korekta właściciela 2026-10-29 pkt 8: każde połączenie
     // na kanwie ma odpowiednik w modelu). Feeder z pola 002 i magistrala z pola 001 to dwa
     // RÓŻNE pola GPZ — w modelu nie mają wspólnego węzła, więc przecięcie pionu feederu
@@ -139,7 +135,7 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
     sabotaged.bays = (sabotaged.bays ?? []).filter(
       (f) => !(f.substation_ref === gpz.ref_id && String(f.ref_id).endsWith('/002')),
     );
-    const scene = buildSceneV3(sabotaged, 2);
+    const scene = buildSceneV3(sabotaged);
     const feederRef = allCorridorSegmentRefs(feederEnm).find((r) => r.includes('branch_segment'))!;
     expect(sceneSegmentOwnerRefs(scene)).not.toContain(feederRef);
     expect(
@@ -150,27 +146,23 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON (każdy LOD)', () => {
-    for (const lod of LODS) {
-      expect(JSON.stringify(buildSceneV3(feederEnm, lod))).toBe(JSON.stringify(buildSceneV3(feederEnm, lod)));
-    }
+    expect(JSON.stringify(buildSceneV3(feederEnm))).toBe(JSON.stringify(buildSceneV3(feederEnm)));
   });
 });
 
 describe('feedery z pól GPZ — openBranch.enm (feeder otwarty, bez stacji)', () => {
-  for (const lod of LODS) {
-    it(`LOD ${lod}: feeder otwarty z pola GPZ widoczny (segment + słupek), wyrocznie zielone`, () => {
-      const scene = buildSceneV3(openBranchEnm, lod);
-      const sceneRefs = sceneSegmentOwnerRefs(scene);
-      const feederRef = allCorridorSegmentRefs(openBranchEnm).find((r) => r.includes('branch_segment'))!;
-      expect(feederRef).toBeTruthy();
-      expect(sceneRefs).toContain(feederRef);
-      const feederRun = scene.segments.find((s) => s.meta?.ownerRef === feederRef);
-      expect(feederRun?.meta?.openTerminal).toBe(true);
-      expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
-      expect(openTerminalGaps(scene)).toHaveLength(0);
-      expect(junctionDotGaps(scene, SYMBOL_DEFS)).toHaveLength(0);
-    });
-  }
+  it(`feeder otwarty z pola GPZ widoczny (segment + słupek), wyrocznie zielone`, () => {
+    const scene = buildSceneV3(openBranchEnm);
+    const sceneRefs = sceneSegmentOwnerRefs(scene);
+    const feederRef = allCorridorSegmentRefs(openBranchEnm).find((r) => r.includes('branch_segment'))!;
+    expect(feederRef).toBeTruthy();
+    expect(sceneRefs).toContain(feederRef);
+    const feederRun = scene.segments.find((s) => s.meta?.ownerRef === feederRef);
+    expect(feederRun?.meta?.openTerminal).toBe(true);
+    expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
+    expect(openTerminalGaps(scene)).toHaveLength(0);
+    expect(junctionDotGaps(scene, SYMBOL_DEFS)).toHaveLength(0);
+  });
 });
 
 // GPZ-PARYTET (predykaty parami): wyrównanie magistrali do GPZ liczone jest z
@@ -183,22 +175,20 @@ describe('feedery z pól GPZ — openBranch.enm (feeder otwarty, bez stacji)', (
 describe('feedery z pól GPZ — oś magistrali = port pól GPZ (pass1 i kompozycja z jednego wejścia)', () => {
   const bezZrodla = { ...feederEnm, sources: [] } as EnergyNetworkModel;
   for (const [nazwa, enm] of [['ze źródłem sieci', feederEnm], ['bez źródła sieci', bezZrodla]] as const) {
-    for (const lod of [1, 2] as const) {
-      it(`${nazwa}, LOD ${lod}: zejścia pól GPZ i pól stacji magistrali zaczynają się na tej samej osi`, () => {
-        const scene = buildSceneV3(enm, lod);
-        const startY = (prefiks: string): number[] =>
-          scene.segments
-            .filter((s) => (s.meta?.ownerRef ?? '').startsWith(prefiks) && (s.meta?.ownerRef ?? '').endsWith('#descent'))
-            .map((s) => s.points[0].y);
-        // Identyfikatory bloków („…/substation", „…/station") → przestrzeń nazw
-        // ich elementów (pola GPZ „…/bay/…", pola stacji „…/sn_field/…").
-        const przestrzen = (id: string): string => id.slice(0, id.lastIndexOf('/'));
-        const gpz = startY(`${przestrzen(scene.meta.gpzId!)}/bay/`);
-        const stacja = startY(`${przestrzen(scene.meta.mainTrunkStationIds[0])}/sn_field/`);
-        expect(gpz.length).toBeGreaterThan(0);
-        expect(stacja.length).toBeGreaterThan(0);
-        expect(new Set([...gpz, ...stacja])).toEqual(new Set([gpz[0]]));
-      });
-    }
+    it(`${nazwa}: zejścia pól GPZ i pól stacji magistrali zaczynają się na tej samej osi`, () => {
+      const scene = buildSceneV3(enm);
+      const startY = (prefiks: string): number[] =>
+        scene.segments
+          .filter((s) => (s.meta?.ownerRef ?? '').startsWith(prefiks) && (s.meta?.ownerRef ?? '').endsWith('#descent'))
+          .map((s) => s.points[0].y);
+      // Identyfikatory bloków („…/substation", „…/station") → przestrzeń nazw
+      // ich elementów (pola GPZ „…/bay/…", pola stacji „…/sn_field/…").
+      const przestrzen = (id: string): string => id.slice(0, id.lastIndexOf('/'));
+      const gpz = startY(`${przestrzen(scene.meta.gpzId!)}/bay/`);
+      const stacja = startY(`${przestrzen(scene.meta.mainTrunkStationIds[0])}/sn_field/`);
+      expect(gpz.length).toBeGreaterThan(0);
+      expect(stacja.length).toBeGreaterThan(0);
+      expect(new Set([...gpz, ...stacja])).toEqual(new Set([gpz[0]]));
+    });
   }
 });

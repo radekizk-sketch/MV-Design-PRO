@@ -33,7 +33,7 @@ const enm = (
 const nazwa = new Map(enm.substations.map((s) => [s.ref_id, s.name]));
 
 describe('stationTraversalOrder — sieć referencyjna 52 stacji', () => {
-  const sceny = [buildSceneV3(enm, 0), buildSceneV3(enm, 1), buildSceneV3(enm, 2)] as const;
+  const sceny = [buildSceneV3(enm), buildSceneV3(enm), buildSceneV3(enm)] as const;
   const porzadek = sceny[2].meta.stationTraversalOrder;
 
   it('obejmuje KAŻDĄ narysowaną stację dokładnie raz, GPZ pierwszy', () => {

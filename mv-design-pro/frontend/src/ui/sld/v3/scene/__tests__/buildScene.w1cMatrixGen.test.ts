@@ -179,7 +179,7 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
 
   beforeAll(() => {
     fixture = buildW1cMatrixFixture();
-    sceneL2 = buildSceneV3(fixture.enm, 2);
+    sceneL2 = buildSceneV3(fixture.enm);
   });
 
   it('generator iteruje KATALOG (uwaga 16/17): przypadki z kanonu ORAZ producentów, nie ręczna lista', () => {
@@ -264,9 +264,9 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
   });
 
   it('render na L0/L1/L2 bez wyjątków + KOTWICA STAŁA (uwaga 18): mainTrunk niezmienny między LOD i vs baza', () => {
-    const s0 = buildSceneV3(fixture.enm, 0);
-    const s1 = buildSceneV3(fixture.enm, 1);
-    const base = buildSceneV3(fixture.baseEnm, 2);
+    const s0 = buildSceneV3(fixture.enm);
+    const s1 = buildSceneV3(fixture.enm);
+    const base = buildSceneV3(fixture.baseEnm);
     expect([...s1.meta.mainTrunkStationIds]).toEqual([...s0.meta.mainTrunkStationIds]);
     expect([...sceneL2.meta.mainTrunkStationIds]).toEqual([...s0.meta.mainTrunkStationIds]);
     // Dane pól nie ruszają tożsamości/kotwic stacji.

@@ -30,7 +30,7 @@ test.describe('sld:substrate:screenshot', () => {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   });
 
-  test('substrate-53s overview (L0 auto-fit) — save PNG', async ({ page }) => {
+  test('substrate-53s overview (auto-fit) — save PNG', async ({ page }) => {
     // Collect console errors for diagnosis
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
@@ -56,11 +56,11 @@ test.describe('sld:substrate:screenshot', () => {
     const stationCount = await harnessRoot.getAttribute('data-stations');
     const cableRunCount = await harnessRoot.getAttribute('data-cable-runs');
     const gpzCount = await harnessRoot.getAttribute('data-gpzs');
-    const lodAttr = await canvas.getAttribute('data-scene-lod');
+    const skalaAttr = await canvas.getAttribute('data-skala-kamery');
     const scaleAttr = await canvas.getAttribute('viewBox');
 
     console.log(`Harness ready: stations=${stationCount} cable_runs=${cableRunCount} gpzs=${gpzCount}`);
-    console.log(`Canvas: lod=${lodAttr} viewBox=${scaleAttr}`);
+    console.log(`Canvas: skala=${skalaAttr} viewBox=${scaleAttr}`);
     if (consoleErrors.length > 0) {
       console.log(`Console errors: ${consoleErrors.join('\n')}`);
     }
@@ -104,14 +104,16 @@ test.describe('sld:substrate:screenshot', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // LOD demonstration (M-08 readability fix): L0 = readable blocks, L2 = detail.
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): dawna demonstracja poziomów szczegółu
+  // (L0 = bloki zwinięte, L2 = aparatura) zastąpiona jednym kadrem — aparatura pól jest
+  // w scenie przy kadrze całości, bloków zwiniętych nie ma. Czytelność przy małej skali
+  // rozstrzygają klasy informacji kanwy (`canvas/gestoscInformacji.ts`).
   // ---------------------------------------------------------------------------
 
-  test('substrate-53s L0 overview (readable blocks) — save PNG', async ({ page }) => {
+  test('substrate-53s jedna scena — aparatura w kadrze całości, wycinek szczegółu — save PNG', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
-    // ?lod=0 forces overview level → stations render as readable BLOCKS
-    // (name + readiness), no micro-apparatus clutter (the density fix).
-    await page.goto(`${HARNESS_URL}?lod=0`);
+    // Kadr szczegółu robi clip poniżej (dawny ?focus=auto v2 bez odpowiednika v3).
+    await page.goto(HARNESS_URL);
 
     const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
     await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
@@ -120,72 +122,8 @@ test.describe('sld:substrate:screenshot', () => {
     await expect(canvas).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(900);
 
-    // Count readable blocks vs apparatus detail markers (proves the structural fix).
-    // GPZ jest WYŁĄCZONY z licznika aparatury: gramatyka L0 (spec §21/F13.1)
-    // renderuje GPZ jako PEŁNY blok rozdzielni (kolumna WN DS/CB/CT + pole
-    // liniowe SN) także w widoku planu — intencja M-08 („zero mikro-aparatury")
-    // dotyczy STACJI ciągów, nie dominanty GPZ.
-    const blocks = await page.locator('[data-symbol-canon="stationCollapsed"]').count();
-    // `data-symbol-canon` żyje na glifie, `data-testid` na wrapperze symbolu
-    // — wykluczenie GPZ liczone arytmetycznie (total − potomkowie wrapperów
-    // gpz-canonical-*), bo CSS :not() nie sięga przodka.
-    const APPARATUS = '[data-symbol-canon="breaker"], [data-symbol-canon="disconnector"]';
-    const apparatusTotal = await page.locator(APPARATUS).count();
-    // Poza licznikiem także LEGENDA arkusza (glify wzorcowe „Wyłącznik"/
-    // „Odłącznik" w ramce IEC — nie są aparaturą sieci).
-    //
-    // NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12; ta sama KLASA co
-    // `sld-pa-powerflow-tor.spec.ts` N-1 — dwie RÓWNOLEGŁE rodziny testidów
-    // GPZ): wykluczenie znało wyłącznie starszy wrapper `gpz-canonical-*`.
-    // Blok GPZ ZWINIĘTY na L0 (`buildScene.ts` ~L2548-2559, symbol
-    // „aparat ciągłości" pola odejściowego) renderuje wyłącznik pod TESTIDEM
-    // `sld-v3-l0-gpz-bay-*` — INNĄ rodziną (ten sam glif co reszta bloku
-    // zwiniętego GPZ, `sld-v3-l0-gpz-*`), więc dawne wykluczenie go nie
-    // łapało i liczyło jako „aparaturę stacji" (regres testu, nie produktu:
-    // gramatyka L0 §21/F13.1 od początku zakładała PEŁNY blok rozdzielni GPZ
-    // — kolumna WN + pole liniowe — na każdym poziomie szczegółu).
-    // `closest()` obejmuje SAM element i przodków jedną asercją.
-    const apparatusExcluded = await page.locator(APPARATUS).evaluateAll((nodes) =>
-      nodes.filter(
-        (n) =>
-          n.closest('[data-testid^="gpz-canonical-"]') != null
-          || n.closest('[data-testid^="sld-v3-l0-gpz-"]') != null
-          || n.closest('[data-testid="sld-sheet-legend"]') != null,
-      ).length,
-    );
-    const detail = apparatusTotal - apparatusExcluded;
-    const lodAttr = await canvas.getAttribute('data-scene-lod');
-    console.log(`L0: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
-
-    const l0Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L0.png');
-    await bramkaTresciMatematycznej(page);
-    await page.screenshot({ path: l0Path, fullPage: false });
-    console.log(`Saved: ${l0Path}`);
-
-    // L0 must render blocks and (near-)zero mini-RMU apparatus across the network.
-    expect(blocks).toBeGreaterThanOrEqual(50);
-    expect(detail).toBe(0);
-    expect(fs.existsSync(l0Path)).toBe(true);
-  });
-
-  test('substrate-53s L2 detail (zoomed apparatus) — save PNG', async ({ page }) => {
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    // F12-C: ?lod=2 = pelny detal v3 (kontrakt LOD 0..2, spec par. 7);
-    // dawny ?focus=auto (v2 centerOnElementId) bez odpowiednika v3 - kadr
-    // szczegolu robi clip ponizej.
-    await page.goto(`${HARNESS_URL}?lod=2`);
-
-    const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
-    await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
-
-    const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
-    await expect(canvas).toBeVisible({ timeout: 15000 });
-    await page.waitForTimeout(900);
-
-    const blocks = await page.locator('[data-symbol-canon="stationCollapsed"]').count();
     const detail = await page.locator('[data-symbol-canon="breaker"], [data-symbol-canon="disconnector"]').count();
-    const lodAttr = await canvas.getAttribute('data-scene-lod');
-    console.log(`L2: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
+    console.log(`jedna scena: aparatura=${detail} skala=${await canvas.getAttribute('data-skala-kamery')}`);
 
     const l2Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L2.png');
     await bramkaTresciMatematycznej(page);
@@ -202,8 +140,7 @@ test.describe('sld:substrate:screenshot', () => {
     });
     console.log(`Saved: ${l2DetailPath}`);
 
-    // L2 renders full apparatus detail, no overview blocks.
-    expect(blocks).toBe(0);
+    // Jedna scena niesie pełną aparaturę pól przy kadrze całości.
     expect(detail).toBeGreaterThan(0);
     expect(fs.existsSync(l2Path)).toBe(true);
     expect(fs.existsSync(l2DetailPath)).toBe(true);

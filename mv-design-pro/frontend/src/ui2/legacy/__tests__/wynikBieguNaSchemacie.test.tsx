@@ -92,7 +92,7 @@ function Warsztat(): JSX.Element {
   return (
     <>
       <SpaceNav activeSpace={activeSpace} collapsed={false} onSelect={przejdzDoPrzestrzeni} />
-      <SldCanvasV3Workspace width={1024} height={640} lodOverride={2} />
+      <SldCanvasV3Workspace width={1024} height={640} />
     </>
   );
 }

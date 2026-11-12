@@ -89,18 +89,15 @@ function withLongPolishName(model: EnergyNetworkModel, targetRef: string): Energ
 
 describe('SCHEMAT-10 S7 etap 1 — pakowanie interwałowe Rodziny B (§11 a/c/e/g)', () => {
   it('(§11c) idempotencja: dwa biegi ⇒ identyczne kotwice ciągu głównego i lateralów', () => {
-    for (const lod of [0, 1, 2] as const) {
-      const a = buildSceneV3(enm, lod);
-      const b = buildSceneV3(enm, lod);
-      const anchorsA = a.symbols.map((s) => `${s.symbolId}:${s.x},${s.y}`).sort().join('|');
-      const anchorsB = b.symbols.map((s) => `${s.symbolId}:${s.x},${s.y}`).sort().join('|');
-      expect(anchorsA).toBe(anchorsB);
-    }
+    const a = buildSceneV3(enm);
+    const b = buildSceneV3(enm);
+    const anchorsA = a.symbols.map((s) => `${s.symbolId}:${s.x},${s.y}`).sort().join('|');
+    const anchorsB = b.symbols.map((s) => `${s.symbolId}:${s.x},${s.y}`).sort().join('|');
+    expect(anchorsA).toBe(anchorsB);
   });
 
   it('(§11a) lokalność: długi opis PL na stacji lateralu NIE przesuwa kotwic ciągu głównego', () => {
-    const lod = 2;
-    const base = buildSceneV3(enm, lod);
+    const base = buildSceneV3(enm);
     const trunkIds = base.meta.mainTrunkStationIds;
     expect(trunkIds.length).toBeGreaterThan(0);
 
@@ -111,7 +108,7 @@ describe('SCHEMAT-10 S7 etap 1 — pakowanie interwałowe Rodziny B (§11 a/c/e/
     );
     expect(lateralStation).toBeDefined();
 
-    const mutated = buildSceneV3(withLongPolishName(enm, lateralStation!.ref_id), lod);
+    const mutated = buildSceneV3(withLongPolishName(enm, lateralStation!.ref_id));
 
     // Kotwice KAŻDEJ stacji ciągu głównego niezmienione (ciąg główny leży NAD
     // wszystkimi lateralami — pakowanie w dół nie może go poruszyć).
@@ -123,30 +120,26 @@ describe('SCHEMAT-10 S7 etap 1 — pakowanie interwałowe Rodziny B (§11 a/c/e/
   });
 
   it('(§11e) długie opisy PL: stacja z długą nazwą PL nie wprowadza kolizji ani przecięć poddrzew', () => {
-    const trunkSet = new Set(buildSceneV3(enm, 2).meta.mainTrunkStationIds);
+    const trunkSet = new Set(buildSceneV3(enm).meta.mainTrunkStationIds);
     const lateralStation = enm.substations.find(
       (s) => s.station_type !== 'gpz' && !trunkSet.has(s.ref_id),
     );
-    for (const lod of [0, 1, 2] as const) {
-      const m = layoutMetricsReport(buildSceneV3(withLongPolishName(enm, lateralStation!.ref_id), lod));
-      expect(m.labelCollisionCount).toBe(0);
-      expect(m.subtreeIntersectionCount).toBe(0);
-      expect(m.nonOrthogonalSegmentCount).toBe(0);
-      expect(m.ambiguousConnectionCount).toBe(0);
-    }
+    const m = layoutMetricsReport(buildSceneV3(withLongPolishName(enm, lateralStation!.ref_id)));
+    expect(m.labelCollisionCount).toBe(0);
+    expect(m.subtreeIntersectionCount).toBe(0);
+    expect(m.nonOrthogonalSegmentCount).toBe(0);
+    expect(m.ambiguousConnectionCount).toBe(0);
   });
 
   it('(§11g) piony proporcjonalne: zejścia lateralne mają RÓŻNE długości (brak wspólnej rzędnej)', () => {
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      const lengths = lateralDescentLengths(scene);
-      expect(lengths.length).toBeGreaterThan(1);
-      const distinct = new Set(lengths);
-      // Gdyby piony były wyrównane do wspólnej rzędnej, wszystkie byłyby równe.
-      expect(distinct.size).toBeGreaterThan(1);
-      // Najkrótszy pion istotnie krótszy od najdłuższego (proporcjonalność do
-      // pozycji pasa, nie globalne wyrównanie do najdłuższego).
-      expect(Math.min(...lengths)).toBeLessThan(Math.max(...lengths));
-    }
+    const scene = buildSceneV3(enm);
+    const lengths = lateralDescentLengths(scene);
+    expect(lengths.length).toBeGreaterThan(1);
+    const distinct = new Set(lengths);
+    // Gdyby piony były wyrównane do wspólnej rzędnej, wszystkie byłyby równe.
+    expect(distinct.size).toBeGreaterThan(1);
+    // Najkrótszy pion istotnie krótszy od najdłuższego (proporcjonalność do
+    // pozycji pasa, nie globalne wyrównanie do najdłuższego).
+    expect(Math.min(...lengths)).toBeLessThan(Math.max(...lengths));
   });
 });

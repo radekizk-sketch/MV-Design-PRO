@@ -75,7 +75,8 @@ export const MIN_HIT_SCREEN_PX = 24;
 
 /** Rodzaj obiektu kanwy — jednostka INWENTARZA klasy (raport sondy per rodzaj). */
 export type HitObjectClass =
-  | 'stacja'
+  // Rysunek nie ma symbolu stacji (jedna scena, karta SLD-SKALA-I-NAWIGACJA, R1) — stację
+  // trafia się przez napis jej nazwy (`etykieta`) albo szynę (`szyna`).
   | 'aparat'
   | 'punkt-odgalezny'
   // PORTAL nN (LV Domain Projection po B-02): symbol `lvPortal` na zacisku nN
@@ -95,7 +96,6 @@ export type HitObjectClass =
 /** Wszystkie rodzaje obiektów kanwy — lista ZAMKNIĘTA (dopisanie rodzaju bez
  *  obsługi w `buildCanvasHitAreas` łamie test kontraktu inwentarza). */
 export const HIT_OBJECT_CLASSES: readonly HitObjectClass[] = [
-  'stacja',
   'aparat',
   'punkt-odgalezny',
   'portal-nn',
@@ -215,8 +215,6 @@ function segmentHitHalfWidth(segment: PreviewSegment, scale: number): number {
 
 function klasaSymbolu(elementKind: PreviewElementKind | undefined): HitObjectClass {
   switch (elementKind) {
-    case 'station':
-      return 'stacja';
     case 'transformer':
       return 'transformator';
     case 'source':
@@ -226,11 +224,11 @@ function klasaSymbolu(elementKind: PreviewElementKind | undefined): HitObjectCla
     case 'protectionAnnotation':
       return 'adnotacja';
     // ODG-RYSUNEK: punkt odgałęźny (ZKSN / słup rozgałęźny) — obiekt ENM na torze
-    // magistrali, klikalny jak stacja, ale osobnego rodzaju (inwentarz sondy).
+    // magistrali, osobnego rodzaju (inwentarz sondy).
     case 'branchPoint':
       return 'punkt-odgalezny';
     // PORTAL nN: przejście do projekcji nN — własny rodzaj (inwentarz sondy),
-    // klikalny jak stacja, ale bez menu (nie jest obiektem modelu).
+    // bez menu (nie jest obiektem modelu).
     case 'lvPortal':
       return 'portal-nn';
     default:

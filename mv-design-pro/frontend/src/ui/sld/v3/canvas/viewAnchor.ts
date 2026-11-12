@@ -11,23 +11,21 @@
  * do widoku całej sieci, kasując pan/zoom projektanta. Zmierzone na scenariuszu
  * audytu (wstawienie stacji na środkowym odcinku magistrali, kanwa 1600×1000):
  *
- * | praca projektanta | skala przed → po | oddalenie | poziom szczegółu |
- * |-------------------|------------------|-----------|------------------|
- * | L2 (aparatura)    | 1,380 → 0,153    | **9,01×** | L2 → **L0**      |
- * | L1 (operatorski)  | 0,699 → 0,153    | **4,56×** | L1 → **L0**      |
+ * | skala pracy projektanta | skala przed → po | oddalenie |
+ * |-------------------------|------------------|-----------|
+ * | inspekcja aparatury     | 1,380 → 0,153    | **9,01×** |
+ * | praca nad stacją        | 0,699 → 0,153    | **4,56×** |
  *
  * Po operacji wstawiona stacja miała 79,6 × 28,6 px ekranu (przy skali roboczej
- * ~700 px) — formalnie „w kadrze", praktycznie nie do zobaczenia, a rozwinięcie
- * pól, w których projektant właśnie pracował, znikało wraz ze spadkiem LOD.
+ * ~700 px) — formalnie „w kadrze", praktycznie nie do zobaczenia.
  *
  * ---------------------------------------------------------------------------
  * CO ROBI TEN MODUŁ
  * ---------------------------------------------------------------------------
  * Zamienia WSKAZANIE operacji (lista kandydatów z `ui/topology/
  * wskazanieOperacji.ts` — jedno źródło wspólne z selekcją) na PROSTOKĄT ŚWIATA
- * KAMERY, w którym ten obiekt jest narysowany — osobno dla każdego poziomu
- * szczegółu, bo światy L0/L1/L2 mają własne geometrie (spec §7 „osobne
- * rezerwacje"). Kamera (`camera.ts`, akcja `'kotwicz'`) dostaje gotowe
+ * KAMERY, w którym ten obiekt jest narysowany — w jednej scenie (geometria nie
+ * zależy od skali, karta SLD-SKALA-I-NAWIGACJA R1). Kamera (`camera.ts`, akcja `'kotwicz'`) dostaje gotowe
  * prostokąty i nie musi nic wiedzieć o refach ani o scenie.
  *
  * DOPASOWANIE REFU: dokładny `ownerRef` albo kompozyt rysunkowy `ref#…` —
@@ -41,11 +39,8 @@
  * renderu.
  */
 import type { BoundingBox } from '../../v2/viewport/ViewportController';
-import type { SceneLod, SceneV3 } from '../scene/buildScene';
+import type { SceneV3 } from '../scene/buildScene';
 import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
-
-/** Prostokąty kotwicy dla wszystkich trzech poziomów szczegółu. */
-export type AnchorBoxByLod = Readonly<Record<SceneLod, BoundingBox>>;
 
 /**
  * KLUCZE PRZYNALEŻNOŚCI obiektu rysunku o `ownerRef` — wszystkie refy, do których
@@ -170,11 +165,7 @@ export function prostokatRefowWScenie(scene: SceneV3, refy: readonly string[]): 
 }
 
 /**
- * Kotwica dla listy kandydatów: PIERWSZY kandydat narysowany na WSZYSTKICH
- * trzech poziomach szczegółu. Wymóg kompletu jest celowy — kamera przy
- * kotwiczeniu może zmienić poziom (gdy musi oddalić, żeby obiekt się zmieścił),
- * więc kotwica ważna tylko na jednym poziomie byłaby pułapką: po przejściu LOD
- * kadr celowałby w prostokąt z innego świata.
+ * Kotwica dla listy kandydatów: PIERWSZY kandydat narysowany w scenie.
  *
  * `przeliczDoSwiataKamery` mostkuje układ SCENY (w którym liczy `buildSceneV3`)
  * na układ ARKUSZA/KAMERY (scena przesunięta o `FRAME_MARGIN`) — ten sam
@@ -182,23 +173,13 @@ export function prostokatRefowWScenie(scene: SceneV3, refy: readonly string[]): 
  * podaje go jawnie, żeby moduł pozostał wolny od zależności od `SldCanvasV3`.
  */
 export function kotwicaWidoku(
-  sceneByLod: Readonly<Record<SceneLod, SceneV3>>,
+  scene: SceneV3,
   kandydaci: readonly string[],
   przeliczDoSwiataKamery: (bbox: BoundingBox) => BoundingBox,
-): { readonly ref: string; readonly boxByLod: AnchorBoxByLod } | null {
+): { readonly ref: string; readonly box: BoundingBox } | null {
   for (const ref of kandydaci) {
-    const l0 = prostokatElementuWScenie(sceneByLod[0], ref);
-    const l1 = prostokatElementuWScenie(sceneByLod[1], ref);
-    const l2 = prostokatElementuWScenie(sceneByLod[2], ref);
-    if (!l0 || !l1 || !l2) continue;
-    return {
-      ref,
-      boxByLod: {
-        0: przeliczDoSwiataKamery(l0),
-        1: przeliczDoSwiataKamery(l1),
-        2: przeliczDoSwiataKamery(l2),
-      },
-    };
+    const box = prostokatElementuWScenie(scene, ref);
+    if (box) return { ref, box: przeliczDoSwiataKamery(box) };
   }
   return null;
 }

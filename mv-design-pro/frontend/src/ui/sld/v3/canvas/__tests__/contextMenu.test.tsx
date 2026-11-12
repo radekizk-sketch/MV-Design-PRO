@@ -90,7 +90,7 @@ function wezelRysunku(
 
 describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
   it('(a) prawy klik w symbol stacji otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', async () => {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
     expect(stationIndex).toBeGreaterThanOrEqual(0);
 
@@ -118,15 +118,15 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
   // DER-MENU-V3 (Karta SLD-P, GAP P-1 ZAMKNIĘTY): scena v3 niesie TERAZ
   // `meta.derKind` (realny rodzaj), więc menu kontekstowe wybiera kategorię
   // PODTYPU (der_pv/der_bess/der_fw) dla rodzajów rozpoznanych, a generyczne
-  // `der` WYŁĄCZNIE dla generator/unknown (uczciwa degradacja). LOD2 ma
-  // najpełniejszą scenę (DER od L1/L2, spec §7) — `lodOverride={2}` wymusza L2.
+  // `der` WYŁĄCZNIE dla generator/unknown (uczciwa degradacja). Scena jest jedna
+  // (karta SLD-SKALA-I-NAWIGACJA, R1), więc symbole DER są na niej zawsze.
 
   it('(a) DER-MENU-V3: prawy klik w symbol PV otwiera menu PODTYPU der_pv (open-pv-config + show-frt-hvrt + delete-pv + show-ncrfg)', async () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const pvIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der' && s.meta?.derKind === 'pv');
     expect(pvIndex).toBeGreaterThanOrEqual(0);
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     expect(pvGroup).toBeTruthy();
     // Sanity: atrybut DOM diagnostyczny niesie realny rodzaj (nie zgadywany) —
@@ -149,14 +149,14 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
   it('(b) DER-MENU-V3: prawy klik w DER typu generator (synchronous) otwiera menu GENERYCZNE (show-ncrfg + show-results, BEZ pozycji podtypu — uczciwa degradacja, zero zgadywania)', async () => {
     const { snapshot, genRef } = withGenType(0, 'synchronous');
     useSnapshotStore.setState({ snapshot });
-    const scene = buildSceneV3(snapshot, 2);
+    const scene = buildSceneV3(snapshot);
     const genIndex = scene.symbols.findIndex(
       (s) => s.meta?.elementKind === 'der' && s.meta?.ownerRef === genRef,
     );
     expect(genIndex).toBeGreaterThanOrEqual(0);
     expect(scene.symbols[genIndex].meta?.derKind).toBe('generator');
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const genGroup = uchwytSymbolu(container, scene, genIndex);
     expect(genGroup).toBeTruthy();
     expect(wezelRysunku(container, scene, genIndex)!.getAttribute('data-der-kind')).toBe('generator');
@@ -179,12 +179,12 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     const openRouteSurface = vi.fn();
     useNetworkBuildStore.setState({ openRouteSurface } as never);
 
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const pvIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der' && s.meta?.derKind === 'pv');
     expect(pvIndex).toBeGreaterThanOrEqual(0);
     const pvRef = scene.symbols[pvIndex].meta!.ownerRef!;
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     await userEvent.pointer({ keys: '[MouseRight]', target: pvGroup! });
     expect(screen.getByRole('menu')).toBeTruthy();

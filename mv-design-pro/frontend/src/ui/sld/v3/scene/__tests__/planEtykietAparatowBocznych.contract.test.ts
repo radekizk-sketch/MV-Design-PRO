@@ -19,12 +19,12 @@
  * ILOCZYN CECH (reguła KLASA §2): rola pola (DER_PV, DER_BESS, RMU_LINE,
  * RMU_TRANSFORMER; pola GPZ obecne w każdej scenie) × zestaw aparatów bocznych
  * ({QE}, {TV,QE}, {QE,F}, {TV,QE,F}) × kolejność aparatów w danych (posortowana,
- * surowa z przeplotem) × LOD (0/1/2) × każda skala, przy której LOD jest
- * aktywny w kamerze (`LABEL_PLAN_PRODUCTION_SCALES`). Dla każdego punktu:
+ * surowa z przeplotem) × każda skala odbioru planu etykiet
+ * (`SKALE_ODBIORU_PLANU_ETYKIET`, jedna scena — karta SLD-SKALA-I-NAWIGACJA). Dla każdego punktu:
  * zero porzuconych tożsamości, zero kolizji etykieta↔etykieta i etykieta↔rysunek,
  * zero napisów poza arkuszem, zero identyfikatorów aparatów narysowanych w
  * postaci skróconej (plan kanwy wolał „T…" po stronie zadeklarowanej od pełnego
- * „TV1" po stronie wolnej — `canvas/labelLegibility.ts` `najlepszeDopasowanie`); na L2 każdy aparat boczny ma narysowany
+ * „TV1" po stronie wolnej — `canvas/labelLegibility.ts` `najlepszeDopasowanie`); każdy aparat boczny ma narysowany
  * identyfikator, wszystkie aparaty boczne pola wiszą na JEDNEJ kotwicy, a
  * geometria pola nie zależy od kolejności aparatów w danych.
  */
@@ -33,9 +33,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { BayPrimaryDevice, BayPrimaryDeviceKind, BayPrimaryPlacement, EnergyNetworkModel } from '../../../../../types/enm';
 import {
-  DEFAULT_LOD_THRESHOLDS,
-  LABEL_PLAN_PRODUCTION_SCALES,
-  LOD_HYSTERESIS_MARGIN,
+  SKALE_ODBIORU_PLANU_ETYKIET,
 } from '../../canvas/camera';
 import {
   planSceneLabels,
@@ -55,10 +53,9 @@ import { stationBlockHeight, type StationMeasureInput } from '../../layout/measu
 import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../../layout/segments';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { sheetSizeFor } from '../../sheet/outline';
-import { buildSceneV3, sceneObstacleRects, type SceneLod, type SceneV3 } from '../buildScene';
+import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../buildScene';
 import { buildDerSnFixture } from './fixtures/w2cDerSnFixtures';
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
 
 type LateralKind = 'VT' | 'ES' | 'SURGE_ARRESTER';
 const LATERAL_SETS: readonly (readonly LateralKind[])[] = [
@@ -167,79 +164,46 @@ function fieldGeometry(scene: SceneV3, fieldRef: string): string {
     .join(' ');
 }
 
-describe('W2C-PLAN-ETYKIET — skale produkcyjne planu etykiet leżą w paśmie aktywności LOD kamery', () => {
-  it('każda skala z LABEL_PLAN_PRODUCTION_SCALES mieści się w domkniętym paśmie histerezy swojego LOD', () => {
-    const { l0Max, l1Max } = DEFAULT_LOD_THRESHOLDS;
-    const m = LOD_HYSTERESIS_MARGIN;
-    const eps = 1e-9;
-    const pasmo: Readonly<Record<SceneLod, readonly [number, number]>> = {
-      0: [0, l0Max * (1 + m)],
-      1: [l0Max * (1 - m), l1Max * (1 + m)],
-      2: [l1Max * (1 - m), Number.POSITIVE_INFINITY],
-    };
-    for (const lod of LODS) {
-      expect(LABEL_PLAN_PRODUCTION_SCALES[lod].length).toBeGreaterThan(0);
-      for (const scale of LABEL_PLAN_PRODUCTION_SCALES[lod]) {
-        expect(scale, `L${lod} @${scale}`).toBeGreaterThanOrEqual(pasmo[lod][0] - eps);
-        expect(scale, `L${lod} @${scale}`).toBeLessThanOrEqual(pasmo[lod][1] + eps);
-      }
-    }
-  });
-});
-
-describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych × LOD × skala', () => {
+describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych × skala', () => {
   for (const role of ['DER_PV', 'DER_BESS', 'RMU_LINE', 'RMU_TRANSFORMER']) {
     for (const laterals of LATERAL_SETS) {
       for (const order of ORDERS) {
         it(`${role} · {${laterals.join(', ')}} · kolejność ${order}`, () => {
           const s = scenario(role, laterals, order);
-          for (const lod of LODS) {
-            const scene = buildSceneV3(s.enm, lod);
-            const obstacles = sceneObstacleRects(scene);
-            const sheet = sheetSizeFor(scene);
-            const lateralIdRefs = scene.labels
-              .filter((l) => l.ownerRef.startsWith(`${s.fieldRef}#apparatus-id-`) && l.ownerRef.includes('-lateral-'))
-              .map((l) => l.ownerRef);
-            if (lod === 2) {
-              const boczne = lateralSymbols(scene, s.fieldRef);
-              expect(boczne.length, 'aparaty boczne pola na scenie').toBe(s.lateralCount);
-              // Jedna kotwica: wszystkie aparaty boczne pola wiszą na tym samym węźle toru.
-              expect(new Set(boczne.map((b) => b.y)).size, 'aparaty boczne na jednej kotwicy').toBe(1);
-              expect(lateralIdRefs.length, 'identyfikator każdego aparatu bocznego').toBe(s.lateralCount);
-            } else if (lod === 1) {
-              // §6 SLD_LOD_SPEC: identyfikatory aparatów należą do PEŁNEGO detalu — z wyjątkiem
-              // oznaczeń przekładników, które są na rysunku od LOD1 (odbiór B-02 właściciela
-              // 2026-11-04 pkt 6: „LOD1 — oznaczenia (T1, T2, T3)”; ta sama reguła w polu GPZ
-              // i w polu stacji, `compose/kolumnaOpisowPola.ts` `RODZAJE_PRZEKLADNIKOW_OD_LOD1`).
-              expect(lateralIdRefs.filter((ref) => !ref.includes('#apparatus-id-voltageTransformer-'))).toEqual([]);
-              expect(lateralIdRefs.length, 'oznaczenie bocznego przekładnika napięciowego na LOD1').toBe(laterals.includes('VT') ? 1 : 0);
-            } else {
-              expect(lateralIdRefs).toEqual([]);
-            }
-            for (const scale of LABEL_PLAN_PRODUCTION_SCALES[lod]) {
-              const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
-              const at = `L${lod} @${scale}`;
-              expect(plan.droppedIdentity.map((l) => l.ownerRef), `${at}: porzucone tożsamości`).toEqual([]);
-              expect(plannedLabelCollisions(plan), `${at}: etykieta↔etykieta`).toEqual([]);
-              expect(plannedLabelObstacleCollisions(plan, obstacles), `${at}: etykieta↔symbol/tor`).toEqual([]);
-              expect(plannedLabelsOutsideSheet(plan, sheet), `${at}: poza arkuszem`).toEqual([]);
-              expect(
-                plan.drawn
-                  .filter((p) => p.label.ownerRef.includes('#apparatus-id-') && p.text !== p.label.text)
-                  .map((p) => `${p.label.text}→${p.text}`),
-                `${at}: identyfikatory aparatów skrócone`,
-              ).toEqual([]);
-              const drawn = new Set(plan.drawn.map((p) => p.label.ownerRef));
-              expect(lateralIdRefs.filter((ref) => !drawn.has(ref)), `${at}: identyfikatory boczne nienarysowane`).toEqual([]);
-            }
+          const scene = buildSceneV3(s.enm);
+          const obstacles = sceneObstacleRects(scene);
+          const sheet = sheetSizeFor(scene);
+          const lateralIdRefs = scene.labels
+            .filter((l) => l.ownerRef.startsWith(`${s.fieldRef}#apparatus-id-`) && l.ownerRef.includes('-lateral-'))
+            .map((l) => l.ownerRef);
+          const boczne = lateralSymbols(scene, s.fieldRef);
+          expect(boczne.length, 'aparaty boczne pola na scenie').toBe(s.lateralCount);
+          // Jedna kotwica: wszystkie aparaty boczne pola wiszą na tym samym węźle toru.
+          expect(new Set(boczne.map((b) => b.y)).size, 'aparaty boczne na jednej kotwicy').toBe(1);
+          expect(lateralIdRefs.length, 'identyfikator każdego aparatu bocznego').toBe(s.lateralCount);
+          for (const scale of SKALE_ODBIORU_PLANU_ETYKIET) {
+            const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
+            const at = `@${scale}`;
+            expect(plan.droppedIdentity.map((l) => l.ownerRef), `${at}: porzucone tożsamości`).toEqual([]);
+            expect(plannedLabelCollisions(plan), `${at}: etykieta↔etykieta`).toEqual([]);
+            expect(plannedLabelObstacleCollisions(plan, obstacles), `${at}: etykieta↔symbol/tor`).toEqual([]);
+            expect(plannedLabelsOutsideSheet(plan, sheet), `${at}: poza arkuszem`).toEqual([]);
+            expect(
+              plan.drawn
+                .filter((p) => p.label.ownerRef.includes('#apparatus-id-') && p.text !== p.label.text)
+                .map((p) => `${p.label.text}→${p.text}`),
+              `${at}: identyfikatory aparatów skrócone`,
+            ).toEqual([]);
+            const drawn = new Set(plan.drawn.map((p) => p.label.ownerRef));
+            expect(lateralIdRefs.filter((ref) => !drawn.has(ref)), `${at}: identyfikatory boczne nienarysowane`).toEqual([]);
           }
         });
       }
-      it(`${role} · {${laterals.join(', ')}} · geometria pola niezależna od kolejności aparatów w danych (L2)`, () => {
+      it(`${role} · {${laterals.join(', ')}} · geometria pola niezależna od kolejności aparatów w danych`, () => {
         const posortowana = scenario(role, laterals, 'posortowana');
         const surowa = scenario(role, laterals, 'surowa-przeplot');
-        expect(fieldGeometry(buildSceneV3(surowa.enm, 2), surowa.fieldRef)).toBe(
-          fieldGeometry(buildSceneV3(posortowana.enm, 2), posortowana.fieldRef),
+        expect(fieldGeometry(buildSceneV3(surowa.enm), surowa.fieldRef)).toBe(
+          fieldGeometry(buildSceneV3(posortowana.enm), posortowana.fieldRef),
         );
       });
     }
@@ -251,7 +215,7 @@ describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych
   // pola". Uziemnik boczny GPZ istnieje więc tylko wtedy, gdy rekord pola go niesie: test
   // dopisuje polom GPZ fikstury rekordy aparatów z uziemnikiem (GROUND_BRANCH) i dalej
   // sprawdza to samo — scena niesie aparaty boczne GPZ, plan etykiet bez kolizji.
-  it('pola GPZ (rekordy modelu, uziemnik boczny) — scena niesie aparaty boczne GPZ, plan bez kolizji na każdym LOD i skali', () => {
+  it('pola GPZ (rekordy modelu, uziemnik boczny) — scena niesie aparaty boczne GPZ, plan bez kolizji na każdej skali odbioru', () => {
     const { enm } = buildDerSnFixture([]);
     for (const bay of (enm.bays ?? []) as unknown as RekordPola[]) {
       if (!bay.ref_id.startsWith('gpz/')) continue;
@@ -262,24 +226,22 @@ describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych
         'surowa-przeplot',
       );
     }
-    const gpzLaterals = buildSceneV3(enm, 2).symbols.filter(
+    const gpzLaterals = buildSceneV3(enm).symbols.filter(
       (s) => LATERAL_APPARATUS_SYMBOLS.has(s.symbolId) && String(s.meta?.ownerRef ?? '').startsWith('gpz/'),
     );
     expect(gpzLaterals.length).toBeGreaterThan(0);
-    for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
-      const obstacles = sceneObstacleRects(scene);
-      const sheet = sheetSizeFor(scene);
-      for (const scale of LABEL_PLAN_PRODUCTION_SCALES[lod]) {
-        const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
-        expect(plan.droppedIdentity, `L${lod} @${scale}`).toEqual([]);
-        expect(plannedLabelCollisions(plan), `L${lod} @${scale}`).toEqual([]);
-        expect(plannedLabelObstacleCollisions(plan, obstacles), `L${lod} @${scale}`).toEqual([]);
-        expect(
-          plan.drawn.filter((p) => p.label.ownerRef.includes('#apparatus-id-') && p.text !== p.label.text),
-          `L${lod} @${scale}: identyfikatory aparatów skrócone`,
-        ).toEqual([]);
-      }
+    const scene = buildSceneV3(enm);
+    const obstacles = sceneObstacleRects(scene);
+    const sheet = sheetSizeFor(scene);
+    for (const scale of SKALE_ODBIORU_PLANU_ETYKIET) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
+      expect(plan.droppedIdentity, `@${scale}`).toEqual([]);
+      expect(plannedLabelCollisions(plan), `@${scale}`).toEqual([]);
+      expect(plannedLabelObstacleCollisions(plan, obstacles), `@${scale}`).toEqual([]);
+      expect(
+        plan.drawn.filter((p) => p.label.ownerRef.includes('#apparatus-id-') && p.text !== p.label.text),
+        `@${scale}: identyfikatory aparatów skrócone`,
+      ).toEqual([]);
     }
   });
 });

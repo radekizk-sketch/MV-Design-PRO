@@ -28,6 +28,8 @@
  * z `ZRZUTY_DO_DOKUMENTACJI=1`, inaczej `test-results/zrzuty-dokumentacji/…`).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+
+import { SKALA_CZYTANIA, skalaKamery } from './skalaKamery';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -306,8 +308,8 @@ async function przyblizDoPola(page: Page, pole: Pole, opis: string): Promise<voi
   for (let i = 0; i < 80; i += 1) {
     const k = (await kanwa.boundingBox())!;
     const b = await obwiedniaPola(page, pole);
-    const lod = await kanwa.getAttribute('data-scene-lod');
-    if (lod === '2' && b && wKadrze(b, k) && (b.height >= 0.4 * k.height || b.width >= 0.5 * k.width)) break;
+    const czytelny = (await skalaKamery(kanwa)) >= SKALA_CZYTANIA;
+    if (czytelny && b && wKadrze(b, k) && (b.height >= 0.4 * k.height || b.width >= 0.5 * k.width)) break;
     const cx = b ? b.x + b.width / 2 : k.x + k.width / 2;
     const cy = b ? b.y + b.height / 2 : k.y + k.height / 2;
     const px = Math.min(Math.max(cx, k.x + 40), k.x + k.width - 40);
@@ -325,7 +327,7 @@ async function przyblizDoPola(page: Page, pole: Pole, opis: string): Promise<voi
     }
     await page.waitForTimeout(200);
   }
-  await expect(kanwa, `${opis}: kadr pola na LOD2`).toHaveAttribute('data-scene-lod', '2');
+  await expect.poll(() => skalaKamery(kanwa), { message: `${opis}: kadr pola w skali czytania` }).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
   await page.waitForTimeout(500);
   const k = (await kanwa.boundingBox())!;
   const b = await obwiedniaPola(page, pole);

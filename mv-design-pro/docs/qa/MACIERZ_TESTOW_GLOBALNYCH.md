@@ -32,7 +32,7 @@ silnika layoutu builder/{Hierarchical,Corridor,...} — 2026-07):
 - `frontend/src/ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
 - `frontend/src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/ViewportController.test.ts`
-- `frontend/src/ui/sld/v2/__tests__/LodPolicy.test.ts`
+- `frontend/src/ui/sld/v3/scene/__tests__/ciagloscToru.test.ts` (następca skasowanego `LodPolicy.test.ts` — jedna scena niezależna od skali, karta SLD-SKALA-I-NAWIGACJA)
 - `frontend/src/ui/sld/v3/canvas/__tests__/lvDomainPortal.test.tsx` (następca skasowanego `StationInternalView.test.tsx` — portal domeny nN, slice E 2026-09-01)
 - `frontend/src/ui/sld/v2/command/__tests__/SldCommandService.test.ts`
 - `frontend/src/ui/sld/v2/core/__tests__/ports.test.ts`

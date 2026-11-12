@@ -28,6 +28,7 @@ import { useSelectionStore } from '../../../../selection';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { scenariusz } from '../../lv-domain/fixtures/scenariusze';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
+import { uchwytNazwyStacji } from './uchwytStacji';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 
 /** Projekcja z backendu (kontrakt 3.0.0) — atrapa odpowiada NIĄ z tożsamością żądania. */
@@ -102,12 +103,12 @@ afterEach(() => {
 
 describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () => {
   it('klik w symbol portalu otwiera portal stacji z `lvPortalStationRef` i pobiera DOKŁADNIE jedną atomową projekcję v1', async () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const portalIndex = indexOf(scene, (s) => s.meta?.elementKind === 'lvPortal');
     const stationRef = scene.symbols[portalIndex].meta?.lvPortalStationRef;
     expect(stationRef).toBeTruthy();
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(uchwyt(container, scene, portalIndex));
 
     expect(screen.getByTestId('lv-domain-portal-drawer')).toBeInTheDocument();
@@ -126,17 +127,17 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
   });
 
   it('klik w portal NIE zaznacza obiektu modelu (portal to przejście, nie element ENM)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const portalIndex = indexOf(scene, (s) => s.meta?.elementKind === 'lvPortal');
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(uchwyt(container, scene, portalIndex));
     expect(useSelectionStore.getState().selectedElements).toHaveLength(0);
   });
 
   it('klik ani dwuklik w TRANSFORMATOR (L2) NIE otwiera projekcji nN — jedynym wejściem od L1 jest portal', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const trIndex = indexOf(scene, (s) => s.meta?.elementKind === 'transformer');
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
 
     fireEvent.click(uchwyt(container, scene, trIndex));
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
@@ -146,18 +147,18 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
   });
 
   it('dwuklik w aparat pola (L2) NIE otwiera projekcji nN', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const apparatusIndex = indexOf(scene, (s) => s.meta?.elementKind === 'apparatus');
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.doubleClick(uchwyt(container, scene, apparatusIndex));
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it('przycisk Zamknij usuwa portal i przerywa jego cykl życia', async () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const portalIndex = indexOf(scene, (s) => s.meta?.elementKind === 'lvPortal');
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     fireEvent.click(uchwyt(container, scene, portalIndex));
     await screen.findByTestId('lv-domain-portal');
 
@@ -167,56 +168,46 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
   });
 });
 
-describe('SldCanvasV3Workspace — L0: blok zwinięty stacji, dwuklik i wejście do projekcji nN', () => {
-  // K2 (UI-04, §0.3) — ZMIANA ŚWIADOMA: dawniej dwuklik w blok stacji na L0
-  // otwierał od razu portal nN. Karta K2 nadaje dwuklikowi w stację jedno
-  // znaczenie na KAŻDYM poziomie: „otwórz wnętrze stacji bez utraty kontekstu"
-  // — kadr stacji na poziomie ≥ L1 (pola, aparaty, transformator, zacisk nN).
-  // Intencja dawnego testu zostaje: projekcja nN stacji jest osiągalna z kanwy
-  // SN, teraz przez symbol portalu (`lvPortal`) w kadrze stacji — tym samym
-  // jedynym wejściem, które obowiązuje od L1.
-  it('dwuklik w blok stacji (L0) kadruje stację na L ≥ 1, a portal nN tej stacji jest osiągalny z kadru', async () => {
-    const scene = buildSceneV3(enm, 0);
-    const scene2 = buildSceneV3(enm, 2);
+describe('SldCanvasV3Workspace — przegląd sieci: dwuklik w stację i wejście do projekcji nN', () => {
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1/R7): dawny blok zwinięty stacji widoku L0 nie
+  // istnieje. Stację w przeglądzie wskazuje jej napis identyfikacji (klasa tożsamości — zawsze
+  // czytelny); dwuklik schodzi poziom niżej w hierarchii celów — kadr stacji (skala kamery
+  // rośnie), a projekcja nN stacji jest osiągalna z kadru przez symbol portalu (`lvPortal`) —
+  // tę samą intencję niósł test K2 (UI-04, §0.3).
+  it('dwuklik w napis stacji kadruje stację (skala rośnie), a portal nN tej stacji jest osiągalny z kadru', async () => {
+    const scene = buildSceneV3(enm);
     // Stacja z portalem nN (ma transformator SN/nN) — żeby wejście było sprawdzalne.
     const stacjeZPortalem = new Set(
-      scene2.symbols.filter((s) => s.meta?.elementKind === 'lvPortal').map((s) => s.meta?.lvPortalStationRef),
+      scene.symbols.filter((s) => s.meta?.elementKind === 'lvPortal').map((s) => s.meta?.lvPortalStationRef),
     );
-    const stationIndex = indexOf(
-      scene,
-      (s) => s.meta?.elementKind === 'station' && stacjeZPortalem.has(s.meta?.ownerRef),
-    );
-    const stationRef = scene.symbols[stationIndex].meta?.ownerRef;
+    const stationRef = scene.meta.stationTraversalOrder.find((ref) => stacjeZPortalem.has(ref));
     expect(stationRef).toBeTruthy();
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const kanwa = container.querySelector('[data-testid="sld-canvas-v3"]')!;
-    expect(kanwa.getAttribute('data-scene-lod')).toBe('0');
-    fireEvent.doubleClick(uchwyt(container, scene, stationIndex));
+    const skalaPrzegladu = Number(kanwa.getAttribute('data-skala-kamery'));
+    fireEvent.doubleClick(uchwytNazwyStacji(container, stationRef!));
 
-    const poziom = Number(kanwa.getAttribute('data-scene-lod'));
-    expect(poziom).toBeGreaterThanOrEqual(1);
+    expect(Number(kanwa.getAttribute('data-skala-kamery'))).toBeGreaterThan(skalaPrzegladu);
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
     // Mini-ścieżka kontekstu: Sieć › <stacja>.
     expect(screen.getByTestId('sld-v3-sciezka-kadru')).toBeInTheDocument();
 
-    const scenaPoziomu = buildSceneV3(enm, poziom as 1 | 2);
     const portalIndex = indexOf(
-      scenaPoziomu,
+      scene,
       (s) => s.meta?.elementKind === 'lvPortal' && s.meta?.lvPortalStationRef === stationRef,
     );
-    fireEvent.click(uchwyt(container, scenaPoziomu, portalIndex));
+    fireEvent.click(uchwyt(container, scene, portalIndex));
     expect(screen.getByTestId('lv-domain-portal')).toHaveAttribute('data-station-ref', stationRef!);
     expect(await screen.findByTestId('lv-domain-view-root')).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('pojedynczy klik w blok stacji (L0) NIE otwiera portalu', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = indexOf(scene, (s) => s.meta?.elementKind === 'station');
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={0} />);
-    fireEvent.click(uchwyt(container, scene, stationIndex));
+  it('pojedynczy klik w napis stacji NIE otwiera portalu', () => {
+    const scene = buildSceneV3(enm);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    fireEvent.click(uchwytNazwyStacji(container, scene.meta.stationTraversalOrder[0]));
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });

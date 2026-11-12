@@ -13,6 +13,8 @@
  * Spec nie ocenia wyglądu (zasada nr 2: werdykt wizualny należy do właściciela).
  */
 import { expect, test, type Page } from '@playwright/test';
+
+import { SKALA_CZYTANIA, skalaKamery } from './skalaKamery';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,7 +81,9 @@ test.describe('rodzaj stacji — zrzuty dowodowe', () => {
       await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
       await uchwyt.dblclick();
       await expect(page.getByTestId('sld-v3-sciezka-kadru')).toBeVisible({ timeout: 10000 });
-      await expect(page.locator('svg[data-testid="sld-canvas-v3"]')).not.toHaveAttribute('data-scene-lod', '0');
+      // Kadr stacji jest w skali czytania (jedna scena niezależna od skali — karta
+      // SLD-SKALA-I-NAWIGACJA; dawniej: „poziom szczegółu ≠ przegląd”).
+      await expect.poll(() => skalaKamery(page.locator('svg[data-testid="sld-canvas-v3"]'))).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
       // Podpis rodzaju stacji stoi na rysunku w kadrze stacji.
       const etykiety = page.locator(`[data-testid="sld-v3-labels"] g[data-owner-ref^="${ref}"] text`);
       await expect

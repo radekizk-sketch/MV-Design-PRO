@@ -70,7 +70,6 @@ import {
   lineBayCaptionGaps,
   openTerminalGaps,
   sheetContinuationGaps,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import { kotwicaWidoku, prostokatElementuWScenie } from '../../canvas/viewAnchor';
@@ -89,8 +88,7 @@ const enm = zRekordamiAparatowPol(
   (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm,
 );
 
-const LODY: readonly SceneLod[] = [0, 1, 2];
-const sceneByLod = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
+const scena = buildSceneV3(enm);
 
 /** Rodzaje etykiet, które OPISUJĄ ODCINEK (a więc nie mogą należeć do bloku). */
 const RODZAJE_ODCINKA: readonly OwnerKind[] = ['segment-span', 'segment-lateral'];
@@ -155,8 +153,8 @@ function refyNarysowanychOdcinkow(scene: SceneV3): ReadonlySet<string> {
 
 const tozsamosc = <T,>(box: T): T => box;
 
-function narysowanyNaTrzech(ref: string): boolean {
-  return LODY.every((lod) => prostokatElementuWScenie(sceneByLod[lod], ref) != null);
+function narysowany(ref: string): boolean {
+  return prostokatElementuWScenie(scena, ref) != null;
 }
 
 // ---------------------------------------------------------------------------
@@ -164,33 +162,29 @@ function narysowanyNaTrzech(ref: string): boolean {
 // ---------------------------------------------------------------------------
 
 describe('BLOK-LATERAL-WLASNOSC §1 — podpis odcinka nosi ref ODCINKA, który rysunek naprawdę niesie', () => {
-  for (const lod of LODY) {
-    it(`L${lod}: każdy podpis odcinka wskazuje ref narysowanego odcinka (zero fabrykacji refu)`, () => {
-      const scene = sceneByLod[lod];
-      const narysowane = refyNarysowanychOdcinkow(scene);
-      const podpisy = scene.labels.filter((l) => RODZAJE_ODCINKA.includes(l.ownerKind));
-      // L0/L1 nie rysują podpisów technicznych odcinków (bramka `lod === 2`);
-      // pusty zbiór na tych poziomach jest FAKTEM kontraktu, nie luką testu —
-      // dlatego niepustość wymagamy tam, gdzie podpisy istnieją.
-      if (lod === 2) expect(podpisy.length).toBeGreaterThan(40);
-      for (const label of podpisy) {
-        const baza = bazaRefu(label.ownerRef);
-        expect(
-          narysowane.has(baza),
-          `podpis „${label.text}" (${label.ownerKind}) wskazuje ref ${baza}, którego rysunek nie niesie`,
-        ).toBe(true);
-        // Treść niepusta: podpis bez tekstu to rezerwacja, nie tożsamość.
-        expect(label.text.trim().length).toBeGreaterThan(0);
-      }
-    });
-  }
+  it(`każdy podpis odcinka wskazuje ref narysowanego odcinka (zero fabrykacji refu)`, () => {
+    const scene = scena;
+    const narysowane = refyNarysowanychOdcinkow(scene);
+    const podpisy = scene.labels.filter((l) => RODZAJE_ODCINKA.includes(l.ownerKind));
+    // Zapadka na pusty zbiór: scena niesie podpisy techniczne odcinków.
+    expect(podpisy.length).toBeGreaterThan(40);
+    for (const label of podpisy) {
+      const baza = bazaRefu(label.ownerRef);
+      expect(
+        narysowane.has(baza),
+        `podpis „${label.text}" (${label.ownerKind}) wskazuje ref ${baza}, którego rysunek nie niesie`,
+      ).toBe(true);
+      // Treść niepusta: podpis bez tekstu to rezerwacja, nie tożsamość.
+      expect(label.text.trim().length).toBeGreaterThan(0);
+    }
+  });
 
   it('L2: liczba podpisów zejść odpowiada liczbie odgałęzień sceny (nic nie znikło po cichu)', () => {
     // KD-11/S9-7: napis usunięty ma być POLICZONY. Zmiana właściciela nie może
     // zjeść ani jednego podpisu — przed kartą było ich 12 (pomiar
     // `scripts/pomiar_wlasnosci.tsx`), tyle samo co odgałęzień na fiksturze.
-    const zejscia = sceneByLod[2].labels.filter((l) => l.ownerKind === 'segment-lateral');
-    expect(zejscia).toHaveLength(sceneByLod[2].meta.lateralRunIds.length);
+    const zejscia = scena.labels.filter((l) => l.ownerKind === 'segment-lateral');
+    expect(zejscia).toHaveLength(scena.meta.lateralRunIds.length);
     expect(zejscia.length).toBeGreaterThan(0);
     // Każde zejście ma WŁASNY odcinek — dwa podpisy na jednym refie znaczyłyby,
     // że wyszukanie zwraca ten sam człon dla różnych odgałęzień.
@@ -247,7 +241,7 @@ let pamiecRozpoczynajacych: ReadonlySet<string> | null = null;
  */
 function stacjeRozpoczynajaceOdgalezienie(): ReadonlySet<string> {
   if (pamiecRozpoczynajacych) return pamiecRozpoczynajacych;
-  const scene = sceneByLod[2];
+  const scene = scena;
   const ramy = blokiSceny(scene)
     .map((korzen) => ({ korzen, rama: prostokatElementuWScenie(scene, refBloku(korzen)) }))
     .filter((r): r is { korzen: string; rama: NonNullable<typeof r.rama> } => r.rama != null);
@@ -274,7 +268,7 @@ function stacjeRozpoczynajaceOdgalezienie(): ReadonlySet<string> {
 
 function cechyBloku(korzen: string): readonly CechaBloku[] {
   if (korzen.startsWith('gpz/')) return ['GPZ'];
-  const pelna = sceneByLod[2];
+  const pelna = scena;
   const cechy: CechaBloku[] = [];
   const naMagistrali = pelna.meta.mainTrunkStationIds.some((id) => korzenBloku(`${id}/`) === korzen);
   cechy.push(naMagistrali ? 'stacja magistrali' : 'stacja odgałęzienia');
@@ -300,52 +294,50 @@ function etykietyObceWBloku(
 }
 
 describe('BLOK-LATERAL-WLASNOSC §2/§3 — do prostokąta bloku wchodzą WYŁĄCZNIE etykiety opisujące ten blok', () => {
-  for (const lod of LODY) {
-    it(`L${lod}: w każdym bloku, w każdej kategorii, rodzaje etykiet mieszczą się w ZAMKNIĘTEJ liście`, () => {
-      const scene = sceneByLod[lod];
-      const bloki = blokiSceny(scene);
-      expect(bloki.length).toBeGreaterThan(50);
+  it(`w każdym bloku, w każdej kategorii, rodzaje etykiet mieszczą się w ZAMKNIĘTEJ liście`, () => {
+    const scene = scena;
+    const bloki = blokiSceny(scene);
+    expect(bloki.length).toBeGreaterThan(50);
 
-      const blokowZCecha = new Map<CechaBloku, number>();
-      const etykietZCecha = new Map<CechaBloku, number>();
-      for (const korzen of bloki) {
-        const ref = refBloku(korzen);
-        const cechy = cechyBloku(korzen);
-        const obce = etykietyObceWBloku(scene, ref);
-        expect(
-          obce,
-          `blok ${ref} (${cechy.join(' + ')}) niesie etykiety opisujące INNY obiekt: `
-            + obce.map((o) => `${o.ownerKind} „${o.text}" (${o.ownerRef})`).join(' · '),
-        ).toHaveLength(0);
-        const ileEtykiet = scene.labels.filter((l) => nalezyDo(l.ownerRef, ref)).length;
-        for (const cecha of cechy) {
-          blokowZCecha.set(cecha, (blokowZCecha.get(cecha) ?? 0) + 1);
-          etykietZCecha.set(cecha, (etykietZCecha.get(cecha) ?? 0) + ileEtykiet);
-        }
+    const blokowZCecha = new Map<CechaBloku, number>();
+    const etykietZCecha = new Map<CechaBloku, number>();
+    for (const korzen of bloki) {
+      const ref = refBloku(korzen);
+      const cechy = cechyBloku(korzen);
+      const obce = etykietyObceWBloku(scene, ref);
+      expect(
+        obce,
+        `blok ${ref} (${cechy.join(' + ')}) niesie etykiety opisujące INNY obiekt: `
+          + obce.map((o) => `${o.ownerKind} „${o.text}" (${o.ownerRef})`).join(' · '),
+      ).toHaveLength(0);
+      const ileEtykiet = scene.labels.filter((l) => nalezyDo(l.ownerRef, ref)).length;
+      for (const cecha of cechy) {
+        blokowZCecha.set(cecha, (blokowZCecha.get(cecha) ?? 0) + 1);
+        etykietZCecha.set(cecha, (etykietZCecha.get(cecha) ?? 0) + ileEtykiet);
       }
+    }
 
-      // ILOCZYN CECH: każda oś musi być NIEPUSTA na każdym poziomie — inaczej
-      // komórka iloczynu jest martwa i test niczego w niej nie broni.
-      // Sprawdzamy DWIE rzeczy: że cecha ma bloki ORAZ że te bloki w ogóle niosą
-      // etykiety (blok bez etykiet przeszedłby wyrocznię pusto).
-      for (const cecha of CECHY) {
-        expect(
-          blokowZCecha.get(cecha) ?? 0,
-          `cecha „${cecha}" pusta na L${lod} — iloczyn cech ma martwą komórkę`,
-        ).toBeGreaterThan(0);
-        expect(
-          etykietZCecha.get(cecha) ?? 0,
-          `cecha „${cecha}" na L${lod} nie ma ANI JEDNEJ etykiety — wyrocznia niczego nie ogląda`,
-        ).toBeGreaterThan(0);
-      }
-    });
-  }
+    // ILOCZYN CECH: każda oś musi być NIEPUSTA na każdym poziomie — inaczej
+    // komórka iloczynu jest martwa i test niczego w niej nie broni.
+    // Sprawdzamy DWIE rzeczy: że cecha ma bloki ORAZ że te bloki w ogóle niosą
+    // etykiety (blok bez etykiet przeszedłby wyrocznię pusto).
+    for (const cecha of CECHY) {
+      expect(
+        blokowZCecha.get(cecha) ?? 0,
+        `cecha „${cecha}" pusta na — iloczyn cech ma martwą komórkę`,
+      ).toBeGreaterThan(0);
+      expect(
+        etykietZCecha.get(cecha) ?? 0,
+        `cecha „${cecha}" na nie ma ANI JEDNEJ etykiety — wyrocznia niczego nie ogląda`,
+      ).toBeGreaterThan(0);
+    }
+  });
 
   it('KONTROLA CZUŁOŚCI: podpis odcinka przywrócony pod ref stacji ZAPALA wyrocznię §2', () => {
     // Bez tej kontroli zieleń §2 nie odróżnia „nie ma naruszeń" od „skan nic nie
     // widzi". Preparujemy scenę DOKŁADNIE tak, jak wyglądała przed kartą:
     // podpis zejścia dostaje z powrotem `⟨stationId⟩#lateral-label`.
-    const scene = sceneByLod[2];
+    const scene = scena;
     const korzen = blokiSceny(scene).find((k) => k.startsWith('stn/'))!;
     const ref = refBloku(korzen);
     const zejscie = scene.labels.find((l) => l.ownerKind === 'segment-lateral');
@@ -368,7 +360,7 @@ describe('BLOK-LATERAL-WLASNOSC §2/§3 — do prostokąta bloku wchodzą WYŁĄ
 
 describe('BLOK-LATERAL-WLASNOSC §4 — rama bloku i kotwica kamery czytają JEDNO źródło prawdy', () => {
   it('L2: podpis zejścia leży POZA prostokątem każdej stacji i WEWNĄTRZ prostokąta swojego odcinka', () => {
-    const scene = sceneByLod[2];
+    const scene = scena;
     const zejscia = scene.labels.filter((l) => l.ownerKind === 'segment-lateral');
     expect(zejscia.length).toBeGreaterThan(0);
     // Prostokąty liczone RAZ — 54 bloki × 12 podpisów × pełny skan sceny byłoby
@@ -393,9 +385,9 @@ describe('BLOK-LATERAL-WLASNOSC §4 — rama bloku i kotwica kamery czytają JED
       // `kotwicaWidoku` liczy prostokąt TĄ SAMĄ funkcją, więc jeżeli ktoś
       // rozdzieli implementacje, ten warunek przestanie się domykać.
       const odcinek = bazaRefu(label.ownerRef);
-      const kotwica = kotwicaWidoku(sceneByLod, [odcinek], tozsamosc);
+      const kotwica = kotwicaWidoku(scena, [odcinek], tozsamosc);
       expect(kotwica, `brak kotwicy dla odcinka ${odcinek}`).not.toBeNull();
-      const box = kotwica!.boxByLod[2];
+      const box = kotwica!.box;
       expect(box.minX).toBeLessThanOrEqual(label.rect.x);
       expect(box.maxX).toBeGreaterThanOrEqual(label.rect.x + label.rect.width);
       expect(box.minY).toBeLessThanOrEqual(label.rect.y);
@@ -406,14 +398,12 @@ describe('BLOK-LATERAL-WLASNOSC §4 — rama bloku i kotwica kamery czytają JED
   it('kotwica kamery to DOKŁADNIE prostokąt sceny (jedno źródło, nie druga implementacja)', () => {
     // R3: „warunek WEJŚCIA i WYJŚCIA musi pochodzić z JEDNEGO źródła prawdy".
     // Rozjazd byłby niewidoczny w oku, więc pinujemy równość co do liczby.
-    const refy = blokiSceny(sceneByLod[2]).map(refBloku).filter(narysowanyNaTrzech);
+    const refy = blokiSceny(scena).map(refBloku).filter(narysowany);
     expect(refy.length).toBeGreaterThan(50);
     for (const ref of refy) {
-      const kotwica = kotwicaWidoku(sceneByLod, [ref], tozsamosc);
+      const kotwica = kotwicaWidoku(scena, [ref], tozsamosc);
       expect(kotwica).not.toBeNull();
-      for (const lod of LODY) {
-        expect(kotwica!.boxByLod[lod]).toEqual(prostokatElementuWScenie(sceneByLod[lod], ref));
-      }
+      expect(kotwica!.box).toEqual(prostokatElementuWScenie(scena, ref));
     }
   });
 });
@@ -422,51 +412,47 @@ describe('BLOK-LATERAL-WLASNOSC §4 — rama bloku i kotwica kamery czytają JED
 // §5 — kontrakt B-2 po przeniesieniu własności (R4)
 // ---------------------------------------------------------------------------
 
-describe('BLOK-LATERAL-WLASNOSC §5 — kontrakt B-2 (kotwica na WSZYSTKICH trzech poziomach) nietknięty', () => {
+describe('BLOK-LATERAL-WLASNOSC §5 — kontrakt B-2 (kotwica na jednej scenie) nietknięty', () => {
   it('kotwiczenie na STACJI/GPZ działa dla każdego bloku sceny', () => {
-    const refy = blokiSceny(sceneByLod[2]).map(refBloku);
+    const refy = blokiSceny(scena).map(refBloku);
     expect(refy.length).toBeGreaterThan(50);
-    const bez = refy.filter((ref) => !narysowanyNaTrzech(ref));
-    expect(bez, `bloki bez kotwicy na komplecie poziomów: ${bez.join(', ')}`).toHaveLength(0);
+    const bez = refy.filter((ref) => !narysowany(ref));
+    expect(bez, `bloki bez kotwicy: ${bez.join(', ')}`).toHaveLength(0);
   });
 
   it('kotwiczenie na ODCINKU — nowym właścicielu podpisu — działa dla zejść i dla przęseł', () => {
     const odcinki = (kind: OwnerKind): readonly string[] => [
       ...new Set(
-        sceneByLod[2].labels.filter((l) => l.ownerKind === kind).map((l) => bazaRefu(l.ownerRef)),
+        scena.labels.filter((l) => l.ownerKind === kind).map((l) => bazaRefu(l.ownerRef)),
       ),
     ];
     for (const kind of RODZAJE_ODCINKA) {
       const refy = odcinki(kind);
       expect(refy.length, `brak odcinków rodzaju ${kind} — nie ma czego kotwiczyć`).toBeGreaterThan(0);
-      const bez = refy.filter((ref) => !narysowanyNaTrzech(ref));
-      expect(bez, `odcinki ${kind} bez kotwicy na komplecie poziomów: ${bez.join(', ')}`).toHaveLength(0);
+      const bez = refy.filter((ref) => !narysowany(ref));
+      expect(bez, `odcinki ${kind} bez kotwicy: ${bez.join(', ')}`).toHaveLength(0);
     }
   });
 
-  it('POLE nie jest rysowane na L0 — kotwica cofa się do stacji, i ta jest osiągalna', () => {
-    // POMIAR (przed i po karcie identycznie: 0/171): `bay.bayRef` ma rysunek na
-    // L1/L2, a na L0 stacja jest symbolem zbiorczym BEZ pól. To kontrakt LOD
-    // (spec §7 „osobne rezerwacje"), nie regres tej karty — `kotwicaWidoku`
-    // celowo odrzuca kandydata bez kompletu i próbuje NASTĘPNEGO. Test pilnuje
-    // OBU stron: że pole faktycznie znika dopiero na L0 (a nie np. na L2, co
-    // byłoby regresem rysunku) i że stacja-następca jest osiągalna.
+  it('POLE ma własny rysunek i własną kotwicę (jedna scena — bez cofania do stacji)', () => {
+    // INTENCJA po karcie SLD-SKALA-I-NAWIGACJA (R1): dawniej pole znikało na
+    // zwiniętym przeglądzie L0, a test pilnował, że kotwica cofa się wtedy do
+    // stacji. Jest jedna scena, więc każde pole ma rysunek i jest kotwiczone
+    // wprost — cofnięcie do stacji zostaje wyłącznie dla refów bez rysunku.
     const pola = [
       ...new Set(
-        sceneByLod[2].labels
+        scena.labels
           .filter((l) => l.ownerKind === 'field-role')
           .map((l) => bazaRefu(l.ownerRef)),
       ),
     ];
     expect(pola.length).toBeGreaterThan(100);
     for (const bay of pola) {
-      expect(prostokatElementuWScenie(sceneByLod[2], bay), `pole ${bay} bez rysunku na L2`).not.toBeNull();
-      expect(prostokatElementuWScenie(sceneByLod[1], bay), `pole ${bay} bez rysunku na L1`).not.toBeNull();
-      expect(prostokatElementuWScenie(sceneByLod[0], bay)).toBeNull();
-      expect(kotwicaWidoku(sceneByLod, [bay], tozsamosc)).toBeNull();
+      expect(prostokatElementuWScenie(scena, bay), `pole ${bay} bez rysunku`).not.toBeNull();
+      expect(kotwicaWidoku(scena, [bay], tozsamosc)?.ref).toBe(bay);
       const korzen = korzenBloku(`${bay}/`);
       expect(korzen, `ref pola bez korzenia bloku: ${bay}`).not.toBeNull();
-      expect(kotwicaWidoku(sceneByLod, [bay, refBloku(korzen!)], tozsamosc)?.ref).toBe(refBloku(korzen!));
+      expect(kotwicaWidoku(scena, ['brak-rysunku', refBloku(korzen!)], tozsamosc)?.ref).toBe(refBloku(korzen!));
     }
   });
 });
@@ -509,74 +495,72 @@ describe('BLOK-LATERAL-WLASNOSC §6 — deklaracja celu kliknięcia zgadza się 
    *    korzeń JEST jej uczciwym właścicielem. To samo dotyczy badge „NO".
    *    Szkodliwy jest ref CUDZEGO obiektu, nie ref własnego rodzica.
    */
-  for (const lod of LODY) {
-    it(`L${lod}: każda deklaracja z tabeli trafień zgadza się z tym, czym ref NAPRAWDĘ jest`, () => {
-      const scene = sceneByLod[lod];
-      const odcinki = refyNarysowanychOdcinkow(scene);
-      const symboleRefu = new Map<string, string[]>();
-      for (const s of scene.symbols) {
-        const ref = s.meta?.ownerRef;
-        if (!ref) continue;
-        symboleRefu.set(ref, [...(symboleRefu.get(ref) ?? []), s.symbolId]);
+  it(`każda deklaracja z tabeli trafień zgadza się z tym, czym ref NAPRAWDĘ jest`, () => {
+    const scene = scena;
+    const odcinki = refyNarysowanychOdcinkow(scene);
+    const symboleRefu = new Map<string, string[]>();
+    for (const s of scene.symbols) {
+      const ref = s.meta?.ownerRef;
+      if (!ref) continue;
+      symboleRefu.set(ref, [...(symboleRefu.get(ref) ?? []), s.symbolId]);
+    }
+
+    const sprawdzonePerDeklaracja = new Map<string, number>();
+    for (const label of scene.labels) {
+      const deklarowany = LABEL_OWNER_ELEMENT_KIND[label.ownerKind];
+      const baza = bazaRefu(label.ownerRef);
+      const opis = `etykieta „${label.text}" (${label.ownerKind} → ${deklarowany}, ref ${baza})`;
+      sprawdzonePerDeklaracja.set(
+        deklarowany,
+        (sprawdzonePerDeklaracja.get(deklarowany) ?? 0) + 1,
+      );
+
+      if (deklarowany === 'segment') {
+        // (a)
+        expect(odcinki.has(baza), `${opis} deklaruje ODCINEK, a rysunek nie niesie takiego odcinka`).toBe(true);
+        expect(korzenBloku(`${baza}/`), `${opis} udaje odcinek, a leży w przestrzeni nazw bloku`).toBeNull();
+      } else {
+        // (b) — PARA do (a). Tu wpadał „koniec otwarty" pod `'port-caption'`.
+        expect(
+          odcinki.has(baza),
+          `${opis} NIE deklaruje odcinka, a jej ref JEST narysowanym odcinkiem `
+            + '— klik celowałby w co innego, niż etykieta opisuje',
+        ).toBe(false);
       }
 
-      const sprawdzonePerDeklaracja = new Map<string, number>();
-      for (const label of scene.labels) {
-        const deklarowany = LABEL_OWNER_ELEMENT_KIND[label.ownerKind];
-        const baza = bazaRefu(label.ownerRef);
-        const opis = `etykieta „${label.text}" (${label.ownerKind} → ${deklarowany}, ref ${baza})`;
-        sprawdzonePerDeklaracja.set(
-          deklarowany,
-          (sprawdzonePerDeklaracja.get(deklarowany) ?? 0) + 1,
-        );
-
-        if (deklarowany === 'segment') {
-          // (a)
-          expect(odcinki.has(baza), `${opis} deklaruje ODCINEK, a rysunek nie niesie takiego odcinka`).toBe(true);
-          expect(korzenBloku(`${baza}/`), `${opis} udaje odcinek, a leży w przestrzeni nazw bloku`).toBeNull();
-        } else {
-          // (b) — PARA do (a). Tu wpadał „koniec otwarty" pod `'port-caption'`.
-          expect(
-            odcinki.has(baza),
-            `${opis} NIE deklaruje odcinka, a jej ref JEST narysowanym odcinkiem `
-              + '— klik celowałby w co innego, niż etykieta opisuje',
-          ).toBe(false);
-        }
-
-        if (deklarowany === 'station') {
-          // (c)
-          expect(korzenBloku(`${baza}/`), `${opis} deklaruje STACJĘ, a jej ref nie należy do bloku`).not.toBeNull();
-        }
-
-        if (deklarowany === 'der') {
-          // (d)
-          expect(
-            (symboleRefu.get(baza) ?? []).some((id) => id.startsWith('der')),
-            `${opis} deklaruje ŹRÓDŁO, a pod tym refem rysunek nie ma symbolu źródła`,
-          ).toBe(true);
-        }
+      if (deklarowany === 'station') {
+        // (c)
+        expect(korzenBloku(`${baza}/`), `${opis} deklaruje STACJĘ, a jej ref nie należy do bloku`).not.toBeNull();
       }
 
-      // ZAPADKI NA PUSTY ZBIÓR — bez nich przypadek przechodzi bezgłośnie na
-      // fiksturze, która akurat danej deklaracji nie produkuje. Progi to
-      // POMIAR na sieci referencyjnej, nie życzenie.
-      expect(sprawdzonePerDeklaracja.get('station') ?? 0).toBeGreaterThan(50);
-      if (lod === 2) {
-        expect(sprawdzonePerDeklaracja.get('segment') ?? 0).toBeGreaterThan(45);
+      if (deklarowany === 'der') {
+        // (d)
+        expect(
+          (symboleRefu.get(baza) ?? []).some((id) => id.startsWith('der')),
+          `${opis} deklaruje ŹRÓDŁO, a pod tym refem rysunek nie ma symbolu źródła`,
+        ).toBe(true);
       }
-      if (lod !== 0) {
-        expect(sprawdzonePerDeklaracja.get('der') ?? 0).toBeGreaterThan(10);
-        expect(sprawdzonePerDeklaracja.get('apparatus') ?? 0).toBeGreaterThan(100);
-        expect(sprawdzonePerDeklaracja.get('bus') ?? 0).toBeGreaterThan(50);
-      }
-    });
-  }
+    }
+
+    // ZAPADKI NA PUSTY ZBIÓR — bez nich przypadek przechodzi bezgłośnie na
+    // fiksturze, która akurat danej deklaracji nie produkuje. Progi to
+    // POMIAR na sieci referencyjnej, nie życzenie.
+    expect(sprawdzonePerDeklaracja.get('station') ?? 0).toBeGreaterThan(50);
+    {
+      expect(sprawdzonePerDeklaracja.get('segment') ?? 0).toBeGreaterThan(45);
+    }
+    {
+      expect(sprawdzonePerDeklaracja.get('der') ?? 0).toBeGreaterThan(10);
+      expect(sprawdzonePerDeklaracja.get('apparatus') ?? 0).toBeGreaterThan(100);
+      expect(sprawdzonePerDeklaracja.get('bus') ?? 0).toBeGreaterThan(50);
+    }
+  });
 
   it('KONTROLA CZUŁOŚCI: przestawienie deklaracji w tabeli trafień ZAPALA regułę', () => {
     // Iniekcja nadzorcy w oryginale (`'field-role'` → `'der'`) przechodziła
     // 14/14 na zielono. Odtwarzamy ją na KOPII tabeli — reguła (d) musi ją
     // złapać, bo pod refem pola nie ma symbolu źródła.
-    const scene = sceneByLod[2];
+    const scene = scena;
     const symboleRefu = new Map<string, string[]>();
     for (const s of scene.symbols) {
       const ref = s.meta?.ownerRef;
@@ -609,7 +593,7 @@ describe('BLOK-LATERAL-WLASNOSC §6b — rozdzielenie rodzaju nie osierociło wy
     // przestało być pilnowane: etykiety końca toru mają dziś własny rodzaj,
     // ich format pilnują `openTerminalGaps` / `sheetContinuationGaps`,
     // a wyrocznia podpisu pola nadal nie zgłasza ani jednej luki.
-    const scene = sceneByLod[2];
+    const scene = scena;
     const konce = scene.labels.filter((l) => l.ownerKind === 'segment-endpoint');
     expect(konce.length).toBeGreaterThan(10);
     expect(konce.every((l) => LABEL_OWNER_ELEMENT_KIND[l.ownerKind] === 'segment')).toBe(true);
@@ -635,7 +619,7 @@ describe('BLOK-LATERAL-WLASNOSC §6b — rozdzielenie rodzaju nie osierociło wy
     // ref KAŻDEJ głowicy kablowej nie jest refem narysowanego odcinka. Gdyby
     // kiedyś nim był, `#termination` wpadłby dokładnie w regułę (b) §6 — i ten
     // test zapali się PIERWSZY, zanim gałąź ożyje.
-    const scene = sceneByLod[2];
+    const scene = scena;
     const odcinki = refyNarysowanychOdcinkow(scene);
     const glowice = scene.symbols.filter((sym) => sym.symbolId === 'cableHead');
     expect(glowice.length).toBeGreaterThan(50);

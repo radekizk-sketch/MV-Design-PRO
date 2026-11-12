@@ -16,7 +16,7 @@
  * obejmuje cały rysunek.
  *
  * Wymaganie właściciela 2026-10-29 (korekta P0): kafel łącznika rysowanego symbolem QET jest
- * KWADRATEM o boku z JEDNEJ stałej (`QET_BOK_KAFLA_STANU`, 48 px w skali LOD2) — identycznym
+ * KWADRATEM o boku z JEDNEJ stałej (`QET_BOK_KAFLA_STANU`, 48 j.św.) — identycznym
  * dla każdego rodzaju i każdego stanu; nie wynika z obrysu rysunku. Kafel symbolu
  * kanonicznego (pola stacji SN/nN) pozostaje obrysem rysunku z marginesem — inna konwencja
  * rysunku (dowód w tabeli meldunku karty). Wariant z napędem silnikowym (`naped`) wchodzi do
@@ -52,7 +52,6 @@ import { symbolIdForPrimaryDeviceKind, symboleRodzajuAparatu } from '../../compo
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import type { BayPrimaryDeviceKind } from '../../../../../types/enm';
 import { MIN_TEXT_SCREEN_PX, posuwZnakuEm } from '../../core/text';
-import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../../canvas/camera';
 import type { CadPrimitive } from '../../cad/cadSymbolRegistry';
 
 const MOTYWY = [
@@ -393,16 +392,19 @@ function punktyNoza(s: (typeof QET_SYMBOLE_POLA_SN)[QetSymbolPolaSnId]): Record<
 /**
  * Litera na kaflu łącznika (kwalifikator „M" napędu silnikowego, EN 60617 02-13-26) jest częścią
  * symbolu, ale musi być CZYTELNA tam, gdzie kafel jest rysowany: w całym zakresie skali kamery
- * aktywnego LOD2 (od dolnego brzegu histerezy `l1Max·(1 − margines)` = 1,02) litera ma na
+ * pełnego detalu (od skali 1,02 — dolny brzeg dawnego poziomu pełnego szczegółu) litera ma na
  * ekranie co najmniej `MIN_TEXT_SCREEN_PX`. Pomiar przed naprawą (karta UX-04, oględziny zrzutów
- * 2026-10-29): litera w skali źródła QET miała 2,4 jednostki świata — 2,4 px przy wejściu w LOD2
- * i 3,6–6,6 px na zrzutach pola. Iloczyn: łącznik QET z kaflem × litera symbolu × skala LOD2
+ * 2026-10-29): litera w skali źródła QET miała 2,4 jednostki świata — 2,4 px przy skali 1,02
+ * i 3,6–6,6 px na zrzutach pola. Iloczyn: łącznik QET z kaflem × litera symbolu × skala pełnego detalu
  * {dolny brzeg, brzeg górnej strefy, wnętrze} × stan × motyw (litera rysowana w każdym stanie).
  * Iniekcja: dawna skala znaku napędu (1, rozmiar 2,4) — czerwone komórki skali.
  */
-describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () => {
-  const SKALA_MIN_L2 = DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN);
-  const SKALE_L2 = [SKALA_MIN_L2, DEFAULT_LOD_THRESHOLDS.l1Max * (1 + LOD_HYSTERESIS_MARGIN), 2];
+describe('kafel stanu — litera na kaflu czytelna od skali pełnego detalu', () => {
+  /** Skala, od której każdy detal kafla (litera, skrzynka napędu) ma być czytelny — dolny brzeg
+   *  dawnego poziomu pełnego szczegółu, zostawiony jako wymaganie liczbowe (jedna scena, karta
+   *  SLD-SKALA-I-NAWIGACJA): napęd „M” 8,4 j.św. → 8,57 px, skrzynka napędu 8 j.św. → 8,16 px. */
+  const SKALA_MIN_L2 = 1.02;
+  const SKALE_L2 = [SKALA_MIN_L2, 1.38, 2];
   const litery = (prims: readonly CadPrimitive[]) =>
     prims.filter((p): p is Extract<CadPrimitive, { k: 'letter' }> => p.k === 'letter');
   const LITERY_NA_KAFLACH = Object.values(QET_SYMBOLE_POLA_SN)
@@ -468,7 +470,7 @@ describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () =
     const xs = liczby.filter((_, i) => i % 2 === 0);
     const ys = liczby.filter((_, i) => i % 2 === 1);
     const kw = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
-    // Kwadrat (EN 60617 02-13-20): bok ≥ podłoga 8 px przy wejściu w LOD2, po lewej osi,
+    // Kwadrat (EN 60617 02-13-20): bok ≥ podłoga 8 px od skali pełnego detalu, po lewej osi,
     // w kaflu z marginesem, środek na wysokości przegubu.
     expect(kw.x1 - kw.x0).toBeCloseTo(kw.y1 - kw.y0, 6);
     expect((kw.x1 - kw.x0) * SKALA_MIN_L2).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);

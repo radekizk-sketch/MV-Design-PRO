@@ -31,7 +31,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { apparatusIdentifierGaps, buildSceneV3, type SceneLod } from '../buildScene';
+import { apparatusIdentifierGaps, buildSceneV3 } from '../buildScene';
 import { buildDerSnFixture } from './fixtures/w2cDerSnFixtures';
 import { buildW1MatrixFixture } from './fixtures/w1MatrixVariants';
 
@@ -41,18 +41,16 @@ const konwencja = buildDerSnFixture([{ technology: 'PV', withSa: true }]);
 const dane = buildW1MatrixFixture();
 
 describe('ogranicznik przepięć — oznacznik rodziny F (V12K-335 pkt 3)', () => {
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: scena niesie symbol ogranicznika przepięć`, () => {
-      const scene = buildSceneV3(konwencja.enm, lod);
-      const sa = scene.symbols.filter((s) => s.symbolId === 'surgeArrester');
-      expect(sa.length).toBeGreaterThan(0);
-    });
-  }
+  it(`scena niesie symbol ogranicznika przepięć`, () => {
+    const scene = buildSceneV3(konwencja.enm);
+    const sa = scene.symbols.filter((s) => s.symbolId === 'surgeArrester');
+    expect(sa.length).toBeGreaterThan(0);
+  });
 
   // Oznaczniki aparatów żyją WYŁĄCZNIE na pełnym szczególe (kontrakt LOD §6 —
   // TA SAMA reguła co Q/QE/T/TV; filtr `#apparatus-id-` w `buildSceneV3`).
   it('L2: SA bez danych ma oznacznik konwencji „F1" (etykieta aparatu na scenie)', () => {
-    const scene = buildSceneV3(konwencja.enm, 2);
+    const scene = buildSceneV3(konwencja.enm);
     const saLabels = scene.labels.filter(
       (l) => l.ownerKind === 'apparatus' && l.ownerRef.includes('#apparatus-id-surgeArrester'),
     );
@@ -63,23 +61,17 @@ describe('ogranicznik przepięć — oznacznik rodziny F (V12K-335 pkt 3)', () =
     expect(saLabels.every((l) => l.designationSource === 'konwencja')).toBe(true);
   });
 
-  it('L0/L1: zero etykiet identyfikatora SA (kontrakt LOD — pełny detal, spójnie z Q/QE/T/TV)', () => {
-    for (const lod of [0, 1] as SceneLod[]) {
-      const scene = buildSceneV3(konwencja.enm, lod);
-      const saLabels = scene.labels.filter(
-        (l) => l.ownerKind === 'apparatus' && l.ownerRef.includes('#apparatus-id-surgeArrester'),
-      );
-      expect(saLabels).toHaveLength(0);
-    }
-  });
+  // Dawny test „L0/L1: zero etykiet SA" usunięty razem z poziomami szczegółu (karta
+  // SLD-SKALA-I-NAWIGACJA, R1): jedna scena zawsze niesie identyfikator SA (test wyżej), a o
+  // jego czytelności w danej skali rozstrzyga plan etykiet kanwy.
 
   it('L2: wyrocznia identyfikatorów nie zgłasza luk (SA jest aparatem uprawnionym, wzorzec łapie F\\d+)', () => {
-    const scene = buildSceneV3(konwencja.enm, 2);
+    const scene = buildSceneV3(konwencja.enm);
     expect(apparatusIdentifierGaps(scene)).toEqual([]);
   });
 
   it('L2: dana per-aparat („F2" z wariantu producenckiego) wygrywa nad konwencją — prymat danych §12.1', () => {
-    const scene = buildSceneV3(dane.enm, 2);
+    const scene = buildSceneV3(dane.enm);
     const target = dane.targets.find((t) => t.variant.id === 'linia-cb-ct-sa')!;
     const saLabels = scene.labels.filter(
       (l) =>
@@ -102,8 +94,8 @@ describe('ogranicznik przepięć — oznacznik rodziny F (V12K-335 pkt 3)', () =
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {
-    const a = JSON.stringify(buildSceneV3(konwencja.enm, 2));
-    const b = JSON.stringify(buildSceneV3(konwencja.enm, 2));
+    const a = JSON.stringify(buildSceneV3(konwencja.enm));
+    const b = JSON.stringify(buildSceneV3(konwencja.enm));
     expect(a).toBe(b);
   });
 });

@@ -1,7 +1,8 @@
 /**
  * Zrzuty ŻYWEJ aplikacji dla karty KD-8 (bramka 6, dyrektywa właściciela #8):
- *  - `kd8-motyw-l0-{dark,light}.png`           — przegląd sieci (L0),
- *  - `kd8-motyw-gpz-{dark,light}.png`          — rozwinięcie bloku GPZ,
+ *  - `kd8-motyw-l0-{dark,light}.png`           — przegląd sieci (kadr całości; nazwa pliku
+ *    zachowana z czasu poziomów szczegółu — jedna scena, karta SLD-SKALA-I-NAWIGACJA R1),
+ *  - `kd8-motyw-gpz-{dark,light}.png`          — GPZ przy skali czytania,
  *  - `kd8-motyw-konfigurator-{dark,light}.png` — konfigurator stacji z
  *    komunikatem blokady („Brak wolnego portu wyjściowego SN…").
  *
@@ -9,7 +10,7 @@
  * (ocena właściciela 2/10: „motyw jasny jest deklaracją bez pokrycia").
  * Scena REALNA: projekt + przypadek + GPZ + magistrala z trzema stacjami
  * zbudowane operacjami domenowymi backendu (ta sama droga danych co spec
- * KD-5), rozwinięcie bloku KLIKIEM NATYWNYM.
+ * KD-5), wskazanie GPZ KLIKIEM NATYWNYM w jego napis i przybliżenie KÓŁKIEM.
  *
  * Spec ASERTUJE jasność zrzutu przed zapisem: zrzut „light" z ciemną kanwą
  * byłby dowodem defektu, nie naprawy — więc mierzymy tło kanwy tak samo jak
@@ -23,6 +24,7 @@ import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
+import { SELEKTOR_UCHWYTU_GPZ, oddalDoSkali, przyblizDoSkali, srodekRamki } from './skalaKamery';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
@@ -203,9 +205,7 @@ test.describe('kd8:zrzuty', () => {
 
       const canvas = page.locator('svg[data-testid="sld-canvas-v3"]');
       const symbole = page.locator('[data-testid="sld-v3-symbols"]');
-      const wezelBloku = symbole.locator('g[data-element-kind="station"]', {
-        has: page.locator('[data-symbol-canon="gpzCollapsed"]'),
-      });
+      const uchwytGpz = page.locator(SELEKTOR_UCHWYTU_GPZ).first();
 
       // Zrzut ma DOKUMENTOWAĆ naprawę — potwierdzamy ją miarą przed zapisem.
       const jasnosc = await jasnoscKanwy(page);
@@ -215,30 +215,24 @@ test.describe('kd8:zrzuty', () => {
         expect(jasnosc, `kanwa motywu ${id} nie jest ciemna`).toBeLessThan(0.2);
       }
 
-      // (1) Widok przeglądowy (L0) kółkiem — natywnie, jak użytkownik.
+      // (1) Przegląd: kadr całości kółkiem — natywnie, jak użytkownik (dolna granica skali
+      // kamery = dopasowanie całej sieci, R2).
       const canvasBox = await canvas.boundingBox();
       expect(canvasBox).not.toBeNull();
-      await page.mouse.move(canvasBox!.x + canvasBox!.width / 2, canvasBox!.y + canvasBox!.height / 2);
-      let poziom = await canvas.getAttribute('data-scene-lod');
-      for (let krok = 0; krok < 16 && poziom !== '0'; krok++) {
-        await page.mouse.wheel(0, 200);
-        await page.waitForTimeout(150);
-        poziom = await canvas.getAttribute('data-scene-lod');
-      }
-      await expect(canvas).toHaveAttribute('data-scene-lod', '0');
-      await expect(wezelBloku).toHaveCount(1);
+      await oddalDoSkali(page, canvas, { x: canvasBox!.x + canvasBox!.width / 2, y: canvasBox!.y + canvasBox!.height / 2 });
+      await expect(uchwytGpz).toHaveCount(1);
       await page.waitForTimeout(300);
       await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd8-motyw-l0-${id}.png`) });
 
-      // (2) Klik NATYWNY w blok ⇒ rozwinięcie + selekcja (panele elementu).
+      // (2) Klik NATYWNY w napis GPZ ⇒ selekcja (panele elementu), potem przybliżenie kółkiem
+      // nad GPZ do skali czytania (jedna scena: aparatura GPZ jest w scenie zawsze).
       // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
-      await czekajNaStabilnaGeometrie(wezelBloku);
-      const box = await wezelBloku.boundingBox();
-      expect(box).not.toBeNull();
-      await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+      await czekajNaStabilnaGeometrie(uchwytGpz);
+      const srodekGpz = await srodekRamki(uchwytGpz);
+      await page.mouse.click(srodekGpz.x, srodekGpz.y);
       await page.waitForTimeout(1200);
-      await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
+      await przyblizDoSkali(page, canvas, srodekGpz);
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
 
       // (3) Konfigurator stacji z komunikatem BLOKADY — kadr z panelami.

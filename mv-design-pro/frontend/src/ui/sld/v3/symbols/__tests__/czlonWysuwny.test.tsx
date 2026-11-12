@@ -4,12 +4,12 @@
  * z szewronem ˄˄, kafel wyłącznika z „×", dolny kafel członu z szewronem ˅˅; tor przechodzi
  * przez wszystkie trzy. Kolor kafli członu = stan członu (położenie członu), kolor kafla
  * wyłącznika = stan wyłącznika — dwa niezależne stany. Napęd M zostaje w kaflu wyłącznika.
- * Na LOD0 trzy kafle zostają (kształt).
+ * W każdej skali kamery trzy kafle zostają (kształt; jedna scena — karta SLD-SKALA-I-NAWIGACJA).
  *
  * Iloczyn cech: rodzaj wyłącznika {stały, stały z napędem, wysuwny, wysuwny z napędem} ×
  * położenie członu {zamknięty, otwarty, nieustalony, błędny, brak danych} × stan wyłącznika
  * {zamknięty, otwarty, nieustalony, uziemiony (nie jest położeniem wyłącznika ⇒ nieustalony),
- * błędny, brak stanu} × LOD {0, 1, 2} × motyw {ciemny, jasny}.
+ * błędny, brak stanu} × motyw {ciemny, jasny}.
  * Wyrocznia: wysuwny ⇒ 3 kafle, niewysuwny ⇒ 1 kafel; kolor kafli członu z tabeli motywu dla
  * położenia członu (brak danych ⇒ nieustalony — model ENM nie niesie położenia członu), kolor
  * kafla wyłącznika z tabeli dla stanu wyłącznika; przy różnych stanach kolory różne.
@@ -59,41 +59,39 @@ function kafle(markup: string): Kafel[] {
 describe('człon wysuwny: trzy kafle, dwa niezależne stany (decyzja właściciela 2026-11-04)', () => {
   for (const [id, wysuwny] of WYLACZNIKI) {
     for (const [motyw, paleta] of MOTYWY) {
-      for (const lod of [0, 1, 2] as const) {
-        it(`${id} × ${motyw} × LOD${lod}: ${wysuwny ? '3 kafle' : '1 kafel'}, kolory członu i wyłącznika z własnych stanów`, () => {
-          const Glyph = SYMBOL_GLYPHS[id];
-          for (const stanW of STANY_WYLACZNIKA) {
-            for (const polozenie of POLOZENIA_CZLONU) {
-              const k = kafle(renderToStaticMarkup(<Glyph x={0} y={0} state={stanW} kafleStanu={paleta} lod={lod} stanCzlonu={polozenie} />));
-              const opis = `${stanW ?? 'brak'} / człon ${polozenie ?? 'brak danych'}`;
-              const tlo = k.filter((x) => x.rola === 'tlo');
-              const gora = k.filter((x) => x.rola === 'czlon-gora');
-              const dol = k.filter((x) => x.rola === 'czlon-dol');
-              expect(tlo.length, opis).toBe(1);
-              expect(tlo[0].fill, `${opis}: kafel wyłącznika = stan wyłącznika`).toBe(paleta[stanKaflaLacznika(id, stanW)!]);
-              if (!wysuwny) {
-                expect(gora.length + dol.length, `${opis}: niewysuwny — jeden kafel`).toBe(0);
-                continue;
-              }
-              expect([gora.length, dol.length], opis).toEqual([1, 1]);
-              const oczekiwanyCzlon = paleta[polozenie ?? 'nieustalony'];
-              for (const c of [gora[0], dol[0]]) {
-                expect(c.fill, `${opis}: kafel członu = położenie członu`).toBe(oczekiwanyCzlon);
-                expect([c.x, c.width], `${opis}: ta sama szerokość`).toEqual([tlo[0].x, tlo[0].width]);
-                expect(c.width, opis).toBe(QET_BOK_KAFLA_STANU);
-              }
-              // Kafle stykają się krawędziami: góra → wyłącznik → dół, cały gabaryt symbolu.
-              expect(gora[0].y + gora[0].height, `${opis}: górny styka się z wyłącznikiem`).toBe(tlo[0].y);
-              expect(tlo[0].y + tlo[0].height, `${opis}: wyłącznik styka się z dolnym`).toBe(dol[0].y);
-              expect([gora[0].y, dol[0].y + dol[0].height], opis).toEqual([0, QET_SYMBOLE_POLA_SN[id].wysokosc]);
-              // Dwa niezależne stany: inne położenie członu niż stan wyłącznika ⇒ inny kolor.
-              if ((polozenie ?? 'nieustalony') !== stanKaflaLacznika(id, stanW)) {
-                expect(oczekiwanyCzlon, `${opis}: stany rozróżnialne`).not.toBe(tlo[0].fill);
-              }
+      it(`${id} × ${motyw}: ${wysuwny ? '3 kafle' : '1 kafel'}, kolory członu i wyłącznika z własnych stanów`, () => {
+        const Glyph = SYMBOL_GLYPHS[id];
+        for (const stanW of STANY_WYLACZNIKA) {
+          for (const polozenie of POLOZENIA_CZLONU) {
+            const k = kafle(renderToStaticMarkup(<Glyph x={0} y={0} state={stanW} kafleStanu={paleta} stanCzlonu={polozenie} />));
+            const opis = `${stanW ?? 'brak'} / człon ${polozenie ?? 'brak danych'}`;
+            const tlo = k.filter((x) => x.rola === 'tlo');
+            const gora = k.filter((x) => x.rola === 'czlon-gora');
+            const dol = k.filter((x) => x.rola === 'czlon-dol');
+            expect(tlo.length, opis).toBe(1);
+            expect(tlo[0].fill, `${opis}: kafel wyłącznika = stan wyłącznika`).toBe(paleta[stanKaflaLacznika(id, stanW)!]);
+            if (!wysuwny) {
+              expect(gora.length + dol.length, `${opis}: niewysuwny — jeden kafel`).toBe(0);
+              continue;
+            }
+            expect([gora.length, dol.length], opis).toEqual([1, 1]);
+            const oczekiwanyCzlon = paleta[polozenie ?? 'nieustalony'];
+            for (const c of [gora[0], dol[0]]) {
+              expect(c.fill, `${opis}: kafel członu = położenie członu`).toBe(oczekiwanyCzlon);
+              expect([c.x, c.width], `${opis}: ta sama szerokość`).toEqual([tlo[0].x, tlo[0].width]);
+              expect(c.width, opis).toBe(QET_BOK_KAFLA_STANU);
+            }
+            // Kafle stykają się krawędziami: góra → wyłącznik → dół, cały gabaryt symbolu.
+            expect(gora[0].y + gora[0].height, `${opis}: górny styka się z wyłącznikiem`).toBe(tlo[0].y);
+            expect(tlo[0].y + tlo[0].height, `${opis}: wyłącznik styka się z dolnym`).toBe(dol[0].y);
+            expect([gora[0].y, dol[0].y + dol[0].height], opis).toEqual([0, QET_SYMBOLE_POLA_SN[id].wysokosc]);
+            // Dwa niezależne stany: inne położenie członu niż stan wyłącznika ⇒ inny kolor.
+            if ((polozenie ?? 'nieustalony') !== stanKaflaLacznika(id, stanW)) {
+              expect(oczekiwanyCzlon, `${opis}: stany rozróżnialne`).not.toBe(tlo[0].fill);
             }
           }
-        });
-      }
+        }
+      });
     }
   }
 

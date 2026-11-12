@@ -1,5 +1,12 @@
 # SCHEMAT-10 — dowód wizualny (V12K-135)
 
+> **Nota historyczna (2026-11, karta SLD-SKALA-I-NAWIGACJA).** Zrzuty w tym katalogu
+> powstały w czasach poziomów szczegółu L0/L1/L2 i postaci zwiniętych stacji. Kanwa ma
+> dziś jedną scenę niezależną od skali (`docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0),
+> więc skrypty, których jedynym przedmiotem było porównanie poziomów szczegółu
+> (`render_schemat10_s1`…`s7p6`, `gs1`, `gs2`), usunięto. Zostały skrypty o przedmiocie
+> niezależnym od poziomu (`w2c`, `r1`–`r4`, `z3`, `ctvt`) — rysują jedną scenę.
+
 ## W2c — kompletny tor DER przyłączonego po stronie SN (reguły 1–7)
 
 `w2c-l2-tor-sn.png` — dowód wizualny L2 dla POLECENIE_DER_SN_TOPOLOGIA_2026-07

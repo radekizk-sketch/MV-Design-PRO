@@ -63,11 +63,15 @@ function busIndex(snapshot: EnergyNetworkModel): ReadonlyMap<string, Bus> {
  * | element rysunku                 | punkt wyniku                  | reguła |
  * |---------------------------------|-------------------------------|--------|
  * | `${busRef}#sn-bus`              | szyna sekcji SN stacji        | `stationSnSectionBusRefs` (sekcja = odcinek rysunku) |
- * | `${stationRef}` (blok L0)       | jedyna sekcja SN stacji       | jw. — WYŁĄCZNIE stacja jednosekcyjna; GPZ: jedyna szyna `gpz_sections` |
  * | `${stationRef}#lv-bus`          | szyna nN stacji               | `pickStationBus(…,'nn')` |
  * | ref pola o roli `TR`            | transformator stacji          | `Substation.transformer_refs` — WYŁĄCZNIE gdy dokładnie jeden |
  *
- * Odmowy (zamiast zgadywania): blok L0 stacji wielosekcyjnej, stacja z dwiema szynami nN tego samego napięcia
+ * Rysunek nie ma symbolu stacji (jedna scena, karta SLD-SKALA-I-NAWIGACJA, R1): wartość
+ * stacyjna stoi na odcinku szyny SN sekcji, więc ref stacji nie jest kluczem mostu (dawny
+ * wpis „blok stacji L0” nie trafiał w żaden element sceny — sonda: 54 z 54 kluczy na sieci
+ * referencyjnej bez elementu).
+ *
+ * Odmowy (zamiast zgadywania): stacja z dwiema szynami nN tego samego napięcia
  * (`StationBusPick.ambiguous`) i stacja z wieloma transformatorami — rysunek
  * ma po jednym odcinku szyny / symbolu na pole, więc przypisanie byłoby
  * zgadywaniem. Punkt trafia wtedy do licznika „bez elementu rysunku".
@@ -86,27 +90,12 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
     // ta sama reguła sekcji co rysunek (`stationSnSectionBusRefs`). Stacja wielosekcyjna
     // nie jest już odmową, a wynik jednej sekcji nie trafia na drugą.
     // GPZ rysuje szyny sekcji własną kompozycją (odcinki niosą `busResultRef`, K5-A), nie
-    // odcinkiem `${busRef}#sn-bus`; jego sekcje SN to rekordy `gpz_sections` (szyna WN
-    // rozdzielni leży powyżej pasma nN, więc reguła sekcji stacji SN wzięłaby ją za sekcję
-    // i blok GPZ straciłby wiązanie).
-    const gpz = substation.station_type === 'gpz';
-    const sekcje = gpz
-      ? [...new Set((substation.gpz_sections ?? []).map((sec) => sec.bus_ref).filter((ref) => !!ref && buses.has(ref)))]
-      : stationSnSectionBusRefs(substation, buses);
-    if (!gpz) {
-      for (const busRef of sekcje) {
+    // odcinkiem `${busRef}#sn-bus`, więc nie dostaje wpisów szyn SN w moście (reguła sekcji
+    // stacji SN wzięłaby za sekcję jego szynę WN).
+    if (substation.station_type !== 'gpz') {
+      for (const busRef of stationSnSectionBusRefs(substation, buses)) {
         bridge.set(`${busRef}${STATION_SN_BUS_SUFFIX}`, { resultRef: busRef, kind: 'bus' });
       }
-    }
-    if (sekcje.length === 1) {
-      // Blok stacji na poziomie przeglądu (L0) niesie wartość STACYJNĄ —
-      // wielkość szyny SN stacji (dla zwarć: Ik″ punktu stacji; dla rozpływu:
-      // napięcie szyny). Ten sam punkt wyniku, inna kotwica — dlatego most
-      // wskazuje go z DWÓCH refów rysunku, a warstwa etykiet deduplikuje po
-      // `resultRef` (jedna etykieta na punkt w obrębie jednej sceny). Blok L0 stacji
-      // WIELOSEKCYJNEJ jest jednym symbolem dla kilku szyn — wskazanie jednej z nich
-      // byłoby wyborem z domysłu; wartości sekcji niosą odcinki szyn od L1.
-      bridge.set(stationRef, { resultRef: sekcje[0], kind: 'bus' });
     }
     if (nn.ref) {
       bridge.set(`${stationRef}${STATION_LV_BUS_SUFFIX}`, { resultRef: nn.ref, kind: 'bus' });

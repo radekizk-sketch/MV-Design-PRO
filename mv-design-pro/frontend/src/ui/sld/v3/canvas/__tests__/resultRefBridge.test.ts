@@ -4,7 +4,7 @@
  * wyniku. Testy pokrywają ILOCZYN CECH, w którym defekt mógłby się schować
  * (reguła KLASA, NIE INSTANCJA, pkt 2), a nie tylko przypadek z audytu:
  *
- *   rodzina elementu (szyna SN × szyna nN × blok stacji × transformator)
+ *   rodzina elementu (szyna SN × szyna nN × ref stacji (bez wpisu) × transformator)
  *   × rodzaj stacji (stacja SN/nN × GPZ)
  *   × jednoznaczność danych (jedna szyna/TR × wiele × brak)
  *
@@ -66,20 +66,16 @@ describe('resultRefBridge — most refów rysunek ↔ punkt wyniku', () => {
     expect(bridge.get(`${STACJA}#lv-bus`)).toEqual({ resultRef: STACJA_NN_BUS, kind: 'bus' });
   });
 
-  it('blok stacji (poziom przeglądu): ref stacji wskazuje TEN SAM punkt co szyna SN — wartość stacyjna na L0', () => {
-    expect(bridge.get(STACJA)).toEqual({ resultRef: STACJA_SN_BUS, kind: 'bus' });
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA, R1): rysunek nie ma symbolu stacji ani bloku
+  // GPZ, więc ref stacji nie jest kluczem mostu — wartość stacyjna stoi na odcinku szyny SN
+  // (wyżej). Wpis po refie stacji byłby kluczem bez elementu sceny (dawny blok L0).
+  it('ref stacji i ref GPZ NIE są kluczami mostu (rysunek nie ma symbolu stacji)', () => {
+    expect(bridge.has(STACJA)).toBe(false);
+    expect(bridge.has(GPZ)).toBe(false);
   });
 
   it('transformator stacji: symbol zakotwiczony na POLU o roli TR wskazuje transformator stacji', () => {
     expect(bridge.get(STACJA_POLE_TR)).toEqual({ resultRef: STACJA_TR, kind: 'transformer' });
-  });
-
-  it('GPZ: blok stacji wskazuje szynę SN rozdzielni (pola GPZ), nie szynę 110 kV', () => {
-    // Reguła „najwyższe napięcie" wskazałaby tu szynę WN; rysunek bloku GPZ na
-    // poziomie przeglądu reprezentuje rozdzielnię SN, więc most idzie za szyną
-    // POLA (`bus_ref` rekordów pól SN) — tą samą, z której kompozycja buduje
-    // odcinek szyny.
-    expect(bridge.get(GPZ)).toEqual({ resultRef: GPZ_SEKCJA_BUS, kind: 'bus' });
   });
 
   it('pola o roli innej niż TR nie wchodzą do mostu (brak fabrykacji transformatora na polu liniowym)', () => {
@@ -116,9 +112,9 @@ describe('resultRefBridge — ODMOWY zamiast zgadywania', () => {
 
   // GEOMETRIA-STACJI (Z-03): stacja dwusekcyjna NIE jest już odmową dla szyn — każda sekcja
   // (rekord `Bus` w `Substation.bus_refs`) ma własny odcinek `${busRef}#sn-bus` i własny punkt
-  // wyniku; odmową zostaje WYŁĄCZNIE blok L0 (jeden symbol dla dwóch szyn). Dawniej sekcje
+  // wyniku. Dawniej sekcje
   // wyprowadzano z `bus_ref` pól, a rysunek miał jeden odcinek szyny dla całej stacji.
-  it('stacja DWUSEKCYJNA: każda sekcja wiąże własną szynę, blok stacji L0 bez wiązania', () => {
+  it('stacja DWUSEKCYJNA: każda sekcja wiąże własną szynę', () => {
     const model = klon();
     const sekcja2 = `${STACJA_SN_BUS}-sekcja-2`;
     (model.buses as unknown[]).push({ ...(model.buses ?? []).find((b) => b.ref_id === STACJA_SN_BUS)!, ref_id: sekcja2 });

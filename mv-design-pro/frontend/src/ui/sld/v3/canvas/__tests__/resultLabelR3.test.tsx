@@ -17,6 +17,8 @@ import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3, layoutResultLabels } from '../SldCanvasV3';
+import { SKALA_KOMFORTU_CZYTANIA } from '../camera';
+import { kameraNaPunkcieSceny } from './kameraTestowa';
 import {
   applyResultLabelFilter,
   buildResultLabelsFromScene,
@@ -37,11 +39,19 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 const CANVAS_WIDTH = 1024;
 const CANVAS_HEIGHT = 640;
 
-const sceneL2 = buildSceneV3(enm, 2);
+const sceneL2 = buildSceneV3(enm);
 const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 const trRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta?.ownerRef)!.meta!.ownerRef!;
 const sourceRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)!.meta!.ownerRef!;
+/** Kamera przy skali komfortu czytania nad źródłem — etykiety wyników (klasa `wyniki`,
+ *  `canvas/gestoscInformacji.ts`) są rysowane tylko, gdy ich pismo jest czytelne na ekranie;
+ *  jedna scena (karta SLD-SKALA-I-NAWIGACJA) nie ma już wymuszonego poziomu szczegółu. */
+const symbolZrodla = sceneL2.symbols.find((s) => s.meta?.ownerRef === sourceRef)!;
+const KAMERA_CZYTANIA = kameraNaPunkcieSceny(sceneL2, { x: symbolZrodla.x, y: symbolZrodla.y }, SKALA_KOMFORTU_CZYTANIA, {
+  width: CANVAS_WIDTH,
+  height: CANVAS_HEIGHT,
+});
 const branchRef = sceneL2.segments.find(
   (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
 )!.meta!.ownerRef!;
@@ -170,7 +180,7 @@ describe('R3 — progi severity w layout (wym.9, 1:1 z backendu)', () => {
   it('placement.severity == severity elementu (mapowanie 1:1, zero progów w UI)', () => {
     const payload = richPayload({ [sourceRef]: 'CRITICAL', [branchRef]: 'WARNING', [trRef]: 'IMPORTANT' });
     const byRef = buildResultLabelsFromScene(sceneL2, payload, singleHop);
-    const layout = layoutResultLabels(sceneL2, byRef, [], 2);
+    const layout = layoutResultLabels(sceneL2, byRef, [], true);
     const bySeverity = new Map<string, string>();
     for (const p of layout.placements) bySeverity.set(p.ownerRef, p.severity);
     for (const a of layout.aggregates) for (const m of a.members) bySeverity.set(m.ownerRef, m.severity);
@@ -183,7 +193,7 @@ describe('R3 — progi severity w layout (wym.9, 1:1 z backendu)', () => {
     // Ustaw wszystkim severity, znajdź agregat i sprawdź jego severity == max(members).
     const payload = richPayload({ [sourceRef]: 'CRITICAL', [branchRef]: 'WARNING', [trRef]: 'IMPORTANT' });
     const byRef = buildResultLabelsFromScene(sceneL2, payload, singleHop);
-    const layout = layoutResultLabels(sceneL2, byRef, [], 2);
+    const layout = layoutResultLabels(sceneL2, byRef, [], true);
     const rank: Record<string, number> = { INFO: 0, WARNING: 1, IMPORTANT: 2, CRITICAL: 3 };
     for (const a of layout.aggregates) {
       const maxMember = a.members.reduce((m, x) => (rank[x.severity] > rank[m] ? x.severity : m), 'INFO');
@@ -218,8 +228,8 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        lodOverride={2}
         overlay={overlay}
+        cameraOverride={KAMERA_CZYTANIA}
         onResultLabelActivate={onActivate}
       />,
     );
@@ -248,7 +258,7 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
     const byRef = buildResultLabelsFromScene(sceneL2, soloSource(), singleHop);
     const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: byRef };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={KAMERA_CZYTANIA} />,
     );
     const label = container.querySelector('[data-testid^="sld-v3-result-label-"]');
     expect(label!.getAttribute('role')).toBeNull();
@@ -258,7 +268,7 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
     const byRef = buildResultLabelsFromScene(sceneL2, soloSource('CRITICAL'), singleHop);
     const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: byRef };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={KAMERA_CZYTANIA} />,
     );
     // Źródło CRITICAL renderuje się jako pojedyncza etykieta LUB (przy skupisku)
     // jako marker agregatu — oba niosą data-result-exceeded/severity.
@@ -274,7 +284,7 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
     const byRef = buildResultLabelsFromScene(sceneL2, soloSource(), singleHop);
     const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: byRef };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={KAMERA_CZYTANIA} />,
     );
     expect(container.querySelector('[data-result-exceeded="true"]')).toBeNull();
   });
@@ -287,7 +297,7 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
       provenance: { analysisTypeLabel: 'rozpływ mocy', runId: 'run-r3' },
     };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={KAMERA_CZYTANIA} />,
     );
     const badge = container.querySelector('[data-testid="sld-v3-overlay-provenance"]');
     expect(badge).toBeTruthy();
@@ -311,7 +321,7 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
       },
     };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={KAMERA_CZYTANIA} />,
     );
     const badge = container.querySelector('[data-testid="sld-v3-overlay-provenance"]');
     expect(badge).toBeTruthy();
@@ -327,7 +337,7 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
       provenance: { analysisTypeLabel: 'rozpływ mocy', runId: 'run-r3' },
     };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={KAMERA_CZYTANIA} />,
     );
     const badge = container.querySelector('[data-testid="sld-v3-overlay-provenance"]');
     expect(badge).toBeTruthy();
@@ -342,7 +352,7 @@ describe('R3 — inwariant geometrii ze stanami filtrów (wym.11/17)', () => {
   function renderWithFilter(filter: ResultLabelFilter) {
     const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: applyResultLabelFilter(byRef, filter) };
     return render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} cameraOverride={KAMERA_CZYTANIA} />,
     );
   }
 

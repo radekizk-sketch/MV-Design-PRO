@@ -34,7 +34,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { polaSnStacji } from '../../../../shared/polaStacji';
-import { branchPointCoverageGaps, buildSceneV3, type SceneLod } from '../buildScene';
+import { branchPointCoverageGaps, buildSceneV3 } from '../buildScene';
 import { interiorCrossings } from '../crossings';
 import { buildCanvasHitAreas } from '../../canvas/hitAreas';
 import { SYMBOL_DEFS } from '../../symbols/defs';
@@ -59,7 +59,6 @@ const stacjeWgRodzaju = (rodzaje: readonly string[]) =>
 const stacjeOsd = stacjeWgRodzaju(['inline', 'branch']);
 const stacjeKlientow = stacjeWgRodzaju(['terminal']);
 const punkty = enm.branch_points ?? [];
-const LODS: readonly SceneLod[] = [0, 1, 2];
 
 /** Symbol oczekiwany dla rodzaju punktu — kontrakt rozróżnialności rysunkowej. */
 const SYMBOL_PUNKTU: Readonly<Record<string, string>> = {
@@ -91,18 +90,16 @@ describe('sieć pokazowa — klient w odgałęzieniu (POMIAR-ODGAŁĘZIENIE)', (
     }
   });
 
-  for (const lod of LODS) {
-    it(`L${lod}: ciąg główny to WYŁĄCZNIE stacje OSD — klient nie leży w torze tranzytu`, () => {
-      const scene = buildSceneV3(enm, lod);
-      for (const ref of stacjeKlientow) {
-        expect(scene.meta.mainTrunkStationIds).not.toContain(ref);
-      }
-      expect([...scene.meta.mainTrunkStationIds].sort()).toEqual([...stacjeOsd].sort());
-    });
-  }
+  it(`ciąg główny to WYŁĄCZNIE stacje OSD — klient nie leży w torze tranzytu`, () => {
+    const scene = buildSceneV3(enm);
+    for (const ref of stacjeKlientow) {
+      expect(scene.meta.mainTrunkStationIds).not.toContain(ref);
+    }
+    expect([...scene.meta.mainTrunkStationIds].sort()).toEqual([...stacjeOsd].sort());
+  });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {
-    expect(JSON.stringify(buildSceneV3(enm, 2))).toBe(JSON.stringify(buildSceneV3(enm, 2)));
+    expect(JSON.stringify(buildSceneV3(enm))).toBe(JSON.stringify(buildSceneV3(enm)));
   });
 });
 
@@ -113,111 +110,107 @@ describe('sieć pokazowa — klient w odgałęzieniu (POMIAR-ODGAŁĘZIENIE)', (
  * nie znika stacja.
  */
 describe('ODG-RYSUNEK — punkty odgałęźne i ciągi za nimi na rysunku', () => {
-  for (const lod of LODS) {
-    it(`L${lod}: KAŻDY punkt odgałęźny narysowany, KAŻDA stacja za nim narysowana`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(branchPointCoverageGaps(scene, enm)).toEqual([]);
-      expect([...scene.meta.drawnBranchPointRefs].sort()).toEqual(
-        [...punkty.map((p) => p.ref_id)].sort(),
+  it(`KAŻDY punkt odgałęźny narysowany, KAŻDA stacja za nim narysowana`, () => {
+    const scene = buildSceneV3(enm);
+    expect(branchPointCoverageGaps(scene, enm)).toEqual([]);
+    expect([...scene.meta.drawnBranchPointRefs].sort()).toEqual(
+      [...punkty.map((p) => p.ref_id)].sort(),
+    );
+    for (const ref of stacjeKlientow) {
+      expect(scene.meta.drawnStationIds).toContain(ref);
+    }
+    // Licznik i tożsamość muszą mówić to samo (3 OSD + 2 klientów).
+    expect(scene.meta.stationCount).toBe(stacjeOsd.length + stacjeKlientow.length);
+    expect(scene.meta.lateralRunIds).toHaveLength(stacjeKlientow.length);
+  });
+
+  it(`żaden ciąg nie jest POMIJANY (komunikat luki znika)`, () => {
+    const scene = buildSceneV3(enm);
+    expect(scene.meta.stopNotes.filter((n) => n.includes('ciąg pominięty'))).toEqual([]);
+    expect(scene.meta.stopNotes.filter((n) => n.includes('bez symbolu na rysunku'))).toEqual([]);
+  });
+
+  it(`rodzaj punktu ma WŁASNY symbol (ZKSN ≠ słup rozgałęźny ≠ węzeł)`, () => {
+    const scene = buildSceneV3(enm);
+    for (const bp of punkty) {
+      const symbol = scene.symbols.find(
+        (s) => s.meta?.elementKind === 'branchPoint' && s.meta?.ownerRef === bp.ref_id,
       );
-      for (const ref of stacjeKlientow) {
-        expect(scene.meta.drawnStationIds).toContain(ref);
-      }
-      // Licznik i tożsamość muszą mówić to samo (3 OSD + 2 klientów).
-      expect(scene.meta.stationCount).toBe(stacjeOsd.length + stacjeKlientow.length);
-      expect(scene.meta.lateralRunIds).toHaveLength(stacjeKlientow.length);
-    });
+      expect(symbol, `punkt ${bp.ref_id} bez symbolu`).toBeDefined();
+      expect(symbol!.symbolId).toBe(SYMBOL_PUNKTU[bp.branch_point_type]);
+      // Rozróżnialność od zwykłej kropki węzłowej trasy.
+      expect(symbol!.symbolId).not.toBe('junction');
+    }
+    // Symbole obu rodzajów są RÓŻNE (iniekcja rodzaj → glif).
+    const uzyte = new Set(
+      scene.symbols.filter((s) => s.meta?.elementKind === 'branchPoint').map((s) => s.symbolId),
+    );
+    expect(uzyte.size).toBe(new Set(punkty.map((p) => p.branch_point_type)).size);
+  });
 
-    it(`L${lod}: żaden ciąg nie jest POMIJANY (komunikat luki znika)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.meta.stopNotes.filter((n) => n.includes('ciąg pominięty'))).toEqual([]);
-      expect(scene.meta.stopNotes.filter((n) => n.includes('bez symbolu na rysunku'))).toEqual([]);
-    });
-
-    it(`L${lod}: rodzaj punktu ma WŁASNY symbol (ZKSN ≠ słup rozgałęźny ≠ węzeł)`, () => {
-      const scene = buildSceneV3(enm, lod);
-      for (const bp of punkty) {
-        const symbol = scene.symbols.find(
-          (s) => s.meta?.elementKind === 'branchPoint' && s.meta?.ownerRef === bp.ref_id,
-        );
-        expect(symbol, `punkt ${bp.ref_id} bez symbolu`).toBeDefined();
-        expect(symbol!.symbolId).toBe(SYMBOL_PUNKTU[bp.branch_point_type]);
-        // Rozróżnialność od zwykłej kropki węzłowej trasy.
-        expect(symbol!.symbolId).not.toBe('junction');
-      }
-      // Symbole obu rodzajów są RÓŻNE (iniekcja rodzaj → glif).
-      const uzyte = new Set(
-        scene.symbols.filter((s) => s.meta?.elementKind === 'branchPoint').map((s) => s.symbolId),
-      );
-      expect(uzyte.size).toBe(new Set(punkty.map((p) => p.branch_point_type)).size);
-    });
-
-    it(`L${lod}: symbol punktu LEŻY NA TORZE magistrali, a tor jest w nim rozcięty`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const trunkRefs = new Set(enm.corridors?.[0]?.ordered_segment_refs ?? []);
-      for (const bp of punkty) {
-        const symbol = scene.symbols.find(
-          (s) => s.meta?.elementKind === 'branchPoint' && s.meta?.ownerRef === bp.ref_id,
-        )!;
-        const def = SYMBOL_DEFS[symbol.symbolId];
-        const srodek = { x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 };
-        // Któryś człon MAGISTRALI kończy się dokładnie w środku symbolu, a inny
-        // się w nim zaczyna — czyli punkt jest stykiem końców, nie glifem
-        // położonym na przewodzie (kanon §22.1 „kropka ⇔ realny węzeł").
-        const konce = scene.segments.filter((s) => {
-          const ref = (s.meta?.ownerRef ?? '').replace(/#.*$/, '');
-          if (!trunkRefs.has(ref)) return false;
-          const last = s.points[s.points.length - 1];
-          return last.x === srodek.x && last.y === srodek.y;
-        });
-        const poczatki = scene.segments.filter((s) => {
-          const ref = (s.meta?.ownerRef ?? '').replace(/#.*$/, '');
-          if (!trunkRefs.has(ref)) return false;
-          const first = s.points[0];
-          return first.x === srodek.x && first.y === srodek.y;
-        });
-        expect(konce.length, `punkt ${bp.ref_id}: brak członu kończącego się w punkcie`).toBeGreaterThan(0);
-        expect(poczatki.length, `punkt ${bp.ref_id}: brak członu zaczynającego się w punkcie`).toBeGreaterThan(0);
-      }
-    });
-
-    it(`L${lod}: punkt odgałęźny jest TRAFIALNY i ma własny rodzaj obiektu`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const areas = buildCanvasHitAreas({
-        symbols: scene.symbols,
-        segments: scene.segments,
-        labels: [],
-        resultMarkers: [],
-        scale: 1,
+  it(`symbol punktu LEŻY NA TORZE magistrali, a tor jest w nim rozcięty`, () => {
+    const scene = buildSceneV3(enm);
+    const trunkRefs = new Set(enm.corridors?.[0]?.ordered_segment_refs ?? []);
+    for (const bp of punkty) {
+      const symbol = scene.symbols.find(
+        (s) => s.meta?.elementKind === 'branchPoint' && s.meta?.ownerRef === bp.ref_id,
+      )!;
+      const def = SYMBOL_DEFS[symbol.symbolId];
+      const srodek = { x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 };
+      // Któryś człon MAGISTRALI kończy się dokładnie w środku symbolu, a inny
+      // się w nim zaczyna — czyli punkt jest stykiem końców, nie glifem
+      // położonym na przewodzie (kanon §22.1 „kropka ⇔ realny węzeł").
+      const konce = scene.segments.filter((s) => {
+        const ref = (s.meta?.ownerRef ?? '').replace(/#.*$/, '');
+        if (!trunkRefs.has(ref)) return false;
+        const last = s.points[s.points.length - 1];
+        return last.x === srodek.x && last.y === srodek.y;
       });
-      for (const bp of punkty) {
-        const area = areas.find((a) => a.ownerRef === bp.ref_id);
-        expect(area, `punkt ${bp.ref_id} bez obszaru trafienia`).toBeDefined();
-        expect(area!.klasa).toBe('punkt-odgalezny');
-      }
-    });
+      const poczatki = scene.segments.filter((s) => {
+        const ref = (s.meta?.ownerRef ?? '').replace(/#.*$/, '');
+        if (!trunkRefs.has(ref)) return false;
+        const first = s.points[0];
+        return first.x === srodek.x && first.y === srodek.y;
+      });
+      expect(konce.length, `punkt ${bp.ref_id}: brak członu kończącego się w punkcie`).toBeGreaterThan(0);
+      expect(poczatki.length, `punkt ${bp.ref_id}: brak członu zaczynającego się w punkcie`).toBeGreaterThan(0);
+    }
+  });
 
-    it(`L${lod}: zero skrzyżowań tras i zero przecięć wnętrz`, () => {
-      const scene = buildSceneV3(enm, lod);
-      expect(scene.crossings).toHaveLength(0);
-      expect(interiorCrossings(scene.segments)).toHaveLength(0);
+  it(`punkt odgałęźny jest TRAFIALNY i ma własny rodzaj obiektu`, () => {
+    const scene = buildSceneV3(enm);
+    const areas = buildCanvasHitAreas({
+      symbols: scene.symbols,
+      segments: scene.segments,
+      labels: [],
+      resultMarkers: [],
+      scale: 1,
     });
-  }
+    for (const bp of punkty) {
+      const area = areas.find((a) => a.ownerRef === bp.ref_id);
+      expect(area, `punkt ${bp.ref_id} bez obszaru trafienia`).toBeDefined();
+      expect(area!.klasa).toBe('punkt-odgalezny');
+    }
+  });
+
+  it(`zero skrzyżowań tras i zero przecięć wnętrz`, () => {
+    const scene = buildSceneV3(enm);
+    expect(scene.crossings).toHaveLength(0);
+    expect(interiorCrossings(scene.segments)).toHaveLength(0);
+  });
 
   it('L1/L2: punkt niesie NAZWĘ Z DANYCH (zero fabrykacji etykiety)', () => {
-    for (const lod of [1, 2] as SceneLod[]) {
-      const scene = buildSceneV3(enm, lod);
-      for (const bp of punkty) {
-        const label = scene.labels.find((l) => l.ownerRef === `${bp.ref_id}#name`);
-        expect(label, `punkt ${bp.ref_id} bez etykiety na L${lod}`).toBeDefined();
-        expect(label!.text).toBe(bp.name);
-        expect(label!.ownerKind).toBe('branch-point');
-      }
+    const scene = buildSceneV3(enm);
+    for (const bp of punkty) {
+      const label = scene.labels.find((l) => l.ownerRef === `${bp.ref_id}#name`);
+      expect(label, `punkt ${bp.ref_id} bez etykiety na`).toBeDefined();
+      expect(label!.text).toBe(bp.name);
+      expect(label!.ownerKind).toBe('branch-point');
     }
   });
 
   it('stacja klienta jest prezentowana jako KOŃCOWA (podpis rodzaju z jednej reguły)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     for (const ref of stacjeKlientow) {
       expect(
         scene.labels.some((l) => l.ownerRef.startsWith(`${ref}#`) && l.text === 'stacja końcowa'),

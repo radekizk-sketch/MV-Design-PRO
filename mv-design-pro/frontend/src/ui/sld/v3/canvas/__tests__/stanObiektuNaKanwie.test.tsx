@@ -57,11 +57,11 @@ function zeStanem(enm: EnergyNetworkModel, stan: StanObiektu | null): EnergyNetw
 }
 
 function kanwa(enm: EnergyNetworkModel) {
-  return render(<SldCanvasV3 snapshot={enm} width={1600} height={1000} lodOverride={2} animateLodTransitions={false} />).container;
+  return render(<SldCanvasV3 snapshot={enm} width={1600} height={1000} />).container;
 }
 
 function symboleAparatow(enm: EnergyNetworkModel, pochodzenie: Pochodzenie) {
-  return buildSceneV3(enm, 2).symbols.filter((s) => s.meta?.apparatusOrigin === pochodzenie && s.meta.testId);
+  return buildSceneV3(enm).symbols.filter((s) => s.meta?.apparatusOrigin === pochodzenie && s.meta.testId);
 }
 
 describe('stan obiektu na kanwie — iloczyn kompozycja × pochodzenie × stan', () => {
@@ -90,7 +90,7 @@ describe('stan obiektu na kanwie — iloczyn kompozycja × pochodzenie × stan',
     const enm = zeStanem(model('stacja'), 'ISTNIEJACY');
     for (const bay of enm.bays ?? []) for (const d of bay.primary_devices ?? []) d.stan_obiektu = 'PROJEKTOWANY';
     for (const g of enm.branches ?? []) delete (g as { stan_obiektu?: StanObiektu | null }).stan_obiektu;
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const wgPochodzenia = (p: Pochodzenie) => new Set(scena.symbols.filter((s) => s.meta?.apparatusOrigin === p).map((s) => s.meta?.stanObiektu));
     expect(wgPochodzenia('rekord_pola')).toEqual(new Set(['PROJEKTOWANY']));
     expect(wgPochodzenia('galaz_pola')).toEqual(new Set(['ISTNIEJACY']));
@@ -98,7 +98,7 @@ describe('stan obiektu na kanwie — iloczyn kompozycja × pochodzenie × stan',
 
   it('symbol bez rekordu aparatu (stacja, szyna, transformator, sylwetka) — bez atrybutu i bez podpowiedzi stanu', () => {
     const enm = zeStanem(model('stacja'), 'ISTNIEJACY');
-    const bezRekordu = buildSceneV3(enm, 2).symbols.filter((s) => s.meta?.apparatusOrigin == null && s.meta?.testId);
+    const bezRekordu = buildSceneV3(enm).symbols.filter((s) => s.meta?.apparatusOrigin == null && s.meta?.testId);
     expect(bezRekordu.length).toBeGreaterThan(0);
     const dom = kanwa(enm);
     for (const s of bezRekordu) {

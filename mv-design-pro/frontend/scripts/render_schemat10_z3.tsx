@@ -1,6 +1,6 @@
 /**
  * SCHEMAT-10 Z3 (AUDYT_POWYKONAWCZY_SLD §Z3 + dług W1c) — dowód wizualny
- * „oznaczenia aparatów L2 z REALNYCH danych pól" (prymat danych §12.1, fallback
+ * „oznaczenia aparatów z REALNYCH danych pól" (prymat danych §12.1, fallback
  * konwencji §19.1). Jedna TA SAMA stacja referencyjna renderowana produkcyjną
  * kanwą `SldCanvasV3` w DWÓCH wariantach, obok siebie:
  *   - LEWO „POLE Z DANYMI": snapshot macierzy W1c — pole niesie
@@ -24,21 +24,19 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { EnergyNetworkModel } from '../src/types/enm';
 import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene';
-import type { SceneLod } from '../src/ui/sld/v3/scene/buildScene';
 import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
 import { buildW1cMatrixFixture } from '../src/ui/sld/v3/scene/__tests__/fixtures/w1cMatrixCatalog';
 
 const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 mkdirSync(OUT, { recursive: true });
 
-const LOD: SceneLod = 2;
 const CONVENTION = /^(Q\d+|QE\d+|T\d+)(·\d+)?$/;
 
 const { enm: enmData, baseEnm: enmConv, targets } = buildW1cMatrixFixture();
 
 // Cel: stacja z polem niosącym oznaczenie producenckie SPOZA wzorca §19.1
 // (FUSE→„F1" albo TRANSFORMER_DEVICE→„TR") — najmocniejszy dowód prymatu danych.
-const dataScene = buildSceneV3(enmData, LOD);
+const dataScene = buildSceneV3(enmData);
 function pickTarget(): { stationRef: string; fieldRef: string; texts: string[] } {
   for (const t of targets) {
     const hasNonConv = t.case.devices.some((d) => d.kind === 'FUSE' || d.kind === 'TRANSFORMER_DEVICE');
@@ -68,7 +66,7 @@ function anchorRect(scene: ReturnType<typeof buildSceneV3>): { x: number; y: num
   }
   throw new Error(`Z3: kotwica stacji ${target.stationRef} nieobecna`);
 }
-const convScene = buildSceneV3(enmConv, LOD);
+const convScene = buildSceneV3(enmConv);
 const aData = anchorRect(dataScene);
 const aConv = anchorRect(convScene);
 const key = (r: { x: number; y: number; width: number }) => `${r.x},${r.y},${r.width}`;
@@ -139,7 +137,7 @@ function panel(
 ): string {
   const win = windowFor(scene, anchor);
   const inner = renderToStaticMarkup(
-    <SldCanvasV3 snapshot={snapshot} width={PANEL_W} height={PANEL_H} lodOverride={LOD} />,
+    <SldCanvasV3 snapshot={snapshot} width={PANEL_W} height={PANEL_H} />,
   );
   const openTag = inner.match(/^<svg\b[^>]*>/)?.[0];
   if (!openTag) throw new Error('Z3: brak root <svg> w renderze kanwy');
@@ -163,7 +161,7 @@ const convText = convLabels.map((l) => l.text).slice(0, 8).join(' · ') || '(pol
 
 const banner =
   `<text x="24" y="40" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#E8EEF4">` +
-  `SCHEMAT-10 Z3 — oznaczenia aparatów L2 z realnych danych pól (prymat danych §12.1, fallback konwencji §19.1)</text>` +
+  `SCHEMAT-10 Z3 — oznaczenia aparatów z realnych danych pól (prymat danych §12.1, fallback konwencji §19.1)</text>` +
   `<text x="24" y="66" font-family="Inter, system-ui, sans-serif" font-size="14" fill="#9FB3C8">` +
   `Ta sama stacja ${target.stationRef} · to samo pole ${target.fieldRef} · Z3 zmienia WYŁĄCZNIE treść etykiet aparatów (nie geometrię)</text>` +
   `<text x="24" y="90" font-family="Inter, system-ui, sans-serif" font-size="13" fill="#7FB8E8">` +

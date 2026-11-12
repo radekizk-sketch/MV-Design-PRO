@@ -8,7 +8,6 @@ import { rectsOverlap, type V3Rect } from '../../core/grid';
 import { LABEL_TYPOGRAPHY, MIN_TEXT_SCREEN_PX } from '../../core/text';
 import { SHEET_WIDTH_QUANTUM } from '../../layout/sheetRows';
 import { computeLegendRowLayout, SheetFrame, zoneRowBands, type SheetLegendEntry } from '../Frame';
-import { SCENE_LOD_LABELS_PL, type SceneLod } from '../../scene/buildScene';
 
 /**
  * S9-7 (audyt C-4): KOLUMNY stref liczone KWANTEM FORMATU ARKUSZA
@@ -70,14 +69,13 @@ describe('V3 sheet — SheetFrame (S9-7 §2: strefy z FORMATU ARKUSZA)', () => {
   it('S9-7: napisy aparatu arkusza mają STAŁY rozmiar ekranowy (iloczyn {skala} × {rodzaj napisu})', () => {
     for (const scale of [0.05, 0.13, 1, 8]) {
       const { container } = render(
-        <SheetFrame width={2048} height={800} scaleLabel="wg kamery" lodLabel="Przegląd sieci" cameraScale={scale} />,
+        <SheetFrame width={2048} height={800} scaleLabel="wg kamery" cameraScale={scale} />,
       );
       const naEkranie = (sel: string): number =>
         Number(container.querySelector(sel)?.getAttribute('font-size')) * scale;
       expect(naEkranie('[data-testid="sld-sheet-zone-col-1"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t1.fontSize, 6);
       expect(naEkranie('[data-testid="sld-sheet-zone-row-A"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t1.fontSize, 6);
       expect(naEkranie('[data-testid="sld-sheet-scale-label"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t2.fontSize, 6);
-      expect(naEkranie('[data-testid="sld-sheet-lod-label"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t2.fontSize, 6);
       // Twarda podłoga odbioru (S9-7) spełniona na każdej z tych skal.
       expect(naEkranie('[data-testid="sld-sheet-zone-col-1"]')).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
       cleanup();
@@ -112,26 +110,11 @@ describe('V3 sheet — SheetFrame (etykieta skali)', () => {
   });
 });
 
-describe('SCHEMAT-10 S1 (V12K-135) — JEDEN słownik LOD (pasek statusu arkusza)', () => {
-  it('SCENE_LOD_LABELS_PL ma DOKŁADNIE 3 poziomy z nazwami macierzy prawdy LOD §3', () => {
-    // Koniec rozjazdu D1/D9 „dwa słowniki LOD" — v3 ma JEDEN słownik 3-poziomowy.
-    expect(SCENE_LOD_LABELS_PL[0]).toBe('Przegląd sieci');
-    expect(SCENE_LOD_LABELS_PL[1]).toBe('Widok operatorski');
-    expect(SCENE_LOD_LABELS_PL[2]).toBe('Stacje i aparatura');
-    expect(Object.keys(SCENE_LOD_LABELS_PL)).toHaveLength(3);
-  });
-
-  it('pasek statusu arkusza renderuje nazwę poziomu z JEDNEGO słownika (każdy LOD)', () => {
-    for (const lod of [0, 1, 2] as SceneLod[]) {
-      const { container } = render(
-        <SheetFrame width={800} height={400} scaleLabel="wg kamery" lodLabel={SCENE_LOD_LABELS_PL[lod]} />,
-      );
-      const label = container.querySelector('[data-testid="sld-sheet-lod-label"]');
-      expect(label?.textContent).toBe(`Widok: ${SCENE_LOD_LABELS_PL[lod]}`);
-    }
-  });
-
-  it('bez lodLabel: pasek LOD nieobecny (zgodność wstecz)', () => {
+describe('jedna scena — pasek arkusza bez nazwy poziomu szczegółu', () => {
+  // Dawny słownik nazw poziomów szczegółu (SCHEMAT-10 S1) i pasek „Widok: …" zniknęły razem
+  // z poziomami szczegółu (karta SLD-SKALA-I-NAWIGACJA R1). Intencja „jeden słownik" jest
+  // spełniona trywialnie — nie ma słownika; pilnujemy, że pasek nie wraca.
+  it('arkusz nie rysuje paska poziomu szczegółu', () => {
     const { container } = render(<SheetFrame width={800} height={400} scaleLabel="1:1000" />);
     expect(container.querySelector('[data-testid="sld-sheet-lod-label"]')).toBeFalsy();
   });

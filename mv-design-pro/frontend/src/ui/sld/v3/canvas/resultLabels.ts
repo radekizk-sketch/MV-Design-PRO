@@ -21,12 +21,13 @@
  * (`SldCanvasV3.tsx` `computeResultLabelPlacements`/`SceneResultLabelNode`)
  * dokłada osobną warstwę SVG NAD sceną — `scene.symbols`/`scene.segments`/
  * `scene.labels` nietknięte (dowód inwariancji: test `sldCanvasV3.test.tsx`,
- * rozszerzony w R1 o ON/OFF × L0/L1/L2).
+ * rozszerzony w R1 o ON/OFF × skala).
  *
- * LOD (wym. 5): budowniczy produkuje PEŁNY zestaw linii (kolejność = priorytet);
- * ZWIJANIE do L0/L1/L2 robi renderer efektywnym LOD kamery (histereza S8) przez
- * `resultLabelLinesForLod` — mapa etykiet jest LOD-niezależna (tożsamość po
- * `ownerRef`), a poziom szczegółu wybiera się dopiero przy rysowaniu.
+ * Gęstość (wym. 5): budowniczy produkuje PEŁNY zestaw linii (kolejność = priorytet);
+ * renderer przycina do `RESULT_LABEL_MAX_LINES` (`resultLabelLines`) i pokazuje
+ * etykietę, gdy jej pismo jest czytelne przy skali kamery (klasa `wyniki`,
+ * `canvas/gestoscInformacji.ts`) — mapa etykiet nie zależy od skali (tożsamość
+ * po `ownerRef`).
  *
  * Przestrzeń refów (identyczna co pozostałe kanały, patrz `overlay.ts` nagłówek):
  * transformator/źródło/DER — `meta.ownerRef` = ENM `ref_id` = klucz
@@ -78,14 +79,14 @@ export interface ResultLabelComparison {
 }
 
 /** Wpis etykiety wynikowej jednego elementu — linie w kolejności priorytetu
- *  (kotwica z `ownerRef` w rendererze; zwijanie LOD w rendererze). Pusty
+ *  (kotwica z `ownerRef` w rendererze; przycięcie linii i czytelność w rendererze). Pusty
  *  (`lines.length===0`) NIE jest emitowany. */
 export interface ResultLabelEntry {
   readonly ownerRef: string;
   /** S9-2 — ref PUNKTU WYNIKU (klucz `payload.elements`), z którego zbudowano
    *  linie. Różny od `ownerRef` wszędzie tam, gdzie rysunek nazywa obiekt
-   *  refem kompozytowym (szyna sekcji stacji `${busRef}#sn-bus`, blok stacji na
-   *  L0, symbol transformatora zakotwiczony na polu) — patrz
+   *  refem kompozytowym (szyna sekcji stacji `${busRef}#sn-bus`,
+   *  symbol transformatora zakotwiczony na polu) — patrz
    *  `resultRefBridge.ts`. Nośnik tożsamości dla dedupu (jedna etykieta na
    *  punkt) i dla rachunku pokrycia (`summarizeResultPointCoverage`). */
   readonly resultRef: string;
@@ -169,9 +170,9 @@ const SYMBOL_KIND_TO_LABEL_KIND: Readonly<Record<string, ResultLabelKind>> = {
 };
 
 /**
- * S9-2 — klasy symboli sceny DOPUSZCZONE do warstwy wynikowej. Poza rodzinami
- * z tabeli wyżej dochodzi `station`: zwinięty blok stacji na poziomie przeglądu
- * (L0), który — przez most refów — niesie wartość STACYJNĄ (szyna SN stacji).
+ * S9-2 — klasy symboli sceny DOPUSZCZONE do warstwy wynikowej (rodziny z tabeli
+ * wyżej). Rysunek nie ma symbolu stacji (jedna scena, karta SLD-SKALA-I-NAWIGACJA):
+ * wartość stacyjna stoi na odcinku szyny SN, więc klasy `station` tu nie ma.
  * `apparatus` NIE jest tu wymieniony celowo: symbol aparatu pola dzieli
  * `ownerRef` z polem, więc bez tej bramy etykieta transformatora stacji mogłaby
  * zakotwiczyć się na rozłączniku zamiast na symbolu transformatora.
@@ -180,7 +181,6 @@ const LABELLED_SYMBOL_KINDS: ReadonlySet<string> = new Set([
   'transformer',
   'source',
   'der',
-  'station',
 ]);
 
 /**
@@ -226,8 +226,8 @@ export function resultRefForSegment(
  * (klucze `orientedSegmentRefs`) — jedyne przęsła z jednoznaczną tożsamością
  * gałęzi, dopuszczone do etykiety (spójnie z bramką flow).
  * `bridge` (S9-2, `resultRefBridge.ts`): most refów rysunek → punkt wyniku dla
- * elementów, których rysunek nazywa INACZEJ niż model (szyny stacji, blok
- * stacji na L0, transformator stacji zakotwiczony na polu). Brak mostu ⇒
+ * elementów, których rysunek nazywa INACZEJ niż model (szyny stacji,
+ * transformator stacji zakotwiczony na polu). Brak mostu ⇒
  * zachowanie sprzed karty (`meta.busResultRef` / `ownerRef`).
  */
 export function buildResultLabelsFromScene(
@@ -245,7 +245,7 @@ export function buildResultLabelsFromScene(
   // S9-2: JEDEN dedup dla całej sceny — po refie PUNKTU WYNIKU, nie po refie
   // rysunku. Domyka dotychczasowy dedup szyn GPZ (sekcja rysowana jako
   // główna+rezerwowa+domknięcie ringu dzieli jeden `busResultRef`) i obejmuje
-  // przypadki mostu (blok stacji L0 i odcinek szyny SN wskazują TEN SAM punkt).
+  // przypadki mostu (dwa elementy rysunku wskazujące TEN SAM punkt wyniku).
   const seenResultRefs = new Set<string>();
   const emit = (ownerRef: string, resultRef: string, kind: ResultLabelKind): void => {
     if (entries[ownerRef] || seenResultRefs.has(resultRef)) return;
@@ -260,8 +260,8 @@ export function buildResultLabelsFromScene(
     const ownerRef = symbol.meta?.ownerRef;
     if (!elementKind || !ownerRef || !LABELLED_SYMBOL_KINDS.has(elementKind)) continue;
     // MOST REFÓW (S9-2) ma pierwszeństwo: symbol transformatora stacji jest
-    // zakotwiczony na polu (`…/sn_field/003`), a zwinięty blok stacji na L0 na
-    // refie stacji — oba wskazują punkt wyniku, którego rysunek nie nazywa.
+    // zakotwiczony na polu (`…/sn_field/003`) — wskazuje punkt wyniku, którego
+    // rysunek nie nazywa.
     const binding = bridge?.get(ownerRef);
     const labelKind = binding?.kind ?? SYMBOL_KIND_TO_LABEL_KIND[elementKind];
     if (!labelKind) continue;
@@ -544,7 +544,7 @@ export type { EnergyNetworkModel };
  * GPZ-PARYTET: refy punktów wyniku, które scena pokazuje w adnotacjach GPZ —
  * pola z kart tabeli „Pola GPZ" (`Bay.ref_id`) i sam GPZ (`Substation.ref_id`,
  * wiersz bilansu w belce nagłówka). Pusty zbiór, gdy scena nie ma adnotacji GPZ
- * (brak GPZ albo L0, gdzie blok jest zwinięty).
+ * (brak GPZ).
  */
 export function resultPointsInGpzTable(scene: SceneV3 | null): ReadonlySet<string> {
   const refs = new Set<string>();

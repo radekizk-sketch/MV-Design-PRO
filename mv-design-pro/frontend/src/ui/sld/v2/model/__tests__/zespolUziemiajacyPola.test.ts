@@ -167,7 +167,7 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
           expect(kolumny[0] + szer + measureLabelWidth('dławik 100 A', KLASA_ETYKIETY_APARATU_GPZ)).toBeLessThan(kolumny[1]);
         }
         // Kropki węzłów punktu neutralnego: ogranicznik i każde zejście poza ostatnim (narożnik).
-        const scena = buildSceneV3(enm, 2);
+        const scena = buildSceneV3(enm);
         const yPrzewodu = scena.segments.find((s) => s.meta?.ownerRef === `${ZU.ref_id}#zespol-punkt-neutralny`)!.points[0].y;
         const kropki = scena.symbols.filter(
           (s) => s.symbolId === 'junction' && String(s.meta?.testId ?? '').endsWith(`-${yPrzewodu}`),

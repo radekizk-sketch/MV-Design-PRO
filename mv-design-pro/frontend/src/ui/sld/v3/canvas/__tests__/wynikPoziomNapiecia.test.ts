@@ -41,7 +41,7 @@ const enm = (
   ) as { readonly enm: EnergyNetworkModel }
 ).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 const singleHop = new Set(orientedSegmentRefs(enm).keys());
 const bridge = buildResultRefBridge(enm);
 const busVoltageByRef = new Map((enm.buses ?? []).map((b) => [b.ref_id, b.voltage_kv]));

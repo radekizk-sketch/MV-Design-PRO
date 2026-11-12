@@ -59,7 +59,6 @@ function makeScene(partial: {
     crossings: partial.crossings ?? [],
     bbox: partial.bbox ?? { x: 0, y: 0, width: 0, height: 0 },
     meta: {
-      lod: 2,
       stationCount: 0,
       gpzId: null,
       parityKeys: [],
@@ -153,25 +152,21 @@ describe('S6 — poprawność metryk funkcji kosztu (§3)', () => {
 });
 
 describe('S6 — §11(c) idempotencja kompletu metryk na fixturze referencyjnej', () => {
-  for (const lod of [0, 1, 2] as const) {
-    it(`LOD ${lod}: dwa biegi ⇒ identyczny raport metryk`, () => {
-      const a = layoutMetricsReport(buildSceneV3(enm, lod));
-      const b = layoutMetricsReport(buildSceneV3(enm, lod));
-      expect(a).toEqual(b);
-    });
-  }
+  it(`dwa biegi ⇒ identyczny raport metryk`, () => {
+    const a = layoutMetricsReport(buildSceneV3(enm));
+    const b = layoutMetricsReport(buildSceneV3(enm));
+    expect(a).toEqual(b);
+  });
 });
 
 describe('S6 — §3 twarde metryki jakości na fixturze referencyjnej = 0 (baza czysta)', () => {
-  for (const lod of [0, 1, 2] as const) {
-    it(`LOD ${lod}: 0 kolizji etykiet / 0 przecięć poddrzew / 0 nie-ortogonalnych / 0 niejednoznacznych`, () => {
-      const m = layoutMetricsReport(buildSceneV3(enm, lod));
-      expect(m.labelCollisionCount).toBe(0);
-      expect(m.subtreeIntersectionCount).toBe(0);
-      expect(m.nonOrthogonalSegmentCount).toBe(0);
-      expect(m.ambiguousConnectionCount).toBe(0);
-      // Światło ≥ kontraktowe minimum (GRID = 8 px) — brak sklejeń gabarytów.
-      expect(m.minimumClearance).toBeGreaterThanOrEqual(8);
-    });
-  }
+  it(`0 kolizji etykiet / 0 przecięć poddrzew / 0 nie-ortogonalnych / 0 niejednoznacznych`, () => {
+    const m = layoutMetricsReport(buildSceneV3(enm));
+    expect(m.labelCollisionCount).toBe(0);
+    expect(m.subtreeIntersectionCount).toBe(0);
+    expect(m.nonOrthogonalSegmentCount).toBe(0);
+    expect(m.ambiguousConnectionCount).toBe(0);
+    // Światło ≥ kontraktowe minimum (GRID = 8 px) — brak sklejeń gabarytów.
+    expect(m.minimumClearance).toBeGreaterThanOrEqual(8);
+  });
 });

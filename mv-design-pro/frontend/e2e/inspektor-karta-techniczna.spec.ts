@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { katalogZrzutow } from './katalogZrzutow';
 import { BACKEND_BASE, otworzAplikacje, siecKadrow, ustawMotyw } from './siecKadrowStacji';
 import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
+import { selektorUchwytuStacji } from './skalaKamery';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'k6-inspektor'));
@@ -74,14 +75,15 @@ async function enmPrzypadku(page: Page, caseId: string): Promise<Enm> {
   return (await odpowiedz.json()) as Enm;
 }
 
-/** Natywny klik myszy w środek bloku stacji na planie sieci (L0). */
+/** Natywny klik myszy w środek napisu identyfikacji stacji (uchwyt stacji jednej sceny, karta
+ *  SLD-SKALA-I-NAWIGACJA R1 — dawny blok stacji planu sieci L0 nie istnieje). */
 async function kliknijStacje(page: Page, stacjaRef: string): Promise<void> {
-  const blok = page.locator(`[data-testid="sld-v3-l0-${stacjaRef}"]`);
+  const blok = page.locator(selektorUchwytuStacji(stacjaRef));
   await expect(blok).toBeAttached({ timeout: 30000 });
   // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
   await czekajNaStabilnaGeometrie(blok);
   const ramka = await blok.boundingBox();
-  expect(ramka, 'blok stacji ma ramkę na ekranie').not.toBeNull();
+  expect(ramka, 'napis stacji ma ramkę na ekranie').not.toBeNull();
   await page.mouse.click(ramka!.x + ramka!.width / 2, ramka!.y + ramka!.height / 2);
 }
 
@@ -120,10 +122,10 @@ async function naPierwszymEkranie(tresc: Locator, element: Locator, opis: string
   expect(ramka!.y, `${opis}: początek na pierwszym ekranie`).toBeLessThan(okno!.y + okno!.height);
 }
 
-/** Środek bloku stacji na planie sieci (L0) — punkt, wokół którego przybliża kółko myszy. */
+/** Środek napisu identyfikacji stacji — punkt, wokół którego przybliża kółko myszy. */
 async function srodekStacji(page: Page, stacjaRef: string): Promise<{ x: number; y: number }> {
-  const ramka = await page.locator(`[data-testid="sld-v3-l0-${stacjaRef}"]`).boundingBox();
-  expect(ramka, 'blok stacji ma ramkę na ekranie').not.toBeNull();
+  const ramka = await page.locator(selektorUchwytuStacji(stacjaRef)).boundingBox();
+  expect(ramka, 'napis stacji ma ramkę na ekranie').not.toBeNull();
   return { x: ramka!.x + ramka!.width / 2, y: ramka!.y + ramka!.height / 2 };
 }
 
@@ -232,19 +234,19 @@ test('K6 — karta techniczna stacji na pierwszym ekranie, szerokość inspektor
   await expect(szeroki).toHaveAttribute('aria-pressed', 'true');
   expect(await szerokosc(inspektor)).toBe(560);
   // Kanwa SLD używalna przy 1440×900 w trybie szerokim: włączenie trybu nie przestawia kamery
-  // samoczynnie, a każda stacja planu sieci (blok L0) leży w całości w widocznej kanwie
-  // (i przyjmuje klik — krok 4 niżej).
-  const blokiStacji = (seed.enm.substations ?? []).filter((s) => s.station_type !== 'gpz').map((s) => `sld-v3-l0-${s.ref_id}`);
+  // samoczynnie, a każda stacja planu sieci (jej napis identyfikacji — uchwyt stacji jednej
+  // sceny) leży w całości w widocznej kanwie (i przyjmuje klik — krok 4 niżej).
+  const blokiStacji = (seed.enm.substations ?? []).filter((s) => s.station_type !== 'gpz').map((s) => selektorUchwytuStacji(s.ref_id));
   expect(blokiStacji).toHaveLength(4);
   await expect
     .poll(
       async () =>
-        page.evaluate((idBlokow) => {
+        page.evaluate((selektory) => {
           const kanwaEl = document.querySelector('svg[data-testid="sld-canvas-v3"]');
           if (!kanwaEl) return 'brak kanwy';
           const k = kanwaEl.getBoundingClientRect();
-          const bloki = idBlokow
-            .map((id) => document.querySelector(`[data-testid="${id}"]`))
+          const bloki = selektory
+            .map((selektor) => document.querySelector(selektor))
             .filter((el): el is Element => el !== null);
           const poza = bloki.filter((el) => {
             const r = el.getBoundingClientRect();

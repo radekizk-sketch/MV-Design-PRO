@@ -26,6 +26,8 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useAppStateStore } from '../../../../app-state';
+import { SKALA_KOMFORTU_CZYTANIA } from '../camera';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import {
   useRawResultOverlayStore,
@@ -71,10 +73,15 @@ afterEach(() => {
   useAppStateStore.getState().reset();
 });
 
-function renderKanwe(lod: 0 | 1 | 2): HTMLElement {
+/** Kanwa w przestrzeni roboczej. `czytanie` — po renderze powiększenie natywnym kółkiem do skali
+ *  komfortu czytania: etykiety wyników (klasa `wyniki`, `canvas/gestoscInformacji.ts`) są
+ *  rysowane tylko, gdy ich pismo jest czytelne (jedna scena, karta SLD-SKALA-I-NAWIGACJA R3);
+ *  `false` — widok startowy (dopasowanie całej sieci). */
+function renderKanwe(czytanie = true): HTMLElement {
   const { container } = render(
-    <SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={lod} />,
+    <SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />,
   );
+  if (czytanie) powiekszKolkiemDoSkali(container, SKALA_KOMFORTU_CZYTANIA);
   return container;
 }
 
@@ -94,31 +101,36 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
     useRawResultOverlayStore.getState().setPayload(zwarcie);
   });
 
-  it('L2: liczba etykiet wynikowych > 0, a treść niesie Ik″ punktów biegu (rysunek po biegu RÓŻNI się od rysunku przed biegiem)', () => {
+  it('rysunek po biegu RÓŻNI się od rysunku przed biegiem: w widoku startowym (dopasowanie) znaczniki punktów zwarcia, przy skali czytania etykiety z Ik″', () => {
     const przedBiegiem = (() => {
       useRawResultOverlayStore.getState().clear();
-      const container = renderKanwe(2);
-      const stan = { etykiety: liczbaEtykiet(container), tresc: trescWarstwyWynikowej(container) };
+      const container = renderKanwe(false);
+      const stan = {
+        znaczniki: container.querySelectorAll('[data-testid="sld-v3-fault-point-marker"]').length,
+        etykiety: liczbaEtykiet(container),
+      };
       cleanup();
       return stan;
     })();
-    expect(przedBiegiem.etykiety).toBe(0);
+    expect(przedBiegiem).toEqual({ znaczniki: 0, etykiety: 0 });
 
     useRawResultOverlayStore.getState().setPayload(zwarcie);
-    const container = renderKanwe(2);
+    const przeglad = renderKanwe(false);
+    expect(przeglad.querySelectorAll('[data-testid="sld-v3-fault-point-marker"]').length).toBeGreaterThan(0);
+    cleanup();
+    const container = renderKanwe();
     expect(liczbaEtykiet(container)).toBeGreaterThan(0);
     expect(trescWarstwyWynikowej(container)).toContain('Ik″');
-    expect(trescWarstwyWynikowej(container)).not.toBe(przedBiegiem.tresc);
   });
 
-  it('L0 (poziom przeglądu): etykiety wynikowe SĄ — wartość stacyjna, jedna linia', () => {
-    const container = renderKanwe(0);
-    expect(liczbaEtykiet(container)).toBeGreaterThan(0);
-    expect(trescWarstwyWynikowej(container)).toContain('Ik″');
-  });
+  // Dawny przypadek „L0 (poziom przeglądu): etykiety wynikowe SĄ" (audyt 2026-08, W-1: rysunek
+  // całej sieci po biegu nie może wyglądać jak przed biegiem) pokrywa teraz przypadek wyżej: w
+  // jednej scenie (karta SLD-SKALA-I-NAWIGACJA R3) pismo wyników przy dopasowaniu całej sieci
+  // jest nieczytelne, więc przegląd różnią znaczniki punktów zwarcia (kształt, nie napis), a
+  // wartości Ik″ pojawiają się przy skali, na której da się je przeczytać.
 
   it('ZNACZNIK PUNKTU ZWARCIA: każdy punkt biegu widoczny na scenie dostaje znacznik (dotąd znacznik wymagał osobnego kliknięcia z ekranu zwarć)', () => {
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     const znaczniki = container.querySelectorAll('[data-testid="sld-v3-fault-point-marker"]');
     expect(znaczniki.length).toBeGreaterThan(0);
     const refy = [...znaczniki].map((node) => node.getAttribute('data-fault-point-owner-ref'));
@@ -126,13 +138,13 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
   });
 
   it('WYNIK ROZPŁYWOWY nie podszywa się pod zwarciowy: bieg zwarciowy nie rysuje strzałek przepływu mocy', () => {
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     expect(container.querySelectorAll('[data-testid^="sld-v3-flow-arrow-"]').length).toBe(0);
   });
 
   it('POCHODZENIE + POKRYCIE w panelu: przebieg biegu i rachunek „X z Y punktów" (panel otwarty realnym klikiem)', async () => {
     const uzytkownik = userEvent.setup();
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     // 4 z 10: trzy szyny schematu SN i szyna WN GPZ (karta GPZ-MODEL: równoważnik 110 kV
     // z transformatorem WN/SN, więc w modelu jest realna szyna WN, a solver liczy w niej
@@ -150,7 +162,7 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
   it('NIEAKTUALNOŚĆ: bieg policzony na starszej rewizji modelu wyszarza warstwę (jeden predykat świeżości biegu — `swiezoscBiegu`)', () => {
     // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
     zasiejBiegiNieaktualne([{ id: zwarcie.run_id, analysisType: 'SC_3F' }]);
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     expect(container.querySelector('[data-testid="sld-v3-result-stale-badge"]')).not.toBeNull();
   });
 });
@@ -161,7 +173,7 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
   });
 
   it('L2: etykiety niosą wielkości rozpływu (napięcie szyny / obciążenie przęsła) — nie podpisy zwarciowe', () => {
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     expect(liczbaEtykiet(container)).toBeGreaterThan(0);
     const tresc = trescWarstwyWynikowej(container);
     expect(tresc).not.toContain('Ik″');
@@ -169,13 +181,13 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
   });
 
   it('STRZAŁKI ROZPŁYWU: gałęzie ciągu dostają strzałkę kierunku (audyt mierzył 0)', () => {
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     expect(container.querySelectorAll('[data-testid^="sld-v3-flow-arrow-"]').length).toBeGreaterThan(0);
   });
 
   it('POKRYCIE w panelu: 10 z 25 punktów + 2 w tabeli pól GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
     const uzytkownik = userEvent.setup();
-    renderKanwe(2);
+    renderKanwe();
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
       'Etykiety: 10 z 25 punktów wyniku',
@@ -191,7 +203,7 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
 
   it('FILTR PRZEKROCZEŃ: bez przekroczeń w wyniku kontrolka jest wyłączona (progi z danych backendu, nie z UI)', async () => {
     const uzytkownik = userEvent.setup();
-    renderKanwe(2);
+    renderKanwe();
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     const filtr = screen.getByTestId('sld-v3-result-filter-only-exceedances') as HTMLInputElement;
     expect(filtr.disabled).toBe(true);
@@ -210,7 +222,7 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
     };
     useRawResultOverlayStore.getState().setPayload(zPrzekroczeniem);
     const uzytkownik = userEvent.setup();
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     const przed = liczbaEtykiet(container);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     const filtr = screen.getByTestId('sld-v3-result-filter-only-exceedances') as HTMLInputElement;
@@ -230,7 +242,7 @@ describe('S9-2 — stan zerowy na kanwie', () => {
       elements: {},
     });
     const uzytkownik = userEvent.setup();
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     expect(liczbaEtykiet(container)).toBe(0);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     expect(screen.getByTestId('sld-v3-result-coverage-pusty').textContent).toContain(
@@ -240,7 +252,7 @@ describe('S9-2 — stan zerowy na kanwie', () => {
 
   it('BRAK biegu ⇒ warstwa pusta i BRAK wiersza pokrycia (nie ma o czym meldować)', async () => {
     const uzytkownik = userEvent.setup();
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     expect(liczbaEtykiet(container)).toBe(0);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     expect(screen.queryByTestId('sld-v3-result-coverage')).toBeNull();

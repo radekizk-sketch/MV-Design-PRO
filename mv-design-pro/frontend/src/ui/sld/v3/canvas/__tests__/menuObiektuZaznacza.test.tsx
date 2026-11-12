@@ -26,12 +26,13 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { useAppStateStore } from '../../../../app-state';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
 import { useNotificationStore } from '../../../../notifications/store';
+import { WIERSZ_NAZWY_STACJI } from './uchwytStacji';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
@@ -79,12 +80,12 @@ function stanZaznaczenia(): StanZaznaczenia {
 
 /** Wyrocznia: zaznaczenie i obiekt inspektora po NATYWNYM lewym kliku w uchwyt (osobny render,
  *  czyste zaznaczenie). */
-function lewyKlikW(snapshot: EnergyNetworkModel, selektor: string, lod: SceneLod | undefined): StanZaznaczenia {
+function lewyKlikW(snapshot: EnergyNetworkModel, selektor: string): StanZaznaczenia {
   useSnapshotStore.setState({ snapshot });
   useSelectionStore.getState().clearSelection();
   const { container, unmount } = render(
     <>
-      <SldCanvasV3Workspace width={800} height={600} lodOverride={lod} />
+      <SldCanvasV3Workspace width={800} height={600} />
       <InspektorKanwyTestowy />
     </>,
   );
@@ -104,20 +105,17 @@ type Przypadek = {
   readonly wstepne: () => string;
   readonly akcjaNawigacyjna: string;
   readonly akcjaFormularzowa: string;
-  /** Poziom szczegółu: symbole POJEDYNCZYCH aparatów pola rysuje dopiero LOD ≥ 1 (na LOD 0
-   *  pole GPZ jest stosem konwencji bez refu aparatu — nie byłoby czego wskazać). */
-  readonly lod?: SceneLod;
   /** Pozycja akcji stanu łącznika — tylko dla obiektu, którego menu ją ma. */
   readonly akcjaStanu?: string;
   /** Obiekt akcji pola, gdy różny od obiektu inspektora po lewym kliku (aparat → jego pole). */
   readonly obiektAkcjiPola?: () => string;
 };
 
+/** Uchwyt stacji jednej sceny — obrys napisu identyfikacji pierwszej stacji obejścia
+ *  (`<ref>#name-row-0`, karta SLD-SKALA-I-NAWIGACJA R1; dawniej zwinięty symbol L0). */
 function selektorStacji(): string {
-  const scene = buildSceneV3(enm52, 0);
-  const i = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
-  const testId = scene.symbols[i]?.meta?.testId ?? `sld-v3-symbol-${i}`;
-  return `[data-hit-for="${testId}"][data-hit-role="obrys"]`;
+  const ref = buildSceneV3(enm52).meta.stationTraversalOrder[0];
+  return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}${WIERSZ_NAZWY_STACJI}"]`;
 }
 
 function poleWylacznika() {
@@ -137,7 +135,6 @@ const PRZYPADKI: readonly Przypadek[] = [
     wstepne: () => KABEL,
     akcjaNawigacyjna: 'sld-menu-open-bay',
     akcjaFormularzowa: 'sld-menu-add-arrester',
-    lod: 2,
     akcjaStanu: 'sld-menu-open-switch',
     obiektAkcjiPola: () => poleWylacznika().ref_id,
   },
@@ -158,7 +155,7 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
       : (['nawigacyjna', 'formularzowa', 'stanu', 'brak'] as const);
     for (const rodzaj of rodzaje) {
       it(`${p.nazwa} × akcja ${rodzaj} × wcześniej zaznaczony inny obiekt`, () => {
-        const lewyKlik = lewyKlikW(p.snapshot(), p.selektor(), p.lod);
+        const lewyKlik = lewyKlikW(p.snapshot(), p.selektor());
         expect(lewyKlik.zaznaczone.length, 'lewy klik zaznacza obiekt').toBe(1);
         expect(lewyKlik.inspektor, 'lewy klik pokazuje obiekt w inspektorze').not.toBeNull();
         // Akcja pola z menu aparatu: zaznaczenie i inspektor = POLE (zaznaczenie pola przez lewy
@@ -176,7 +173,7 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
         useSnapshotStore.setState({ snapshot: p.snapshot() });
         const { container } = render(
           <>
-            <SldCanvasV3Workspace width={800} height={600} lodOverride={p.lod} />
+            <SldCanvasV3Workspace width={800} height={600} />
             <InspektorKanwyTestowy />
           </>,
         );
@@ -211,7 +208,7 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
   it('menu tła × akcja nawigacyjna — zaznaczenie bez zmian (tło nie jest obiektem)', () => {
     useNetworkBuildStore.setState({ openRouteSurface: vi.fn() } as never);
     useSnapshotStore.setState({ snapshot: enmGpz });
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     useSelectionStore.getState().selectElement({ id: KABEL, type: 'LineBranch', name: KABEL });
     // Najpierw menu OBIEKTU zamknięte bez akcji, potem menu tła — ref obiektu nie może przeżyć.
     fireEvent.contextMenu(uchwyt(container, selektorWylacznikaPola()), { clientX: 120, clientY: 80 });

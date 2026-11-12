@@ -131,7 +131,7 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
         const bazowa = wczytaj(sciezka);
         const enm = wariant === 'odwrócone' ? odwroconeStatusy(bazowa) : bazowa;
         useSnapshotStore.setState({ snapshot: enm });
-        const scene = buildSceneV3(enm, 2);
+        const scene = buildSceneV3(enm);
         // Po jednym reprezentancie każdej kombinacji (blok, symbol, stan glifu, ścieżka).
         const reprezentanci = new Map<string, number>();
         scene.symbols.forEach((symbol, index) => {
@@ -147,7 +147,7 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
 
         const { container } = render(
           <>
-            <SldCanvasV3Workspace width={1600} height={1000} lodOverride={2} />
+            <SldCanvasV3Workspace width={1600} height={1000} />
             <InspektorKanwyTestowy />
           </>,
         );
@@ -178,14 +178,14 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
       bays: enm.bays.map((bay, i) => (i === enm.bays.findIndex((b) => b.substation_ref && !b.ref_id.startsWith('gpz/')) ? { ...bay, primary_devices: [], equipment_refs: [] } : bay)),
     } as EnergyNetworkModel;
     useSnapshotStore.setState({ snapshot: bezRekordow });
-    const scene = buildSceneV3(bezRekordow, 2);
+    const scene = buildSceneV3(bezRekordow);
     const index = scene.symbols.findIndex((s) => s.symbolId === 'bayNoEquipment' && !(s.meta?.ownerRef ?? '').startsWith('gpz/'));
     expect(index, 'scena rysuje sylwetkę braku danych pola stacji').toBeGreaterThanOrEqual(0);
     const symbol = scene.symbols[index];
     expect(symbol.state).toBeUndefined();
     const { container } = render(
       <>
-        <SldCanvasV3Workspace width={1600} height={1000} lodOverride={2} />
+        <SldCanvasV3Workspace width={1600} height={1000} />
         <InspektorKanwyTestowy />
       </>,
     );

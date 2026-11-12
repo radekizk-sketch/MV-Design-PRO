@@ -63,7 +63,7 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 
 const CANVAS_W = 1024;
 const CANVAS_H = 640;
-const sceneL2 = buildSceneV3(enm, 2);
+const sceneL2 = buildSceneV3(enm);
 
 /** Szyna ze sceny — kotwica etykiety i kanoniczny ref wyniku (zero fabrykacji). */
 const busSeg = sceneL2.segments.find((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef)!;
@@ -265,7 +265,7 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
       json: async () => odpowiedzNakladki(),
     } as unknown as Response);
 
-    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.getByTestId('sld-v3-result-ab').getAttribute('data-ab-stan')).toBe('gotowe');
@@ -293,7 +293,7 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
   it('przycisk jest nieaktywny bez wybranego przebiegu (zero martwego kliku)', () => {
     useRawResultOverlayStore.getState().setPayload(payloadNaKanwie('SC_3F'));
     useExecutionRunsStore.setState({ runs: [przebieg({ id: 'run-a' })] });
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
     expect((screen.getByTestId('sld-v3-result-ab-pokaz') as HTMLButtonElement).disabled).toBe(true);
   });
@@ -305,7 +305,7 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
     useExecutionRunsStore.setState({
       runs: [przebieg({ id: 'zly-rodzaj', analysis_type: 'SC_1F' }), przebieg({ id: 'zly-failed', status: 'FAILED' })],
     });
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.getByTestId('sld-v3-result-ab-blocked').textContent).toBe(POWOD_BRAK_DRUGIEGO_BIEGU);
@@ -318,7 +318,7 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
     const user = userEvent.setup();
     useRawResultOverlayStore.getState().setPayload(payloadNaKanwie('LOAD_FLOW'));
     useExecutionRunsStore.setState({ runs: [przebieg({ id: 'run-lf', analysis_type: 'LOAD_FLOW' })] });
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.getByTestId('sld-v3-result-ab-blocked').textContent).toBe(POWOD_RODZAJ_BEZ_NAKLADKI);
@@ -332,7 +332,7 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
     useExecutionRunsStore.setState({ runs: [przebieg({ id: 'run-a' })] });
     // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
     zasiejBiegiNieaktualne([{ id: BIEZACY_RUN, analysisType: 'SC_3F' }]);
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.getByTestId('sld-v3-result-ab-blocked').textContent).toBe(POWOD_WYNIKI_NIEAKTUALNE);
@@ -343,7 +343,7 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
 
   it('brak wyniku na schemacie ⇒ blokada „uruchom obliczenie" (sekcja obecna, uczciwy stan zerowy)', () => {
     useExecutionRunsStore.setState({ runs: [przebieg({ id: 'run-a' })] });
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
     expect(screen.getByTestId('sld-v3-result-ab-blocked').textContent).toBe(POWOD_BRAK_BIEGU);
   });
@@ -352,7 +352,7 @@ describe('Sekcja „Porównanie A/B" panelu filtrów (ścieżka natywna)', () =>
     useRawResultOverlayStore.getState().setPayload(payloadNaKanwie('SC_3F'));
     useExecutionRunsStore.setState({ runs: [przebieg({ id: 'run-a' })] });
     useSldDeltaOverlayStore.setState({ nakladka: odpowiedzNakladki() });
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     otworzPanelFiltrow();
 
     expect(screen.queryByTestId('sld-v3-result-ab')).toBeNull();

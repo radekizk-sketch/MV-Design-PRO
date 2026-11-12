@@ -37,21 +37,21 @@ function segmentsEndingWith(scene: SceneV3, suffix: string): number {
 }
 
 describe('W2 (GS-4b/Z2) — pole źródłowe SN vs rząd nN na scenie referencyjnej', () => {
-  for (const lod of [1, 2] as const) {
-    it(`L${lod}: fixtura referencyjna (20/20 DER na nN) ⇒ ZERO pól źródłowych SN, rząd nN obecny`, () => {
-      const scene = buildSceneV3(enm, lod);
-      // Wszystkie DER referencyjne są na szynach nN (klasyfikacja adaptera
-      // `bus_ref`→`voltage_kv` ≤ 0,5 kV ⇒ 'nn') — zero źródeł na SN, więc
-      // zero pól źródłowych SN.
-      expect(segmentsEndingWith(scene, '#sn-source-descent')).toBe(0);
-      // Rząd nN obecny (DER referencyjne widoczne za TR na szynie nN).
-      expect(segmentsEndingWith(scene, '#der-row-bus')).toBeGreaterThan(0);
-    });
-  }
+  it(`fixtura referencyjna (20/20 DER na nN) ⇒ ZERO pól źródłowych SN, rząd nN obecny`, () => {
+    const scene = buildSceneV3(enm);
+    // Wszystkie DER referencyjne są na szynach nN (klasyfikacja adaptera
+    // `bus_ref`→`voltage_kv` ≤ 0,5 kV ⇒ 'nn') — zero źródeł na SN, więc
+    // zero pól źródłowych SN.
+    expect(segmentsEndingWith(scene, '#sn-source-descent')).toBe(0);
+    // Rząd nN obecny (DER referencyjne widoczne za TR na szynie nN).
+    expect(segmentsEndingWith(scene, '#der-row-bus')).toBeGreaterThan(0);
+  });
 
-  it('kotwica stacji IDENTYCZNA L0/L1/L2 (środek pasma nazw) — zmiana W2 nie przesuwa kotwic', () => {
-    const nameAnchors = (lod: 0 | 1 | 2): Map<string, string> => {
-      const scene = buildSceneV3(enm, lod);
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA): dawne porównanie kotwic L0/L1/L2 staje się
+  // porównaniem dwóch niezależnych budów — kotwica stacji jest funkcją modelu, nie skali.
+  it('kotwica stacji IDENTYCZNA w dwóch budowach (środek pasma nazw) — zmiana W2 nie przesuwa kotwic', () => {
+    const nameAnchors = (): Map<string, string> => {
+      const scene = buildSceneV3(enm);
       const m = new Map<string, string>();
       for (const label of scene.labels) {
         if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
@@ -60,7 +60,7 @@ describe('W2 (GS-4b/Z2) — pole źródłowe SN vs rząd nN na scenie referencyj
           // strop w pionie) + SZEROKOŚĆ REZERWACJI. Do tej karty porównywano
           // `rect.x`/`rect.width`, bo prostokąt wiersza BYŁ slotem kolumny;
           // teraz prostokąt niesie sam tusz, a tusz z definicji zależy od
-          // TREŚCI poziomu (L0 rysuje kod stacji, L1/L2 nazwę). Intencja bez
+          // TREŚCI napisu. Intencja bez
           // zmian i MOCNIEJSZA: sprawdzamy obie wielkości TEKSTOWO NIEZALEŻNE
           // — środek zaczepu i rezerwację kolumny — więc dryf geometrii nadal
           // pada, a różnica długości napisu już nie.
@@ -70,25 +70,16 @@ describe('W2 (GS-4b/Z2) — pole źródłowe SN vs rząd nN na scenie referencyj
       }
       return m;
     };
-    const a0 = nameAnchors(0);
-    const a1 = nameAnchors(1);
-    const a2 = nameAnchors(2);
-    // KD-5: pasma nazw ELEMENTÓW WEWNĘTRZNYCH bloku GPZ (tabliczka TR/źródła)
-    // na L0 nie istnieją — blok jest zwinięty. Liczność porównujemy więc na
-    // STACJACH (intencja testu: kotwica STACJI nie dryfuje), a zbiór L0 musi
-    // pozostać podzbiorem L1/L2 (zwinięcie nie dodaje kotwic).
+    const a0 = nameAnchors();
+    const a1 = nameAnchors();
     const stationsOnly = (m: Map<string, string>): Map<string, string> =>
       new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
-    expect(a0.size).toBeGreaterThan(0);
-    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
-    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
-    for (const ref of a0.keys()) {
-      expect(a1.has(ref) && a2.has(ref), `kotwica ${ref} obecna na L0, brak na L1/L2`).toBe(true);
-    }
+    expect(stationsOnly(a0).size).toBeGreaterThan(0);
+    expect(a1.size).toBe(a0.size);
     const drift: string[] = [];
     for (const [ref, pos0] of a0) {
-      if (a1.get(ref) !== pos0 || a2.get(ref) !== pos0) {
-        drift.push(`${ref}: L0=${pos0} L1=${a1.get(ref)} L2=${a2.get(ref)}`);
+      if (a1.get(ref) !== pos0) {
+        drift.push(`${ref}: budowa 1=${pos0} budowa 2=${a1.get(ref)}`);
       }
     }
     expect(drift, `kotwice dryfują:\n${drift.slice(0, 8).join('\n')}`).toEqual([]);

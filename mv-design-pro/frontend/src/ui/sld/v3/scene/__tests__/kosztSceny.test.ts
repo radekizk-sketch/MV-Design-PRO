@@ -43,7 +43,7 @@ import { describe, expect, it } from 'vitest';
 import { planSceneLabels } from '../../canvas/labelLegibility';
 import { sheetSizeFor } from '../../sheet/outline';
 import { declutterLabels } from '../../layout/declutter';
-import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../buildScene';
 import { synthLargeTrunk } from './syntheticNetworks';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
@@ -67,12 +67,11 @@ const siecPodwojona = synthLargeTrunk(siecReferencyjna, 2);
 
 /** Drabina skal gestu: od kadru „cała sieć" po zoom roboczy. */
 const SKALE = [0.05, 0.1, 0.2, 0.4, 0.8, 1.5, 3] as const;
-const LODY: readonly SceneLod[] = [0, 1, 2];
 
 const odcisk = (v: unknown): string =>
   createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 32);
 
-interface OdciskiLod {
+interface OdciskiSceny {
   readonly scena: string;
   readonly declutter: string;
   readonly plany: readonly string[];
@@ -297,8 +296,8 @@ interface OdciskiLod {
  *        nie rusza wywołania `add_grid_source_sn`, jedynego miejsca budowy GPZ;
  *        `_apply_station_neutral_grounding`, jedyny setter `hv_neutral`, nigdy
  *        nie jest wołany z `add_grid_source_sn`). Usunięcie symbolu
- *        `neutralEarthing` z bloku GPZ na L1/L2 (`buildScene.gpzCollapsed.
- *        test.ts`, uzasadnienie tamże) pochodzi WYŁĄCZNIE stąd, nie z (12).
+ *        `neutralEarthing` z bloku GPZ na L1/L2 (dawny test zwiniętego bloku
+ *        GPZ, uzasadnienie tamże) pochodzi WYŁĄCZNIE stąd, nie z (12).
  * Każda karta regenerująca tę fixturę odziedziczy (13), dopóki katalog/
  * materializacja transformatora GPZ nie zostaną ujednolicone osobną kartą —
  * poza zakresem SUB-52s (walidator E063/E003, nie katalog transformatorów WN).
@@ -660,90 +659,41 @@ interface OdciskiLod {
  *    obiektu) zmienia treść etykiet L2 (1704 → 1639 na kodzie scalonym) i zbiór symboli;
  *  · TA SAMA tablica przed i po naprawie złożoności planu (indeks z elementem zamiast przeglądu
  *    liniowego w `canvas/labelLegibility.ts`) — plan bajtowo identyczny, sonda 54/54.
+ *
+ * AKTUALIZACJA ŚWIADOMA (karta SLD-SKALA-I-NAWIGACJA R1 — jedna scena, 2026-11-11): tablica
+ * per poziom szczegółu (3 wpisy na sieć) zastąpiona jednym wpisem na sieć. Wpis = dawny wpis L2
+ * z jedną różnicą: odcisk `scena`. Sonda (ta sama fikstura, scena bazy `88d1ec1e2` przy L2 vs
+ * jedna scena, porównanie drzewa JSON pole po polu): JEDYNA różnica to brak pola `meta.lod`
+ * (6d5d4e2a… → 71ebdc2f…, 29ac00d2… → ec3ff0cb…); `declutter` i 7 `plany` obu sieci bajtowo
+ * równe dawnemu L2 bez przeliczania.
  */
-const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
-  referencyjna: [
-    {
-      scena: 'dc827468e2f688c52f86840b92c945c6',
-      declutter: 'f9f49dd33a86180d87468ce32745a09f',
-      plany: [
-        '1e265cf86be7a2de50079932718366b6',
-        '8a7763e654df14b86676de302b0a94c6',
-        '9386941a881a3923b5612c71a2485186',
-        'a8a16fdc3494b5a3b55b371cbe386772',
-        'b102adf1db1e5036de9a4a01d1695be2',
-        'afe121532cbbc6cdcc427fcc391f6460',
-        'afe121532cbbc6cdcc427fcc391f6460',
-      ],
-    },
-    {
-      scena: 'a424f9d27ea39e3d6713fa4687656338',
-      declutter: '77e951f2187cb69ec5c7ae4566b94a3e',
-      plany: [
-        'a4db342cfdc3e24b3efc9aa2901c1504',
-        '7b4f65c0fe76dd14190fdb62d3ea46e7',
-        '9d21592a1339e58616f117353d50253c',
-        '61186c1ec0dfd80c5262cb3f526916f9',
-        '8d2c3d0f73ce2c629a300e579e3b0c11',
-        '9f45860d9d0b101bc7c8f9c55c264fb9',
-        '9f45860d9d0b101bc7c8f9c55c264fb9',
-      ],
-    },
-    {
-      scena: '6d5d4e2af55cb5f349a36cf8d40e3fed',
-      declutter: 'bcaa6be0760df0889dc3e81c97f67f9a',
-      plany: [
-        '76ebd0ac1a038878c3cacfc743c888dc',
-        'a8c9bf6563f00a8db581ff57362e5d66',
-        'c60b8a4909e2298afed89404cf902ce5',
-        'ac7afa29bf1e16feb559f0a9edbc6a93',
-        '7a741b709250b21bdb3a1b3a298c8b37',
-        'dfec652ce9633634ab3067375f9217d3',
-        'dfec652ce9633634ab3067375f9217d3',
-      ],
-    },
-  ],
-  podwojona: [
-    {
-      scena: 'cf6938a8d10f5298e3d7d2f0b28ac439',
-      declutter: 'dddabcee6ffefc9ad756aa3aea4d8696',
-      plany: [
-        'd5ed6903718a49cdaa13ea24e0579227',
-        '949afc9e62248024a77031ecc4f2b651',
-        'c38b0aff854f85af37e433af7206729d',
-        '34f2b96d8fd6ba94a38e1c113c16160e',
-        '30b697195c8af2346f0853bb3d9e85e5',
-        '797b894c5c503d0946e4a04002b15562',
-        '797b894c5c503d0946e4a04002b15562',
-      ],
-    },
-    {
-      scena: '0195b947555e05a6d0deb85b5931a9ee',
-      declutter: 'c67b7fb4191b97b04a48c9b4936cd5c5',
-      plany: [
-        'a86882dfdebe943f9c71bd0f404c83b1',
-        'a7a9b0aac7cde7183b6d27a85a1a3c0a',
-        'f4a4961f8a1ff79ff1be92231160cd4b',
-        'c2d736b68d3ba06c4994dcb11158e90d',
-        'b2048414a5dd17c94ba6b180a51aa69a',
-        '16fb2903e828805205a3731a23b40f69',
-        '16fb2903e828805205a3731a23b40f69',
-      ],
-    },
-    {
-      scena: '29ac00d208ff150f5ff26d25966bbe80',
-      declutter: 'f4f498f9818cb42875d812634df634fa',
-      plany: [
-        '40b050aa9e446483fce939d194c09269',
-        '9d38aaca7c11ba7907c2c96d35e3c7ba',
-        '203c1d947e7aef5ae99e446af809c407',
-        '16b902c8db7f25e901cd1318af7e54b6',
-        '3bbe5f08dc9b986a9f62b9d9ebc95e42',
-        'b325a705988eea2109e245698e6b45d4',
-        'b325a705988eea2109e245698e6b45d4',
-      ],
-    },
-  ],
+const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', OdciskiSceny>> = {
+  referencyjna: {
+    scena: '71ebdc2fb3fe8c1f7069b778099423d7',
+    declutter: 'bcaa6be0760df0889dc3e81c97f67f9a',
+    plany: [
+      '76ebd0ac1a038878c3cacfc743c888dc',
+      'a8c9bf6563f00a8db581ff57362e5d66',
+      'c60b8a4909e2298afed89404cf902ce5',
+      'ac7afa29bf1e16feb559f0a9edbc6a93',
+      '7a741b709250b21bdb3a1b3a298c8b37',
+      'dfec652ce9633634ab3067375f9217d3',
+      'dfec652ce9633634ab3067375f9217d3',
+    ],
+  },
+  podwojona: {
+    scena: 'ec3ff0cb93297cf9953a8f87503baea2',
+    declutter: 'f4f498f9818cb42875d812634df634fa',
+    plany: [
+      '40b050aa9e446483fce939d194c09269',
+      '9d38aaca7c11ba7907c2c96d35e3c7ba',
+      '203c1d947e7aef5ae99e446af809c407',
+      '16b902c8db7f25e901cd1318af7e54b6',
+      '3bbe5f08dc9b986a9f62b9d9ebc95e42',
+      'b325a705988eea2109e245698e6b45d4',
+      'b325a705988eea2109e245698e6b45d4',
+    ],
+  },
 };
 
 const SIECI = [
@@ -752,29 +702,23 @@ const SIECI = [
 ] as const;
 
 describe('S9-9 — tożsamość bajtowa sceny, declutteru i planu etykiet', () => {
-  it.each(SIECI)('sieć %s: odciski scen L0/L1/L2 jak przed optymalizacją', (nazwa, model) => {
-    const policzone = LODY.map((lod) => odcisk(buildSceneV3(model, lod)));
-    expect(policzone).toEqual(ODCISKI_BAZOWE[nazwa].map((o) => o.scena));
+  it.each(SIECI)('sieć %s: odcisk sceny jak przed optymalizacją', (nazwa, model) => {
+    expect(odcisk(buildSceneV3(model))).toBe(ODCISKI_BAZOWE[nazwa].scena);
   });
 
-  it.each(SIECI)('sieć %s: odciski wyniku silnika etykiet L0/L1/L2', (nazwa, model) => {
-    const policzone = LODY.map((lod) => {
-      const scena = buildSceneV3(model, lod);
-      return odcisk(declutterLabels(scena.labels, sceneObstacleRects(scena)));
-    });
-    expect(policzone).toEqual(ODCISKI_BAZOWE[nazwa].map((o) => o.declutter));
+  it.each(SIECI)('sieć %s: odcisk wyniku silnika etykiet', (nazwa, model) => {
+    const scena = buildSceneV3(model);
+    expect(odcisk(declutterLabels(scena.labels, sceneObstacleRects(scena)))).toBe(ODCISKI_BAZOWE[nazwa].declutter);
   });
 
-  it.each(SIECI)('sieć %s: odciski PLANU etykiet — iloczyn LOD × skala gestu', (nazwa, model) => {
+  it.each(SIECI)('sieć %s: odciski PLANU etykiet — iloczyn skala gestu', (nazwa, model) => {
     // ILOCZYN CECH (reguła KLASA §2): defekt indeksu ujawnia się dopiero przy
     // etykietach POWIĘKSZONYCH (małe skale) — same skale robocze przechodzą
-    // ścieżką szybką i niczego nie dowodzą. Stąd pełna drabina skal × 3 LOD.
-    const policzone = LODY.map((lod) => {
-      const scena = buildSceneV3(model, lod);
-      const przeszkody = sceneObstacleRects(scena);
-      return SKALE.map((skala) => odcisk(planSceneLabels(scena.labels, przeszkody, skala, sheetSizeFor(scena))));
-    });
-    expect(policzone).toEqual(ODCISKI_BAZOWE[nazwa].map((o) => o.plany));
+    // ścieżką szybką i niczego nie dowodzą. Stąd pełna drabina skal.
+    const scena = buildSceneV3(model);
+    const przeszkody = sceneObstacleRects(scena);
+    const policzone = SKALE.map((skala) => odcisk(planSceneLabels(scena.labels, przeszkody, skala, sheetSizeFor(scena))));
+    expect(policzone).toEqual(ODCISKI_BAZOWE[nazwa].plany);
   });
 });
 
@@ -792,7 +736,7 @@ describe('S9-9 — budżet przeliczeń synchronicznych ścieżki gestu', () => {
 
   /** Najdroższa skala gestu (etykiety powiększone) na danej sieci. */
   function najgorszyPlan(model: EnergyNetworkModel): number {
-    const scena = buildSceneV3(model, 2);
+    const scena = buildSceneV3(model);
     const przeszkody = sceneObstacleRects(scena);
     return Math.max(...SKALE.map((s) => mediana(() => planSceneLabels(scena.labels, przeszkody, s, sheetSizeFor(scena)))));
   }

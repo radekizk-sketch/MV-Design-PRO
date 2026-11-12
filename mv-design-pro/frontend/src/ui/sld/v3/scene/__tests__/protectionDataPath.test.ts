@@ -61,8 +61,8 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
   });
 
   it('scena z tej fixtury niesie WIĘCEJ przekładników i adnotacji z przypisań zabezpieczeń niż z 52s', () => {
-    const dane = buildSceneV3(SCIEZKA_DANYCH, 2);
-    const konwencja = buildSceneV3(KONWENCJA_52S, 2);
+    const dane = buildSceneV3(SCIEZKA_DANYCH);
+    const konwencja = buildSceneV3(KONWENCJA_52S);
     const ct = (s: typeof dane) => s.symbols.filter((x) => x.symbolId === 'currentTransformer').length;
     // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: pola stacji 52s niosą kody funkcji, więc obie sceny
     // niosą bloki z wierszami kodów (dawne porównanie liczby etykiet `protection` przestało
@@ -83,8 +83,8 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
   // jest ramką z kodami i linią wyłączania do wyłącznika z `breaker_ref`, BEZ linii pomiarowych
   // CT/VT — linie pomiarowe z powiązań modelu dowodzi fixtura Z.10 (`poleLinioweGpz.test.tsx`).
   it('warstwa adnotacji zabezpieczeń POWSTAJE: bloki zabezpieczeń (ramka z kodami), tory wyzwalania; bez powiązań obwodów wtórnych — zero linii pomiarowych', () => {
-    const dane = buildSceneV3(SCIEZKA_DANYCH, 2);
-    const konwencja = buildSceneV3(KONWENCJA_52S, 2);
+    const dane = buildSceneV3(SCIEZKA_DANYCH);
+    const konwencja = buildSceneV3(KONWENCJA_52S);
     const liniePomiarowe = (s: typeof dane) =>
       s.segments.filter((g) => g.meta?.kind === 'measurementLink').length;
     const toryWyzwalania = (s: typeof dane) =>
@@ -132,7 +132,7 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
   });
 
   it('aparaty pól GPZ niosą STANY z modelu: łączniki toru zamknięte, uziemniki otwarte', () => {
-    const sc = buildSceneV3(SCIEZKA_DANYCH, 2);
+    const sc = buildSceneV3(SCIEZKA_DANYCH);
     const wPolach = sc.symbols.filter((s) => String(s.meta?.testId ?? '').includes('gpz-canonical-bay'));
     const stan = (id: string, st: string) =>
       wPolach.filter((s) => s.symbolId === id && s.state === st).length;

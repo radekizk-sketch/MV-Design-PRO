@@ -4,21 +4,21 @@
  * zespołu ekspertów i poprawiaj").
  *
  * Ten spec dostarcza MATERIAŁ DO OGLĘDZIN: świeże renders HEAD na sieci wzorcowej
- * (≥52 stacje), po jednym kadrze na poziom detalu L0/L1/L2 w obu motywach. Nie jest
+ * (≥52 stacje), kadr przeglądu i kadry szczegółu w obu motywach. Nie jest
  * testem regresji wizualnej — jest generatorem dowodu do audytu wielosoczewkowego
  * (projektant SN, zwarciowiec/rozdzielnie, SCADA/UX, kartografia layoutu, kanon LOD).
  *
- * Poziomy wg `docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md` §2:
- *   L0 — mapa sieci (bloki kompaktowe, przebiegi kabli),
- *   L1 — sieć terenowa (+ rozdzielnia GPZ, sekcje, głowice pól, NOP),
- *   L2 — obiekty i pola (+ detal stacji, aparaty, DER pełny).
+ * Jedna scena (`docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md` v2.0 „Skala, gęstość informacji
+ * i nawigacja", karta SLD-SKALA-I-NAWIGACJA R1): dawne kadry per poziom szczegółu
+ * (L0/L1/L2) zastąpił kadr przeglądu (dopasowanie całej sieci) i kadry szczegółu (gest
+ * kółkiem nad obszarem).
  *
  * Bramki, które spec sprawdza po drodze (żeby zrzut nie kłamał):
  *   - kanwa faktycznie wyrenderowana (nie pusty SVG),
- *   - wymuszony poziom detalu DOTARŁ do kanwy (`data-lod-override`),
+ *   - kamera kanwy jest gotowa (`data-skala-kamery`),
  *   - zero błędów konsoli — zrzut z wywróconym renderem nie jest materiałem audytu.
  *
- * Wyjście: docs/audit/visual/sld_audyt/sld_L<poziom>_<motyw>.png
+ * Wyjście: docs/audit/visual/sld_audyt/sld_przeglad_<motyw>.png (+ kadry szczegółu)
  */
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
@@ -33,7 +33,6 @@ const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/sld_audyt'));
 
-const POZIOMY = [0, 1, 2] as const;
 const MOTYWY = ['light', 'dark'] as const;
 
 /**
@@ -122,22 +121,19 @@ const WIDOK = { szerokosc: 1920, wysokosc: 1080 } as const;
 /** Minimalna liczba stacji sieci wzorcowej — zrzut z ubogiego modelu nie jest audytem. */
 const MIN_STACJI = 52;
 
-async function otworzKanwe(page: Page, lod: number, motyw: string): Promise<string[]> {
+async function otworzKanwe(page: Page, motyw: string): Promise<string[]> {
   const bledy: string[] = [];
   page.on('console', (msg) => {
     if (msg.type() === 'error') bledy.push(msg.text());
   });
   page.on('pageerror', (err) => bledy.push(`PAGEERROR: ${err.message}`));
 
-  await page.goto(`${HARNESS_URL}?lod=${lod}&theme=${motyw}`, { waitUntil: 'networkidle' });
+  await page.goto(`${HARNESS_URL}?theme=${motyw}`, { waitUntil: 'networkidle' });
 
   const korzen = page.locator('[data-testid="sld-harness-root"]').first();
   await expect(korzen).toBeVisible({ timeout: 20000 });
   await expect(korzen).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
 
-  // Wymuszony poziom detalu MUSI dotrzec do kanwy — inaczej wszystkie trzy kadry
-  // pokazywalyby ten sam LOD i audyt oceniałby nieistniejący stan.
-  await expect(korzen).toHaveAttribute('data-lod-override', String(lod));
 
   // Sieć wzorcowa, nie model demonstracyjny.
   const stacje = Number(await korzen.getAttribute('data-stations'));
@@ -147,6 +143,7 @@ async function otworzKanwe(page: Page, lod: number, motyw: string): Promise<stri
 
   const kanwa = page.locator('[data-testid="sld-canvas-v3"]').first();
   await expect(kanwa).toBeVisible({ timeout: 15000 });
+  await expect(kanwa).toHaveAttribute('data-skala-kamery', /\d/);
 
   // Kanwa nie moze byc pusta — pusty SVG wyglada na zrzucie jak „czysty schemat".
   const liczbaElementow = await kanwa.locator('g, path, rect, line, text').count();
@@ -158,26 +155,24 @@ async function otworzKanwe(page: Page, lod: number, motyw: string): Promise<stri
   return bledy;
 }
 
-test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
+test.describe('SLD — audyt powykonawczy: przegląd i kadry szczegółu', () => {
   test.beforeAll(() => {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   });
 
-  for (const lod of POZIOMY) {
-    for (const motyw of MOTYWY) {
-      test(`poziom L${lod} (${motyw})`, async ({ page }) => {
-        await page.setViewportSize({ width: 1920, height: 1080 });
-        const bledy = await otworzKanwe(page, lod, motyw);
+  for (const motyw of MOTYWY) {
+    test(`przegląd (${motyw})`, async ({ page }) => {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      const bledy = await otworzKanwe(page, motyw);
 
-        await bramkaTresciMatematycznej(page);
-        await page.screenshot({
-          path: path.join(OUTPUT_DIR, `sld_L${lod}_${motyw}.png`),
-          fullPage: false,
-        });
-
-        expect(bledy, `bledy konsoli przy L${lod}/${motyw}: ${bledy.join(' | ')}`).toEqual([]);
+      await bramkaTresciMatematycznej(page);
+      await page.screenshot({
+        path: path.join(OUTPUT_DIR, `sld_przeglad_${motyw}.png`),
+        fullPage: false,
       });
-    }
+
+      expect(bledy, `bledy konsoli przy przeglądzie/${motyw}: ${bledy.join(' | ')}`).toEqual([]);
+    });
   }
 
   /**
@@ -205,9 +200,9 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
    * „Sk” z „Sk″ 250 MVA" w pierwszej wersji.
    */
   for (const obszar of OBSZARY_SZCZEGOLU) {
-    test(`szczegol L2: ${obszar.nazwa}`, async ({ page }) => {
+    test(`kadr szczegolu: ${obszar.nazwa}`, async ({ page }) => {
       await page.setViewportSize({ width: WIDOK.szerokosc, height: WIDOK.wysokosc });
-      const bledy = await otworzKanwe(page, 2, 'dark');
+      const bledy = await otworzKanwe(page, 'dark');
 
       const kotwica = page.locator(obszar.kotwica);
       await expect(
@@ -328,7 +323,7 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
         expect(
           p,
           `po powiekszeniu brak opisu „${fragment}" — declutter go nie odslonil, `
-            + 'wiec kadr nie pokazuje poziomu L2',
+            + 'wiec kadr nie pokazuje szczegolu',
         ).not.toBeNull();
         const g = p!;
         expect(
@@ -362,7 +357,7 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
    * (`DARK_SCADA_SLD_PALETTE` / `LIGHT_TECHNICAL_SLD_PALETTE`), a
    * `SldCanvasV3.tsx` czyta ją z `effectiveThemeMode` — dawna decyzja
    * „SCADA-dark zawsze" jest tym NADPISANA. Zmierzone bezpośrednio (ta karta,
-   * L0/L1/L2): tło, rama arkusza i etykiety zamieniają jasność/kolor między
+   * na każdym kadrze): tło, rama arkusza i etykiety zamieniają jasność/kolor między
    * motywami; WYŁĄCZNIE rodzina barw klasy napięcia (SN zielony) zostaje —
    * dokładnie kontrakt semantyki z `palette.ts` („wolno zmienić jasność, NIE
    * WOLNO zmienić przypisania barw do klas"). Ten sam klasowy błąd (asercja
@@ -383,20 +378,20 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
    * wyklucza zamiany palet miejscami ani tła spoza palety.
    */
   test('niezmiennik: kanwa techniczna idzie za motywem (tło palety motywu, para różna)', () => {
-    for (const lod of POZIOMY) {
-      const jasny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_light.png`));
-      const ciemny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_dark.png`));
+    {
+      const jasny = fs.readFileSync(path.join(OUTPUT_DIR, 'sld_przeglad_light.png'));
+      const ciemny = fs.readFileSync(path.join(OUTPUT_DIR, 'sld_przeglad_dark.png'));
 
       expect(
         jasny.equals(ciemny),
-        `L${lod}: zrzuty jasny/ciemny są BAJTOWO IDENTYCZNE, a KD-8 wymaga, żeby `
+        `przegląd: zrzuty jasny/ciemny są BAJTOWO IDENTYCZNE, a KD-8 wymaga, żeby `
           + 'paleta kanwy szła z motywu (`ui/sld/v3/theme/palette.ts::sldPaletteForTheme`). '
           + 'Albo kanwa wróciła do zaszytej palety SCADA-dark (regresja KD-8 — sprawdź '
           + '`effectiveThemeMode`/`useSldPalette` w `SldCanvasV3.tsx`), albo `screenshot-'
           + 'harness-main.tsx` przestał ustawiać `data-theme` przed renderem.',
       ).toBe(false);
-      expect(pikselNarozny(jasny), `L${lod}: tło zrzutu jasnego`).toBe(TLO_PALETY.light);
-      expect(pikselNarozny(ciemny), `L${lod}: tło zrzutu ciemnego`).toBe(TLO_PALETY.dark);
+      expect(pikselNarozny(jasny), 'przegląd: tło zrzutu jasnego').toBe(TLO_PALETY.light);
+      expect(pikselNarozny(ciemny), 'przegląd: tło zrzutu ciemnego').toBe(TLO_PALETY.dark);
     }
   });
 });

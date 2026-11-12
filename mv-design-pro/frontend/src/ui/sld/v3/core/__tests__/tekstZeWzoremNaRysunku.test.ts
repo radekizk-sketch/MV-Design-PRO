@@ -18,13 +18,6 @@ const WZOR_ZE_SPACJA = 'Wyzwalacz $I_{\\Delta n}$ 30 mA typ A';
 const BEZ_WZORU = 'Wyzwalacz różnicowy 30 mA typ A';
 const TEKSTY = [WZOR_BEZ_SPACJI, WZOR_ZE_SPACJA, BEZ_WZORU] as const;
 
-/** Odmiana kroju etykiet (CSS font-weight) — pomiar posuwami tabeli `metrykiKroju.json`. */
-const PISMO = 400;
-
-/** Miara w znakach odczytu: szerokość = liczba znaków (pas `zawinNazwe` w tych samych
- *  jednostkach), więc limit odczytu testu jest limitem znaków jak przed miarą kroju. */
-const ZNAKI: MiaraTekstu = (tekst) => Array.from(tekst).length;
-
 function wzoryNiePrzeciete(linia: string): void {
   expect((linia.match(/\$/g) ?? []).length % 2, linia).toBe(0);
   expect(linia.replace(/\$[^$]+\$/g, ''), linia).not.toMatch(/[_{}\\]/);

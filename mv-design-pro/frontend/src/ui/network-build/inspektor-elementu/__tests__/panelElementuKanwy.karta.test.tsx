@@ -24,7 +24,7 @@ import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { useRawResultOverlayStore } from '../../../sld-overlay/rawResultOverlayStore';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { useNetworkBuildStore } from '../../networkBuildStore';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../../sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../../sld/v3/scene/buildScene';
 import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspace';
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from './inspektorKanwyTestowy';
@@ -52,22 +52,36 @@ function jestPoleBezRekorduAparatu(s: SceneV3['symbols'][number]): boolean {
     (SIEC.bays ?? []).some((b) => b.ref_id === s.meta?.ownerRef)
   );
 }
+/** Uchwyt stacji jednej sceny (karta SLD-SKALA-I-NAWIGACJA R1): obrys trafienia napisu
+ *  identyfikacji `<ref>#name-row-0` — dawniej zwinięty symbol stacji widoku ogólnego. */
+function stacja(scena: SceneV3): string {
+  const ref = scena.meta.stationTraversalOrder[0];
+  expect(ref, 'stacja w scenie').toBeDefined();
+  return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
+}
+
+function selektorSymbolu(scena: SceneV3, predykat: (s: SceneV3['symbols'][number]) => boolean): string {
+  const i = scena.symbols.findIndex(predykat);
+  expect(i, 'symbol w scenie').toBeGreaterThanOrEqual(0);
+  return `[data-hit-for="${scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`}"]`;
+}
+
 interface Przypadek {
   readonly nazwa: string;
-  readonly lod: SceneLod;
   readonly predykat: (s: SceneV3['symbols'][number]) => boolean;
+  /** Selektor uchwytu spoza symboli (stacja: napis identyfikacji); brak — symbol z `predykat`. */
+  readonly selektor?: (scena: SceneV3) => string;
   readonly rodzajKarty: string;
 }
 
 const PRZYPADKI: readonly Przypadek[] = [
-  { nazwa: 'stacja', lod: 0, predykat: (s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed', rodzajKarty: 'stacja' },
+  { nazwa: 'stacja', predykat: () => false, selektor: stacja, rodzajKarty: 'stacja' },
   {
     nazwa: 'pole',
-    lod: 2,
     predykat: (s) => jestPoleBezRekorduAparatu(s),
     rodzajKarty: 'pole',
   },
-  { nazwa: 'transformator', lod: 2, predykat: (s) => s.meta?.elementKind === 'transformer', rodzajKarty: 'transformator' },
+  { nazwa: 'transformator', predykat: (s) => s.meta?.elementKind === 'transformer', rodzajKarty: 'transformator' },
 ];
 
 const otworzOperacje = vi.fn();
@@ -93,16 +107,14 @@ function kliknij(przypadek: Przypadek, siec: EnergyNetworkModel = SIEC): HTMLEle
   useSnapshotStore.setState({ snapshot: siec });
   const { container } = render(
     <>
-      <SldCanvasV3Workspace width={1322} height={696} lodOverride={przypadek.lod === 0 ? undefined : przypadek.lod} />
+      <SldCanvasV3Workspace width={1322} height={696} />
       <InspektorKanwyTestowy />
     </>,
   );
-  const scena = buildSceneV3(siec, przypadek.lod);
-  const i = scena.symbols.findIndex(przypadek.predykat);
-  expect(i, 'symbol w scenie').toBeGreaterThanOrEqual(0);
-  const testId = scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`;
-  const uchwyt = container.querySelector(`[data-hit-for="${testId}"]`);
-  expect(uchwyt, `uchwyt trafienia ${testId}`).not.toBeNull();
+  const scena = buildSceneV3(siec);
+  const selektor = przypadek.selektor ? przypadek.selektor(scena) : selektorSymbolu(scena, przypadek.predykat);
+  const uchwyt = container.querySelector(selektor);
+  expect(uchwyt, `uchwyt trafienia ${selektor}`).not.toBeNull();
   fireEvent.click(uchwyt!, { detail: 1 });
   return screen.getByTestId('inspektor-element-kanwy');
 }
@@ -174,7 +186,7 @@ describe('inspektor — karta pola: zabezpieczenie z jednego źródła', () => {
   it('pole bez sterownika: zdanie braku i „dodaj zabezpieczenie” → add_relay z bay_ref', () => {
     const pole = PRZYPADKI.find((p) => p.nazwa === 'pole')!;
     // Klikane pole traci sterownik w modelu (dane modelu, nie stan sklepu).
-    const symbol = buildSceneV3(SIEC, pole.lod).symbols.find(pole.predykat)!;
+    const symbol = buildSceneV3(SIEC).symbols.find(pole.predykat)!;
     const siec: EnergyNetworkModel = {
       ...SIEC,
       protection_assignments: (SIEC.protection_assignments ?? []).filter((pa) => pa.bay_ref !== symbol.meta?.ownerRef),

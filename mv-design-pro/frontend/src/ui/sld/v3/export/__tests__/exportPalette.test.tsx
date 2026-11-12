@@ -208,8 +208,8 @@ const DARK_TOKEN_VALUES = [
 /** Grupy sceny renderowane przez `SldCanvasV3.tsx` (`sld-v3-segments`/
  *  `sld-v3-symbols`/`sld-v3-labels`) — parytet = liczność DZIECI KAŻDEJ z
  *  tych grup identyczna przed/po transformacji (testId per element WEWNĄTRZ
- *  tych grup ma RÓŻNE konwencje nazewnicze zależnie od LOD/rodzaju elementu
- *  — `buildScene.ts` `testId` bywa `{bayRef}#{symbolId}`/`sld-v3-l0-{id}`/…,
+ *  tych grup ma RÓŻNE konwencje nazewnicze zależnie od rodzaju elementu
+ *  — `buildScene.ts` `testId` bywa `{bayRef}#{symbolId}`/…,
  *  nie jeden wzorzec `sld-v3-symbol-N` — więc miarą parytetu jest LICZBA
  *  węzłów w grupie, nie dopasowanie wzorca nazw). */
 const SCENE_GROUP_SELECTORS = [
@@ -222,62 +222,60 @@ function sceneGroupChildCounts(root: ParentNode): readonly number[] {
   return SCENE_GROUP_SELECTORS.map((selector) => root.querySelector(selector)?.children.length ?? -1);
 }
 
-function renderRealMarkupAtLod(lod: 0 | 1 | 2): { readonly svgEl: SVGSVGElement; readonly raw: string } {
-  const { container } = render(<SldCanvasV3 snapshot={enm} width={1200} height={900} lodOverride={lod} />);
+function renderRealMarkup(): { readonly svgEl: SVGSVGElement; readonly raw: string } {
+  const { container } = render(<SldCanvasV3 snapshot={enm} width={1200} height={900} />);
   const svgEl = container.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
   if (!svgEl) throw new Error('test setup: brak <svg data-testid="sld-canvas-v3"> po renderze');
   return { svgEl, raw: new XMLSerializer().serializeToString(svgEl) };
 }
 
 describe('exportPalette — integracja na realnym markupie kanwy (parytet eksportu)', () => {
-  for (const lod of [0, 1, 2] as const) {
-    it(`LOD ${lod}: ZERO wartości ciemnych po transformacji`, () => {
-      const { raw } = renderRealMarkupAtLod(lod);
-      const out = toLightTechnicalExportSvg(raw);
-      for (const dark of DARK_TOKEN_VALUES) {
-        expect(out).not.toContain(dark);
-      }
-    });
+  it(`ZERO wartości ciemnych po transformacji`, () => {
+    const { raw } = renderRealMarkup();
+    const out = toLightTechnicalExportSvg(raw);
+    for (const dark of DARK_TOKEN_VALUES) {
+      expect(out).not.toContain(dark);
+    }
+  });
 
-    it(`LOD ${lod}: kafle stanu łączników mają w eksporcie TEN SAM kolor co na kanwie`, () => {
-      // Iniekcja: inna para dokumentowa kafla (np. dawna czerwień drukowalna #B71C1C dla
-      // zamkniętego) — wypełnienia kafli przed i po transformacji rozjeżdżają się.
-      const { svgEl, raw } = renderRealMarkupAtLod(lod);
-      const wypelnienia = (root: ParentNode) =>
-        [...root.querySelectorAll('[data-kafel="tlo"]')].map((n) => n.getAttribute('fill'));
-      const przed = wypelnienia(svgEl);
-      const po = wypelnienia(new DOMParser().parseFromString(toLightTechnicalExportSvg(raw), 'image/svg+xml'));
-      expect(po).toEqual(przed);
-      if (lod === 2) expect(przed.length).toBeGreaterThan(0);
-      for (const f of przed) expect(Object.values(STATE_COLOR)).toContain(f);
-    });
+  it(`kafle stanu łączników mają w eksporcie TEN SAM kolor co na kanwie`, () => {
+    // Iniekcja: inna para dokumentowa kafla (np. dawna czerwień drukowalna #B71C1C dla
+    // zamkniętego) — wypełnienia kafli przed i po transformacji rozjeżdżają się.
+    const { svgEl, raw } = renderRealMarkup();
+    const wypelnienia = (root: ParentNode) =>
+      [...root.querySelectorAll('[data-kafel="tlo"]')].map((n) => n.getAttribute('fill'));
+    const przed = wypelnienia(svgEl);
+    const po = wypelnienia(new DOMParser().parseFromString(toLightTechnicalExportSvg(raw), 'image/svg+xml'));
+    expect(po).toEqual(przed);
+    expect(przed.length).toBeGreaterThan(0);
+    for (const f of przed) expect(Object.values(STATE_COLOR)).toContain(f);
+  });
 
-    it(`LOD ${lod}: tło jasne obecne`, () => {
-      const out = toLightTechnicalExportSvg(renderRealMarkupAtLod(lod).raw);
-      expect(out).toContain(`fill="${LIGHT_TECHNICAL_V3.canvasBackground}"`);
-    });
+  it(`tło jasne obecne`, () => {
+    const out = toLightTechnicalExportSvg(renderRealMarkup().raw);
+    expect(out).toContain(`fill="${LIGHT_TECHNICAL_V3.canvasBackground}"`);
+  });
 
-    it(`LOD ${lod}: parytet elementów — liczności segmenty/symbole/etykiety identyczne przed/po`, () => {
-      const { svgEl, raw } = renderRealMarkupAtLod(lod);
-      const before = sceneGroupChildCounts(svgEl);
-      // Strażnik „test nie mierzy pustki". Do V12K-218 wymagał, by KAŻDA grupa
-      // sceny miała dzieci; od declutteru ekranowego grupa etykiet bywa pusta
-      // zgodnie z kontraktem — na kadrze 1200×900 pełna sieć daje skalę, przy
-      // której całe pismo jest poniżej progu czytelności i nie trafia do DOM.
-      // Wymagamy więc dowodu na grupach, które puste być NIE MOGĄ (tory i
-      // symbole), a żadna grupa nie może być nieobecna (-1 z selektora).
-      const [segmenty, symbole, etykiety] = before;
-      expect(segmenty).toBeGreaterThan(0);
-      expect(symbole).toBeGreaterThan(0);
-      // Etykiety: tylko obecność grupy (0 dzieci jest legalne po declutterze,
-      // -1 oznaczałoby brak samej grupy w markupie i to byłby błąd).
-      expect(etykiety).toBeGreaterThanOrEqual(0);
+  it(`parytet elementów — liczności segmenty/symbole/etykiety identyczne przed/po`, () => {
+    const { svgEl, raw } = renderRealMarkup();
+    const before = sceneGroupChildCounts(svgEl);
+    // Strażnik „test nie mierzy pustki". Do V12K-218 wymagał, by KAŻDA grupa
+    // sceny miała dzieci; od declutteru ekranowego grupa etykiet bywa pusta
+    // zgodnie z kontraktem — na kadrze 1200×900 pełna sieć daje skalę, przy
+    // której całe pismo jest poniżej progu czytelności i nie trafia do DOM.
+    // Wymagamy więc dowodu na grupach, które puste być NIE MOGĄ (tory i
+    // symbole), a żadna grupa nie może być nieobecna (-1 z selektora).
+    const [segmenty, symbole, etykiety] = before;
+    expect(segmenty).toBeGreaterThan(0);
+    expect(symbole).toBeGreaterThan(0);
+    // Etykiety: tylko obecność grupy (0 dzieci jest legalne po declutterze,
+    // -1 oznaczałoby brak samej grupy w markupie i to byłby błąd).
+    expect(etykiety).toBeGreaterThanOrEqual(0);
 
-      const out = toLightTechnicalExportSvg(raw);
-      const parsed = new DOMParser().parseFromString(out, 'image/svg+xml');
-      expect(parsed.querySelector('parsererror')).toBeNull();
-      const after = sceneGroupChildCounts(parsed);
-      expect(after).toEqual(before);
-    });
-  }
+    const out = toLightTechnicalExportSvg(raw);
+    const parsed = new DOMParser().parseFromString(out, 'image/svg+xml');
+    expect(parsed.querySelector('parsererror')).toBeNull();
+    const after = sceneGroupChildCounts(parsed);
+    expect(after).toEqual(before);
+  });
 });

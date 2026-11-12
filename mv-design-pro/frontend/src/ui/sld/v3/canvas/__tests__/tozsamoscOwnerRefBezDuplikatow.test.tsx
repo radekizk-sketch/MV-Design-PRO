@@ -92,40 +92,37 @@ function distinctOwnerRefs(
 }
 
 describe('SldCanvasV3 — tożsamość ownerRef bez duplikatów (regresja S9-4/S9-10 rozszerzona na scenę)', () => {
-  for (const lod of [1, 2] as const) {
-    it(`L${lod}: sieć referencyjna + nakładka OLTC na KAŻDYM transformatorze ⇒ zero ostrzeżeń "same key", jedna odznaka na ref`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const transformerRefs = distinctOwnerRefs(scene, 'transformer');
-      expect(transformerRefs.length).toBeGreaterThan(0);
+  it(`sieć referencyjna + nakładka OLTC na KAŻDYM transformatorze ⇒ zero ostrzeżeń "same key", jedna odznaka na ref`, () => {
+    const scene = buildSceneV3(enm);
+    const transformerRefs = distinctOwnerRefs(scene, 'transformer');
+    expect(transformerRefs.length).toBeGreaterThan(0);
 
-      const oltcByOwnerRef: Record<string, TransformerOltcOverlay> = {};
-      transformerRefs.forEach((ownerRef, i) => {
-        oltcByOwnerRef[ownerRef] = { ownerRef, tapPosition: (i % 5) - 2, switchCount: i };
-      });
-      const overlay: SldV3Overlay = { energizedByTestId: {}, oltcByOwnerRef };
-
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      try {
-        const { container } = render(
-          <SldCanvasV3
-            snapshot={enm}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            lodOverride={lod}
-            overlay={overlay}
-          />,
-        );
-
-        const sameKeyWarnings = errorSpy.mock.calls.filter((args) =>
-          args.some((arg) => typeof arg === 'string' && arg.includes('same key')),
-        );
-        expect(sameKeyWarnings).toEqual([]);
-
-        const badges = container.querySelectorAll('[data-testid^="sld-v3-oltc-badge-"]');
-        expect(badges.length).toBe(transformerRefs.length);
-      } finally {
-        errorSpy.mockRestore();
-      }
+    const oltcByOwnerRef: Record<string, TransformerOltcOverlay> = {};
+    transformerRefs.forEach((ownerRef, i) => {
+      oltcByOwnerRef[ownerRef] = { ownerRef, tapPosition: (i % 5) - 2, switchCount: i };
     });
-  }
+    const overlay: SldV3Overlay = { energizedByTestId: {}, oltcByOwnerRef };
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const { container } = render(
+        <SldCanvasV3
+          snapshot={enm}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          overlay={overlay}
+        />,
+      );
+
+      const sameKeyWarnings = errorSpy.mock.calls.filter((args) =>
+        args.some((arg) => typeof arg === 'string' && arg.includes('same key')),
+      );
+      expect(sameKeyWarnings).toEqual([]);
+
+      const badges = container.querySelectorAll('[data-testid^="sld-v3-oltc-badge-"]');
+      expect(badges.length).toBe(transformerRefs.length);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
 });

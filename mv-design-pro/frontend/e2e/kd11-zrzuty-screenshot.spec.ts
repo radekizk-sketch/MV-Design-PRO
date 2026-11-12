@@ -5,12 +5,12 @@
  *    rysunek nie niósł ani jednego podpisu („Ukryto 35 opisów") — porównanie 1:1,
  *  - `kd11-tozsamosc-dopasowany-{dark,light}.png` — kadr „Dopasuj widok" z
  *    WIDOCZNYMI podpisami tożsamości,
- *  - `kd11-tozsamosc-blisko-{dark,light}.png` — kadr przybliżony (pełny poziom
- *    szczegółu), na którym wracają DANE SZCZEGÓŁOWE (parametry, adnotacje).
+ *  - `kd11-tozsamosc-blisko-{dark,light}.png` — kadr przybliżony (skala komfortu
+ *    czytania), na którym wracają DANE SZCZEGÓŁOWE (parametry, adnotacje).
  *
  * Scena REALNA: projekt + przypadek + GPZ + magistrala z trzema stacjami,
- * zbudowane operacjami domenowymi backendu; rozwinięcie bloku KLIKIEM
- * NATYWNYM (ta sama droga danych i ta sama ścieżka użytkownika co spec
+ * zbudowane operacjami domenowymi backendu; wskazanie GPZ KLIKIEM NATYWNYM w jego
+ * napis i przybliżenie kółkiem (ta sama droga danych i ta sama ścieżka użytkownika co spec
  * `kd8-zrzuty-screenshot.spec.ts`, żeby kadry były porównywalne 1:1).
  *
  * Spec ASERTUJE dowód przed zapisem: na kadrze dopasowanym są podpisy
@@ -26,6 +26,7 @@ import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
+import { SELEKTOR_UCHWYTU_GPZ, SKALA_KOMFORTU_CZYTANIA, oddalDoSkali, przyblizDoSkali, srodekRamki } from './skalaKamery';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
@@ -212,30 +213,23 @@ test.describe('kd11:zrzuty', () => {
       if (jasny) expect(jasnosc, `kanwa motywu ${id} nie jest jasna`).toBeGreaterThan(0.5);
       else expect(jasnosc, `kanwa motywu ${id} nie jest ciemna`).toBeLessThan(0.2);
 
-      // (1) Zejście na przegląd kółkiem — natywnie, jak projektant.
+      // (1) Zejście na przegląd kółkiem — natywnie, jak projektant (dolna granica skali =
+      // dopasowanie całej sieci, R2; jedna scena — karta SLD-SKALA-I-NAWIGACJA R1).
       const canvasBox = await canvas.boundingBox();
       expect(canvasBox).not.toBeNull();
       const srodek = { x: canvasBox!.x + canvasBox!.width / 2, y: canvasBox!.y + canvasBox!.height / 2 };
-      await page.mouse.move(srodek.x, srodek.y);
-      let poziom = await canvas.getAttribute('data-scene-lod');
-      for (let krok = 0; krok < 16 && poziom !== '0'; krok++) {
-        await page.mouse.wheel(0, 200);
-        await page.waitForTimeout(150);
-        poziom = await canvas.getAttribute('data-scene-lod');
-      }
-      await expect(canvas).toHaveAttribute('data-scene-lod', '0');
+      await oddalDoSkali(page, canvas, srodek);
 
-      // (2) KLIK NATYWNY w blok GPZ ⇒ rozwinięcie układu; selekcja zdjęta.
-      const wezelBloku = symbole.locator('g[data-element-kind="station"]', {
-        has: page.locator('[data-symbol-canon="gpzCollapsed"]'),
-      });
-      await expect(wezelBloku).toHaveCount(1);
+      // (2) KLIK NATYWNY w napis GPZ ⇒ selekcja; przybliżenie kółkiem nad GPZ do skali
+      // czytania (dawniej: klik rozwijał zwinięty blok GPZ widoku L0); selekcja zdjęta.
+      const uchwytGpz = page.locator(SELEKTOR_UCHWYTU_GPZ).first();
+      await expect(uchwytGpz).toHaveCount(1);
       // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
-      await czekajNaStabilnaGeometrie(wezelBloku);
-      const box = await wezelBloku.boundingBox();
-      expect(box).not.toBeNull();
-      await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+      await czekajNaStabilnaGeometrie(uchwytGpz);
+      const srodekGpz = await srodekRamki(uchwytGpz);
+      await page.mouse.click(srodekGpz.x, srodekGpz.y);
       await page.waitForTimeout(1200);
+      await przyblizDoSkali(page, canvas, srodekGpz);
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
       // Zdjęcie selekcji realną ścieżką (K11-A): jeden Escape zdejmuje selekcję
       // (UI-02b: klik nie otwiera już panelu szczegółów nad kanwą). Selekcja musi
@@ -267,27 +261,11 @@ test.describe('kd11:zrzuty', () => {
       await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd11-tozsamosc-dopasowany-${id}.png`) });
 
-      // (5) KADR PRZYBLIŻONY — kółkiem NAD BLOKIEM GPZ, aż do pełnego poziomu
-      // szczegółu; wtedy dane szczegółowe (parametry, adnotacje) wracają.
-      // Kotwica kursora: transformator GPZ, gdy rysowany na tym poziomie
-      // szczegółu; na przeglądzie — zwinięty blok GPZ; w ostateczności środek.
-      const kotwica = (await symbole.locator('[data-symbol-canon="transformer2W"]').count()) > 0
-        ? symbole.locator('[data-symbol-canon="transformer2W"]').first()
-        : (await symbole.locator('[data-symbol-canon="gpzCollapsed"]').count()) > 0
-          ? symbole.locator('[data-symbol-canon="gpzCollapsed"]').first()
-          : null;
-      const gpzBox = kotwica ? await kotwica.boundingBox() : null;
-      const kursor = gpzBox
-        ? { x: gpzBox.x + gpzBox.width / 2, y: gpzBox.y + gpzBox.height / 2 }
-        : srodek;
-      await page.mouse.move(kursor.x, kursor.y);
-      let poziomBlisko = await canvas.getAttribute('data-scene-lod');
-      for (let krok = 0; krok < 12 && poziomBlisko !== '2'; krok++) {
-        await page.mouse.wheel(0, -200);
-        await page.waitForTimeout(150);
-        poziomBlisko = await canvas.getAttribute('data-scene-lod');
-      }
-      await expect(canvas).toHaveAttribute('data-scene-lod', '2');
+      // (5) KADR PRZYBLIŻONY — kółkiem NAD transformatorem GPZ do skali komfortu czytania;
+      // wtedy dane szczegółowe (parametry, adnotacje) są czytelne.
+      const kotwica = symbole.locator('[data-symbol-canon="transformer2W"]').first();
+      const kursor = (await kotwica.count()) > 0 ? await srodekRamki(kotwica) : srodek;
+      await przyblizDoSkali(page, canvas, kursor, SKALA_KOMFORTU_CZYTANIA);
       await page.waitForTimeout(800);
       const ukryteBlisko = Number(await etykiety.getAttribute('data-hidden-unreadable'));
       expect(ukryteBlisko, 'po przyblizeniu opisy szczegolowe musza wracac').toBeLessThan(ukryteDopasowany);

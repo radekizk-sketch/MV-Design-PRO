@@ -3,7 +3,7 @@
  * wizualny, że kropka węzłowa odczepu lateralnego (ES/VT/SA) jest RENDEROWANA
  * w SCENIE PRODUKCYJNEJ (`buildSceneV3`), nie tylko w zrzucie W1b. Renderuje
  * ZBLIŻENIE pól z odczepem uziemnika (ES), ogranicznika (SA) i przekładnika
- * napięciowego (VT) z realnego potoku `buildSceneV3(macierz, L2)`. Kropki to
+ * napięciowego (VT) z realnego potoku `buildSceneV3(macierz)`. Kropki to
  * symbole `junction` sceny (glif `SYMBOL_GLYPHS.junction`) w porcie odczepu.
  *
  * Uruchomienie (cwd: mv-design-pro/frontend):
@@ -23,7 +23,7 @@ const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 mkdirSync(OUT, { recursive: true });
 
 const { enm, targets } = buildW1MatrixFixture();
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 
 const CELLS: readonly { readonly variantId: string; readonly title: string }[] = [
   { variantId: 'linia-cb-ct-es', title: 'Pole liniowe · odczep UZIEMNIKA (ES)' },

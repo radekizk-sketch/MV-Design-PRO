@@ -117,3 +117,23 @@ describe('pas narzędzi kanwy — rozłączność przy każdej szerokości', () 
     }
   });
 });
+
+// Uwaga koordynatora 2026-11-11 (zrzut wejścia z wyników zwarć): etykiety przycisków pasa
+// kanwy łamały się w dwa wiersze („Drzewo / układu”, „Dopasuj / widok”). Tekst przycisku nie
+// może się łamać (zasada właściciela, ta sama co dla stanowiska EAZ), a klasa przycisku pasa
+// ma JEDNO źródło — kopia klasy w module kanwy wróciłaby bez tej reguły.
+describe('przyciski pasa kanwy — tekst w jednym wierszu, jedna klasa', () => {
+  it('klasa przycisku doku zakazuje łamania tekstu', async () => {
+    const { KLASA_PRZYCISKU_DOKU } = await import('../KontekstKadru');
+    expect(KLASA_PRZYCISKU_DOKU.split(/\s+/)).toContain('whitespace-nowrap');
+  });
+
+  it('moduł kanwy nie niesie własnej kopii klasy przycisku (jedno źródło)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const here = dirname(fileURLToPath(import.meta.url));
+    const zrodlo = readFileSync(resolve(here, '../SldCanvasV3Workspace.tsx'), 'utf8');
+    expect(zrodlo.match(/className="h-7 rounded border/g) ?? []).toEqual([]);
+  });
+});

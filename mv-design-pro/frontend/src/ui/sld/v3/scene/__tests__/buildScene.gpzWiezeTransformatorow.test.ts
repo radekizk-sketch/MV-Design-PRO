@@ -307,41 +307,37 @@ describe('GPZ: wieże transformatorów tej samej sekcji rozłożone bez kolizji 
     for (const sekcja of SEKCJE) {
       for (const pola of POLA_SEKCJI_1) {
         for (const sprzeglo of SPRZEGLO) {
-          for (const lod of [1, 2] as const) {
-            const nazwa =
-              `${liczba} TR na sekcji ${sekcja} × sekcja 1 ${pola ? 'z polami' : 'bez pól'} × ` +
-              `źródło na szynie WN × ${sprzeglo ? 'ze sprzęgłem' : 'bez sprzęgła'} × L${lod}`;
-            it(nazwa, () => {
-              const m = migawka(sekcja, liczba, { polaSekcji1: pola, sprzeglo });
-              const scena = buildSceneV3(m.enm, lod);
-              sprawdzWieze(m, scena);
-              expect(scena.meta.missingData.filter((k) => k.startsWith('gpz.transformer.section.missing:'))).toEqual([]);
-            });
-          }
+          const nazwa =
+            `${liczba} TR na sekcji ${sekcja} × sekcja 1 ${pola ? 'z polami' : 'bez pól'} × ` +
+            `źródło na szynie WN × ${sprzeglo ? 'ze sprzęgłem' : 'bez sprzęgła'}`;
+          it(nazwa, () => {
+            const m = migawka(sekcja, liczba, { polaSekcji1: pola, sprzeglo });
+            const scena = buildSceneV3(m.enm);
+            sprawdzWieze(m, scena);
+            expect(scena.meta.missingData.filter((k) => k.startsWith('gpz.transformer.section.missing:'))).toEqual([]);
+          });
         }
       }
     }
   }
 
   for (const bezSekcji of [1, 2] as const) {
-    for (const lod of [1, 2] as const) {
-      it(`${bezSekcji} TR z szyną SN spoza sekcji (obok 2 TR na sekcji 1, sekcja 2 wąska) × L${lod}: wieża na prawo od sekcji, bez zejścia, wpis braku`, () => {
-        const m = migawka(1, 2, { bezSekcji, sprzeglo: true });
-        const scena = buildSceneV3(m.enm, lod);
-        sprawdzWieze(m, scena);
-        const refy = m.wgSekcji.get(0)!;
-        const prawaSekcji = Math.max(szynaSekcji(scena, m.sekcjaId[1]).prawo, szynaSekcji(scena, m.sekcjaId[2]).prawo);
-        const osie = refy.map((ref) => osWiezy(scena, ref));
-        osie.forEach((os, i) => {
-          expect(os, `wieża ${refy[i]} na prawo od szyn sekcji`).toBeGreaterThan(prawaSekcji);
-          if (i > 0) expect(os).toBeGreaterThan(osie[i - 1]);
-          expect(odcinek(scena, `${refy[i]}#tr-field-to-bus`), `brak zejścia ${refy[i]}`).toBeUndefined();
-        });
-        expect(scena.meta.missingData.filter((k) => k.startsWith('gpz.transformer.section.missing:')).sort()).toEqual(
-          refy.map((ref) => `gpz.transformer.section.missing:${ref}`),
-        );
+    it(`${bezSekcji} TR z szyną SN spoza sekcji (obok 2 TR na sekcji 1, sekcja 2 wąska): wieża na prawo od sekcji, bez zejścia, wpis braku`, () => {
+      const m = migawka(1, 2, { bezSekcji, sprzeglo: true });
+      const scena = buildSceneV3(m.enm);
+      sprawdzWieze(m, scena);
+      const refy = m.wgSekcji.get(0)!;
+      const prawaSekcji = Math.max(szynaSekcji(scena, m.sekcjaId[1]).prawo, szynaSekcji(scena, m.sekcjaId[2]).prawo);
+      const osie = refy.map((ref) => osWiezy(scena, ref));
+      osie.forEach((os, i) => {
+        expect(os, `wieża ${refy[i]} na prawo od szyn sekcji`).toBeGreaterThan(prawaSekcji);
+        if (i > 0) expect(os).toBeGreaterThan(osie[i - 1]);
+        expect(odcinek(scena, `${refy[i]}#tr-field-to-bus`), `brak zejścia ${refy[i]}`).toBeUndefined();
       });
-    }
+      expect(scena.meta.missingData.filter((k) => k.startsWith('gpz.transformer.section.missing:')).sort()).toEqual(
+        refy.map((ref) => `gpz.transformer.section.missing:${ref}`),
+      );
+    });
   }
 
   it('kompozycja: kolejność transformatorów na wejściu kompozycji nie zmienia rozkładu wież (porządek po refach)', () => {
@@ -362,14 +358,12 @@ describe('GPZ: wieże transformatorów tej samej sekcji rozłożone bez kolizji 
   });
 
   it('determinizm: kolejność transformatorów w modelu nie zmienia sceny', () => {
-    for (const lod of [1, 2] as const) {
-      const a = buildSceneV3(migawka(1, 3, { bezSekcji: 1, odwroc: true, sprzeglo: true }).enm, lod);
-      const b = buildSceneV3(migawka(1, 3, { bezSekcji: 1, odwroc: false, sprzeglo: true }).enm, lod);
-      const c = buildSceneV3(migawka(1, 3, { bezSekcji: 1, odwroc: true, sprzeglo: true }).enm, lod);
-      expect(JSON.stringify(b.symbols)).toBe(JSON.stringify(a.symbols));
-      expect(JSON.stringify(b.labels)).toBe(JSON.stringify(a.labels));
-      expect(JSON.stringify(c.segments)).toBe(JSON.stringify(a.segments));
-    }
+    const a = buildSceneV3(migawka(1, 3, { bezSekcji: 1, odwroc: true, sprzeglo: true }).enm);
+    const b = buildSceneV3(migawka(1, 3, { bezSekcji: 1, odwroc: false, sprzeglo: true }).enm);
+    const c = buildSceneV3(migawka(1, 3, { bezSekcji: 1, odwroc: true, sprzeglo: true }).enm);
+    expect(JSON.stringify(b.symbols)).toBe(JSON.stringify(a.symbols));
+    expect(JSON.stringify(b.labels)).toBe(JSON.stringify(a.labels));
+    expect(JSON.stringify(c.segments)).toBe(JSON.stringify(a.segments));
   });
 });
 
@@ -390,41 +384,39 @@ function migawkaTrybuSn(stanSprzegla: 'closed' | 'open'): EnergyNetworkModel {
 
 describe('GPZ z równoważnikiem sieci na szynach SN (karta GPZ-MODEL): blok źródła przy szynie sekcji 1, bez kolumny WN', () => {
   for (const stan of ['closed', 'open'] as const) {
-    for (const lod of [1, 2] as const) {
-      it(`dwie sekcje × sprzęgło ${stan === 'closed' ? 'zamknięte' : 'otwarte'} × L${lod}`, () => {
-        const enm = migawkaTrybuSn(stan);
-        const gpz = enm.substations.find((st) => st.station_type === 'gpz')!;
-        const [sekcja1, sekcja2] = gpz.gpz_sections!;
-        expect(enm.transformers.filter((t) => gpz.transformer_refs.includes(t.ref_id))).toEqual([]);
-        const zrodlo = enm.sources.find((src) => src.bus_ref === sekcja1.bus_ref);
-        expect(zrodlo, 'równoważnik na szynie sekcji 1').toBeDefined();
-        const scena = buildSceneV3(enm, lod);
-        // Bez transformatorów i bez szyny WN — rysunek nie sugeruje zasilania, którego
-        // model obliczeniowy nie ma.
-        expect(scena.symbols.filter((sym) => sym.symbolId === 'transformer2W' && sym.meta?.testId?.startsWith('gpz-'))).toEqual([]);
-        expect(scena.segments.filter((g) => g.meta?.testId === 'gpz-canonical-hv-bus')).toEqual([]);
-        expect(scena.labels.filter((l) => /^Szyna WN/.test(l.text))).toEqual([]);
-        // Blok źródła przy prawym końcu szyny sekcji 1, przedłużenie szyny do zaczepu.
-        const szyna1 = szynaSekcji(scena, sekcja1.section_id);
-        szynaSekcji(scena, sekcja2.section_id);
-        const zejscie = odcinek(scena, `${zrodlo!.ref_id}#grid-source-drop`);
-        expect(zejscie, 'zejście źródła').toBeDefined();
-        const dol = zejscie!.points[zejscie!.points.length - 1];
-        expect(dol.y).toBe(szyna1.y);
-        expect(dol.x).toBeGreaterThan(szyna1.prawo);
-        expect(
-          scena.segments.find((g) => g.meta?.ownerRef?.endsWith('#source-bus-extension') && g.points[0].x === szyna1.prawo),
-          'przedłużenie szyny sekcji 1 do zaczepu źródła',
-        ).toBeDefined();
-        expect(scena.meta.missingData).not.toContain('gpz.source.unattached');
-        expect(scena.labels.some((l) => l.ownerRef.startsWith(`${zrodlo!.ref_id}#system-source-label`))).toBe(true);
-        // Blok źródła nie koliduje z niczym spoza siebie.
-        expect(kolizjeWiez(scena, [], zrodlo!.ref_id)).toEqual([]);
-        const odrzuconeGpz = scena.meta.stopNotes
-          .filter((n) => n.startsWith('label.declutter:'))
-          .flatMap((n) => n.match(/[a-z-]+:gpz[^,( ]*/g) ?? []);
-        expect(odrzuconeGpz).toEqual([]);
-      });
-    }
+    it(`dwie sekcje × sprzęgło ${stan === 'closed' ? 'zamknięte' : 'otwarte'}`, () => {
+      const enm = migawkaTrybuSn(stan);
+      const gpz = enm.substations.find((st) => st.station_type === 'gpz')!;
+      const [sekcja1, sekcja2] = gpz.gpz_sections!;
+      expect(enm.transformers.filter((t) => gpz.transformer_refs.includes(t.ref_id))).toEqual([]);
+      const zrodlo = enm.sources.find((src) => src.bus_ref === sekcja1.bus_ref);
+      expect(zrodlo, 'równoważnik na szynie sekcji 1').toBeDefined();
+      const scena = buildSceneV3(enm);
+      // Bez transformatorów i bez szyny WN — rysunek nie sugeruje zasilania, którego
+      // model obliczeniowy nie ma.
+      expect(scena.symbols.filter((sym) => sym.symbolId === 'transformer2W' && sym.meta?.testId?.startsWith('gpz-'))).toEqual([]);
+      expect(scena.segments.filter((g) => g.meta?.testId === 'gpz-canonical-hv-bus')).toEqual([]);
+      expect(scena.labels.filter((l) => /^Szyna WN/.test(l.text))).toEqual([]);
+      // Blok źródła przy prawym końcu szyny sekcji 1, przedłużenie szyny do zaczepu.
+      const szyna1 = szynaSekcji(scena, sekcja1.section_id);
+      szynaSekcji(scena, sekcja2.section_id);
+      const zejscie = odcinek(scena, `${zrodlo!.ref_id}#grid-source-drop`);
+      expect(zejscie, 'zejście źródła').toBeDefined();
+      const dol = zejscie!.points[zejscie!.points.length - 1];
+      expect(dol.y).toBe(szyna1.y);
+      expect(dol.x).toBeGreaterThan(szyna1.prawo);
+      expect(
+        scena.segments.find((g) => g.meta?.ownerRef?.endsWith('#source-bus-extension') && g.points[0].x === szyna1.prawo),
+        'przedłużenie szyny sekcji 1 do zaczepu źródła',
+      ).toBeDefined();
+      expect(scena.meta.missingData).not.toContain('gpz.source.unattached');
+      expect(scena.labels.some((l) => l.ownerRef.startsWith(`${zrodlo!.ref_id}#system-source-label`))).toBe(true);
+      // Blok źródła nie koliduje z niczym spoza siebie.
+      expect(kolizjeWiez(scena, [], zrodlo!.ref_id)).toEqual([]);
+      const odrzuconeGpz = scena.meta.stopNotes
+        .filter((n) => n.startsWith('label.declutter:'))
+        .flatMap((n) => n.match(/[a-z-]+:gpz[^,( ]*/g) ?? []);
+      expect(odrzuconeGpz).toEqual([]);
+    });
   }
 });

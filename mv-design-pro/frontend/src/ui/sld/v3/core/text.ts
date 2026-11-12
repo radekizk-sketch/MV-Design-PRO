@@ -52,8 +52,8 @@ export type LabelRole = 'tozsamosc' | 'dane';
 /**
  * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
  * BINDING) — KLASA POZIOMU SZCZEGÓŁU etykiety/adnotacji sceny: TRZY poziomy
- * widoczności wg zoomu kamery, TA SAMA taksonomia co `SceneLod`
- * (`canvas/camera.ts`, 0/1/2), ROZŁĄCZNA od `LabelClass` (rozmiar pisma) i
+ * informacji etykiety (scena jest jedna — karta SLD-SKALA-I-NAWIGACJA, R1 — więc
+ * klasa nie wybiera sceny, tylko gęstość napisów w kanwie), ROZŁĄCZNA od `LabelClass` (rozmiar pisma) i
  * WARSTWĄ NAD `LabelRole` (KD-11), nie jej zastępstwem — wyprowadzenie:
  * `layout/labels.ts` `lodClassOf`.
  *

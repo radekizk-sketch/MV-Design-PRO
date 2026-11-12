@@ -65,7 +65,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { composeStation } from '../../compose/station';
 import { computeBands, type StationBandHeights } from '../bands';
 import { computeColumns, insertColumnChannels } from '../columns';
@@ -90,7 +90,6 @@ const fixturePath = resolve(
   here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json',
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
-const LODY: readonly SceneLod[] = [0, 1, 2];
 
 function makeBay(fieldRole: FieldRole, index: number): MiniBlockBayDescriptor {
   return { bayRef: `bay-${index}`, fieldRole, designation: `Pole ${index}`, hasMissingRequiredDevice: false };
@@ -321,57 +320,52 @@ function zakresWlascicielaY(scene: SceneV3, ref: string): { min: number; max: nu
 }
 
 describe('SLOT-DRYF-PRZĘSŁA §3 — podpis przęsła stoi na swoim kablu (scena referencyjna)', () => {
-  for (const lod of LODY) {
-    it(`L${lod}: prostokąt i środek KAŻDEGO podpisu przęsła leżą w zakresie X jego kabla`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const podpisy = scene.labels.filter((l) => l.ownerKind === 'segment-span');
-      // ZAPADKA NA PUSTY ZBIÓR (§4 karty): etykiety przęseł są rysowane
-      // dopiero na L2 — na L0/L1 zbiór jest pusty Z DEFINICJI i wtedy test
-      // pilnuje tylko tego, że nic się tam nie pojawiło. Na L2 zbiór MUSI być
-      // niepusty, inaczej zieleń nic nie znaczy.
-      if (lod === 2) expect(podpisy.length).toBeGreaterThanOrEqual(30);
-      else expect(podpisy).toEqual([]);
+  it(`prostokąt i środek KAŻDEGO podpisu przęsła leżą w zakresie X jego kabla`, () => {
+    const scene = buildSceneV3(enm);
+    const podpisy = scene.labels.filter((l) => l.ownerKind === 'segment-span');
+    // ZAPADKA NA PUSTY ZBIÓR (§4 karty): jedna scena niesie etykiety przęseł —
+    // zbiór MUSI być niepusty, inaczej zieleń nic nie znaczy.
+    expect(podpisy.length).toBeGreaterThanOrEqual(30);
 
-      for (const l of podpisy) {
-        const ref = l.ownerRef.replace(/#segment-label$/, '');
-        const kabel = zakresWlasciciela(scene, ref);
-        expect(kabel, `kabel dla ${l.ownerRef}`).not.toBeNull();
-        const x0 = l.rect.x;
-        const x1 = l.rect.x + l.rect.width;
-        // NAPIS I KABEL LEŻĄ NA SOBIE. Dwa dopuszczalne układy, wyprowadzone
-        // z GEOMETRII (R1: zero progów w jednostkach):
-        //  · środek napisu leży w zakresie kabla (kabel dłuższy od napisu
-        //    albo porównywalny) — napis „siedzi" na kablu;
-        //  · albo napis POKRYWA cały kabel (kabel krótszy od własnego
-        //    podpisu — na sieci referencyjnej kable od 56 j.św. przy
-        //    podpisach 335–362 j.św.; wymaganie środka byłoby wtedy
-        //    wymaganiem trafienia w okno węższe niż sam napis).
-        // Oba mówią to samo zdanie: nie da się pokazać punktu napisu, który
-        // stoi „gdzie indziej" niż kabel.
-        const srodek = (x0 + x1) / 2;
-        const srodekNaKablu = srodek >= kabel!.min && srodek <= kabel!.max;
-        const napisPokrywaKabel = x0 <= kabel!.min && x1 >= kabel!.max;
-        expect(
-          srodekNaKablu || napisPokrywaKabel,
-          `${l.text}: podpis [${x0}..${x1}] nie leży na swoim kablu [${kabel!.min}..${kabel!.max}]`,
-        ).toBe(true);
-        // (M2) Wystawanie NIE PRZEKRACZA minimum geometrycznego. Minimum jest
-        // niezerowe tylko wtedy, gdy napis jest DŁUŻSZY od kawałka — wtedy
-        // osiąga się je, pokrywając kawałek w całości. Każdy nadmiar ponad tę
-        // wartość to napis odsunięty od swojego kabla bez powodu.
-        const wystawanie = Math.max(0, kabel!.min - x0) + Math.max(0, x1 - kabel!.max);
-        const minimum = Math.max(0, l.rect.width - (kabel!.max - kabel!.min));
-        expect(
-          wystawanie,
-          `${l.text}: wystawanie ${wystawanie} ponad minimum geometryczne ${minimum} `
-            + `(napis ${l.rect.width}, kawałek ${kabel!.max - kabel!.min})`,
-        ).toBeLessThanOrEqual(minimum);
-      }
-    });
-  }
+    for (const l of podpisy) {
+      const ref = l.ownerRef.replace(/#segment-label$/, '');
+      const kabel = zakresWlasciciela(scene, ref);
+      expect(kabel, `kabel dla ${l.ownerRef}`).not.toBeNull();
+      const x0 = l.rect.x;
+      const x1 = l.rect.x + l.rect.width;
+      // NAPIS I KABEL LEŻĄ NA SOBIE. Dwa dopuszczalne układy, wyprowadzone
+      // z GEOMETRII (R1: zero progów w jednostkach):
+      //  · środek napisu leży w zakresie kabla (kabel dłuższy od napisu
+      //    albo porównywalny) — napis „siedzi" na kablu;
+      //  · albo napis POKRYWA cały kabel (kabel krótszy od własnego
+      //    podpisu — na sieci referencyjnej kable od 56 j.św. przy
+      //    podpisach 335–362 j.św.; wymaganie środka byłoby wtedy
+      //    wymaganiem trafienia w okno węższe niż sam napis).
+      // Oba mówią to samo zdanie: nie da się pokazać punktu napisu, który
+      // stoi „gdzie indziej" niż kabel.
+      const srodek = (x0 + x1) / 2;
+      const srodekNaKablu = srodek >= kabel!.min && srodek <= kabel!.max;
+      const napisPokrywaKabel = x0 <= kabel!.min && x1 >= kabel!.max;
+      expect(
+        srodekNaKablu || napisPokrywaKabel,
+        `${l.text}: podpis [${x0}..${x1}] nie leży na swoim kablu [${kabel!.min}..${kabel!.max}]`,
+      ).toBe(true);
+      // (M2) Wystawanie NIE PRZEKRACZA minimum geometrycznego. Minimum jest
+      // niezerowe tylko wtedy, gdy napis jest DŁUŻSZY od kawałka — wtedy
+      // osiąga się je, pokrywając kawałek w całości. Każdy nadmiar ponad tę
+      // wartość to napis odsunięty od swojego kabla bez powodu.
+      const wystawanie = Math.max(0, kabel!.min - x0) + Math.max(0, x1 - kabel!.max);
+      const minimum = Math.max(0, l.rect.width - (kabel!.max - kabel!.min));
+      expect(
+        wystawanie,
+        `${l.text}: wystawanie ${wystawanie} ponad minimum geometryczne ${minimum} `
+          + `(napis ${l.rect.width}, kawałek ${kabel!.max - kabel!.min})`,
+      ).toBeLessThanOrEqual(minimum);
+    }
+  });
 
   it('CZUŁOŚĆ wyroczni: podpis przesunięty o własną szerokość MUSI oblać (inaczej zieleń nic nie dowodzi)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const podpis = scene.labels.find((l) => l.ownerKind === 'segment-span');
     expect(podpis).toBeDefined();
     const kabel = zakresWlasciciela(scene, podpis!.ownerRef.replace(/#segment-label$/, ''))!;
@@ -518,37 +512,33 @@ describe('SLOT-DRYF-PRZĘSŁA §4 — kanał zejścia przesuwa etykietę wzdłu�
 // ---------------------------------------------------------------------------
 
 describe('SLOT-DRYF-PRZĘSŁA §5 — podpis lateralu stoi przy swojej linii (oś Y)', () => {
-  for (const lod of LODY) {
-    it(`L${lod}: żaden podpis lateralu nie odsuwa się od swojego pionu ani nie wystaje ponad minimum`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const podpisy = scene.labels.filter((l) => l.ownerKind === 'segment-lateral');
-      // ZAPADKA NA PUSTY ZBIÓR: laterale rysują się na L2 (12 na tej
-      // fixturze); na L0/L1 zbiór jest pusty Z DEFINICJI.
-      if (lod === 2) expect(podpisy.length).toBeGreaterThanOrEqual(10);
-      else expect(podpisy).toEqual([]);
+  it(`żaden podpis lateralu nie odsuwa się od swojego pionu ani nie wystaje ponad minimum`, () => {
+    const scene = buildSceneV3(enm);
+    const podpisy = scene.labels.filter((l) => l.ownerKind === 'segment-lateral');
+    // ZAPADKA NA PUSTY ZBIÓR: jedna scena niesie podpisy lateralu (12 na tej fixturze).
+    expect(podpisy.length).toBeGreaterThanOrEqual(10);
 
-      for (const l of podpisy) {
-        const ref = l.ownerRef.replace(/#lateral-label$/, '').replace(/#segment-label$/, '');
-        const pion = zakresWlascicielaY(scene, ref);
-        expect(pion, `pion dla ${l.ownerRef}`).not.toBeNull();
-        const y0 = l.rect.y;
-        const y1 = l.rect.y + l.rect.height;
-        const srodek = (y0 + y1) / 2;
-        // (M1) środek napisu leży na swoim pionie ALBO napis pokrywa go w całości.
-        expect(
-          (srodek >= pion!.min && srodek <= pion!.max) || (y0 <= pion!.min && y1 >= pion!.max),
-          `${l.text}: podpis lateralu [${y0}..${y1}] nie leży przy swoim pionie [${pion!.min}..${pion!.max}]`,
-        ).toBe(true);
-        // (M2) wystawanie nie przekracza minimum geometrycznego.
-        const wystawanie = Math.max(0, pion!.min - y0) + Math.max(0, y1 - pion!.max);
-        const minimum = Math.max(0, l.rect.height - (pion!.max - pion!.min));
-        expect(wystawanie, `${l.text}: wystawanie lateralu ponad minimum`).toBeLessThanOrEqual(minimum);
-      }
-    });
-  }
+    for (const l of podpisy) {
+      const ref = l.ownerRef.replace(/#lateral-label$/, '').replace(/#segment-label$/, '');
+      const pion = zakresWlascicielaY(scene, ref);
+      expect(pion, `pion dla ${l.ownerRef}`).not.toBeNull();
+      const y0 = l.rect.y;
+      const y1 = l.rect.y + l.rect.height;
+      const srodek = (y0 + y1) / 2;
+      // (M1) środek napisu leży na swoim pionie ALBO napis pokrywa go w całości.
+      expect(
+        (srodek >= pion!.min && srodek <= pion!.max) || (y0 <= pion!.min && y1 >= pion!.max),
+        `${l.text}: podpis lateralu [${y0}..${y1}] nie leży przy swoim pionie [${pion!.min}..${pion!.max}]`,
+      ).toBe(true);
+      // (M2) wystawanie nie przekracza minimum geometrycznego.
+      const wystawanie = Math.max(0, pion!.min - y0) + Math.max(0, y1 - pion!.max);
+      const minimum = Math.max(0, l.rect.height - (pion!.max - pion!.min));
+      expect(wystawanie, `${l.text}: wystawanie lateralu ponad minimum`).toBeLessThanOrEqual(minimum);
+    }
+  });
 
   it('CZUŁOŚĆ wyroczni lateralu: podpis odsunięty o własną wysokość MUSI oblać', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const podpis = scene.labels.find((l) => l.ownerKind === 'segment-lateral');
     expect(podpis).toBeDefined();
     const ref = podpis!.ownerRef.replace(/#lateral-label$/, '').replace(/#segment-label$/, '');

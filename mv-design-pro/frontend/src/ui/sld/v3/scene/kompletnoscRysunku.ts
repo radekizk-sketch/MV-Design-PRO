@@ -14,19 +14,16 @@
  *  · `wnetrze-punktu-odgaleznego` — szyny i łączniki punktu odgałęźnego (jego
  *    `bus_ref` i porty), gdy SAM punkt jest narysowany;
  *  · `blok-stacji` — szyny (`Substation.bus_refs`) i transformatory
- *    (`transformer_refs`) NARYSOWANEJ stacji albo GPZ, rysowane jako jej blok; na L0
- *    (stacja i GPZ są symbolem zbiorczym — `composeCollapsedGpz`, `stationCollapsed`)
- *    także gałąź o OBU końcach na szynach TEJ SAMEJ narysowanej stacji (sprzęgło sekcji
- *    GPZ). Na L1/L2 taka gałąź ma prymityw, a gałąź między dwiema stacjami nigdy nie jest
- *    wnętrzem bloku — oba przypadki zostają `niewyjasniony` bez prymitywu;
+ *    (`transformer_refs`) NARYSOWANEJ stacji albo GPZ, rysowane jako jej blok. Gałąź
+ *    o obu końcach na szynach tej samej stacji (sprzęgło sekcji) ma własny prymityw w scenie
+ *    (jedna geometria świata, karta SLD-SKALA-I-NAWIGACJA), więc bez prymitywu zostaje
+ *    `niewyjasniony`;
  *  · `agregat-odbioru-stacji` — odbiór na szynie narysowanej stacji: szyny stacji z
  *    jednego lustra backendu `szynyStacji` (szyny główne, zaciski pól SN, oba końce
  *    aparatów pól nN — to samo źródło co tabliczka „Odbiór ΣP");
  *  · `domena-nn` — szyna/gałąź całkowicie w paśmie nN, odbiór/generator na szynie nN
  *    i rozdzielnica nN wydzielona jako osobna stacja (wszystkie szyny w paśmie nN):
  *    schemat SN pokazuje stronę nN stacji portalem, a jej wnętrze — projekcja nN;
- *  · `zrodlo-zwiniete-na-l0` — źródło DER na L0 (stacja jest symbolem zbiorczym,
- *    `sourceCoverageGaps` ma ten sam wyjątek).
  *
  * Klasy świadomie POZA regułą (uzasadnienie merytoryczne): `corridors`/`line_runs` to
  * porządek odcinków (kontener logiczny, nie element sieci — rysują się ich odcinki);
@@ -47,7 +44,6 @@ export type KategoriaRysunku =
   | 'blok-stacji'
   | 'agregat-odbioru-stacji'
   | 'domena-nn'
-  | 'zrodlo-zwiniete-na-l0'
   | 'niewyjasniony';
 
 export type KlasaElementu =
@@ -133,16 +129,11 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
   }
 
   const blokStacji = new Set<string>();
-  /** Szyna → narysowana stacja, której blok ją niesie (wnętrze bloku na L0 — jedna stacja). */
-  const stacjaSzynyBloku = new Map<string, string>();
   const szynyOdbiorowStacji = new Set<string>();
   const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
   for (const stacja of snapshot.substations ?? []) {
     if (!narysowane.has(stacja.ref_id)) continue;
-    for (const ref of stacja.bus_refs ?? []) {
-      blokStacji.add(ref);
-      stacjaSzynyBloku.set(ref, stacja.ref_id);
-    }
+    for (const ref of stacja.bus_refs ?? []) blokStacji.add(ref);
     for (const tr of transformatoryNalezaceDoStacji(snapshot, stacja, kontekstTransformatorow)) blokStacji.add(tr.ref_id);
     for (const ref of szynyStacji(snapshot, stacja)) szynyOdbiorowStacji.add(ref);
   }
@@ -173,10 +164,6 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
           return 'wnetrze-punktu-odgaleznego';
         }
         if (szynaNn(element.from_bus_ref) && szynaNn(element.to_bus_ref)) return 'domena-nn';
-        if (scene.meta.lod === 0 && element.from_bus_ref != null && element.to_bus_ref != null) {
-          const stacjaOd = stacjaSzynyBloku.get(element.from_bus_ref);
-          if (stacjaOd != null && stacjaOd === stacjaSzynyBloku.get(element.to_bus_ref)) return 'blok-stacji';
-        }
         return 'niewyjasniony';
       case 'transformers':
         return blokStacji.has(element.ref_id) ? 'blok-stacji' : 'niewyjasniony';
@@ -186,9 +173,6 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
         return 'niewyjasniony';
       case 'generators':
       case 'sources':
-        if (scene.meta.lod === 0 && scene.meta.sources.some((s) => s.id === element.ref_id)) {
-          return 'zrodlo-zwiniete-na-l0';
-        }
         if (szynaNn(element.bus_ref)) return 'domena-nn';
         return 'niewyjasniony';
       default:
@@ -210,7 +194,6 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
     'blok-stacji': 0,
     'agregat-odbioru-stacji': 0,
     'domena-nn': 0,
-    'zrodlo-zwiniete-na-l0': 0,
     niewyjasniony: 0,
   };
   for (const pozycja of pozycje) liczniki[pozycja.kategoria] += 1;

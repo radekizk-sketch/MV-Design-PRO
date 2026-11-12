@@ -9,8 +9,8 @@
  * {bez nakładki, zaznaczenie pola, energizacja pod napięciem, energizacja bez napięcia}.
  *
  * Asercje (wyrocznia niezależna od kodu kanwy — tabela położenie → kafel z karty):
- *  (d) stan jednoznaczny i spójny między LOD — każdy łącznik narysowany na danym poziomie ma
- *      kafel zgodny z rekordem; ten sam aparat na różnych LOD nigdy nie ma różnych kafli;
+ *  (d) stan jednoznaczny i spójny w każdej skali kamery — każdy łącznik narysowany ma
+ *      kafel zgodny z rekordem; ten sam aparat w różnych skalach nigdy nie ma różnych kafli;
  *  (h) geometria identyczna w obu motywach — rysunek po usunięciu atrybutów barwy jest bajt
  *      w bajt ten sam;
  *  (e) cztery warstwy rozdzielone — zaznaczenie nie zmienia kafla, energizacja nie przemalowuje
@@ -23,15 +23,16 @@ import type { BayDeviceState, BayPrimaryDevice, Branch, EnergyNetworkModel } fro
 import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
 import type { ThemeMode } from '../../../../../ui2/theme/themeMode';
 import { SldCanvasV3 } from '../SldCanvasV3';
+import { SKALA_KOMFORTU_CZYTANIA } from '../camera';
+import { kameraNadSrodkiemSceny } from './kameraTestowa';
 import type { SldV3Overlay } from '../overlay';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import { STATE_COLOR } from '../../theme/colorTokens';
 
 const BAZA = (fxStaly1 as unknown as { snapshot: EnergyNetworkModel }).snapshot;
 const W = 1400;
 const H = 900;
-const LODY: readonly SceneLod[] = [0, 1, 2];
 const MOTYWY: readonly ThemeMode[] = ['dark_scada', 'light_technical'];
 
 type StanQ1 = 'zamkniety' | 'otwarty' | 'brak';
@@ -77,14 +78,20 @@ interface Rysunek {
   readonly kafle: ReadonlyMap<string, { readonly stan: string | null; readonly fill: string | null; readonly glif: readonly string[] }>;
 }
 
+/** Skale kamery iloczynu (d): `null` — kadr startowy (dopasowanie), 0,5 i skala komfortu czytania
+ *  nad środkiem rysunku. Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): kafel stanu jest ten sam
+ *  w każdej skali — dawniej sprawdzane na scenach poziomów L0/L1/L2. */
+const SKALE_KAFLI: readonly (number | null)[] = [null, 0.5, SKALA_KOMFORTU_CZYTANIA];
+
 function rysuj(
   enm: EnergyNetworkModel,
-  lod: SceneLod,
   motyw: ThemeMode,
   extra: { readonly overlay?: SldV3Overlay; readonly zaznaczenieRefy?: readonly string[] } = {},
+  skala: number | null = null,
 ): Rysunek {
+  const kamera = skala === null ? undefined : kameraNadSrodkiemSceny(buildSceneV3(enm), skala, { width: W, height: H });
   const { container } = render(
-    <SldCanvasV3 snapshot={enm} width={W} height={H} lodOverride={lod} paletteMode={motyw} {...extra} />,
+    <SldCanvasV3 snapshot={enm} width={W} height={H} paletteMode={motyw} cameraOverride={kamera} {...extra} />,
   );
   const kafle = new Map<string, { stan: string | null; fill: string | null; glif: string[] }>();
   for (const g of Array.from(container.querySelectorAll('[data-testid="sld-v3-symbols"] g[data-device-ref]'))) {
@@ -107,37 +114,37 @@ const polaLiniowe = (enm: EnergyNetworkModel): string[] =>
 
 afterEach(() => cleanup());
 
-describe('kafle stanu na kanwie — (d) stan jednoznaczny i spójny na LOD 0/1/2', () => {
+describe('kafle stanu na kanwie — (d) stan jednoznaczny i spójny w każdej skali kamery', () => {
   for (const q1 of ['zamkniety', 'otwarty', 'brak'] as const) {
     for (const q0 of ['zamkniety', 'otwarty'] as const) {
       it(`Q1 ${q1} · Q0 ${q0}`, () => {
         const enm = zPolozeniami(q1, q0);
         const naPoziomach = new Map<string, Set<string | null>>();
         let lacznikow = 0;
-        for (const lod of LODY) {
-          const { kafle } = rysuj(enm, lod, 'dark_scada');
-          for (const [klucz, k] of kafle) {
-            const [bayRef, deviceRef] = klucz.split('|');
-            if (!polaLiniowe(enm).includes(bayRef)) continue;
-            const oczekiwany = kafelOczekiwany(enm, bayRef, deviceRef);
-            expect(k.stan, `L${lod} ${klucz}`).toBe(oczekiwany);
-            expect(k.fill, `L${lod} ${klucz}`).toBe(oczekiwany ? BARWA[oczekiwany] : null);
-            if (oczekiwany) lacznikow += 1;
-            if (!naPoziomach.has(klucz)) naPoziomach.set(klucz, new Set());
-            naPoziomach.get(klucz)!.add(k.stan);
-          }
+        for (const skala of SKALE_KAFLI) {
+        const { kafle } = rysuj(enm, 'dark_scada', {}, skala);
+        for (const [klucz, k] of kafle) {
+          const [bayRef, deviceRef] = klucz.split('|');
+          if (!polaLiniowe(enm).includes(bayRef)) continue;
+          const oczekiwany = kafelOczekiwany(enm, bayRef, deviceRef);
+          expect(k.stan, `${klucz}`).toBe(oczekiwany);
+          expect(k.fill, `${klucz}`).toBe(oczekiwany ? BARWA[oczekiwany] : null);
+          if (oczekiwany) lacznikow += 1;
+          if (!naPoziomach.has(klucz)) naPoziomach.set(klucz, new Set());
+          naPoziomach.get(klucz)!.add(k.stan);
         }
-        // Łączniki pól są narysowane co najmniej na poziomie pola (L2).
+        }
+        // Łączniki pól są narysowane w każdej skali (jedna scena).
         expect(lacznikow).toBeGreaterThan(0);
-        for (const [klucz, stany] of naPoziomach) expect(stany.size, `${klucz}: jeden kafel na wszystkich LOD`).toBe(1);
+        for (const [klucz, stany] of naPoziomach) expect(stany.size, `${klucz}: jeden kafel w każdej skali`).toBe(1);
       });
     }
   }
 
-  it('scena pola L2 rysuje każdy łącznik toru z kaflem (pokrycie, nie pusty zbiór)', () => {
+  it('scena rysuje każdy łącznik toru z kaflem (pokrycie, nie pusty zbiór)', () => {
     const enm = zPolozeniami('otwarty', 'zamkniety');
-    const scena = buildSceneV3(enm, 2);
-    const { kafle } = rysuj(enm, 2, 'dark_scada');
+    const scena = buildSceneV3(enm);
+    const { kafle } = rysuj(enm, 'dark_scada');
     for (const bayRef of polaLiniowe(enm)) {
       const laczniki = scena.symbols.filter(
         (s) => s.meta?.ownerRef === bayRef && s.meta?.deviceRef && s.meta.apparatusKind && RODZAJE_LACZNIKOW_POLA.has(s.meta.apparatusKind),
@@ -160,15 +167,13 @@ describe('kafle stanu na kanwie — (h) geometria identyczna w obu motywach', ()
       .replace(/\s(fill|stroke|stop-color|color|flood-color)="[^"]*"/g, '')
       .replace(/\sstyle="[^"]*"/g, '')
       .replace(/\sdata-theme-mode="[^"]*"/g, '');
-  for (const lod of LODY) {
-    it(`L${lod}: rysunek ciemny ≡ jasny po usunięciu barw`, () => {
-      const enm = zPolozeniami('zamkniety', 'otwarty');
-      const [ciemny, jasny] = MOTYWY.map((m) => rysuj(enm, lod, m));
-      expect(bezBarw(jasny.svg)).toBe(bezBarw(ciemny.svg));
-      // Kafle mają te same barwy w obu motywach (zmienia się tło, nie konwencja).
-      expect([...jasny.kafle.entries()]).toEqual([...ciemny.kafle.entries()]);
-    });
-  }
+  it(`rysunek ciemny ≡ jasny po usunięciu barw`, () => {
+    const enm = zPolozeniami('zamkniety', 'otwarty');
+    const [ciemny, jasny] = MOTYWY.map((m) => rysuj(enm, m));
+    expect(bezBarw(jasny.svg)).toBe(bezBarw(ciemny.svg));
+    // Kafle mają te same barwy w obu motywach (zmienia się tło, nie konwencja).
+    expect([...jasny.kafle.entries()]).toEqual([...ciemny.kafle.entries()]);
+  });
 });
 
 describe('kafle stanu na kanwie — (e) warstwy rozdzielone: zaznaczenie i energizacja nie zmieniają kafla', () => {
@@ -177,9 +182,9 @@ describe('kafle stanu na kanwie — (e) warstwy rozdzielone: zaznaczenie i energ
       it(`${motyw} · Q0 ${q0}`, () => {
         const enm = zPolozeniami('zamkniety', q0);
         const pola = polaLiniowe(enm);
-        const wzorzec = rysuj(enm, 2, motyw).kafle;
+        const wzorzec = rysuj(enm, motyw).kafle;
         expect([...wzorzec.values()].some((k) => k.stan !== null)).toBe(true);
-        const scena = buildSceneV3(enm, 2);
+        const scena = buildSceneV3(enm);
         const wszystkie = (wartosc: boolean): SldV3Overlay => ({
           energizedByTestId: Object.fromEntries(
             scena.symbols.filter((s) => s.meta?.testId).map((s) => [s.meta!.testId!, wartosc]),
@@ -188,13 +193,13 @@ describe('kafle stanu na kanwie — (e) warstwy rozdzielone: zaznaczenie i energ
             scena.symbols.filter((s) => s.meta?.ownerRef).map((s) => [s.meta!.ownerRef!, wartosc]),
           ),
         });
-        const warianty: ReadonlyArray<readonly [string, Parameters<typeof rysuj>[3]]> = [
+        const warianty: ReadonlyArray<readonly [string, Parameters<typeof rysuj>[2]]> = [
           ['zaznaczenie pola', { zaznaczenieRefy: pola }],
           ['pod napięciem', { overlay: wszystkie(true) }],
           ['bez napięcia', { overlay: wszystkie(false) }],
         ];
         for (const [nazwa, extra] of warianty) {
-          const { kafle } = rysuj(enm, 2, motyw, extra);
+          const { kafle } = rysuj(enm, motyw, extra);
           expect([...kafle.entries()], nazwa).toEqual([...wzorzec.entries()]);
           // Symbol na kaflu zawsze w barwie glifu kafla — energizacja go nie przemalowuje.
           for (const k of kafle.values()) for (const s of k.glif) expect(['none', STATE_COLOR.glif], nazwa).toContain(s);

@@ -17,7 +17,7 @@ import {
   normalizeResultLabelAnalysis,
   RESULT_LABEL_TREND_DEADBAND,
   RESULT_LABEL_TREND_GLYPH,
-  resultLabelLinesForLod,
+  resultLabelLines,
   selectResultLabelSpecs,
   type ResultLabelLine,
 } from '../resultLabelTemplates';
@@ -134,17 +134,11 @@ describe('resultLabelTemplates — zwijanie wg LOD (wym. 5)', () => {
     { prefix: 'Q', text: '+0,9 Mvar' },
   ];
 
-  it('S9-2: L0 ⇒ JEDNA linia (wartosc zbiorcza/stacyjna) — poziom przegladu ma pokazac wynik, nie nic', () => {
-    // ZMIANA KANONU (audyt 2026-08, W-1): dotad L0 nie renderowal ZADNEJ liczby,
-    // wiec rysunek calej sieci po biegu wygladal identycznie jak przed biegiem.
-    // Przycinanie do jednej linii zostaje — to nadal poziom PRZEGLADU.
-    expect(resultLabelLinesForLod(lines, 0)).toEqual([{ prefix: 'obc.', text: '72,5 %' }]);
-  });
-  it('L1 ⇒ jedna najważniejsza wartość (pierwsza w priorytecie)', () => {
-    expect(resultLabelLinesForLod(lines, 1)).toEqual([{ prefix: 'obc.', text: '72,5 %' }]);
-  });
-  it('L2 ⇒ 2–3 wartości (do trzech pierwszych)', () => {
-    expect(resultLabelLinesForLod(lines, 2)).toEqual([
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): etykieta nie przycina treści do poziomu
+  // szczegółu — niesie do trzech wartości w priorytecie; czy jest widoczna, rozstrzyga klasa
+  // informacji wg rozmiaru ekranowego pisma (`gestoscInformacji`), nie liczba linii.
+  it('do trzech wartości (trzy pierwsze w priorytecie)', () => {
+    expect(resultLabelLines(lines)).toEqual([
       { prefix: 'obc.', text: '72,5 %' },
       { prefix: 'I', text: '182,0 A' },
       { prefix: 'P', text: '+5,6 MW' },
@@ -152,7 +146,7 @@ describe('resultLabelTemplates — zwijanie wg LOD (wym. 5)', () => {
   });
   it('gdy linii ≤ limit ⇒ ten sam obiekt (stabilność referencji dla memo)', () => {
     const two: readonly ResultLabelLine[] = [lines[0], lines[1]];
-    expect(resultLabelLinesForLod(two, 2)).toBe(two);
+    expect(resultLabelLines(two)).toBe(two);
   });
 });
 

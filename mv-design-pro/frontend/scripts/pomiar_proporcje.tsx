@@ -15,8 +15,9 @@
  *   (g) liczba identycznych oznaczników w jednej rozdzielni,
  *   (h) liczba etykiet skróconych mimo wolnego miejsca.
  *
- * ILOCZYN CECH: {poziom szczegółu L0/L1/L2} × {skala kamery: dopasowanie,
- * skala zrzutu 1,380, dolny i górny kraniec}. Sam przykład ze zrzutu nie
+ * ILOCZYN CECH: {skala kamery: dopasowanie, skala zrzutu 1,380, dolny i górny
+ * kraniec} na JEDNEJ scenie niezależnej od skali (karta SLD-SKALA-I-NAWIGACJA, R1;
+ * dawny wymiar „poziom szczegółu L0/L1/L2” nie istnieje). Sam przykład ze zrzutu nie
  * wystarcza — defekt „proporcje pękają dopiero w reżimie powiększania pisma"
  * schowałby się w nim.
  *
@@ -28,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, sceneObstacleRects, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import {
   boundingBoxOfRect,
   computeInitialCameraState,
@@ -55,40 +56,27 @@ const enm = JSON.parse(readFileSync(fixturePath, 'utf8')).enm as EnergyNetworkMo
 
 const KADR = { width: 1400, height: 900 } as const;
 
-const sceny: Readonly<Record<SceneLod, SceneV3>> = {
-  0: buildSceneV3(enm, 0),
-  1: buildSceneV3(enm, 1),
-  2: buildSceneV3(enm, 2),
-};
-const bboxy: Readonly<Record<SceneLod, BoundingBox>> = {
-  0: boundingBoxOfRect(sceny[0].bbox),
-  1: boundingBoxOfRect(sceny[1].bbox),
-  2: boundingBoxOfRect(sceny[2].bbox),
-};
+// Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1).
+const scena: SceneV3 = buildSceneV3(enm);
+const bbox: BoundingBox = boundingBoxOfRect(scena.bbox);
 
 const f = (v: number, n = 2): string => v.toFixed(n);
 
 console.log('=== PROPORCJE — POMIAR PRZED ===');
-console.log(`fixtura: sldSubstrate52s · stacje: ${sceny[2].meta.stationCount} · kadr ${KADR.width}×${KADR.height}`);
+console.log(`fixtura: sldSubstrate52s · stacje: ${scena.meta.stationCount} · kadr ${KADR.width}×${KADR.height}`);
 console.log(`MIN_SCALE=${MIN_SCALE} MAX_SCALE=${MAX_SCALE}`);
 console.log('');
 
 // --------------------------------------------------------------------------
-// Skale badane: dopasowanie per LOD + skala zrzutu właściciela + krańce.
+// Skale badane: dopasowanie + skala zrzutu właściciela + krańce.
 // --------------------------------------------------------------------------
-const skalaDopasowania: Record<SceneLod, number> = { 0: 0, 1: 0, 2: 0 };
-for (const lod of [0, 1, 2] as const) {
-  const stan = computeInitialCameraState(bboxy[lod], KADR, bboxy, null, SLD_CANVAS_DOCK_INSETS);
-  skalaDopasowania[lod] = stan.transform.scale;
-}
-console.log('SKALE DOPASOWANIA (fit-to-content, kadr roboczy):');
-for (const lod of [0, 1, 2] as const) console.log(`  L${lod}: ${f(skalaDopasowania[lod], 4)} px/j.św.`);
+const skalaDopasowania = computeInitialCameraState(bbox, KADR, null, SLD_CANVAS_DOCK_INSETS).transform.scale;
+console.log(`SKALA DOPASOWANIA (fit-to-content, kadr roboczy): ${f(skalaDopasowania, 4)} px/j.św.`);
 console.log('');
 
 const SKALE: readonly { readonly nazwa: string; readonly v: number }[] = [
   { nazwa: 'MIN', v: MIN_SCALE },
-  { nazwa: 'fit-L0', v: skalaDopasowania[0] },
-  { nazwa: 'fit-L2', v: skalaDopasowania[2] },
+  { nazwa: 'dopasowanie', v: skalaDopasowania },
   { nazwa: 'zrzut-1,380', v: 1.38 },
   { nazwa: 'praca-1,0', v: 1 },
   { nazwa: 'blisko-4,0', v: 4 },
@@ -139,9 +127,9 @@ function mediana(xs: readonly number[]): number {
 }
 
 console.log('(a)(b)(c) TYPOGRAFIA NA EKRANIE vs SYMBOL APARATU');
-console.log('LOD skala        | t1 px | t2 px | t3 px | t4 px | symbol h px | oznacznik:symbol | powiększonych');
-for (const lod of [0, 1, 2] as const) {
-  const scene = sceny[lod];
+console.log('skala        | t1 px | t2 px | t3 px | t4 px | symbol h px | oznacznik:symbol | powiększonych');
+{
+  const scene = scena;
   const przeszkody = sceneObstacleRects(scene);
   const aparaty = symboleAparatury(scene);
   const medianaH = mediana(aparaty.map((a) => a.h));
@@ -157,7 +145,7 @@ for (const lod of [0, 1, 2] as const) {
       perKlasa[c].length ? f(mediana(perKlasa[c]), 1).padStart(5) : '    —',
     );
     console.log(
-      `L${lod} ${s.nazwa.padEnd(12)} | ${kol.join(' | ')} | ${f(medianaH * s.v, 1).padStart(11)} | ` +
+      `${s.nazwa.padEnd(12)} | ${kol.join(' | ')} | ${f(medianaH * s.v, 1).padStart(11)} | ` +
         `${(stosunki.length ? f(mediana(stosunki), 2) : '—').padStart(16)} | ${String(powiekszonych).padStart(13)}`,
     );
   }
@@ -169,8 +157,8 @@ console.log('');
 // --------------------------------------------------------------------------
 const REF_STACJI = /^(stn\/[0-9a-f]+|gpz\/[0-9a-f]+)/;
 
-for (const lod of [1, 2] as const) {
-  const scene = sceny[lod];
+{
+  const scene = scena;
   // Blok = bbox symboli jednej stacji; tusz = suma pól bboxów symboli.
   const bloki = new Map<string, { x0: number; y0: number; x1: number; y1: number; tusz: number }>();
   for (const sym of scene.symbols) {
@@ -188,7 +176,7 @@ for (const lod of [1, 2] as const) {
     const pole = (b.x1 - b.x0) * (b.y1 - b.y0);
     if (pole > 0) gest.push(b.tusz / pole);
   }
-  console.log(`(e) L${lod}: bloków ${bloki.size} · mediana pokrycia bloku symbolami: ${f(mediana(gest) * 100, 1)}%`);
+  console.log(`(e) bloków ${bloki.size} · mediana pokrycia bloku symbolami: ${f(mediana(gest) * 100, 1)}%`);
 
   // (f) kod stacji w etykietach jednego bloku.
   const kodBloku = new Map<string, string>();
@@ -205,7 +193,7 @@ for (const lod of [1, 2] as const) {
     wystapienia.push(trafienia.length);
     if (!przyklad && trafienia.length > 1) przyklad = `${kod}: ` + trafienia.map((l) => `${l.ownerKind}"${l.text}"`).join(' + ');
   }
-  console.log(`(f) L${lod}: bloków z kodem ${kodBloku.size} · mediana wystąpień kodu w bloku: ${mediana(wystapienia)} · max ${Math.max(...wystapienia, 0)}`);
+  console.log(`(f) bloków z kodem ${kodBloku.size} · mediana wystąpień kodu w bloku: ${mediana(wystapienia)} · max ${Math.max(...wystapienia, 0)}`);
   if (przyklad) console.log(`    przykład: ${przyklad}`);
 
   // (g) identyczne oznaczniki aparatu w jednej rozdzielni.
@@ -224,7 +212,7 @@ for (const lod of [1, 2] as const) {
     if (lok > 1) zDuplikatem += 1;
     if (lok > maxPowt) maxPowt = lok;
   }
-  console.log(`(g) L${lod}: rozdzielni ${perBlok.size} · z powtórzonym oznacznikiem ${zDuplikatem} · rekord powtórzeń ${maxPowt}`);
+  console.log(`(g) rozdzielni ${perBlok.size} · z powtórzonym oznacznikiem ${zDuplikatem} · rekord powtórzeń ${maxPowt}`);
 
   // (f2) rozróżnialność opisu pola w jednej rozdzielni (kontekst oznacznika).
   const perBlokPola = new Map<string, string[]>();
@@ -240,23 +228,23 @@ for (const lod of [1, 2] as const) {
   for (const lista of perBlokPola.values()) {
     if (new Set(lista).size < lista.length) blokiZNierozroznialnymiPolami += 1;
   }
-  console.log(`(g2) L${lod}: bloków z NIEROZRÓŻNIALNYMI opisami pól: ${blokiZNierozroznialnymiPolami}/${perBlokPola.size}`);
+  console.log(`(g2) bloków z NIEROZRÓŻNIALNYMI opisami pól: ${blokiZNierozroznialnymiPolami}/${perBlokPola.size}`);
 }
 console.log('');
 
 // --------------------------------------------------------------------------
 // (h) SKRACANIE MIMO WOLNEGO MIEJSCA.
 // --------------------------------------------------------------------------
-console.log('(h) ETYKIETY SKRÓCONE (tekst planu ≠ tekst sceny) — per LOD × skala');
-console.log('LOD skala        | skróconych | porzuconych tożsamości | ukrytych danych');
-for (const lod of [0, 1, 2] as const) {
-  const scene = sceny[lod];
+console.log('(h) ETYKIETY SKRÓCONE (tekst planu ≠ tekst sceny) — per skala');
+console.log('skala        | skróconych | porzuconych tożsamości | ukrytych danych');
+{
+  const scene = scena;
   const przeszkody = sceneObstacleRects(scene);
   for (const s of SKALE) {
     const plan = planSceneLabels(scene.labels, przeszkody, s.v, sheetSizeFor(scene));
     const skrocone = plan.drawn.filter((p) => p.text !== p.label.text).length;
     console.log(
-      `L${lod} ${s.nazwa.padEnd(12)} | ${String(skrocone).padStart(10)} | ${String(plan.droppedIdentity.length).padStart(22)} | ${String(plan.hiddenDetail.length).padStart(15)}`,
+      `${s.nazwa.padEnd(12)} | ${String(skrocone).padStart(10)} | ${String(plan.droppedIdentity.length).padStart(22)} | ${String(plan.hiddenDetail.length).padStart(15)}`,
     );
   }
 }

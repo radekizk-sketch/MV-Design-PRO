@@ -60,7 +60,7 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
   // Pełna wyrocznia położenia (podpis leży NA swoim kablu, iloczyn cech,
   // kontrole negatywne): `../../layout/__tests__/slotDryfPrzesla.test.ts`.
   it('każda etykieta segment-span leży bliżej SWOJEGO kabla niż kabla każdego innego przęsła tego wiersza opisów (L2)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
 
     /** Zakres X polilinii niosącej `ref` (kabel ENM jest jedną polilinią sceny). */
     const zakresKabla = new Map<string, { min: number; max: number }>();
@@ -112,7 +112,7 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
 
 describe('W3 §7 — etykieta techniczna L2 z realnych danych katalogu/ENM', () => {
   it('co najmniej jedna etykieta przęsła niesie relację · typ · napięcie · długość „l = …"', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const spanTexts = scene.labels
       .filter((l) => l.ownerKind === 'segment-span')
       .map((l) => l.text);

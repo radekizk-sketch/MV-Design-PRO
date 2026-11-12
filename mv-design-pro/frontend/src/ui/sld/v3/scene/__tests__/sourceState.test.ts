@@ -90,16 +90,14 @@ describe('F11.3 A — adapter: Generator.meta.operating_mode → SldSourceView.o
 describe('F11.3 B — scena: stan płynie adapter→compose→symbol, nakładka nie zmienia geometrii (§13.3)', () => {
   it('DER z operating_mode=odstawione niesie meta.operationalState=disconnected na L1/L2; wyrocznia zielona', () => {
     const { snapshot, genRef } = withOperatingMode(0, 'odstawione');
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(snapshot, lod);
-      expect(derSymbolOf(scene, genRef)?.meta?.operationalState).toBe('disconnected');
-      expect(sourceStateGaps(scene)).toEqual([]);
-      expect(allSourceStatesLegal(scene)).toBe(true);
-    }
+    const scene = buildSceneV3(snapshot);
+    expect(derSymbolOf(scene, genRef)?.meta?.operationalState).toBe('disconnected');
+    expect(sourceStateGaps(scene)).toEqual([]);
+    expect(allSourceStatesLegal(scene)).toBe(true);
   });
 
   it('DER bez operating_mode NIE niesie stanu (undefined, nie fabrykowany default)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
     expect(derSymbols.length).toBeGreaterThan(0);
     expect(derSymbols.every((s) => s.meta?.operationalState === undefined)).toBe(true);
@@ -108,15 +106,15 @@ describe('F11.3 B — scena: stan płynie adapter→compose→symbol, nakładka 
 
   it('INWARIANCJA GEOMETRII (§13.3 „nakładka nie zmienia bboxu"): scena z i bez operating_mode ma IDENTYCZNE symbolId/x/y wszystkich symboli', () => {
     const { snapshot } = withOperatingMode(0, 'praca_sieciowa');
-    const bare = buildSceneV3(enm, 2);
-    const overlaid = buildSceneV3(snapshot, 2);
+    const bare = buildSceneV3(enm);
+    const overlaid = buildSceneV3(snapshot);
     const geometryOf = (scene: SceneV3) => scene.symbols.map((s) => ({ id: s.symbolId, x: s.x, y: s.y }));
     expect(geometryOf(overlaid)).toEqual(geometryOf(bare));
   });
 
   it('sieć zewnętrzna (Source, gridSource) NIGDY nie niesie stanu — ENM nie modeluje trybu pracy Source', () => {
     const { snapshot } = withOperatingMode(0, 'praca_sieciowa');
-    const scene = buildSceneV3(snapshot, 2);
+    const scene = buildSceneV3(snapshot);
     const gridSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'source');
     expect(gridSymbols.length).toBeGreaterThan(0);
     expect(gridSymbols.every((s) => s.meta?.operationalState === undefined)).toBe(true);
@@ -125,7 +123,7 @@ describe('F11.3 B — scena: stan płynie adapter→compose→symbol, nakładka 
 
 describe('F11.3 C — testy negatywne (wyrocznia MUSI gryźć)', () => {
   it('stan spoza słownika na symbolu ⇒ luka stan-poza-slownikiem', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const der = scene.symbols.find((s) => s.meta?.elementKind === 'der');
     expect(der).toBeTruthy();
     const corrupted: SceneV3 = {
@@ -142,7 +140,7 @@ describe('F11.3 C — testy negatywne (wyrocznia MUSI gryźć)', () => {
   });
 
   it('stan na elemencie NIE-źródłowym (aparat) ⇒ luka stan-na-elemencie-nie-zrodlowym', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const apparatus = scene.symbols.find((s) => s.meta?.elementKind === 'apparatus');
     expect(apparatus).toBeTruthy();
     const corrupted: SceneV3 = {
@@ -160,7 +158,7 @@ describe('F11.3 C — testy negatywne (wyrocznia MUSI gryźć)', () => {
 
   it('stan obecny w danych adaptera, ale zgubiony na symbolu ⇒ luka stan-zgubiony-na-scenie (zakaz cichego gubienia)', () => {
     const { snapshot, genRef } = withOperatingMode(0, 'gotowosc');
-    const scene = buildSceneV3(snapshot, 2);
+    const scene = buildSceneV3(snapshot);
     // Symulacja regresji przepływu compose→scene: symbol istnieje, stan znika.
     const corrupted: SceneV3 = {
       ...scene,

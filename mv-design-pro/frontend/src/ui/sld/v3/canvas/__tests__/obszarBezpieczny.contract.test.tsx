@@ -23,7 +23,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
 import { MIN_SCALE } from '../../../v2/viewport/ViewportController';
 import { SldCanvasV3, contentBoundingBoxOf, scenePointToCameraWorld } from '../SldCanvasV3';
@@ -48,8 +48,8 @@ const FIT_PADDING_PX = 40;
 /** Ekstenty treści rysowanej (symbole, odcinki, prostokąty etykiet) w świecie
  *  kamery — liczone NIEZALEŻNIE od produkcji, żeby test nie sprawdzał
  *  produkcji samą sobą. */
-function trescWSwiecieKamery(lod: SceneLod) {
-  const scene = buildSceneV3(enm, lod);
+function trescWSwiecieKamery() {
+  const scene = buildSceneV3(enm);
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -81,7 +81,6 @@ function trescWSwiecieKamery(lod: SceneLod) {
 }
 
 function marginesy(
-  lod: SceneLod,
   safeInsets?: { top: number; right: number; bottom: number; left: number },
   kanwa: { readonly width: number; readonly height: number } = CANVAS,
 ) {
@@ -90,14 +89,13 @@ function marginesy(
       snapshot={enm}
       width={kanwa.width}
       height={kanwa.height}
-      lodOverride={lod}
       safeInsets={safeInsets}
     />,
   );
   const viewBox = container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!;
   const [vx, vy, vw] = viewBox.split(' ').map(Number);
   const skala = kanwa.width / vw;
-  const t = trescWSwiecieKamery(lod);
+  const t = trescWSwiecieKamery();
   return {
     lewo: (t.minX - vx) * skala,
     prawo: (vx + vw - t.maxX) * skala,
@@ -121,15 +119,13 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
     expect(SLD_CANVAS_DOCK_INSETS.right).toBe(0);
   });
 
-  for (const lod of [0, 1, 2] as const) {
-    it(`LOD ${lod}: treść trzyma się POZA pasem doków (góra i dół ≥ padding + pas doku)`, () => {
-      const m = marginesy(lod);
-      expect(m.gora).toBeGreaterThanOrEqual(FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.top - 1e-6);
-      expect(m.dol).toBeGreaterThanOrEqual(FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.bottom - 1e-6);
-      expect(m.lewo).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-      expect(m.prawo).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-    });
-  }
+  it(`treść trzyma się POZA pasem doków (góra i dół ≥ padding + pas doku)`, () => {
+    const m = marginesy();
+    expect(m.gora).toBeGreaterThanOrEqual(FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.top - 1e-6);
+    expect(m.dol).toBeGreaterThanOrEqual(FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.bottom - 1e-6);
+    expect(m.lewo).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
+    expect(m.prawo).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
+  });
 
   // Iloczyn: kanwa, na której fit MIEŚCI treść obok panelu (1920×1080: panel
   // 1200 px, kontekst 720 px) × kanwa, na której fit opiera się o PODŁOGĘ
@@ -145,7 +141,7 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
         ...SLD_CANVAS_DOCK_INSETS,
         right: SLD_CANVAS_DOCK_INSETS.right + stationInternalPanelWidthPx(kanwa.width),
       };
-      const m = marginesy(1, zPanelem, kanwa);
+      const m = marginesy(zPanelem, kanwa);
       if (m.skala > MIN_SCALE + 1e-9) {
         // ORZECZENIE WŁAŚCIWE: treść nie wchodzi pod panel. Marginesu NIE mierzymy
         // jako „padding + pas" — przy bardzo wąskim prostokącie bezpiecznym o osi
@@ -158,7 +154,7 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
         expect(m.skala).toBeCloseTo(MIN_SCALE, 9);
         // Środek celu fitu (rezerwacje etykiet, `contentBoundingBoxOf`) leży na
         // środku prostokąta bezpiecznego — nadmiar ponad podłogą dzielony po równo.
-        const cel = contentBoundingBoxOf(buildSceneV3(enm, 1))!;
+        const cel = contentBoundingBoxOf(buildSceneV3(enm))!;
         const a = scenePointToCameraWorld({ x: cel.minX, y: cel.minY });
         const b = scenePointToCameraWorld({ x: cel.maxX, y: cel.maxY });
         const srodekEkranu = ((a.x + b.x) / 2 - m.vx) * m.skala;
@@ -168,13 +164,13 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
       // Dowód, że to NIE jest to samo, co bez panelu: bez zasłony margines prawy
       // byłby mniejszy o szerokość panelu.
       cleanup();
-      const bezPanelu = marginesy(1, undefined, kanwa);
+      const bezPanelu = marginesy(undefined, kanwa);
       expect(m.prawo).toBeGreaterThan(bezPanelu.prawo);
     });
   }
 
   it('zerowe insety przywracają kadr sprzed karty (kompatybilność wsteczna wołających)', () => {
-    const m = marginesy(1, { top: 0, right: 0, bottom: 0, left: 0 });
+    const m = marginesy({ top: 0, right: 0, bottom: 0, left: 0 });
     expect(Math.min(m.lewo, m.prawo, m.gora, m.dol)).toBeCloseTo(FIT_PADDING_PX, 6);
   });
 });

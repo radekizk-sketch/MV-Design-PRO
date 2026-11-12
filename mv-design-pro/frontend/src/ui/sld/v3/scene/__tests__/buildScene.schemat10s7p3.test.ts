@@ -123,7 +123,7 @@ function withLongPolishName(model: EnergyNetworkModel, targetRef: string): Energ
 /** Wstrzyknięcie punktu NO w pierwszej stacji ciągu głównego (wzorzec `enmWithSyntheticNop`
  *  z S3; karta W5-C: pozycja normalna łącznika pola, nie kopia `LineRun.nop_station_ref`). */
 function withSyntheticNop(model: EnergyNetworkModel): EnergyNetworkModel {
-  return zPunktemPodzialuWStacji(model, buildSceneV3(model, 2).meta.mainTrunkStationIds[0]);
+  return zPunktemPodzialuWStacji(model, buildSceneV3(model).meta.mainTrunkStationIds[0]);
 }
 
 function stationHash(stationId: string): string {
@@ -172,21 +172,19 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
   it('§12 (zero-defekty na WIELU fixturach): 0 kolizji/przecięć/nieortog./niejedn./przecięć bez mostka — każda klasa, każdy LOD', () => {
     const rows: string[] = [];
     for (const fx of FIXTURES) {
-      for (const lod of [0, 1, 2] as const) {
-        const m = layoutMetricsReport(buildSceneV3(fx.enm, lod));
-        rows.push(
-          `${fx.klasa} ${fx.nazwa} L${lod}: subs=${fx.enm.substations.length} kol=${m.labelCollisionCount} przec=${m.subtreeIntersectionCount} nieort=${m.nonOrthogonalSegmentCount} niejedn=${m.ambiguousConnectionCount} cross=${m.crossingCount} bezMostka=${m.crossingWithoutBridgeCount} kropkiBezWezla=${m.junctionDotGapCount}`,
-        );
-        expect(m.labelCollisionCount, `${fx.nazwa} L${lod} kolizje etykiet`).toBe(0);
-        expect(m.subtreeIntersectionCount, `${fx.nazwa} L${lod} przecięcia poddrzew`).toBe(0);
-        expect(m.nonOrthogonalSegmentCount, `${fx.nazwa} L${lod} nieortogonalne`).toBe(0);
-        expect(m.ambiguousConnectionCount, `${fx.nazwa} L${lod} niejednoznaczne`).toBe(0);
-        // Rozstrzygnięcie S7-P2 (2026-10-30): skrzyżowanie kabli bez węzła modelu jest
-        // dopuszczalne z mostkiem §22.1 — warunkiem jest mostek na każdym przecięciu
-        // i zero kropek bez węzła modelu (liczba skrzyżowań idzie do wiersza dowodu).
-        expect(m.crossingWithoutBridgeCount, `${fx.nazwa} L${lod} przecięcia bez mostka`).toBe(0);
-        expect(m.junctionDotGapCount, `${fx.nazwa} L${lod} kropki bez węzła modelu`).toBe(0);
-      }
+      const m = layoutMetricsReport(buildSceneV3(fx.enm));
+      rows.push(
+        `${fx.klasa} ${fx.nazwa}: subs=${fx.enm.substations.length} kol=${m.labelCollisionCount} przec=${m.subtreeIntersectionCount} nieort=${m.nonOrthogonalSegmentCount} niejedn=${m.ambiguousConnectionCount} cross=${m.crossingCount} bezMostka=${m.crossingWithoutBridgeCount} kropkiBezWezla=${m.junctionDotGapCount}`,
+      );
+      expect(m.labelCollisionCount, `${fx.nazwa} kolizje etykiet`).toBe(0);
+      expect(m.subtreeIntersectionCount, `${fx.nazwa} przecięcia poddrzew`).toBe(0);
+      expect(m.nonOrthogonalSegmentCount, `${fx.nazwa} nieortogonalne`).toBe(0);
+      expect(m.ambiguousConnectionCount, `${fx.nazwa} niejednoznaczne`).toBe(0);
+      // Rozstrzygnięcie S7-P2 (2026-10-30): skrzyżowanie kabli bez węzła modelu jest
+      // dopuszczalne z mostkiem §22.1 — warunkiem jest mostek na każdym przecięciu
+      // i zero kropek bez węzła modelu (liczba skrzyżowań idzie do wiersza dowodu).
+      expect(m.crossingWithoutBridgeCount, `${fx.nazwa} przecięcia bez mostka`).toBe(0);
+      expect(m.junctionDotGapCount, `${fx.nazwa} kropki bez węzła modelu`).toBe(0);
     }
     console.log('[S7 etap 3 §12 dowód generalizacji]\n' + rows.join('\n'));
   });
@@ -194,11 +192,9 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
   it('§5 (permutacja rekordów): odwrócenie tablic rekordów ⇒ scena BAJT-IDENTYCZNA (każda fixtura, każdy LOD)', () => {
     for (const fx of FIXTURES) {
       const permuted = permuteRecords(fx.enm);
-      for (const lod of [0, 1, 2] as const) {
-        const base = sceneSignature(buildSceneV3(fx.enm, lod));
-        const perm = sceneSignature(buildSceneV3(permuted, lod));
-        expect(perm, `${fx.nazwa} L${lod}: permutacja rekordów zmieniła scenę (silnik zależy od kolejności w pamięci)`).toBe(base);
-      }
+      const base = sceneSignature(buildSceneV3(fx.enm));
+      const perm = sceneSignature(buildSceneV3(permuted));
+      expect(perm, `${fx.nazwa}: permutacja rekordów zmieniła scenę (silnik zależy od kolejności w pamięci)`).toBe(base);
     }
   });
 
@@ -207,7 +203,7 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
     // Intencja testu — heterogeniczne footprinty, w tym przekładnik prądowy pola — wymaga
     // więc rekordów aparatów w fiksturze (`zRekordamiAparatowPol`: pola GPZ z CT). Dawniej
     // CT dorysowywała konwencja roli niezależnie od danych pola (fabrykacja aparatu).
-    const scene = buildSceneV3(zRekordamiAparatowPol(bigEnm), 2);
+    const scene = buildSceneV3(zRekordamiAparatowPol(bigEnm));
     const symbolIds = new Set(scene.symbols.map((s) => s.symbolId));
     // Fixtura MUSI być heterogeniczna — inaczej test §11f byłby pusty.
     expect(symbolIds.has('transformer2W'), 'transformator blokowy obecny').toBe(true);
@@ -222,21 +218,20 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
     expect(m.labelCollisionCount).toBe(0);
     expect(m.subtreeIntersectionCount).toBe(0);
     // Punkt NO (krawędź pozadrzewowa §6) — wstrzyknięty, MUSI się wyrenderować.
-    const nopScene = buildSceneV3(withSyntheticNop(bigEnm), 2);
+    const nopScene = buildSceneV3(withSyntheticNop(bigEnm));
     expect(nopScene.symbols.some((s) => s.symbolId === 'noPoint'), 'punkt NO renderuje się po wstrzyknięciu').toBe(true);
     expect(layoutMetricsReport(nopScene).labelCollisionCount).toBe(0);
   });
 
   it('§9 (lokalność + stabilność): długi opis PL na JEDNEJ gałęzi NIE przesuwa kotwic ciągu głównego', () => {
-    const lod = 2;
-    const base = buildSceneV3(bigEnm, lod);
+    const base = buildSceneV3(bigEnm);
     const trunkIds = base.meta.mainTrunkStationIds;
     expect(trunkIds.length).toBeGreaterThan(0);
     const trunkSet = new Set(trunkIds);
     const lateralStation = bigEnm.substations.find((s) => s.station_type !== 'gpz' && !trunkSet.has(s.ref_id));
     expect(lateralStation).toBeDefined();
 
-    const mutated = buildSceneV3(withLongPolishName(bigEnm, lateralStation!.ref_id), lod);
+    const mutated = buildSceneV3(withLongPolishName(bigEnm, lateralStation!.ref_id));
     const stab = stabilityMetrics(base, mutated, trunkIds);
     console.log(
       `[S7 etap 3 §9 stabilność] zmiana footprintu 1 lateralu → ciąg główny: anchorMovementCount=${stab.anchorMovementCount} totalAnchorDisplacement=${stab.totalAnchorDisplacement} maxAnchorDisplacement=${stab.maxAnchorDisplacement} (stacje ciągu=${trunkIds.length})`,
@@ -281,20 +276,20 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
       // Czas PROCESORA (`src/test/czasProcesora.ts`), nie zegara — bramka złożoności kodu,
       // nie miernik obciążenia maszyny.
       const dt = czasProcesoraMs(() => {
-        for (const lod of [0, 1, 2] as const) buildSceneV3(fx.enm, lod);
+        buildSceneV3(fx.enm);
       });
-      rows.push(`${fx.klasa} ${fx.nazwa} (subs=${fx.enm.substations.length}): ${dt.toFixed(1)} ms procesora / 3 LOD`);
+      rows.push(`${fx.klasa} ${fx.nazwa} (subs=${fx.enm.substations.length}): ${dt.toFixed(1)} ms procesora / 1 scena`);
       // Budżet hojny — bramka na niekontrolowaną złożoność, nie mikrooptymalizacja.
-      expect(dt, `${fx.nazwa} przekroczył budżet czasu`).toBeLessThan(15000);
+      // Pin obniżony z pomiarem (karta SLD-SKALA-I-NAWIGACJA, 2026-11-11): jedna scena,
+      // najdłuższa fikstura (53 stacje) 376 ms procesora; dawniej 15 s na trzy sceny.
+      expect(dt, `${fx.nazwa} przekroczył budżet czasu`).toBeLessThan(2000);
     }
     console.log('[S7 etap 3 §10 wydajność]\n' + rows.join('\n'));
   });
 
   it('§5 (determinizm 2×): dwa biegi tej samej fixtury ⇒ podpis identyczny', () => {
     for (const fx of FIXTURES) {
-      for (const lod of [0, 1, 2] as const) {
-        expect(sceneSignature(buildSceneV3(fx.enm, lod))).toBe(sceneSignature(buildSceneV3(fx.enm, lod)));
-      }
+      expect(sceneSignature(buildSceneV3(fx.enm))).toBe(sceneSignature(buildSceneV3(fx.enm)));
     }
   });
 });

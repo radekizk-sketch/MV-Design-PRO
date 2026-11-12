@@ -161,7 +161,6 @@ import {
   resolveStationProtectionMarking,
   resolveVtMountingAnnotations,
   type PlacedStackDevice,
-  type ProtectionAnnotationDetail,
   type ResolvedCtRatingAnnotation,
   type ResolvedVtMountingAnnotation,
 } from './protectionMarking';
@@ -547,15 +546,6 @@ export interface ComposeStationInput {
    *  `stationHasLvSide` w `layout/measure.ts`, która rezerwuje miejsce na
    *  portal — `lvPortalExtraHeight`). Domyślnie `false`. */
   readonly hasLvSection?: boolean;
-  /** F9.9 B-1 (spec §17.4): szczegółowość warstwy adnotacji zabezpieczeń,
-   *  wywiedziona z LOD przez wołającego (`scene/buildScene.ts`,
-   *  `protectionAnnotationDetailForLod` — DECYZJA: parametr wywiedziony, nie
-   *  surowy `lod`, bo composeStation jest funkcją KOMPOZYCJI, nie sceny —
-   *  zna szczegółowość rysunku, nie politykę zoomu; ta sama semantyka co
-   *  `bayDirectionCaptions` obecne/nieobecne per LOD). Domyślnie `'full'`
-   *  (zachowanie L2 — istniejące wywołania testowe/harness bez parametru
-   *  dostają pełny rysunek). */
-  readonly annotationDetail?: ProtectionAnnotationDetail;
 }
 
 // ---------------------------------------------------------------------------
@@ -658,20 +648,16 @@ function buildBayStack(
   const identifierSources = apparatusIdentifierSources(items.map((item) => item.symbolId), itemDesignations).map(
     (zrodlo, i) => zrodlo ?? (identifierTexts[i] ? ('dane' as const) : null),
   );
-  // Poziom szczegółu oznaczenia (przekładniki od LOD1, reszta LOD2) — ta sama reguła co pole GPZ.
-  const identifierOdLod = opisyAparatow.map((o) => o.odLod);
 
   const stackItems = plan.mainSequenceIndices.map((i) => items[i]);
   const stackIdentifiers = plan.mainSequenceIndices.map((i) => identifierTexts[i]);
   const stackIdentifierSources = plan.mainSequenceIndices.map((i) => identifierSources[i]);
-  const stackIdentifierOdLod = plan.mainSequenceIndices.map((i) => identifierOdLod[i]);
   const mainItems = stackItems;
   const laterals = plan.laterals.map((lat) => ({
     item: items[lat.sequenceIndex],
     afterMainIndex: lat.afterMainIndex,
     identifier: identifierTexts[lat.sequenceIndex],
     identifierSource: identifierSources[lat.sequenceIndex],
-    identifierOdLod: identifierOdLod[lat.sequenceIndex],
   }));
   // UX-04/POLE-LINIOWE-WZORZEC: pole z portami ENM — przewody i odgałęzienia WYŁĄCZNIE tam,
   // gdzie porty leżą na wspólnym węźle (ta sama reguła co `compose/gpz.ts::buildFieldStack`).
@@ -687,7 +673,6 @@ function buildBayStack(
       readonly ownerRef: string;
       readonly text: string;
       readonly designationSource: SimpleAnchoredOwnerInput['designationSource'];
-      readonly odLod: SimpleAnchoredOwnerInput['odLod'];
     }
   >();
   // Położenia pionowe toru głównego — `polozeniaToruGlownego` (ta sama reguła co plan
@@ -737,7 +722,6 @@ function buildBayStack(
         // Z3 (spec §12.1): pochodzenie identyfikatora na etykietę — wyrocznia
         // sceny rozróżnia DANĄ producencką (np. „F1"/„TR") od wzorca konwencji.
         designationSource: stackIdentifierSources[index] ?? undefined,
-        odLod: stackIdentifierOdLod[index],
       });
     }
 
@@ -777,7 +761,7 @@ function buildBayStack(
   if (laterals.length > 0) {
     const odstepy = uklad.boczne;
     const odczepy: (OdczepBoczny & { readonly ownerRef: string })[] = [];
-    laterals.forEach(({ item, afterMainIndex, identifier, identifierSource, identifierOdLod: lateralOdLod }, lateralIndex) => {
+    laterals.forEach(({ item, afterMainIndex, identifier, identifierSource }, lateralIndex) => {
       const def = SYMBOL_DEFS[item.symbolId];
       const anchor = kotwicaToru(afterMainIndex);
       const x = mainRightX + odstepy[lateralIndex];
@@ -817,7 +801,6 @@ function buildBayStack(
           ownerRef: `${bay.bayRef}#apparatus-id-${item.symbolId}-lateral-${lateralIndex}`,
           text: identifier,
           designationSource: identifierSource ?? undefined,
-          odLod: lateralOdLod,
         });
       }
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
@@ -878,7 +861,6 @@ function buildBayStack(
         ownerRef: `${bay.bayRef}#apparatus-id-${pozycja.symbolId}-odgalezienie-${numer}-${pozycja.sequenceIndex}`,
         text: identifier,
         designationSource: identifierSource ?? undefined,
-        odLod: identifierOdLod[pozycja.sequenceIndex],
       });
     });
     if (rysunek.odczep) {
@@ -916,7 +898,7 @@ function buildBayStack(
   // oznaczeń, każde w wierszu swojego symbolu; opisy przekładników (tabliczki, montaż VT)
   // w kolumnie przekładni tuż za nią, w wierszu oznaczenia aparatu. Rozstrzygnięcie opisów na
   // stos — te same funkcje co dotąd rysunek (`resolveCtRatingAnnotations`,
-  // `resolveVtMountingAnnotations`); rysunek opisów — w `composeStation` (LOD2).
+  // `resolveVtMountingAnnotations`); rysunek opisów — w `composeStation`.
   const opisyCt = resolveCtRatingAnnotations(bay.ctRatingAnnotations, instances);
   const opisyVt = resolveVtMountingAnnotations(bay.vtMountingAnnotations, instances);
   const wiersze = wierszeOpisowPola(
@@ -945,7 +927,6 @@ function buildBayStack(
       wyrownanieTekstu: 'poczatek',
       designationSource: oznaczenie.designationSource,
       symbolOpisu: prostokatSymbolu(instance),
-      ...(oznaczenie.odLod ? { odLod: oznaczenie.odLod } : {}),
     });
   });
   const kolumnaPrzekladniX = kolumnaX + pasy.oznaczenia;
@@ -1242,7 +1223,6 @@ function computeBbox(symbols: readonly ComposedSymbolInstance[], segments: reado
 export function composeStation(input: ComposeStationInput): StationComposition {
   const { station, column, busAxisY, blockTopY, nameSlot } = input;
   const hasLvSection = input.hasLvSection ?? false;
-  const annotationDetail = input.annotationDetail ?? 'full';
   const bayDirectionCaptions = station.bayDirectionCaptions ?? [];
 
   const symbols: ComposedSymbolInstance[] = [];
@@ -1459,30 +1439,25 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     };
 
     // F9.9 (spec §17.1-§17.4): warstwa adnotacji zabezpieczeń — WYŁĄCZNIE
-    // gdy pole niesie dane (§17.2 „brak danych = brak oznaczenia") ORAZ
-    // szczegółowość LOD ją dopuszcza (§17.4, B-1 recenzji: `annotationDetail`
-    // wywiedziony z LOD przez wołającego, `protectionAnnotationDetailForLod`
-    // — `'none'` na L0 nie występuje tu w praktyce, bo `composeRowStation`
-    // zwraca wcześniej na L0, ale gałąź jest jawna dla wołających spoza
-    // sceny). Kolumna jest już zarezerwowana w `reservedWidth`
+    // gdy pole niesie dane (§17.2 „brak danych = brak oznaczenia"), w każdej skali
+    // (R1 karty SLD-SKALA-I-NAWIGACJA: jedna postać bloku). Kolumna jest już zarezerwowana w `reservedWidth`
     // (`bayColumnRequiredWidth`, `layout/measure.ts`,
     // `protectionAnnotationColumnWidth`, `./blokZabezpieczenPola` — jedna
     // prawda measure↔compose, wzór F6b-1).
     // Ramka bloku zabezpieczeń pola (gdy narysowany) — także dla zejścia zacisku nN pod blok pola
     // transformatorowego niżej (`lvColumnBottoms`).
     let ramkaBlokuPola: V3Rect | null = null;
-    if (annotationDetail !== 'none' && bayHasProtectionAnnotation(bay)) {
+    if (bayHasProtectionAnnotation(bay)) {
       const stackDevices: readonly PlacedStackDevice[] = stack.instances;
       const meterLeftX = snapToGrid(bx + reservedWidth - PROTECTION_ANNOTATION_DIAMETER);
       const marking = resolveStationProtectionMarking(bay, stackDevices);
 
-      // F10.4 (spec §18.3, TA SAMA reguła LOD co „52"/„M" — §17.4: pełna treść WYŁĄCZNIE na
-      // L2). Opisy przekładników (tabliczka CT, CTVT-RENDER §20.2: montaż VT) — w kolumnie
+      // F10.4 (spec §18.3). Opisy przekładników (tabliczka CT, CTVT-RENDER §20.2: montaż VT) — w kolumnie
       // przekładni przy lewej krawędzi pola, w wierszu oznaczenia aparatu (`buildBayStack`,
       // `./kolumnaOpisowPola`, wzorzec właściciela 2026-11-05). Liczone PRZED blokiem
       // zabezpieczeń: ich prostokąty są przeszkodą wyboru położenia bloku.
-      const ctAnnotations = annotationDetail === 'full' ? stack.opisyPrzekladnikow.ct : [];
-      const vtAnnotations = annotationDetail === 'full' ? stack.opisyPrzekladnikow.vt : [];
+      const ctAnnotations = stack.opisyPrzekladnikow.ct;
+      const vtAnnotations = stack.opisyPrzekladnikow.vt;
       const etykietyCt: SimpleAnchoredOwnerInput[] = ctAnnotations.map(({ ann, anchor }, ctIndex) => ({
         ownerRef: `${bay.bayRef}#${ann.przyrostek}-${ann.device.deviceRef ?? ctIndex}`,
         ownerKind: 'protection',
@@ -1510,8 +1485,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       }));
 
       // BLOK ZABEZPIECZEŃ pola (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ) — TA SAMA kompozycja co
-      // pola GPZ (`./blokZabezpieczenPola`): ramka bez okręgu, kody funkcji w dwóch kolumnach
-      // (LOD2), środek na wysokości łącznika wyłączanego (albo pierwszego łącznika pola), linia
+      // pola GPZ (`./blokZabezpieczenPola`): ramka bez okręgu, kody funkcji w dwóch kolumnach,
+      // środek na wysokości łącznika wyłączanego (albo pierwszego łącznika pola), linia
       // wyłączania, linie pomiarowe z powiązań obwodów wtórnych w modelu, położenie — pierwsze
       // od łącznika wolne od aparatów, opisów i torów pola, inaczej prawo-wyrównane do rezerwacji.
       let ramkaBloku: V3Rect | null = null;
@@ -1532,7 +1507,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           prawaKrawedz: bx + reservedWidth,
         };
         const uklad = ulozBlokZabezpieczenPola(wejscie);
-        const elementy = elementyBlokuZabezpieczen(wejscie, uklad, annotationDetail);
+        const elementy = elementyBlokuZabezpieczen(wejscie, uklad);
         ramkaBloku = uklad.ramka;
         ramkaBlokuPola = uklad.ramka;
         // F10.5/F10.6 (spec §20.2): braki topologiczne (67N ⇒ potwierdzone źródło 3U₀ +
@@ -1541,7 +1516,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         // (`brakiTopologiiFunkcjiPola`). Liczone WYŁĄCZNIE na L2 (jak „52"/„M"/tor
         // wyzwalania — §17.4 spójnie); adnotacja „!" w narożniku ramki.
         const topologyGaps =
-          annotationDetail === 'full' ? brakiTopologiiFunkcjiPola(bay, marking.codes) : [];
+          brakiTopologiiFunkcjiPola(bay, marking.codes);
         topologyGaps.forEach((gap) => missingData.push(protectionTopologyGapCode(gap)));
         protectionSymbols.push({
           symbolId: 'protectionRelay',
@@ -1569,55 +1544,51 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         missingData.push(...elementy.missingData);
       }
 
-      // §17.4 L1 (`'circle-only'`): „bez «52»/«M»" — miernik NIE jest rysowany
-      // ani rozliczany (gałąź poniżej wyłącznie w trybie `'full'`).
-      if (annotationDetail === 'full') {
-        const meterAnchor = resolveMeterAnchor(bay.meteringMeasurementRef, stackDevices);
-        if (meterAnchor) {
-          const meterCenter = protectionDeviceCenter(meterAnchor);
-          let meterTopY = snapToGrid(meterCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
-          // Miernik w paśmie bloku TEJ SAMEJ kolumny (kotwica wspólna — typowo jeden CT obsługuje
-          // i ochronę, i pomiar rozliczeniowy): okrąg miernika nachodzący na ramkę bloku
-          // zabezpieczeń (z prześwitem GRID) schodzi POD ramkę, prześwit GRID.
-          const meterRect = (y: number): V3Rect => ({
-            x: meterLeftX - GRID,
-            y: y - GRID,
-            width: PROTECTION_ANNOTATION_DIAMETER + 2 * GRID,
-            height: PROTECTION_ANNOTATION_DIAMETER + 2 * GRID,
-          });
-          if (ramkaBloku && rectsOverlap(zasiegRamkiBloku(ramkaBloku), meterRect(meterTopY))) {
-            meterTopY = snapUp(ramkaBloku.y + ramkaBloku.height + GRID);
-          }
-          protectionSymbols.push({
-            symbolId: 'meter',
-            bayRef: bay.bayRef,
-            x: meterLeftX,
-            y: meterTopY,
-            ports: portsInWorld(SYMBOL_DEFS.meter, meterLeftX, meterTopY),
-            meterQuantity: bay.meteringQuantity,
-          });
-        } else if (bay.meteringMeasurementRef) {
-          // Rozszerzenie WŁASNE (poza literą §17.5, wzorzec `station.der.unattached`):
-          // pomiar wskazany, ale ŻADEN aparat stosu nie niesie pasującego
-          // `linked_ref` — luka danych zgłoszona zamiast cichego pominięcia.
-          missingData.push('bay.protection.meter_anchor_unresolved');
+      const meterAnchor = resolveMeterAnchor(bay.meteringMeasurementRef, stackDevices);
+      if (meterAnchor) {
+        const meterCenter = protectionDeviceCenter(meterAnchor);
+        let meterTopY = snapToGrid(meterCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
+        // Miernik w paśmie bloku TEJ SAMEJ kolumny (kotwica wspólna — typowo jeden CT obsługuje
+        // i ochronę, i pomiar rozliczeniowy): okrąg miernika nachodzący na ramkę bloku
+        // zabezpieczeń (z prześwitem GRID) schodzi POD ramkę, prześwit GRID.
+        const meterRect = (y: number): V3Rect => ({
+          x: meterLeftX - GRID,
+          y: y - GRID,
+          width: PROTECTION_ANNOTATION_DIAMETER + 2 * GRID,
+          height: PROTECTION_ANNOTATION_DIAMETER + 2 * GRID,
+        });
+        if (ramkaBloku && rectsOverlap(zasiegRamkiBloku(ramkaBloku), meterRect(meterTopY))) {
+          meterTopY = snapUp(ramkaBloku.y + ramkaBloku.height + GRID);
         }
+        protectionSymbols.push({
+          symbolId: 'meter',
+          bayRef: bay.bayRef,
+          x: meterLeftX,
+          y: meterTopY,
+          ports: portsInWorld(SYMBOL_DEFS.meter, meterLeftX, meterTopY),
+          meterQuantity: bay.meteringQuantity,
+        });
+      } else if (bay.meteringMeasurementRef) {
+        // Rozszerzenie WŁASNE (poza literą §17.5, wzorzec `station.der.unattached`):
+        // pomiar wskazany, ale ŻADEN aparat stosu nie niesie pasującego
+        // `linked_ref` — luka danych zgłoszona zamiast cichego pominięcia.
+        missingData.push('bay.protection.meter_anchor_unresolved');
+      }
 
-        protectionLabels.push(...etykietyCt);
-        if ((bay.ctRatingAnnotations?.length ?? 0) > 0 && ctAnnotations.length === 0) {
-          // Wzorzec `bay.protection.meter_anchor_unresolved` wyżej: dane
-          // przekładni CT wskazane, ale ŻADEN aparat stosu nie niesie
-          // pasującego `linked_ref` — luka danych zgłoszona zamiast cichego
-          // pominięcia (zero adnotacji-widm, WHITE BOX).
-          missingData.push('bay.protection.ct_rating_anchor_unresolved');
-        }
-        protectionLabels.push(...etykietyVt);
-        if ((bay.vtMountingAnnotations?.length ?? 0) > 0 && vtAnnotations.length === 0) {
-          // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
-          // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`
-          // — luka danych zgłoszona zamiast cichego pominięcia (WHITE BOX).
-          missingData.push('bay.protection.vt_mounting_anchor_unresolved');
-        }
+      protectionLabels.push(...etykietyCt);
+      if ((bay.ctRatingAnnotations?.length ?? 0) > 0 && ctAnnotations.length === 0) {
+        // Wzorzec `bay.protection.meter_anchor_unresolved` wyżej: dane
+        // przekładni CT wskazane, ale ŻADEN aparat stosu nie niesie
+        // pasującego `linked_ref` — luka danych zgłoszona zamiast cichego
+        // pominięcia (zero adnotacji-widm, WHITE BOX).
+        missingData.push('bay.protection.ct_rating_anchor_unresolved');
+      }
+      protectionLabels.push(...etykietyVt);
+      if ((bay.vtMountingAnnotations?.length ?? 0) > 0 && vtAnnotations.length === 0) {
+        // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
+        // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`
+        // — luka danych zgłoszona zamiast cichego pominięcia (WHITE BOX).
+        missingData.push('bay.protection.vt_mounting_anchor_unresolved');
       }
     }
 

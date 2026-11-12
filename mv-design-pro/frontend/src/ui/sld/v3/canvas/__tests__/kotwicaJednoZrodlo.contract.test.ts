@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { SLD_MENU_REGISTRY } from '../../../v2/command/SldCommandService';
 import { LABEL_OWNER_ELEMENT_KIND, HIT_OBJECT_CLASSES, buildCanvasHitAreas, type CanvasHitArea } from '../hitAreas';
 import {
@@ -70,10 +70,9 @@ const SIECI: readonly { readonly nazwa: string; readonly enm: EnergyNetworkModel
   { nazwa: 'sldSubstrate52s', enm: loadEnm('../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json') },
   { nazwa: 'gpzFeeder', enm: loadEnm('../../scene/__tests__/fixtures/gpzFeeder.enm.json') },
 ];
-const LODY: readonly SceneLod[] = [0, 1, 2];
 
-/** ZAPADKA na pustą scenę — progi z POMIARU (`sldSubstrate52s` LOD 0/1/2 dało
- *  55/520/1084 etykiet), nie z życzenia. Wyrocznia nad pustym zbiorem przechodzi
+/** ZAPADKA na pustą scenę — próg z POMIARU (`sldSubstrate52s` dawny LOD 0/1/2 dało
+ *  55/520/1084 etykiet; jedna scena niesie pełny zbiór), nie z życzenia. Wyrocznia nad pustym zbiorem przechodzi
  *  zawsze, więc bez tego nie mierzyłaby niczego. */
 const MIN_ETYKIET_NA_SIEC = 50;
 
@@ -132,24 +131,22 @@ describe('A — uchwyt nie awansuje do kontenera', () => {
    * odtwarza ten stan i wymaga, żeby ta asercja wtedy PADŁA.
    */
   for (const { nazwa, enm } of SIECI) {
-    for (const lod of LODY) {
-      it(`${nazwa} LOD ${lod}: żaden napis nie-stacyjny nie kotwiczy się na stacji`, () => {
-        const scene = buildSceneV3(enm, lod);
-        const trafienia = trafieniaEtykiet(scene, enm);
-        const awanse = trafienia.filter(
-          (t) => t.deklarowanyKind !== ELEMENT_KIND_KOTWICY.stacja && kotwicaWyniku(t.wynik) === 'stacja',
-        );
-        expect(
-          awanse.map((t) => `${t.ownerKind} "${t.text}" ${t.ownerRef}`),
-          'napis niebędący nazwą stacji rozstrzygnięty na STACJĘ = menu/szuflada cudzego obiektu',
-        ).toEqual([]);
-      });
-    }
+    it(`${nazwa}: żaden napis nie-stacyjny nie kotwiczy się na stacji`, () => {
+      const scene = buildSceneV3(enm);
+      const trafienia = trafieniaEtykiet(scene, enm);
+      const awanse = trafienia.filter(
+        (t) => t.deklarowanyKind !== ELEMENT_KIND_KOTWICY.stacja && kotwicaWyniku(t.wynik) === 'stacja',
+      );
+      expect(
+        awanse.map((t) => `${t.ownerKind} "${t.text}" ${t.ownerRef}`),
+        'napis niebędący nazwą stacji rozstrzygnięty na STACJĘ = menu/szuflada cudzego obiektu',
+      ).toEqual([]);
+    });
   }
 
   it('zapadka: sceny referencyjne NIE są puste (inaczej wyrocznia nie mierzy niczego)', () => {
     for (const { nazwa, enm } of SIECI) {
-      const razem = LODY.reduce<number>((suma, lod) => suma + buildSceneV3(enm, lod).labels.length, 0);
+      const razem = buildSceneV3(enm).labels.length;
       expect(razem, `${nazwa}: zbyt mało etykiet, próg z pomiaru`).toBeGreaterThanOrEqual(MIN_ETYKIET_NA_SIEC);
     }
   });
@@ -189,21 +186,19 @@ const DOZWOLONE_ROZJAZDY: ReadonlySet<string> = new Set([
 
 describe('B — inwentarz rozjazdów deklaracja↔kotwica jest zamknięty', () => {
   for (const { nazwa, enm } of SIECI) {
-    for (const lod of LODY) {
-      it(`${nazwa} LOD ${lod}`, () => {
-        const scene = buildSceneV3(enm, lod);
-        const nieoczekiwane: string[] = [];
-        for (const t of trafieniaEtykiet(scene, enm)) {
-          const kotwica = kotwicaWyniku(t.wynik);
-          if (kotwica === null) continue; // uczciwa odmowa — nie jest rozjazdem
-          if (ELEMENT_KIND_KOTWICY[kotwica] === t.deklarowanyKind) continue;
-          const klucz = `${t.ownerKind}→${kotwica}`;
-          if (DOZWOLONE_ROZJAZDY.has(klucz)) continue;
-          nieoczekiwane.push(`${klucz} :: "${t.text}" :: ${t.ownerRef}`);
-        }
-        expect([...new Set(nieoczekiwane)]).toEqual([]);
-      });
-    }
+    it(`${nazwa}`, () => {
+      const scene = buildSceneV3(enm);
+      const nieoczekiwane: string[] = [];
+      for (const t of trafieniaEtykiet(scene, enm)) {
+        const kotwica = kotwicaWyniku(t.wynik);
+        if (kotwica === null) continue; // uczciwa odmowa — nie jest rozjazdem
+        if (ELEMENT_KIND_KOTWICY[kotwica] === t.deklarowanyKind) continue;
+        const klucz = `${t.ownerKind}→${kotwica}`;
+        if (DOZWOLONE_ROZJAZDY.has(klucz)) continue;
+        nieoczekiwane.push(`${klucz} :: "${t.text}" :: ${t.ownerRef}`);
+      }
+      expect([...new Set(nieoczekiwane)]).toEqual([]);
+    });
   }
 
   it('napisy napięcia szyny kotwiczą się na SZYNIE (i na REALNEJ szynie, nie na sąsiedniej)', () => {
@@ -212,7 +207,7 @@ describe('B — inwentarz rozjazdów deklaracja↔kotwica jest zamknięty', () =
     // musi trafiać w szynę 110 kV, a NIE w szynę SN tej samej stacji (dawny
     // predykat `pierwsza szyna > 1 kV` dawał tu 15 kV).
     const enm = SIECI[0].enm;
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const napisy = trafieniaEtykiet(scene, enm).filter((t) => t.ownerKind === 'busbar-voltage');
     expect(napisy.length, 'fixtura musi nieść napisy napięcia szyny').toBeGreaterThan(50);
     for (const t of napisy) {
@@ -252,7 +247,7 @@ describe('C — kontrola czułości wyroczni', () => {
    */
   it('bez naprawy: napisy napięcia szyny awansują do STACJI (wyrocznia A gryzie)', () => {
     const { enm } = SIECI[0];
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const index = buildCanvasModelIndex(enm);
     // GEOMETRIA-STACJI (Z-03): opis sekcji szyny SN stacji należy dziś do rekordu `Bus`
     // sekcji (`${busRef}#busbar-voltage`), więc ucięcie sufiksu prowadzi do szyny, nie do
@@ -285,7 +280,7 @@ describe('C — kontrola czułości wyroczni', () => {
     // (`gpz/…/substation#hv-bus`). Dziedziczenie bez filtru „czy ten napis mówi
     // o szynie" podmieniłoby menu stacji GPZ na menu sekcji szyny 110 kV.
     const { enm } = SIECI[0];
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const wgBazy = buildKanonicznyRefSzynyWgBazy(scene.segments);
     const nazwaGpz = scene.labels.find(
       (l) => l.ownerKind === 'station-name' && l.ownerRef.startsWith('gpz/') && l.ownerRef.includes('/substation#'),
@@ -329,7 +324,8 @@ describe('D — pokrycie iloczynu cech', () => {
     'etykieta×pole',
     'etykieta×galaz',
     'szyna×szyna',
-    'stacja×stacja',
+    // Dawna para „stacja×stacja” (symbol zwiniętej stacji) zniknęła z jedną sceną (karta
+    // SLD-SKALA-I-NAWIGACJA, R1) — uchwytem stacji jest jej napis (`etykieta×stacja` wyżej).
     'tor×galaz',
     'tor×pole',
     'aparat×pole',
@@ -338,8 +334,8 @@ describe('D — pokrycie iloczynu cech', () => {
     'zrodlo×zrodlo',
   ];
 
-  function paryDlaLod(enm: EnergyNetworkModel, lod: SceneLod): ReadonlySet<string> {
-    const scene = buildSceneV3(enm, lod);
+  function paryDlaSceny(enm: EnergyNetworkModel): ReadonlySet<string> {
+    const scene = buildSceneV3(enm);
     const index = buildCanvasModelIndex(enm);
     const wgBazy = buildKanonicznyRefSzynyWgBazy(scene.segments);
     const busRefOdcinka = new Map<string, string | undefined>();
@@ -377,17 +373,15 @@ describe('D — pokrycie iloczynu cech', () => {
 
   it('wszystkie wymagane pary {klasa}×{kotwica} występują w pomiarze', () => {
     const wszystkie = new Set<string>();
-    for (const { enm } of SIECI) for (const lod of LODY) for (const p of paryDlaLod(enm, lod)) wszystkie.add(p);
+    for (const { enm } of SIECI) for (const p of paryDlaSceny(enm)) wszystkie.add(p);
     const brakujace = WYMAGANE_PARY.filter((p) => !wszystkie.has(p));
     expect(brakujace, `pary bez pokrycia (obecne: ${[...wszystkie].sort().join(', ')})`).toEqual([]);
   });
 
-  it('każdy LOD niesie pary z co najmniej trzech różnych klas trafienia', () => {
+  it('każda sieć niesie pary z co najmniej trzech różnych klas trafienia', () => {
     for (const { nazwa, enm } of SIECI) {
-      for (const lod of LODY) {
-        const klasy = new Set([...paryDlaLod(enm, lod)].map((p) => p.split('×')[0]));
-        expect(klasy.size, `${nazwa} LOD ${lod}`).toBeGreaterThanOrEqual(3);
-      }
+      const klasy = new Set([...paryDlaSceny(enm)].map((p) => p.split('×')[0]));
+      expect(klasy.size, `${nazwa}`).toBeGreaterThanOrEqual(3);
     }
   });
 });
@@ -427,10 +421,8 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
     // i wymusi świadome rozstrzygnięcie kategorii (dziś odziedziczyłaby
     // niesprawdzone `'bus'`, czyli weszłaby w bramkę przejścia stacja→szyna).
     for (const { nazwa, enm } of SIECI) {
-      for (const lod of LODY) {
-        const producenci = buildSceneV3(enm, lod).labels.filter((l) => l.ownerKind === 'lv-load');
-        expect(producenci.map((l) => l.ownerRef), `${nazwa} LOD ${lod}`).toEqual([]);
-      }
+      const producenci = buildSceneV3(enm).labels.filter((l) => l.ownerKind === 'lv-load');
+      expect(producenci.map((l) => l.ownerRef), `${nazwa}`).toEqual([]);
     }
   });
 
@@ -474,7 +466,7 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
     // uchwyt) muszą dawać jeden temat. Do naprawy dawały: kreska → szyna,
     // napis → stacja.
     const { enm } = SIECI[0];
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const index = buildCanvasModelIndex(enm);
     const wgBazy = buildKanonicznyRefSzynyWgBazy(scene.segments);
     const bazaRefu = (ref: string): string => (ref.includes('#') ? ref.slice(0, ref.indexOf('#')) : ref);

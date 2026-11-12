@@ -36,9 +36,9 @@ describe('SLD recovery — electrical/semantic oracles', () => {
   // E11: section labels must never be a zero-based array index ("Sekcja 0"/"S0").
   // GPZ-PARYTET cz. 3: opis sekcji v2 (`sections`, `labelSpecs`) skasowany razem
   // z rendererami — wyrocznia czyta JEDYNY rysunek: scenę v3 (sekcje GPZ i każdą
-  // etykietę) na wszystkich poziomach szczegółowości.
-  it.each([0, 1, 2] as const)('E11: no zero-based section label leaks ("Sekcja 0" / "S0"), LOD %i', (lod) => {
-    const scene = buildSceneV3(enm, lod);
+  // etykietę) — jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA).
+  it('E11: no zero-based section label leaks ("Sekcja 0" / "S0")', () => {
+    const scene = buildSceneV3(enm);
     expect(scene.meta.sections.length).toBeGreaterThan(0);
     // `order` to klucz sortowania z ENM (może zaczynać się od 0) — wyrocznia dotyczy
     // NAPISU sekcji, który widzi inżynier.

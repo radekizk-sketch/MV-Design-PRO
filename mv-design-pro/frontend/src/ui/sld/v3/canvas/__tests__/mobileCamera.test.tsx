@@ -54,7 +54,7 @@ function viewBoxOf(container: HTMLElement): string {
 
 describe('SldCanvasV3 — F12-C kamera mobilna (E15/E16 parytet v2)', () => {
   it('portret: fit poniżej progu czytelności ⇒ kamera startowa w trybie focus (skala = próg, NIE skala fitu)', () => {
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+    const bbox2 = boundingBoxOfRect(buildSceneV3(enm).bbox);
     const pureFit = fitToView(bbox2, PORTRAIT);
     // Warunek wstępny scenariusza E15 (bez niego test nic nie dowodzi):
     expect(pureFit.scale).toBeLessThan(MOBILE_PORTRAIT_READABLE_MIN_SCALE);
@@ -72,7 +72,7 @@ describe('SldCanvasV3 — F12-C kamera mobilna (E15/E16 parytet v2)', () => {
   });
 
   it('portret: viewBox jest wycentrowany na bloku GPZ (środek bloku w kadrze, blisko środka viewportu)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={PORTRAIT.width} height={PORTRAIT.height} />,
     );
@@ -98,12 +98,12 @@ describe('SldCanvasV3 — F12-C kamera mobilna (E15/E16 parytet v2)', () => {
     // wchodzi w tryb focus — kamera to zwykły fit.
     // KD-7: cel fitu żyje w ŚWIECIE KAMERY (scena + margines arkusza —
     // `sceneBoxToCameraWorld`), bo `SheetFrame` rysuje treść przesuniętą.
-    const scena2 = buildSceneV3(enm, 2);
+    const scena2 = buildSceneV3(enm);
     const bbox2 = sceneBoxToCameraWorld(contentBoundingBoxOf(scena2) ?? boundingBoxOfRect(scena2.bbox));
     // S9-8: kadr produkcyjny liczony w prostokącie BEZPIECZNYM (kanwa minus
     // pasy doków) — oczekiwanie idzie tą samą drogą.
     const expectedFit = cameraViewBox(
-      computeInitialCameraState(bbox2, DESKTOP, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+      computeInitialCameraState(bbox2, DESKTOP, undefined, SLD_CANVAS_DOCK_INSETS).transform,
       DESKTOP,
     );
     const { container } = render(
@@ -113,7 +113,7 @@ describe('SldCanvasV3 — F12-C kamera mobilna (E15/E16 parytet v2)', () => {
   });
 
   it('computeInitialCameraState bez focusPoint zachowuje się jak dawny fit (kompatybilność wsteczna — F8a k4.1)', () => {
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+    const bbox2 = boundingBoxOfRect(buildSceneV3(enm).bbox);
     const legacy = fitToView(bbox2, PORTRAIT);
     const current = computeInitialCameraState(bbox2, PORTRAIT).transform;
     expect(current).toEqual(legacy);

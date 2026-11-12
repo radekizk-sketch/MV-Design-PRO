@@ -76,14 +76,14 @@ describe('computeProjectLegendEntries — zero fabrykacji (K12 §0.3)', () => {
     expect(entries.find((e) => e.id === 'loadArrow')?.labelPl).toBe('Odbiór (zagregowany)');
   });
 
-  it('symbol POZA historycznym kuratorem 12 pozycji (np. derPv/junction/stationCollapsed) MA wpis — pełne pokrycie, nie tylko dawny kurator', () => {
+  it('symbol POZA historycznym kuratorem 12 pozycji (np. derPv/junction/noPoint) MA wpis — pełne pokrycie, nie tylko dawny kurator', () => {
     const scene = makeScene({
-      symbols: [{ symbolId: 'derPv' }, { symbolId: 'junction' }, { symbolId: 'stationCollapsed' }],
+      symbols: [{ symbolId: 'derPv' }, { symbolId: 'junction' }, { symbolId: 'noPoint' }],
     });
     const ids = computeProjectLegendEntries(scene).map((e) => e.id);
     expect(ids).toContain('derPv');
     expect(ids).toContain('junction');
-    expect(ids).toContain('stationCollapsed');
+    expect(ids).toContain('noPoint');
   });
 
   it('kolejność wpisów symboli jest DETERMINISTYCZNA (kolejność SYMBOL_DEFS), niezależna od kolejności w scenie', () => {

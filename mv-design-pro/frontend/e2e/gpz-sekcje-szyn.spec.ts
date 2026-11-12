@@ -35,6 +35,7 @@ import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { APARAT, BACKEND_BASE, ZRODLO, katalog, odcinek, operacja, otworzAplikacje, polaStacjiEnm, ustawMotyw } from './siecKadrowStacji';
+import { selektorUchwytuStacji } from './skalaKamery';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'k6-inspektor'));
@@ -118,24 +119,17 @@ async function siecGpz(request: APIRequestContext) {
 }
 
 /**
- * Natywny klik w GPZ na kanwie. Stację GPZ (nie jej szyny, pola czy źródło) niesie na rysunku blok
- * GPZ przeglądu (L0, `sld-v3-l0-gpz-<ref>`); sieć złożona z samego GPZ kadruje się na poziomie
- * szczegółu, więc — jak projektant — oddalamy widok kółkiem myszy, aż blok się pojawi, i klikamy
- * jego środek.
+ * Natywny klik w GPZ na kanwie. Stację GPZ (nie jej szyny, pola czy źródło) wskazuje na rysunku
+ * napis identyfikacji GPZ (`<gpzRef>#name-row-0`; jedna scena, karta SLD-SKALA-I-NAWIGACJA R1 —
+ * dawny blok GPZ przeglądu L0 nie istnieje). Klikamy środek napisu.
  */
 async function kliknijGpz(page: Page, gpzRef: string): Promise<void> {
   const kanwa = page.getByTestId('sld-canvas-v3');
   await expect(kanwa).toBeVisible({ timeout: 30000 });
-  const ramkaKanwy = (await kanwa.boundingBox())!;
-  const blok = page.locator(`[data-testid="sld-v3-l0-gpz-${gpzRef}"]`);
-  await page.mouse.move(ramkaKanwy.x + ramkaKanwy.width / 2, ramkaKanwy.y + ramkaKanwy.height / 2);
-  for (let i = 0; i < 40 && (await blok.count()) === 0; i += 1) {
-    await page.mouse.wheel(0, 240);
-    await page.waitForTimeout(120);
-  }
+  const blok = page.locator(selektorUchwytuStacji(gpzRef));
   await expect(blok).toBeAttached();
   const ramka = await blok.boundingBox();
-  expect(ramka, 'blok GPZ ma ramkę na ekranie').not.toBeNull();
+  expect(ramka, 'napis GPZ ma ramkę na ekranie').not.toBeNull();
   await page.mouse.click(ramka!.x + ramka!.width / 2, ramka!.y + ramka!.height / 2);
 }
 

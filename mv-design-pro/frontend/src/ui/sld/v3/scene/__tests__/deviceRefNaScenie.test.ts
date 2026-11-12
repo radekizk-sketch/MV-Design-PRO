@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildCanvasHitAreas } from '../../canvas/hitAreas';
-import { buildSceneV3, type SceneLod } from '../buildScene';
+import { buildSceneV3 } from '../buildScene';
 import { buildW1MatrixFixture } from './fixtures/w1MatrixVariants';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -63,10 +63,8 @@ function symboleAparatow(scene: ReturnType<typeof buildSceneV3>) {
 }
 
 describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => {
-  it.each([1, 2] as SceneLod[])(
-    'GPZ (ścieżka danych, LOD %s): aparaty niosą deviceRef; każdy ISTNIEJE w modelu; ≥2 aparaty jednego pola mają RÓŻNE refy',
-    (lod) => {
-      const scene = buildSceneV3(gpzDataPathEnm, lod);
+  it('GPZ (ścieżka danych): aparaty niosą deviceRef; każdy ISTNIEJE w modelu; ≥2 aparaty jednego pola mają RÓŻNE refy', () => {
+      const scene = buildSceneV3(gpzDataPathEnm);
       const dozwolone = deviceRefyModelu(gpzDataPathEnm);
       expect(dozwolone.size).toBeGreaterThan(0);
       // Uwaga: scena GPZ nie przenosi `apparatusSource` (metadana stacyjna) —
@@ -91,11 +89,9 @@ describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => 
     },
   );
 
-  it.each([1, 2] as SceneLod[])(
-    'STACJA (ścieżka danych z rekordów pól, LOD %s): te same niezmienniki co GPZ',
-    (lod) => {
+  it('STACJA (ścieżka danych z rekordów pól): te same niezmienniki co GPZ', () => {
       const { enm } = buildW1MatrixFixture();
-      const scene = buildSceneV3(enm, lod);
+      const scene = buildSceneV3(enm);
       const dozwolone = deviceRefyModelu(enm);
       expect(dozwolone.size).toBeGreaterThan(0);
       const zRefem = symboleAparatow(scene).filter((s) => s.meta?.deviceRef);
@@ -114,14 +110,12 @@ describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => 
     },
   );
 
-  it.each([0, 1, 2] as SceneLod[])(
-    'NEGATYW (LOD %s): fixtura bez primary_devices — każdy deviceRef to gałąź łączeniowa pola z modelu, pole bez rekordów nie ma refu',
-    (lod) => {
+  it('NEGATYW: fixtura bez primary_devices — każdy deviceRef to gałąź łączeniowa pola z modelu, pole bez rekordów nie ma refu', () => {
       // KOREKTA (GEOMETRIA-STACJI §0 pkt 4): dawniej ta fixtura rysowała stosy konwencji
       // i wyrocznia żądała ZERA refów. Konwencja skasowana — aparat pola rysuje się z gałęzi
       // łączeniowej wskazanej w `equipment_refs` (ref = ta gałąź), a pole bez żadnego
       // rekordu dostaje sylwetkę braku danych bez refu. Intencja (zero fabrykacji) bez zmian.
-      const scene = buildSceneV3(substrateEnm, lod);
+      const scene = buildSceneV3(substrateEnm);
       const dozwolone = deviceRefyModelu(substrateEnm);
       const zRefem = scene.symbols.filter((s) => s.meta?.deviceRef !== undefined);
       expect(zRefem.filter((s) => !dozwolone.has(s.meta!.deviceRef!)), 'zero zgadywanych refów urządzeń').toEqual([]);
@@ -132,7 +126,7 @@ describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => 
 
   it('warstwa trafień przenosi deviceRef 1:1 ze sceny (klik → inspektor ma z czego czytać)', () => {
     const { enm } = buildW1MatrixFixture();
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const areas = buildCanvasHitAreas({
       symbols: scene.symbols,
       segments: scene.segments,

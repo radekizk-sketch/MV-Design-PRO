@@ -19,30 +19,25 @@ import { test, expect, type Page } from '@playwright/test';
 import { adresHarnessu } from './adresHarnessu';
 
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
-const POZIOMY = [0, 1, 2] as const;
-
-async function otworz(page: Page, lod: number): Promise<void> {
+async function otworz(page: Page): Promise<void> {
   // `networkidle` jest zawodne przy dev-serverze Vite (HMR trzyma otwarte
   // połączenie, a pierwszy wejściowy test płaci koszt kompilacji na żądanie) —
-  // czekamy na DOM, a gotowość kanwy potwierdza selektor `data-lod-override`.
-  await page.goto(`${HARNESS_URL}?lod=${lod}&theme=dark`, {
+  // czekamy na DOM, a gotowość kanwy potwierdza jej skala kamery (jedna scena, karta
+  // SLD-SKALA-I-NAWIGACJA R1 — dawny wymuszony poziom szczegółu nie istnieje).
+  await page.goto(`${HARNESS_URL}?theme=dark`, {
     waitUntil: 'domcontentloaded',
     timeout: 60_000,
   });
-  await page.waitForSelector('[data-lod-override]', { timeout: 30_000 });
-  await expect(page.locator('[data-lod-override]').first()).toHaveAttribute(
-    'data-lod-override',
-    String(lod),
-  );
+  await page.waitForSelector('svg[data-testid="sld-canvas-v3"][data-skala-kamery]', { timeout: 30_000 });
   await page.waitForTimeout(600);
 }
 
 test.describe('AUDYT R4 — inwentarz renderu SLD', () => {
-  for (const lod of POZIOMY) {
-    test(`L${lod}: pełny inwentarz DOM`, async ({ page }) => {
+  {
+    test('pełny inwentarz DOM jednej sceny', async ({ page }) => {
       const bledy: string[] = [];
       page.on('console', (m) => m.type() === 'error' && bledy.push(m.text()));
-      await otworz(page, lod);
+      await otworz(page);
 
       const raport = await page.evaluate(() => {
         const svg = document.querySelector('svg');
@@ -101,12 +96,12 @@ test.describe('AUDYT R4 — inwentarz renderu SLD', () => {
 
       const fs = await import('node:fs');
       // NIE do `test-results/` — Playwright czyści ten katalog na starcie każdego
-      // przebiegu, więc raport z L1 ginął, gdy dobiegał L2.
+      // przebiegu.
       const katalog = 'audyt-r4';
       fs.mkdirSync(katalog, { recursive: true });
-      fs.writeFileSync(`${katalog}/audyt_r4_L${lod}.json`, JSON.stringify(raport, null, 1));
-      console.log(`L${lod}: elementów SVG=${(raport as { elementowSvg?: number }).elementowSvg} → ${katalog}/audyt_r4_L${lod}.json`);
-      expect(bledy, `błędy konsoli L${lod}: ${bledy.join(' | ')}`).toEqual([]);
+      fs.writeFileSync(`${katalog}/audyt_r4.json`, JSON.stringify(raport, null, 1));
+      console.log(`elementów SVG=${(raport as { elementowSvg?: number }).elementowSvg} → ${katalog}/audyt_r4.json`);
+      expect(bledy, `błędy konsoli: ${bledy.join(' | ')}`).toEqual([]);
     });
   }
 });

@@ -18,6 +18,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
+import { pierwszaStacjaZUchwytem } from './uchwytStacji';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
@@ -80,14 +81,14 @@ const zaznaczone = () => useSelectionStore.getState().selectedElements.map((e) =
 function renderZInspektorem() {
   return render(
     <>
-      <SldCanvasV3Workspace width={800} height={600} lodOverride={2} />
+      <SldCanvasV3Workspace width={800} height={600} />
       <InspektorKanwyTestowy />
     </>,
   );
 }
 
-function pierwszySymbol(lod: 0 | 1 | 2, predykat: (s: ReturnType<typeof buildSceneV3>['symbols'][number]) => boolean) {
-  const scene = buildSceneV3(enm, lod);
+function pierwszySymbol(predykat: (s: ReturnType<typeof buildSceneV3>['symbols'][number]) => boolean) {
+  const scene = buildSceneV3(enm);
   const index = scene.symbols.findIndex(predykat);
   expect(index, 'symbol obecny w scenie').toBeGreaterThanOrEqual(0);
   return { scene, index, symbol: scene.symbols[index] };
@@ -95,48 +96,48 @@ function pierwszySymbol(lod: 0 | 1 | 2, predykat: (s: ReturnType<typeof buildSce
 
 describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy inspektor', () => {
   it('kanwa sama NIE renderuje panelu szczegółów: klik w stację zaznacza ją, a w drzewie kanwy nie ma żadnego panelu elementu', () => {
-    const { scene, index, symbol } = pierwszySymbol(0, (s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    fireEvent.click(uchwytSymbolu(container, scene, index)!);
-    expect(zaznaczone()).toEqual([symbol.meta!.ownerRef]);
+    const stacja = pierwszaStacjaZUchwytem(container, buildSceneV3(enm));
+    fireEvent.click(stacja.el);
+    expect(zaznaczone()).toEqual([stacja.ref]);
     expect(container.querySelector('[data-testid="inspektor-element-kanwy"]')).toBeNull();
     expect(container.querySelector('[data-testid^="sld-v2-detail-drawer"]')).toBeNull();
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it('klik w stację: inspektor pokazuje stację (nazwa, rodzaj) z paskiem działań i sekcją wyników', () => {
-    const { scene, index, symbol } = pierwszySymbol(0, (s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed');
     const { container } = render(
       <>
         <SldCanvasV3Workspace width={800} height={600} />
         <InspektorKanwyTestowy />
       </>,
     );
-    fireEvent.click(uchwytSymbolu(container, scene, index)!);
+    const uchwyt = pierwszaStacjaZUchwytem(container, buildSceneV3(enm));
+    fireEvent.click(uchwyt.el);
     const panel = screen.getByTestId('inspektor-element-kanwy');
     expect(panel).toHaveAttribute('data-rodzaj', 'station');
-    expect(panel).toHaveAttribute('data-element-id', symbol.meta!.ownerRef!);
-    const stacja = enm.substations.find((s) => s.ref_id === symbol.meta!.ownerRef)!;
+    expect(panel).toHaveAttribute('data-element-id', uchwyt.ref);
+    const stacja = enm.substations.find((s) => s.ref_id === uchwyt.ref)!;
     expect(screen.getByTestId('inspektor-element-etykieta').textContent).toBe(stacja.name);
     expect(screen.getByTestId('inspektor-dzialania')).toBeInTheDocument();
     expect(screen.getByTestId('inspektor-wyniki')).toHaveAttribute('data-stan', 'brak');
   });
 
   it('Escape i klik w tło zdejmują wskazanie — inspektor wraca do stanu „bez zaznaczenia"', () => {
-    const { scene, index } = pierwszySymbol(0, (s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed');
     const { container } = render(
       <>
         <SldCanvasV3Workspace width={800} height={600} />
         <InspektorKanwyTestowy />
       </>,
     );
-    fireEvent.click(uchwytSymbolu(container, scene, index)!);
+    const uchwyt = () => pierwszaStacjaZUchwytem(container, buildSceneV3(enm)).el;
+    fireEvent.click(uchwyt());
     expect(screen.getByTestId('inspektor-element-kanwy')).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(zaznaczone()).toEqual([]);
     expect(screen.queryByTestId('inspektor-element-kanwy')).toBeNull();
 
-    fireEvent.click(uchwytSymbolu(container, scene, index)!);
+    fireEvent.click(uchwyt());
     expect(screen.getByTestId('inspektor-element-kanwy')).toBeInTheDocument();
     fireEvent.click(container.querySelector('[data-testid="sld-canvas-v3"]')!);
     expect(zaznaczone()).toEqual([]);
@@ -144,22 +145,21 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
   });
 
   it('klik ODSŁANIA zwinięty inspektor aktywnej przestrzeni — także przy ponownym kliku tego samego obiektu', () => {
-    const { scene, index } = pierwszySymbol(0, (s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const uchwyt = () => pierwszaStacjaZUchwytem(container, buildSceneV3(enm)).el;
     const przestrzen = useShellStore.getState().activeSpace;
     const zwiniety = () => useShellStore.getState().layoutBySpace[przestrzen]?.rightCollapsed ?? true;
     act(() => useShellStore.getState().setRightCollapsed(przestrzen, true));
     expect(zwiniety()).toBe(true);
-    fireEvent.click(uchwytSymbolu(container, scene, index)!);
+    fireEvent.click(uchwyt());
     expect(zwiniety()).toBe(false);
     act(() => useShellStore.getState().setRightCollapsed(przestrzen, true));
-    fireEvent.click(uchwytSymbolu(container, scene, index)!, { detail: 1 });
+    fireEvent.click(uchwyt(), { detail: 1 });
     expect(zwiniety()).toBe(false);
   });
 
   it('klik w transformator: selekcja niesie REALNY ref transformatora, inspektor pokazuje transformator', () => {
-    // KD-5: symbol transformatora istnieje od L1 (na L0 stacje są zwinięte).
-    const { scene, index } = pierwszySymbol(2, (s) => s.meta?.elementKind === 'transformer');
+    const { scene, index } = pierwszySymbol((s) => s.meta?.elementKind === 'transformer');
     const { container } = renderZInspektorem();
     fireEvent.click(uchwytSymbolu(container, scene, index)!);
     const ref = zaznaczone()[0];
@@ -172,7 +172,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
     // GEOMETRIA-STACJI (§0 pkt 4): pierwszy aparat sceny (odłącznik pola GPZ bez gałęzi
     // i bez stanu rekordu) nie ma stanu w modelu — intencja testu to łącznik ZE stanem glifu,
     // więc wybór wprost po stanie.
-    const { scene, index, symbol } = pierwszySymbol(2, (s) => s.meta?.elementKind === 'apparatus' && s.state !== undefined);
+    const { scene, index, symbol } = pierwszySymbol((s) => s.meta?.elementKind === 'apparatus' && s.state !== undefined);
     const { container } = renderZInspektorem();
     fireEvent.click(uchwytSymbolu(container, scene, index)!);
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-rodzaj', 'apparatus');
@@ -189,7 +189,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
   // działań i wyniki). Intencja zachowana: klik nie rzuca, działania z menu źródła i sekcja
   // wyników są obecne; doszły nagłówek i karta rodzaju „źródło".
   it('klik w źródło OZE: karta techniczna źródła, działania z menu źródła i sekcja wyników', () => {
-    const { scene, index } = pierwszySymbol(2, (s) => s.meta?.elementKind === 'der');
+    const { scene, index } = pierwszySymbol((s) => s.meta?.elementKind === 'der');
     const { container } = renderZInspektorem();
     expect(() => fireEvent.click(uchwytSymbolu(container, scene, index)!)).not.toThrow();
     const panel = screen.getByTestId('inspektor-element-kanwy');
@@ -202,7 +202,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
   });
 
   it('klik w odcinek SN: inspektor ma wejście do konfiguratora odcinka (E-12, karta trasy) i wyniki odcinka', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const index = scene.segments.findIndex(
       (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
     );
@@ -222,13 +222,13 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
     // obcinanie ich w selekcji dawało ref nieistniejący w modelu (71 z 88 odcinków tej
     // sieci) — synchronizacja selekcji go czyściła i klik był martwy w żywej aplikacji.
     const refyGalezi = new Set((enm.branches ?? []).map((b) => b.ref_id));
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const odcinki = scene.segments
       .map((s, i) => ({ ref: s.meta?.ownerRef ?? '', kind: s.meta?.elementKind, testId: s.meta?.testId ?? `sld-v3-segment-${i}` }))
       .filter((s) => s.kind === 'segment' && s.ref !== '' && !s.ref.includes('#'));
     const zPrzyrostkiem = odcinki.filter((s) => /_[LR]$/.test(s.ref));
     expect(zPrzyrostkiem.length, 'sieć ma połówki odcinków po cięciu').toBeGreaterThan(0);
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} />);
     let klikniete = 0;
     for (const odcinek of odcinki) {
       const hit = container.querySelector(`[data-hit-for="${odcinek.testId}"]`);
@@ -242,7 +242,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
   });
 
   it('klik w szynę: inspektor pokazuje szynę z działaniami szyny (ref kompozytowy rysunku → kotwica modelu)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const index = scene.segments.findIndex((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef);
     expect(index).toBeGreaterThanOrEqual(0);
     const testId = scene.segments[index].meta?.testId ?? `sld-v3-segment-${index}`;
@@ -259,7 +259,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik w węzeł SN (punkt odgałęźny
 
   it('punkt odgałęźny ZK SN: sekcja węzła z rodzajem z rekordu modelu i wejście do karty ZK SN (E-14)', () => {
     useSnapshotStore.setState({ snapshot: enmZksn });
-    const scene = buildSceneV3(enmZksn, 2);
+    const scene = buildSceneV3(enmZksn);
     const index = scene.symbols.findIndex((s) => s.meta?.elementKind === 'branchPoint');
     expect(index, 'scena ma punkt odgałęźny').toBeGreaterThanOrEqual(0);
     const { container } = renderZInspektorem();

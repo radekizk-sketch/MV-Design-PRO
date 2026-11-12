@@ -56,7 +56,7 @@ import {
   segmentStrokeWidthForScale,
 } from '../../compose/preview';
 import { MAX_SCALE, MIN_SCALE } from '../../canvas/camera';
-import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS } from '../../symbols/glyphs';
 import { QET_KRESKA_GLIFU } from '../../cad/qet/qetPoleSn';
@@ -109,7 +109,6 @@ function kreskiPozaLejkiem(zrodlo: string): readonly string[] {
 }
 
 const KLASY: readonly LabelClass[] = ['t1', 't2', 't3', 't4'];
-const LODY: readonly SceneLod[] = [0, 1, 2];
 /** Skale: dolny kraniec · przegląd · dopasowanie typowej sieci · praca · zoom
  *  roboczy · górny kraniec. Iloczyn liczony z KAŻDĄ z nich, żeby „defekt gaśnie
  *  przy 1:1" i „defekt tylko przy oddaleniu" nie miały gdzie się schować. */
@@ -208,27 +207,25 @@ describe('PROPORCJE §1 — sufit napis:obiekt (klasa × skala)', () => {
   });
 });
 
-describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (poziom szczegółu × skala)', () => {
+describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (jedna scena × skala)', () => {
   const enm = SIEC;
-  const sceny = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
+  const scena = buildSceneV3(enm);
 
-  it('ILOCZYN {LOD} × {skala}: żaden NARYSOWANY napis nie łamie ani podłogi, ani sufitu', () => {
-    for (const lod of LODY) {
-      const scene = sceny[lod];
-      const przeszkody = sceneObstacleRects(scene);
-      for (const scale of SKALE) {
-        const plan = planSceneLabels(scene.labels, przeszkody, scale, sheetSizeFor(scene));
-        expect(
-          plannedLabelsBelowScreenFloor(plan, scale, MIN_READABLE_LABEL_SCREEN_PX),
-          `podłoga L${lod} @${scale}`,
-        ).toEqual([]);
-        expect(plannedLabelsAboveProportionCeiling(plan, scale), `sufit L${lod} @${scale}`).toEqual([]);
-      }
+  it('ILOCZYN {napis sceny} × {skala}: żaden NARYSOWANY napis nie łamie ani podłogi, ani sufitu', () => {
+    const scene = scena;
+    const przeszkody = sceneObstacleRects(scene);
+    for (const scale of SKALE) {
+      const plan = planSceneLabels(scene.labels, przeszkody, scale, sheetSizeFor(scene));
+      expect(
+        plannedLabelsBelowScreenFloor(plan, scale, MIN_READABLE_LABEL_SCREEN_PX),
+        `podłoga @${scale}`,
+      ).toEqual([]);
+      expect(plannedLabelsAboveProportionCeiling(plan, scale), `sufit @${scale}`).toEqual([]);
     }
   });
 
   it('napis usunięty przez sufit jest POLICZONY, nie zgubiony po cichu', () => {
-    const scene = sceny[2];
+    const scene = scena;
     const przeszkody = sceneObstacleRects(scene);
     const plan = planSceneLabels(scene.labels, przeszkody, MIN_SCALE, sheetSizeFor(scene));
     const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc');
@@ -255,7 +252,7 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (poziom szczegółu �
     // inaczej obecność nazw stacji zależałaby od rozmiaru okna albo od jednego
     // pola dołożonego do jednej rozdzielnicy.
     expect(proportionCutoffScale('t1')).toBeLessThan(0.09);
-    const scene = sceny[0];
+    const scene = scena;
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 0.101, sheetSizeFor(scene));
     const nazwy = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc');
     expect(nazwy.length).toBeGreaterThan(0);
@@ -386,7 +383,7 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     // GEOMETRIA-STACJI (§0 pkt 4): odłącznik rysuje się wyłącznie z rekordu modelu — fikstura
     // dostaje rekordy aparatów pól (`zRekordamiAparatowPol`); dawniej dawała go konwencja.
     const { container } = render(
-      <SldCanvasV3 snapshot={zRekordamiAparatowPol(SIEC)} width={420} height={280} lodOverride={2} animateLodTransitions={false} />,
+      <SldCanvasV3 snapshot={zRekordamiAparatowPol(SIEC)} width={420} height={280} />,
     );
     const kadr = container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!.split(' ');
     const skala = 420 / Number(kadr[2]);
@@ -402,17 +399,10 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     cleanup();
   });
 
-  it('WNĘTRZE sylwetki skalowane RAZEM z obrysem (zwinięty blok stacji — cały rekord wag)', () => {
-    const Glyph = SYMBOL_GLYPHS.stationCollapsed;
-    const bez = renderToStaticMarkup(<Glyph x={0} y={0} />);
-    const zDwa = renderToStaticMarkup(<Glyph x={0} y={0} strokeScale={2} />);
-    // Obrys (0,5), tor (1,6) i szyna (1,2) MUSZĄ urosnąć wszystkie — glif z
-    // obrysem wzmocnionym przy nietkniętym torze rozjeżdża się wewnętrznie.
-    expect(bez).toContain('stroke-width="0.5"');
-    expect(zDwa).toContain('stroke-width="1"');
-    expect(zDwa).toContain('stroke-width="3.2"');
-    expect(zDwa).toContain('stroke-width="2.4"');
-  });
+  // Dawny test „WNĘTRZE sylwetki skalowane RAZEM z obrysem (zwinięty blok stacji)"
+  // usunięty razem z glifem zwiniętej stacji (karta SLD-SKALA-I-NAWIGACJA R1: jedna
+  // scena, bez form zwiniętych). Intencję — wagi wnętrza symbolu rosną razem z obrysem —
+  // dla aparatu pola dowodzi test wyżej na wyrenderowanej kanwie.
 });
 
 describe('PROPORCJE §3/§4 — tożsamość stacji i oznaczenie pola', () => {
@@ -426,40 +416,36 @@ describe('PROPORCJE §3/§4 — tożsamość stacji i oznaczenie pola', () => {
     // „S07 ↔ S08 · …" — nazywa RELACJĘ). Obie niosą kod INNEJ stacji albo
     // parę stacji, więc nie są powtórzeniem tożsamości bloku.
     const NOSNIKI_TOZSAMOSCI = new Set(['station-name', 'busbar-voltage']);
-    for (const lod of LODY) {
-      const scene = buildSceneV3(enm, lod);
-      const perBlok = new Map<string, string[]>();
-      const kodBloku = new Map<string, string>();
-      for (const l of scene.labels) {
-        const blok = /^(stn\/[0-9a-zA-Z_-]+)/.exec(l.ownerRef)?.[1];
-        if (!blok || !NOSNIKI_TOZSAMOSCI.has(l.ownerKind)) continue;
-        const kod = /(?:^|\s)(S\d+)(?=\s|·|$)/.exec(l.text)?.[1];
-        if (kod && !kodBloku.has(blok)) kodBloku.set(blok, kod);
-        perBlok.set(blok, [...(perBlok.get(blok) ?? []), `${l.ownerKind}:"${l.text}"`]);
-      }
-      expect(kodBloku.size, `L${lod}: bloków z kodem`).toBeGreaterThan(0);
-      for (const [blok, kod] of kodBloku) {
-        const trafienia = (perBlok.get(blok) ?? []).filter((t) => t.includes(kod));
-        expect(trafienia.length, `L${lod} ${blok}: ${trafienia.join(' + ')}`).toBe(1);
-      }
+    const scene = buildSceneV3(enm);
+    const perBlok = new Map<string, string[]>();
+    const kodBloku = new Map<string, string>();
+    for (const l of scene.labels) {
+      const blok = /^(stn\/[0-9a-zA-Z_-]+)/.exec(l.ownerRef)?.[1];
+      if (!blok || !NOSNIKI_TOZSAMOSCI.has(l.ownerKind)) continue;
+      const kod = /(?:^|\s)(S\d+)(?=\s|·|$)/.exec(l.text)?.[1];
+      if (kod && !kodBloku.has(blok)) kodBloku.set(blok, kod);
+      perBlok.set(blok, [...(perBlok.get(blok) ?? []), `${l.ownerKind}:"${l.text}"`]);
+    }
+    expect(kodBloku.size, `bloków z kodem`).toBeGreaterThan(0);
+    for (const [blok, kod] of kodBloku) {
+      const trafienia = (perBlok.get(blok) ?? []).filter((t) => t.includes(kod));
+      expect(trafienia.length, `${blok}: ${trafienia.join(' + ')}`).toBe(1);
     }
   });
 
   it('OPISY PÓL w jednej rozdzielni są PARAMI RÓŻNE (kontekst dla powtarzalnych Q/QE/T)', () => {
-    for (const lod of LODY) {
-      const scene = buildSceneV3(enm, lod);
-      const perBlok = new Map<string, string[]>();
-      for (const l of scene.labels) {
-        if (l.ownerKind !== 'field-role') continue;
-        const blok = /^(stn\/[0-9a-zA-Z_-]+|gpz\/[0-9a-zA-Z_-]+)/.exec(l.ownerRef)?.[1];
-        if (!blok) continue;
-        const lista = perBlok.get(blok) ?? [];
-        lista.push(l.text);
-        perBlok.set(blok, lista);
-      }
-      for (const [blok, opisy] of perBlok) {
-        expect(new Set(opisy).size, `L${lod} ${blok}: ${opisy.join(' | ')}`).toBe(opisy.length);
-      }
+    const scene = buildSceneV3(enm);
+    const perBlok = new Map<string, string[]>();
+    for (const l of scene.labels) {
+      if (l.ownerKind !== 'field-role') continue;
+      const blok = /^(stn\/[0-9a-zA-Z_-]+|gpz\/[0-9a-zA-Z_-]+)/.exec(l.ownerRef)?.[1];
+      if (!blok) continue;
+      const lista = perBlok.get(blok) ?? [];
+      lista.push(l.text);
+      perBlok.set(blok, lista);
+    }
+    for (const [blok, opisy] of perBlok) {
+      expect(new Set(opisy).size, `${blok}: ${opisy.join(' | ')}`).toBe(opisy.length);
     }
   });
 

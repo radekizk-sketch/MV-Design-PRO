@@ -8,7 +8,7 @@
  *  na WIELU klasach topologii (WYTYCZNE §12). Stała podniesiona 3×GRID→4×GRID
  *  (+33,3%, widełki §5), wyprowadzona OGÓLNIE (najmniejszy `k×GRID` w paśmie).
  *
- * Pozostałe punkty P0 (audyt pionów, czytelność L0) — kolejne podetapy S7-P4.
+ * Pozostałe punkty P0 (audyt pionów, zbiór „nigdy nie znika") — kolejne podetapy S7-P4.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -27,12 +27,9 @@ import {
   verticalCauseBreakdown,
   allSceneSegmentEndpointsAnchored,
   totalVerticalSegmentLength,
-  lod0ReadabilityGaps,
-  allLod0ElementsReadable,
   layoutMetricsReport,
   noSceneSymbolOverlaps,
   allSourcesConnected,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
@@ -60,7 +57,6 @@ const FIXTURES: ReadonlyArray<{ readonly klasa: string; readonly nazwa: string; 
   { klasa: 'E (wieloźródłowa, 53 stacje)', nazwa: 'sldSubstrate52s', enm: loadEnm(bigFixturePath) },
 ];
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
 
 describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 1 — światło górnego pasa bbox-do-bbox', () => {
   it('TOP_LEVEL_FIELD_CLEARANCE = 4×GRID (+33,3% od 3×GRID, widełki §5 „+20–35%")', () => {
@@ -73,52 +69,48 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 1 — światło górnego pasa bbox-do-
   });
 
   for (const fx of FIXTURES) {
-    for (const lod of LODS) {
-      it(`${fx.nazwa} LOD${lod}: każde światło pasa górnego bbox-do-bbox ≥ kontrakt (opisy+aparatura, nie kotwice)`, () => {
-        const scene = buildSceneV3(fx.enm, lod);
-        const gaps = topBandFieldClearances(scene);
-        // Miara jest na REALNYCH obrysach: gdy pas górny ma ≥2 pola, mamy ≥1 światło.
-        for (const g of gaps) {
-          expect(
-            g.gap,
-            `światło ${g.leftStationId} → ${g.rightStationId} = ${g.gap} < ${TOP_LEVEL_FIELD_CLEARANCE}`,
-          ).toBeGreaterThanOrEqual(TOP_LEVEL_FIELD_CLEARANCE);
-        }
-        expect(allTopBandFieldsClearance(scene)).toBe(true);
-        expect(topBandClearanceViolations(scene)).toHaveLength(0);
-      });
-    }
+    it(`${fx.nazwa}: każde światło pasa górnego bbox-do-bbox ≥ kontrakt (opisy+aparatura, nie kotwice)`, () => {
+      const scene = buildSceneV3(fx.enm);
+      const gaps = topBandFieldClearances(scene);
+      // Miara jest na REALNYCH obrysach: gdy pas górny ma ≥2 pola, mamy ≥1 światło.
+      for (const g of gaps) {
+        expect(
+          g.gap,
+          `światło ${g.leftStationId} → ${g.rightStationId} = ${g.gap} < ${TOP_LEVEL_FIELD_CLEARANCE}`,
+        ).toBeGreaterThanOrEqual(TOP_LEVEL_FIELD_CLEARANCE);
+      }
+      expect(allTopBandFieldsClearance(scene)).toBe(true);
+      expect(topBandClearanceViolations(scene)).toHaveLength(0);
+    });
   }
 
   it('sldSubstrate52s: pas górny ma wiele pól i ≥1 zmierzone światło (dowód, że miara nie jest pusta)', () => {
-    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
+    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm);
     expect(scene.meta.mainTrunkStationIds.length).toBeGreaterThan(1);
     expect(topBandFieldClearances(scene).length).toBeGreaterThan(0);
   });
 
   it('wyrocznia GRYZIE: próg > największego zmierzonego światła daje naruszenie (nie martwa)', () => {
-    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
+    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm);
     const gaps = topBandFieldClearances(scene).map((g) => g.gap);
     const maxGap = Math.max(...gaps);
     expect(topBandClearanceViolations(scene, maxGap + 1).length).toBeGreaterThan(0);
     expect(allTopBandFieldsClearance(scene, maxGap + 1)).toBe(false);
   });
 
-  it('miara jest bbox-do-bbox (nie kotwic): światło = 32 px = 4×GRID na fixturze referencyjnej, wszystkie LOD', () => {
+  it('miara jest bbox-do-bbox (nie kotwic): światło = 32 px = 4×GRID na fixturze referencyjnej', () => {
     // Podniesienie 24→32 jest WIDOCZNE w mierze realnych obrysów pól — dowód, że
     // stała steruje pasem górnym i miara nie odczytuje kotwic (stały krok).
-    for (const lod of LODS) {
-      const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, lod);
-      const gaps = topBandFieldClearances(scene).map((g) => g.gap);
-      expect(Math.min(...gaps)).toBe(4 * GRID);
-    }
+    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm);
+    const gaps = topBandFieldClearances(scene).map((g) => g.gap);
+    expect(Math.min(...gaps)).toBe(4 * GRID);
   });
 
   it('światło rośnie ze stałą (nie phantom): większy kontrakt-próg wykrywa mniejsze realne światło', () => {
     // Dowód reużywalny: przy progu 3×GRID (stara wartość) fixtura MUSI mieć zero
     // naruszeń (32 ≥ 24), a przy progu 5×GRID (40) MUSI mieć naruszenia (32 < 40)
     // — miara reaguje na realne obrysy, nie zwraca stałej.
-    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
+    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm);
     expect(allTopBandFieldsClearance(scene, 3 * GRID)).toBe(true);
     expect(allTopBandFieldsClearance(scene, 5 * GRID)).toBe(false);
   });
@@ -126,43 +118,41 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 1 — światło górnego pasa bbox-do-
 
 describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy z przyczyną)', () => {
   for (const fx of FIXTURES) {
-    for (const lod of LODS) {
-      it(`${fx.nazwa} LOD${lod}: KAŻDY pion ma przyczynę (żaden nieuzasadniony)`, () => {
-        const scene = buildSceneV3(fx.enm, lod);
-        const gaps = verticalAuditGaps(scene);
-        expect(
-          gaps,
-          `piony bez przyczyny: ${gaps.map((g) => `${g.ownerRef}(${g.kind},${g.length})`).join(', ')}`,
-        ).toHaveLength(0);
-        expect(allVerticalsAttributed(scene)).toBe(true);
-      });
+    it(`${fx.nazwa}: KAŻDY pion ma przyczynę (żaden nieuzasadniony)`, () => {
+      const scene = buildSceneV3(fx.enm);
+      const gaps = verticalAuditGaps(scene);
+      expect(
+        gaps,
+        `piony bez przyczyny: ${gaps.map((g) => `${g.ownerRef}(${g.kind},${g.length})`).join(', ')}`,
+      ).toHaveLength(0);
+      expect(allVerticalsAttributed(scene)).toBe(true);
+    });
 
-      it(`${fx.nazwa} LOD${lod}: suma długości pionów per przyczyna = totalVerticalSegmentLength (kompletność audytu)`, () => {
-        const scene = buildSceneV3(fx.enm, lod);
-        const audit = auditVerticalSegments(scene);
-        const sumAudit = audit.reduce((s, v) => s + v.length, 0);
-        // Audyt pokrywa DOKŁADNIE zbiór pionów mierzony przez funkcję kosztu —
-        // nie gubi ani nie dublach żadnego pionu (dowód, że tabela jest pełna).
-        expect(sumAudit).toBe(totalVerticalSegmentLength(scene));
-        const breakdown = verticalCauseBreakdown(scene);
-        const sumBreak = Object.values(breakdown).reduce((s, v) => s + v.length, 0);
-        expect(sumBreak).toBe(sumAudit);
-      });
+    it(`${fx.nazwa}: suma długości pionów per przyczyna = totalVerticalSegmentLength (kompletność audytu)`, () => {
+      const scene = buildSceneV3(fx.enm);
+      const audit = auditVerticalSegments(scene);
+      const sumAudit = audit.reduce((s, v) => s + v.length, 0);
+      // Audyt pokrywa DOKŁADNIE zbiór pionów mierzony przez funkcję kosztu —
+      // nie gubi ani nie dublach żadnego pionu (dowód, że tabela jest pełna).
+      expect(sumAudit).toBe(totalVerticalSegmentLength(scene));
+      const breakdown = verticalCauseBreakdown(scene);
+      const sumBreak = Object.values(breakdown).reduce((s, v) => s + v.length, 0);
+      expect(sumBreak).toBe(sumAudit);
+    });
 
-      it(`${fx.nazwa} LOD${lod}: każdy pion sięga realnej geometrii (nie dynda — minimalność §9 P0)`, () => {
-        // „Piony bez przyczyny → skrócić" w sensie geometrycznym: żaden koniec
-        // trasy nie wisi w pustce (port/inny odcinek). Wiąże audyt z realną
-        // minimalnością — pion nie może być krótszy bez utraty połączenia.
-        const scene = buildSceneV3(fx.enm, lod);
-        expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
-      });
-    }
+    it(`${fx.nazwa}: każdy pion sięga realnej geometrii (nie dynda — minimalność §9 P0)`, () => {
+      // „Piony bez przyczyny → skrócić" w sensie geometrycznym: żaden koniec
+      // trasy nie wisi w pustce (port/inny odcinek). Wiąże audyt z realną
+      // minimalnością — pion nie może być krótszy bez utraty połączenia.
+      const scene = buildSceneV3(fx.enm);
+      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+    });
   }
 
   it('wyrocznia GRYZIE: pion o NIEROZPOZNANEJ roli (kind leader) ⇒ nieuzasadniony', () => {
     // Dowód, że klasyfikacja nie jest martwa: syntetyczny odcinek pionowy o roli
     // spoza taksonomii (kind `leader`, ownerRef obcy) MUSI wpaść do kosza.
-    const base = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
+    const base = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm);
     const mystery: SceneV3 = {
       ...base,
       segments: [
@@ -185,10 +175,17 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy
  *  NIGDY nie znika") — wzorzec z S3/S7-P3. */
 function withSyntheticNop(model: Enm): Enm {
   // Karta W5-C: punkt podziału = pozycja normalna łącznika pola stacji (jedna prawda).
-  return zPunktemPodzialuWStacji(model, buildSceneV3(model, 2).meta.mainTrunkStationIds[0]);
+  return zPunktemPodzialuWStacji(model, buildSceneV3(model).meta.mainTrunkStationIds[0]);
 }
 
-describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku całości', () => {
+// INTENCJA po karcie SLD-SKALA-I-NAWIGACJA (R1/R4/R5): P0 pkt 3 („na widoku
+// całości tor mocy z wagą, tożsamość stacji, źródło, transformator i punkt NO
+// nigdy nie znikają") był dowodzony na zwiniętym przeglądzie L0 (sylwetki
+// mini-RMU i wyrocznia `lod0ReadabilityGaps`). Jest jedna scena; tu zostaje
+// dowód, że scena NIESIE każdy z tych elementów, a ich CZYTELNOŚĆ przy skali
+// dopasowania całości pilnują testy kanwy (stała ekranowa tożsamości i znaczników
+// stanu — `canvas/__tests__/gestoscInformacji*.test.ts*`).
+describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — scena niesie zbiór „nigdy nie znika"', () => {
   const bigEnm = FIXTURES[FIXTURES.length - 1].enm;
 
   it('hierarchia wagi toru: SEGMENT_STROKE_WIDTH.snTrunk > .sn (tor główny > odejście, nośnik = WAGA, nie kolor)', () => {
@@ -197,125 +194,44 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
   });
 
   for (const fx of FIXTURES) {
-    it(`${fx.nazwa} L0: zbiór §3 „nigdy nie znika" (tor mocy z wagą + tożsamość stacji + źródło) rozpoznawalny`, () => {
-      const scene = buildSceneV3(fx.enm, 0);
-      const gaps = lod0ReadabilityGaps(scene);
-      expect(gaps, gaps.map((g) => `${g.element}: ${g.reason}`).join(' | ')).toHaveLength(0);
-      expect(allLod0ElementsReadable(scene)).toBe(true);
+    it(`${fx.nazwa}: tor mocy z wagą, tożsamość każdej stacji i źródło są na scenie`, () => {
+      const scene = buildSceneV3(fx.enm);
+      expect(scene.segments.some((s) => s.meta?.kind === 'snTrunk')).toBe(true);
+      expect(scene.symbols.some((s) => s.symbolId === 'gridSource')).toBe(true);
+      const nazwy = new Set(
+        scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.ownerRef.replace(/#.*$/, '')),
+      );
+      const bez = scene.meta.stationTraversalOrder.filter((ref) => !nazwy.has(ref));
+      expect(bez, `stacje bez napisu tożsamości: ${bez.join(', ')}`).toEqual([]);
     });
   }
 
-  it('L0: magistrala niesie klasę snTrunk, a odejścia klasę sn (rozróżnienie wagą na przeglądzie sieci)', () => {
-    const scene = buildSceneV3(bigEnm, 0);
+  it('magistrala niesie klasę snTrunk, a odejścia klasę sn (rozróżnienie wagą)', () => {
+    const scene = buildSceneV3(bigEnm);
     expect(scene.segments.some((s) => s.meta?.kind === 'snTrunk')).toBe(true);
     const branchSegs = scene.segments.filter((s) => (s.meta?.ownerRef ?? '').includes('branch_segment'));
     expect(branchSegs.length).toBeGreaterThan(0);
     for (const b of branchSegs) expect(b.meta?.kind === 'sn' || b.meta?.kind === 'openTerminal').toBe(true);
   });
 
-  it('L0: źródło (sieć zewnętrzna/GPZ) i transformator rozpoznawalne bez zoomu (glify obecne)', () => {
-    const scene = buildSceneV3(bigEnm, 0);
+  it('źródło (sieć zewnętrzna/GPZ) i transformator GPZ mają własne symbole', () => {
+    const scene = buildSceneV3(bigEnm);
     expect(scene.symbols.some((s) => s.symbolId === 'gridSource')).toBe(true);
-    // KD-5: transformator GPZ nie jest już na L0 osobnym symbolem `transformer2W`
-    // — blok GPZ jest ZWINIĘTY, a jego transformator niesie SYLWETKA bloku
-    // (`GpzCollapsedGlyph`, uzwojenia rysowane gdy `gpzGlyph.transformers > 0`).
-    // Dokładnie ten sam mechanizm, którym stacje SN niosą swój TR na L0 od GS-1
-    // (`stationGlyph.hasTransformer` w mini-RMU) — wymóg §3 „transformator NIGDY
-    // nie znika przy oddalaniu" jest spełniony na poziomie CZYTELNOŚCI, a nie
-    // przez rysowanie glifu 32×40 px, który przy skali przeglądu miał ≈4 px.
-    const gpzBlock = scene.symbols.find((s) => s.symbolId === 'gpzCollapsed');
-    expect(gpzBlock, 'blok GPZ zwinięty obecny na L0').toBeTruthy();
-    expect(gpzBlock!.meta?.gpzGlyph?.transformers).toBeGreaterThan(0);
-    // Parytet z L1/L2: liczba transformatorów w sylwetce == liczba realnych
-    // symboli transformatora GPZ na poziomie rozwiniętym (zero fabrykacji).
-    const rozwiniete = buildSceneV3(bigEnm, 1).symbols.filter(
-      (s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith('gpz/'),
-    );
-    expect(gpzBlock!.meta?.gpzGlyph?.transformers).toBe(rozwiniete.length);
-    // Stacje SN: transformator dalej rozpoznawalny sylwetką mini-RMU (GS-1).
     expect(
-      scene.symbols.some((s) => s.symbolId === 'stationCollapsed' && s.meta?.stationGlyph?.hasTransformer),
+      scene.symbols.some((s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith('gpz/')),
     ).toBe(true);
   });
 
-  it('L0: punkt NO (§3 znacznik sekcji/NOP) NIGDY nie znika — sylwetka mini-RMU niesie marker noOpen (GS-1)', () => {
-    // GS-1 (V12K-137, GAP §10.4, Zero-Debt pkt 2 — test do obecnego kanonu z
-    // zachowaniem intencji „NOP na L0 nie znika"): na L0 punkt NO stacji niesie
-    // SYLWETKA mini-RMU (marker `noOpen` w `meta.stationGlyph`, rysowany przez
-    // `StationCollapsedGlyph`), a nie osobny 16×16 symbol `noPoint` pogrzebany w
-    // enklozurze 48×48. Symbol `noPoint` + etykieta „NO" to reprezentacja L1/L2
-    // (patrz test niżej) — TA SAMA kotwica (środek stacji) na wszystkich LOD.
+  it('punkt NO: KAŻDY punkt podziału modelu (także w polu stacji) ma symbol noPoint, a scena etykietę „NO"', () => {
+    // Intencja K2b §0.4 / W5-C zachowana: punkt podziału to łącznik z pozycją
+    // normalną „otwarty" (`punktyPodzialu`, jedna prawda z modelu).
     const withNop = withSyntheticNop(bigEnm);
-    const nopRef = buildSceneV3(bigEnm, 2).meta.mainTrunkStationIds[0];
-    const nopScene0 = buildSceneV3(withNop, 0);
-    const nopGlyph = nopScene0.symbols.find(
-      (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === nopRef,
-    );
-    expect(nopGlyph, 'stacja NOP musi mieć glif mini-RMU na L0').toBeTruthy();
-    expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
-    // Na L0 osobny symbol `noPoint` STACJI NOP NIE jest rysowany (sylwetka go
-    // zastępuje). Przepisane do kanonu K2b §0.4 i W5-C (intencja zachowana): punkt
-    // podziału to łącznik z pozycją normalną „otwarty” (`punktyPodzialu`, jedna
-    // prawda z modelu — dawne `Corridor.no_point_ref` skasowane). Łącznik w polu
-    // stacji NOP niesie sylwetka stacji (jedna reprezentacja), każdy INNY punkt
-    // podziału (łącznik toru poza polami stacji NOP) jest rysowany symbolem
-    // `noPoint` na KAŻDYM poziomie, także na L0.
-    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === nopRef)).toBe(false);
-    const lacznikiPolStacjiNop = new Set(
-      (withNop.bays ?? [])
-        .filter((pole) => pole.substation_ref === nopRef)
-        .flatMap((pole) => pole.equipment_refs ?? []),
-    );
-    const refyNopPozaStacja = punktyPodzialu(withNop)
-      .map((g) => g.ref_id)
-      .filter((ref) => !lacznikiPolStacjiNop.has(ref));
-    // Pomiar na sieci wzorcowej: punkt podziału substratu leży na łączniku toru poza
-    // polami stacji — bez niego pętla niżej byłaby pusta, a test bezzębny.
-    expect(refyNopPozaStacja.length, 'sieć wzorcowa niesie punkt podziału poza stacją NOP').toBeGreaterThan(0);
-    for (const ref of refyNopPozaStacja) {
-      expect(
-        nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === ref),
-        `punkt podziału ${ref} narysowany na L0`,
-      ).toBe(true);
-    }
-  });
-
-  it('L1/L2: punkt NO = symbol noPoint + etykieta „NO" na osi szyny; kotwica identyczna L1↔L2 (GS-1)', () => {
-    const withNop = withSyntheticNop(bigEnm);
-    const s1 = buildSceneV3(withNop, 1);
-    const s2 = buildSceneV3(withNop, 2);
-    expect(s1.symbols.some((s) => s.symbolId === 'noPoint')).toBe(true);
-    expect(s1.labels.some((l) => l.ownerKind === 'no-point')).toBe(true);
-    // Kotwica NO identyczna L1/L2 (§3 „ta sama kotwica") — pozycja markera stała.
-    const no1 = s1.symbols.find((s) => s.symbolId === 'noPoint');
-    const no2 = s2.symbols.find((s) => s.symbolId === 'noPoint');
-    expect(no1 && no2 ? { x: no1.x, y: no1.y } : null).toEqual(no2 ? { x: no2.x, y: no2.y } : null);
-  });
-
-  it('L0: każda narysowana stacja ma kompaktowy glif + etykietę S-id (tożsamość nie znika)', () => {
-    const scene = buildSceneV3(bigEnm, 0);
-    const collapsed = scene.symbols.filter((s) => s.symbolId === 'stationCollapsed');
-    expect(collapsed.length).toBeGreaterThan(0);
-    const nameOwners = new Set(scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.ownerRef.replace(/#.*$/, '')));
-    for (const c of collapsed) expect(nameOwners.has((c.meta?.ownerRef ?? '').replace(/#.*$/, ''))).toBe(true);
-  });
-
-  it('wyrocznia GRYZIE: usunięcie klasy snTrunk (tor główny bez wagi) ⇒ luka toru mocy na L0', () => {
-    const scene = buildSceneV3(bigEnm, 0);
-    const sabotaged: SceneV3 = {
-      ...scene,
-      segments: scene.segments.map((s) => (s.meta?.kind === 'snTrunk' ? { ...s, meta: { ...s.meta, kind: 'sn' as const } } : s)),
-    };
-    const gaps = lod0ReadabilityGaps(sabotaged);
-    expect(gaps.some((g) => g.element === 'tor mocy')).toBe(true);
-    expect(allLod0ElementsReadable(sabotaged)).toBe(false);
-  });
-
-  it('wyrocznia GRYZIE: usunięcie etykiet S-id ⇒ luka tożsamości stacji na L0', () => {
-    const scene = buildSceneV3(bigEnm, 0);
-    const sabotaged: SceneV3 = { ...scene, labels: scene.labels.filter((l) => l.ownerKind !== 'station-name') };
-    const gaps = lod0ReadabilityGaps(sabotaged);
-    expect(gaps.some((g) => g.element === 'tożsamość stacji')).toBe(true);
+    const scene = buildSceneV3(withNop);
+    const refy = punktyPodzialu(withNop).map((g) => g.ref_id);
+    expect(refy.length, 'sieć wzorcowa niesie punkty podziału').toBeGreaterThan(0);
+    expect(scene.labels.some((l) => l.ownerKind === 'no-point')).toBe(true);
+    const nopRef = buildSceneV3(bigEnm).meta.mainTrunkStationIds[0];
+    expect(scene.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === nopRef)).toBe(true);
   });
 });
 
@@ -384,54 +300,43 @@ describe('SCHEMAT-10 S7 etap 4 §9 pkt 7 — fixtura H (~100 stacji, syntetyczna
   const hEnm = synthLargeTrunk(bigEnm, 2); // ~106 stacji (2 × 53)
 
   it('sieć H ma ~100 stacji na JEDNEJ magistrali (skala WYTYCZNE §3 H)', () => {
-    const scene = buildSceneV3(hEnm, 0);
+    const scene = buildSceneV3(hEnm);
     expect(scene.meta.stationCount).toBeGreaterThanOrEqual(100);
     expect(scene.meta.mainTrunkStationIds.length).toBeGreaterThan(FIXTURES[FIXTURES.length - 1].enm ? 12 : 0);
   });
 
-  for (const lod of LODS) {
-    it(`H LOD${lod}: ZERO-DEFEKT (przecięcie bez mostka/kropka bez węzła/kolizje/przecięcia/nieortog=0) + wszystkie wyrocznie P0 zielone`, () => {
-      const scene = buildSceneV3(hEnm, lod);
-      const m = layoutMetricsReport(scene);
-      // Rozstrzygnięcie S7-P2 (2026-10-30): mostek na każdym przecięciu, kropka tylko na węźle modelu.
-      expect(m.crossingWithoutBridgeCount).toBe(0);
-      expect(m.junctionDotGapCount).toBe(0);
-      expect(m.labelCollisionCount).toBe(0);
-      expect(m.subtreeIntersectionCount).toBe(0);
-      expect(m.nonOrthogonalSegmentCount).toBe(0);
-      expect(m.ambiguousConnectionCount).toBe(0);
-      expect(noSceneSymbolOverlaps(scene)).toBe(true);
-      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
-      expect(allSourcesConnected(scene)).toBe(true);
-      expect(allTopBandFieldsClearance(scene)).toBe(true); // P0 pkt 1
-      expect(allVerticalsAttributed(scene)).toBe(true); // P0 pkt 2
-      if (lod === 0) expect(allLod0ElementsReadable(scene)).toBe(true); // P0 pkt 3
-    });
-  }
-
-  it('H: determinizm 2× — scena bajt-identyczna na każdym LOD', () => {
-    for (const lod of LODS) {
-      expect(sceneSig(buildSceneV3(hEnm, lod))).toBe(sceneSig(buildSceneV3(hEnm, lod)));
-    }
+  it(`H: ZERO-DEFEKT (przecięcie bez mostka/kropka bez węzła/kolizje/przecięcia/nieortog=0) + wszystkie wyrocznie P0 zielone`, () => {
+    const scene = buildSceneV3(hEnm);
+    const m = layoutMetricsReport(scene);
+    // Rozstrzygnięcie S7-P2 (2026-10-30): mostek na każdym przecięciu, kropka tylko na węźle modelu.
+    expect(m.crossingWithoutBridgeCount).toBe(0);
+    expect(m.junctionDotGapCount).toBe(0);
+    expect(m.labelCollisionCount).toBe(0);
+    expect(m.subtreeIntersectionCount).toBe(0);
+    expect(m.nonOrthogonalSegmentCount).toBe(0);
+    expect(m.ambiguousConnectionCount).toBe(0);
+    expect(noSceneSymbolOverlaps(scene)).toBe(true);
+    expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+    expect(allSourcesConnected(scene)).toBe(true);
+    expect(allTopBandFieldsClearance(scene)).toBe(true); // P0 pkt 1
+    expect(allVerticalsAttributed(scene)).toBe(true); // P0 pkt 2
   });
 
-  it('H: JEDNA KOTWICA — kolejność i liczba stacji magistrali identyczne L0/L1/L2', () => {
-    const t0 = buildSceneV3(hEnm, 0).meta.mainTrunkStationIds;
-    const t1 = buildSceneV3(hEnm, 1).meta.mainTrunkStationIds;
-    const t2 = buildSceneV3(hEnm, 2).meta.mainTrunkStationIds;
-    expect(t1).toEqual(t0);
-    expect(t2).toEqual(t0);
+  it('H: determinizm 2× — scena bajt-identyczna', () => {
+    expect(sceneSig(buildSceneV3(hEnm))).toBe(sceneSig(buildSceneV3(hEnm)));
   });
 
-  it('H: czas budowy w budżecie (WYTYCZNE §10 — duża sieć < 15 s / 3 LOD) + raport', () => {
+  it('H: czas budowy w budżecie (WYTYCZNE §10 — duża sieć < 3 s / jedna scena) + raport', () => {
     let stations = 0;
     // Czas PROCESORA (`src/test/czasProcesora.ts`), nie zegara — budżet łapie złożoność
     // kodu, nie obciążenie maszyny współdzielonej.
     const elapsed = czasProcesoraMs(() => {
-      for (const lod of LODS) stations = buildSceneV3(hEnm, lod).meta.stationCount;
+      stations = buildSceneV3(hEnm).meta.stationCount;
     });
     // Raport wydajności (widoczny w --reporter verbose / CI log).
-    console.log(`[S7 etap 4 §9 pkt 7] fixtura H: ${stations} stacji, 3 LOD, ${Math.round(elapsed)} ms procesora`);
-    expect(elapsed).toBeLessThan(15000);
+    console.log(`[S7 etap 4 §9 pkt 7] fixtura H: ${stations} stacji, 1 scena, ${Math.round(elapsed)} ms procesora`);
+    // Pin obniżony z pomiarem (karta SLD-SKALA-I-NAWIGACJA R1, 2026-11-11): dawniej
+    // 15 s na trzy sceny; jedna scena H (106 stacji) = 618 ms procesora ⇒ budżet ~5×.
+    expect(elapsed).toBeLessThan(3000);
   });
 });

@@ -15,10 +15,9 @@
  * „stacja → wiersz arkusza". Nie zna geometrii Y, nie zna kompozycji, nie
  * emituje niczego na scenę.
  *
- * NIEZALEŻNOŚĆ OD POZIOMU SZCZEGÓŁU (wymaganie ciągłości LOD): wszystkie
- * wejścia pochodzą z `geometryInputs` (`buildRowLayout` liczy je ZAWSZE przy
- * pełnym szczególe — SCHEMAT-10 S1), więc ten sam model daje ten sam podział
- * na L0/L1/L2 i stacja NIE ZMIENIA wiersza przy zoomie.
+ * NIEZALEŻNOŚĆ OD SKALI: wejścia pochodzą z `measureInputs` jednej sceny
+ * (`buildRowLayout`, karta SLD-SKALA-I-NAWIGACJA, R1), więc stacja NIE ZMIENIA
+ * wiersza przy zoomie.
  *
  * PREFIKSOWOŚĆ (stabilność inkrementalna): granice wiersza `k` zależą wyłącznie
  * od stacji o indeksach mniejszych niż koniec wiersza `k`. Wstawienie stacji w

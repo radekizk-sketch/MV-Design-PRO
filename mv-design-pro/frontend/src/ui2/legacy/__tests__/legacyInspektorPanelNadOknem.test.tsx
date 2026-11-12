@@ -29,7 +29,7 @@ import { useSelectionStore } from '../../../ui/selection';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useRawResultOverlayStore } from '../../../ui/sld-overlay/rawResultOverlayStore';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../../../ui/sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../../ui/sld/v3/scene/buildScene';
 import { SldCanvasV3Workspace } from '../../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { useKontekstElementuKanwy } from '../../../ui/sld/shared/kontekstElementuKanwy';
 import { useUrlSelectionSync } from '../../../ui/navigation/useUrlSelectionSync';
@@ -67,7 +67,7 @@ function uchwytOdcinka(predykat: (ownerRef: string) => boolean) {
       (s) => s.meta?.elementKind === 'segment' && Boolean(s.meta.ownerRef) && !s.meta.ownerRef!.includes('#') && predykat(s.meta.ownerRef!),
     );
     expect(i, 'odcinek w scenie').toBeGreaterThanOrEqual(0);
-    return scena.segments[i].meta?.testId ?? `sld-v3-segment-${i}`;
+    return `[data-hit-for="${scena.segments[i].meta?.testId ?? `sld-v3-segment-${i}`}"]`;
   };
 }
 
@@ -79,7 +79,7 @@ interface Para {
 
 interface Przypadek {
   readonly nazwa: string;
-  readonly lod: SceneLod;
+  /** Selektor uchwytu trafienia obiektu na kanwie. */
   readonly uchwyt: (scena: SceneV3) => string;
   readonly okno: string;
   readonly pary: readonly Para[];
@@ -95,11 +95,12 @@ interface Przypadek {
 const PRZYPADKI: readonly Przypadek[] = [
   {
     nazwa: 'stacja',
-    lod: 0,
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA): stację wskazuje jej napis identyfikacji — obrys
+    // trafienia etykiety `<ref>#name-row-0` (dawniej zwinięty symbol stacji widoku ogólnego).
     uchwyt: (scena) => {
-      const i = scena.symbols.findIndex((s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed');
-      expect(i, 'stacja w scenie').toBeGreaterThanOrEqual(0);
-      return scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`;
+      const ref = scena.meta.stationTraversalOrder[0];
+      expect(ref, 'stacja w scenie').toBeDefined();
+      return `[data-hit-role="obrys"][data-hit-klasa="etykieta"][data-hit-owner-ref="${ref}#name-row-0"]`;
     },
     okno: 'station-configurator-surface',
     pary: [
@@ -113,7 +114,6 @@ const PRZYPADKI: readonly Przypadek[] = [
   },
   {
     nazwa: 'odcinek przelotowy',
-    lod: 2,
     uchwyt: uchwytOdcinka((ref) => !WOLNE_KONCE.has(ref)),
     okno: 'sn-segment-surface',
     pary: [
@@ -126,7 +126,6 @@ const PRZYPADKI: readonly Przypadek[] = [
   },
   {
     nazwa: 'odcinek z wolnym końcem',
-    lod: 2,
     uchwyt: uchwytOdcinka((ref) => WOLNE_KONCE.has(ref)),
     okno: 'sn-segment-surface',
     pary: [
@@ -183,15 +182,15 @@ describe.each(PRZYPADKI)('żywy inspektor po kliku: $nazwa', (przypadek) => {
     const { container } = renderWithQueryClient(
       <>
         <SynchronizacjaSelekcji />
-        <SldCanvasV3Workspace width={1322} height={696} lodOverride={przypadek.lod === 0 ? undefined : przypadek.lod} />
+        <SldCanvasV3Workspace width={1322} height={696} />
         <aside data-testid="prawy-inspektor">
           <LegacyInspektor fallback={<p data-testid="inspektor-pusty">pusty</p>} />
         </aside>
       </>,
     );
-    const testId = przypadek.uchwyt(buildSceneV3(SIEC, przypadek.lod));
-    const uchwyt = container.querySelector(`[data-hit-for="${testId}"]`);
-    expect(uchwyt, `uchwyt trafienia ${testId}`).not.toBeNull();
+    const selektor = przypadek.uchwyt(buildSceneV3(SIEC));
+    const uchwyt = container.querySelector(selektor);
+    expect(uchwyt, `uchwyt trafienia ${selektor}`).not.toBeNull();
 
     fireEvent.click(uchwyt!, { detail: 1 });
 

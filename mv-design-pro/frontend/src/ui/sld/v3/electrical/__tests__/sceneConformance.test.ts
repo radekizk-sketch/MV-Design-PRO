@@ -46,7 +46,7 @@ import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 const SN_BUS_OWNER_REF = `${STACJA_B_REFS.snBusRef}#sn-bus`;
 
 const enm = buildStacjaBFixture();
-const scene: SceneV3 = buildSceneV3(enm, 2);
+const scene: SceneV3 = buildSceneV3(enm);
 const graph = buildTerminalGraph(enm);
 
 /** Klasy `meta.kind` odpowiadające TOROWI MOCY (zgodnie z definicją samego

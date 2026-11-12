@@ -77,8 +77,8 @@ afterEach(() => {
   useThemeModeStore.getState().setMode('dark_scada');
 });
 
-function renderKanwe(lod: 0 | 1 | 2): HTMLElement {
-  const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={lod} />);
+function renderKanwe(): HTMLElement {
+  const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
   return container;
 }
 
@@ -118,7 +118,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   // pól bez rekordów są niższe i węższe — sylwetka braku danych zamiast stosu z konwencji),
   // więc stan „poniżej progu" osiągamy natywnym oddaleniem kółkiem, nie samym kadrem startowym.
   it('pismo poniżej progu czytelności (oddalony kadr): teksty nie są rysowane, tła pól i próbki ról zostają', () => {
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     const warstwa = container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!;
     expect(warstwa).not.toBeNull();
     oddalPonizejCzytelnosci(container);
@@ -131,7 +131,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   });
 
   it('BRAK BIEGU: belka i tabela mówią jawnie „brak wyniku rozpływu mocy", wartości pól „brak" (nie zero)', () => {
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     powiekszDoCzytelnosci(container);
     const warstwa = container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!;
     expect(warstwa.getAttribute('data-gpz-wynik')).toBe('brak');
@@ -146,7 +146,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
 
   it('ROZPŁYW AKTUALNY: bilans, alarmy i pomiary pola to wartości wierszy backendu (1:1, tylko formatowanie)', () => {
     useRawResultOverlayStore.getState().setPayload(rozplyw);
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     powiekszDoCzytelnosci(container);
     expect(container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!.getAttribute('data-gpz-wynik')).toBe('aktualny');
     const m = wierszStacji.metrics;
@@ -169,7 +169,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     useRawResultOverlayStore.getState().setPayload(rozplyw);
     // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
     zasiejBiegiNieaktualne([{ id: rozplyw.run_id, analysisType: 'LOAD_FLOW' }]);
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     powiekszDoCzytelnosci(container);
     expect(container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!.getAttribute('data-gpz-wynik')).toBe('nieaktualny');
     expect(tekst(container, 'sld-v3-gpz-alarmy')).toBe(`Przeciążenia w GPZ: ${zapis(wierszStacji.metrics.ALARM_COUNT)} · wynik nieaktualny`);
@@ -181,7 +181,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
 
   it('BIEG INNEJ ANALIZY (zwarcie): GPZ nie udaje bilansu — „brak wyniku rozpływu mocy"', () => {
     useRawResultOverlayStore.getState().setPayload(zwarcie);
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     powiekszDoCzytelnosci(container);
     expect(container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!.getAttribute('data-gpz-wynik')).toBe('brak');
     expect(tekst(container, 'sld-v3-gpz-bilans-zasilania')).toBe('Zasilanie GPZ: brak wyniku rozpływu mocy');
@@ -190,10 +190,10 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   for (const motyw of ['dark_scada', 'light_technical'] as const satisfies readonly ThemeMode[]) {
     it(`TŁA PÓL × motyw ${motyw}: kolor każdego tła = token roli palety motywu, legenda tylko z ról obecnych`, () => {
       useThemeModeStore.getState().setMode(motyw);
-      const container = renderKanwe(2);
+      const container = renderKanwe();
       const paleta = sldPaletteForTheme(motyw);
       const panele = [...container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]')];
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       expect(panele.length).toBe(scena.meta.gpzAdnotacje!.panele.length);
       expect(panele.length).toBeGreaterThan(0);
       for (const panel of panele) {
@@ -210,12 +210,9 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     });
   }
 
-  it('L0 (blok zwinięty): brak adnotacji pól — nie ma pól, których by dotyczyły; dane glifu bloku docierają do DOM', () => {
-    const container = renderKanwe(0);
-    expect(container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')).toBeNull();
-    const blok = container.querySelector('[data-gpz-sections]');
-    expect(blok, 'glif zwiniętego GPZ dostaje liczbę sekcji z kompozycji').not.toBeNull();
-  });
+  // Dawny przypadek „L0 (blok zwinięty): brak adnotacji pól" usunięty: zwinięty blok GPZ nie
+  // istnieje (karta SLD-SKALA-I-NAWIGACJA R1 — jedna scena). Adnotacje pól są zawsze w scenie,
+  // a ich pismo zależy od skali przez `data-gpz-teksty` (przypadki powiększania i oddalania).
 
   // Rozszerzenie 5 karty UX-04: plakietki automatyki z kodów funkcji pola (SPZ⇔79, SCO⇔SCO,
   // LRW⇔50BF, NZ⇔NZ, OWG⇔OWG) × motyw; stan funkcji należy do nastaw (ADR-022), których
@@ -243,7 +240,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
         sterownikTestowy({ bayRef: liniowe[1].ref_id, kody: ['51', '50', '81U', '50BF', '79', 'SPZE', 'OWG', 'NZ'] }),
       ];
       useSnapshotStore.setState({ snapshot: zKodami });
-      const container = renderKanwe(2);
+      const container = renderKanwe();
       powiekszDoCzytelnosci(container);
       const flagiPola = (ref: string): string[] =>
         [...container.querySelectorAll(`[data-testid^="sld-v3-gpz-plakietka-${ref}-"]`)].map(
@@ -280,7 +277,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     it(`BLOK PRZEKAŹNIKA × motyw ${motyw}: wiersze tekstu zaczepione we wspólnej lewej krawędzi prostokątów sceny`, () => {
       useThemeModeStore.getState().setMode(motyw as ThemeMode);
       useSnapshotStore.setState({ snapshot: enmPolGpz });
-      const container = renderKanwe(2);
+      const container = renderKanwe();
       // Pismo adnotacji zabezpieczeń (klasa t4, rola „dane") przekracza próg czytelności przy
       // większym powiększeniu niż teksty warstwy GPZ — kółko w środku kanwy aż do pierwszego
       // narysowanego wiersza bloku.
@@ -288,7 +285,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
       for (let i = 0; i < 60 && !container.querySelector('g[data-owner-kind="protection"] text'); i += 1) {
         fireEvent.wheel(svg, { clientX: CANVAS_W / 2, clientY: CANVAS_H / 2, deltaY: -140 });
       }
-      const scena = buildSceneV3(enmPolGpz, 2);
+      const scena = buildSceneV3(enmPolGpz);
       const wierszeSceny = scena.labels.filter(
         (l) => l.ownerKind === 'protection' && l.placement === 'right' && /#(protection-codes-full|zrodlo-u0)(-\d+)?$/.test(l.ownerRef ?? ''),
       );
@@ -321,10 +318,10 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   }
 
   it('L2: oznaczenie uzwojeń transformatora GPZ dociera do DOM kanwy (stan z grupy połączeń modelu)', () => {
-    const container = renderKanwe(2);
+    const container = renderKanwe();
     const stany = [...container.querySelectorAll('[data-uzwojenia-stan]')].map((n) => n.getAttribute('data-uzwojenia-stan'));
     expect(stany.length).toBeGreaterThan(0);
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const oczekiwane = scena.symbols.filter((s) => s.uzwojenia).map((s) => s.uzwojenia!.stan);
     expect(stany.slice(0, oczekiwane.length).sort()).toEqual([...oczekiwane].sort());
   });

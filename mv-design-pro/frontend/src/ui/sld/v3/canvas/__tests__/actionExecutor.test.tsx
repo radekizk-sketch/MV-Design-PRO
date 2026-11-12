@@ -53,7 +53,7 @@ beforeEach(() => {
 });
 
 function openStationMenu(): { stationId: string } {
-  const scene = buildSceneV3(enm, 0);
+  const scene = buildSceneV3(enm);
   const stationSymbol = scene.symbols.find((s) => s.meta?.elementKind === 'station');
   const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
   expect(stationIndex).toBeGreaterThanOrEqual(0);
@@ -142,7 +142,7 @@ describe('SldCanvasV3Workspace — F11.4-B: wykonawca akcji domenowych (ARCH-3)'
     const openOperationForm = vi.fn();
     useNetworkBuildStore.setState({ openOperationForm } as never);
 
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm);
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} readOnly />);
     // Karta S9-4: prawy klik w uchwyt obiektu (patrz komentarz w `otworzMenuStacji`).

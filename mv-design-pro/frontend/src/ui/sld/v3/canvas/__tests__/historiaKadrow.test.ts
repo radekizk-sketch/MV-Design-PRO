@@ -18,9 +18,8 @@ import {
   type ZaznaczenieWidoku,
 } from '../historiaKadrow';
 
-const wpis = (n: number, lod: 0 | 1 | 2 = 0): WpisHistoriiKadru => ({
+const wpis = (n: number): WpisHistoriiKadru => ({
   transform: { scale: 1 + n / 100, translateX: n, translateY: -n },
-  lod,
   viewportSize: { width: 1322, height: 856 },
   sciezka: n === 0 ? [] : [{ cel: 'stacja', kontekst: [`stn/${n}`], etykieta: `Stacja ${n}` }],
   zaznaczenie: BEZ_ZAZNACZENIA,
@@ -48,10 +47,13 @@ describe('historiaKadrow', () => {
     expect(zdejmijZHistorii([])).toBeNull();
   });
 
-  it('ten sam kadr dwa razy z rzędu nie tworzy drugiego wpisu; inny poziom przy tej samej transformacji — tworzy', () => {
+  // Jedna scena (karta SLD-SKALA-I-NAWIGACJA): wpis nie niesie poziomu szczegółu — widok to
+  // kamera, ścieżka, zaznaczenie i kurtyna. Dawny przypadek „inny poziom przy tej samej
+  // transformacji" zastępuje inna kurtyna przy tej samej kamerze.
+  it('ten sam kadr dwa razy z rzędu nie tworzy drugiego wpisu; inna kurtyna przy tej samej transformacji — tworzy', () => {
     const s1 = dolozDoHistorii([], wpis(3));
     expect(dolozDoHistorii(s1, wpis(3))).toBe(s1);
-    expect(dolozDoHistorii(s1, { ...wpis(3), lod: 2 })).toHaveLength(2);
+    expect(dolozDoHistorii(s1, { ...wpis(3), kurtyna: ['stn/inna'] })).toHaveLength(2);
     // Ten sam kadr, ale NIE bezpośrednio na wierzchu — wpis powstaje.
     expect(dolozDoHistorii(dolozDoHistorii(s1, wpis(4)), wpis(3))).toHaveLength(3);
   });

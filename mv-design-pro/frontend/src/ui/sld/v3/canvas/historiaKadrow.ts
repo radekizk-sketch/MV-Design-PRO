@@ -3,15 +3,14 @@
  * „bez utraty kontekstu").
  *
  * Każde POLECENIE widoku (kadr stacji, pola, toru, „Dopasuj widok", „Cały
- * arkusz", wskazanie z wyników albo z gotowości, dwuklik stacji, rozwinięcie
- * zwiniętego GPZ klikiem) odkłada na stos stan kamery SPRZED polecenia razem ze
+ * arkusz", wskazanie z wyników albo z gotowości, dwuklik stacji) odkłada na stos stan kamery SPRZED polecenia razem ze
  * ścieżką kontekstu, która go opisywała. „Poprzedni widok" zdejmuje wierzch
  * stosu i przywraca dokładnie ten kadr. Gesty kółka, przeciągnięcia
  * i przesuwania kadru w nawigatorze (ciągły ruch, nie polecenie) historii nie
  * zaśmiecają.
  *
- * K2b §0.3 — wpis niesie KOMPLET kontekstu widoku: kamerę (transformacja,
- * poziom szczegółu), ścieżkę, ZAZNACZENIE (elementy modelu z ich kontekstem
+ * K2b §0.3 — wpis niesie KOMPLET kontekstu widoku: kamerę (transformacja
+ * i viewport, w którym obowiązywała), ścieżkę, ZAZNACZENIE (elementy modelu z ich kontekstem
  * kliknięcia kanwy — inspektor powłoki wraca do tego samego obiektu) oraz
  * kurtynę kadru (refy rysunku celu, którego kadr wtedy obowiązywał). Powrót
  * („Poprzedni widok", poziom „Sieć" ścieżki) odtwarza wszystko naraz — sama
@@ -23,7 +22,6 @@
  */
 import type { SelectedElement } from '../../../types';
 import type { KontekstElementuKanwy } from '../../shared/kontekstElementuKanwy';
-import type { SceneLod } from '../scene/buildScene';
 import type { ViewportTransform } from './camera';
 import type { PoziomSciezki } from './zakresKadru';
 
@@ -31,7 +29,6 @@ export const LIMIT_HISTORII_KADROW = 20;
 
 export interface WpisHistoriiKadru {
   readonly transform: ViewportTransform;
-  readonly lod: SceneLod;
   /** Viewport kanwy, w którym `transform` obowiązywał — powrót przenosi kadr do
    *  bieżącego rozmiaru kanwy (akcja kamery 'przywroc'), zamiast kłaść stary
    *  transform na kanwę innej szerokości (dryf o pół inspektora, FIX-E2E-PELNE). */
@@ -64,7 +61,6 @@ function toSamoZaznaczenie(a: ZaznaczenieWidoku, b: ZaznaczenieWidoku): boolean 
 
 function tenSamWidok(a: WpisHistoriiKadru, b: WpisHistoriiKadru): boolean {
   return (
-    a.lod === b.lod &&
     a.transform.scale === b.transform.scale &&
     a.transform.translateX === b.transform.translateX &&
     a.transform.translateY === b.transform.translateY &&

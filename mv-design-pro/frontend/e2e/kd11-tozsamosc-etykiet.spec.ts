@@ -19,6 +19,7 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
+import { SELEKTOR_UCHWYTU_GPZ, oddalDoSkali, przyblizDoSkali, srodekRamki } from './skalaKamery';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -234,30 +235,22 @@ test('po „Dopasuj widok" rysunek z rozwinietym GPZ niesie podpisy tozsamosci (
   const symbole = page.locator('[data-testid="sld-v3-symbols"]');
   const etykiety = page.locator('[data-testid="sld-v3-labels"]');
 
-  // (1) Zejście na przegląd kółkiem — natywnie, jak projektant.
+  // (1) Zejście na przegląd kółkiem — natywnie, jak projektant (dolna granica skali =
+  // dopasowanie całej sieci, R2; jedna scena — karta SLD-SKALA-I-NAWIGACJA R1).
   const canvasBox = await canvas.boundingBox();
   expect(canvasBox).not.toBeNull();
-  await page.mouse.move(canvasBox!.x + canvasBox!.width / 2, canvasBox!.y + canvasBox!.height / 2);
-  let poziom = await canvas.getAttribute('data-scene-lod');
-  for (let krok = 0; krok < 16 && poziom !== '0'; krok++) {
-    await page.mouse.wheel(0, 200);
-    await page.waitForTimeout(150);
-    poziom = await canvas.getAttribute('data-scene-lod');
-  }
-  await expect(canvas).toHaveAttribute('data-scene-lod', '0');
+  await oddalDoSkali(page, canvas, { x: canvasBox!.x + canvasBox!.width / 2, y: canvasBox!.y + canvasBox!.height / 2 });
 
-  // (2) KLIK NATYWNY w blok GPZ ⇒ rozwinięcie układu.
-  const wezelBloku = symbole.locator('g[data-element-kind="station"]', {
-    has: page.locator('[data-symbol-canon="gpzCollapsed"]'),
-  });
-  await expect(wezelBloku).toHaveCount(1);
+  // (2) KLIK NATYWNY w napis GPZ ⇒ selekcja; przybliżenie kółkiem nad GPZ do skali
+  // czytania (dawniej klik rozwijał zwinięty blok GPZ widoku L0).
+  const uchwytGpz = page.locator(SELEKTOR_UCHWYTU_GPZ).first();
+  await expect(uchwytGpz).toHaveCount(1);
   // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
-  await czekajNaStabilnaGeometrie(wezelBloku);
-  const box = await wezelBloku.boundingBox();
-  expect(box).not.toBeNull();
-  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await czekajNaStabilnaGeometrie(uchwytGpz);
+  const srodekGpz = await srodekRamki(uchwytGpz);
+  await page.mouse.click(srodekGpz.x, srodekGpz.y);
   await page.waitForTimeout(1000);
-  await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
+  await przyblizDoSkali(page, canvas, srodekGpz);
   await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
   // Zdjęcie selekcji realną ścieżką (K11-A): jeden Escape zdejmuje selekcję
   // (UI-02b: klik nie otwiera już panelu szczegółów nad kanwą). Selekcja musi

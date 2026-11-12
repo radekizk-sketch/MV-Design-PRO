@@ -41,9 +41,9 @@ function metricsForKind(kind: string): RawOverlayElement['metrics'] {
   return { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } };
 }
 
-/** Buduje PEŁNY payload rozpływu z realnych refów sceny danego LOD. */
-function fullPayload(lod: 0 | 1 | 2): { scene: ReturnType<typeof buildSceneV3>; payload: RawOverlayPayload } {
-  const scene = buildSceneV3(enm, lod);
+/** Buduje PEŁNY payload rozpływu z realnych refów sceny. */
+function fullPayload(): { scene: ReturnType<typeof buildSceneV3>; payload: RawOverlayPayload } {
+  const scene = buildSceneV3(enm);
   const elements: Record<string, RawOverlayElement> = {};
   for (const s of scene.symbols) {
     const k = s.meta?.elementKind;
@@ -73,8 +73,8 @@ function fullPayload(lod: 0 | 1 | 2): { scene: ReturnType<typeof buildSceneV3>; 
 
 describe('layoutResultLabels — R2 priorytety / agregacja / metryki', () => {
   it('brak payloadu ⇒ layout pusty (placements/aggregates/hidden puste, metryki zerowe)', () => {
-    const scene = buildSceneV3(enm, 2);
-    const layout = layoutResultLabels(scene, undefined, [], 2);
+    const scene = buildSceneV3(enm);
+    const layout = layoutResultLabels(scene, undefined, [], true);
     expect(layout.placements).toEqual([]);
     expect(layout.aggregates).toEqual([]);
     expect(layout.hiddenRefs).toEqual([]);
@@ -82,45 +82,44 @@ describe('layoutResultLabels — R2 priorytety / agregacja / metryki', () => {
     expect(layout.metrics.collisionsFinal).toBe(0);
   });
 
-  it('S9-2: L0 (poziom przegladu) ⇒ etykiety SA, po jednej linii, bez kolizji koncowych', () => {
-    // ZMIANA KANONU (audyt 2026-08, W-1): poziom przegladu pokazuje wartosc
-    // zbiorcza. Inwariant, ktory poprzedni test faktycznie chronil — brak
-    // nakladajacych sie liczb — jest tu sprawdzony WPROST.
-    const { scene, payload } = fullPayload(0);
+  it('S9-2 → R3: wyniki poniżej progu czytelności (widoczne = false) ⇒ layout pusty mimo pełnego payloadu', () => {
+    // INTENCJA po karcie SLD-SKALA-I-NAWIGACJA (R3): dawniej poziom przeglądu (L0)
+    // skracał etykiety wyników do jednej linii. Jest jedna scena, a klasa „wyniki"
+    // jest widoczna albo nie — decyzją jednej funkcji rozmiaru ekranowego pisma
+    // (`gestoscInformacji.ts` `czytelnyNaEkranie`). Niewidoczna klasa nie wnosi do
+    // DOM ani jednej liczby, więc nie ma czego zderzać.
+    const { scene, payload } = fullPayload();
     const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-    const layout = layoutResultLabels(scene, byRef, [], 0);
-    expect(layout.placements.length + layout.aggregates.length).toBeGreaterThan(0);
-    expect(layout.placements.every((placement) => placement.lines.length === 1)).toBe(true);
+    expect(Object.keys(byRef).length).toBeGreaterThan(0);
+    const layout = layoutResultLabels(scene, byRef, [], false);
+    expect(layout.placements).toEqual([]);
+    expect(layout.aggregates).toEqual([]);
+    expect(layout.hiddenRefs).toEqual([]);
+  });
+
+  it('wym.19: kolizje KOŃCOWE = 0 (warstwa nie renderuje nakładających się liczb)', () => {
+    const { scene, payload } = fullPayload();
+    const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
+    const layout = layoutResultLabels(scene, byRef, [], true);
     expect(layout.metrics.collisionsFinal).toBe(0);
   });
 
-  it('wym.19: kolizje KOŃCOWE = 0 (warstwa nie renderuje nakładających się liczb) na L1 i L2', () => {
-    for (const lod of [1, 2] as const) {
-      const { scene, payload } = fullPayload(lod);
-      const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-      const layout = layoutResultLabels(scene, byRef, [], lod);
-      expect(layout.metrics.collisionsFinal).toBe(0);
-    }
-  });
-
   it('wym.19: bilans metryk labelCount = placements + hidden + Σ członków agregatów', () => {
-    for (const lod of [1, 2] as const) {
-      const { scene, payload } = fullPayload(lod);
-      const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-      const layout = layoutResultLabels(scene, byRef, [], lod);
-      const aggMembers = layout.aggregates.reduce((s, a) => s + a.count, 0);
-      expect(layout.placements.length + layout.hiddenRefs.length + aggMembers).toBe(layout.metrics.labelCount);
-      // avg ≤ max, obie skończone i nieujemne
-      expect(layout.metrics.avgAnchorDistance).toBeGreaterThanOrEqual(0);
-      expect(layout.metrics.maxAnchorDistance).toBeGreaterThanOrEqual(layout.metrics.avgAnchorDistance);
-      expect(Number.isFinite(layout.metrics.maxAnchorDistance)).toBe(true);
-    }
+    const { scene, payload } = fullPayload();
+    const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
+    const layout = layoutResultLabels(scene, byRef, [], true);
+    const aggMembers = layout.aggregates.reduce((s, a) => s + a.count, 0);
+    expect(layout.placements.length + layout.hiddenRefs.length + aggMembers).toBe(layout.metrics.labelCount);
+    // avg ≤ max, obie skończone i nieujemne
+    expect(layout.metrics.avgAnchorDistance).toBeGreaterThanOrEqual(0);
+    expect(layout.metrics.maxAnchorDistance).toBeGreaterThanOrEqual(layout.metrics.avgAnchorDistance);
+    expect(Number.isFinite(layout.metrics.maxAnchorDistance)).toBe(true);
   });
 
   it('wym.12 priorytety: źródła i transformatory NIGDY ukryte; ukryte wyłącznie klasy niżej-priorytetowe (linie/szyny)', () => {
-    const { scene, payload } = fullPayload(2);
+    const { scene, payload } = fullPayload();
     const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-    const layout = layoutResultLabels(scene, byRef, [], 2);
+    const layout = layoutResultLabels(scene, byRef, [], true);
     const hiddenKinds = new Set(layout.hiddenRefs.map((r) => byRef[r]?.kind));
     // Zero źródeł/transformatorów ukrytych.
     expect(hiddenKinds.has('source')).toBe(false);
@@ -133,18 +132,18 @@ describe('layoutResultLabels — R2 priorytety / agregacja / metryki', () => {
   });
 
   it('wym.12 priorytety: etykiety pojedyncze plasowane w kolejności rangi (monotonicznie niemalejąco)', () => {
-    const { scene, payload } = fullPayload(2);
+    const { scene, payload } = fullPayload();
     const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-    const layout = layoutResultLabels(scene, byRef, [], 2);
+    const layout = layoutResultLabels(scene, byRef, [], true);
     for (let i = 1; i < layout.placements.length; i++) {
       expect(RANK[layout.placements[i].kind]).toBeGreaterThanOrEqual(RANK[layout.placements[i - 1].kind]);
     }
   });
 
   it('wym.14 agregacja: skupisko bliskich kotwic → marker „+N wyniki"; członkowie posortowani po (ranga, ref) i NIEobecni w placements', () => {
-    const { scene, payload } = fullPayload(2);
+    const { scene, payload } = fullPayload();
     const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-    const layout = layoutResultLabels(scene, byRef, [], 2);
+    const layout = layoutResultLabels(scene, byRef, [], true);
     // Fixtura referencyjna zawiera ≥1 skupisko (bramka: agregacja ma realny skutek).
     expect(layout.aggregates.length).toBeGreaterThan(0);
     const placedRefs = new Set(layout.placements.map((p) => p.ownerRef));
@@ -167,12 +166,10 @@ describe('layoutResultLabels — R2 priorytety / agregacja / metryki', () => {
   });
 
   it('determinizm: dwa layouty identycznego wejścia ⇒ identyczny JSON (placements+agregaty+ukryte+metryki)', () => {
-    for (const lod of [1, 2] as const) {
-      const { scene, payload } = fullPayload(lod);
-      const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
-      const a = layoutResultLabels(scene, byRef, [], lod);
-      const b = layoutResultLabels(scene, byRef, [], lod);
-      expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-    }
+    const { scene, payload } = fullPayload();
+    const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
+    const a = layoutResultLabels(scene, byRef, [], true);
+    const b = layoutResultLabels(scene, byRef, [], true);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });

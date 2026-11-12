@@ -64,67 +64,65 @@ function migawka(miejsce: Miejsce, grupa: string | null): { enm: EnergyNetworkMo
 describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce × grupa × LOD', () => {
   for (const miejsce of MIEJSCA) {
     for (const grupa of GRUPY) {
-      for (const lod of [1, 2] as const) {
-        it(`${miejsce} × ${grupa ?? 'brak grupy'} × L${lod}`, () => {
-          const { enm, trRef } = migawka(miejsce, grupa);
-          const scena = buildSceneV3(enm, lod);
-          const transformatory = scena.symbols.filter(
-            (s) => s.symbolId === 'transformer2W' && s.meta?.ownerRef === trRef,
-          );
-          // Dokładnie jeden rysunek transformatora — ani zniknięcie, ani podwójny rysunek.
-          expect(transformatory).toHaveLength(1);
-          expect(transformatory[0].uzwojenia).toEqual(
-            grupa === 'Yd11'
-              ? {
-                  stan: 'znane',
-                  gorne: { rodzaj: 'gwiazda', punktNeutralny: false },
-                  dolne: { rodzaj: 'trojkat', punktNeutralny: false },
-                  godzina: 11,
-                }
-              : { stan: 'brak' },
-          );
-          const brakGrupy = scena.meta.missingData.includes(`gpz.transformer.vector_group.missing:${trRef}`);
-          expect(brakGrupy).toBe(grupa === null);
+      it(`${miejsce} × ${grupa ?? 'brak grupy'}`, () => {
+        const { enm, trRef } = migawka(miejsce, grupa);
+        const scena = buildSceneV3(enm);
+        const transformatory = scena.symbols.filter(
+          (s) => s.symbolId === 'transformer2W' && s.meta?.ownerRef === trRef,
+        );
+        // Dokładnie jeden rysunek transformatora — ani zniknięcie, ani podwójny rysunek.
+        expect(transformatory).toHaveLength(1);
+        expect(transformatory[0].uzwojenia).toEqual(
+          grupa === 'Yd11'
+            ? {
+                stan: 'znane',
+                gorne: { rodzaj: 'gwiazda', punktNeutralny: false },
+                dolne: { rodzaj: 'trojkat', punktNeutralny: false },
+                godzina: 11,
+              }
+            : { stan: 'brak' },
+        );
+        const brakGrupy = scena.meta.missingData.includes(`gpz.transformer.vector_group.missing:${trRef}`);
+        expect(brakGrupy).toBe(grupa === null);
 
-          // KOREKTA (GEOMETRIA-STACJI §0 pkt 4): aparaty toru WYŁĄCZNIE z rekordów modelu.
-          // Pole TR modelu wskazuje gałąź wyłącznika (`equipment_refs`) — tor ma DOKŁADNIE ten
-          // wyłącznik (bez przekładnika/odłącznika z dawnej gramatyki pola TR); tor bez pola
-          // TR w modelu i pole WN TR bez rekordu mają sylwetkę braku danych bez stanu.
-          const stosPolaTr = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-tr-field-${trRef}-`));
-          const stosPolaWn = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-hv-tr-bay-${trRef}-`));
-          expect(stosPolaWn.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);
-          const wylacznikToru = scena.symbols.find(
-            (s) => s.meta?.testId === `gpz-canonical-tr-field-${trRef}-cb`,
-          );
-          // Przekładnik prądowy toru nie jest rysowany bez rekordu (ani ze stanem, ani bez).
-          expect(stosPolaTr.some((s) => s.symbolId === 'currentTransformer')).toBe(false);
-          // Pole TR nie jest drugi raz rysowane w sekcji SN.
-          expect(scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-bay-${POLE_TR}-`))).toEqual([]);
-          if (miejsce === 'w polu TR') {
-            // Stan łącznika i tożsamość zaznaczenia z pola modelu.
-            expect(stosPolaTr.map((s) => s.symbolId)).toEqual(['breaker']);
-            expect(wylacznikToru, 'wyłącznik pola TR toru transformatora').toBeDefined();
-            expect(wylacznikToru!.meta?.deviceRef).toBe(WYLACZNIK);
-            expect(wylacznikToru!.state).toBe('open');
-            expect(wylacznikToru!.meta?.ownerRef).toBe(POLE_TR);
-            expect(scena.meta.gpzAdnotacje?.tabela?.karty.map((k) => k.bayRef)).toContain(POLE_TR);
-            expect(scena.meta.gpzAdnotacje?.panele.map((p) => p.bayRef)).toContain(POLE_TR);
-            expect(
-              scena.symbols.some((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === POLE_TR),
-            ).toBe(true);
-          } else {
-            expect(wylacznikToru).toBeUndefined();
-            expect(stosPolaTr.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);
-            expect(stosPolaTr[0].meta?.ownerRef).toBe(trRef);
-          }
-        });
-      }
+        // KOREKTA (GEOMETRIA-STACJI §0 pkt 4): aparaty toru WYŁĄCZNIE z rekordów modelu.
+        // Pole TR modelu wskazuje gałąź wyłącznika (`equipment_refs`) — tor ma DOKŁADNIE ten
+        // wyłącznik (bez przekładnika/odłącznika z dawnej gramatyki pola TR); tor bez pola
+        // TR w modelu i pole WN TR bez rekordu mają sylwetkę braku danych bez stanu.
+        const stosPolaTr = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-tr-field-${trRef}-`));
+        const stosPolaWn = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-hv-tr-bay-${trRef}-`));
+        expect(stosPolaWn.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);
+        const wylacznikToru = scena.symbols.find(
+          (s) => s.meta?.testId === `gpz-canonical-tr-field-${trRef}-cb`,
+        );
+        // Przekładnik prądowy toru nie jest rysowany bez rekordu (ani ze stanem, ani bez).
+        expect(stosPolaTr.some((s) => s.symbolId === 'currentTransformer')).toBe(false);
+        // Pole TR nie jest drugi raz rysowane w sekcji SN.
+        expect(scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-bay-${POLE_TR}-`))).toEqual([]);
+        if (miejsce === 'w polu TR') {
+          // Stan łącznika i tożsamość zaznaczenia z pola modelu.
+          expect(stosPolaTr.map((s) => s.symbolId)).toEqual(['breaker']);
+          expect(wylacznikToru, 'wyłącznik pola TR toru transformatora').toBeDefined();
+          expect(wylacznikToru!.meta?.deviceRef).toBe(WYLACZNIK);
+          expect(wylacznikToru!.state).toBe('open');
+          expect(wylacznikToru!.meta?.ownerRef).toBe(POLE_TR);
+          expect(scena.meta.gpzAdnotacje?.tabela?.karty.map((k) => k.bayRef)).toContain(POLE_TR);
+          expect(scena.meta.gpzAdnotacje?.panele.map((p) => p.bayRef)).toContain(POLE_TR);
+          expect(
+            scena.symbols.some((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === POLE_TR),
+          ).toBe(true);
+        } else {
+          expect(wylacznikToru).toBeUndefined();
+          expect(stosPolaTr.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);
+          expect(stosPolaTr[0].meta?.ownerRef).toBe(trRef);
+        }
+      });
     }
   }
 
   it('determinizm: ta sama migawka → ta sama scena (pole TR w torze transformatora)', () => {
-    const a = buildSceneV3(migawka('w polu TR', 'Yd11').enm, 2);
-    const b = buildSceneV3(migawka('w polu TR', 'Yd11').enm, 2);
+    const a = buildSceneV3(migawka('w polu TR', 'Yd11').enm);
+    const b = buildSceneV3(migawka('w polu TR', 'Yd11').enm);
     expect(JSON.stringify(b.symbols)).toBe(JSON.stringify(a.symbols));
     expect(JSON.stringify(b.meta.gpzAdnotacje)).toBe(JSON.stringify(a.meta.gpzAdnotacje));
   });

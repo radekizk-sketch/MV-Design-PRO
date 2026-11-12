@@ -1,6 +1,6 @@
 // @vitest-environment node
 // Narzędzie dowodowe (wprowadzone kartą W5-B, bramka 0.8 b): sygnatura sceny SLD v3 dla każdej fikstury ENM
-// generowanej narzędziami backendu, przy każdym LOD, zapisana do JSON. Uruchamiane PRZED
+// generowanej narzędziami backendu, (jedna scena), zapisana do JSON. Uruchamiane PRZED
 // (bazowy kod + bazowe fikstury) i PO (kod karty + fikstury przegenerowane) — pliki porównuje
 // integrator. Ścieżka wyjścia z SYGNATURY_SCENY_WYJSCIE; bez zmiennej test jest pomijany.
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { buildSceneV3, type SceneLod } from '../buildScene';
+import { buildSceneV3 } from '../buildScene';
 import { loadEnm, sceneSignature } from './syntheticNetworks';
 
 const FRONT = join(__dirname, '..', '..', '..', '..', '..', '..');
@@ -21,19 +21,17 @@ const KATALOGI = [
 
 describe('sygnatury sceny SLD v3 fikstur generowanych', () => {
   const wyjscie = process.env.SYGNATURY_SCENY_WYJSCIE;
-  it.skipIf(!wyjscie)('zapisuje sygnatury sceny dla każdej fikstury i LOD', () => {
+  it.skipIf(!wyjscie)('zapisuje sygnaturę jednej sceny dla każdej fikstury', () => {
     const wynik: Record<string, Record<string, string>> = {};
     for (const katalog of KATALOGI) {
       for (const plik of readdirSync(katalog).filter((f) => f.endsWith('.enm.json')).sort()) {
         const enm = loadEnm(join(katalog, plik));
         const klucz = `${katalog.slice(FRONT.length + 1)}/${plik}`;
         wynik[klucz] = {};
-        for (const lod of [0, 1, 2] as SceneLod[]) {
-          try {
-            wynik[klucz][`lod${lod}`] = sceneSignature(buildSceneV3(enm, lod));
-          } catch (e) {
-            wynik[klucz][`lod${lod}`] = `BLAD: ${(e as Error).message.slice(0, 200)}`;
-          }
+        try {
+          wynik[klucz].scena = sceneSignature(buildSceneV3(enm));
+        } catch (e) {
+          wynik[klucz].scena = `BLAD: ${(e as Error).message.slice(0, 200)}`;
         }
       }
     }

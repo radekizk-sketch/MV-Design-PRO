@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
+import { prostokatElementuWScenie } from '../viewAnchor';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import {
   buildFaultFlowOverlayFromScene,
@@ -48,7 +49,7 @@ const fixturePath = resolve(
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 
 /** S9-2: mapa ORIENTACJI odcinkow (`segmentRef → points[0] po stronie „from"`)
  *  — jedyne refy z udowodnionym zwrotem, jedyne dopuszczone przez budowniczego
@@ -358,12 +359,15 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
         }
       }
     }
-    // Geometria stacji: na L0 KAŻDA stacja ma dokładnie jeden symbol
-    // `stationCollapsed` z `ownerRef = station id` — kotwica pozycji X.
-    const scene0 = buildSceneV3(enm, 0);
+    // Geometria stacji: kotwica pozycji X = środek obrysu rysunku stacji w jednej scenie
+    // (`prostokatElementuWScenie` — ten sam obrys, który kadruje nawigator; dawniej symbol
+    // zwiniętej stacji widoku L0, karta SLD-SKALA-I-NAWIGACJA R1). GPZ poza kotwicami — jak dawniej.
+    const scene0 = buildSceneV3(enm);
     const stationX = new Map<string, number>();
-    for (const s of scene0.symbols) {
-      if (s.symbolId === 'stationCollapsed' && s.meta?.ownerRef) stationX.set(s.meta.ownerRef, s.x);
+    for (const st of enm.substations ?? []) {
+      if (st.station_type === 'gpz') continue;
+      const box = prostokatElementuWScenie(scene0, st.ref_id);
+      if (box) stationX.set(st.ref_id, (box.minX + box.maxX) / 2);
     }
     let checked = 0;
     for (const seg of scene0.segments) {
@@ -373,7 +377,7 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
       if (!terminals) continue; // wielokawałkowe — poza bramką, bez strzałki
       const fromX = stationX.get(terminals.fromRef);
       const toX = stationX.get(terminals.toRef);
-      if (fromX === undefined || toX === undefined) continue; // GPZ (brak stationCollapsed)
+      if (fromX === undefined || toX === undefined) continue; // GPZ (poza kotwicami)
       const p0 = seg.points[0];
       const pLast = seg.points[seg.points.length - 1];
       // points[0] leży BLIŻEJ stacji fromTerminal niż stacji toTerminal —
@@ -609,7 +613,6 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
   const SEGMENT_L = refOdcinka('F3 (1)');
   const SEGMENT_R = refOdcinka('F3 (2)');
   const SPLICE_BUS = chainEnm.branches.find((b) => b.ref_id === F2)!.to_bus_ref as string;
-  const LODS = [0, 1, 2] as const;
 
   it('kontrola wejscia: przeslo GPZ→S0 tej fixtury jest WIELOKAWALKOWE (zaden kawalek nie ma OBU terminali rozwiazanych do stacji)', () => {
     // Dawniej mierzone przez `singleHopSegmentRefs(chainEnm).size === 0`.
@@ -631,31 +634,29 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
     // fakt geometrii fikstury, nie regułę: po karcie GPZ-MODEL (GPZ z równoważnikiem
     // 110 kV, inna szerokość bloku GPZ wyrównującego magistralę) na L0 dłuższy jest
     // „F3 (1)". Asercja liczy przedstawiciela NIEZALEŻNIE z geometrii sceny.
-    for (const lod of LODS) {
-      const scena = buildSceneV3(chainEnm, lod);
-      const refs = multiHopFaultFlowSegmentRefs(scena, chainEnm);
-      expect(refs.size).toBe(1);
-      const dlugosc = (ref: string): number => {
-        const odcinek = scena.segments.find((g) => g.meta?.ownerRef === ref && g.meta?.elementKind === 'segment');
-        if (!odcinek) return -1;
-        let suma = 0;
-        for (let p = 0; p + 1 < odcinek.points.length; p += 1) {
-          suma += Math.abs(odcinek.points[p + 1].x - odcinek.points[p].x) + Math.abs(odcinek.points[p + 1].y - odcinek.points[p].y);
-        }
-        return suma;
-      };
-      const kolejnosc = (ref: string): number => scena.segments.findIndex((g) => g.meta?.ownerRef === ref && g.meta?.elementKind === 'segment');
-      const [lepszy, gorszy] =
-        dlugosc(F2) > dlugosc(SEGMENT_L) || (dlugosc(F2) === dlugosc(SEGMENT_L) && kolejnosc(F2) < kolejnosc(SEGMENT_L))
-          ? [F2, SEGMENT_L]
-          : [SEGMENT_L, F2];
-      expect(refs.has(lepszy), `LOD ${lod}: przedstawiciel = najdłuższy narysowany człon`).toBe(true);
-      expect(refs.has(gorszy)).toBe(false);
-    }
+    const scena = buildSceneV3(chainEnm);
+    const refs = multiHopFaultFlowSegmentRefs(scena, chainEnm);
+    expect(refs.size).toBe(1);
+    const dlugosc = (ref: string): number => {
+      const odcinek = scena.segments.find((g) => g.meta?.ownerRef === ref && g.meta?.elementKind === 'segment');
+      if (!odcinek) return -1;
+      let suma = 0;
+      for (let p = 0; p + 1 < odcinek.points.length; p += 1) {
+        suma += Math.abs(odcinek.points[p + 1].x - odcinek.points[p].x) + Math.abs(odcinek.points[p + 1].y - odcinek.points[p].y);
+      }
+      return suma;
+    };
+    const kolejnosc = (ref: string): number => scena.segments.findIndex((g) => g.meta?.ownerRef === ref && g.meta?.elementKind === 'segment');
+    const [lepszy, gorszy] =
+      dlugosc(F2) > dlugosc(SEGMENT_L) || (dlugosc(F2) === dlugosc(SEGMENT_L) && kolejnosc(F2) < kolejnosc(SEGMENT_L))
+        ? [F2, SEGMENT_L]
+        : [SEGMENT_L, F2];
+    expect(refs.has(lepszy), `przedstawiciel = najdłuższy narysowany człon`).toBe(true);
+    expect(refs.has(gorszy)).toBe(false);
   });
 
   it('przedstawiciel dostaje strzałkę: direction="from_to" ⇒ forward=true, wartości WPROST z wejścia', () => {
-    const chainScene = buildSceneV3(chainEnm, 2);
+    const chainScene = buildSceneV3(chainEnm);
     const trusted = orientationForFaultFlow(chainScene, chainEnm);
     const input = faultInputOf([faultEntry({ branch_id: F2, direction: 'from_to', i_ka: 1.2 })]);
     const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
@@ -664,7 +665,7 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
   });
 
   it('orientacja odwrotna: direction="to_from" ⇒ forward=false (oba kierunki poprawne, zwrot WPROST z tokenu solvera)', () => {
-    const chainScene = buildSceneV3(chainEnm, 2);
+    const chainScene = buildSceneV3(chainEnm);
     const trusted = orientationForFaultFlow(chainScene, chainEnm);
     const input = faultInputOf([faultEntry({ branch_id: F2, direction: 'to_from', i_ka: 0.8 })]);
     const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
@@ -680,7 +681,7 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
     // odcinek, wiec strzalka trafia na wlasny odcinek czlonu. Zaden odcinek nie
     // dostaje dwoch strzalek (slownik kluczowany `ownerRef`) — inwariant, ktory
     // dawna regula chronila, jest utrzymany.
-    const chainScene = buildSceneV3(chainEnm, 2);
+    const chainScene = buildSceneV3(chainEnm);
     const orientacja = orientationForFaultFlow(chainScene, chainEnm);
     const input = faultInputOf([
       faultEntry({ branch_id: F2, direction: 'from_to', i_ka: 1.2 }),
@@ -700,9 +701,7 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
     );
     if (!segR) throw new Error('kontrola pomiaru: fixtura musi nieść segment_R');
     segR.from_bus_ref = SPLICE_BUS; // rozgałęzienie: 3 odcinki dotykają tej samej mufy
-    for (const lod of LODS) {
-      expect(multiHopFaultFlowSegmentRefs(buildSceneV3(branched, lod), branched).size).toBe(0);
-    }
+    expect(multiHopFaultFlowSegmentRefs(buildSceneV3(branched), branched).size).toBe(0);
   });
 
   it('NEGATYW — kierunki MIESZANE (człon zadeklarowany odwrotnie): segment_L z zamienionymi from/to ⇒ dopasowanie końców się nie zgadza, grupa odrzucona', () => {
@@ -714,13 +713,11 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
     const tmp = segL.from_bus_ref;
     segL.from_bus_ref = segL.to_bus_ref;
     segL.to_bus_ref = tmp;
-    for (const lod of LODS) {
-      expect(multiHopFaultFlowSegmentRefs(buildSceneV3(reversed, lod), reversed).size).toBe(0);
-    }
+    expect(multiHopFaultFlowSegmentRefs(buildSceneV3(reversed), reversed).size).toBe(0);
   });
 
   it('determinizm: dwa wywołania na tej samej scenie ⇒ identyczny zbiór przedstawicieli', () => {
-    const chainScene = buildSceneV3(chainEnm, 2);
+    const chainScene = buildSceneV3(chainEnm);
     const a = multiHopFaultFlowSegmentRefs(chainScene, chainEnm);
     const b = multiHopFaultFlowSegmentRefs(chainScene, chainEnm);
     expect([...a].sort()).toEqual([...b].sort());
@@ -758,15 +755,13 @@ describe('overlay.ts — łańcuch 4-członowy na realnej fixturze substrate (GA
   });
 
   it('DOKŁADNIE jeden przedstawiciel z tej grupy 4-członowej trafia do zbioru, na każdym LOD', () => {
-    for (const lod of [0, 1, 2] as const) {
-      const refs = multiHopFaultFlowSegmentRefs(buildSceneV3(enm, lod), enm);
-      const chosenFromGroup = GROUP.filter((ref) => refs.has(ref));
-      expect(chosenFromGroup.length).toBe(1);
-    }
+    const refs = multiHopFaultFlowSegmentRefs(buildSceneV3(enm), enm);
+    const chosenFromGroup = GROUP.filter((ref) => refs.has(ref));
+    expect(chosenFromGroup.length).toBe(1);
   });
 
   it('S9-2: KAZDY z 4 czlonow dostaje strzalke spojna z direction="from_to" — orientacja udowodniona per czlon, a odcinek rysunku nie dostaje dwoch strzalek', () => {
-    const sceneLod2 = buildSceneV3(enm, 2);
+    const sceneLod2 = buildSceneV3(enm);
     const orientacja = orientationForFaultFlow(sceneLod2, enm);
     const input = faultInputOf(GROUP.map((ref) => faultEntry({ branch_id: ref, direction: 'from_to', i_ka: 0.9 })));
     const overlay = buildFaultFlowOverlayFromScene(sceneLod2, input, orientacja);

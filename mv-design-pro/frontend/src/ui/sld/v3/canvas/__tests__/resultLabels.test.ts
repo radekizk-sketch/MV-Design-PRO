@@ -44,7 +44,7 @@ const fixturePath = resolve(
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 /** Realny `ownerRef` pierwszego symbolu danej klasy — zero fabrykacji. */

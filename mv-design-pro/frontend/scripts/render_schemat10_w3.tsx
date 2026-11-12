@@ -1,6 +1,6 @@
 /**
  * SCHEMAT-10 W3-KABLE-ETYKIETY (RECENZJA_L2_POLA_WYPOSAZENIE §5/§7) — dowód
- * wizualny: FRAGMENT realnej sceny L2 (`buildSceneV3(fixtura, 2)`) z DWOMA
+ * wizualny: FRAGMENT realnej sceny L2 (`buildSceneV3(fixtura)`) z DWOMA
  * RÓWNOLEGŁYMI kablami (osobne osie, światło ≥ MIN_PARALLEL_CABLE_CLEARANCE)
  * oraz PEŁNYMI etykietami technicznymi linii („relacja · typ · napięcie · l = …").
  * Zero syntetyki — geometria i etykiety z produkcyjnego potoku.
@@ -30,7 +30,7 @@ const enm = JSON.parse(
   ),
 ).enm;
 
-const scene = buildSceneV3(enm, 2);
+const scene = buildSceneV3(enm);
 
 // --- znajdź parę RÓWNOLEGŁYCH kabli (piony tras między stacjami) -------------
 interface VSeg { x: number; y0: number; y1: number; owner: string }
@@ -141,7 +141,7 @@ const svg =
   `<text x="20" y="34" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="${TXT}">` +
   `W3 · Etykiety techniczne linii + światła kabli (L2, fragment realnej sceni)</text>` +
   `<text x="20" y="60" font-family="Inter, system-ui, sans-serif" font-size="14" fill="${SUB}">` +
-  `buildSceneV3(sldSubstrate52s, L2) · dwa RÓWNOLEGŁE kable (zielone, osobne osie, światło=${best.d}px ≥ 32) · ` +
+  `buildSceneV3(sldSubstrate52s) · dwa RÓWNOLEGŁE kable (zielone, osobne osie, światło=${best.d}px ≥ 32) · ` +
   `etykiety pełne „relacja · typ · napięcie · l = …" z katalogu/ENM · min. światło równoległych tras=${parClear}px</text>` +
   `<text x="20" y="80" font-family="Inter, system-ui, sans-serif" font-size="12" fill="${ACCENT}">źródło: dane (katalog + ENM) · zero fabrykacji</text>` +
   `<g transform="translate(0,${HEADER})">${parts.join('')}</g></svg>`;

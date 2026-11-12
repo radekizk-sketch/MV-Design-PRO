@@ -30,7 +30,7 @@ const enm = (
     readFileSync(resolve(here, '../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json'), 'utf8'),
   ) as { enm: EnergyNetworkModel }
 ).enm;
-const scena = buildSceneV3(enm, 2);
+const scena = buildSceneV3(enm);
 const stacja = scena.meta.mainTrunkStationIds[2]!;
 const zakres = zakresCelu('stacja', enm, [stacja], scena);
 if (!zakres.dostepny) throw new Error(zakres.przyczyna);
@@ -43,7 +43,7 @@ const pozaKadru = (el: Element) => el.closest('[data-kadr="poza"]') !== null;
 
 describe('kurtyna kadru stacji (L2, DOM)', () => {
   it('odcinki i symbole: przyciemnione dokładnie te spoza zakresu celu', () => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={2} refyKadru={refy} />);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} refyKadru={refy} />);
     let cel = 0;
     let obce = 0;
     const sprawdz = (testId: string, ownerRef: string | undefined) => {
@@ -61,7 +61,7 @@ describe('kurtyna kadru stacji (L2, DOM)', () => {
   });
 
   it('etykiety: grupa kurtyny ma krycie KURTYNA_KADRU_OPACITY, a przyciemnione są dokładnie etykiety właścicieli spoza celu', () => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={2} refyKadru={refy} />);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} refyKadru={refy} />);
     const warstwa = container.querySelector('[data-testid="sld-v3-labels"]')!;
     const kurtyny = [...warstwa.children].filter((el) => el.getAttribute('data-kadr') === 'poza');
     expect(kurtyny.length).toBeGreaterThan(0);
@@ -82,7 +82,7 @@ describe('kurtyna kadru stacji (L2, DOM)', () => {
 
   it('bez kadru (sieć, refyKadru puste albo nieobecne): zero kurtyny, zero atrybutów kadru', () => {
     for (const r of [undefined, null, [] as string[]]) {
-      const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={2} refyKadru={r} />);
+      const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} refyKadru={r} />);
       expect(container.querySelectorAll('[data-kadr="poza"]')).toHaveLength(0);
       expect(container.querySelector('[data-kadr-aktywny]')).toBeNull();
       expect(container.querySelector('[data-ukryte-opisy-celu]')).toBeNull();
@@ -102,7 +102,7 @@ describe('komunikat ukrytych opisów w kadrze celu', () => {
     return el ? { tekst: el.textContent, n: Number(el.getAttribute('data-hidden-count')), celu: el.getAttribute('data-opisy-celu') } : null;
   };
   it('bez kadru: komunikat ogólny', () => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} />);
     const k = komunikat(container)!;
     expect(k.celu).toBeNull();
     expect(k.tekst).toBe(hiddenLabelsHintText(k.n));
@@ -124,14 +124,12 @@ describe('komunikat ukrytych opisów w kadrze celu', () => {
   it.each(
     ([[1440, 900], [1024, 640]] as const).flatMap(([szer, wys]) =>
       ([
-        [1, 'stacja', refy],
-        [2, 'stacja', refy],
-        [1, 'magistrala', zakresMagistrali.zakres.refy],
-        [2, 'magistrala', zakresMagistrali.zakres.refy],
-      ] as const).map(([lod, cel, refyCelu]) => [lod, cel, szer, wys, refyCelu] as const),
+        ['stacja', refy],
+        ['magistrala', zakresMagistrali.zakres.refy],
+      ] as const).map(([cel, refyCelu]) => [cel, szer, wys, refyCelu] as const),
     ),
-  )('L%i, kadr „%s", kanwa %i × %i: wariant „celu kadru" ⇔ opis celu ukryty albo poniżej podłogi, inaczej „poza celem kadru"', (lod, _cel, szer, wys, refyCelu) => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={szer} height={wys} lodOverride={lod} refyKadru={refyCelu} />);
+  )('kadr „%s", kanwa %i × %i: wariant „celu kadru" ⇔ opis celu ukryty albo poniżej podłogi, inaczej „poza celem kadru"', (_cel, szer, wys, refyCelu) => {
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={szer} height={wys} refyKadru={refyCelu} />);
     const svg = container.querySelector('svg[data-kadr-aktywny="true"]')!;
     const ukryteCelu = Number(svg.getAttribute('data-ukryte-opisy-celu'));
     const ponizej = Number(svg.getAttribute('data-opisy-celu-ponizej-podlogi'));
@@ -179,7 +177,7 @@ describe('tryb widoku kanwy: roboczy bez ramy arkusza, arkusz z ramą', () => {
     [undefined, true],
   ] as const)('tryb %s: rama arkusza %s', (tryb, rama) => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={2} {...(tryb ? { trybWidoku: tryb } : {})} />,
+      <SldCanvasV3 snapshot={enm} width={1440} height={900} {...(tryb ? { trybWidoku: tryb } : {})} />,
     );
     expect(container.querySelector('[data-testid="sld-sheet-border"]') !== null).toBe(rama);
     expect(container.querySelector('[data-testid="sld-sheet-zone-markers"]') !== null).toBe(rama);

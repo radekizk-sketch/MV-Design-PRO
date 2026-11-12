@@ -18,7 +18,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { interiorCrossings } from '../../scene/crossings';
 import { SldCanvasV3 } from '../SldCanvasV3';
 
@@ -55,24 +55,22 @@ function sciezkiZMostkami(svg: string): SciezkaOdcinka[] {
 
 describe('S7, rozstrzygnięcie przecięć (2026-10-30) — każde przecięcie toru mocy ma na kanwie mostek półłukowy', () => {
   for (const [nazwa, enm] of SIECI) {
-    for (const lod of [0, 1, 2] as const satisfies readonly SceneLod[]) {
-      it(`${nazwa} · L${lod}: liczba półłuków na kanwie = liczba przecięć sn×sn sceny, każdy w ścieżce pionu`, () => {
-        const przeciecia = interiorCrossings(buildSceneV3(enm, lod).segments).filter((c) => !c.involvesBus);
-        expect(przeciecia.length, 'fikstura bez przecięć nie dowodzi mostka').toBeGreaterThan(0);
-        const svg = renderToStaticMarkup(
-          <SldCanvasV3 snapshot={enm} width={1600} height={900} lodOverride={lod} paletteMode="light_technical" />,
-        );
-        const sciezki = sciezkiZMostkami(svg);
-        expect(sciezki.reduce((n, s) => n + s.mostki, 0)).toBe(przeciecia.length);
-        for (const s of sciezki) {
-          // Półłuk mostka to komenda łuku `A` (promień BRIDGE_RADIUS) — po jednej na mostek.
-          expect((s.d.match(/A/g) ?? []).length, s.ownerRef).toBe(s.mostki);
-        }
-        // Każdy pion przecięcia niesie mostek: właściciel pionu każdego przecięcia jest wśród
-        // ścieżek z mostkami.
-        const zMostkami = new Set(sciezki.map((s) => s.ownerRef));
-        expect(przeciecia.filter((c) => !zMostkami.has(c.vOwnerRef ?? '')).map((c) => c.vOwnerRef)).toEqual([]);
-      });
-    }
+    it(`${nazwa}: liczba półłuków na kanwie = liczba przecięć sn×sn sceny, każdy w ścieżce pionu`, () => {
+      const przeciecia = interiorCrossings(buildSceneV3(enm).segments).filter((c) => !c.involvesBus);
+      expect(przeciecia.length, 'fikstura bez przecięć nie dowodzi mostka').toBeGreaterThan(0);
+      const svg = renderToStaticMarkup(
+        <SldCanvasV3 snapshot={enm} width={1600} height={900} paletteMode="light_technical" />,
+      );
+      const sciezki = sciezkiZMostkami(svg);
+      expect(sciezki.reduce((n, s) => n + s.mostki, 0)).toBe(przeciecia.length);
+      for (const s of sciezki) {
+        // Półłuk mostka to komenda łuku `A` (promień BRIDGE_RADIUS) — po jednej na mostek.
+        expect((s.d.match(/A/g) ?? []).length, s.ownerRef).toBe(s.mostki);
+      }
+      // Każdy pion przecięcia niesie mostek: właściciel pionu każdego przecięcia jest wśród
+      // ścieżek z mostkami.
+      const zMostkami = new Set(sciezki.map((s) => s.ownerRef));
+      expect(przeciecia.filter((c) => !zMostkami.has(c.vOwnerRef ?? '')).map((c) => c.vOwnerRef)).toEqual([]);
+    });
   }
 });

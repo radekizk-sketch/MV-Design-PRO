@@ -10,7 +10,7 @@
  * Wnętrze żyje w projekcji nN (`lv-domain-harness.html`, osobny spec).
  *
  * Wzorzec `e2e/sld-substrate-screenshot.spec.ts` — harness
- * `screenshot-harness.html`, OBA motywy, L0/L1/L2. Zbliżenie na portal jest
+ * `screenshot-harness.html`, OBA motywy, jedna scena. Zbliżenie na portal jest
  * MIERZONE sondą DOM (`boundingBox()` symbolu portalu), nie zgadywane. Werdykt
  * wizualny NALEŻY DO WŁAŚCICIELA (zasada nr 2 CLAUDE.md) — ten spec WYŁĄCZNIE
  * generuje PNG i sprawdza fakty strukturalne DOM, nie certyfikuje jakości.
@@ -29,7 +29,6 @@ const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visua
 
 async function gotoHarness(
   page: import('@playwright/test').Page,
-  lod: 0 | 1 | 2,
   theme: 'dark' | 'light',
 ): Promise<string[]> {
   await page.setViewportSize({ width: 1600, height: 1000 });
@@ -39,7 +38,7 @@ async function gotoHarness(
   });
   page.on('pageerror', (err) => consoleErrors.push(`PAGEERROR: ${err.message}`));
 
-  await page.goto(`${HARNESS_URL}?fixture=nnBoardDemo&lod=${lod}&theme=${theme}`, {
+  await page.goto(`${HARNESS_URL}?fixture=nnBoardDemo&theme=${theme}`, {
     waitUntil: 'domcontentloaded',
     timeout: 60_000,
   });
@@ -58,10 +57,14 @@ test.describe('lv-portal:screenshot — projekcja SN z portalem domeny nN', () =
   });
 
   for (const theme of ['dark', 'light'] as const) {
-    for (const lod of [1, 2] as const) {
-      test(`L${lod} — portal na zacisku nN, ZERO wnętrza nN — motyw ${theme} — save PNG`, async ({ page }) => {
-        const consoleErrors = await gotoHarness(page, lod, theme);
-        if (consoleErrors.length > 0) console.log(`Console errors L${lod} (${theme}): ${consoleErrors.join('\n')}`);
+    // Jedna scena (karta SLD-SKALA-I-NAWIGACJA R1): portal nN jest w scenie przy każdej skali;
+    // dawne warianty per poziom szczegółu (L1/L2 z portalem, L0 ze zwiniętym blokiem) zastąpił
+    // jeden kadr. Nazwa pliku `lv_portal_sn_lod2_*` zachowana dla porównania z dokumentacją.
+    {
+      const lod = 2;
+      test(`portal na zacisku nN, ZERO wnętrza nN — motyw ${theme} — save PNG`, async ({ page }) => {
+        const consoleErrors = await gotoHarness(page, theme);
+        if (consoleErrors.length > 0) console.log(`Console errors (${theme}): ${consoleErrors.join('\n')}`);
 
         // Fakty strukturalne DOM (nie werdykt wizualny): portal obecny,
         // wnętrze rozdzielnicy nN NIEOBECNE w projekcji SN.
@@ -92,21 +95,9 @@ test.describe('lv-portal:screenshot — projekcja SN z portalem domeny nN', () =
         console.log(`Saved: ${detailPath}`);
         expect(fs.existsSync(detailPath)).toBe(true);
 
-        expect(consoleErrors, `błędy konsoli L${lod} (${theme}): ${consoleErrors.join(' | ')}`).toEqual([]);
+        expect(consoleErrors, `błędy konsoli (${theme}): ${consoleErrors.join(' | ')}`).toEqual([]);
       });
     }
 
-    test(`L0 — blok zwinięty (bez zacisku i portalu — wejście dwuklikiem) — motyw ${theme} — save PNG`, async ({ page }) => {
-      const consoleErrors = await gotoHarness(page, 0, theme);
-      if (consoleErrors.length > 0) console.log(`Console errors L0 (${theme}): ${consoleErrors.join('\n')}`);
-      await expect(page.locator('[data-symbol-canon="lvPortal"]')).toHaveCount(0);
-      await expect(page.locator('[data-symbol-canon="stationCollapsed"]').first()).toBeVisible();
-      const outPath = path.join(OUTPUT_DIR, `lv_portal_sn_lod0_${theme}.png`);
-      await bramkaTresciMatematycznej(page);
-      await page.screenshot({ path: outPath, fullPage: false });
-      console.log(`Saved: ${outPath}`);
-      expect(fs.existsSync(outPath)).toBe(true);
-      expect(consoleErrors, `błędy konsoli L0 (${theme}): ${consoleErrors.join(' | ')}`).toEqual([]);
-    });
   }
 });

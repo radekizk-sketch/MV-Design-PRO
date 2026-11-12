@@ -4,7 +4,9 @@
  * §12) — warunek odbioru rysunku toru mocy na WSZYSTKICH fiksturach modelu ENM.
  *
  * Iloczyn cech: fikstura (każdy plik JSON z modelem ENM w katalogach fikstur SLD, harnessu
- * i `public` — sceny, kanwa, geometria v2, migawki harnessu) × LOD {0, 1, 2} × warunek:
+ * i `public` — sceny, kanwa, geometria v2, migawki harnessu) × warunek — na JEDNEJ scenie fikstury
+ * (karta SLD-SKALA-I-NAWIGACJA, R1: dawny wymiar „poziom szczegółu {0, 1, 2}” nie istnieje; pomiary
+ * „przed naprawą” niżej są historyczne i liczone były na trzech scenach):
  *  (a) zero kropek węzłowych bez węzła modelu (`meta.wezelModelu` ∉ Bus ∪ Bay ∪ Transformer
  *      modelu) i zero kropek poza torem;
  *  (b) każdy odczep z węzła pola i każdy T-styk tras zewnętrznych ma kropkę z węzłem modelu
@@ -83,8 +85,6 @@ const FIKSTURY: readonly (readonly [string, EnergyNetworkModel])[] = KATALOGI.fl
     }),
 );
 
-const LODY = [0, 1, 2] as const;
-
 /** Szyny (odcinki klasy szynowej) zerowej długości — wszystkie wierzchołki w jednym punkcie. */
 function szynyZerowe(scene: SceneV3): string[] {
   return scene.segments
@@ -122,7 +122,7 @@ function wady(scene: SceneV3, enm: EnergyNetworkModel) {
   };
 }
 
-describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłączność toru na każdej fiksturze × LOD', () => {
+describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłączność toru na każdej fiksturze', () => {
   it('kontrola wejścia: 66 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 58 → 59 — fikstura harnessu
     // `pola_gpz_szablonow.json` (pola GPZ z szablonów Z.7, Z.12, Z.16, Z.17).
@@ -139,10 +139,10 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     expect(FIKSTURY.some(([n]) => n.endsWith('sldSubstrate52s.enm.json'))).toBe(true);
   });
 
-  it.each(FIKSTURY.flatMap(([nazwa, enm]) => LODY.map((lod) => [nazwa, lod, enm] as const)))(
-    '%s L%i: zero kropek bez węzła modelu, każde przecięcie z mostkiem, zero przecięć szyny i nałożeń, końce zakotwiczone, szyny niezerowe, źródła przyłączone',
-    (_nazwa, lod, enm) => {
-      const scene = buildSceneV3(enm, lod);
+  it.each(FIKSTURY.map(([nazwa, enm]) => [nazwa, enm] as const))(
+    '%s: zero kropek bez węzła modelu, każde przecięcie z mostkiem, zero przecięć szyny i nałożeń, końce zakotwiczone, szyny niezerowe, źródła przyłączone',
+    (_nazwa, enm) => {
+      const scene = buildSceneV3(enm);
       expect(wady(scene, enm)).toEqual(CZYSTA);
     },
   );
@@ -151,11 +151,9 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     let przeciecia = 0;
     let kropki = 0;
     for (const [, enm] of FIKSTURY) {
-      for (const lod of LODY) {
-        const scene = buildSceneV3(enm, lod);
-        przeciecia += interiorCrossings(scene.segments).filter((c) => !c.involvesBus).length;
-        kropki += scene.symbols.filter((s) => s.symbolId === 'junction').length;
-      }
+      const scene = buildSceneV3(enm);
+      przeciecia += interiorCrossings(scene.segments).filter((c) => !c.involvesBus).length;
+      kropki += scene.symbols.filter((s) => s.symbolId === 'junction').length;
     }
     // Pomiar 2026-10-30: 107 przecięć z mostkiem, 65 kropek z węzłem modelu. Kropka odczepu
     // stoi tylko w rozgałęzieniu (≥ 3 ramiona toru, `ramionaToru`): dawne 67 obejmowało dwie
@@ -187,21 +185,29 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // sonda per fikstura × LOD — `gpz110kvPolaSzablonow` 0/3/3 (te same trzy węzły co kopia
     // harnessu `pola_gpz_szablonow`), `gpz110kvPoleZu{Z13,Z14,Z15}` po 0/1/1; przecięć z mostkiem
     // nowe sceny nie mają (0 na każdym LOD), więc 113 bez zmian.
-    expect(przeciecia).toBe(113);
+    // AKTUALIZACJA ŚWIADOMA 113 → 46 (karta SLD-SKALA-I-NAWIGACJA, R1 — jedna scena): suma
+    // liczona dawniej po TRZECH scenach fikstury (L0/L1/L2), teraz po jednej scenie pełnej;
+    // pomiar tym testem na 66 fiksturach 2026-11-12. Intencja bez zmian: zbiór przecięć
+    // z mostkiem nie jest pusty, więc wyrocznia (c) ma na czym gryźć.
+    expect(przeciecia).toBe(46);
     // AKTUALIZACJA ŚWIADOMA kropek 83 → 95 (następca 7, oględziny zrzutu Z.14): rozgałęzienia
     // przewodu punktu neutralnego pola ZU bez kropki (ogranicznik i zejście dławika przy
     // gałęzi równoległej — rysunek ENEA s.93–95 ma kropki) — predykat `ODCZEP_WEZLA_POLA` zna
     // teraz `#zespol-ogranicznik` i `#zespol-⟨gałąź⟩-zejscie`. Pomiar × LOD1/LOD2: kopia
     // harnessu i `gpz110kvPolaSzablonow` (Z.13) po +1, `gpz110kvPoleZuZ13` +1, `Z14` +2
     // (ogranicznik, dławik; zejście rezystora to narożnik), `Z15` +1 → 2 × 6 = 12.
-    expect(kropki).toBe(95);
+    // AKTUALIZACJA ŚWIADOMA 95 → 72 (karta SLD-SKALA-I-NAWIGACJA, R1 — jedna scena): dawna suma
+    // obejmowała scenę przeglądu i dwie sceny szczegółu (każda kropka pola liczona dwa razy, sceny
+    // L1 i L2 nie były równe — blok GPZ zwinięty na L1); teraz jedna scena pełna. Pomiar tym
+    // testem na 66 fiksturach 2026-11-12. Intencja bez zmian: kropki z węzłem modelu istnieją.
+    expect(kropki).toBe(72);
   });
 });
 
 describe('iniekcje — każda wyrocznia gryzie na realnej scenie', () => {
   const nazwa = 'src/ui/sld/v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json';
   const enm = FIKSTURY.find(([n]) => n === nazwa)![1];
-  const scene = buildSceneV3(enm, 2);
+  const scene = buildSceneV3(enm);
   const przeciecie = interiorCrossings(scene.segments).find((c) => !c.involvesBus)!;
   const kropka = scene.symbols.find((s) => s.symbolId === 'junction')!;
   const rozmiar = SYMBOL_DEFS.junction;
@@ -345,26 +351,8 @@ describe('iniekcje — każda wyrocznia gryzie na realnej scenie', () => {
     ];
     expect(crossingBusGaps(z)).toEqual([expect.objectContaining({ x, y: a.y })]);
   });
-  it('port zejścia bloku zwiniętego zadeklarowany POZA krawędzią bloku → luka końca odcinka (L0)', () => {
-    const l0 = buildSceneV3(enm, 0);
-    expect(sceneSegmentEndpointGaps(l0)).toEqual([]);
-    const blok = l0.symbols.find((s) => s.symbolId === 'gpzCollapsed')!;
-    const porty = blok.meta?.portyZejscBloku ?? [];
-    // Wachlarz gpzProtectionDataPath ma zejścia spoza osi bloku (porty deklarowane).
-    expect(porty.length).toBeGreaterThan(1);
-    const przesuniete = porty.map((p) => ({ x: p.x, y: p.y + GRID }));
-    const z: SceneV3 = {
-      ...l0,
-      symbols: l0.symbols.map((s) => (s === blok ? { ...s, meta: { ...s.meta, portyZejscBloku: przesuniete } } : s)),
-    };
-    expect(sceneSegmentEndpointGaps(z).length).toBeGreaterThan(0);
-    // Bez deklaracji portów zejścia poza osią wiszą w pustce.
-    const bezPortow: SceneV3 = {
-      ...l0,
-      symbols: l0.symbols.map((s) => (s === blok ? { ...s, meta: { ...s.meta, portyZejscBloku: undefined } } : s)),
-    };
-    expect(sceneSegmentEndpointGaps(bezPortow).length).toBe(porty.length - 1);
-  });
+  // Dawna iniekcja „port zejścia bloku zwiniętego GPZ poza krawędzią" usunięta razem z
+  // blokiem zwiniętym GPZ (karta SLD-SKALA-I-NAWIGACJA R1: jedna scena).
 
   it('szyna zwinięta do punktu → szynyZerowe', () => {
     const szyna = scene.segments.find((s) => s.meta?.kind === 'busGpz')!;
@@ -377,7 +365,7 @@ describe('iniekcje — każda wyrocznia gryzie na realnej scenie', () => {
 
   it('glif źródła pola OZE bez przewodu z głowicy kablowej → sourceConnectivityGaps', () => {
     const [, magazyn] = FIKSTURY.find(([n]) => n.endsWith('magazyn_scena_migawka.json'))!;
-    const l2 = buildSceneV3(magazyn, 2);
+    const l2 = buildSceneV3(magazyn);
     expect(sourceConnectivityGaps(l2)).toEqual([]);
     const zrodlo = l2.symbols.find((s) => s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source')!;
     const ref = zrodlo.meta!.ownerRef!;

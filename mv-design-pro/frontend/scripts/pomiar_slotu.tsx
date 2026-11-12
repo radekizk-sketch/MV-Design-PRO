@@ -53,7 +53,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import { rectsOverlap } from '../src/ui/sld/v3/core/grid';
 import { sceneObstacleRects } from '../src/ui/sld/v3/scene/buildScene';
 import { planSceneLabels } from '../src/ui/sld/v3/canvas/labelLegibility';
@@ -245,14 +245,15 @@ function ukryteOpisy(scene: SceneV3, skala: number): number {
 for (const siec of SIECI) {
   const enm = wczytaj(siec.sciezka);
   console.log(`\n=== SIEĆ ${siec.nazwa} ===`);
-  for (const lod of [0, 1, 2] as SceneLod[]) {
-    const scene = buildSceneV3(enm, lod);
+  // Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1).
+  {
+    const scene = buildSceneV3(enm);
     const przesla = zmierzDryf(scene, RODZAJE_PRZESLA);
     const zPolilinia = przesla.filter((w) => Number.isFinite(w.dryfX));
     const poza = zPolilinia.filter((w) => w.dryfX > 0);
     const ukryte = SKALE_KAMERY.map((s) => `${s}:${ukryteOpisy(scene, s)}`).join(' ');
     console.log(
-      `L${lod}: podpisów przęseł ${przesla.length} (z polilinią ${zPolilinia.length}) · `
+      `podpisów przęseł ${przesla.length} (z polilinią ${zPolilinia.length}) · `
         + `POZA zakresem ${poza.length} · dryfX med ${f(mediana(zPolilinia.map((w) => w.dryfX)))} · `
         + `max ${f(Math.max(0, ...zPolilinia.map((w) => w.dryfX)))} · `
         + `kolizje etykiet ${kolizjeEtykiet(scene)} · ukryto[skala:N] ${ukryte}`,
@@ -261,7 +262,7 @@ for (const siec of SIECI) {
     // jego środek na środku tej polilinii, bez dryfu. Miara bezwzględna
     // (j.św.) i względna (% długości opisywanego odcinka), bo to długość
     // opisywanego obiektu wyznacza, co jest „przy nim" (R1: zero progów).
-    if (lod === 2) {
+    {
       const bl: number[] = [];
       const wzgl: number[] = [];
       const naj: { t: string; e: number }[] = [];
@@ -303,7 +304,7 @@ for (const siec of SIECI) {
     // WYROCZNIA POMOCNICZA: podpis stoi PRZY TORZE, który opisuje — jego
     // prostokąt mieści się w zakresie X spójnej linii kabla zawierającej
     // polilinię jego właściciela, a jego ŚRODEK leży na środku tej linii.
-    if (lod === 2) {
+    {
       const tory = torySpojne(scene);
       const wystaje: { t: string; o: number }[] = [];
       const bledy: number[] = [];
@@ -338,7 +339,7 @@ for (const siec of SIECI) {
   }
 
   // (C) INWENTARZ KLASY — czy dryf dotyka też innych rodzajów podpisów.
-  const scene2 = buildSceneV3(enm, 2);
+  const scene2 = buildSceneV3(enm);
   const wszystkie = zmierzDryf(scene2, RODZAJE_KLASY);
   // LATERALE W OSI Y — podpis pionowy stoi wzdłuż swojej linii; miary te same
   // co dla przęseł, tylko oś inna. Wpis jest ZAPADKĄ: karta nie rusza

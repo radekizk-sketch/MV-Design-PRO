@@ -51,9 +51,10 @@ Scena SLD v3 rysuje punkty odgałęźne i całe ciągi za nimi (karta ODG-RYSUNE
 `render.tsx` wypisuje pod rysunkiem POMIAR pokrycia wprost ze sceny — ile punktów
 odgałęźnych narysowano z ilu w modelu, ile odgałęzień i ile ciągów pominięto.
 Zrzuty odbioru etapu 3: `mv-design-pro/docs/sld/audyt-2026-08/odg-rysunek-po-*.png`
-(L0 przegląd + L2 stacje i aparatura, oba motywy). Zrzuty etapu 2 (porównanie
+(zrzuty historyczne z czasów poziomów szczegółu L0/L2; od karty SLD-SKALA-I-NAWIGACJA
+`render.tsx` rysuje jedną scenę niezależną od skali, jeden kadr dopasowania na wariant
+i motyw). Zrzuty etapu 2 (porównanie
 „przed/po" dla drogi zabudowy): `docs/sld/audyt-2026-08/pomiar-odg-*.png`.
 
 Kontrakt rysunku sprawdza test `src/ui/sld/v3/scene/__tests__/buildScene.pomiarOdgalezienie.test.ts`
-(iloczyn cech: {ZKSN, słup rozgałęźny} × {przęsło w ciągu, ogon otwarty} ×
-{L0, L1, L2}) oraz wyrocznia `branchPointCoverageGaps` w `scene/buildScene.ts`.
+(iloczyn cech: {ZKSN, słup rozgałęźny} × {przęsło w ciągu, ogon otwarty}) oraz wyrocznia `branchPointCoverageGaps` w `scene/buildScene.ts`.

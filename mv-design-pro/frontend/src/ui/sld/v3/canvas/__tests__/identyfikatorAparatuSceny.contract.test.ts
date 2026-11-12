@@ -6,7 +6,7 @@
  * którego kanwa v3 nigdy nie emitowała (scena rysuje głowicę jako `SymbolId` `cableHead`,
  * a meta symbolu niesie ref POLA). Ten kontrakt składa wejście tematu DOKŁADNIE tak, jak
  * robi to render (`SldCanvasV3.klikMeta` + klasa trafienia z `buildCanvasHitAreas`) na
- * sieciach referencyjnych × LOD i pilnuje, że:
+ * sieciach referencyjnych (jedna scena) i pilnuje, że:
  *  A. każdy symbol rozstrzygnięty na kotwicę `pole` daje ref operacji, którego JEDYNY parser
  *     (`rozbierzIdentyfikatorAparatu`) oddaje ⟨ref pola, SymbolId tego symbolu⟩;
  *  B. temat innej kotwicy nigdy nie niesie rodzaju aparatu (ref operacji = ref modelu);
@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { buildCanvasHitAreas } from '../hitAreas';
 import {
   buildCanvasModelIndex,
@@ -58,7 +58,6 @@ const SIECI: readonly { readonly nazwa: string; readonly enm: EnergyNetworkModel
   { nazwa: 'gpzFeeder', enm: loadEnm('../../scene/__tests__/fixtures/gpzFeeder.enm.json') },
   { nazwa: 'glowiceKablowePolGpz', enm: GLOWICE },
 ];
-const LODY: readonly SceneLod[] = [0, 1, 2];
 
 interface Trafienie {
   readonly symbolId: string;
@@ -69,8 +68,8 @@ interface Trafienie {
   readonly symbolAparatu: string | undefined;
 }
 
-function trafieniaSymboli(enm: EnergyNetworkModel, lod: SceneLod): readonly Trafienie[] {
-  const scene = buildSceneV3(enm, lod);
+function trafieniaSymboli(enm: EnergyNetworkModel): readonly Trafienie[] {
+  const scene = buildSceneV3(enm);
   const index = buildCanvasModelIndex(enm);
   // Klasa trafienia — ta sama, którą render wpisuje w `data-hit-klasa`.
   const klasy = new Map(
@@ -109,28 +108,26 @@ function trafieniaSymboli(enm: EnergyNetworkModel, lod: SceneLod): readonly Traf
 
 describe('tożsamość aparatu pola — scena → temat → ref operacji', () => {
   for (const { nazwa, enm } of SIECI) {
-    for (const lod of LODY) {
-      it(`${nazwa} LOD ${lod}: A — aparat pola wraca z refu operacji jako ⟨pole, SymbolId⟩`, () => {
-        const pola = trafieniaSymboli(enm, lod).filter((t) => t.kotwica === 'pole');
-        for (const t of pola) {
-          expect(t.symbolAparatu).toBe(t.symbolId);
-          expect(rozbierzIdentyfikatorAparatu(t.refOperacji)).toEqual({ bayRef: t.modelRef, symbolId: t.symbolId });
-        }
-      });
+    it(`${nazwa}: A — aparat pola wraca z refu operacji jako ⟨pole, SymbolId⟩`, () => {
+      const pola = trafieniaSymboli(enm).filter((t) => t.kotwica === 'pole');
+      for (const t of pola) {
+        expect(t.symbolAparatu).toBe(t.symbolId);
+        expect(rozbierzIdentyfikatorAparatu(t.refOperacji)).toEqual({ bayRef: t.modelRef, symbolId: t.symbolId });
+      }
+    });
 
-      it(`${nazwa} LOD ${lod}: B — temat poza polem nie niesie rodzaju aparatu`, () => {
-        const inne = trafieniaSymboli(enm, lod).filter((t) => t.kotwica !== null && t.kotwica !== 'pole');
-        for (const t of inne) {
-          expect(t.symbolAparatu).toBeUndefined();
-          expect(t.refOperacji).toBe(t.modelRef);
-        }
-      });
-    }
+    it(`${nazwa}: B — temat poza polem nie niesie rodzaju aparatu`, () => {
+      const inne = trafieniaSymboli(enm).filter((t) => t.kotwica !== null && t.kotwica !== 'pole');
+      for (const t of inne) {
+        expect(t.symbolAparatu).toBeUndefined();
+        expect(t.refOperacji).toBe(t.modelRef);
+      }
+    });
 
     // Iloczyn {sieć z rekordami głowicy, sieć bez} — głowica na kanwie wyłącznie z rekordu
     // aparatu pola (GEOMETRIA-STACJI §0 pkt 4: zero symboli z domysłu gramatyki ról).
-    it(`${nazwa} LOD 2: C — głowica na scenie ⇔ rekord głowicy w polu; każda kotwiczy się na polu`, () => {
-      const glowice = trafieniaSymboli(enm, 2).filter((t) => t.symbolId === 'cableHead');
+    it(`${nazwa}: C — głowica na scenie ⇔ rekord głowicy w polu; każda kotwiczy się na polu`, () => {
+      const glowice = trafieniaSymboli(enm).filter((t) => t.symbolId === 'cableHead');
       expect(glowice.length > 0).toBe(rekordyGlowic(enm) > 0);
       for (const t of glowice) {
         expect(t.kotwica).toBe('pole');

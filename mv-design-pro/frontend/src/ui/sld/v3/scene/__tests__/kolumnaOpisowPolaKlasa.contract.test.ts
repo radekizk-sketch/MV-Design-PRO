@@ -10,23 +10,22 @@
  * Iloczyn cech: rodzaj pola {GPZ z powiązaniami obwodów wtórnych (QET, Z.10), GPZ bez powiązań
  * (symbole kanoniczne), pole źródła OZE w GPZ, pole toru transformatora GPZ (wieża), pole
  * liniowe stacji SN, sprzęgło stacji, pole transformatorowe stacji, pole źródła OZE stacji}
- * × LOD {0, 1, 2} × funkcje EAZ {są, brak} × przekładniki {są, brak}.
+ * × funkcje EAZ {są, brak} × przekładniki {są, brak} (jedna scena — karta SLD-SKALA-I-NAWIGACJA R1).
  *
  * Wyrocznie (niezależne od kompozytora — oczekiwania z rekordów modelu ENM, geometria ze sceny):
- *  (A) blok zabezpieczeń pola: dokładnie jeden na LOD1/LOD2, gdy pole ma funkcje EAZ, zero
+ *  (A) blok zabezpieczeń pola: dokładnie jeden, gdy pole ma funkcje EAZ, zero
  *      w każdym innym przypadku;
  *  (B) każdy aparat pola z oznaczeniem w rekordzie (`designation`) ma na rysunku oznaczenie
  *      w kolumnie oznaczeń (napis `#etykieta-aparatu-` / `#apparatus-id-` powiązany z symbolem
  *      aparatu przez `symbolOpisu`, tekst kończy się oznaczeniem rekordu — pole GPZ dokłada
- *      numer pola, IEC 81346-1): LOD2 — każdy aparat, LOD1 — przekładniki (odbiór B-02
- *      2026-11-04 pkt 6), LOD0 — żaden;
- *  (C) opisy przekładników (tabliczki, montaż VT) wyłącznie na LOD2, wyłącznie przy symbolach
+ *      numer pola, IEC 81346-1) — każdy aparat;
+ *  (C) opisy przekładników (tabliczki, montaż VT) wyłącznie przy symbolach
  *      przekładników pola; pole bez przekładników — żadnego;
  *  (D) ramka bloku stoi na prawo od kolumn opisów (lewa krawędź ramki ≥ prawa krawędź każdego
  *      opisu pola);
  *  (E) wyrocznie kolumn i opisów (`naruszeniaKolumnOpisow`, `naruszeniaOpisowPola`,
  *      `naruszeniaKodowRamki`) — zero naruszeń w polu.
- * Pokrycie przypięte: w każdym rodzaju pola przypadek LOD2 z EAZ i przekładnikami ma blok,
+ * Pokrycie przypięte: w każdym rodzaju pola przypadek z EAZ i przekładnikami ma blok,
  * oznaczenie w kolumnie i oznaczenie przekładnika; tabliczki przekładników — w rodzajach, których
  * fikstura niesie przekładnię w danych. Iniekcje na realnej scenie każdego rodzaju pola: blok
  * zdjęty → (A); oznaczenia zdjęte → (B); oznaczenie przeniesione za tor → (E).
@@ -36,7 +35,6 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { ramkaBlokuSymbolu } from '../../symbols/blokZabezpieczen';
 import { SYMBOL_DEFS } from '../../symbols/defs';
-import { RODZAJE_PRZEKLADNIKOW_OD_LOD1 } from '../../compose/kolumnaOpisowPola';
 import { buildSceneV3, type SceneV3 } from '../buildScene';
 import {
   bezPrzekladnikow,
@@ -61,7 +59,10 @@ import {
 
 /** Kody funkcji EAZ ze słownika (`funkcje_eaz.py`). */
 const KODY_EAZ = ['50', '51', '51N'] as const;
-const LODY = [0, 1, 2] as const;
+/** Rodzaje przekładników pola z oznaczeniem (T1, T2, T3) — dawny `RODZAJE_PRZEKLADNIKOW_OD_LOD1`
+ *  kompozytora (reguła „oznaczenia przekładników od L1"); jedna scena nie ma poziomu, więc
+ *  zbiór zostaje wyłącznie jako warunek wstępny pokrycia w teście. */
+const PRZEKLADNIKI_Z_OZNACZENIEM: ReadonlySet<string> = new Set(['CT', 'VT', 'CORE_BALANCE_CT']);
 
 const RODZAJE: readonly (readonly [string, (kody: readonly string[]) => PrzypadekPola, { readonly tabliczki: boolean; readonly przekladnik: boolean }])[] = [
   ['GPZ z powiązaniami obwodów wtórnych', (k) => poleGpz(Z10, zasilane(Z10), k), { tabliczki: true, przekladnik: true }],
@@ -96,12 +97,11 @@ const takiSam = (a: { x: number; y: number; width: number; height: number }, b: 
 /** Naruszenia (A)–(E) dla pola przypadku na scenie. */
 function naruszenia(p: Przypadek, scena: SceneV3): string[] {
   const n: string[] = [];
-  const lod = scena.meta.lod;
   const bay = (p.enm.bays ?? []).find((b) => b.ref_id === p.bayRef)!;
   const rekordy = new Map((bay.primary_devices ?? []).map((d) => [d.device_ref, d] as const));
   const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === p.bayRef);
   // (A)
-  const oczekiwaneBloki = lod > 0 && p.eaz ? 1 : 0;
+  const oczekiwaneBloki = p.eaz ? 1 : 0;
   if (bloki.length !== oczekiwaneBloki) n.push(`(A) ${bloki.length} bloków zabezpieczeń, oczekiwano ${oczekiwaneBloki}`);
   const aparaty = scena.symbols.filter((s) => s.meta?.ownerRef === p.bayRef && s.symbolId !== 'protectionRelay' && s.meta?.deviceRef != null);
   const opisy = scena.labels.filter((l) => l.ownerRef.startsWith(`${p.bayRef}#`));
@@ -111,17 +111,15 @@ function naruszenia(p: Przypadek, scena: SceneV3): string[] {
     const rekord = rekordy.get(s.meta!.deviceRef!);
     const oznaczenie = rekord?.designation?.trim();
     if (!rekord || !oznaczenie) continue;
-    const widoczne = lod === 2 || (lod === 1 && RODZAJE_PRZEKLADNIKOW_OD_LOD1.has(rekord.kind));
     const wKolumnie = oznaczenia.filter((l) => l.symbolOpisu && takiSam(l.symbolOpisu, prostokat(s)));
-    if (widoczne && (wKolumnie.length !== 1 || !wKolumnie[0].text.endsWith(oznaczenie))) {
-      n.push(`(B) LOD${lod}: aparat ${oznaczenie} (${rekord.kind}) — ${wKolumnie.length} oznaczeń w kolumnie (${wKolumnie.map((l) => l.text).join(', ')})`);
+    if (wKolumnie.length !== 1 || !wKolumnie[0].text.endsWith(oznaczenie)) {
+      n.push(`(B): aparat ${oznaczenie} (${rekord.kind}) — ${wKolumnie.length} oznaczeń w kolumnie (${wKolumnie.map((l) => l.text).join(', ')})`);
     }
-    if (!widoczne && wKolumnie.length > 0) n.push(`(B) LOD${lod}: oznaczenie ${oznaczenie} (${rekord.kind}) poza swoim poziomem szczegółu`);
   }
   // (C)
   const przekladnie = opisy.filter((l) => OPIS_PRZEKLADNIKA.test(l.ownerRef));
-  if ((lod < 2 || !p.przekladniki) && przekladnie.length > 0) {
-    n.push(`(C) LOD${lod}, przekładniki ${p.przekladniki ? 'są' : 'brak'}: ${przekladnie.length} opisów przekładników`);
+  if (!p.przekladniki && przekladnie.length > 0) {
+    n.push(`(C), przekładniki ${p.przekladniki ? 'są' : 'brak'}: ${przekladnie.length} opisów przekładników`);
   }
   for (const l of przekladnie) {
     const s = aparaty.find((a) => l.symbolOpisu && takiSam(l.symbolOpisu, prostokat(a)));
@@ -141,13 +139,13 @@ function naruszenia(p: Przypadek, scena: SceneV3): string[] {
   return n;
 }
 
-describe('klasa wzorca pola — rodzaj pola × LOD × funkcje EAZ × przekładniki', () => {
+describe('klasa wzorca pola — rodzaj pola × funkcje EAZ × przekładniki', () => {
   for (const [rodzaj, fabryka] of RODZAJE) {
     for (const eaz of [true, false]) {
       for (const przekladniki of [true, false]) {
-        it(`${rodzaj} · EAZ ${eaz ? 'są' : 'brak'} · przekładniki ${przekladniki ? 'są' : 'brak'} · LOD 0/1/2`, () => {
+        it(`${rodzaj} · EAZ ${eaz ? 'są' : 'brak'} · przekładniki ${przekladniki ? 'są' : 'brak'}`, () => {
           const p = przypadek(fabryka, eaz, przekladniki);
-          for (const lod of LODY) expect(naruszenia(p, buildSceneV3(p.enm, lod)), `LOD${lod}`).toEqual([]);
+          expect(naruszenia(p, buildSceneV3(p.enm))).toEqual([]);
         });
       }
     }
@@ -156,18 +154,16 @@ describe('klasa wzorca pola — rodzaj pola × LOD × funkcje EAZ × przekładni
 
 describe('pokrycie przypięte — każdy rodzaj pola ma blok i kolumnę opisów (zero pustych przejść)', () => {
   for (const [rodzaj, fabryka, { tabliczki, przekladnik }] of RODZAJE) {
-    it(`${rodzaj}: LOD2 — blok, oznaczenia aparatów${przekladnik ? ', oznaczenie przekładnika' : ''}${tabliczki ? ', tabliczka' : ''}; LOD1 — oznaczenia przekładników`, () => {
+    it(`${rodzaj}: blok, oznaczenia aparatów${przekladnik ? ', oznaczenie przekładnika' : ''}${tabliczki ? ', tabliczka' : ''}`, () => {
       const p = przypadek(fabryka, true, true);
-      const l2 = buildSceneV3(p.enm, 2);
+      const l2 = buildSceneV3(p.enm);
       const kolumny = kolumnyOpisowPol(l2).get(p.bayRef);
       expect(l2.symbols.filter((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === p.bayRef)).toHaveLength(1);
       expect(kolumny?.oznaczenia.length ?? 0).toBeGreaterThanOrEqual(3);
       const bay = (p.enm.bays ?? []).find((b) => b.ref_id === p.bayRef)!;
-      const przekladnikiPola = (bay.primary_devices ?? []).filter((d) => RODZAJE_PRZEKLADNIKOW_OD_LOD1.has(d.kind) && d.designation);
+      const przekladnikiPola = (bay.primary_devices ?? []).filter((d) => PRZEKLADNIKI_Z_OZNACZENIEM.has(d.kind) && d.designation);
       expect(przekladnikiPola.length > 0).toBe(przekladnik);
       if (tabliczki) expect(kolumny?.przekladnie.length ?? 0).toBeGreaterThan(0);
-      const l1 = kolumnyOpisowPol(buildSceneV3(p.enm, 1)).get(p.bayRef);
-      expect(l1?.oznaczenia.length ?? 0).toBe(przekladnikiPola.length);
     });
   }
 });
@@ -175,7 +171,7 @@ describe('pokrycie przypięte — każdy rodzaj pola ma blok i kolumnę opisów 
 describe('wyrocznie klasy gryzą — iniekcje na realnej scenie każdego rodzaju pola', () => {
   for (const [rodzaj, fabryka] of RODZAJE) {
     const p = przypadek(fabryka, true, true);
-    const scena = buildSceneV3(p.enm, 2);
+    const scena = buildSceneV3(p.enm);
     it(`${rodzaj}: scena wejściowa czysta; blok zdjęty → (A); oznaczenia zdjęte → (B); oznaczenie za torem → (E)`, () => {
       expect(naruszenia(p, scena)).toEqual([]);
       const bezBloku: SceneV3 = { ...scena, symbols: scena.symbols.filter((s) => !(s.symbolId === 'protectionRelay' && s.meta?.ownerRef === p.bayRef)) };

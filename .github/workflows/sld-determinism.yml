@@ -20,12 +20,15 @@ jobs:
       - name: Run SLD v2 determinism guards
         run: python mv-design-pro/scripts/sld_determinism_guards.py
 
-      # K11-B (dyrektywa właściciela z oceny ekranu 2/10, wymóg 3): LOD nie
-      # może ukryć toru przepływu energii ani aparatów ciągłości — asercja
-      # STATYCZNA na kontrakcie klas toru prądowego (poziom (b) strażnika;
-      # poziom (a) to test kontraktowy uruchamiany w jobie vitest niżej).
-      - name: Run SLD LOD continuity guard (K11-B)
-        run: python mv-design-pro/scripts/sld_lod_continuity_guard.py
+      # Karta SLD-SKALA-I-NAWIGACJA (R1/R3/R9): jedna scena niezależna od skali —
+      # budowa sceny wyłącznie z migawki, zero identyfikatorów dawnych poziomów
+      # szczegółu, kontrakt klas toru prądowego (wymóg 3 oceny ekranu 2/10); test
+      # kontraktowy ciągłości toru uruchamiany w jobie vitest niżej.
+      - name: Run SLD scale-independent scene guard (SLD-SKALA-I-NAWIGACJA)
+        run: python mv-design-pro/scripts/sld_scena_niezalezna_od_skali_guard.py
+
+      # Samotest z wstrzykniętymi regresjami: `scripts/test_sld_scena_niezalezna_od_skali_guard.py`
+      # (job pytest `../scripts` w python-tests.yml).
 
   sld-contract-tests:
     name: SLD Contract Tests (Vitest)
@@ -53,10 +56,6 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v2/__tests__/ViewportController.test.ts --reporter=verbose
 
-      - name: Run LodPolicy contract tests
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/v2/__tests__/LodPolicy.test.ts --reporter=verbose
-
       - name: Run port-anchored geometry substrate tests (live render path)
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts --reporter=verbose
@@ -70,30 +69,17 @@ jobs:
         run: npx vitest run src/ui/sld/v2/core/__tests__/ports.test.ts --reporter=verbose
 
       # K11-B: wyrocznia DYNAMICZNA ciągłości toru na sieci referencyjnej —
-      # dla KAŻDEGO LOD tor od źródła przez magistralę do każdej stacji jest
-      # wyrysowany (z sekcją regresji wstrzykniętej, która dowodzi, że gryzie).
-      - name: Run SLD v3 LOD continuity contract tests (K11-B)
+      # tor od źródła przez magistralę do każdej stacji jest wyrysowany w jednej
+      # scenie (z sekcją regresji wstrzykniętej, która dowodzi, że gryzie).
+      - name: Run SLD v3 track continuity contract tests (K11-B)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/v3/scene/__tests__/lodContinuity.test.ts --reporter=verbose
+        run: npx vitest run src/ui/sld/v3/scene/__tests__/ciagloscToru.test.ts --reporter=verbose
 
-      # K11-B: minimalny rozmiar renderowania symboli — żaden poziom szczegółu
-      # nie jest aktywny przy skali, przy której jego symbole schodzą poniżej
-      # progu rozpoznawalności.
+      # K11-B: minimalny rozmiar symboli i niezależność sceny od skali — żaden
+      # napis poniżej progu czytelności w całym zakresie skali kamery.
       - name: Run SLD v3 minimum symbol size contract tests (K11-B)
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v3/canvas/__tests__/minSymbolSize.contract.test.ts --reporter=verbose
-
-      # KD-5: zwinięcie bloku GPZ na poziomie przeglądowym L0 — jeden symbol,
-      # zero geometrii pól wewnętrznych, zachowana ciągłość toru i kotwica
-      # świata; z sekcją regresji wstrzykniętej (kontrakt musi gryźć).
-      - name: Run SLD v3 collapsed GPZ block contract tests (KD-5)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/v3/scene/__tests__/buildScene.gpzCollapsed.test.ts --reporter=verbose
-
-      # KD-5: rozwinięcie bloku klikiem — próg LOD i realna ścieżka kliku.
-      - name: Run SLD v3 collapsed GPZ expand contract tests (KD-5)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/v3/canvas/__tests__/gpzCollapsedExpand.test.tsx --reporter=verbose
 
       # KD-7: kontrakt kadru — cała rysowana treść (symbole, tory i PODPISY)
       # mieści się w kadrze z pełnym marginesem fitu, a cel fitu żyje w świecie
@@ -136,9 +122,8 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v3/layout/__tests__/sheetRows.test.ts --reporter=verbose
 
-      # S9-1 kryteria odbioru na scenie: proporcja arkusza ≤ 2 : 1 na KAŻDYM
-      # poziomie szczegółu (C-1), auto-fit mieści 100 % symboli (C-2), stacja w
-      # tym samym wierszu na L0/L1/L2, stabilność wierszy przy edycji.
+      # S9-1 kryteria odbioru na scenie: proporcja arkusza ≤ 2 : 1 (C-1), auto-fit
+      # mieści 100 % symboli (C-2), stabilność wierszy przy edycji.
       - name: Run SLD v3 sheet-break scene contract tests (S9-1)
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts --reporter=verbose
@@ -148,8 +133,7 @@ jobs:
         run: npm run accept:sld-v3
 
       # W2c: scena produkcyjna (fixtura ENM toru DER-SN -> buildSceneV3) i plan
-      # etykiet kanwy przy kazdej skali, przy ktorej LOD jest aktywny w kamerze
-      # (LABEL_PLAN_PRODUCTION_SCALES). FAIL dla kolizji, porzuconej tozsamosci,
+      # etykiet kanwy w skalach produkcyjnych kamery. FAIL dla kolizji, porzuconej tozsamosci,
       # napisu poza arkuszem i braku identyfikatora aparatu bocznego na L2.
       - name: Run W2c label-plan evidence (PV + BESS + TR)
         working-directory: mv-design-pro/frontend

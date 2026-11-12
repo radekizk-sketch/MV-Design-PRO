@@ -67,8 +67,6 @@ export interface SheetTitleBlockInput {
   readonly atrybucjaSymboli?: string | null;
   /** Proporcja kadru arkusza (szerokość/wysokość) — mierzona, nie deklarowana. */
   readonly sheetAspect: number;
-  /** Etykieta poziomu szczegółu (`SCENE_LOD_LABELS_PL`). */
-  readonly lodLabelPl?: string | null;
 }
 
 /** Docelowy format arkusza rysunku — ten sam, w który celuje łamanie arkusza
@@ -112,7 +110,6 @@ export function buildSheetTitleBlockData(input: SheetTitleBlockInput): SheetTitl
       },
       { labelPl: 'Skala', value: 'bez skali — schemat jednokreskowy' },
       { labelPl: 'Liczba stacji', value: String(input.stationCount) },
-      { labelPl: 'Poziom szczegółu', value: input.lodLabelPl?.trim() ? input.lodLabelPl.trim() : null },
       ...(input.atrybucjaSymboli ? [{ labelPl: 'Symbole', value: input.atrybucjaSymboli }] : []),
     ],
   };

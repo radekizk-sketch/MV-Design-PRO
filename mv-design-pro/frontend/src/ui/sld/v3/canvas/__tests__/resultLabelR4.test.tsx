@@ -21,6 +21,8 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useAppStateStore } from '../../../../app-state';
 import { SldCanvasV3, layoutResultLabels } from '../SldCanvasV3';
+import { SKALA_KOMFORTU_CZYTANIA } from '../camera';
+import { powiekszKolkiemDoSkali } from './kameraTestowa';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import {
   buildResultLabelsFromScene,
@@ -42,7 +44,7 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 
 const CANVAS_W = 1024;
 const CANVAS_H = 640;
-const sceneL2 = buildSceneV3(enm, 2);
+const sceneL2 = buildSceneV3(enm);
 const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 const branchRef = sceneL2.segments.find(
@@ -102,7 +104,7 @@ function openFilterPanel(): void {
 describe('R4 — tryb porównawczy: bramkowanie dostępności (wym. 10)', () => {
   it('brak poprzedniego biegu ⇒ tryb zablokowany z wyjaśnieniem', () => {
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(72.5, 'r1'));
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     openFilterPanel();
     const box = screen.getByTestId('sld-v3-result-comparison');
     expect(box.getAttribute('data-comparison-available')).toBe('false');
@@ -113,7 +115,10 @@ describe('R4 — tryb porównawczy: bramkowanie dostępności (wym. 10)', () => 
   it('drugi bieg TEJ analizy ⇒ tryb dostępny; wybór Δ ⇒ etykieta niesie „Δ" + trend', () => {
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(68.0, 'r1'));
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(72.5, 'r2'));
-    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
+    // Etykiety wyników są rysowane przy czytelnym piśmie (klasa `wyniki`, karta
+    // SLD-SKALA-I-NAWIGACJA R3) — powiększenie natywnym kółkiem do skali czytania.
+    powiekszKolkiemDoSkali(container, SKALA_KOMFORTU_CZYTANIA);
     openFilterPanel();
     expect(screen.getByTestId('sld-v3-result-comparison').getAttribute('data-comparison-available')).toBe('true');
     fireEvent.click(screen.getByTestId('sld-v3-result-comparison-mode-delta'));
@@ -129,7 +134,7 @@ describe('R4 — tryb porównawczy: bramkowanie dostępności (wym. 10)', () => 
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(72.5, 'r2'));
     // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
     zasiejBiegiNieaktualne([{ id: 'r2', analysisType: 'LOAD_FLOW' }]);
-    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={CANVAS_W} height={CANVAS_H} />);
     openFilterPanel();
     expect(screen.getByTestId('sld-v3-result-comparison').getAttribute('data-comparison-available')).toBe('false');
     expect(screen.getByTestId('sld-v3-result-comparison-blocked').textContent).toContain('nieaktualne');
@@ -162,7 +167,8 @@ describe('R4 — przełączanie analiz na WSPÓLNYM rejestrze (wym. 13)', () => 
 describe('R4 — eksport warstwy wynikowej bez utraty pozycji (wym. 18)', () => {
   it('eksport SVG (ta sama serializacja co ekran) zawiera etykiety wynikowe na POZYCJACH ekranowych', async () => {
     useRawResultOverlayStore.getState().setPayload(branchLoadingPayload(72.5, 'r1'));
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    powiekszKolkiemDoSkali(container, SKALA_KOMFORTU_CZYTANIA);
 
     // Etykieta obecna na EKRANIE — pobierz jej tekst i pozycję (x/y) z żywego DOM.
     const onScreenLine = container.querySelector('[data-testid^="sld-v3-result-line-"]') as SVGTextElement | null;
@@ -208,8 +214,8 @@ describe('R4 — inwariant geometrii przy trybie porównawczym (§6)', () => {
 
     const overlayBase: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: base };
     const overlayCmp: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: compared };
-    const a = render(<SldCanvasV3 snapshot={enm} width={CANVAS_W} height={CANVAS_H} lodOverride={2} overlay={overlayBase} />);
-    const b = render(<SldCanvasV3 snapshot={enm} width={CANVAS_W} height={CANVAS_H} lodOverride={2} overlay={overlayCmp} />);
+    const a = render(<SldCanvasV3 snapshot={enm} width={CANVAS_W} height={CANVAS_H} overlay={overlayBase} />);
+    const b = render(<SldCanvasV3 snapshot={enm} width={CANVAS_W} height={CANVAS_H} overlay={overlayCmp} />);
     for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
       expect(b.container.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
         a.container.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
@@ -217,7 +223,7 @@ describe('R4 — inwariant geometrii przy trybie porównawczym (§6)', () => {
     }
     // Warstwa wynikowa MUSI się różnić (dowód, że test nie jest pusty): tryb
     // porównawczy dokłada „Δ" do etykiety, bazowy nie.
-    const layout = layoutResultLabels(sceneL2, compared, [], 2);
+    const layout = layoutResultLabels(sceneL2, compared, [], true);
     expect(layout.placements.some((p) => p.lines.some((l) => l.text.includes('Δ')))).toBe(true);
   });
 });

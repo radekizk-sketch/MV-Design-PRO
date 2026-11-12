@@ -29,7 +29,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/enm';
 import { rekordyAparatowPola, zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
-import { apparatusIdentifierGaps, buildSceneV3, type SceneLod } from '../buildScene';
+import { apparatusIdentifierGaps, buildSceneV3 } from '../buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const surowa = (
@@ -60,31 +60,29 @@ const enm = ((): EnergyNetworkModel => {
 })();
 
 describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-329)', () => {
-  for (const lod of [1, 2] as SceneLod[]) {
-    it(`L${lod}: scena niesie symbol przekładnika napięciowego pola pomiarowego`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const vt = scene.symbols.filter((s) => s.symbolId === 'voltageTransformer');
-      expect(vt.length).toBeGreaterThan(0);
-    });
-  }
+  it(`scena niesie symbol przekładnika napięciowego pola pomiarowego`, () => {
+    const scene = buildSceneV3(enm);
+    const vt = scene.symbols.filter((s) => s.symbolId === 'voltageTransformer');
+    expect(vt.length).toBeGreaterThan(0);
+  });
 
   // Oznaczniki aparatów żyją WYŁĄCZNIE na pełnym szczególe (kontrakt LOD —
   // na L1 wyrocznia liczy 0 etykiet dla N aparatów uprawnionych i to jest
   // stan projektowany, nie luka; pomiar: `apparatusIdentifierGaps` na L1
   // zgłasza rozjazd licznika dla KAŻDEJ kategorii, także Q/QE/T).
   it('L2: przekładnik ma oznacznik konwencji „TV1" (etykieta aparatu na scenie)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const tvLabels = scene.labels.filter((l) => l.text === 'TV1');
     expect(tvLabels.length).toBeGreaterThan(0);
   });
 
   it('L2: wyrocznia identyfikatorów aparatów nie zgłasza luk (VT jest aparatem uprawnionym)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     expect(apparatusIdentifierGaps(scene)).toEqual([]);
   });
 
   it('pole pomiarowe BEZ rekordu przekładnika (migawka z operacji): wyłącznik z gałęzi pola, zero przekładnika z konwencji', () => {
-    const scene = buildSceneV3(surowa, 2);
+    const scene = buildSceneV3(surowa);
     const polePomiarowe = surowa.bays.find((b) => b.bay_role === 'MEASUREMENT')!;
     const symbolePola = scene.symbols.filter((s) => s.meta?.ownerRef === polePomiarowe.ref_id);
     expect(symbolePola.map((s) => s.symbolId)).toEqual(['breaker']);
@@ -92,8 +90,8 @@ describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-32
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {
-    const a = JSON.stringify(buildSceneV3(enm, 2));
-    const b = JSON.stringify(buildSceneV3(enm, 2));
+    const a = JSON.stringify(buildSceneV3(enm));
+    const b = JSON.stringify(buildSceneV3(enm));
     expect(a).toBe(b);
   });
 
@@ -105,7 +103,7 @@ describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-32
   // ranking ról (liniowe→TR→…→POMIAROWE) spychał pomiar na koniec szyny —
   // rysunek kłamał o miejscu układu pomiarowego.
   it('L2: pole pomiarowe leży PRZED polem transformatorowym (kolejność z danych, nie z rankingu ról)', () => {
-    const scene = buildSceneV3(enm, 2);
+    const scene = buildSceneV3(enm);
     const vt = scene.symbols.find((s) => s.symbolId === 'voltageTransformer');
     const trStacji = scene.symbols.find(
       (s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith('stn/'),

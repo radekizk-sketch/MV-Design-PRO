@@ -25,7 +25,6 @@ import {
   sheetRowStationIds,
   allSheetContinuationsMarked,
   layoutMetricsReport,
-  type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import { interiorCrossings } from '../crossings';
@@ -60,8 +59,6 @@ const dlugiCiag: EnergyNetworkModel = (() => {
   return enm;
 })();
 
-const LODS: readonly SceneLod[] = [0, 1, 2];
-
 /** Kanwa z pomiaru audytu (§2.1): 1322 × 696 px. */
 const KANWA = { width: 1322, height: 696 } as const;
 
@@ -74,40 +71,36 @@ function symbolRects(scene: SceneV3): readonly { x: number; y: number; width: nu
 
 describe('S9-1 — proporcja arkusza (kryterium odbioru C-1)', () => {
   it('sieć referencyjna: ciąg jest złamany na wiersze arkusza', () => {
-    const rows = sheetRowStationIds(buildSceneV3(siecReferencyjna, 2));
+    const rows = sheetRowStationIds(buildSceneV3(siecReferencyjna));
     expect(rows.length).toBeGreaterThan(1);
   });
 
   it(`sieć referencyjna: proporcja bboxa ≤ ${SHEET_MAX_ASPECT} : 1 na KAŻDYM poziomie szczegółu`, () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(siecReferencyjna, lod);
-      const aspect = sheetAspectRatio(scene);
-      expect(aspect, `LOD ${lod}: bbox ${scene.bbox.width}×${scene.bbox.height}`).toBeGreaterThan(0);
-      expect(aspect, `LOD ${lod}`).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
-      // Symetrycznie: arkusz nie może być też „taśmą pionową".
-      expect(1 / aspect, `LOD ${lod}`).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
-    }
+    const scene = buildSceneV3(siecReferencyjna);
+    const aspect = sheetAspectRatio(scene);
+    expect(aspect, `bbox ${scene.bbox.width}×${scene.bbox.height}`).toBeGreaterThan(0);
+    expect(aspect, ``).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
+    // Symetrycznie: arkusz nie może być też „taśmą pionową".
+    expect(1 / aspect, ``).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
   });
 
-  it(`DŁUGI CIĄG (kształt z audytu, ≥51 stacji magistrali): proporcja ≤ ${SHEET_MAX_ASPECT} : 1 na KAŻDYM LOD`, () => {
-    const stacjeCiagu = buildSceneV3(dlugiCiag, 2).meta.mainTrunkStationIds.length;
+  it(`DŁUGI CIĄG (kształt z audytu, ≥51 stacji magistrali): proporcja ≤ ${SHEET_MAX_ASPECT} : 1`, () => {
+    const stacjeCiagu = buildSceneV3(dlugiCiag).meta.mainTrunkStationIds.length;
     expect(stacjeCiagu, 'fixtura musi mieć skalę sieci z audytu').toBeGreaterThanOrEqual(51);
-    for (const lod of LODS) {
-      const scene = buildSceneV3(dlugiCiag, lod);
-      const aspect = sheetAspectRatio(scene);
-      expect(
-        aspect,
-        `LOD ${lod}: bbox ${scene.bbox.width}×${scene.bbox.height}, wierszy=${sheetRowStationIds(scene).length}`,
-      ).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
-      expect(1 / aspect, `LOD ${lod}`).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
-    }
+    const scene = buildSceneV3(dlugiCiag);
+    const aspect = sheetAspectRatio(scene);
+    expect(
+      aspect,
+      `bbox ${scene.bbox.width}×${scene.bbox.height}, wierszy=${sheetRowStationIds(scene).length}`,
+    ).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
+    expect(1 / aspect, ``).toBeLessThanOrEqual(SHEET_MAX_ASPECT);
   });
 
   it('WYROCZNIA GRYZIE: gdyby ciąg NIE był łamany, proporcja przekroczyłaby próg (dowód, że test nie jest tautologią)', () => {
     // Rekonstrukcja „jednego pasa": szerokość = suma szerokości wierszy,
     // wysokość = wysokość NAJWYŻSZEGO wiersza (dokładnie ten kształt, który
     // dawał układ sprzed S9-1). Liczona z REALNEJ sceny, nie z założeń.
-    const scene = buildSceneV3(dlugiCiag, 2);
+    const scene = buildSceneV3(dlugiCiag);
     const rows = sheetRowStationIds(scene);
     expect(rows.length).toBeGreaterThan(1);
     const szerokoscPasa = scene.bbox.width * rows.length;
@@ -117,25 +110,23 @@ describe('S9-1 — proporcja arkusza (kryterium odbioru C-1)', () => {
 });
 
 describe('S9-1 — auto-fit mieści 100 % symboli (kryterium odbioru C-2)', () => {
-  for (const lod of LODS) {
-    it(`LOD ${lod}: po dopasowaniu widoku KAŻDY symbol sieci referencyjnej leży w kanwie`, () => {
-      const scene = buildSceneV3(siecReferencyjna, lod);
-      const { transform } = computeInitialCameraState(boundingBoxOfRect(scene.bbox), KANWA);
-      const lewyGorny = screenToWorld({ x: 0, y: 0 }, transform);
-      const prawyDolny = screenToWorld({ x: KANWA.width, y: KANWA.height }, transform);
-      const poza = symbolRects(scene).filter(
-        (r) =>
-          r.x < lewyGorny.x ||
-          r.y < lewyGorny.y ||
-          r.x + r.width > prawyDolny.x ||
-          r.y + r.height > prawyDolny.y,
-      );
-      expect(poza.length, `${poza.length} z ${scene.symbols.length} symboli poza kanwą`).toBe(0);
-    });
-  }
+  it(`po dopasowaniu widoku KAŻDY symbol sieci referencyjnej leży w kanwie`, () => {
+    const scene = buildSceneV3(siecReferencyjna);
+    const { transform } = computeInitialCameraState(boundingBoxOfRect(scene.bbox), KANWA);
+    const lewyGorny = screenToWorld({ x: 0, y: 0 }, transform);
+    const prawyDolny = screenToWorld({ x: KANWA.width, y: KANWA.height }, transform);
+    const poza = symbolRects(scene).filter(
+      (r) =>
+        r.x < lewyGorny.x ||
+        r.y < lewyGorny.y ||
+        r.x + r.width > prawyDolny.x ||
+        r.y + r.height > prawyDolny.y,
+    );
+    expect(poza.length, `${poza.length} z ${scene.symbols.length} symboli poza kanwą`).toBe(0);
+  });
 
   it('DŁUGI CIĄG: auto-fit mieści 100 % symboli (C-2 był SKUTKIEM proporcji — dolne ograniczenie skali kamery)', () => {
-    const scene = buildSceneV3(dlugiCiag, 0);
+    const scene = buildSceneV3(dlugiCiag);
     const { transform } = computeInitialCameraState(boundingBoxOfRect(scene.bbox), KANWA);
     const lewyGorny = screenToWorld({ x: 0, y: 0 }, transform);
     const prawyDolny = screenToWorld({ x: KANWA.width, y: KANWA.height }, transform);
@@ -146,28 +137,25 @@ describe('S9-1 — auto-fit mieści 100 % symboli (kryterium odbioru C-2)', () =
   });
 });
 
-describe('S9-1 — spójność łamania między poziomami szczegółu', () => {
-  it('stacja należy do TEGO SAMEGO wiersza arkusza na L0, L1 i L2 (zoom nie przemeblowuje arkusza)', () => {
+describe('S9-1 — łamanie arkusza w jednej scenie', () => {
+  // Dawny test „stacja w TYM SAMYM wierszu arkusza na L0, L1 i L2" usunięty: jedna scena (karta
+  // SLD-SKALA-I-NAWIGACJA R1) — zoom nie ma czego przemeblować; stałość pilnuje determinizm.
+  it('przydział stacji do wierszy arkusza jest deterministyczny (dwie budowy)', () => {
     for (const enm of [siecReferencyjna, dlugiCiag]) {
-      const [r0, r1, r2] = LODS.map((lod) => sheetRowStationIds(buildSceneV3(enm, lod)));
-      expect(r1).toEqual(r0);
-      expect(r2).toEqual(r0);
+      expect(sheetRowStationIds(buildSceneV3(enm))).toEqual(sheetRowStationIds(buildSceneV3(enm)));
     }
   });
 
-  it('liczba znaków ciągu dalszego jest ta sama na każdym LOD; odsyłacze tekstowe wyłącznie na pełnym szczególe', () => {
-    for (const lod of LODS) {
-      const scene = buildSceneV3(siecReferencyjna, lod);
-      expect(sheetContinuationGaps(scene), `LOD ${lod}`).toEqual([]);
-      expect(allSheetContinuationsMarked(scene)).toBe(true);
-      const odsylacze = scene.labels.filter((l) => l.ownerRef.includes('#sheet-continuation-'));
-      if (lod === 2) expect(odsylacze.length).toBe((sheetRowStationIds(scene).length - 1) * 2);
-      else expect(odsylacze.length).toBe(0);
-    }
+  it('znaki ciągu dalszego bez luk; odsyłacze tekstowe przy każdym złamaniu (dwa na złamanie)', () => {
+    const scene = buildSceneV3(siecReferencyjna);
+    expect(sheetContinuationGaps(scene), ``).toEqual([]);
+    expect(allSheetContinuationsMarked(scene)).toBe(true);
+    const odsylacze = scene.labels.filter((l) => l.ownerRef.includes('#sheet-continuation-'));
+    expect(odsylacze.length).toBe((sheetRowStationIds(scene).length - 1) * 2);
   });
 
   it('znak ciągu dalszego NIE jest torem: zero kresek na scenie bez złamania i brak wpływu na klasę tras', () => {
-    const scene = buildSceneV3(siecReferencyjna, 2);
+    const scene = buildSceneV3(siecReferencyjna);
     const kreski = scene.segments.filter((s) => s.meta?.kind === 'sheetContinuation');
     expect(kreski.length).toBe((sheetRowStationIds(scene).length - 1) * 4);
     // Marker nie niesie `elementKind` (klik nie otwiera inspektora) i nie ma
@@ -202,8 +190,8 @@ describe('S9-1 — stabilność wierszy arkusza przy edycji', () => {
   }
 
   it('wstawienie stacji w OSTATNIM wierszu nie zmienia geometrii wierszy wcześniejszych', () => {
-    const przed = buildSceneV3(siecReferencyjna, 2);
-    const po = buildSceneV3(appendUnitToTrunk(siecReferencyjna, jednostka, 's91stab'), 2);
+    const przed = buildSceneV3(siecReferencyjna);
+    const po = buildSceneV3(appendUnitToTrunk(siecReferencyjna, jednostka, 's91stab'));
     const wierszePrzed = sheetRowStationIds(przed);
     const wierszePo = sheetRowStationIds(po);
     const kPrzed = kotwice(przed);
@@ -268,61 +256,55 @@ describe('S9-1 — stabilność wierszy arkusza przy edycji', () => {
   });
 
   it('miara GRYZIE: ta sama sieć porównana sama ze sobą daje zero różnic (nie fałszywy dodatni)', () => {
-    const a = buildSceneV3(siecReferencyjna, 2);
-    const b = buildSceneV3(siecReferencyjna, 2);
+    const a = buildSceneV3(siecReferencyjna);
+    const b = buildSceneV3(siecReferencyjna);
     expect(kotwice(b)).toEqual(kotwice(a));
   });
 });
 
 describe('S9-1 — determinizm i brak regresji niezmienników', () => {
-  it('dwa biegi budowy dają BAJTOWO tę samą scenę (podpis symboli + tras + etykiet) na każdym LOD', () => {
+  it('dwa biegi budowy dają BAJTOWO tę samą scenę (podpis symboli + tras + etykiet)', () => {
     for (const enm of [siecReferencyjna, dlugiCiag]) {
-      for (const lod of LODS) {
-        expect(sceneSignature(buildSceneV3(enm, lod))).toBe(sceneSignature(buildSceneV3(enm, lod)));
-      }
+      expect(sceneSignature(buildSceneV3(enm))).toBe(sceneSignature(buildSceneV3(enm)));
     }
   });
 
-  it('DŁUGI CIĄG: zero-defekt (łącznik bez skrzyżowań, skrzyżowania z mostkiem, ortogonalność, kolizje etykiet, przecięcia poddrzew, niejednoznaczność) na każdym LOD', () => {
-    for (const lod of LODS) {
-      const scena = buildSceneV3(dlugiCiag, lod);
-      const m = layoutMetricsReport(scena);
-      // PRZYPIĘCIE DEKLARACJI z decyzji §2: „bieg powrotny jest z konstrukcji
-      // wolny od skrzyżowań". Bez tej asercji zdanie byłoby obietnicą bez
-      // testu — a przy 4 złamaniach arkusza łącznik przecina najwięcej
-      // potencjalnych torów ze wszystkich tras sceny. Łącznik = przęsło, które niesie
-      // znak ciągu dalszego (`#sheet-continuation-…`); żadne skrzyżowanie go nie dotyczy.
-      const laczniki = new Set(
-        scena.segments
-          .filter((s) => s.meta?.kind === 'sheetContinuation')
-          .map((s) => String(s.meta?.ownerRef ?? '').replace(/#sheet-continuation-.*$/, '')),
-      );
-      expect(laczniki.size, `LOD ${lod} złamania arkusza`).toBeGreaterThan(0);
-      expect(
-        interiorCrossings(scena.segments).filter((c) => laczniki.has(c.hOwnerRef ?? '') || laczniki.has(c.vOwnerRef ?? '')),
-        `LOD ${lod} skrzyżowania łącznika`,
-      ).toEqual([]);
-      // Rozstrzygnięcie S7-P2 (2026-10-30): pozostałe skrzyżowania kabli bez węzła modelu
-      // (zejścia odgałęzień sieci referencyjnej) rysują się mostkiem — warunek odbioru to
-      // zero skrzyżowań bez mostka i zero kropek bez węzła modelu, nie zero skrzyżowań.
-      expect(m.crossingWithoutBridgeCount, `LOD ${lod} skrzyżowania bez mostka`).toBe(0);
-      expect(m.junctionDotGapCount, `LOD ${lod} kropki bez węzła modelu`).toBe(0);
-      expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
-      expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
-      expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);
-      expect(m.ambiguousConnectionCount, `LOD ${lod} niejednoznaczność`).toBe(0);
-    }
+  it('DŁUGI CIĄG: zero-defekt (łącznik bez skrzyżowań, skrzyżowania z mostkiem, ortogonalność, kolizje etykiet, przecięcia poddrzew, niejednoznaczność)', () => {
+    const scena = buildSceneV3(dlugiCiag);
+    const m = layoutMetricsReport(scena);
+    // PRZYPIĘCIE DEKLARACJI z decyzji §2: „bieg powrotny jest z konstrukcji
+    // wolny od skrzyżowań". Bez tej asercji zdanie byłoby obietnicą bez
+    // testu — a przy 4 złamaniach arkusza łącznik przecina najwięcej
+    // potencjalnych torów ze wszystkich tras sceny. Łącznik = przęsło, które niesie
+    // znak ciągu dalszego (`#sheet-continuation-…`); żadne skrzyżowanie go nie dotyczy.
+    const laczniki = new Set(
+      scena.segments
+        .filter((s) => s.meta?.kind === 'sheetContinuation')
+        .map((s) => String(s.meta?.ownerRef ?? '').replace(/#sheet-continuation-.*$/, '')),
+    );
+    expect(laczniki.size, `złamania arkusza`).toBeGreaterThan(0);
+    expect(
+      interiorCrossings(scena.segments).filter((c) => laczniki.has(c.hOwnerRef ?? '') || laczniki.has(c.vOwnerRef ?? '')),
+      `skrzyżowania łącznika`,
+    ).toEqual([]);
+    // Rozstrzygnięcie S7-P2 (2026-10-30): pozostałe skrzyżowania kabli bez węzła modelu
+    // (zejścia odgałęzień sieci referencyjnej) rysują się mostkiem — warunek odbioru to
+    // zero skrzyżowań bez mostka i zero kropek bez węzła modelu, nie zero skrzyżowań.
+    expect(m.crossingWithoutBridgeCount, `skrzyżowania bez mostka`).toBe(0);
+    expect(m.junctionDotGapCount, `kropki bez węzła modelu`).toBe(0);
+    expect(m.nonOrthogonalSegmentCount, `ortogonalność`).toBe(0);
+    expect(m.labelCollisionCount, `kolizje etykiet`).toBe(0);
+    expect(m.subtreeIntersectionCount, `przecięcia poddrzew`).toBe(0);
+    expect(m.ambiguousConnectionCount, `niejednoznaczność`).toBe(0);
   });
 
-  it('SIEĆ REFERENCYJNA: zero-defekt na każdym LOD (ten sam zestaw miar, druga klasa topologii)', () => {
-    for (const lod of LODS) {
-      const m = layoutMetricsReport(buildSceneV3(siecReferencyjna, lod));
-      expect(m.crossingWithoutBridgeCount, `LOD ${lod} skrzyżowania bez mostka`).toBe(0);
-      expect(m.junctionDotGapCount, `LOD ${lod} kropki bez węzła modelu`).toBe(0);
-      expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
-      expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
-      expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);
-      expect(m.ambiguousConnectionCount, `LOD ${lod} niejednoznaczność`).toBe(0);
-    }
+  it('SIEĆ REFERENCYJNA: zero-defekt (ten sam zestaw miar, druga klasa topologii)', () => {
+    const m = layoutMetricsReport(buildSceneV3(siecReferencyjna));
+    expect(m.crossingWithoutBridgeCount, `skrzyżowania bez mostka`).toBe(0);
+    expect(m.junctionDotGapCount, `kropki bez węzła modelu`).toBe(0);
+    expect(m.nonOrthogonalSegmentCount, `ortogonalność`).toBe(0);
+    expect(m.labelCollisionCount, `kolizje etykiet`).toBe(0);
+    expect(m.subtreeIntersectionCount, `przecięcia poddrzew`).toBe(0);
+    expect(m.ambiguousConnectionCount, `niejednoznaczność`).toBe(0);
   });
 });

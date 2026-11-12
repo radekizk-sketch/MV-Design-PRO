@@ -63,7 +63,7 @@ describe('łącznik na torze przy narożniku trasy — przycięcie do portu glif
           const z = strona === 'od dołu' ? 1 : -1;
           const segA = odcinek('A', [P(0, 100 * z), P(0, 32 * z), P(200, 32 * z), P(200, ya * z)]);
           const segB = odcinek('B', [P(200, ya * z), P(200, -80 * z), P(400, -80 * z)]);
-          const wynik = elementyToru(siec(typ), [segA, segB], 0);
+          const wynik = elementyToru(siec(typ), [segA, segB]);
           expect(wynik.stopNotes).toEqual([]);
           expect(wynik.symbols).toHaveLength(1);
           const glif = wynik.symbols[0];

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, sceneObstacleRects, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import { appendUnitToTrunk, loadEnm } from '../src/ui/sld/v3/scene/__tests__/syntheticNetworks';
 import {
   boundingBoxOfRect,
@@ -51,7 +51,6 @@ function tuszMalowany(p: PlannedLabel) {
 
 interface Wiersz {
   readonly siec: string;
-  readonly lod: SceneLod;
   readonly skala: string;
   readonly v: number;
   readonly gora: number; readonly dol: number; readonly lewo: number; readonly prawo: number;
@@ -60,15 +59,13 @@ interface Wiersz {
 }
 
 function zmierz(nazwaSieci: string, enm: EnergyNetworkModel): Wiersz[] {
-  const sceny: Record<SceneLod, SceneV3> = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) };
-  const bboxy: Record<SceneLod, BoundingBox> = {
-    0: boundingBoxOfRect(sceny[0].bbox), 1: boundingBoxOfRect(sceny[1].bbox), 2: boundingBoxOfRect(sceny[2].bbox),
-  };
+  // Jedna scena niezależna od skali (karta SLD-SKALA-I-NAWIGACJA, R1).
+  const scene: SceneV3 = buildSceneV3(enm);
+  const bbox: BoundingBox = boundingBoxOfRect(scene.bbox);
   const out: Wiersz[] = [];
-  for (const lod of [0, 1, 2] as const) {
-    const scene = sceny[lod];
-    const cel = sceneBoxToCameraWorld(contentBoundingBoxOf(scene) ?? bboxy[lod]);
-    const fit = computeInitialCameraState(cel, KADR, bboxy, null, SLD_CANVAS_DOCK_INSETS).transform.scale;
+  {
+    const cel = sceneBoxToCameraWorld(contentBoundingBoxOf(scene) ?? bbox);
+    const fit = computeInitialCameraState(cel, KADR, null, SLD_CANVAS_DOCK_INSETS).transform.scale;
     const przeszkody = sceneObstacleRects(scene);
     const sheet = sheetSizeFor(scene);
     const SKALE = [
@@ -93,7 +90,7 @@ function zmierz(nazwaSieci: string, enm: EnergyNetworkModel): Wiersz[] {
         if (sheet.width - (r.x + r.width) < prawo) { prawo = sheet.width - (r.x + r.width); winowajca.prawo = `${p.label.ownerKind}"${p.text}"`; }
       }
       out.push({
-        siec: nazwaSieci, lod, skala: s.nazwa, v: s.v, gora, dol, lewo, prawo, winowajca,
+        siec: nazwaSieci, skala: s.nazwa, v: s.v, gora, dol, lewo, prawo, winowajca,
         pow: plan.drawn.filter((p) => p.enlarged).length, porz: plan.droppedIdentity.length, rys: plan.drawn.length,
       });
     }
@@ -103,28 +100,28 @@ function zmierz(nazwaSieci: string, enm: EnergyNetworkModel): Wiersz[] {
 
 console.log('=== RAMKA — POMIAR PRZED ===');
 for (const [nazwa, enm] of [['referencyjna', referencyjna], ['dlugi-ciag', dlugiCiag]] as const) {
-  for (const lod of [0, 1, 2] as const) {
-    const s = buildSceneV3(enm, lod);
-    console.log(`${nazwa} L${lod}: bbox=${s.bbox.x},${s.bbox.y} ${s.bbox.width}x${s.bbox.height} sheet=${JSON.stringify(sheetSizeFor(s))} stacje=${s.meta.stationCount} etykiet=${s.labels.length}`);
+  {
+    const s = buildSceneV3(enm);
+    console.log(`${nazwa}: bbox=${s.bbox.x},${s.bbox.y} ${s.bbox.width}x${s.bbox.height} sheet=${JSON.stringify(sheetSizeFor(s))} stacje=${s.meta.stationCount} etykiet=${s.labels.length}`);
   }
 }
 console.log('');
 {
-  const s = buildSceneV3(referencyjna, 0);
+  const s = buildSceneV3(referencyjna);
   for (const kod of ['S51', 'S52', 'S53']) {
     for (const l of s.labels.filter((x) => x.text.includes(kod))) {
       const rez = labelReservationRect(l);
-      console.log(`L0 "${l.text}" kind=${l.ownerKind} cls=${l.labelClass} placement=${l.placement} rect=(${l.rect.x},${l.rect.y},${l.rect.width}x${l.rect.height}) rez dol=${rez.y + rez.height}`);
+      console.log(`"${l.text}" kind=${l.ownerKind} cls=${l.labelClass} placement=${l.placement} rect=(${l.rect.x},${l.rect.y},${l.rect.width}x${l.rect.height}) rez dol=${rez.y + rez.height}`);
     }
   }
 }
 console.log('');
 console.log('(2) LUZ MALOWANEGO TUSZU DO KRAWEDZI ARKUSZA [j.sw.] (ujemny = poza arkuszem)');
-console.log('siec         LOD skala      |    gora |     dol |    lewo |   prawo | rys | pow | porz');
+console.log('siec         skala      |    gora |     dol |    lewo |   prawo | rys | pow | porz');
 const wszystkie = [...zmierz('referencyjna', referencyjna), ...zmierz('dlugi-ciag', dlugiCiag)];
 for (const w of wszystkie) {
   console.log(
-    `${w.siec.padEnd(12)} L${w.lod} ${w.skala.padEnd(10)} | ${f(w.gora,1).padStart(7)} | ${f(w.dol,1).padStart(7)} | ${f(w.lewo,1).padStart(7)} | ${f(w.prawo,1).padStart(7)} | ${String(w.rys).padStart(4)} | ${String(w.pow).padStart(3)} | ${String(w.porz).padStart(4)}`,
+    `${w.siec.padEnd(12)} ${w.skala.padEnd(10)} | ${f(w.gora,1).padStart(7)} | ${f(w.dol,1).padStart(7)} | ${f(w.lewo,1).padStart(7)} | ${f(w.prawo,1).padStart(7)} | ${String(w.rys).padStart(4)} | ${String(w.pow).padStart(3)} | ${String(w.porz).padStart(4)}`,
   );
 }
 console.log('');
@@ -135,7 +132,7 @@ for (const w of wszystkie) {
   if (w.dol < 0) zle.push(`dol ${f(w.dol,1)} ${w.winowajca.dol}`);
   if (w.lewo < 0) zle.push(`lewo ${f(w.lewo,1)} ${w.winowajca.lewo}`);
   if (w.prawo < 0) zle.push(`prawo ${f(w.prawo,1)} ${w.winowajca.prawo}`);
-  if (zle.length) console.log(`  ${w.siec} L${w.lod} @${w.skala}: ${zle.join(' | ')}`);
+  if (zle.length) console.log(`  ${w.siec} @${w.skala}: ${zle.join(' | ')}`);
 }
 console.log('');
 console.log(`MIN_READABLE=${MIN_READABLE_LABEL_SCREEN_PX} MIN_TEXT=${MIN_TEXT_SCREEN_PX} t1 prog powiekszenia=${f(MIN_READABLE_LABEL_SCREEN_PX / LABEL_TYPOGRAPHY.t1.fontSize, 4)}`);

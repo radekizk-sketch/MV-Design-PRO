@@ -379,7 +379,7 @@ describe('UX-04 — tor z portów: pole STACJI × konfiguracja katalogu × iniek
         przed.set(t.fieldRef, structuredClone(bay.primary_devices ?? []) as BayPrimaryDevice[]);
         bay.primary_devices = zIniekcja(bay.primary_devices ?? [], iniekcja);
       }
-      const scena = buildSceneV3(model, 2);
+      const scena = buildSceneV3(model);
       let przewody = 0;
       let odczepy = 0;
       let galezie = 0;
@@ -440,7 +440,7 @@ describe('UX-04 — tor z portów: pole GPZ × konfiguracja katalogu × iniekcja
           bay.primary_devices = zIniekcja(devices, iniekcja);
           bay.bay_template_ref = null;
         });
-        const scena = buildSceneV3(model, 2);
+        const scena = buildSceneV3(model);
         partia.forEach((c, k) => {
           const bay = model.bays!.find((b) => b.ref_id === polaGpz[k])!;
           const wynik = sprawdzPole(scena, bay.ref_id, bay.primary_devices ?? [], `GPZ ${c.configId} [${iniekcja}]`);

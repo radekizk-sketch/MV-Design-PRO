@@ -4,9 +4,7 @@
  * sceny v3 — bez atrap"): JAWNY, zamknięty zestaw warstw v3, pochodny
  * WYŁĄCZNIE od tego, co `buildSceneV3` FAKTYCZNIE renderuje (`PreviewElementKind`/
  * `PreviewSegmentKind`, `compose/preview.tsx`) — NIE reużycie 13 warstw v2
- * (`v2/lod/layerToggle.ts`), które są sprzężone z `LodPolicy` v2 (5-poziomowa
- * taksonomia elementów, niekompatybilna z 3-poziomowym kontraktem LOD v3,
- * patrz `canvas/camera.ts` nagłówek decyzja (c)).
+ * (skasowanych razem z polityką poziomów szczegółu v2, karta SLD-SKALA-I-NAWIGACJA).
  *
  * Zakres filtra: WYŁĄCZNIE RENDER (mapowanie symbols/segments/labels na węzły
  * SVG w `SldCanvasV3.tsx`) — `buildSceneV3`/`layout`/`compose` NIETKNIĘTE,

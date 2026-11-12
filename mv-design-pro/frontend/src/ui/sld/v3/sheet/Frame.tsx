@@ -24,7 +24,6 @@ import { LABEL_TYPOGRAPHY, SLD_FONT_FAMILY, labelLineHeight, screenFixedFontSize
 import {
   SHEET_BORDER_STROKE_SCREEN_PX,
   SHEET_CAPTION_OFFSET_SCREEN_PX,
-  sheetLodCaptionText,
   sheetScaleCaptionText,
 } from '../canvas/chromeLayout';
 import { SHEET_WIDTH_QUANTUM } from '../layout/sheetRows';
@@ -183,10 +182,6 @@ export interface SheetFrameProps {
   readonly height: number;
   /** Etykieta skali (spec §10, np. „1:1000"). */
   readonly scaleLabel: string;
-  /** SCHEMAT-10 S1 (V12K-135, macierz LOD §3): nazwa aktywnego poziomu
-   *  szczegółu z JEDNEGO słownika (`SCENE_LOD_LABELS_PL`) — pasek statusu
-   *  arkusza. Brak = pasek LOD nie renderowany (zgodność wstecz). */
-  readonly lodLabel?: string;
   /* KD-11 (Zero-Debt, znalezisko uboczne): pole `hiddenLabelCount` USUNIĘTE.
    * Komunikat „Ukryto N opisów" mieszka od V12K-222 w WARSTWIE EKRANU
    * (`canvas/SldCanvasV3.tsx`, `data-testid="sld-v3-hidden-labels-hint"`) — na
@@ -526,7 +521,7 @@ const DEFAULT_TITLE_BLOCK_FOOTPRINT = { width: 360, height: 220 };
  */
 export function SheetFrame(props: SheetFrameProps): JSX.Element {
   const palette = useSldPalette();
-  const { width, height, scaleLabel, lodLabel, titleBlock, children } = props;
+  const { width, height, scaleLabel, titleBlock, children } = props;
   const legend = props.legend ?? buildDefaultLegend();
   const cameraScale = Number.isFinite(props.cameraScale) && (props.cameraScale ?? 0) > 0 ? props.cameraScale! : 1;
   const titleBlockOrigin = props.titleBlockOrigin ?? {
@@ -594,21 +589,6 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
         >
           {sheetScaleCaptionText(scaleLabel)}
         </text>
-        {lodLabel ? (
-          <text
-            data-testid="sld-sheet-lod-label"
-            data-parity-key="sheet-lod-label"
-            x={0}
-            y={height + captionOffset}
-            textAnchor="start"
-            fontFamily={SLD_FONT_FAMILY}
-            fontSize={captionFontSize}
-            fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
-            fill={palette.baseStroke}
-          >
-            {sheetLodCaptionText(lodLabel)}
-          </text>
-        ) : null}
         {/* K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda NIE jest
          *  już domyślną treścią arkusza — `legend` puste (wołający, `SldCanvasV3`,
          *  przekazuje `[]` na kanwie ekranowej) renderuje ZERO grupy w DOM

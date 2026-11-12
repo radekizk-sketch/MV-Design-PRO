@@ -205,7 +205,7 @@ describe('pokrycie: każdy znak etykiet sceny na każdej fiksturze repozytorium 
     const znaki = new Set(Array.from(metrykiKroju.kroje.sans.znaki));
     const braki = new Map<string, string>();
     for (const [nazwa, enm] of FIKSTURY) {
-      const scena = buildSceneV3(enm, 2);
+      const scena = buildSceneV3(enm);
       for (const etykieta of scena.labels) {
         for (const z of etykieta.text) if (!znaki.has(z) && !braki.has(z)) braki.set(z, `${nazwa}: „${etykieta.text}”`);
       }

@@ -62,8 +62,6 @@ const ROLA_RODZAJU_PL: Readonly<Record<Exclude<SymbolId, QetSymbolPolaSnId> | Ro
   bayNoEquipment: 'Pole bez danych wyposażenia — aparatura do uzupełnienia',
   bayReserve: 'Zakończenie pola rezerwowego (bez odejścia)',
   gridSource: 'Zasilanie z sieci zewnętrznej',
-  stationCollapsed: 'Stacja SN/nN w widoku zbiorczym',
-  gpzCollapsed: 'Rozdzielnia zasilająca w widoku zbiorczym',
   protectionRelay: 'Zabezpieczenie pola (przekaźnik)',
   meter: 'Pomiar wielkości elektrycznych pola',
   loadArrow: 'Odbiór energii',

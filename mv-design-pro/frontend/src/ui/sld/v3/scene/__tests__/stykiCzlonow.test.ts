@@ -210,7 +210,7 @@ describe('scena realna: sieć referencyjna + odgałęzienie stacji z odgałęzie
   ] as const) {
     it(`${nazwa}: zejście odgałęzienia przecina obcy kabel w swoim wnętrzu (z mostkiem); iniekcja styku na przecięciu — wyrocznie gryzą, naprawa przywraca`, () => {
       const model = appendLateralBranch(siec, lancuch);
-      const scena = buildSceneV3(model, 2);
+      const scena = buildSceneV3(model);
       const prostokaty = scena.symbols.map(gabarytSymbolu);
       const wezly = wezlyModeluEnm(model);
       expect(stykiCzlonowNaObcychPrzewodach(scena.segments, prostokaty)).toEqual([]);

@@ -278,7 +278,7 @@ describe("scena SLD v3 z fikstury generatora — glif baterii z modelu", () => {
       const [bat] = scena.enm.shunt_capacitors ?? [];
       const poleBkr = scena.enm.bays?.find((b) => b.bay_role === "BKR");
       expect(bat?.bus_ref).toBe(poleBkr?.terminal_bus_ref);
-      const glify = buildSceneV3(scena.enm, 2).symbols.filter(
+      const glify = buildSceneV3(scena.enm).symbols.filter(
         (s) => s.symbolId === "capacitorBank",
       );
       expect(glify).toHaveLength(1);
@@ -290,7 +290,7 @@ describe("scena SLD v3 z fikstury generatora — glif baterii z modelu", () => {
       // Przekładnik międzyfazowy nie stoi w odczepie toru pola (s. 96) — żaden symbol pola BKR
       // nie jest przekładnikiem napięciowym.
       const bayRef = poleBkr?.ref_id;
-      const vt = buildSceneV3(scena.enm, 2).symbols.filter(
+      const vt = buildSceneV3(scena.enm).symbols.filter(
         (s) =>
           s.meta?.ownerRef === bayRef && /voltageTransformer/i.test(s.symbolId),
       );
@@ -323,7 +323,7 @@ describe("scena SLD v3 z fikstury generatora — glif baterii z modelu", () => {
         },
       })),
     };
-    const [glif] = buildSceneV3(zmieniony, 2).symbols.filter(
+    const [glif] = buildSceneV3(zmieniony).symbols.filter(
       (s) => s.symbolId === "capacitorBank",
     );
     expect(glif?.bateria).toEqual({

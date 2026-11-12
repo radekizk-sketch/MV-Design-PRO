@@ -123,7 +123,7 @@ describe('rysunek — tabliczka, strona nN, kompletność i pokrycie wyników na
     const busByRef = new Map((model.buses ?? []).map((bus) => [bus.ref_id, bus]));
     expect(szynyStacji(model, s01).has(zaciskSn)).toBe(true);
     expect(stationSideBusRefs(model, s01, busByRef, 'nn').includes(zaciskSn)).toBe(false);
-    const raport = kompletnoscRysunku(buildSceneV3(model, 2), model);
+    const raport = kompletnoscRysunku(buildSceneV3(model), model);
     const pozycja = raport.pozycje.find((p) => p.ref === 'load/na-zacisku-sn');
     expect(pozycja?.kategoria).toBe('agregat-odbioru-stacji');
   });
@@ -133,7 +133,7 @@ describe('rysunek — tabliczka, strona nN, kompletność i pokrycie wyników na
     const model = zOdbiorem(zaciskWylacznikaNn, 'load/na-zacisku-nn');
     const busByRef = new Map((model.buses ?? []).map((bus) => [bus.ref_id, bus]));
     expect(stationSideBusRefs(model, s01, busByRef, 'nn').includes(zaciskWylacznikaNn)).toBe(true);
-    const raport = kompletnoscRysunku(buildSceneV3(model, 2), model);
+    const raport = kompletnoscRysunku(buildSceneV3(model), model);
     expect(raport.pozycje.find((p) => p.ref === 'load/na-zacisku-nn')?.kategoria).toBe('agregat-odbioru-stacji');
   });
 
@@ -143,7 +143,7 @@ describe('rysunek — tabliczka, strona nN, kompletność i pokrycie wyników na
   });
 
   it('tabliczka sceny: każda stacja z odbiorem na szynie odpływu niesie „Odbiór ΣP" i strzałkę odbioru', () => {
-    const scena = buildSceneV3(enm, 2);
+    const scena = buildSceneV3(enm);
     const wiersze = scena.labels.filter((l) => l.ownerKind === 'station-name' && l.text.startsWith('Odbiór ΣP'));
     expect(wiersze).toHaveLength(2);
     expect(scena.symbols.filter((s) => s.symbolId === 'loadArrow')).toHaveLength(2);
