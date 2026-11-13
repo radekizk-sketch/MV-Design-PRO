@@ -325,6 +325,71 @@ describe('skala czytania (Shift+1): ILOCZYN {kursor nad kanwą, poza kanwą}', (
     expect(po.y).toBeCloseTo(przed.y, 6);
   });
 
+  // Wciśnięty Shift (a więc KAŻDE `Shift+1`) daje nakładce lassa i okna `pointer-events: auto`;
+  // przeglądarka zgłasza wtedy kanwie `pointerleave` z punktem wewnątrz jej prostokąta, a dalsze
+  // ruchy trafiają w nakładkę. Iloczyn: {wyjście: nad nakładkę wewnątrz kanwy, poza prostokąt
+  // kanwy} × {ruch po wyjściu: nad nakładką, brak}. Pomiar w żywej aplikacji (e2e
+  // `sld-kamera-przelot-okno`): przed naprawą drugie `Shift+1` kadrowało wokół środka kadru.
+  const zProstokatemKanwy = () =>
+    vi.spyOn(kanwa(), 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: W, bottom: H, width: W, height: H, toJSON: () => ({}),
+    } as DOMRect);
+  const ruchNadKanwa = (p: { x: number; y: number }) =>
+    fireEvent.pointerMove(kanwa(), { pointerId: 1, pointerType: 'mouse', buttons: 0, clientX: p.x, clientY: p.y });
+  const wcisnijShift = () => klawisz({ key: 'Shift', code: 'ShiftLeft', shiftKey: true });
+
+  it('Shift wciśnięty, wyjście kanwy nad nakładkę w jej prostokącie: skala czytania wokół kursora', () => {
+    zegarKlatek('reduce');
+    render(<SldCanvasV3Workspace width={W} height={H} />);
+    zProstokatemKanwy();
+    const kursor = { x: 310, y: 470 };
+    ruchNadKanwa(kursor);
+    wcisnijShift();
+    expect(nakladka().style.pointerEvents, 'warunek sensu: nakładka przejmuje wskaźnik pod Shift').toBe('auto');
+    fireEvent.pointerLeave(kanwa(), { pointerId: 1, pointerType: 'mouse', clientX: kursor.x, clientY: kursor.y });
+    const przed = swiatPod(kursor);
+    shift1();
+    expect(skala()).toBe(SKALA_CZYTANIA);
+    const po = swiatPod(kursor);
+    expect(po.x).toBeCloseTo(przed.x, 6);
+    expect(po.y).toBeCloseTo(przed.y, 6);
+  });
+
+  it('Shift wciśnięty, ruch nad nakładką w prostokącie kanwy: punkt stały to OSTATNIE położenie kursora', () => {
+    zegarKlatek('reduce');
+    render(<SldCanvasV3Workspace width={W} height={H} />);
+    zProstokatemKanwy();
+    ruchNadKanwa({ x: 310, y: 470 });
+    wcisnijShift();
+    fireEvent.pointerLeave(kanwa(), { pointerId: 1, pointerType: 'mouse', clientX: 310, clientY: 470 });
+    const kursor = { x: 820, y: 210 };
+    fireEvent.pointerMove(nakladka(), { pointerId: 1, pointerType: 'mouse', buttons: 0, clientX: kursor.x, clientY: kursor.y, shiftKey: true });
+    const przed = swiatPod(kursor);
+    shift1();
+    const po = swiatPod(kursor);
+    expect(po.x).toBeCloseTo(przed.x, 6);
+    expect(po.y).toBeCloseTo(przed.y, 6);
+  });
+
+  it('wyjście poza prostokąt kanwy (z ruchem poza nią albo bez): skala czytania wokół środka kadru', () => {
+    for (const ruchPoza of [false, true]) {
+      zegarKlatek('reduce');
+      render(<SldCanvasV3Workspace width={W} height={H} />);
+      zProstokatemKanwy();
+      ruchNadKanwa({ x: 310, y: 470 });
+      fireEvent.pointerLeave(kanwa(), { pointerId: 1, pointerType: 'mouse', clientX: W + 5, clientY: 470 });
+      if (ruchPoza) fireEvent.pointerMove(document.body, { pointerId: 1, pointerType: 'mouse', buttons: 0, clientX: W + 40, clientY: 470 });
+      const srodek = { x: W / 2, y: H / 2 };
+      const przed = swiatPod(srodek);
+      shift1();
+      const po = swiatPod(srodek);
+      expect(po.x, `ruch poza kanwą: ${ruchPoza}`).toBeCloseTo(przed.x, 6);
+      expect(po.y, `ruch poza kanwą: ${ruchPoza}`).toBeCloseTo(przed.y, 6);
+      cleanup();
+      vi.restoreAllMocks();
+    }
+  });
+
   it('sam klawisz `1` nie zmienia kamery (cyfry przełączają przestrzenie pracy powłoki)', () => {
     zegarKlatek('reduce');
     render(<SldCanvasV3Workspace width={W} height={H} />);

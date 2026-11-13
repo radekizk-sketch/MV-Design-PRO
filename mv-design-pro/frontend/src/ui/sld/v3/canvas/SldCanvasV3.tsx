@@ -2847,6 +2847,14 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
   return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
+/** Punkt ekranu leży WEWNĄTRZ prostokąta kanwy (brzeg — poza). Kanwa bez rozmiaru (przed
+ *  układem) nie zawiera żadnego punktu. */
+function punktWProstokacieKanwy(svg: SVGSVGElement | null, clientX: number, clientY: number): boolean {
+  if (!svg) return false;
+  const r = svg.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && clientX > r.left && clientX < r.right && clientY > r.top && clientY < r.bottom;
+}
+
 /**
  * Kanwa v3: renderuje JEDNĄ scenę `SceneV3` (`scenaSld(snapshot)`, pamięć
  * podręczna migawki) do SVG. Kamera (pan/zoom/pinch, `canvas/camera.ts`) jest
@@ -3797,6 +3805,21 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
   }, [zwolnijWskaznik]);
 
+  // R7: ruch wskaźnika nad nakładką leżącą na kanwie (lasso, powiększenie oknem — pod Shift
+  // przejmują zdarzenia, więc kanwa ich nie dostaje) aktualizuje punkt stały skali czytania;
+  // ruch poza prostokątem kanwy go zeruje. Ruch nad samą kanwą obsługuje `handlePointerMove`.
+  useEffect(() => {
+    const naRuch = (event: PointerEvent) => {
+      const svg = svgRef.current;
+      if (!svg || (event.target instanceof Node && svg.contains(event.target))) return;
+      ostatniKursor.current = punktWProstokacieKanwy(svg, event.clientX, event.clientY)
+        ? toLocalPoint(svg, event.clientX, event.clientY)
+        : null;
+    };
+    window.addEventListener('pointermove', naRuch, true);
+    return () => window.removeEventListener('pointermove', naRuch, true);
+  }, []);
+
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<SVGSVGElement>) => zwolnijWskaznik(event.pointerId),
     [zwolnijWskaznik],
@@ -3993,8 +4016,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onPointerLeave={() => {
-        ostatniKursor.current = null;
+      onPointerLeave={(event) => {
+        // R7: wyjście wskaźnika NAD nakładkę w obrębie kanwy (lasso i powiększenie oknem przejmują
+        // wskaźnik, gdy Shift jest wciśnięty — więc także przy samym `Shift+1`) nie jest opuszczeniem
+        // kanwy: punkt stały skali czytania zostaje. Zeruje go tylko wyjście poza prostokąt kanwy.
+        if (!punktWProstokacieKanwy(svgRef.current, event.clientX, event.clientY)) ostatniKursor.current = null;
       }}
       // F8c pkt 3: prawy klik NIEZŁAPANY przez symbol/odcinek (te wołają
       // `stopPropagation`) bąbelkuje aż tu — „tło" kanwy. `testId` stały
