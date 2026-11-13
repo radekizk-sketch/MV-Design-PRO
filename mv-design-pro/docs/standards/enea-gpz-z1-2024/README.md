@@ -42,6 +42,19 @@ To polecenie NIE zapisuje PDF w repo i NIE ustanawia uprawnienia licencyjnego.
 - [KARTY_Z7_Z17_WERYFIKACJA.md](KARTY_Z7_Z17_WERYFIKACJA.md) — dane przekładników, połączeń, zabezpieczeń, obwodów wtórnych.
 - [ZASADY_ZAKRESU_I_ZRODEL.md](ZASADY_ZAKRESU_I_ZRODEL.md) — granice stosowania standardu i jawne rozdzielenie wymagań ENEA od UX/SLD.
 
+## Aneks 13.11.2026: zatwierdzone rozwiązania projektowe SN
+
+Dwa dostarczone tomy projektu wykonawczego (łącznie **386 stron**) włączono do bazy rozwiązań w postaci **zanonimizowanych, zweryfikowanych i dopuszczonych wzorców projektowych** na podstawie decyzji właściciela. Przeniesiono rozróżnione katalogi producentów, schematy typowych pól, profile zabezpieczeń i automatyk, testy oraz rejestr danych. Pełne PDF i rzeczywiste nastawy/schematy telemechaniki pozostają poza repo.
+
+- [Atlas zatwierdzonych rozwiązań SN](aneks-praktyka-sN/README.md)
+- [Katalogi producentów](aneks-praktyka-sN/PRODUCENCI_I_KATALOGI.md)
+- [Typy pól i EAZ](aneks-praktyka-sN/TYPOWE_POLA_I_EAZ.md)
+- [Walidatory](aneks-praktyka-sN/WALIDATORY_I_KONTROLA_JAKOSCI.md)
+- [Rejestr CSV](aneks-praktyka-sN/REJESTR_ROZWIAZAN.csv)
+- [Mapa integracji z istniejącym katalogiem](aneks-praktyka-sN/ZADANIE_INTEGRACYJNE.md)
+
+**Status dowodowy:** projekt referencyjny jest przyjęty jako zweryfikowany i dopuszczony. Wymagania ENEA z tego README oraz z dokumentów standardu pozostają osobną klasą danych. Nie mylić konstrukcji modernizowanych pól 17,5 kV z wymaganiami dla nowych rozdzielnic GPZ 24 kV.
+
 ## Granice
 
 Nie projektujemy rozdzielni WN 110 kV. Wykorzystujemy jej granicę jako dane zasilania GPZ, a dla strony SN modele pól i ich aparaturę. Nie przebudowywać `SldCanvasV3`, `computeLayout`, katalogów ani już realizowanych kart; najpierw skontrolować bieżącą gałąź wykonawcy (commit `2cc7184a4` wskazany przez właściciela), a nie jedynie `main`.
