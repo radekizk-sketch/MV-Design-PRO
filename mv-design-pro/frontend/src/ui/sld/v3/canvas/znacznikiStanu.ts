@@ -28,6 +28,9 @@
  */
 import { GRID, type V3Rect } from '../core/grid';
 import type { PreviewComposition } from '../compose/preview';
+import { sceneObstacleRects, type SceneV3 } from '../scene/buildScene';
+import { PISMO_WYNIKOW } from '../core/text';
+import { czytelnyNaEkranie } from './gestoscInformacji';
 import { MIN_SYMBOL_SCREEN_PX, SYMBOL_DEFS } from '../symbols/defs';
 import { stanKaflaLacznika } from '../symbols/glyphs';
 import type { StanKafla } from '../theme/colorTokens';
@@ -238,4 +241,32 @@ export function przeszkodyZnacznikowStanu(
   return znaczniki
     .filter((z) => z.rodzaj !== 'zaznaczenie')
     .map((z) => ({ x: z.x - z.srednicaSwiata / 2, y: z.y - z.srednicaSwiata / 2, width: z.srednicaSwiata, height: z.srednicaSwiata }));
+}
+
+/**
+ * R4 — PRZESZKODY PLANU ETYKIET kanwy: rysunek sceny (`sceneObstacleRects`) i znaczniki stanu
+ * o stałym rozmiarze ekranowym (`przeszkodyZnacznikowStanu`). JEDNO źródło dla kanwy
+ * (`SldCanvasV3` — plan etykiet, uchwyty napisów) i dla testów, które odtwarzają plan etykiet
+ * danej skali (sondy trafień, dojazd do celu); dwa niezależne zbiory przeszkód rozjeżdżały
+ * położenie napisu na kanwie i w sondzie (pomiar 2026-11-12: uchwyt etykiety 5100,5 vs 5387).
+ */
+export function przeszkodyPlanuEtykiet(scene: SceneV3, znaczniki: readonly ZnacznikStanu[]): readonly V3Rect[] {
+  const rysunek = sceneObstacleRects(scene);
+  const stan = przeszkodyZnacznikowStanu(znaczniki);
+  return stan.length === 0 ? rysunek : [...rysunek, ...stan];
+}
+
+/**
+ * Przeszkody planu etykiet jako FUNKCJA SKALI — znaczniki stanu zależą od skali (nośnik
+ * nierozpoznawalny dopiero poniżej progu), więc kadr liczony dla skali docelowej
+ * (`zakresKadru.prostokatyZakresu`, `camera.ts`) i sonda testu przy skali `s` dostają przeszkody
+ * tej skali z tych samych nośników, które rysuje kanwa. `nosniki` domyślnie: nośniki samego
+ * rysunku (łącznik otwarty, punkt N.O.) — kanwa bez zaznaczenia i bez nakładki wyników.
+ */
+export function przeszkodyEtykietPrzySkali(
+  scene: SceneV3,
+  nosniki: readonly NosnikZnacznika[] = nosnikiZnacznikowStanu({ scene }),
+): (skala: number) => readonly V3Rect[] {
+  return (skala) =>
+    przeszkodyPlanuEtykiet(scene, znacznikiStanu(nosniki, { skala, wynikiCzytelne: czytelnyNaEkranie(PISMO_WYNIKOW.fontSize, skala) }));
 }

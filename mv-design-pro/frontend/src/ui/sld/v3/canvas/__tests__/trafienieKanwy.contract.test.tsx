@@ -30,8 +30,9 @@ import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { planSceneLabels } from '../labelLegibility';
+import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { sheetSizeFor } from '../../sheet/outline';
 import { SldCanvasV3 } from '../SldCanvasV3';
 import {
@@ -92,7 +93,7 @@ function hitNode(container: HTMLElement, testId: string): Element | null {
 /** Obszary, które render buduje dla tej sceny i skali (hierarchia celów i podpowiedzi — R6, R4). */
 function oczekiwaneObszary(scale: number): readonly CanvasHitArea[] {
   const scene = buildSceneV3(enm);
-  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
+  const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(scale), scale, sheetSizeFor(scene));
   return buildCanvasHitAreas({
     symbols: scene.symbols,
     segments: scene.segments,
@@ -401,7 +402,7 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     );
     const scene = buildSceneV3(enm);
     const scale = scaleOf(container, CANVAS_FHD_WIDTH);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
+    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(scale), scale, sheetSizeFor(scene));
     const etykieta = plan.drawn.find((p) => p.label.ownerKind === 'apparatus')
       ?? plan.drawn.find((p) => p.label.ownerKind === 'station-name')!;
     await user.click(hitNode(container, `sld-v3-label-${etykieta.index}`)!);

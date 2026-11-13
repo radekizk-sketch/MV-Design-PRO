@@ -2749,7 +2749,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             ⌖ Dopasuj widok
           </button>
           <MenuDopasujDo dostepnosc={kadrowanie.dostepnosc} onWybierz={(cel) => kadrujCel(cel)} torWToku={kadrowanie.torWToku} />
-          {/* R7: powiększenie oknem — przycisk i klawisz `Z` włączają ten sam tryb. */}
+          {/* R7: powiększenie oknem — przycisk i klawisz `Z` włączają ten sam tryb. Przycisk
+              ikonowy (nazwa w `aria-label` i podpowiedzi), żeby dok widoku nie zwijał się na
+              kanwie 800 px (`toolbarLayout.ts`, minimum grupy „widok"). */}
           <button
             type="button"
             onClick={() => setTrybOkna((v) => !v)}
@@ -2760,18 +2762,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
                 ? 'Powiększenie oknem: przeciągnij prostokąt na schemacie (Esc albo Z — wyjście)'
                 : 'Powiększ oknem — klawisz Z, potem przeciągnij prostokąt; Shift+przeciągnięcie zaznacza'
             }
+            aria-label="Powiększ oknem"
             className={KLASA_PRZYCISKU_DOKU}
           >
-            ⬚ Okno
+            ⬚
           </button>
-          {/* R7: wskaźnik skali (procent skali czytania) z menu kadru. */}
-          <WskaznikSkali
-            procent={cameraState ? Math.round((cameraState.transform.scale / SKALA_CZYTANIA) * 100) : null}
-            zaznaczenie={zaznaczenieRefy.length}
-            onCalaSiec={() => kadrujCel('siec', [])}
-            onZaznaczenie={dopasujZakres}
-            onSkalaCzytania={() => skalaCzytania('srodek')}
-          />
           <button
             type="button"
             onClick={poprzedniWidok}
@@ -3196,6 +3191,17 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       {/* F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny
           filtr"): dok prawy-dolny. */}
       <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1">
+        {/* R7: wskaźnik skali (procent skali czytania) z menu kadru — w dolnym pasie, jak pole
+            skali na pasku stanu programów CAD; menu otwiera się w górę. Poza pasem narzędzi,
+            żeby dok widoku mieścił się na kanwie 800 px. */}
+        <div className="flex items-center gap-1">
+          <WskaznikSkali
+            procent={cameraState ? Math.round((cameraState.transform.scale / SKALA_CZYTANIA) * 100) : null}
+            zaznaczenie={zaznaczenieRefy.length}
+            onCalaSiec={() => kadrujCel('siec', [])}
+            onZaznaczenie={dopasujZakres}
+            onSkalaCzytania={() => skalaCzytania('srodek')}
+          />
         <button
           type="button"
           onClick={() => setLayerPanelOpen((prev) => !prev)}
@@ -3206,6 +3212,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         >
           {layerPanelOpen ? '▾ Warstwy' : `▴ Warstwy (${CANVAS_LAYER_IDS.length})`}
         </button>
+        </div>
         {layerPanelOpen && (
           <>
             {/* R3 (wym. 17): panel filtrów warstwy wynikowej — TEN SAM dok co

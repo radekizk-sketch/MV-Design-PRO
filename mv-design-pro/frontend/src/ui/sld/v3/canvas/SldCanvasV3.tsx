@@ -27,7 +27,6 @@ import { czasPrzelotu, przelotDozwolony, punktWidzenia, reduktorZPrzelotem, scie
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
-  sceneObstacleRects,
   sheetRowBandsOf,
   type SceneV3,
 } from '../scene/buildScene';
@@ -132,7 +131,7 @@ import {
 } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import { isExceedanceSeverity, resultRefForSegment } from './resultLabels';
-import { nosnikiZnacznikowStanu, przeszkodyZnacznikowStanu, znacznikiStanu, type ZnacznikStanu } from './znacznikiStanu';
+import { nosnikiZnacznikowStanu, przeszkodyEtykietPrzySkali, przeszkodyPlanuEtykiet, znacznikiStanu, type ZnacznikStanu } from './znacznikiStanu';
 import { resultLabelLines, RESULT_LABEL_TREND_GLYPH } from '../../shared/resultLabelTemplates';
 import { czytelnyNaEkranie, klasaInformacjiEtykiety } from './gestoscInformacji';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
@@ -3012,7 +3011,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       dispatch({ type: 'refit', bbox: trescSieci, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets, przelot: true });
       return;
     }
-    const { cel, przeszkody, tuszEtykiet } = prostokatyZakresu(scene, zadanie.zakres, sceneBoxToCameraWorld);
+    // R4: tusz etykiet kadru z tych samych wejść planu, które rysuje kanwa (znaczniki stanu
+    // z bieżących nośników przy skali docelowej, pierwszeństwo nazw).
+    const { cel, przeszkody, tuszEtykiet } = prostokatyZakresu(scene, zadanie.zakres, sceneBoxToCameraWorld, {
+      przeszkody: przeszkodyEtykietPrzySkali(scene, nosnikiStanu),
+      pierwszenstwo: pierwszenstwoNazw,
+    });
     // Kadr rozdzielnicy (stacja, sekcja, pole) ma podłogę czytelności nazw pól.
     const rozdzielnica = zadanie.zakres.cel === 'stacja' || zadanie.zakres.cel === 'sekcja' || zadanie.zakres.cel === 'pole';
     dispatch({
@@ -3282,11 +3286,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // R4 (rozstrzygnięcie architekta 2026-11-12): znaczniki stanu o stałym rozmiarze ekranowym
   // (łącznik otwarty, punkt N.O., miejsce zwarcia, przekroczenie) są przeszkodą nazw tej samej
   // rangi co rysunek — nazwa nie przykrywa znaku rozstrzygającego o topologii i uwadze.
-  const przeszkodyStanu = useMemo(() => przeszkodyZnacznikowStanu(znacznikiStanuPlan), [znacznikiStanuPlan]);
-  const labelObstacles = useMemo(
-    () => (przeszkodyStanu.length === 0 ? sceneObstacleRects(scene) : [...sceneObstacleRects(scene), ...przeszkodyStanu]),
-    [scene, przeszkodyStanu],
-  );
+  const labelObstacles = useMemo(() => przeszkodyPlanuEtykiet(scene, znacznikiStanuPlan), [scene, znacznikiStanuPlan]);
   // RAMKA-TNIE-PODPISY: plan dostaje TEN SAM obrys arkusza (`sheetSize`), który
   // dostaje `SheetFrame` niżej — jedna wartość, jedna prawda o krawędzi
   // rysunku. Wcześniej plan o krawędzi nie wiedział nic, więc powiększone

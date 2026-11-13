@@ -18,9 +18,9 @@ import { PISMO_WYNIKOW } from '../../core/text';
 import { skalaPojawieniaSie } from '../gestoscInformacji';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { scenaSld } from '../../scene/scenaSld';
-import { sceneObstacleRects } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
 import { planSceneLabels } from '../labelLegibility';
+import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { buildCanvasHitAreas } from '../hitAreas';
 import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { obwiedniaKsztaltu } from '../oknoRenderu';
@@ -116,7 +116,7 @@ function punktEkranowySceny(svg: Element, punkt: Punkt): Punkt {
  */
 export function punktCeluTrafienia(model: EnergyNetworkModel, testId: string, skala = 1): Punkt {
   const scene = scenaSld(model);
-  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
+  const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene));
   const obszar = buildCanvasHitAreas({
     symbols: scene.symbols,
     segments: scene.segments,

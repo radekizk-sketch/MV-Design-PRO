@@ -34,10 +34,11 @@ import {
   resolveTrunkStartAvailability,
 } from '../../../shared/sldActionExecutor';
 import { getMenuActions, powodBrakuStartuCiagu } from '../../../v2/command/SldCommandService';
-import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { resultRefForSegment } from '../resultLabels';
 import type { DerSourceKind } from '../../compose/sourceKind';
 import { planSceneLabels } from '../labelLegibility';
+import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { sheetSizeFor } from '../../sheet/outline';
 import { HIT_ATTR, buildCanvasHitAreas, type CanvasHitArea, type HitObjectClass } from '../hitAreas';
 import {
@@ -149,7 +150,7 @@ function renderKanwe(model: EnergyNetworkModel = enm, kadr: KadrKanwy = 'roboczy
   const viewBox = svg.getAttribute('viewBox')!.split(' ').map(Number);
   const scale = W / viewBox[2];
   const scene = buildSceneV3(model);
-  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
+  const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(scale), scale, sheetSizeFor(scene));
   // Obszary złożone tak samo jak w żywej kanwie (hierarchia celów trafienia, tożsamości
   // w podpowiedzi) — inaczej inwentarz zawierałby obiekty, których kanwa na tym kadrze nie łapie.
   const obszary = buildCanvasHitAreas({
@@ -639,7 +640,7 @@ describe('S9-5 C — menu nie obiecuje operacji na obiektach spoza modelu', () =
 
     let tematow = 0;
     const scene = buildSceneV3(enm);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
+    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(1), 1, sheetSizeFor(scene));
     const obszary = buildCanvasHitAreas({
       symbols: scene.symbols,
       segments: scene.segments,

@@ -88,6 +88,18 @@ describe('pas narzędzi kanwy — rozłączność przy każdej szerokości', () 
     expect(isToolbarGroupExpanded(layoutCanvasToolbar(1280), najwyzsza.id)).toBe(true);
   });
 
+  // Kontrakt z komentarza minimów (`toolbarLayout.ts`): dok widoku (Dopasuj widok, Wstecz, Cały
+  // arkusz, Legenda, Nawigator, powiększenie oknem) NIE zwija się na kanwie 800 px. Pomiar
+  // 2026-11-12: dopisanie do doku przycisku „⬚ Okno” i wskaźnika skali (616 px) zwijało go do
+  // menu „Narzędzia” i przełączniki legendy i nawigatora znikały z pasa (workspacePanels ×7).
+  it('dok widoku i drzewo układu zostają rozwinięte na kanwie 800 px', () => {
+    for (const width of [800, 960, 1020]) {
+      const layout = layoutCanvasToolbar(width);
+      expect(isToolbarGroupExpanded(layout, 'widok'), `${width} px`).toBe(true);
+      expect(isToolbarGroupExpanded(layout, 'drzewo'), `${width} px`).toBe(true);
+    }
+  });
+
   it('każda grupa jest ZAWSZE osiągalna: rozwinięta albo w menu', () => {
     for (const width of SZEROKOSCI) {
       const layout = layoutCanvasToolbar(width);

@@ -22,7 +22,7 @@ import { wyrownanieEtykiety, zaczepTekstuEtykiety } from '../../layout/labels';
 import { sceneObstacleRects } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
 import { planSceneLabels, rangaTozsamosci, type PlannedLabel } from '../labelLegibility';
-import { nosnikiZnacznikowStanu, przeszkodyZnacznikowStanu, znacznikiStanu } from '../znacznikiStanu';
+import { nosnikiZnacznikowStanu, przeszkodyEtykietPrzySkali, przeszkodyZnacznikowStanu, znacznikiStanu } from '../znacznikiStanu';
 import type { ResultLabelEntry } from '../resultLabels';
 import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { poleIStacjaObiektu } from '../hitAreas';
@@ -118,7 +118,10 @@ describe('R4 — pierwszeństwo nazw na kanwie: kadr całej sieci 1000×560', ()
     const przeszkodyStanu = przeszkodyZnacznikowStanu(znaczniki);
     expect(przeszkodyStanu.length, 'warunek sensu: kadr całej sieci ma znaczniki stanu').toBeGreaterThan(0);
     const sheet = sheetSizeFor(scene);
-    const zZnacznikami = planSceneLabels(scene.labels, [...sceneObstacleRects(scene), ...przeszkodyStanu], skala, sheet);
+    // Przeszkody kanwy z jednego źródła (`przeszkodyEtykietPrzySkali`: rysunek ∪ znaczniki stanu).
+    const przeszkodyKanwy = przeszkodyEtykietPrzySkali(scene)(skala);
+    expect(przeszkodyKanwy).toEqual([...sceneObstacleRects(scene), ...przeszkodyStanu]);
+    const zZnacznikami = planSceneLabels(scene.labels, przeszkodyKanwy, skala, sheet);
     const bezZnacznikow = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheet);
     const zaczep = (p: PlannedLabel | undefined) => {
       if (!p) return null;

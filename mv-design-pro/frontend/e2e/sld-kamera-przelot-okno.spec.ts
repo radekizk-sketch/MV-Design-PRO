@@ -7,7 +7,7 @@
  *     kursorem przed i po jest ten sam; wskaźnik skali pokazuje 100 %;
  *  2. wskaźnik skali — menu „Cała sieć” daje ten sam kadr co Shift+F;
  *  3. powiększenie oknem — klawisz Z + przeciągnięcie myszą: narożniki okna w kadrze, skala
- *     większa, tryb się kończy; przycisk „⬚ Okno” paska — ten sam tryb; Alt+← wraca DOKŁADNIE do
+ *     większa, tryb się kończy; przycisk „⬚” (Powiększ oknem) doku widoku — ten sam tryb; Alt+← wraca DOKŁADNIE do
  *     kadru sprzed okna; Shift+przeciągnięcie w trybie okna pozostaje lassem;
  *  4. przelot (preferencja ruchu bez ograniczeń): Shift+F po Shift+1 przechodzi przez stan
  *     „przelot” i ≥ 3 różne kadry pośrednie, kończy się w kadrze identycznym z cięciem

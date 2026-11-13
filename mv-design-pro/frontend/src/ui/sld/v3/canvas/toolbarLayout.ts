@@ -52,15 +52,16 @@ export interface CanvasToolbarGroup {
  *            kadrów w tym samym doku widoku; menu jako przycisk dzielony
  *            przy „Dopasuj widok", żeby dok widoku nie zwijał się na
  *            kanwie 800 px) ............................................ 491 → 492
- *            + „⬚ Okno" (6 → 53 → 56, powiększenie oknem) + wskaźnik skali
- *            „100 % ▾" (7 → 59 → 60) + 2 odstępy po 4 px (karta
- *            SLD-SKALA-I-NAWIGACJA R7) ................................. 492 + 124 → 616
+ *            + przycisk ikonowy „⬚" (1 → 23, powiększenie oknem) + 1 odstęp
+ *            4 px (karta SLD-SKALA-I-NAWIGACJA R7; wskaźnik skali stoi w
+ *            dolnym doku prawym, poza pasem — z nim dok widoku zwijał się
+ *            na kanwie 800 px) ...................................... 492 + 27 → 520
  *  - eksport „↓ SVG" + menu formatów + „Dołącz legendę" ....... 314 → 320
  */
 export const CANVAS_TOOLBAR_GROUPS: readonly CanvasToolbarGroup[] = [
   { id: 'drzewo', label: 'Drzewo układu', minWidth: 116, rank: 4 },
   { id: 'uklady', label: 'Układy PV/BESS/FW', minWidth: 480, rank: 2 },
-  { id: 'widok', label: 'Widok', minWidth: 616, rank: 3 },
+  { id: 'widok', label: 'Widok', minWidth: 520, rank: 3 },
   { id: 'eksport', label: 'Eksport', minWidth: 320, rank: 1 },
 ];
 

@@ -171,7 +171,7 @@ export function WskaznikSkali(props: {
           role="menu"
           aria-label="Skala schematu"
           data-testid="sld-v3-wskaznik-skali-menu"
-          className="absolute right-0 z-50 mt-1 w-64 rounded border border-scada-border bg-scada-panel-raised p-1 shadow-lg"
+          className="absolute bottom-full right-0 z-50 mb-1 w-64 rounded border border-scada-border bg-scada-panel-raised p-1 shadow-lg"
         >
           {pozycje.map((p) => (
             <li key={p.id}>

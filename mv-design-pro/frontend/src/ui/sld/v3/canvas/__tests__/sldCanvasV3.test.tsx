@@ -22,8 +22,9 @@ import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { planSceneLabels } from '../labelLegibility';
+import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { sheetSizeFor } from '../../sheet/outline';
 import { klasaInformacjiEtykiety } from '../gestoscInformacji';
 import { SldCanvasV3, computeFaultFlowPlacements, computeFaultPointMarkerPlacement, computeFlowOverlayPlacements, computeOltcBadgePlacements, contentBoundingBoxOf, sceneBoxToCameraWorld, flowOverlayGeometry, formatFlowLabelPl, formatOltcBadgeLabel } from '../SldCanvasV3';
@@ -37,7 +38,7 @@ import {
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState, type CameraState } from '../camera';
 import { kameraNadSymbolem, kameraNaPunkcieSceny } from './kameraTestowa';
-import { bezWezlaPrzegladu, stacjePrzegladu } from '../hitAreas';
+import { bezWezlaPrzegladu, poleIStacjaObiektu, stacjePrzegladu } from '../hitAreas';
 import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
@@ -136,7 +137,7 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     expect(symbolGroup!.children.length + bezWezlaWKadrze(container, scene).symbole.size).toBe(scene.symbols.length);
     const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
+    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene));
     const wPodpowiedzi = Number(labelGroup?.getAttribute('data-tozsamosci-w-podpowiedzi') ?? 'NaN');
     expect(labelGroup?.children.length).toBe(plan.drawn.length);
     expect(wPodpowiedzi).toBe(plan.tozsamosciWPodpowiedzi.length);
@@ -152,7 +153,7 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     const scene = buildSceneV3(enm);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
+    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene));
     const widoczne = new Set([...plan.drawn, ...plan.tozsamosciWPodpowiedzi].map((p) => p.index));
     expect(scene.labels.filter((_, i) => !widoczne.has(i)).length).toBeGreaterThan(0);
     expect(container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]')).toBeNull();
@@ -172,7 +173,7 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
   // INTENCJA dawnego testu „L0 vs L2 daje różną zawartość" zmieniona kanonem: skala
   // kamery steruje wyłącznie gęstością napisów, więc rysunek toru (symbole, odcinki)
   // jest TEN SAM przy każdej skali. Iloczyn: szerokość kanwy (skala dopasowania)
-  // {mała, duża} × warstwa {symbole, odcinki}.
+  // {mała, średnia, duża} × warstwa {symbole, odcinki}.
   it('ta sama migawka na kanwie małej i dużej: identyczne symbole i odcinki, różna skala kamery', () => {
     const { container: maly } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const { container: duzy } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH * 6} height={CANVAS_HEIGHT * 6} />);
@@ -206,13 +207,28 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     const a = symbole(maly);
     const b = symbole(duzy);
     const naDuzej = new Map(b.map((n) => [n.getAttribute('data-testid') ?? '', n] as const));
+    // Symbol poniżej progu wnętrza (`data-bez-wnetrza`) i znak przeglądowy transformatora GPZ
+    // (`data-znak-przegladowy`, R8 — dwa okręgi zamiast glifu z uzwojeniami w kadrze całej sieci)
+    // to ten sam obiekt sceny narysowany prościej przy małej skali; porównanie glifów dotyczy
+    // symboli pełnych na obu kanwach. Na kanwie 1200×800 (skala ≈0,09) KAŻDY symbol z własnym
+    // węzłem jest uproszczony (pomiar: 6 obrysów bez wnętrza i 1 znak przeglądowy), więc pełne
+    // glify porównuje kanwa średnia (×2, skala ≈0,2: ten sam zbiór 7 węzłów, 6 pełnych glifów)
+    // z dużą — ten sam obiekt, ten sam rysunek przy każdej skali.
+    const uproszczony = (e: Element) => e.hasAttribute('data-bez-wnetrza') || e.hasAttribute('data-znak-przegladowy');
     let pelnychNaObu = 0;
-    a.forEach((n) => {
-      const m = naDuzej.get(n.getAttribute('data-testid') ?? '');
-      if (!m || n.hasAttribute('data-bez-wnetrza') || m.hasAttribute('data-bez-wnetrza')) return;
-      pelnychNaObu += 1;
-      expect(bezGruboscKreski(n.outerHTML), n.getAttribute('data-testid') ?? '').toBe(bezGruboscKreski(m.outerHTML));
-    });
+    const porownajZDuza = (wezly: readonly Element[]) =>
+      wezly.forEach((n) => {
+        const m = naDuzej.get(n.getAttribute('data-testid') ?? '');
+        expect(m, `obiekt ${n.getAttribute('data-testid')} narysowany także na dużej kanwie`).toBeDefined();
+        if (!m || uproszczony(n) || uproszczony(m)) return;
+        pelnychNaObu += 1;
+        expect(bezGruboscKreski(n.outerHTML), n.getAttribute('data-testid') ?? '').toBe(bezGruboscKreski(m.outerHTML));
+      });
+    porownajZDuza(a);
+    const { container: sredni } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH * 2} height={CANVAS_HEIGHT * 2} />);
+    expect(skala(sredni)).toBeGreaterThan(skala(maly));
+    expect(skala(sredni)).toBeLessThan(skala(duzy));
+    porownajZDuza(symbole(sredni));
     expect(pelnychNaObu, 'część symboli ma pełny glif na obu kanwach (porównanie nie jest puste)').toBeGreaterThan(0);
     expect(a.some((n) => n.hasAttribute('data-bez-wnetrza')), 'mała kanwa ma symbole poniżej progu wnętrza').toBe(true);
     expect(b.filter((n) => n.hasAttribute('data-bez-wnetrza')).length).toBeLessThan(a.filter((n) => n.hasAttribute('data-bez-wnetrza')).length);
@@ -1169,10 +1185,20 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
     x: (seg.points[0].x + seg.points[seg.points.length - 1].x) / 2,
     y: (seg.points[0].y + seg.points[seg.points.length - 1].y) / 2,
   });
-  const szynaSymboluStacji = (container: HTMLElement, ownerRef: string) =>
-    [...container.querySelectorAll('[data-symbol-stacji="true"]')]
-      .find((g) => g.getAttribute('data-owner-ref') === ownerRef.split('#')[0])
+  // Szyna symbolu stacji, do której hierarchia celów (`poleIStacjaObiektu` — ta sama, którą kanwa
+  // rozstrzyga obiekt do stacji) przypisuje obiekt. Nie każda stacja z `#sn-bus` jest w kadrze całej
+  // sieci symbolem stacji (R8: tylko stacje bez rozpoznawalnego aparatu) — test wybiera taką, która
+  // jest, zamiast pierwszej w kolejności sceny.
+  const szynaSymboluStacji = (container: HTMLElement, ownerRef: string) => {
+    const stacja = poleIStacjaObiektu(hierarchiaCelowTrafienia(enm, buildSceneV3(enm)), ownerRef).stacja;
+    return [...container.querySelectorAll('[data-symbol-stacji="true"]')]
+      .find((g) => g.getAttribute('data-owner-ref') === stacja)
       ?.querySelector('[data-szyna-stacji="true"]') ?? null;
+  };
+  const szynaSnNaSymbolu = (container: HTMLElement) =>
+    buildSceneV3(enm).segments.find(
+      (s) => (s.meta?.ownerRef ?? '').endsWith('#sn-bus') && szynaSymboluStacji(container, s.meta!.ownerRef!) !== null,
+    );
 
   it('szyna SN stacji (#sn-bus) ma stroke = VOLTAGE_COLOR.sn; szyna nN (#lv-bus, gdy fixtura ją niesie) ma stroke = VOLTAGE_COLOR.nn — dwa RÓŻNE kolory, nie jednolity V3_STROKE_BASE jak przed S3 (kadr roboczy)', () => {
     const scene = buildSceneV3(enm);
@@ -1198,11 +1224,10 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
   });
 
   it('kadr całej sieci: szyna symbolu stacji ma stroke = VOLTAGE_COLOR.sn (kolor napięcia nie ginie w symbolu stacji)', () => {
-    const scene = buildSceneV3(enm);
-    const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'))!;
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
-    const szyna = szynaSymboluStacji(container, snBus.meta!.ownerRef!);
-    expect(szyna, 'stacja w kadrze całej sieci jest symbolem stacji').toBeTruthy();
+    const snBus = szynaSnNaSymbolu(container);
+    expect(snBus, 'warunek sensu: w kadrze całej sieci jest stacja z szyną SN narysowana symbolem stacji').toBeDefined();
+    const szyna = szynaSymboluStacji(container, snBus!.meta!.ownerRef!);
     expect(szyna!.getAttribute('stroke')).toBe(VOLTAGE_COLOR.sn);
   });
 
@@ -1221,8 +1246,10 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
 
   it('nakładka energizacji WCIĄŻ WYGRYWA nad kolorem napięcia (precedencja niezmieniona: wyróżnienie > napięcie) — kadr roboczy i cała sieć', () => {
     const scene = buildSceneV3(enm);
-    const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
-    expect(snBus).toBeTruthy();
+    const { container: bez } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+    const snBus = szynaSnNaSymbolu(bez);
+    cleanup();
+    expect(snBus, 'warunek sensu: w kadrze całej sieci jest stacja z szyną SN narysowana symbolem stacji').toBeDefined();
     const ownerRef = snBus!.meta!.ownerRef!;
     const overlay: SldV3Overlay = { energizedByTestId: {}, energizedByOwnerRef: { [ownerRef]: false } };
     const viewport = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };

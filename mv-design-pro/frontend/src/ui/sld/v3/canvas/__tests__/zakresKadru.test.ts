@@ -27,6 +27,7 @@ import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buil
 import { sheetSizeFor } from '../../sheet/outline';
 import { MIN_OPIS_CELU_KADRU_PX, fontSizeForScreenFloorWithinProportion } from '../../core/text';
 import { planSceneLabels } from '../labelLegibility';
+import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { klasaInformacjiEtykiety } from '../gestoscInformacji';
 import { KADR_MAX_SCALE, type BoundingBox } from '../camera';
 import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
@@ -452,6 +453,47 @@ describe('tusz etykiet zakresu (plan etykiet kanwy przy skali kadru)', () => {
   it('determinizm: ten sam zakres i skala — identyczny tusz', () => {
     const z = dostepny(zakresCelu('stacja', enm, [stacjeRysunku[3]], scena));
     expect(prostokatyZakresu(scena, z).tuszEtykiet(0.5)).toEqual(prostokatyZakresu(scena, z).tuszEtykiet(0.5));
+  });
+
+  // R4 (jedno źródło przeszkód planu etykiet): tusz kadru liczony z TYCH SAMYCH wejść planu, które
+  // rysuje kanwa — przeszkody przy skali kadru (`przeszkodyEtykietPrzySkali`: rysunek ∪ znaczniki
+  // stanu tej skali) i pierwszeństwo nazw stacji. Iloczyn: każda stacja rysunku × skala
+  // {oddalenie 0,05 · 0,5} × wejścia {domyślne — kanwa bez nakładki · podane przez kanwę}.
+  it('tusz domyślny == plan kanwy bez nakładki (rysunek ∪ znaczniki stanu przy skali kadru)', () => {
+    let roznychOdSamegoRysunku = 0;
+    for (const st of stacjeRysunku) {
+      const z = dostepny(zakresCelu('stacja', enm, [st], scena));
+      const refy = new Set(z.refy);
+      for (const skala of [0.05, 0.5]) {
+        const oczekiwany = planSceneLabels(scena.labels, przeszkodyEtykietPrzySkali(scena)(skala), skala, sheetSizeFor(scena), podlogaOpisowCelu(refy));
+        const samRysunek = planSceneLabels(scena.labels, sceneObstacleRects(scena), skala, sheetSizeFor(scena), podlogaOpisowCelu(refy));
+        const tuszCelu = (p: typeof oczekiwany) => {
+          const r = p.drawn.filter((d) => nalezyDoZakresu(d.label.ownerRef, refy)).map((d) => d.rect);
+          return r.length === 0
+            ? null
+            : { minX: Math.min(...r.map((q) => q.x)), minY: Math.min(...r.map((q) => q.y)), maxX: Math.max(...r.map((q) => q.x + q.width)), maxY: Math.max(...r.map((q) => q.y + q.height)) };
+        };
+        expect(prostokatyZakresu(scena, z).tuszEtykiet(skala).cel, `${st} @${skala}`).toEqual(tuszCelu(oczekiwany));
+        if (JSON.stringify(tuszCelu(oczekiwany)) !== JSON.stringify(tuszCelu(samRysunek))) roznychOdSamegoRysunku += 1;
+      }
+    }
+    // Warunek sensu: znaczniki stanu zmieniają tusz kadru choć jednej stacji (inaczej test nie
+    // odróżnia przeszkód kanwy od samego rysunku).
+    expect(roznychOdSamegoRysunku).toBeGreaterThan(0);
+  });
+
+  it('tusz używa przeszkód i pierwszeństwa podanych przez kanwę', () => {
+    const st = stacjeRysunku[3];
+    const z = dostepny(zakresCelu('stacja', enm, [st], scena));
+    const pelnyArkusz = (): readonly { x: number; y: number; width: number; height: number }[] => [
+      { x: -1e6, y: -1e6, width: 2e6, height: 2e6 },
+    ];
+    // Przeszkoda na cały arkusz: bez pierwszeństwa nazwa stacji nie ma miejsca, z pierwszeństwem stoi
+    // na rysunku (R4 `naRysunku`) — oba wejścia muszą dojść do planu kadru.
+    const bez = prostokatyZakresu(scena, z, undefined, { przeszkody: pelnyArkusz }).tuszEtykiet(0.05);
+    const zPierwszenstwem = prostokatyZakresu(scena, z, undefined, { przeszkody: pelnyArkusz, pierwszenstwo: new Set([st]) }).tuszEtykiet(0.05);
+    expect(bez.cel, 'przeszkody kanwy dochodzą do planu kadru').toBeNull();
+    expect(zPierwszenstwem.cel, 'pierwszeństwo kanwy dochodzi do planu kadru').not.toBeNull();
   });
 });
 

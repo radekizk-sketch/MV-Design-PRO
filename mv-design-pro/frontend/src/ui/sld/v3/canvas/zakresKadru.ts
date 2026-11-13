@@ -35,7 +35,8 @@ import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../../../../types/enm';
 import { jestRodzajemGaleziAparatu } from '../../../../types/rodzajeGalezi';
 import type { TorElementuOdpowiedz } from '../../../../ui2/adapters/topologiaZasilenia';
-import { sceneObstacleRects, type SceneV3 } from '../scene/buildScene';
+import type { SceneV3 } from '../scene/buildScene';
+import type { V3Rect } from '../core/grid';
 import { MIN_OPIS_CELU_KADRU_PX } from '../core/text';
 import { sheetSizeFor } from '../sheet/outline';
 import { pickStationBus, stationSnSectionBusRefs, type StationBusSide } from '../../shared/stationBusResolution';
@@ -44,6 +45,7 @@ import { etykietaZapasowaRefu } from '../../../../ui2/wyniki/wzorzec/useNazwaObi
 import type { TuszEtykietKadru } from './camera';
 import { planSceneLabels, type PodlogaOpisowCelu } from './labelLegibility';
 import { kluczePrzynaleznosci, prostokatRefowWScenie } from './viewAnchor';
+import { przeszkodyEtykietPrzySkali } from './znacznikiStanu';
 
 /** Cele kadru (rozstrzygnięcie §0.1 karty). */
 export type CelKadru = 'siec' | 'magistrala' | 'stacja' | 'sekcja' | 'pole' | 'tor' | 'zaznaczenie';
@@ -759,7 +761,8 @@ export interface ProstokatyZakresu {
   /**
    * Tusz ETYKIET celu i każdej przeszkody przy skali kamery `scale` — z TEGO
    * SAMEGO planu etykiet, który rysuje kanwa (`planSceneLabels` na całej scenie
-   * z przeszkodami `sceneObstacleRects` i obrysem arkusza `sheetSizeFor`).
+   * z przeszkodami `przeszkodyEtykietPrzySkali` — rysunek i znaczniki stanu tej skali —
+   * pierwszeństwem nazw i obrysem arkusza `sheetSizeFor`).
    * Etykieta tożsamości poniżej progu czytelności rysuje się pismem
    * POWIĘKSZONYM, więc przy oddaleniu wystaje poza swój slot w scenie
    * (pomiar e2e K2, okno 1440×900: napis „FT1 · transformatorowe" stacji
@@ -767,6 +770,17 @@ export interface ProstokatyZakresu {
    * `przeszkody` = kolejność `przeszkody` wyżej (jedno filtrowanie, niżej).
    */
   readonly tuszEtykiet: (scale: number) => TuszEtykietKadru;
+}
+
+/**
+ * Wejścia planu etykiet kanwy, z których kadr liczy tusz etykiet (R4): przeszkody przy skali
+ * (`przeszkodyEtykietPrzySkali` — rysunek i znaczniki stanu) i pierwszeństwo nazw stacji. Kanwa
+ * podaje własne (nośniki ze stanu zaznaczenia i nakładki); domyślnie — kanwa bez zaznaczenia
+ * i nakładki.
+ */
+export interface PlanEtykietKadru {
+  readonly przeszkody?: (skala: number) => readonly V3Rect[];
+  readonly pierwszenstwo?: ReadonlySet<string>;
 }
 
 /**
@@ -778,7 +792,9 @@ export function prostokatyZakresu(
   scena: SceneV3,
   zakresKadru: ZakresKadru,
   przelicz: (bbox: BoundingBox) => BoundingBox = (b) => b,
+  planEtykiet: PlanEtykietKadru = {},
 ): ProstokatyZakresu {
+  const przeszkodyEtykiet = planEtykiet.przeszkody ?? przeszkodyEtykietPrzySkali(scena);
   const celSceny = prostokatRefowWScenie(scena, zakresKadru.refy);
   // Predykaty parami: przeszkody z prostokątem — JEDNA lista, z której powstają
   // i prostokąty przeszkód, i przypisanie tuszu etykiet.
@@ -810,7 +826,7 @@ export function prostokatyZakresu(
             maxY: Math.max(box.maxY, r.y + r.height),
           }
         : { minX: r.x, minY: r.y, maxX: r.x + r.width, maxY: r.y + r.height };
-    const plan = planSceneLabels(scena.labels, sceneObstacleRects(scena), scale, sheetSizeFor(scena), podloga);
+    const plan = planSceneLabels(scena.labels, przeszkodyEtykiet(scale), scale, sheetSizeFor(scena), podloga, undefined, planEtykiet.pierwszenstwo);
     for (const narysowana of plan.drawn) {
       const klucze = kluczePrzynaleznosci(narysowana.label.ownerRef);
       if (nalezyDoZakresu(narysowana.label.ownerRef, refyCelu)) cel = dolacz(cel, narysowana.rect);
