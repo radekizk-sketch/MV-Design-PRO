@@ -22,7 +22,7 @@
 import { GRID, type V3Rect } from '../core/grid';
 import type { PreviewComposition } from '../compose/preview';
 import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
-import { nalezyDoZakresu } from './zakresKadru';
+import { kluczePrzynaleznosci } from './viewAnchor';
 
 export interface ObrysZaznaczenia {
   readonly ref: string;
@@ -46,16 +46,31 @@ export function obrysyZaznaczenia(
   const wynik: ObrysZaznaczenia[] = [];
   for (const ref of new Set(refy)) {
     const wlasny = obrysPredykatu(scene, (r) => r === ref);
-    if (wlasny) {
-      wynik.push({ ref, rect: wlasny, rzut: false });
-      continue;
-    }
+    // Rzut (zakres rysunku celu) ma pierwszeństwo także dla celu z własnym rysunkiem: pole GPZ
+    // rysuje własnym refem stos aparatów, a jego zakres obejmuje też odejście od szyny — obrys
+    // zaznaczenia i cel kadru obiektu (`zakresKadru.prostokatyZakresu`) to jeden prostokąt.
     const zakres = rzut ? new Set(rzut(ref)) : null;
-    if (!zakres || zakres.size === 0) continue;
-    const zRzutu = obrysPredykatu(scene, (r) => r !== undefined && nalezyDoZakresu(r, zakres));
-    if (zRzutu) wynik.push({ ref, rect: zRzutu, rzut: true });
+    const zRzutu = zakres && zakres.size > 0 ? obrysRefow(scene, zakres) : null;
+    const rect = zRzutu ?? wlasny;
+    if (rect) wynik.push({ ref, rect, rzut: wlasny === null });
   }
   return wynik;
+}
+
+/**
+ * Obrys OBIEKTU złożonego ze zbioru refów rysunku (stacja, sekcja, pole): symbole i odcinki
+ * sceny należące do zbioru wg relacji przynależności (`kluczePrzynaleznosci`, ta sama co
+ * `zakresKadru.nalezyDoZakresu`), poszerzony o pół rastru. Jedno źródło dla obrysu rzutu
+ * zaznaczenia i prostokąta celu kadru obiektu (`zakresKadru.prostokatyZakresu`) — opisy nie
+ * powiększają obiektu (ich zasięg przy danej skali dokłada kamera z tuszu etykiet), więc to,
+ * co projektant widzi jako obrys obiektu, jest dokładnie tym, co kadr ma pokazać w całości.
+ */
+export function obrysRefow(
+  scene: Pick<PreviewComposition, 'symbols' | 'segments'>,
+  refy: ReadonlySet<string>,
+): V3Rect | null {
+  if (refy.size === 0) return null;
+  return obrysPredykatu(scene, (r) => kluczePrzynaleznosci(r).some((k) => refy.has(k)));
 }
 
 function obrysPredykatu(

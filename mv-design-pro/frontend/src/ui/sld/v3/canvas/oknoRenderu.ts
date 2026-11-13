@@ -238,10 +238,18 @@ export function skalaPoziomu(poziom: PoziomSzczegolu, skala: number): number {
  *  łącznika z położeniem bez czytelnego wnętrza. */
 export const ZNACZNIK_PRZERWY_PX = 6;
 
-/** Znacznik stanu łącznika bez czytelnego wnętrza: kwadrat o boku `ZNACZNIK_PRZERWY_PX`
- *  ekranu, wyśrodkowany na gabarycie symbolu. */
-export function znacznikPrzerwyToru(gabaryt: V3Rect, skala: number): V3Rect {
-  const bok = ZNACZNIK_PRZERWY_PX / (Number.isFinite(skala) && skala > 0 ? skala : 1);
+/** Bok KAFLA STANU łącznika ze znakiem stanu (łącznik podstawowy pola, sprzęgło szyn) [px EKRANU]
+ *  = próg czytelności R3 (9 px): kafel niesie położenie łącznika w barwie stanu i jest jedynym
+ *  znakiem stanu pola w LOD1, więc ma rozmiar czytelnego znaku (wymaganie właściciela 2026-11-13:
+ *  stan łączników czytelny). □ przerwy toru pozostałych łączników zostaje przy
+ *  `ZNACZNIK_PRZERWY_PX`: przy dolnej granicy LOD1 kolejne aparaty pola stoją co 9 px ekranu
+ *  (`SKALA_POL_ODPLYWOW`), więc dwa znaki 9 px sąsiednich aparatów zlałyby się w jeden. */
+export const KAFEL_STANU_PX = PROG_WNETRZA_SYMBOLU_PX;
+
+/** Znacznik stanu łącznika bez czytelnego wnętrza: kwadrat o boku `bokPx` ekranu (domyślnie
+ *  `ZNACZNIK_PRZERWY_PX`), wyśrodkowany na gabarycie symbolu. */
+export function znacznikPrzerwyToru(gabaryt: V3Rect, skala: number, bokPx: number = ZNACZNIK_PRZERWY_PX): V3Rect {
+  const bok = bokPx / (Number.isFinite(skala) && skala > 0 ? skala : 1);
   return { x: gabaryt.x + gabaryt.width / 2 - bok / 2, y: gabaryt.y + gabaryt.height / 2 - bok / 2, width: bok, height: bok };
 }
 
@@ -277,7 +285,7 @@ export function wygladAparatuBezWnetrza(
   // `stanKafla` podaje wołający WYŁĄCZNIE dla łącznika ze znakiem stanu (sprzęgło szyn, łącznik
   // podstawowy pola — `glifZbiorczy.lacznikiZeZnakiemStanu`); pozostałe łączniki: □ albo przelot.
   if (stanKafla !== null) {
-    return { rodzaj: 'kafel', stan: stanKafla, znak: znacznikPrzerwyToru(gabaryt, skala), przelot: stanKafla === 'zamkniety' ? przelotAparatu(symbol) : '' };
+    return { rodzaj: 'kafel', stan: stanKafla, znak: znacznikPrzerwyToru(gabaryt, skala, KAFEL_STANU_PX), przelot: stanKafla === 'zamkniety' ? przelotAparatu(symbol) : '' };
   }
   if (przerwaToru(symbol)) return { rodzaj: 'przerwa', znak: znacznikPrzerwyToru(gabaryt, skala) };
   return { rodzaj: 'przelot', przelot: przelotAparatu(symbol) };

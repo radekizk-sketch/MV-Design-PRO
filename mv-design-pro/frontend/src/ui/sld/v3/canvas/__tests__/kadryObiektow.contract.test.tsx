@@ -22,6 +22,7 @@ import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3, contentBoundingBoxOf, sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { boundingBoxOfRect } from '../camera';
 import { NAJMNIEJSZY_GABARYT_SYMBOLU, PROG_WNETRZA_SYMBOLU_PX, SKALA_PODLOGI_ROZDZIELNICY } from '../oknoRenderu';
+import { obrysRefow, obrysyZaznaczenia } from '../obrysZaznaczenia';
 import { prostokatyZakresu, zakresCelu, type CelKadru } from '../zakresKadru';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -84,6 +85,58 @@ describe('kadr obiektu z wnętrzem pól — jedno źródło (`ZakresKadru.rozdzi
       expect(rozdz('zaznaczenie', [pole]), 'zaznaczone pole').toBe(true);
       expect(rozdz('zaznaczenie', [odcinek!.ref_id]), 'zaznaczony odcinek poza stacją').toBe(false);
       expect(rozdz('zaznaczenie', [stacja, odcinek!.ref_id]), 'zaznaczenie mieszane').toBe(false);
+    });
+  }
+});
+
+describe('cel kadru obiektu = obrys zaznaczenia obiektu (jedno źródło, decyzja architekta 2026-11-13)', () => {
+  // Iloczyn: fikstura × cel {stacja — każda stacja, pole — każde pole stacji i GPZ, sekcja — sekcja
+  // każdego pola}. Stacja i pole: prostokąt celu kadru jest DOKŁADNIE obrysem, który warstwa
+  // zaznaczenia rysuje po zaznaczeniu obiektu (ta sama droga co kanwa: rzut z celu „zaznaczenie”).
+  // Sekcja (zaznaczenie wskazuje szynę, nie sekcję z polami): prostokąt celu = obrys jej refów
+  // rysunku. Odcinki magistral i opisy wychodzące poza obrys nie powiększają celu (defekt e2e
+  // 1280×720: stacja węższa od wolnej kanwy kadrowana „od początku”, pole F02 ucięte).
+  const naProstokat = (b: { minX: number; minY: number; maxX: number; maxY: number }) => ({
+    x: b.minX,
+    y: b.minY,
+    width: b.maxX - b.minX,
+    height: b.maxY - b.minY,
+  });
+  for (const f of FIKSTURY) {
+    it(f.nazwa, () => {
+      const scene = buildSceneV3(f.enm);
+      const rzut = (ref: string) => {
+        const w = zakresCelu('zaznaczenie', f.enm, [ref], scene);
+        return w.dostepny ? w.zakres.refy : [];
+      };
+      const celKadru = (cel: 'stacja' | 'pole' | 'sekcja', ref: string) => {
+        const w = zakresCelu(cel, f.enm, [ref], scene);
+        expect(w.dostepny, `${cel} ${ref} dostępny`).toBe(true);
+        if (!w.dostepny) return null;
+        return { zakres: w.zakres, cel: prostokatyZakresu(scene, w.zakres).cel };
+      };
+      let porownane = 0;
+      const stacje = (f.enm.substations ?? []).map((s) => s.ref_id);
+      const pola = (f.enm.bays ?? []).map((b) => b.ref_id);
+      for (const ref of [...stacje.map((r) => ['stacja', r] as const), ...pola.map((r) => ['pole', r] as const)]) {
+        const [cel, r] = ref;
+        if (cel === 'stacja' && !zakresCelu('stacja', f.enm, [r], scene).dostepny) continue;
+        const k = celKadru(cel, r);
+        // Obiekt bez symboli i odcinków na rysunku (odgałęzienia zagnieżdżone GPZ 40 poza
+        // rysunkiem — defekt sceny przypięty w `gpzDwusekcyjny40.contract.test.ts`) nie ma obrysu.
+        if (obrysRefow(scene, new Set(k!.zakres.refy)) === null) continue;
+        const obrys = obrysyZaznaczenia(scene, [r], rzut);
+        expect(obrys, `${cel} ${r}: obrys zaznaczenia`).toHaveLength(1);
+        expect(naProstokat(k!.cel!), `${cel} ${r}: cel kadru = obrys zaznaczenia`).toEqual(obrys[0]!.rect);
+        porownane += 1;
+      }
+      for (const r of pola) {
+        const w = zakresCelu('sekcja', f.enm, [r], scene);
+        if (!w.dostepny || obrysRefow(scene, new Set(w.zakres.refy)) === null) continue;
+        expect(naProstokat(prostokatyZakresu(scene, w.zakres).cel!), `sekcja pola ${r}`).toEqual(obrysRefow(scene, new Set(w.zakres.refy)));
+        porownane += 1;
+      }
+      expect(porownane, 'warunek sensu — porównano obiekty').toBeGreaterThan(stacje.length);
     });
   }
 });

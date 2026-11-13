@@ -39,7 +39,7 @@ import { SldCanvasV3, WHEEL_ZOOM_SENSITIVITY, sceneBoxToCameraWorld } from '../S
 import { RANGA_LACZNIKA_PODSTAWOWEGO, lacznikiZeZnakiemStanu, przegladEtykietPrzySkali, symboleStacji } from '../glifZbiorczy';
 import type { HierarchiaCelowWejscie } from '../hitAreas';
 import type { PreviewSymbol } from '../../compose/preview';
-import { SKALA_PODLOGI_ROZDZIELNICY, SKALA_POL_ODPLYWOW, SKALA_WNETRZA_POL, ZNACZNIK_PRZERWY_PX, poziomSzczegolu, type PoziomSzczegolu } from '../oknoRenderu';
+import { SKALA_PODLOGI_ROZDZIELNICY, SKALA_POL_ODPLYWOW, SKALA_WNETRZA_POL, poziomSzczegolu, type PoziomSzczegolu } from '../oknoRenderu';
 import { PASMO_HISTEREZY_CZYTELNOSCI } from '../gestoscInformacji';
 import { hierarchiaCelowTrafienia, prostokatyZakresu, zakresCelu } from '../zakresKadru';
 import { kameraNaPunkcieSceny } from './kameraTestowa';
@@ -125,8 +125,8 @@ describe('stan sprzęgła szyn × poziom szczegółu × motyw', () => {
             return;
           }
           expect(wezel!.getAttribute('data-bez-wnetrza')).toBe('kafel');
-          // Stały rozmiar ekranowy kafla bez wnętrza.
-          expect(Number(tlo.getAttribute('width')) * skala).toBeCloseTo(ZNACZNIK_PRZERWY_PX, 6);
+          // Stały rozmiar ekranowy kafla bez wnętrza = próg czytelności R3 (9 px, liczba kontraktu).
+          expect(Number(tlo.getAttribute('width')) * skala).toBeCloseTo(9, 6);
           // Linia toru przez sprzęgło wyłącznie zamknięte.
           expect(wezel!.querySelector('path') !== null, 'przelot przez sprzęgło').toBe(stan === 'closed');
           if (poziom === 'LOD0') {
@@ -249,6 +249,26 @@ describe('łącznik podstawowy pola — iloczyn składu pola × kolejności w sc
         const wynik = lacznikiZeZnakiemStanu(symbole, hierarchia);
         expect([...wynik].sort((x, y) => x - y)).toEqual([0, 1 + podstawowy(kolejnosc)]);
       });
+    }
+  }
+  // Czytelność stanu (wymaganie właściciela 2026-11-13): iloczyn skala LOD1 {dolna granica pasma
+  // wejścia, środek, tuż pod LOD2} × motyw — każdy kafel stanu ma bok ≥ 9 px ekranu (R3), a □
+  // przerwy toru pozostałych łączników jest od kafla mniejszy (rozróżnialne znaki).
+  for (const skala of [0.42, 0.6, 0.8]) {
+    for (const motyw of MOTYWY) {
+      it(`kanwa LOD1 · skala ${skala} · ${motyw}: kafel stanu czytelny (≥ 9 px), □ przerwy mniejszy`, () => {
+        const svg = rysuj(enmGpz, skala, motyw);
+        expect(svg.getAttribute('data-poziom-szczegolu')).toBe('LOD1');
+        const tla = [...svg.querySelectorAll('[data-testid="sld-v3-symbols"] [data-kafel="tlo"]')];
+        expect(tla.length, 'warunek sensu — kafle w kadrze').toBeGreaterThan(3);
+        for (const t of tla) {
+          expect(Number(t.getAttribute('width')) * skala).toBeGreaterThanOrEqual(9 - 1e-6);
+          expect(Number(t.getAttribute('height')) * skala).toBeGreaterThanOrEqual(9 - 1e-6);
+        }
+        for (const p of svg.querySelectorAll('[data-testid="sld-v3-symbols"] rect[data-przerwa-toru="true"]')) {
+          expect(Number(p.getAttribute('width')) * skala).toBeLessThan(9);
+        }
+      }, 120000);
     }
   }
   it('kanwa LOD1: kafel stanu wyłącznie na łączniku podstawowym pola i na sprzęgle', () => {

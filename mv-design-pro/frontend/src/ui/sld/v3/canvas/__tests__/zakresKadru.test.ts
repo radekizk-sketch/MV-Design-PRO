@@ -31,7 +31,7 @@ import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { klasaInformacjiEtykiety } from '../gestoscInformacji';
 import { KADR_MAX_SCALE, type BoundingBox } from '../camera';
 import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
-import { indeksPrzynaleznosci, kluczePrzynaleznosci, nalezyDo } from '../viewAnchor';
+import { indeksPrzynaleznosci, kluczePrzynaleznosci, nalezyDo, prostokatRefowWScenie } from '../viewAnchor';
 import { stationSnSectionBusRefs } from '../../../shared/stationBusResolution';
 import {
   SASIEDZI_ELEKTRYCZNIE_WYMAGANI,
@@ -137,11 +137,25 @@ describe('zakres celu „Stacja" — każda stacja rysunku (zwykła i GPZ)', () 
     const narysowane = z.przeszkody.filter(
       (p) => prostokatyZakresu(scena, dostepny(zakresCelu('stacja', enm, [p.ref], scena))).cel !== null,
     );
-    const boxGpz = prostokatyZakresu(scena, z).przeszkody[narysowane.findIndex((p) => p.ref === gpz)]!;
+    const iGpz = narysowane.findIndex((p) => p.ref === gpz);
+    const pz = prostokatyZakresu(scena, z);
+    const boxGpz = pz.przeszkody[iGpz]!;
+    // Od 2026-11-13 prostokąt przeszkody = obrys obiektu (bez napisów); napis źródła należy do
+    // przeszkody przez jej TUSZ etykiet (ten sam plan, który rysuje kanwa) — przy skali kadru
+    // z napisem w rozmiarze naturalnym obrys ∪ tusz obejmuje każdy napis źródła GPZ.
+    const tusz = pz.tuszEtykiet(KADR_MAX_SCALE).przeszkody[iGpz];
+    const suma = tusz
+      ? { minX: Math.min(boxGpz.minX, tusz.minX), minY: Math.min(boxGpz.minY, tusz.minY), maxX: Math.max(boxGpz.maxX, tusz.maxX), maxY: Math.max(boxGpz.maxY, tusz.maxY) }
+      : boxGpz;
     const napisy = scena.labels.filter((l) => zrodla.some((zr) => nalezyDo(l.ownerRef, zr)));
     expect(napisy.length).toBeGreaterThan(0);
     for (const l of napisy) {
-      expect(zawiera(boxGpz, { minX: l.rect.x, minY: l.rect.y, maxX: l.rect.x + l.rect.width, maxY: l.rect.y + l.rect.height })).toBe(true);
+      expect(zawiera(suma, { minX: l.rect.x, minY: l.rect.y, maxX: l.rect.x + l.rect.width, maxY: l.rect.y + l.rect.height })).toBe(true);
+    }
+    // Symbol źródła GPZ leży w samym obrysie przeszkody.
+    for (const sym of scena.symbols.filter((y) => zrodla.some((zr) => nalezyDo(y.meta?.ownerRef, zr)))) {
+      const g = gabarytSymbolu(sym);
+      expect(zawiera(boxGpz, { minX: g.x, minY: g.y, maxX: g.x + g.width, maxY: g.y + g.height })).toBe(true);
     }
   });
 
@@ -347,11 +361,13 @@ describe('magistrala', () => {
       const refyBocznej = dostepny(zakresCelu('stacja', enm, [st], scena)).refy;
       expect(z.refy.filter((r) => refyBocznej.includes(r)), `magistrala bez ${st}`).toEqual([]);
     }
-    // Prostokąt magistrali obejmuje prostokąt każdej stacji ciągu.
+    // Prostokąt magistrali obejmuje prostokąt każdej stacji ciągu — obu jako OBIEKTÓW (obrys
+    // zaznaczenia, `prostokatObiektuZakresu`; decyzja architekta 2026-11-13: opisy nie powiększają
+    // obiektu, więc porównanie z prostokątem indeksu z opisami nie byłoby tą samą miarą).
     const pm = prostokatyZakresu(scena, z).cel!;
     for (const st of meta.mainTrunkStationIds) {
-      const ps = indeksPrzynaleznosci(scena).get(st);
-      expect(ps, st).toBeDefined();
+      const ps = prostokatyZakresu(scena, dostepny(zakresCelu('stacja', enm, [st], scena))).cel;
+      expect(ps, st).not.toBeNull();
       expect(zawiera(pm, ps!)).toBe(true);
     }
   });
@@ -440,7 +456,9 @@ describe('tusz etykiet zakresu (plan etykiet kanwy przy skali kadru)', () => {
     let wystaje = 0;
     for (const st of stacjeRysunku) {
       const p = prostokatyZakresu(scena, dostepny(zakresCelu('stacja', enm, [st], scena)));
-      const slot = p.cel!;
+      // Slot napisów = prostokąt indeksu przynależności (rysunek RAZEM z napisami w rozmiarze
+      // naturalnym); cel kadru jest od 2026-11-13 obrysem obiektu bez napisów.
+      const slot = prostokatRefowWScenie(scena, dostepny(zakresCelu('stacja', enm, [st], scena)).refy)!;
       const blisko = p.tuszEtykiet(KADR_MAX_SCALE).cel;
       if (blisko) expect(zawiera({ minX: slot.minX - 1e-6, minY: slot.minY - 1e-6, maxX: slot.maxX + 1e-6, maxY: slot.maxY + 1e-6 }, blisko)).toBe(true);
       const daleko = p.tuszEtykiet(0.5).cel;

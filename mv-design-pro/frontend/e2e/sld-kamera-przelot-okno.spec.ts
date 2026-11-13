@@ -458,10 +458,23 @@ async function prostokatObiektu(kanwa: Locator, ref: string): Promise<Prost | nu
   }, ref);
 }
 
-/** P0-02: obiekt (z obrysem i nagłówkiem) w wolnej kanwie i poza panelami narożnymi. */
+/** Prostokąt ekranu OBRYSU ZAZNACZENIA obiektu (`data-zaznaczenie-ref`) — ten sam prostokąt, który
+ *  kadr obiektu bierze za cel (`obrysZaznaczenia.obrysRefow`, decyzja architekta 2026-11-13: jedno
+ *  źródło dla kadru i predykatu widza). `null` — obiekt nie jest zaznaczony. */
+async function obrysZaznaczeniaNaEkranie(kanwa: Locator, ref: string): Promise<Prost | null> {
+  return kanwa.evaluate((svg, r) => {
+    const el = svg.querySelector(`[data-zaznaczenie-ref="${r}"]`);
+    if (!el) return null;
+    const b = el.getBoundingClientRect();
+    return { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+  }, ref);
+}
+
+/** P0-02: obiekt w wolnej kanwie i poza panelami narożnymi. Obiekt zaznaczony — jego obrys
+ *  zaznaczenia (cel kadru); niezaznaczony — obrys trafień z nagłówkiem. */
 async function obiektWidoczny(page: Page, kanwa: Locator, ref: string, opis: string): Promise<void> {
   const wolna = await wolnaKanwa(page, kanwa);
-  const o = await prostokatObiektu(kanwa, ref);
+  const o = (await obrysZaznaczeniaNaEkranie(kanwa, ref)) ?? (await prostokatObiektu(kanwa, ref));
   expect(o, `${opis}: obiekt ${ref} narysowany`).not.toBeNull();
   const tol = 1;
   expect(o!.left, `${opis}: lewa krawędź obiektu w wolnej kanwie`).toBeGreaterThanOrEqual(wolna.left - tol);
@@ -598,7 +611,7 @@ for (const motyw of [
         expect(skalaKadru, `${opisN}: skala kadru z wnętrzem pól`).toBeGreaterThanOrEqual((9 / 11) * 1.1 - 1e-4);
         expect(await kanwa.getAttribute('data-poziom-szczegolu'), `${opisN}: poziom szczegółu`).toBe('LOD2');
         const nawigatorPoKadrze = (await page.getByTestId('sld-v3-minimap-toggle').getAttribute('aria-expanded')) === 'true';
-        const o = (await prostokatObiektu(kanwa, stacja.ref_id))!;
+        const o = (await obrysZaznaczeniaNaEkranie(kanwa, stacja.ref_id))!;
         const wolna = await wolnaKanwa(page, kanwa);
         pomiaryDopasuj.push({
           okno: rozmiar,

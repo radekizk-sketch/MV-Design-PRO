@@ -46,6 +46,7 @@ import type { TuszEtykietKadru } from './camera';
 import { planSceneLabels, type EtykietyPrzegladuStacji, type PodlogaOpisowCelu } from './labelLegibility';
 import { kluczePrzynaleznosci, prostokatRefowWScenie } from './viewAnchor';
 import { przeszkodyEtykietPrzySkali } from './znacznikiStanu';
+import { obrysRefow } from './obrysZaznaczenia';
 
 /** Cele kadru (rozstrzygnięcie §0.1 karty). */
 export type CelKadru = 'siec' | 'magistrala' | 'stacja' | 'sekcja' | 'pole' | 'tor' | 'zaznaczenie';
@@ -797,6 +798,20 @@ export interface PlanEtykietKadru {
 }
 
 /**
+ * Prostokąt OBIEKTU zakresu w układzie sceny = obrys zaznaczenia obiektu (`obrysRefow`: symbole
+ * i odcinki zakresu poszerzone o pół rastru; decyzja architekta 2026-11-13). Jedno źródło dla
+ * warstwy zaznaczenia, celu kadru i przeszkód kadru: odcinki magistral i opisy wychodzące poza
+ * obrys nie powiększają obiektu (zasięg opisów przy danej skali dokłada kamera z tuszu etykiet),
+ * więc obiekt mieszczący się w wolnej kanwie nie jest kadrowany „od początku”. Zakres bez
+ * symboli i odcinków (sam napis) albo cała sieć (`refy` puste) — prostokąt indeksu sceny.
+ */
+export function prostokatObiektuZakresu(scena: SceneV3, refy: readonly string[]): BoundingBox | null {
+  const obrys = refy.length > 0 ? obrysRefow(scena, new Set(refy)) : null;
+  if (obrys) return { minX: obrys.x, minY: obrys.y, maxX: obrys.x + obrys.width, maxY: obrys.y + obrys.height };
+  return prostokatRefowWScenie(scena, refy);
+}
+
+/**
  * Prostokąty zakresu na scenie — czytane z indeksu przynależności sceny (jedno
  * przejście, pamiętane per scena). `przelicz` mostkuje układ sceny na świat
  * kamery (`sceneBoxToCameraWorld`).
@@ -808,12 +823,13 @@ export function prostokatyZakresu(
   planEtykiet: PlanEtykietKadru = {},
 ): ProstokatyZakresu {
   const przeszkodyEtykiet = planEtykiet.przeszkody ?? przeszkodyEtykietPrzySkali(scena);
-  const celSceny = prostokatRefowWScenie(scena, zakresKadru.refy);
+  const celSceny = prostokatObiektuZakresu(scena, zakresKadru.refy);
   // Predykaty parami: przeszkody z prostokątem — JEDNA lista, z której powstają
-  // i prostokąty przeszkód, i przypisanie tuszu etykiet.
+  // i prostokąty przeszkód, i przypisanie tuszu etykiet; prostokąt sąsiada jako przeszkody
+  // = jego prostokąt jako celu (ta sama funkcja).
   const lista: readonly { readonly przeszkoda: PrzeszkodaKadru; readonly box: BoundingBox }[] =
     zakresKadru.przeszkody.flatMap((przeszkoda) => {
-      const box = prostokatRefowWScenie(scena, przeszkoda.refy);
+      const box = prostokatObiektuZakresu(scena, przeszkoda.refy);
       return box ? [{ przeszkoda, box }] : [];
     });
   const refyCelu = new Set(zakresKadru.refy);
