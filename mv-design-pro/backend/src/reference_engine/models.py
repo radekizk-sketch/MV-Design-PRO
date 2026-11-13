@@ -114,6 +114,75 @@ class ReferenceCellConfiguration(BaseModel):
     notes_pl: str | None = None
 
 
+class ApprovedProjectProduct(BaseModel):
+    """Zanonimizowany produkt z zatwierdzonej referencji projektowej.
+
+    Nie oznacza potwierdzenia całej oferty handlowej producenta.
+    """
+
+    ref: str
+    manufacturer: str
+    model: str
+    category: str
+    specification: dict[str, str | int | float | bool] = Field(default_factory=dict)
+    source_pages: list[str] = Field(default_factory=list)
+
+
+class ApprovedProjectEquipmentRef(BaseModel):
+    """Liczba egzemplarzy typu produktu w pojedynczym wzorcowym polu."""
+
+    ref: str
+    qty: int = Field(ge=1)
+
+
+class ApprovedProjectField(BaseModel):
+    """Konfiguracja pełnego pola lub zakresu modernizacji obwodów wtórnych."""
+
+    field_ref: str
+    name_pl: str
+    role: str
+    applicability: str
+    approval: Literal["owner_approved_project_reference"]
+    primary_equipment: list[ApprovedProjectEquipmentRef] = Field(default_factory=list)
+    secondary_equipment: list[ApprovedProjectEquipmentRef] = Field(default_factory=list)
+    source_pages: list[str] = Field(default_factory=list)
+    notes_pl: str
+
+
+class ApprovedProjectFieldExample(BaseModel):
+    """Syntetyczny, niezwiązany z obiektem identyfikator wariantu pola."""
+
+    synthetic_field_ref: str
+    field_profile_ref: str
+    not_real_site_number: Literal[True]
+
+
+class ApprovedProjectSharedEquipment(BaseModel):
+    profile_ref: str
+    name_pl: str
+    refs: list[str] = Field(default_factory=list)
+
+
+class ApprovedProjectReference(BaseModel):
+    """Wersjonowane dane ze zweryfikowanego projektu, osobne od katalogu producenta.
+
+    Źródło prywatne nie zostaje opublikowane w repo; modele i parametry są
+    zanonimizowaną, zatwierdzoną referencją do tworzenia nowych konfiguracji.
+    """
+
+    reference_id: str
+    evidence_kind: Literal["approved_project_reference"]
+    approval_status: Literal["owner_approved"]
+    record_version: str
+    safety_scope: str
+    public_manufacturer_catalog_claim: Literal[False]
+    notes_pl: str
+    product_catalog: list[ApprovedProjectProduct] = Field(default_factory=list)
+    field_profiles: list[ApprovedProjectField] = Field(default_factory=list)
+    anonymized_field_examples: list[ApprovedProjectFieldExample] = Field(default_factory=list)
+    shared_equipment_profiles: list[ApprovedProjectSharedEquipment] = Field(default_factory=list)
+
+
 class ReferenceRule(BaseModel):
     """Reguła referencyjna (połączeniowa/stacyjna) jako DANA.
 
@@ -148,6 +217,10 @@ class ReferencePack(BaseModel):
     # WYŁĄCZNIE pakiety `manufacturer` (egzekwuje registry): konfiguracje
     # celek rodziny z publicznego katalogu producenta.
     cell_configurations: list[ReferenceCellConfiguration] = Field(default_factory=list)
+    # Osobny, zatwierdzony projektowy wzorzec aparatury (NIE publiczny katalog
+    # producenta i NIE cell_configurations używane w ocenie normatywnej).
+    approved_project_reference_file: str | None = None
+    approved_project_reference: ApprovedProjectReference | None = None
     symbol_map: list[ReferenceSymbolMapEntry] = Field(default_factory=list)
     station_rules: list[ReferenceRule] = Field(default_factory=list)
     connection_rules: list[ReferenceRule] = Field(default_factory=list)
