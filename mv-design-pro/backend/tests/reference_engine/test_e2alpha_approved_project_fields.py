@@ -25,9 +25,9 @@ def test_approved_catalog_has_provenance_and_complete_field_variants():
     assert reference.approval_status == "owner_approved"
     assert reference.evidence_kind == "approved_project_reference"
     assert reference.public_manufacturer_catalog_claim is False
-    assert len(reference.product_catalog) >= 70
-    assert len(reference.field_profiles) >= 6
-    assert len(reference.anonymized_field_examples) == 8
+    assert len(reference.product_catalog) >= 86
+    assert len(reference.field_profiles) >= 7
+    assert len(reference.anonymized_field_examples) == 10
     assert all(product.source_pages for product in reference.product_catalog)
     assert all(field.source_pages for field in reference.field_profiles)
     assert all(example.not_real_site_number for example in reference.anonymized_field_examples)
@@ -46,7 +46,7 @@ def test_reference_separates_vt_line_ct1_line_ct3_and_partial_retrofits():
     _, reference = _approved_reference()
     fields = {f.field_ref: f for f in reference.field_profiles}
     assert {"AIS-VT-3W", "AIS-LINE-CT1", "AIS-LINE-CT3"} <= fields.keys()
-    assert {"RETRO-TR-SEC", "RETRO-ZU", "RETRO-COUPLER-SEC"} <= fields.keys()
+    assert {"RETRO-TR-SEC", "RETRO-ZU", "RETRO-COUPLER-SEC", "RETRO-AUX-FEEDERS"} <= fields.keys()
     ct1 = fields["AIS-LINE-CT1"]
     ct3 = fields["AIS-LINE-CT3"]
     assert any(e.ref == "ALCE_AB12_P" and e.qty == 3 for e in ct1.primary_equipment)
@@ -91,6 +91,36 @@ def test_existing_api_returns_same_approved_project_field_data(app_client):
     pack = response.json()
     approved = pack["approved_project_reference"]
     assert approved["approval_status"] == "owner_approved"
-    assert len(approved["field_profiles"]) >= 6
-    assert len(approved["product_catalog"]) >= 70
+    assert len(approved["field_profiles"]) >= 7
+    assert len(approved["product_catalog"]) >= 86
     assert pack["cell_configurations"] == []
+
+
+def test_vt_field_has_distinct_withdrawable_bus_and_vt_assemblies():
+    _, reference = _approved_reference()
+    vt = next(f for f in reference.field_profiles if f.field_ref == "AIS-VT-3W")
+    ids = {item.ref for item in vt.primary_equipment}
+    assert "BUS_DISCONNECT_TRUCK" in ids
+    assert "VT_TRUCK" in ids
+
+
+def test_e2alpha_three_core_field_has_only_one_earthing_apparatus():
+    _, reference = _approved_reference()
+    line = next(f for f in reference.field_profiles if f.field_ref == "AIS-LINE-CT3")
+    es = [x for x in line.primary_equipment if x.ref in {"E2DELTA", "ES_UMR"}]
+    assert len(es) == 1 and es[0].qty == 1
+
+
+def test_auxiliary_terminal_strips_are_one_assembly_per_field():
+    _, reference = _approved_reference()
+    fields = {f.field_ref: f for f in reference.field_profiles}
+    expected = {
+        "AIS-LINE-CT1": "WAGO_STRIP18",
+        "AIS-LINE-CT3": "WAGO_STRIP18",
+        "AIS-VT-3W": "WAGO_STRIP10",
+        "RETRO-TR-SEC": "WAGO_STRIP22",
+        "RETRO-ZU": "WAGO_STRIP19",
+    }
+    for field_id, product_ref in expected.items():
+        ref = [x for x in fields[field_id].secondary_equipment if x.ref == product_ref]
+        assert len(ref) == 1 and ref[0].qty == 1
