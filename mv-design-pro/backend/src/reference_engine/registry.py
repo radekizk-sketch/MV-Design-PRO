@@ -62,11 +62,57 @@ def nazwa_operatora_pl(operator_id: str) -> str:
     return "wskazany w przypadku obliczeniowym, spoza listy operatorów produktu"
 
 
+def _validate_approved_project_reference(pack: ReferencePack) -> None:
+    """Bezstratne powiązanie produktów i pól, bez udawania katalogu producenta."""
+    reference = pack.approved_project_reference
+    if reference is None:
+        return
+    if pack.kind != "manufacturer":
+        raise ValueError("Zatwierdzone projekty można przypisywać tylko pakietom producentów")
+    products = [product.ref for product in reference.product_catalog]
+    if len(products) != len(set(products)):
+        raise ValueError(f"Duplikat ref produktu w pakiecie {pack.pack_id}")
+    if any(not product.source_pages for product in reference.product_catalog):
+        raise ValueError(f"Produkt w {pack.pack_id} bez jawnego zakresu stron źródłowych")
+    fields = [field.field_ref for field in reference.field_profiles]
+    if len(fields) != len(set(fields)):
+        raise ValueError(f"Duplikat ref pola w pakiecie {pack.pack_id}")
+    known_products = set(products)
+    for field in reference.field_profiles:
+        if not field.source_pages:
+            raise ValueError(f"Pole {field.field_ref} bez stron dokumentacji")
+        for equipment in [*field.primary_equipment, *field.secondary_equipment]:
+            if equipment.ref not in known_products:
+                raise ValueError(f"Pole {field.field_ref}: nieznany produkt {equipment.ref}")
+    for group in reference.shared_equipment_profiles:
+        for ref in group.refs:
+            if ref not in known_products:
+                raise ValueError(f"Profil wyposażenia {group.profile_ref}: brak produktu {ref}")
+    seen_examples: set[str] = set()
+    for example in reference.anonymized_field_examples:
+        if example.synthetic_field_ref in seen_examples:
+            raise ValueError(f"Powtórzony anonimowy przykład {example.synthetic_field_ref}")
+        seen_examples.add(example.synthetic_field_ref)
+        if example.field_profile_ref not in fields:
+            raise ValueError(f"Przykład {example.synthetic_field_ref}: brak profilu pola")
+
+
 def _load_packs() -> dict[str, ReferencePack]:
     packs: dict[str, ReferencePack] = {}
     for pack_file in sorted(_PACKS_DIR.glob("*/pack.json")):
         data = json.loads(pack_file.read_text(encoding="utf-8"))
+        # Dokumentacja zatwierdzona przez właściciela to odrębna klasa źródła:
+        # nie zapisujemy jej jako cell_configurations katalogu producenta.
+        private_reference_name = data.get("approved_project_reference_file")
+        if private_reference_name:
+            if Path(private_reference_name).name != private_reference_name:
+                raise ValueError("Niedozwolona ścieżka źródła projektu")
+            reference_file = pack_file.parent / private_reference_name
+            data["approved_project_reference"] = json.loads(
+                reference_file.read_text(encoding="utf-8")
+            )
         pack = ReferencePack.model_validate(data)
+        _validate_approved_project_reference(pack)
         if pack.pack_id != pack_file.parent.name:
             raise ValueError(
                 f"Pack id mismatch: katalog '{pack_file.parent.name}' "
