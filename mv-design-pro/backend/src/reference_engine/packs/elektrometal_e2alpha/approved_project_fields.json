@@ -1,0 +1,1695 @@
+{
+  "reference_id": "e2alpha_approved_design_sn_2026_11",
+  "evidence_kind": "approved_project_reference",
+  "approval_status": "owner_approved",
+  "record_version": "2026-11-13",
+  "safety_scope": "zanonimizowany katalog typów i zespołów, bez adresu i danych łączności obiektu, bez rzeczywistych nastaw EAZ, bez połączeń I/O",
+  "public_manufacturer_catalog_claim": false,
+  "notes_pl": "Zatwierdzone wzorce modernizacyjne — nie odtwarzają pełnej lokalizacji ani stanu ruchowego. Produkty o nierozstrzygniętym producencie mają jawnie opisane źródło.",
+  "product_catalog": [
+    {
+      "ref": "E2ALPHA",
+      "manufacturer": "Elektrometal Energetyka",
+      "model": "e²ALPHA",
+      "category": "switchgear_assembly",
+      "specification": {
+        "technology": "AIS",
+        "scope": "modernizacja",
+        "rated_voltage_kv": 17.5
+      },
+      "source_pages": [
+        "P1:12-19",
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "E2BRAVO_EV1",
+      "manufacturer": "Elektrometal Energetyka",
+      "model": "e²BRAVO EV-1",
+      "category": "circuit_breaker",
+      "specification": {
+        "rated_voltage_kv": 17.5,
+        "rated_current_a": 630,
+        "short_circuit_breaking_ka": 25,
+        "mounting": "wysuwny",
+        "control_supply_v_dc": 220
+      },
+      "source_pages": [
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "E2DELTA",
+      "manufacturer": "Elektrometal Energetyka",
+      "model": "e²DELTA",
+      "category": "earthing_switch",
+      "specification": {
+        "rated_voltage_kv": 17.5,
+        "drive": "ręczny/wykonanie zależne od pola"
+      },
+      "source_pages": [
+        "P1:14-19"
+      ]
+    },
+    {
+      "ref": "VT_TRUCK",
+      "manufacturer": "Elektrometal Energetyka",
+      "model": "człon wysuwny przekładników napięciowych",
+      "category": "voltage_transformer_truck",
+      "specification": {
+        "function": "oddzielenie toru VT; aparat nie jest wyłącznikiem"
+      },
+      "source_pages": [
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "VT_FUSE_0_5",
+      "manufacturer": "nieokreślony w BOM",
+      "model": "wkładka bezpiecznikowa VT 0,5 A",
+      "category": "fuse",
+      "specification": {
+        "rated_current_a": 0.5,
+        "applicability": "historyczna modernizacja; nie stosować automatycznie w nowym GPZ ENEA"
+      },
+      "source_pages": [
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "ALCE_AB12_P",
+      "manufacturer": "ALCE",
+      "model": "AB12, 200–400/5 A",
+      "category": "current_transformer",
+      "specification": {
+        "rated_voltage_kv": 17.5,
+        "primary_taps_a": "200/400",
+        "secondary_a": 5,
+        "cores": "1×15 VA 5P20",
+        "thermal_ka_s": "25/1",
+        "dynamic_ka": 62.5
+      },
+      "source_pages": [
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "ALCE_AB12_M",
+      "manufacturer": "ALCE",
+      "model": "AB12, 200–400/5/5/5 A",
+      "category": "current_transformer",
+      "specification": {
+        "rated_voltage_kv": 17.5,
+        "primary_taps_a": "200/400",
+        "secondary_a": 5,
+        "cores": "2×10 VA 0,2S FS5 + 1×15 VA 5P20",
+        "thermal_ka_s": "25/1",
+        "dynamic_ka": 62.5
+      },
+      "source_pages": [
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "ALCE_VBF_P",
+      "manufacturer": "ALCE",
+      "model": "VBF12-FE — pomiar napięcia",
+      "category": "voltage_transformer",
+      "specification": {
+        "insulation_kv": 17.5,
+        "primary_v": "15000/√3",
+        "secondary_v": "100/√3;100/√3;100/3 (BOM) — rozbieżność zapisu",
+        "windings": "I 0–10 VA kl.0,2; II 15 VA kl.0,5/3P; III 15 VA kl.3P"
+      },
+      "source_pages": [
+        "P1:29-31"
+      ]
+    },
+    {
+      "ref": "ALCE_VBF_L",
+      "manufacturer": "ALCE",
+      "model": "VBF12-FE / VBF12 — pole liniowe",
+      "category": "voltage_transformer",
+      "specification": {
+        "insulation_kv": 17.5,
+        "primary_v": "15000/√3",
+        "secondary_v": "3×100/√3",
+        "windings": "I 0–10 VA kl.0,2; II 7,5 VA kl.0,2; III 7,5 VA kl.0,5/3P"
+      },
+      "source_pages": [
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "FERRANTI_IO",
+      "manufacturer": "Energotest / SPIE Energotest",
+      "model": "IO-13D / IO-125x470-D",
+      "category": "core_balance_ct",
+      "specification": {
+        "ratio_project_record": "1/100 A",
+        "catalog_identity": "wymaga zbieżności oznaczeń opisu i BOM"
+      },
+      "source_pages": [
+        "P1:14-19",
+        "P1:29-33"
+      ]
+    },
+    {
+      "ref": "ES_UMR",
+      "manufacturer": "EB / PB (zestawienie)",
+      "model": "UMR — uziemnik ręczny",
+      "category": "earthing_switch",
+      "specification": {
+        "rated_voltage_kv": 17.5
+      },
+      "source_pages": [
+        "P1:30-33"
+      ]
+    },
+    {
+      "ref": "VOLTAGE_IND",
+      "manufacturer": "producent niejednoznaczny w BOM",
+      "model": "wskaźnik obecności napięcia",
+      "category": "voltage_indicator",
+      "specification": {
+        "function": "sygnalizacja, bez funkcji łącznika"
+      },
+      "source_pages": [
+        "P1:30-33"
+      ]
+    },
+    {
+      "ref": "E2TANGO_J6",
+      "manufacturer": "Elektrometal (oznaczenie P2)",
+      "model": "e²TANGO-800 J6",
+      "category": "protection_ied",
+      "specification": {
+        "ct_input_a": 5,
+        "vt_input_v": "58/100",
+        "supply_v_dc": 220,
+        "mounting": "zatablicowy",
+        "manufacturer_identity": "odróżnić Elektrometal S.A. i Elektrometal Energetyka"
+      },
+      "source_pages": [
+        "P2:54",
+        "P2:57",
+        "P2:61"
+      ]
+    },
+    {
+      "ref": "E2TANGO_J10",
+      "manufacturer": "Elektrometal (oznaczenie P2)",
+      "model": "e²TANGO-800 J10",
+      "category": "protection_ied",
+      "specification": {
+        "ct_input_a": 5,
+        "vt_input_v": "58/100",
+        "supply_v_dc": 220,
+        "mounting": "natablicowy",
+        "manufacturer_identity": "zweryfikować w katalogu dla konkretnego wykonania"
+      },
+      "source_pages": [
+        "P2:64",
+        "P2:67"
+      ]
+    },
+    {
+      "ref": "ABB_VT_GUARD",
+      "manufacturer": "ABB",
+      "model": "VT Guard PRO",
+      "category": "ferroresonance_damping",
+      "specification": {
+        "function": "tłumienie ferrorezonansu w obwodzie VT"
+      },
+      "source_pages": [
+        "P2:61"
+      ]
+    },
+    {
+      "ref": "RA70",
+      "manufacturer": "MERAZET / EAW (różny zapis P2)",
+      "model": "RA70",
+      "category": "signal_relay",
+      "specification": {
+        "coil_v_dc": 220,
+        "operation": "zanikowy",
+        "contacts": "2p / zgodnie z wariantem"
+      },
+      "source_pages": [
+        "P2:54",
+        "P2:65",
+        "P2:68"
+      ]
+    },
+    {
+      "ref": "AP_4G10_201",
+      "manufacturer": "Apator",
+      "model": "4G10-201-U-R014",
+      "category": "cam_switch",
+      "specification": {},
+      "source_pages": [
+        "P2:54",
+        "P2:57",
+        "P2:61"
+      ]
+    },
+    {
+      "ref": "AP_4G10_91",
+      "manufacturer": "Apator",
+      "model": "4G10-91-U-R014",
+      "category": "cam_switch",
+      "specification": {},
+      "source_pages": [
+        "P2:54",
+        "P2:60"
+      ]
+    },
+    {
+      "ref": "AP_4G10_90",
+      "manufacturer": "Apator",
+      "model": "4G10-90-U-R014",
+      "category": "cam_switch",
+      "specification": {},
+      "source_pages": [
+        "P2:54",
+        "P2:57",
+        "P2:61"
+      ]
+    },
+    {
+      "ref": "AP_4G10_54",
+      "manufacturer": "Apator",
+      "model": "4G10-54-U-R014",
+      "category": "cam_switch",
+      "specification": {},
+      "source_pages": [
+        "P2:54",
+        "P2:57"
+      ]
+    },
+    {
+      "ref": "AP_4G10_92",
+      "manufacturer": "Apator",
+      "model": "4G10-92-U-R014",
+      "category": "cam_switch",
+      "specification": {},
+      "source_pages": [
+        "P2:65",
+        "P2:71-72"
+      ]
+    },
+    {
+      "ref": "ELBAR_SOD",
+      "manufacturer": "ELBAR",
+      "model": "Sod-5-SMt",
+      "category": "local_control_switch",
+      "specification": {
+        "supply_v_dc": 220
+      },
+      "source_pages": [
+        "P2:54",
+        "P2:57",
+        "P2:65",
+        "P2:68"
+      ]
+    },
+    {
+      "ref": "PROMET_NEF_L",
+      "manufacturer": "Promet",
+      "model": "NEF-30-LDc",
+      "category": "pilot_light",
+      "specification": {
+        "color": "czerwony",
+        "supply_v_dc": 220
+      },
+      "source_pages": [
+        "P2:54",
+        "P2:60"
+      ]
+    },
+    {
+      "ref": "PROMET_NEF_B",
+      "manufacturer": "Promet",
+      "model": "NEF30-1X1Y",
+      "category": "push_button",
+      "specification": {
+        "color": "biały"
+      },
+      "source_pages": [
+        "P2:68"
+      ]
+    },
+    {
+      "ref": "EATON_FAZ3",
+      "manufacturer": "Eaton",
+      "model": "FAZ1,0/3 + Z-AHK",
+      "category": "aux_mcb",
+      "specification": {
+        "aux_contacts": "tak"
+      },
+      "source_pages": [
+        "P2:54",
+        "P2:57",
+        "P2:61",
+        "P2:65"
+      ]
+    },
+    {
+      "ref": "EATON_FAZ1",
+      "manufacturer": "Eaton",
+      "model": "FAZ1,0/1 + Z-AHK",
+      "category": "aux_mcb",
+      "specification": {
+        "aux_contacts": "tak"
+      },
+      "source_pages": [
+        "P2:61",
+        "P2:65"
+      ]
+    },
+    {
+      "ref": "EATON_ZSLS",
+      "manufacturer": "Eaton",
+      "model": "Z-SLS/NEOZ/2 + D02 6A",
+      "category": "fuse_switch_disconnector",
+      "specification": {
+        "fuse_a": 6
+      },
+      "source_pages": [
+        "P2:54",
+        "P2:57",
+        "P2:61",
+        "P2:71"
+      ]
+    },
+    {
+      "ref": "PKNM_16",
+      "manufacturer": "producent niepodany w części BOM",
+      "model": "PKNM-16/1N/B/003",
+      "category": "rcbo",
+      "specification": {
+        "nominal_a": 16,
+        "curve": "C",
+        "product_number": "240052"
+      },
+      "source_pages": [
+        "P2:55",
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "RELPOL_R15_4",
+      "manufacturer": "Relpol",
+      "model": "R15-4p 220 V DC",
+      "category": "aux_relay",
+      "specification": {
+        "coil_v_dc": 220,
+        "contacts": "4p"
+      },
+      "source_pages": [
+        "P2:55",
+        "P2:57",
+        "P2:62",
+        "P2:71"
+      ]
+    },
+    {
+      "ref": "RELPOL_R15_3",
+      "manufacturer": "Relpol",
+      "model": "R15-3p 220 V DC",
+      "category": "aux_relay",
+      "specification": {
+        "coil_v_dc": 220,
+        "contacts": "3p"
+      },
+      "source_pages": [
+        "P2:65"
+      ]
+    },
+    {
+      "ref": "RELPOL_RU400",
+      "manufacturer": "Relpol",
+      "model": "RU-400 4p 220 V DC",
+      "category": "aux_relay",
+      "specification": {
+        "coil_v_dc": 220,
+        "contacts": "4p"
+      },
+      "source_pages": [
+        "P2:55",
+        "P2:58",
+        "P2:68"
+      ]
+    },
+    {
+      "ref": "POZYTON_SKAP1",
+      "manufacturer": "Pozyton",
+      "model": "SKA-P1",
+      "category": "terminal_box",
+      "specification": {},
+      "source_pages": [
+        "P2:58",
+        "P2:62",
+        "P2:65"
+      ]
+    },
+    {
+      "ref": "LEGRAND_RN",
+      "manufacturer": "Legrand",
+      "model": "RN1×6 601936",
+      "category": "sealable_enclosure",
+      "specification": {},
+      "source_pages": [
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "ETI_VLD01",
+      "manufacturer": "ETI",
+      "model": "VLD01 02261001",
+      "category": "fuse_switch_disconnector",
+      "specification": {},
+      "source_pages": [
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "ETI_D01",
+      "manufacturer": "ETI",
+      "model": "D01 gG 2 A 02211001",
+      "category": "fuse",
+      "specification": {
+        "rated_current_a": 2
+      },
+      "source_pages": [
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "WEID_WDU6",
+      "manufacturer": "Weidmüller",
+      "model": "WDU 6 1020200000",
+      "category": "terminal",
+      "specification": {},
+      "source_pages": [
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "WEID_WEW35",
+      "manufacturer": "Weidmüller",
+      "model": "WEW-35/2 1061200000",
+      "category": "terminal_end_holder",
+      "specification": {},
+      "source_pages": [
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "WAGO_CURRENT",
+      "manufacturer": "WAGO",
+      "model": "2007-8821",
+      "category": "ct_test_terminal",
+      "specification": {
+        "function": "tory prądowe",
+        "quantity_per_block": "6/8 zależnie od pola"
+      },
+      "source_pages": [
+        "P2:55-56",
+        "P2:58-59",
+        "P2:62-63",
+        "P2:64-65",
+        "P2:67-68"
+      ]
+    },
+    {
+      "ref": "WAGO_VOLT",
+      "manufacturer": "WAGO",
+      "model": "2007-8811",
+      "category": "vt_aux_terminal",
+      "specification": {
+        "function": "tory napięciowe i pomocnicze"
+      },
+      "source_pages": [
+        "P2:55-56",
+        "P2:58-59",
+        "P2:62-63",
+        "P2:64-65",
+        "P2:67-68"
+      ]
+    },
+    {
+      "ref": "WAGO_BR4",
+      "manufacturer": "WAGO",
+      "model": "2007-8444",
+      "category": "terminal_bridge",
+      "specification": {
+        "poles": 4
+      },
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WAGO_BR2",
+      "manufacturer": "WAGO",
+      "model": "2007-8442",
+      "category": "terminal_bridge",
+      "specification": {
+        "poles": 2
+      },
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WAGO_LOCK4",
+      "manufacturer": "WAGO",
+      "model": "282-884",
+      "category": "terminal_lock",
+      "specification": {
+        "poles": 4
+      },
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WAGO_LOCK2",
+      "manufacturer": "WAGO",
+      "model": "282-882",
+      "category": "terminal_lock",
+      "specification": {
+        "poles": 2
+      },
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WAGO_LOCK1",
+      "manufacturer": "WAGO",
+      "model": "282-881",
+      "category": "terminal_lock",
+      "specification": {
+        "poles": 1
+      },
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WAGO_COVER",
+      "manufacturer": "WAGO",
+      "model": "2007-8892",
+      "category": "terminal_partition",
+      "specification": {},
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WAGO_END",
+      "manufacturer": "WAGO",
+      "model": "249-117",
+      "category": "end_stop",
+      "specification": {},
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WAGO_BLOCK",
+      "manufacturer": "WAGO",
+      "model": "2007-8899",
+      "category": "switch_lock",
+      "specification": {},
+      "source_pages": [
+        "P2:55-56"
+      ]
+    },
+    {
+      "ref": "WEID_SAK6",
+      "manufacturer": "Weidmüller",
+      "model": "SAK-6EN",
+      "category": "terminal",
+      "specification": {},
+      "source_pages": [
+        "P2:56",
+        "P2:59",
+        "P2:63",
+        "P2:66",
+        "P2:69",
+        "P2:71"
+      ]
+    },
+    {
+      "ref": "ERGOM_NS",
+      "manufacturer": "ERGOM",
+      "model": "NS37/7,5",
+      "category": "din_rail",
+      "specification": {},
+      "source_pages": [
+        "P2:56",
+        "P2:59",
+        "P2:66"
+      ]
+    },
+    {
+      "ref": "LUMEL_ND30",
+      "manufacturer": "Lumel",
+      "model": "ND30",
+      "category": "network_meter",
+      "specification": {
+        "input_current_a": 5,
+        "input_voltage_v": "3×57,7/100",
+        "supply_v_dc": 220,
+        "interfaces": "Ethernet, RS485"
+      },
+      "source_pages": [
+        "P2:64"
+      ]
+    },
+    {
+      "ref": "POLAM_FUSE",
+      "manufacturer": "Polam Ciechów",
+      "model": "Bi-Gs 6/25 A + podstawa 25 A",
+      "category": "aux_fuse",
+      "specification": {
+        "rated_current_a": 6
+      },
+      "source_pages": [
+        "P2:65",
+        "P2:68"
+      ]
+    },
+    {
+      "ref": "GS24A_CT",
+      "manufacturer": "producent nieoznaczony",
+      "model": "GS 24a 50/5 A",
+      "category": "current_transformer",
+      "specification": {
+        "ratio_a": "50/5",
+        "core": "30 VA kl. 0,5",
+        "scope": "adaptacja zespołu uziemiającego"
+      },
+      "source_pages": [
+        "P1:34"
+      ]
+    },
+    {
+      "ref": "AWSC_CONTACTOR",
+      "manufacturer": "producent niepotwierdzony",
+      "model": "stycznik AWSCz",
+      "category": "contactor",
+      "specification": {
+        "scope": "element istniejącego zespołu uziemiającego"
+      },
+      "source_pages": [
+        "P2:68"
+      ]
+    },
+    {
+      "ref": "AWSC_RESISTOR",
+      "manufacturer": "producent niepotwierdzony",
+      "model": "rezystor AWSCz",
+      "category": "resistor",
+      "specification": {
+        "scope": "element istniejącego zespołu uziemiającego"
+      },
+      "source_pages": [
+        "P2:69"
+      ]
+    },
+    {
+      "ref": "ETI_HVL2",
+      "manufacturer": "ETI",
+      "model": "HVL2 3P M10-M10",
+      "category": "fuse_switch_disconnector",
+      "specification": {
+        "rated_current_a": 400
+      },
+      "source_pages": [
+        "P2:69"
+      ]
+    },
+    {
+      "ref": "ETI_PSH2",
+      "manufacturer": "ETI (rodzina w zestawieniu)",
+      "model": "PSH2 400 A",
+      "category": "fuse_base",
+      "specification": {
+        "rated_current_a": 400
+      },
+      "source_pages": [
+        "P2:69"
+      ]
+    },
+    {
+      "ref": "ETI_NVLI2",
+      "manufacturer": "ETI (rodzina w zestawieniu)",
+      "model": "NVLI2 400 A",
+      "category": "linking_piece",
+      "specification": {
+        "rated_current_a": 400
+      },
+      "source_pages": [
+        "P2:69"
+      ]
+    },
+    {
+      "ref": "CABLE_NA2",
+      "manufacturer": "nieokreślony",
+      "model": "NA2XS(F)2Y 1×240/25 mm² 12/20 kV",
+      "category": "cable",
+      "specification": {
+        "reaction_to_fire": "Eca",
+        "detail": "bez długości i przebiegu trasy"
+      },
+      "source_pages": [
+        "P1:30",
+        "P1:33"
+      ]
+    },
+    {
+      "ref": "JOINT_CHMSV",
+      "manufacturer": "nieokreślony",
+      "model": "CHMSV 24 kV 95–240",
+      "category": "cable_joint",
+      "specification": {},
+      "source_pages": [
+        "P1:30",
+        "P1:33"
+      ]
+    },
+    {
+      "ref": "HEAD_CHEI",
+      "manufacturer": "nieokreślony",
+      "model": "CHE-I 24 kV 70–240",
+      "category": "cable_termination",
+      "specification": {},
+      "source_pages": [
+        "P1:30",
+        "P1:33"
+      ]
+    },
+    {
+      "ref": "BUS_AP80",
+      "manufacturer": "nieokreślony",
+      "model": "2×AP 80×10",
+      "category": "busbar",
+      "specification": {
+        "material": "Al",
+        "detail": "bez geometrii obiektu"
+      },
+      "source_pages": [
+        "P1:12",
+        "P1:34"
+      ]
+    },
+    {
+      "ref": "CISCO_IE3300",
+      "manufacturer": "Cisco",
+      "model": "IE-3300-8T2S-E",
+      "category": "communication_switch",
+      "specification": {},
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "CISCO_IEM3300",
+      "manufacturer": "Cisco",
+      "model": "IEM-3300-16T",
+      "category": "communication_expansion",
+      "specification": {},
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "CISCO_PWR",
+      "manufacturer": "Cisco",
+      "model": "PWR-IE65W-AC",
+      "category": "communication_power_supply",
+      "specification": {},
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "CISCO_SFP",
+      "manufacturer": "Cisco",
+      "model": "GLC-SX-MM-RGD",
+      "category": "optical_transceiver",
+      "specification": {},
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "MOXA_NPORT",
+      "manufacturer": "Moxa",
+      "model": "NPort IA5250I",
+      "category": "serial_gateway",
+      "specification": {},
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "ZPAS_ZCUBE",
+      "manufacturer": "ZPAS",
+      "model": "Z-CUBE 10U 600×450",
+      "category": "cabinet",
+      "specification": {},
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "PTS_528",
+      "manufacturer": "producent nieokreślony",
+      "model": "PTS-528",
+      "category": "serial_communication_module",
+      "specification": {
+        "ports": 8
+      },
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "PTS_918",
+      "manufacturer": "producent nieokreślony",
+      "model": "PTS-918",
+      "category": "serial_communication_module",
+      "specification": {
+        "ports": 8
+      },
+      "source_pages": [
+        "P2:73"
+      ]
+    },
+    {
+      "ref": "LEGACY_WRS20",
+      "manufacturer": "producent nieokreślony",
+      "model": "WRS-20",
+      "category": "legacy_switchgear",
+      "specification": {
+        "status": "obiekt modernizowany — nie nowa referencja aparatu"
+      },
+      "source_pages": [
+        "P1:12-13"
+      ]
+    },
+    {
+      "ref": "LEGACY_HVX",
+      "manufacturer": "producent do potwierdzenia",
+      "model": "HVX 800 A",
+      "category": "legacy_circuit_breaker",
+      "specification": {
+        "rated_current_a": 800
+      },
+      "source_pages": [
+        "P1:14",
+        "P1:35"
+      ]
+    },
+    {
+      "ref": "LEGACY_TPU",
+      "manufacturer": "producent do potwierdzenia",
+      "model": "TPU 50.13",
+      "category": "legacy_ct",
+      "specification": {},
+      "source_pages": [
+        "P1:14",
+        "P1:35"
+      ]
+    },
+    {
+      "ref": "LEGACY_GE24",
+      "manufacturer": "producent do potwierdzenia",
+      "model": "GE 24",
+      "category": "legacy_vt",
+      "specification": {},
+      "source_pages": [
+        "P1:13",
+        "P1:35"
+      ]
+    },
+    {
+      "ref": "LEGACY_UZGT20",
+      "manufacturer": "producent do potwierdzenia",
+      "model": "UZGT-20",
+      "category": "legacy_vt",
+      "specification": {},
+      "source_pages": [
+        "P1:13",
+        "P1:35"
+      ]
+    }
+  ],
+  "field_profiles": [
+    {
+      "field_ref": "AIS-VT-3W",
+      "name_pl": "Pole pomiaru napięcia — e²ALPHA, człon VT",
+      "role": "measurement",
+      "applicability": "modernizacja SN 15 kV; Ur 17,5 kV",
+      "approval": "owner_approved_project_reference",
+      "primary_equipment": [
+        {
+          "ref": "E2ALPHA",
+          "qty": 1
+        },
+        {
+          "ref": "VT_TRUCK",
+          "qty": 1
+        },
+        {
+          "ref": "ALCE_VBF_P",
+          "qty": 3
+        },
+        {
+          "ref": "VT_FUSE_0_5",
+          "qty": 3
+        }
+      ],
+      "secondary_equipment": [
+        {
+          "ref": "E2TANGO_J6",
+          "qty": 1
+        },
+        {
+          "ref": "RA70",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_201",
+          "qty": 2
+        },
+        {
+          "ref": "AP_4G10_90",
+          "qty": 1
+        },
+        {
+          "ref": "EATON_FAZ3",
+          "qty": 3
+        },
+        {
+          "ref": "EATON_FAZ1",
+          "qty": 2
+        },
+        {
+          "ref": "ABB_VT_GUARD",
+          "qty": 1
+        },
+        {
+          "ref": "EATON_ZSLS",
+          "qty": 3
+        },
+        {
+          "ref": "RELPOL_R15_4",
+          "qty": 3
+        },
+        {
+          "ref": "POZYTON_SKAP1",
+          "qty": 2
+        },
+        {
+          "ref": "LEGRAND_RN",
+          "qty": 2
+        },
+        {
+          "ref": "ETI_VLD01",
+          "qty": 2
+        },
+        {
+          "ref": "ETI_D01",
+          "qty": 2
+        },
+        {
+          "ref": "WEID_WDU6",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_WEW35",
+          "qty": 1
+        },
+        {
+          "ref": "PKNM_16",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_CURRENT",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_VOLT",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_SAK6",
+          "qty": 1
+        }
+      ],
+      "source_pages": [
+        "P1:13",
+        "P1:16-17",
+        "P1:29",
+        "P1:31-32",
+        "P2:61-63"
+      ],
+      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; projekt zawiera bezpieczniki VT 0,5 A — NIE przenosić jako domyślnego rozwiązania do nowego GPZ ENEA"
+    },
+    {
+      "field_ref": "AIS-LINE-CT1",
+      "name_pl": "Pole liniowe — CT jednordzeniowy 5P20",
+      "role": "line",
+      "applicability": "modernizacja SN 15 kV; Ur 17,5 kV",
+      "approval": "owner_approved_project_reference",
+      "primary_equipment": [
+        {
+          "ref": "E2ALPHA",
+          "qty": 1
+        },
+        {
+          "ref": "E2BRAVO_EV1",
+          "qty": 1
+        },
+        {
+          "ref": "E2DELTA",
+          "qty": 1
+        },
+        {
+          "ref": "ALCE_AB12_P",
+          "qty": 3
+        },
+        {
+          "ref": "ALCE_VBF_L",
+          "qty": 3
+        },
+        {
+          "ref": "VT_TRUCK",
+          "qty": 1
+        },
+        {
+          "ref": "VT_FUSE_0_5",
+          "qty": 3
+        },
+        {
+          "ref": "FERRANTI_IO",
+          "qty": 1
+        },
+        {
+          "ref": "VOLTAGE_IND",
+          "qty": 1
+        }
+      ],
+      "secondary_equipment": [
+        {
+          "ref": "E2TANGO_J6",
+          "qty": 1
+        },
+        {
+          "ref": "RA70",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_201",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_90",
+          "qty": 1
+        },
+        {
+          "ref": "ELBAR_SOD",
+          "qty": 1
+        },
+        {
+          "ref": "EATON_FAZ3",
+          "qty": 1
+        },
+        {
+          "ref": "EATON_ZSLS",
+          "qty": 1
+        },
+        {
+          "ref": "RELPOL_R15_4",
+          "qty": 1
+        },
+        {
+          "ref": "RELPOL_RU400",
+          "qty": 1
+        },
+        {
+          "ref": "PKNM_16",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_CURRENT",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_VOLT",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_BR4",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_BR2",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_LOCK4",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_LOCK2",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_LOCK1",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_BLOCK",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_COVER",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_END",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_SAK6",
+          "qty": 1
+        },
+        {
+          "ref": "ERGOM_NS",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_91",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_54",
+          "qty": 1
+        },
+        {
+          "ref": "PROMET_NEF_L",
+          "qty": 1
+        }
+      ],
+      "source_pages": [
+        "P1:14-16",
+        "P1:29-33",
+        "P2:54-56"
+      ],
+      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; pełne uzwojenia CT i VT przypisywać do pola, nie do punktu pomiaru"
+    },
+    {
+      "field_ref": "AIS-LINE-CT3",
+      "name_pl": "Pole liniowe — CT trójrdzeniowy 0,2S / 5P20",
+      "role": "line",
+      "applicability": "modernizacja SN 15 kV; Ur 17,5 kV",
+      "approval": "owner_approved_project_reference",
+      "primary_equipment": [
+        {
+          "ref": "E2ALPHA",
+          "qty": 1
+        },
+        {
+          "ref": "E2BRAVO_EV1",
+          "qty": 1
+        },
+        {
+          "ref": "E2DELTA",
+          "qty": 1
+        },
+        {
+          "ref": "ALCE_AB12_M",
+          "qty": 3
+        },
+        {
+          "ref": "ALCE_VBF_L",
+          "qty": 3
+        },
+        {
+          "ref": "VT_TRUCK",
+          "qty": 1
+        },
+        {
+          "ref": "VT_FUSE_0_5",
+          "qty": 3
+        },
+        {
+          "ref": "FERRANTI_IO",
+          "qty": 1
+        },
+        {
+          "ref": "VOLTAGE_IND",
+          "qty": 1
+        },
+        {
+          "ref": "ES_UMR",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_NA2",
+          "qty": 1
+        },
+        {
+          "ref": "JOINT_CHMSV",
+          "qty": 1
+        },
+        {
+          "ref": "HEAD_CHEI",
+          "qty": 1
+        }
+      ],
+      "secondary_equipment": [
+        {
+          "ref": "E2TANGO_J6",
+          "qty": 1
+        },
+        {
+          "ref": "RA70",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_201",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_90",
+          "qty": 1
+        },
+        {
+          "ref": "ELBAR_SOD",
+          "qty": 1
+        },
+        {
+          "ref": "EATON_FAZ3",
+          "qty": 1
+        },
+        {
+          "ref": "EATON_ZSLS",
+          "qty": 1
+        },
+        {
+          "ref": "RELPOL_R15_4",
+          "qty": 1
+        },
+        {
+          "ref": "RELPOL_RU400",
+          "qty": 1
+        },
+        {
+          "ref": "PKNM_16",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_CURRENT",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_VOLT",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_BR4",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_BR2",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_LOCK4",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_LOCK2",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_LOCK1",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_BLOCK",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_COVER",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_END",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_SAK6",
+          "qty": 1
+        },
+        {
+          "ref": "ERGOM_NS",
+          "qty": 1
+        },
+        {
+          "ref": "POZYTON_SKAP1",
+          "qty": 1
+        },
+        {
+          "ref": "LEGRAND_RN",
+          "qty": 1
+        },
+        {
+          "ref": "ETI_VLD01",
+          "qty": 1
+        },
+        {
+          "ref": "ETI_D01",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_WDU6",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_WEW35",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_54",
+          "qty": 1
+        }
+      ],
+      "source_pages": [
+        "P1:15-16",
+        "P1:30",
+        "P1:32-33",
+        "P2:57-60"
+      ],
+      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; pozycja kabla jest typem materiału, NIE trasą ani długością rzeczywistej linii"
+    },
+    {
+      "field_ref": "RETRO-TR-SEC",
+      "name_pl": "Modernizacja aparatury wtórnej pola transformatora GPZ",
+      "role": "transformer",
+      "applicability": "doposażenie istniejącego pola; nie jest kompletnym schematem pierwotnym",
+      "approval": "owner_approved_project_reference",
+      "primary_equipment": [],
+      "secondary_equipment": [
+        {
+          "ref": "E2TANGO_J10",
+          "qty": 1
+        },
+        {
+          "ref": "LUMEL_ND30",
+          "qty": 1
+        },
+        {
+          "ref": "ELBAR_SOD",
+          "qty": 1
+        },
+        {
+          "ref": "RA70",
+          "qty": 1
+        },
+        {
+          "ref": "POLAM_FUSE",
+          "qty": 6
+        },
+        {
+          "ref": "EATON_FAZ3",
+          "qty": 1
+        },
+        {
+          "ref": "EATON_FAZ1",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_92",
+          "qty": 3
+        },
+        {
+          "ref": "RELPOL_R15_3",
+          "qty": 2
+        },
+        {
+          "ref": "POZYTON_SKAP1",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_CURRENT",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_VOLT",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_SAK6",
+          "qty": 1
+        },
+        {
+          "ref": "ERGOM_NS",
+          "qty": 1
+        }
+      ],
+      "source_pages": [
+        "P2:64-66"
+      ],
+      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; tylko wyposażenie objęte modernizacją obwodów wtórnych; nie fabrykować CB i CT/VT na podstawie BOM wtórnego"
+    },
+    {
+      "field_ref": "RETRO-ZU",
+      "name_pl": "Modernizacja obwodów zespołu uziemiającego",
+      "role": "earthing",
+      "applicability": "doposażenie istniejącego ZU; bez dedukcji całego toru pierwotnego",
+      "approval": "owner_approved_project_reference",
+      "primary_equipment": [
+        {
+          "ref": "GS24A_CT",
+          "qty": 1
+        },
+        {
+          "ref": "AWSC_CONTACTOR",
+          "qty": 1
+        },
+        {
+          "ref": "AWSC_RESISTOR",
+          "qty": 1
+        },
+        {
+          "ref": "ETI_HVL2",
+          "qty": 1
+        },
+        {
+          "ref": "ETI_PSH2",
+          "qty": 1
+        },
+        {
+          "ref": "ETI_NVLI2",
+          "qty": 1
+        }
+      ],
+      "secondary_equipment": [
+        {
+          "ref": "E2TANGO_J10",
+          "qty": 1
+        },
+        {
+          "ref": "ELBAR_SOD",
+          "qty": 1
+        },
+        {
+          "ref": "RA70",
+          "qty": 1
+        },
+        {
+          "ref": "POLAM_FUSE",
+          "qty": 4
+        },
+        {
+          "ref": "EATON_FAZ3",
+          "qty": 1
+        },
+        {
+          "ref": "AP_4G10_201",
+          "qty": 1
+        },
+        {
+          "ref": "PROMET_NEF_B",
+          "qty": 1
+        },
+        {
+          "ref": "RELPOL_RU400",
+          "qty": 2
+        },
+        {
+          "ref": "WAGO_CURRENT",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_VOLT",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_SAK6",
+          "qty": 1
+        }
+      ],
+      "source_pages": [
+        "P1:34",
+        "P2:67-70"
+      ],
+      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; AWSCz nie jest rezystorem; stycznik i rezystor pozostają dwoma odrębnymi urządzeniami"
+    },
+    {
+      "field_ref": "RETRO-COUPLER-SEC",
+      "name_pl": "Doposażenie obwodów wtórnych sprzęgła szyn SN",
+      "role": "coupler",
+      "applicability": "modernizacja wtórnych, bez odtwarzania szczegółów pierwotnego sprzęgła",
+      "approval": "owner_approved_project_reference",
+      "primary_equipment": [],
+      "secondary_equipment": [
+        {
+          "ref": "EATON_ZSLS",
+          "qty": 1
+        },
+        {
+          "ref": "RELPOL_R15_4",
+          "qty": 4
+        },
+        {
+          "ref": "WEID_SAK6",
+          "qty": 1
+        }
+      ],
+      "source_pages": [
+        "P2:71-72"
+      ],
+      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; zachować elektryczny graf sekcji z istniejącego ENM, nie budować sprzęgła z samej listy pomocniczej"
+    }
+  ],
+  "anonymized_field_examples": [
+    {
+      "synthetic_field_ref": "ANON-A01",
+      "field_profile_ref": "AIS-VT-3W",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A02",
+      "field_profile_ref": "AIS-VT-3W",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A03",
+      "field_profile_ref": "AIS-LINE-CT1",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A04",
+      "field_profile_ref": "AIS-LINE-CT1",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A05",
+      "field_profile_ref": "AIS-LINE-CT1",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A06",
+      "field_profile_ref": "AIS-LINE-CT1",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A07",
+      "field_profile_ref": "AIS-LINE-CT3",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A08",
+      "field_profile_ref": "AIS-LINE-CT3",
+      "not_real_site_number": true
+    }
+  ],
+  "shared_equipment_profiles": [
+    {
+      "profile_ref": "COMMON-CONTROL",
+      "name_pl": "Wyposażenie obwodów pomocniczych i kontrolnych",
+      "refs": [
+        "RELPOL_R15_4",
+        "RELPOL_RU400",
+        "RA70",
+        "AP_4G10_201",
+        "AP_4G10_91",
+        "AP_4G10_90",
+        "AP_4G10_54",
+        "AP_4G10_92",
+        "ELBAR_SOD",
+        "PROMET_NEF_L",
+        "PROMET_NEF_B",
+        "EATON_FAZ3",
+        "EATON_FAZ1",
+        "EATON_ZSLS",
+        "PKNM_16",
+        "WAGO_CURRENT",
+        "WAGO_VOLT",
+        "WAGO_BR4",
+        "WAGO_BR2",
+        "WAGO_LOCK4",
+        "WAGO_LOCK2",
+        "WAGO_LOCK1",
+        "WAGO_COVER",
+        "WAGO_END",
+        "WAGO_BLOCK",
+        "WEID_SAK6",
+        "WEID_WDU6",
+        "WEID_WEW35",
+        "ERGOM_NS"
+      ]
+    },
+    {
+      "profile_ref": "COMM-EQUIPMENT",
+      "name_pl": "Urządzenia telemechaniki bez topologii, adresów i powiązań stacyjnych",
+      "refs": [
+        "CISCO_IE3300",
+        "CISCO_IEM3300",
+        "CISCO_PWR",
+        "CISCO_SFP",
+        "MOXA_NPORT",
+        "ZPAS_ZCUBE",
+        "PTS_528",
+        "PTS_918"
+      ]
+    },
+    {
+      "profile_ref": "LEGACY-COMPONENTS",
+      "name_pl": "Rodziny rozpoznane w modernizowanych polach",
+      "refs": [
+        "LEGACY_WRS20",
+        "LEGACY_HVX",
+        "LEGACY_TPU",
+        "LEGACY_GE24",
+        "LEGACY_UZGT20"
+      ]
+    }
+  ]
+}
