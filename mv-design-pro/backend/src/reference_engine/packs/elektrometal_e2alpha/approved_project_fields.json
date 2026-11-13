@@ -954,6 +954,183 @@
         "P1:13",
         "P1:35"
       ]
+    },
+    {
+      "ref": "BUS_DISCONNECT_TRUCK",
+      "manufacturer": "Elektrometal Energetyka",
+      "model": "człon ruchomy e²ALPHA, funkcja odłącznika 630 A",
+      "category": "withdrawable_bus_isolation",
+      "specification": {
+        "rated_current_a": 630,
+        "applicability": "pole pomiaru napięcia, modernizacja"
+      },
+      "source_pages": [
+        "P1:13",
+        "P1:17",
+        "P1:29",
+        "P1:31"
+      ]
+    },
+    {
+      "ref": "WAGO_STRIP10",
+      "manufacturer": "WAGO",
+      "model": "listwa kontrolna z 10 pozycjami",
+      "category": "test_terminal_assembly",
+      "specification": {
+        "positions": 10,
+        "parts": "2007-8821 / 2007-8811, mostki, blokady, przegrody wg listy P2"
+      },
+      "source_pages": [
+        "P2:62-63"
+      ]
+    },
+    {
+      "ref": "WAGO_STRIP18",
+      "manufacturer": "WAGO",
+      "model": "listwa kontrolna z 18 pozycjami",
+      "category": "test_terminal_assembly",
+      "specification": {
+        "positions": 18,
+        "ct_terminals": 6,
+        "other_terminals": 12,
+        "parts": "2007-8821 / 2007-8811, 2007-8444/8442, 282-884/882/881, 2007-8899/8892, 249-117"
+      },
+      "source_pages": [
+        "P2:55-56",
+        "P2:58-59"
+      ]
+    },
+    {
+      "ref": "WAGO_STRIP19",
+      "manufacturer": "WAGO",
+      "model": "listwa kontrolna z 19 pozycjami",
+      "category": "test_terminal_assembly",
+      "specification": {
+        "positions": 19,
+        "ct_terminals": 6,
+        "other_terminals": 13
+      },
+      "source_pages": [
+        "P2:67-68"
+      ]
+    },
+    {
+      "ref": "WAGO_STRIP22",
+      "manufacturer": "WAGO",
+      "model": "listwa kontrolna z 22 pozycjami",
+      "category": "test_terminal_assembly",
+      "specification": {
+        "positions": 22,
+        "ct_terminals": 8,
+        "other_terminals": 14
+      },
+      "source_pages": [
+        "P2:64-65"
+      ]
+    },
+    {
+      "ref": "SEALABLE_FUSE_SET",
+      "manufacturer": "Legrand / ETI / Weidmüller",
+      "model": "zestaw bezpiecznikowy przystosowany do plombowania",
+      "category": "sealable_protection_assembly",
+      "specification": {
+        "parts": "RN1×6, VLD01, D01 gG 2 A, WDU6 i trzymacze WEW35/2",
+        "source": "zestaw BOM P2",
+        "excludes": "numery rzeczywistych zacisków"
+      },
+      "source_pages": [
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "CABINET_LIGHTING",
+      "manufacturer": "producent fabryczny rozdzielnicy",
+      "model": "oświetlenie przedziałów rozdzielnicy",
+      "category": "cabinet_accessory",
+      "specification": {},
+      "source_pages": [
+        "P2:55",
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "INTERLOCKED_SOCKET",
+      "manufacturer": "producent nieustalony",
+      "model": "gniazdo 230 V z blokadą, nr kat. 266876",
+      "category": "interlocked_socket",
+      "specification": {
+        "rated_voltage_v": 230
+      },
+      "source_pages": [
+        "P2:55",
+        "P2:58",
+        "P2:62"
+      ]
+    },
+    {
+      "ref": "INSULATED_WIRE",
+      "manufacturer": "producent dowolny",
+      "model": "LgY-750, przewody 1,5/2,5 mm²",
+      "category": "wiring_material",
+      "specification": {
+        "cross_section_mm2": "1.5/2.5",
+        "scope": "typ wyrobu bez tras i rzeczywistych długości"
+      },
+      "source_pages": [
+        "P2:56",
+        "P2:59-60",
+        "P2:63",
+        "P2:66",
+        "P2:69-70"
+      ]
+    },
+    {
+      "ref": "WIRING_DUCT",
+      "manufacturer": "producent dowolny",
+      "model": "korytka grzebieniowe 25×40, 40×40, 40×60, 40×80, 60×40, 60×60",
+      "category": "assembly_material",
+      "specification": {
+        "scope": "typ materiałowy bez zamawianych długości"
+      },
+      "source_pages": [
+        "P2:56",
+        "P2:59-60",
+        "P2:63",
+        "P2:66",
+        "P2:69-70"
+      ]
+    },
+    {
+      "ref": "CABLE_FERRULES",
+      "manufacturer": "producent dowolny",
+      "model": "tulejki izolowane HI1,5×10 / HI2,5×10",
+      "category": "assembly_material",
+      "specification": {
+        "scope": "rozmiary i typ, bez ilości rzeczywistej budowy"
+      },
+      "source_pages": [
+        "P2:56",
+        "P2:60",
+        "P2:66",
+        "P2:70"
+      ]
+    },
+    {
+      "ref": "CABLE_TIES",
+      "manufacturer": "producent dowolny",
+      "model": "opaski kablowe 150/200/250/300 mm",
+      "category": "assembly_material",
+      "specification": {
+        "scope": "rodzina łączników montażowych"
+      },
+      "source_pages": [
+        "P2:56",
+        "P2:60",
+        "P2:66",
+        "P2:70"
+      ]
     }
   ],
   "field_profiles": [
@@ -966,6 +1143,10 @@
       "primary_equipment": [
         {
           "ref": "E2ALPHA",
+          "qty": 1
+        },
+        {
+          "ref": "BUS_DISCONNECT_TRUCK",
           "qty": 1
         },
         {
@@ -1023,39 +1204,47 @@
           "qty": 2
         },
         {
-          "ref": "LEGRAND_RN",
+          "ref": "SEALABLE_FUSE_SET",
           "qty": 2
-        },
-        {
-          "ref": "ETI_VLD01",
-          "qty": 2
-        },
-        {
-          "ref": "ETI_D01",
-          "qty": 2
-        },
-        {
-          "ref": "WEID_WDU6",
-          "qty": 1
-        },
-        {
-          "ref": "WEID_WEW35",
-          "qty": 1
         },
         {
           "ref": "PKNM_16",
           "qty": 1
         },
         {
-          "ref": "WAGO_CURRENT",
+          "ref": "CABINET_LIGHTING",
           "qty": 1
         },
         {
-          "ref": "WAGO_VOLT",
+          "ref": "INTERLOCKED_SOCKET",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_STRIP10",
           "qty": 1
         },
         {
           "ref": "WEID_SAK6",
+          "qty": 1
+        },
+        {
+          "ref": "ERGOM_NS",
+          "qty": 3
+        },
+        {
+          "ref": "INSULATED_WIRE",
+          "qty": 1
+        },
+        {
+          "ref": "WIRING_DUCT",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_FERRULES",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_TIES",
           "qty": 1
         }
       ],
@@ -1123,6 +1312,10 @@
         },
         {
           "ref": "AP_4G10_201",
+          "qty": 2
+        },
+        {
+          "ref": "AP_4G10_91",
           "qty": 1
         },
         {
@@ -1130,7 +1323,15 @@
           "qty": 1
         },
         {
+          "ref": "AP_4G10_54",
+          "qty": 5
+        },
+        {
           "ref": "ELBAR_SOD",
+          "qty": 1
+        },
+        {
+          "ref": "PROMET_NEF_L",
           "qty": 1
         },
         {
@@ -1139,58 +1340,18 @@
         },
         {
           "ref": "EATON_ZSLS",
-          "qty": 1
+          "qty": 2
         },
         {
           "ref": "RELPOL_R15_4",
-          "qty": 1
+          "qty": 3
         },
         {
           "ref": "RELPOL_RU400",
           "qty": 1
         },
         {
-          "ref": "PKNM_16",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_CURRENT",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_VOLT",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_BR4",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_BR2",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_LOCK4",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_LOCK2",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_LOCK1",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_BLOCK",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_COVER",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_END",
+          "ref": "WAGO_STRIP18",
           "qty": 1
         },
         {
@@ -1199,18 +1360,34 @@
         },
         {
           "ref": "ERGOM_NS",
+          "qty": 3
+        },
+        {
+          "ref": "PKNM_16",
           "qty": 1
         },
         {
-          "ref": "AP_4G10_91",
+          "ref": "CABINET_LIGHTING",
           "qty": 1
         },
         {
-          "ref": "AP_4G10_54",
+          "ref": "INTERLOCKED_SOCKET",
           "qty": 1
         },
         {
-          "ref": "PROMET_NEF_L",
+          "ref": "INSULATED_WIRE",
+          "qty": 1
+        },
+        {
+          "ref": "WIRING_DUCT",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_FERRULES",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_TIES",
           "qty": 1
         }
       ],
@@ -1234,10 +1411,6 @@
         },
         {
           "ref": "E2BRAVO_EV1",
-          "qty": 1
-        },
-        {
-          "ref": "E2DELTA",
           "qty": 1
         },
         {
@@ -1292,6 +1465,10 @@
         },
         {
           "ref": "AP_4G10_201",
+          "qty": 2
+        },
+        {
+          "ref": "AP_4G10_91",
           "qty": 1
         },
         {
@@ -1299,7 +1476,15 @@
           "qty": 1
         },
         {
+          "ref": "AP_4G10_54",
+          "qty": 5
+        },
+        {
           "ref": "ELBAR_SOD",
+          "qty": 1
+        },
+        {
+          "ref": "PROMET_NEF_L",
           "qty": 1
         },
         {
@@ -1308,58 +1493,26 @@
         },
         {
           "ref": "EATON_ZSLS",
-          "qty": 1
+          "qty": 2
         },
         {
           "ref": "RELPOL_R15_4",
-          "qty": 1
+          "qty": 3
         },
         {
           "ref": "RELPOL_RU400",
           "qty": 1
         },
         {
-          "ref": "PKNM_16",
-          "qty": 1
+          "ref": "POZYTON_SKAP1",
+          "qty": 2
         },
         {
-          "ref": "WAGO_CURRENT",
-          "qty": 1
+          "ref": "SEALABLE_FUSE_SET",
+          "qty": 2
         },
         {
-          "ref": "WAGO_VOLT",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_BR4",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_BR2",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_LOCK4",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_LOCK2",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_LOCK1",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_BLOCK",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_COVER",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_END",
+          "ref": "WAGO_STRIP18",
           "qty": 1
         },
         {
@@ -1368,34 +1521,34 @@
         },
         {
           "ref": "ERGOM_NS",
+          "qty": 3
+        },
+        {
+          "ref": "PKNM_16",
           "qty": 1
         },
         {
-          "ref": "POZYTON_SKAP1",
+          "ref": "CABINET_LIGHTING",
           "qty": 1
         },
         {
-          "ref": "LEGRAND_RN",
+          "ref": "INTERLOCKED_SOCKET",
           "qty": 1
         },
         {
-          "ref": "ETI_VLD01",
+          "ref": "INSULATED_WIRE",
           "qty": 1
         },
         {
-          "ref": "ETI_D01",
+          "ref": "WIRING_DUCT",
           "qty": 1
         },
         {
-          "ref": "WEID_WDU6",
+          "ref": "CABLE_FERRULES",
           "qty": 1
         },
         {
-          "ref": "WEID_WEW35",
-          "qty": 1
-        },
-        {
-          "ref": "AP_4G10_54",
+          "ref": "CABLE_TIES",
           "qty": 1
         }
       ],
@@ -1405,7 +1558,7 @@
         "P1:32-33",
         "P2:57-60"
       ],
-      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; pozycja kabla jest typem materiału, NIE trasą ani długością rzeczywistej linii"
+      "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; pozycja kabla jest typem materiału, NIE trasą ani długością rzeczywistej linii Oznaczenie uziemnika opisowe e²DELTA oraz materiałowe UMR interpretować jako jeden aparat do korelacji, nie dwa równoległe uziemniki."
     },
     {
       "field_ref": "RETRO-TR-SEC",
@@ -1424,8 +1577,12 @@
           "qty": 1
         },
         {
-          "ref": "ELBAR_SOD",
+          "ref": "WAGO_STRIP22",
           "qty": 1
+        },
+        {
+          "ref": "ELBAR_SOD",
+          "qty": 2
         },
         {
           "ref": "RA70",
@@ -1456,19 +1613,27 @@
           "qty": 1
         },
         {
-          "ref": "WAGO_CURRENT",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_VOLT",
-          "qty": 1
+          "ref": "ERGOM_NS",
+          "qty": 3
         },
         {
           "ref": "WEID_SAK6",
           "qty": 1
         },
         {
-          "ref": "ERGOM_NS",
+          "ref": "INSULATED_WIRE",
+          "qty": 1
+        },
+        {
+          "ref": "WIRING_DUCT",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_FERRULES",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_TIES",
           "qty": 1
         }
       ],
@@ -1506,12 +1671,16 @@
         },
         {
           "ref": "ETI_NVLI2",
-          "qty": 1
+          "qty": 2
         }
       ],
       "secondary_equipment": [
         {
           "ref": "E2TANGO_J10",
+          "qty": 1
+        },
+        {
+          "ref": "WAGO_STRIP19",
           "qty": 1
         },
         {
@@ -1543,15 +1712,23 @@
           "qty": 2
         },
         {
-          "ref": "WAGO_CURRENT",
-          "qty": 1
-        },
-        {
-          "ref": "WAGO_VOLT",
-          "qty": 1
-        },
-        {
           "ref": "WEID_SAK6",
+          "qty": 1
+        },
+        {
+          "ref": "INSULATED_WIRE",
+          "qty": 1
+        },
+        {
+          "ref": "WIRING_DUCT",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_FERRULES",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_TIES",
           "qty": 1
         }
       ],
@@ -1580,12 +1757,50 @@
         {
           "ref": "WEID_SAK6",
           "qty": 1
+        },
+        {
+          "ref": "INSULATED_WIRE",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_FERRULES",
+          "qty": 1
         }
       ],
       "source_pages": [
         "P2:71-72"
       ],
       "notes_pl": "Zatwierdzony wzorzec projektowy z dokumentacji wykonawczej; zgodność nowej inwestycji z aktualnym ENEA i konkretnym wykonaniem wymaga osobnej oceny; zachować elektryczny graf sekcji z istniejącego ENM, nie budować sprzęgła z samej listy pomocniczej"
+    },
+    {
+      "field_ref": "RETRO-AUX-FEEDERS",
+      "name_pl": "Doposażenie obwodów wtórnych istniejących pól liniowych",
+      "role": "line",
+      "applicability": "doposażenie funkcjonalne istniejących pól; brak pierwotnej listy wszystkich aparatów",
+      "approval": "owner_approved_project_reference",
+      "primary_equipment": [],
+      "secondary_equipment": [
+        {
+          "ref": "AP_4G10_92",
+          "qty": 1
+        },
+        {
+          "ref": "WEID_SAK6",
+          "qty": 1
+        },
+        {
+          "ref": "INSULATED_WIRE",
+          "qty": 1
+        },
+        {
+          "ref": "CABLE_FERRULES",
+          "qty": 1
+        }
+      ],
+      "source_pages": [
+        "P2:71-72"
+      ],
+      "notes_pl": "Dwa anonimowe przykłady modernizacji, tylko wymienione podzespoły wtórne. Nie konstruować z tego nowego pola pierwotnego."
     }
   ],
   "anonymized_field_examples": [
@@ -1627,6 +1842,16 @@
     {
       "synthetic_field_ref": "ANON-A08",
       "field_profile_ref": "AIS-LINE-CT3",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A09",
+      "field_profile_ref": "RETRO-AUX-FEEDERS",
+      "not_real_site_number": true
+    },
+    {
+      "synthetic_field_ref": "ANON-A10",
+      "field_profile_ref": "RETRO-AUX-FEEDERS",
       "not_real_site_number": true
     }
   ],
@@ -1689,6 +1914,23 @@
         "LEGACY_TPU",
         "LEGACY_GE24",
         "LEGACY_UZGT20"
+      ]
+    },
+    {
+      "profile_ref": "CONSTRUCTION-MATERIALS",
+      "name_pl": "Typy materiałów montażowych i przewodów bez tras i ilości stacyjnych",
+      "refs": [
+        "INSULATED_WIRE",
+        "WIRING_DUCT",
+        "CABLE_FERRULES",
+        "CABLE_TIES",
+        "INTERLOCKED_SOCKET",
+        "CABINET_LIGHTING",
+        "SEALABLE_FUSE_SET",
+        "WAGO_STRIP10",
+        "WAGO_STRIP18",
+        "WAGO_STRIP19",
+        "WAGO_STRIP22"
       ]
     }
   ]
