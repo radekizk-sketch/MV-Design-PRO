@@ -62,6 +62,7 @@ import { MIN_SYMBOL_SCREEN_PX } from '../symbols/defs';
 import { kluczePrzynaleznosci } from './viewAnchor';
 import { podpowiedzStanuObiektuPl } from '../../../shared/stanObiektu';
 import { przerwaToru } from './torMocy';
+import { wnetrzePolRysowane } from './oknoRenderu';
 
 /**
  * Najmniejszy dopuszczalny wymiar obszaru trafienia w pikselach EKRANU.
@@ -458,8 +459,9 @@ export function rodzajeStacji(
 /**
  * R8: stacje rysowane w kadrze przeglądowym SYMBOLEM STACJI (`glifZbiorczy.ts`: szyna i nogi
  * toru, a punkt rozłącznikowy — romb R1 na linii) przy skali `scale`: stacja SN/nN albo punkt
- * rozłącznikowy, której KAŻDE pole z aparaturą ma przy tej skali cel trafienia wyższy niż aparat
- * (żaden aparat stacji nie jest rozpoznawalny na ekranie). GPZ rysuje się zawsze pełnym rysunkiem.
+ * rozłącznikowy z aparaturą w polach, gdy przy tej skali wnętrza pól nie są rysowane
+ * (`oknoRenderu.wnetrzePolRysowane`: najmniejszy aparat biblioteki poniżej progu czytelności R3,
+ * 9 px). GPZ rysuje się zawsze pełnym rysunkiem (wnętrza jego pól — obrysem, `oknoRenderu`).
  * Jedno źródło dla rysunku i trafienia.
  */
 export function stacjePrzegladu(
@@ -467,14 +469,17 @@ export function stacjePrzegladu(
   hierarchia: HierarchiaCelowWejscie,
   scale: number,
 ): ReadonlyMap<string, RodzajStacjiPrzegladu> {
+  // Wnętrza pól przy tej skali (`oknoRenderu.wnetrzePolRysowane`, próg czytelności R3): jedna
+  // odpowiedź dla wszystkich stacji — stacja z aparaturą w polach rysuje się symbolem stacji
+  // dokładnie wtedy, gdy wnętrza pól nie są rysowane (widok ogólny LOD0, B-02 2026-11-13 P0-03).
+  const czytelny = wnetrzePolRysowane(scale);
   const zAparatem = new Map<string, boolean>();
   for (const symbol of symbols) {
     const stacja = stacjaObiektu(hierarchia, symbol.meta?.ownerRef);
     if (stacja === undefined) continue;
     const stopnie = stopnieCeluSymbolu(hierarchia, symbol);
     if (stopnie === null || stopnie.length < 2) continue;
-    const czytelny = celTrafienia(stopnie, scale).poziom === 'aparat';
-    zAparatem.set(stacja, (zAparatem.get(stacja) ?? false) || czytelny);
+    zAparatem.set(stacja, czytelny);
   }
   const out = new Map<string, RodzajStacjiPrzegladu>();
   for (const [stacja, rodzaj] of rodzajeStacji(symbols, hierarchia)) {

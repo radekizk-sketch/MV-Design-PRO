@@ -25,9 +25,11 @@ import {
   HIT_OBJECT_CLASSES,
   MIN_HIT_SCREEN_PX,
   buildCanvasHitAreas,
+  bezWezlaPrzegladu,
   celTrafienia,
   hitAreaScreenSize,
   pickCanvasHitArea,
+  stacjePrzegladu,
   stopnieCeluObiektu,
   testIdObszaruCelu,
   type CanvasHitArea,
@@ -112,12 +114,23 @@ describe('R6 — scena referencyjna 52 stacji: ILOCZYN {skala} × {rodzaj obiekt
     for (const skala of SKALE) {
       const areas = obszaryDlaSkali(skala);
       const widziane = new Set<string>();
-      scene.symbols.forEach((symbol) => {
+      // Symbol stacji rysowanej w kadrze przeglądowym symbolem stacji (R8 reguła 3, poniżej progu
+      // wnętrza pól) nie ma węzła własnego — jego klik przejmuje pole albo stacja: stopnie z
+      // gabarytem zerowym, tak jak `buildCanvasHitAreas` (B-02 2026-11-13: przy 0,35 transformator
+      // stacji ma ≥ 24 px, ale stacja jest symbolem przeglądu).
+      const bezWezla = bezWezlaPrzegladu(scene.symbols, scene.segments, hierarchia, stacjePrzegladu(scene.symbols, hierarchia, skala)).symbole;
+      scene.symbols.forEach((symbol, index) => {
         const kind = symbol.meta?.elementKind;
         if (kind === 'lvPortal' || kind === 'protectionAnnotation') return;
         const ownerRef = symbol.meta?.ownerRef;
         const g = gabarytSymbolu(symbol);
-        const stopnie = stopnieCeluObiektu(hierarchia, ownerRef, g);
+        const stopnie = stopnieCeluObiektu(hierarchia, ownerRef, bezWezla.has(index) ? { x: 0, y: 0, width: 0, height: 0 } : g);
+        if (bezWezla.has(index)) {
+          // Obiekt bez węzła własnego nie ma też własnego obszaru trafienia (predykaty parami:
+          // rysunek i trafienie z jednego źródła — `stacjePrzegladu`).
+          const wlasny = symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
+          expect(areas.some((a) => a.testId === wlasny), `${wlasny} @ ${skala}: obszar własny bez węzła`).toBe(false);
+        }
         if (stopnie.length < 2) return;
         const cel = celTrafienia(stopnie, skala);
         const poziom = cel.poziom;

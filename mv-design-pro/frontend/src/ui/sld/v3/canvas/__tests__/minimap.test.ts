@@ -22,6 +22,10 @@ import {
   minimapProjectionOf,
   minimapShapesOf,
   parseCameraViewBox,
+  GRUBOSC_RAMKI_NAWIGATORA,
+  kadrPrzecinaPanel,
+  MIN_BOK_RAMKI_NAWIGATORA,
+  ramkaWPanelu,
   worldRectToMinimap,
 } from '../minimap';
 
@@ -153,5 +157,60 @@ describe('K11-B — odczyt viewBox kamery', () => {
     expect(parseCameraViewBox('0 0 100')).toBeNull();
     expect(parseCameraViewBox('a b c d')).toBeNull();
     expect(parseCameraViewBox('')).toBeNull();
+  });
+});
+
+describe('SLD-SKALA-I-NAWIGACJA R7 — ramka kadru rysowana w panelu nawigatora', () => {
+  // Iloczyn: położenie kadru względem panelu {wewnątrz, wystaje w prawo, w lewo, w górę, w dół,
+  // większy niż panel, całkiem poza}. Każdy bok narysowanej ramki leży w panelu z całym obrysem.
+  const projection = minimapProjectionOf(SQUARE, 200)!;
+  const pol = GRUBOSC_RAMKI_NAWIGATORA / 2;
+  const W = projection.width;
+  const H = projection.height;
+  const przypadki = [
+    { nazwa: 'wewnątrz', frame: { x: 20, y: 20, width: 40, height: 30 }, oczekiwana: { x: 20, y: 20, width: 40, height: 30 } },
+    { nazwa: 'wystaje w prawo', frame: { x: W - 30, y: 20, width: 80, height: 30 }, oczekiwana: { x: W - 30, y: 20, width: 30 - pol, height: 30 } },
+    { nazwa: 'wystaje w lewo', frame: { x: -50, y: 20, width: 80, height: 30 }, oczekiwana: { x: pol, y: 20, width: 30 - pol, height: 30 } },
+    { nazwa: 'wystaje w górę', frame: { x: 20, y: -10, width: 40, height: 30 }, oczekiwana: { x: 20, y: pol, width: 40, height: 20 - pol } },
+    { nazwa: 'wystaje w dół', frame: { x: 20, y: H - 10, width: 40, height: 30 }, oczekiwana: { x: 20, y: H - 10, width: 40, height: 10 - pol } },
+    { nazwa: 'większy niż panel', frame: { x: -100, y: -100, width: W + 300, height: H + 300 }, oczekiwana: { x: pol, y: pol, width: W - 2 * pol, height: H - 2 * pol } },
+  ] as const;
+  for (const p of przypadki) {
+    it(`${p.nazwa}: ramka w panelu z pełnym obrysem`, () => {
+      const r = ramkaWPanelu(p.frame, projection);
+      expect(r.x).toBeCloseTo(p.oczekiwana.x, 9);
+      expect(r.y).toBeCloseTo(p.oczekiwana.y, 9);
+      expect(r.width).toBeCloseTo(p.oczekiwana.width, 9);
+      expect(r.height).toBeCloseTo(p.oczekiwana.height, 9);
+      expect(r.x - pol).toBeGreaterThanOrEqual(-1e-9);
+      expect(r.y - pol).toBeGreaterThanOrEqual(-1e-9);
+      expect(r.x + r.width + pol).toBeLessThanOrEqual(W + 1e-9);
+      expect(r.y + r.height + pol).toBeLessThanOrEqual(H + 1e-9);
+    });
+  }
+  // B-02 2026-11-13 (P0-01): ramka ZAWSZE ma cztery krawędzie — kadr całkiem poza schematem
+  // (iloczyn: cztery strony) i kadr mniejszy niż minimum boku dają ramkę MIN_BOK_RAMKI_NAWIGATORA
+  // przy krawędzi panelu po stronie kamery.
+  const pozaPanelem = [
+    { nazwa: 'poza w prawo', frame: { x: W + 10, y: 10, width: 20, height: 20 }, strona: (r: { x: number; width: number }) => r.x + r.width + pol <= W + 1e-9 && r.x + r.width + pol >= W - 1e-9 },
+    { nazwa: 'poza w lewo', frame: { x: -40, y: 10, width: 20, height: 20 }, strona: (r: { x: number }) => Math.abs(r.x - pol) < 1e-9 },
+    { nazwa: 'poza w górę', frame: { x: 10, y: -50, width: 20, height: 20 }, strona: (r: { y: number }) => Math.abs(r.y - pol) < 1e-9 },
+    { nazwa: 'poza w dół', frame: { x: 10, y: H + 5, width: 20, height: 20 }, strona: (r: { y: number; height: number }) => Math.abs(r.y + r.height + pol - H) < 1e-9 },
+  ] as const;
+  for (const p of pozaPanelem) {
+    it(`${p.nazwa}: ramka minimalna przy krawędzi po stronie kamery, cztery krawędzie w panelu`, () => {
+      const r = ramkaWPanelu(p.frame, projection);
+      expect(Math.min(r.width, r.height)).toBeCloseTo(MIN_BOK_RAMKI_NAWIGATORA, 9);
+      expect(Math.max(r.width, r.height)).toBeGreaterThanOrEqual(MIN_BOK_RAMKI_NAWIGATORA - 1e-9);
+      expect(p.strona(r as never)).toBe(true);
+      expect(kadrPrzecinaPanel(p.frame, projection)).toBe(false);
+    });
+  }
+  it('kadr mniejszy niż minimum boku: ramka rozszerzona wokół środka kadru', () => {
+    const r = ramkaWPanelu({ x: 50, y: 30, width: 1, height: 2 }, projection);
+    expect(r.width).toBeCloseTo(MIN_BOK_RAMKI_NAWIGATORA, 9);
+    expect(r.height).toBeCloseTo(MIN_BOK_RAMKI_NAWIGATORA, 9);
+    expect(r.x + r.width / 2).toBeCloseTo(50.5, 9);
+    expect(r.y + r.height / 2).toBeCloseTo(31, 9);
   });
 });

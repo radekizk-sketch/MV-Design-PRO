@@ -16,7 +16,7 @@
  * bieżącego kadru (`onWheelZoom`, karta SLD-SKALA-I-NAWIGACJA R7).
  */
 import { useCallback, useEffect, useRef } from 'react';
-import type { MinimapProjection, MinimapRect, MinimapShape } from './minimap';
+import { GRUBOSC_RAMKI_NAWIGATORA, kadrPrzecinaPanel, ramkaWPanelu, type MinimapProjection, type MinimapRect, type MinimapShape } from './minimap';
 
 export interface SldMinimapPanelProps {
   readonly projection: MinimapProjection;
@@ -39,6 +39,7 @@ const MINIMAP_FRAME_STROKE = '#4EA1FF';
 
 export function SldMinimapPanel(props: SldMinimapPanelProps): JSX.Element {
   const { projection, shapes, frame, onNavigate, onWheelZoom } = props;
+  const ramka = ramkaWPanelu(frame, projection);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const dragging = useRef(false);
 
@@ -152,14 +153,15 @@ export function SldMinimapPanel(props: SldMinimapPanelProps): JSX.Element {
             data-frame-y={frame.y}
             data-frame-width={frame.width}
             data-frame-height={frame.height}
-            x={frame.x}
-            y={frame.y}
-            width={Math.max(frame.width, 2)}
-            height={Math.max(frame.height, 2)}
+            data-ramka-poza-panelem={kadrPrzecinaPanel(frame, projection) ? undefined : 'true'}
+            x={ramka.x}
+            y={ramka.y}
+            width={ramka.width}
+            height={ramka.height}
             fill={MINIMAP_FRAME_STROKE}
             fillOpacity={0.12}
             stroke={MINIMAP_FRAME_STROKE}
-            strokeWidth={1.5}
+            strokeWidth={GRUBOSC_RAMKI_NAWIGATORA}
           />
         </g>
       </svg>

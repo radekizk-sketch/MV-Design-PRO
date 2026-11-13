@@ -200,8 +200,33 @@ async function wrocDoSieci(page: Page): Promise<void> {
   await kadrUstalony(page);
 }
 
+/** Krawędzie celu w wolnej kanwie wg R7: cel w skali czytania mieści się w całości, a cel WIĘKSZY
+ *  od wolnej kanwy w danej osi jest kadrowany od początku (jego początek w pierwszej połowie kanwy). */
+function celWKadrze(
+  s: { left: number; top: number; right: number; bottom: number },
+  obszar: { left: number; top: number; right: number; bottom: number },
+  opis: string,
+): void {
+  expect(s.left, `${opis}: lewa krawędź w kadrze`).toBeGreaterThanOrEqual(obszar.left - 0.5);
+  expect(s.top, `${opis}: górna krawędź pod paskiem narzędzi i ścieżką`).toBeGreaterThanOrEqual(obszar.top - 0.5);
+  if (s.right - s.left <= obszar.right - obszar.left) {
+    expect(s.right, `${opis}: prawa krawędź w kadrze`).toBeLessThanOrEqual(obszar.right + 0.5);
+  } else {
+    expect(s.left, `${opis}: cel szerszy od kanwy — kadr od początku`).toBeLessThan((obszar.left + obszar.right) / 2);
+  }
+  if (s.bottom - s.top <= obszar.bottom - obszar.top) {
+    expect(s.bottom, `${opis}: dolna krawędź w kadrze`).toBeLessThanOrEqual(obszar.bottom + 0.5);
+  } else {
+    expect(s.top, `${opis}: cel wyższy od kanwy — kadr od początku`).toBeLessThan((obszar.top + obszar.bottom) / 2);
+  }
+}
+
 async function dwuklikStacji(page: Page, ref: string): Promise<void> {
-  const uchwyt = page.locator(`[data-hit-owner-ref^="${ref}#name-row"]`).first();
+  // Każdy wiersz nazwy stacji jest tym samym celem (stacja); obszary trafień kolejnych wierszy
+  // zachodzą na siebie (rozszerzenie do 24 px ekranu), wierzchni jest ostatni w kolejności
+  // rysowania — `first()` celowałby w wiersz przykryty obszarem następnego (natywny klik trafia
+  // wierzchni węzeł; `rozstrzygnij` i tak oddaje cel temu, czyj obrys jest pod kursorem).
+  const uchwyt = page.locator(`[data-hit-owner-ref^="${ref}#name-row"]`).last();
   await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
   await uchwyt.dblclick();
 }
@@ -290,10 +315,10 @@ for (const motyw of [
       console.log(`K2b pomiar ${stacja.plik} ${motyw.klucz}: ${JSON.stringify({ ...pomiar, widoczneOwnerRef: pomiar.widoczneOwnerRef.length })}`);
       const s = pomiar.stacja!;
       expect(s, `${stacja.nazwa}: obrysy stacji na kanwie`).not.toBeNull();
-      expect(s.left, `${stacja.nazwa}: (a) lewa krawędź w kadrze`).toBeGreaterThanOrEqual(pomiar.obszar.left - 0.5);
-      expect(s.right, `${stacja.nazwa}: (a) prawa krawędź w kadrze`).toBeLessThanOrEqual(pomiar.obszar.right + 0.5);
-      expect(s.top, `${stacja.nazwa}: (a) górna krawędź pod paskiem narzędzi i ścieżką`).toBeGreaterThanOrEqual(pomiar.obszar.top - 0.5);
-      expect(s.bottom, `${stacja.nazwa}: (a) dolna krawędź w kadrze`).toBeLessThanOrEqual(pomiar.obszar.bottom + 0.5);
+      // Kontrakt R7: kadr celu jest w skali czytania, a cel większy od wolnej kanwy kadruje się od
+      // początku. Dwuklik zaznacza stację, więc inspektor zwęża kanwę (1440×900: 796 px); stacja
+      // odgałęźna z polem odgałęźnym ma w skali czytania ok. 1 130 × 490 px (pomiar 2026-11-13).
+      celWKadrze(s, pomiar.obszar, `${stacja.nazwa}: (a)`);
       // (b) Karta SLD-SKALA-I-NAWIGACJA (R3, R4): licznika ukrytych opisów nie ma — tożsamość celu
       // nie znika, a narysowany opis celu ma pismo co najmniej progu czytelności (9 px).
       await expect(page.getByTestId('sld-v3-hidden-labels-hint'), `${stacja.nazwa}: (b) brak licznika`).toHaveCount(0);
@@ -341,14 +366,14 @@ for (const motyw of [
     await dwuklikStacji(page, refStacji.get('Stacja Odgałęźna')!);
     await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText('Stacja Odgałęźna');
     const licznik = (await page.getByTestId('sld-v3-stacja-licznik').textContent()) ?? '';
-    const [numer, wszystkie] = licznik.split('/').map(Number);
+    const [, numer, wszystkie] = (/^Stacja (\d+) z (\d+)$/.exec(licznik) ?? []).map(Number);
     expect(wszystkie).toBe(5);
     expect(numer + 2, 'dwie następne stacje w porządku rysunku').toBeLessThanOrEqual(wszystkie);
     let kadrPoprzedni = await kadrUstalony(page);
     let obrazPoprzedni = await page.locator('svg[data-testid="sld-canvas-v3"]').screenshot();
     for (const krok of [1, 2]) {
       await page.getByTestId('sld-v3-stacja-nastepna').click();
-      await expect(page.getByTestId('sld-v3-stacja-licznik')).toHaveText(`${numer + krok}/${wszystkie}`);
+      await expect(page.getByTestId('sld-v3-stacja-licznik')).toHaveText(`Stacja ${numer + krok} z ${wszystkie}`);
       const kadr = await kadrUstalony(page);
       const obraz = await page.locator('svg[data-testid="sld-canvas-v3"]').screenshot();
       expect(kadr, `następna stacja (krok ${krok}) zmienia viewBox`).not.toBe(kadrPoprzedni);
@@ -358,7 +383,7 @@ for (const motyw of [
     }
     await zrzut(page, 'stacja-nastepna', motyw.klucz);
     await page.getByTestId('sld-v3-stacja-poprzednia').click();
-    await expect(page.getByTestId('sld-v3-stacja-licznik')).toHaveText(`${numer + 1}/${wszystkie}`);
+    await expect(page.getByTestId('sld-v3-stacja-licznik')).toHaveText(`Stacja ${numer + 1} z ${wszystkie}`);
     await page.getByTestId('sld-v3-stacja-nastepna').click();
     // Poziom „Sieć" mini-ścieżki: kadr i zaznaczenie sprzed dwukliku.
     await page.getByTestId('sld-v3-sciezka-0').click();
@@ -424,8 +449,7 @@ for (const motyw of [
     await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Stacja Końcowa odgałęzienia']);
     await kadrUstalony(page);
     const pomiarProblemu = await zmierzKadr(page, enm, odgalezna);
-    expect(pomiarProblemu.stacja!.left).toBeGreaterThanOrEqual(pomiarProblemu.obszar.left - 0.5);
-    expect(pomiarProblemu.stacja!.right).toBeLessThanOrEqual(pomiarProblemu.obszar.right + 0.5);
+    celWKadrze(pomiarProblemu.stacja!, pomiarProblemu.obszar, 'problem z gotowości');
     await zrzut(page, 'problem-z-gotowosci', motyw.klucz);
     // Tor zasilania elementu wskazanego z gotowości (element jest zaznaczony).
     await page.getByTestId('sld-v3-dopasuj-do-toggle').click();
@@ -446,8 +470,9 @@ for (const motyw of [
     await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Stacja Odgałęźna']);
     await kadrUstalony(page);
     const pomiarDolny = await zmierzKadr(page, enm, refStacji.get('Stacja Odgałęźna')!);
-    expect(pomiarDolny.stacja!.top).toBeGreaterThanOrEqual(pomiarDolny.obszar.top - 0.5);
-    expect(pomiarDolny.stacja!.bottom).toBeLessThanOrEqual(pomiarDolny.obszar.bottom + 0.5);
+    // Panel dolny „Problemy” zmniejsza kanwę w pionie: stacja odgałęźna (≈ 490 px w skali
+    // czytania) jest wtedy wyższa od wolnej kanwy (≈ 466 px) — kadr od jej początku (R7).
+    celWKadrze(pomiarDolny.stacja!, pomiarDolny.obszar, 'problem z panelu dolnego');
 
     // (8) K2b §0.4 — widok roboczy całej sieci (domyślny na ekranie): brak ramy arkusza,
     // NOP ma symbol, odcinek napowietrzny jest przerywany.

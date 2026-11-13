@@ -10,17 +10,36 @@
  *     (`ZAPAS_OKNA` szerokości/wysokości widoku z każdej strony), nie dostaje węzła. Zapas
  *     sprawia, że przesunięcie widoku o mniej niż pół ekranu nie odsłania pustki przed
  *     następną klatką.
- *  2. OBRYS BEZ WNĘTRZA — symbol, którego rozmiar ekranowy (większy bok gabarytu × skala) jest
- *     poniżej `PROG_WNETRZA_SYMBOLU_PX` (3 px), rysuje sam obrys gabarytu w kolorze stanu, bez
- *     wnętrza glifu (wnętrze 3 px nie ma rozróżnialnych kresek). Element zostaje: ten sam węzeł
- *     z `ref` i atrybutami stanu, obrys, kolor stanu i cel kliku. Od 3 px wzwyż — pełny glif.
- *     Geometria nigdy nie jest zamieniana (karta, R8: jedyny dozwolony środek).
+ *  2. OBRYS BEZ WNĘTRZA — symbol, którego rozmiar ekranowy (MNIEJSZY bok gabarytu × skala) jest
+ *     poniżej `PROG_WNETRZA_SYMBOLU_PX`, rysuje sam obrys gabarytu w kolorze stanu, bez wnętrza
+ *     glifu. Element zostaje: ten sam węzeł z `ref` i atrybutami stanu, obrys, kolor stanu i cel
+ *     kliku. Geometria nigdy nie jest zamieniana (karta, R8: jedyny dozwolony środek). Łącznik
+ *     przerywający tor (otwarty, punkt N.O. — `torMocy.przerwaToru`) zamiast obrysu dostaje znak
+ *     przerwy toru □ o stałej wielkości ekranowej (`glifZbiorczy.znacznikPrzerwyToru`) — STAN
+ *     łącznika toru zostaje na widoku ogólnym.
  *
- * Obie reguły dotyczą wyłącznie węzłów DOM. Scena, plan etykiet, obszary trafienia i sondy
+ * PRÓG CZYTELNOŚCI WNĘTRZA (B-02 2026-11-13, P0-03 — widok ogólny LOD0). Dawny próg 3 px nie
+ * wynikał z żadnej reguły czytania: przy 30 % skali czytania aparaty pól (16 j.św. → 4,8 px),
+ * ich oznaczenia (Q1, Q0…) i ramki zabezpieczeń zostawały na rysunku jako drobne kwadraty bez
+ * treści. Próg jest teraz progiem czytelności pisma R3 (`MIN_READABLE_LABEL_SCREEN_PX`, 9 px):
+ * kreska aparatu mniejsza od najmniejszej czytelnej litery nie przenosi rozróżnialnej treści.
+ * Z niego wynika SKALA WNĘTRZA PÓL `SKALA_WNETRZA_POL` = 9 px / najmniejszy gabaryt biblioteki
+ * (16 j.św.) = 0,5625 — od tej skali KAŻDY aparat pola ma czytelne wnętrze. Poniżej niej
+ * (`wnetrzePolRysowane` = fałsz) wnętrza pól nie są rysowane: stacja SN/nN i punkt
+ * rozłącznikowy rysują się symbolem stacji (`hitAreas.stacjePrzegladu`), w GPZ aparat pola jest
+ * obrysem w kolorze stanu, adnotacje zabezpieczeń (blok, ramka, linie) nie mają węzła ani
+ * uchwytu (`adnotacjaPolaUkryta`), a oznaczenia aparatów przechodzą do podpowiedzi
+ * (`labelLegibility`). Topologia, położenia łączników i identyfikatory bez zmian — jedna scena.
+ *
+ * Reguła 1 dotyczy wyłącznie węzłów DOM; reguła 2 i próg wnętrza — węzłów DOM, a adnotacje
+ * ukryte także warstwy trafień (nie ma celu kliku bez rysunku). Scena, plan etykiet i sondy
  * odbioru liczą na pełnej scenie.
  */
 import type { V3Rect } from '../core/grid';
+import { MIN_READABLE_LABEL_SCREEN_PX } from '../core/text';
+import type { PreviewSymbol } from '../compose/preview';
 import type { RouteVertex } from '../layout/route';
+import { SYMBOL_DEFS, smallestSymbolExtent, type SymbolId } from '../symbols/defs';
 import type { HitShape } from './hitAreas';
 
 /** Zapas okna renderu z każdej strony, jako ułamek wymiaru widoku. */
@@ -79,10 +98,41 @@ export function obwiedniaKsztaltu(ksztalt: HitShape): V3Rect {
     : obwiedniaLamanej(ksztalt.points, ksztalt.halfWidth);
 }
 
-/** Próg rozmiaru ekranowego symbolu [px], poniżej którego rysuje się obrys bez wnętrza. */
-export const PROG_WNETRZA_SYMBOLU_PX = 3;
+/** Próg rozmiaru ekranowego wnętrza symbolu [px] = próg czytelności pisma R3 (9 px). */
+export const PROG_WNETRZA_SYMBOLU_PX = MIN_READABLE_LABEL_SCREEN_PX;
 
-/** Symbol rysowany obrysem bez wnętrza (reguła 2): większy bok gabarytu na ekranie < 3 px. */
+/** Najmniejszy gabaryt symbolu biblioteki [j.św.] (16 — `minSymbolSize.contract.test.ts`). */
+export const NAJMNIEJSZY_GABARYT_SYMBOLU = smallestSymbolExtent(Object.keys(SYMBOL_DEFS) as SymbolId[]);
+
+/** Skala wnętrza pól: najmniejsza skala, przy której każdy aparat pola ma wnętrze ≥ 9 px. */
+export const SKALA_WNETRZA_POL = PROG_WNETRZA_SYMBOLU_PX / NAJMNIEJSZY_GABARYT_SYMBOLU;
+
+/** Czy wnętrza pól (aparaty, ich oznaczenia, adnotacje zabezpieczeń) są rysowane przy skali
+ *  `skala`. Skala niewiarygodna (≤ 0, NaN — przed pomiarem widoku) — tak (brak pomiaru nie jest
+ *  dowodem nieczytelności). JEDNO źródło dla symbolu stacji, obrysu aparatu, adnotacji pola,
+ *  warstwy trafień i planu etykiet. */
+export function wnetrzePolRysowane(skala: number): boolean {
+  if (!Number.isFinite(skala) || skala <= 0) return true;
+  return skala >= SKALA_WNETRZA_POL;
+}
+
+/** Wnętrze gabarytu nieczytelne (reguła 2): mniejszy bok gabarytu na ekranie < 9 px. */
 export function symbolBezWnetrza(gabaryt: V3Rect, skala: number): boolean {
-  return Math.max(gabaryt.width, gabaryt.height) * skala < PROG_WNETRZA_SYMBOLU_PX;
+  return Math.min(gabaryt.width, gabaryt.height) * skala < PROG_WNETRZA_SYMBOLU_PX;
+}
+
+/**
+ * Symbol rysowany bez wnętrza (obrys w kolorze stanu, a łącznik przerywający tor — znak □
+ * przerwy toru): aparat pola — gdy wnętrza pól nie są rysowane; każdy symbol — gdy jego własne
+ * wnętrze jest poniżej progu.
+ */
+export function obrysBezWnetrzaSymbolu(symbol: PreviewSymbol, gabaryt: V3Rect, skala: number): boolean {
+  if (symbol.meta?.elementKind === 'apparatus' && !wnetrzePolRysowane(skala)) return true;
+  return symbolBezWnetrza(gabaryt, skala);
+}
+
+/** Adnotacja zabezpieczeń pola (blok, ramka, linie) bez węzła i bez uchwytu, gdy wnętrza pól
+ *  nie są rysowane (`wnetrzePol` = `wnetrzePolRysowane(skala)` — wołający liczy go raz na klatkę). */
+export function adnotacjaPolaUkryta(meta: { readonly elementKind?: string } | undefined, wnetrzePol: boolean): boolean {
+  return meta?.elementKind === 'protectionAnnotation' && !wnetrzePol;
 }

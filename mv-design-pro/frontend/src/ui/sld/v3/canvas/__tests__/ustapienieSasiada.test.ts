@@ -26,6 +26,15 @@
  *   rysunkiem × kolejność wejścia × determinizm.
  * Każdy przypadek ma warunek wstępny „bez sąsiada Q1 rysuje się po lewej", żeby
  * wynik dotyczył mechanizmu ustąpienia, a nie przypadkowej geometrii.
+ *
+ * B-02 właściciela 2026-11-13 (P0-03, R8 reguła 3 kontraktu `SLD_LOD_SPEC_OPERATOR_GRADE.md`):
+ * poniżej progu wnętrza pól (`SKALA_WNETRZA_POL` = 9 px / 16 j.św. = 0,5625) tożsamości
+ * APARATÓW (oznaczniki Q, oznaczenia pól — `ownerKind: 'apparatus'`) nie wchodzą do planu, tylko
+ * do podpowiedzi uchwytu. Skala 0,4034 z pomiaru leży poniżej progu, więc dla aparatów ten układ
+ * już nie powstaje (przypięte testem „aparaty poniżej progu wnętrza"). Mechanizm (f) jest
+ * niezależny od rodzaju właściciela i działa dalej dla etykiet rysowanych w tej skali — geometria
+ * z pomiaru zostaje, a etykiety mają rodzaj `lacznik-toru` (oznacznik łącznika toru, rysowany
+ * także w widoku ogólnym), żeby przypadki ćwiczyły mechanizm, nie filtr progu wnętrza.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -56,7 +65,7 @@ function etykieta(p: {
 }): OwnedLabel {
   return {
     ownerRef: p.ownerRef,
-    ownerKind: p.ownerKind ?? 'apparatus',
+    ownerKind: p.ownerKind ?? 'lacznik-toru',
     labelClass: p.labelClass,
     labelRole: 'tozsamosc',
     text: p.text,
@@ -92,6 +101,17 @@ function bezKolizji(plan: LabelRenderPlan, przeszkody: readonly V3Rect[]): void 
 }
 
 describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
+  it('aparaty poniżej progu wnętrza pól: tożsamość w podpowiedzi uchwytu, nie na rysunku (R8 reguła 3)', () => {
+    const aparatQ1 = { ...Q1, ownerKind: 'apparatus' as const };
+    const aparatGpz = { ...OZNACZENIE_GPZ, ownerKind: 'apparatus' as const };
+    const plan = planSceneLabels([aparatGpz, aparatQ1], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ);
+    expect(plan.drawn).toEqual([]);
+    expect(plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef).sort()).toEqual([aparatGpz.ownerRef, aparatQ1.ownerRef].sort());
+    // Od progu wnętrza ta sama tożsamość aparatu znów wchodzi do planu.
+    const odProgu = planSceneLabels([aparatQ1], [WYLACZNIK], 0.5625, ARKUSZ);
+    expect(odProgu.drawn.map((p) => p.label.ownerRef)).toEqual([aparatQ1.ownerRef]);
+  });
+
   it('warunek wstępny: bez sąsiada Q1 stoi po lewej, a trzy pozostałe strony zajmuje symbol', () => {
     const plan = planSceneLabels([Q1], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ);
     const q1 = narysowana(plan, Q1.ownerRef);

@@ -38,6 +38,7 @@ import {
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState, type CameraState } from '../camera';
 import { kameraNadSymbolem, kameraNaPunkcieSceny } from './kameraTestowa';
+import { SKALA_WNETRZA_POL } from '../oknoRenderu';
 import { bezWezlaPrzegladu, poleIStacjaObiektu, stacjePrzegladu } from '../hitAreas';
 import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
@@ -181,7 +182,7 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     expect(skala(duzy)).toBeGreaterThan(skala(maly) * 3);
     // Jedna scena: dozwolone różnice to wyłącznie reguły renderu R8 — stacja narysowana symbolem
     // stacji (jej odcinki i symbole bez węzłów własnych, `bezWezlaPrzegladu`) i obrys bez wnętrza
-    // (symbol < 3 px ekranu rysuje sam gabaryt). Oba kadry pokazują całą sieć, więc okno renderu
+    // (symbol poniżej progu wnętrza rysuje sam gabaryt). Oba kadry pokazują całą sieć, więc okno renderu
     // niczego nie odcina. Każdy obiekt narysowany na OBU kanwach ma ten sam rysunek (poza grubością
     // kreski z podłogą ekranową), a zbiór węzłów każdej kanwy to scena bez obiektów symbolu stacji.
     const scene = buildSceneV3(enm);
@@ -210,10 +211,10 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     // Symbol poniżej progu wnętrza (`data-bez-wnetrza`) i znak przeglądowy transformatora GPZ
     // (`data-znak-przegladowy`, R8 — dwa okręgi zamiast glifu z uzwojeniami w kadrze całej sieci)
     // to ten sam obiekt sceny narysowany prościej przy małej skali; porównanie glifów dotyczy
-    // symboli pełnych na obu kanwach. Na kanwie 1200×800 (skala ≈0,09) KAŻDY symbol z własnym
-    // węzłem jest uproszczony (pomiar: 6 obrysów bez wnętrza i 1 znak przeglądowy), więc pełne
-    // glify porównuje kanwa średnia (×2, skala ≈0,2: ten sam zbiór 7 węzłów, 6 pełnych glifów)
-    // z dużą — ten sam obiekt, ten sam rysunek przy każdej skali.
+    // symboli pełnych na obu kanwach. W kadrze całej sieci KAŻDY symbol z własnym węzłem jest
+    // uproszczony (skala < 0,5625 — próg wnętrza 9 px / 16 j.św., B-02 2026-11-13), więc pełne
+    // glify porównują dwie kamery nad środkiem sceny w skalach 0,6 i 1,2 (obie od progu wnętrza)
+    // — ten sam obiekt, ten sam rysunek przy każdej skali.
     const uproszczony = (e: Element) => e.hasAttribute('data-bez-wnetrza') || e.hasAttribute('data-znak-przegladowy');
     let pelnychNaObu = 0;
     const porownajZDuza = (wezly: readonly Element[]) =>
@@ -229,9 +230,20 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     expect(skala(sredni)).toBeGreaterThan(skala(maly));
     expect(skala(sredni)).toBeLessThan(skala(duzy));
     porownajZDuza(symbole(sredni));
-    expect(pelnychNaObu, 'część symboli ma pełny glif na obu kanwach (porównanie nie jest puste)').toBeGreaterThan(0);
+    const widok = { width: CANVAS_WIDTH * 2, height: CANVAS_HEIGHT * 2 };
+    const srodek = { x: scene.bbox.x + scene.bbox.width / 2, y: scene.bbox.y + scene.bbox.height / 2 };
+    const { container: blisko } = render(<SldCanvasV3 snapshot={enm} {...widok} cameraOverride={kameraNaPunkcieSceny(scene, srodek, 0.6, widok)} />);
+    const { container: blizej } = render(<SldCanvasV3 snapshot={enm} {...widok} cameraOverride={kameraNaPunkcieSceny(scene, srodek, 1.2, widok)} />);
+    const naBlizszej = new Map(symbole(blizej).map((n) => [n.getAttribute('data-testid') ?? '', n] as const));
+    for (const n of symbole(blisko)) {
+      const m = naBlizszej.get(n.getAttribute('data-testid') ?? '');
+      if (!m || uproszczony(n) || uproszczony(m)) continue;
+      pelnychNaObu += 1;
+      expect(bezGruboscKreski(n.outerHTML), n.getAttribute('data-testid') ?? '').toBe(bezGruboscKreski(m.outerHTML));
+    }
+    expect(pelnychNaObu, 'część symboli ma pełny glif w obu skalach (porównanie nie jest puste)').toBeGreaterThan(0);
     expect(a.some((n) => n.hasAttribute('data-bez-wnetrza')), 'mała kanwa ma symbole poniżej progu wnętrza').toBe(true);
-    expect(b.filter((n) => n.hasAttribute('data-bez-wnetrza')).length).toBeLessThan(a.filter((n) => n.hasAttribute('data-bez-wnetrza')).length);
+    expect(b.filter((n) => n.hasAttribute('data-bez-wnetrza')).length).toBeLessThanOrEqual(a.filter((n) => n.hasAttribute('data-bez-wnetrza')).length);
   });
 
   it('kanwa nie niesie atrybutu poziomu szczegółu — jedynym parametrem widoku jest skala kamery', () => {
@@ -1380,6 +1392,13 @@ describe('SldCanvasV3 — S8: ciągłość widoku przy zmianie skali', () => {
           (n) => [n.getAttribute('data-testid')!, bezGruboscKreski(n.outerHTML)] as const,
         ),
       );
+    // Start od progu wnętrza pól (R8 reguła 3, SKALA_WNETRZA_POL): poniżej niego stacja jest
+    // symbolem przeglądu bez węzłów własnych aparatów, więc „ten sam rysunek” porównuje się
+    // dopiero od poziomu, na którym aparaty mają węzły (LOD1 → LOD2).
+    for (let i = 0; i < 12 && skalaOf(container) < SKALA_WNETRZA_POL; i += 1) {
+      fireEvent.wheel(svg, { clientX: W / 2, clientY: H / 2, deltaY: -140 });
+    }
+    expect(skalaOf(container)).toBeGreaterThanOrEqual(SKALA_WNETRZA_POL);
     const przed = { skala: skalaOf(container), symbole: wezly('sld-v3-symbols'), odcinki: wezly('sld-v3-segments') };
     expect([...przed.symbole.values()].some((h) => h.includes('data-energized="true"'))).toBe(true);
     for (let i = 0; i < 2; i += 1) {

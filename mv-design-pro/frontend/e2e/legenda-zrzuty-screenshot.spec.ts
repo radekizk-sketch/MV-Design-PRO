@@ -194,7 +194,7 @@ test.describe('legenda:zrzuty dokumentacyjne', () => {
 
       // Kadr 1: schemat BEZ legendy na kanwie, dok widoku widoczny.
       await expect(page.getByTestId('sld-sheet-legend')).toHaveCount(0);
-      await expect(page.getByTestId('sld-v3-view-dock')).toBeVisible();
+      await expect(page.getByTestId('sld-v3-sheet-dock')).toBeVisible();
       await page.waitForTimeout(300);
       await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kanwa-bez-legendy-${plik}.png`) });

@@ -458,11 +458,11 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     // przy skali, na której kompensacja realnie działa.
     // GEOMETRIA-STACJI (§0 pkt 4): odłącznik rysuje się wyłącznie z rekordu modelu — fikstura
     // dostaje rekordy aparatów pól (`zRekordamiAparatowPol`); dawniej dawała go konwencja.
-    // Karta SLD-SKALA-I-NAWIGACJA, R8: poniżej 3 px ekranu symbol rysuje sam obrys gabarytu
+    // Karta SLD-SKALA-I-NAWIGACJA, R8: poniżej progu wnętrza symbol rysuje sam obrys gabarytu
     // (bez kresek wnętrza), więc kadr całej sieci na małej kanwie nie ma już kreski odłącznika
-    // do zmierzenia. Kamera stoi nad odłącznikiem przy skali 0,5 — w obu zakresach naraz:
-    // wnętrze glifu rysowane (24 j.św. × 0,5 = 12 px ≥ 3 px) i kompensacja kreski czynna
-    // (0,5 < 3 px / 2,4 j.św. = 1,25).
+    // do zmierzenia. Kamera stoi nad odłącznikiem przy skali 0,75 — w obu zakresach naraz:
+    // wnętrza pól rysowane (skala ≥ 9 px / 16 j.św. = 0,5625, B-02 2026-11-13) i kompensacja
+    // kreski czynna (0,75 < 3 px / 2,4 j.św. = 1,25).
     const model = zRekordamiAparatowPol(SIEC);
     const scena = buildSceneV3(model);
     const odlacznik = scena.symbols.find((s) => s.symbolId === 'disconnector' && s.meta?.testId);
@@ -472,7 +472,7 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
         snapshot={model}
         width={420}
         height={280}
-        cameraOverride={kameraNadSymbolem(scena, odlacznik!.meta!.testId!, { width: 420, height: 280 }, 0.5)}
+        cameraOverride={kameraNadSymbolem(scena, odlacznik!.meta!.testId!, { width: 420, height: 280 }, 0.75)}
       />,
     );
     const kadr = container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!.split(' ');

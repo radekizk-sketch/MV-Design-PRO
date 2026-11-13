@@ -143,7 +143,7 @@ describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
     dwuklikStacji(container, STACJA);
     const i = porzadek.indexOf(STACJA);
-    expect(screen.getByTestId('sld-v3-stacja-licznik').textContent).toBe(`${i + 1}/${porzadek.length}`);
+    expect(screen.getByTestId('sld-v3-stacja-licznik').textContent).toBe(`Stacja ${i + 1} z ${porzadek.length}`);
     // Licznik ma opis (podpowiedź i nazwa dostępna) — „3/5” bez słowa nie mówi, co liczy.
     expect(screen.getByTestId('sld-v3-stacja-licznik').getAttribute('title')).toMatch(new RegExp(`^Stacja ${i + 1} z ${porzadek.length} w porządku magistrali`));
 

@@ -322,7 +322,7 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
 
 // ---------------------------------------------------------------------------
 // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30) — legenda symboli „na
-// żądanie": NIE na stałym widoku kanwy, dok `sld-v3-view-dock` otwiera panel,
+// żądanie": NIE na stałym widoku kanwy, dok `sld-v3-sheet-dock` otwiera panel,
 // treść panelu WYŁĄCZNIE z fixtury realnej (zero fabrykacji — patrz też
 // wyrocznie czystej funkcji `sheet/__tests__/projectLegend.test.ts`).
 // ---------------------------------------------------------------------------
@@ -338,7 +338,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     expect(toggle.textContent).toMatch(/Legenda \(\d+\)/);
   });
 
-  it('otwarcie panelu (dok `sld-v3-view-dock`) pokazuje WYŁĄCZNIE symbole obecne w fixturze — fixtura ma agregat (loads[]), więc "Odbiór (zagregowany)" jest obecny', () => {
+  it('otwarcie panelu (dok `sld-v3-sheet-dock`) pokazuje WYŁĄCZNIE symbole obecne w fixturze — fixtura ma agregat (loads[]), więc "Odbiór (zagregowany)" jest obecny', () => {
     render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
 
@@ -457,10 +457,44 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
     render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(screen.queryByTestId('sld-v3-minimap-dock')).toBeNull();
     expect(screen.queryByTestId('sld-v3-minimap-panel')).toBeNull();
-    // Przełącznik żyje w TYM SAMYM doku widoku co „Dopasuj widok"/„Legenda"
-    // (jedno miejsce na sterowanie widokiem — scalony dok K11-A/K12).
-    const dock = screen.getByTestId('sld-v3-view-dock');
+    // SLD-SKALA-I-NAWIGACJA R7: przełącznik żyje w prawym-dolnym doku, przy wskaźniku skali,
+    // warstwach i samym nawigatorze — nie w doku widoku pasa narzędzi.
+    const dock = screen.getByTestId('sld-v3-dok-prawy-dolny');
     expect(within(dock).getByTestId('sld-v3-minimap-toggle')).toBeInTheDocument();
+    expect(within(dock).getByTestId('sld-v3-wskaznik-skali')).toBeInTheDocument();
+    expect(within(screen.getByTestId('sld-v3-view-dock')).queryByTestId('sld-v3-minimap-toggle')).toBeNull();
+  });
+
+  // Minima grup „widok” i „arkusz” (`toolbarLayout.ts`) są policzone z TYCH list przycisków;
+  // przycisk dopisany do doku bez przeliczenia minimum wypychał pas poza kanwę (zrzut e2e
+  // `r7-kadr-roboczy-stacja`, niepoliczony „Widok: roboczy”). B-02 2026-11-13 (P0-05): grupa
+  // „widok” jest stała (polecenia zawsze na pasie), „Cały arkusz” i legenda — zwijane.
+  it('dok widoku i dok arkusza niosą dokładnie przyciski policzone w minimach grup', () => {
+    render(<SldCanvasV3Workspace width={1600} height={600} />);
+    const przyciski = (testId: string): (string | null)[] =>
+      within(screen.getByTestId(testId))
+        .getAllByRole('button')
+        .map((b) => b.getAttribute('data-testid'));
+    expect(przyciski('sld-v3-view-dock')).toEqual([
+      'sld-v3-fit-view',
+      'sld-v3-dopasuj-do-toggle',
+      'sld-v3-powieksz-oknem',
+      'sld-v3-poprzedni-widok',
+      'sld-v3-tryb-widoku',
+    ]);
+    expect(przyciski('sld-v3-sheet-dock')).toEqual(['sld-v3-fit-sheet', 'sld-v3-legend-toggle']);
+  });
+
+  // Iloczyn: szerokość kanwy (najwęższa kanwa powłoki 636 px, zwężona inspektorem 796 px, pełna)
+  // × polecenia stale widoczne — na pasie (nie w menu „Narzędzia”) przy każdej szerokości.
+  it.each([636, 796, 1600])('kanwa %i px: polecenia stale widoczne są na pasie, nie w menu', (szer) => {
+    render(<SldCanvasV3Workspace width={szer} height={600} />);
+    const dock = screen.getByTestId('sld-v3-view-dock');
+    expect(dock.getAttribute('data-toolbar-group-collapsed')).toBeNull();
+    for (const id of ['sld-v3-fit-view', 'sld-v3-powieksz-oknem', 'sld-v3-poprzedni-widok', 'sld-v3-tryb-widoku']) {
+      expect(within(dock).getByTestId(id)).toBeInTheDocument();
+    }
+    expect(within(screen.getByTestId('sld-v3-dok-prawy-dolny')).getByTestId('sld-v3-wskaznik-skali')).toBeInTheDocument();
   });
 
   it('rozwinięcie pokazuje nawigator z kształtami REALNEJ sceny i prostokątem kadru', () => {
@@ -518,6 +552,58 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
     // …a jego ROZMIAR (czyli skala kamery) jest bez zmian.
     expect(po[2]).toBeCloseTo(przed[2], 6);
     expect(po[3]).toBeCloseTo(przed[3], 6);
+  });
+
+  // B-02 2026-11-13 (P0-01): przesuwanie przez nawigator w OBU kierunkach każdej osi i ramka
+  // zawsze z czterema krawędziami w panelu. Iloczyn: kadr {cała sieć, cały arkusz — większy niż
+  // granice schematu, przybliżony klawiszem +} × kierunek {lewo/prawo, góra/dół}. Zdarzenie
+  // syntetyczne z tego samego powodu co test wyżej (jsdom bez PointerEvent; ścieżka natywna —
+  // e2e `sld-minimapa.spec.ts` i `sld-kamera-przelot-okno.spec.ts`).
+  it.each(['cała sieć', 'cały arkusz', 'przybliżony'] as const)('kadr „%s”: nawigator przesuwa kadr w obu kierunkach każdej osi, ramka w panelu z czterema krawędziami', (kadr) => {
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    if (kadr === 'cały arkusz') fireEvent.click(screen.getByTestId('sld-v3-fit-sheet'));
+    const canvas = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    if (kadr === 'przybliżony') {
+      const przed = canvas.getAttribute('viewBox');
+      for (let i = 0; i < 4; i += 1) fireEvent.keyDown(window, { key: '+' });
+      expect(canvas.getAttribute('viewBox'), 'klawisz + przybliża').not.toBe(przed);
+    }
+    fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
+    const svg = screen.getByTestId('sld-v3-minimap-svg');
+    const W = Number(svg.getAttribute('width'));
+    const H = Number(svg.getAttribute('height'));
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: W, bottom: H, width: W, height: H,
+      toJSON: () => ({}),
+    } as DOMRect);
+    const srodek = (): { x: number; y: number; w: number; h: number } => {
+      const [x, y, w, h] = canvas.getAttribute('viewBox')!.split(/\s+/).map(Number);
+      return { x: x + w / 2, y: y + h / 2, w, h };
+    };
+    const wskaz = (px: number, py: number): ReturnType<typeof srodek> => {
+      fireEvent(svg, new MouseEvent('pointerdown', { bubbles: true, clientX: px, clientY: py, button: 0 }));
+      fireEvent(svg, new MouseEvent('pointerup', { bubbles: true, clientX: px, clientY: py, button: 0 }));
+      const ramka = screen.getByTestId('sld-v3-minimap-frame');
+      const [rx, ry, rw, rh] = ['x', 'y', 'width', 'height'].map((k) => Number(ramka.getAttribute(k)));
+      expect(rw, 'ramka ma szerokość').toBeGreaterThan(0);
+      expect(rh, 'ramka ma wysokość').toBeGreaterThan(0);
+      expect(rx).toBeGreaterThanOrEqual(0);
+      expect(ry).toBeGreaterThanOrEqual(0);
+      expect(rx + rw).toBeLessThanOrEqual(W);
+      expect(ry + rh).toBeLessThanOrEqual(H);
+      return srodek();
+    };
+    const lewo = wskaz(W * 0.2, H / 2);
+    const prawo = wskaz(W * 0.8, H / 2);
+    expect(prawo.x, 'w prawo').toBeGreaterThan(lewo.x);
+    expect(wskaz(W * 0.2, H / 2).x, 'z powrotem w lewo').toBeLessThan(prawo.x);
+    const gora = wskaz(W / 2, H * 0.2);
+    const dol = wskaz(W / 2, H * 0.8);
+    expect(dol.y, 'w dół').toBeGreaterThan(gora.y);
+    expect(wskaz(W / 2, H * 0.2).y, 'z powrotem w górę').toBeLessThan(dol.y);
+    // Skala bez zmian w całym przebiegu (nawigator tylko przesuwa).
+    expect(dol.w).toBeCloseTo(lewo.w, 6);
+    expect(dol.h).toBeCloseTo(lewo.h, 6);
   });
 
   it('zwinięcie (drugi klik) chowa nawigator — dok zostaje', () => {

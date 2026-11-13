@@ -211,8 +211,9 @@ test('nawigator: rozwijanie z doku, prostokąt kadru zgodny z viewBox, klik prze
   await expect(page.getByTestId('sld-v3-minimap-panel')).toHaveCount(0);
   const przelacznik = page.getByTestId('sld-v3-minimap-toggle');
   await expect(przelacznik).toBeVisible();
-  // Przełącznik żyje w doku widoku, obok legendy (jedno miejsce sterowania widokiem).
-  await expect(page.getByTestId('sld-v3-view-dock').getByTestId('sld-v3-minimap-toggle')).toBeVisible();
+  // Przełącznik żyje w prawym-dolnym doku, przy wskaźniku skali i nawigatorze (karta
+  // SLD-SKALA-I-NAWIGACJA R7).
+  await expect(page.getByTestId('sld-v3-dok-prawy-dolny').getByTestId('sld-v3-minimap-toggle')).toBeVisible();
 
   await przelacznik.click();
   await expect(page.getByTestId('sld-v3-minimap-panel')).toBeVisible();

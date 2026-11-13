@@ -33,6 +33,8 @@ import {
 } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { SldCanvasV3 } from '../../canvas/SldCanvasV3';
+import { kameraNadSrodkiemSceny } from '../../canvas/__tests__/kameraTestowa';
+import { buildSceneV3 } from '../../scene/buildScene';
 import {
   injectExportBackground,
   LIGHT_TECHNICAL_V3,
@@ -222,8 +224,10 @@ function sceneGroupChildCounts(root: ParentNode): readonly number[] {
   return SCENE_GROUP_SELECTORS.map((selector) => root.querySelector(selector)?.children.length ?? -1);
 }
 
-function renderRealMarkup(): { readonly svgEl: SVGSVGElement; readonly raw: string } {
-  const { container } = render(<SldCanvasV3 snapshot={enm} width={1200} height={900} />);
+function renderRealMarkup(skalaCzytania?: number): { readonly svgEl: SVGSVGElement; readonly raw: string } {
+  const widok = { width: 1200, height: 900 };
+  const kamera = skalaCzytania === undefined ? undefined : kameraNadSrodkiemSceny(buildSceneV3(enm), skalaCzytania, widok);
+  const { container } = render(<SldCanvasV3 snapshot={enm} {...widok} cameraOverride={kamera} />);
   const svgEl = container.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
   if (!svgEl) throw new Error('test setup: brak <svg data-testid="sld-canvas-v3"> po renderze');
   return { svgEl, raw: new XMLSerializer().serializeToString(svgEl) };
@@ -241,7 +245,9 @@ describe('exportPalette — integracja na realnym markupie kanwy (parytet ekspor
   it(`kafle stanu łączników mają w eksporcie TEN SAM kolor co na kanwie`, () => {
     // Iniekcja: inna para dokumentowa kafla (np. dawna czerwień drukowalna #B71C1C dla
     // zamkniętego) — wypełnienia kafli przed i po transformacji rozjeżdżają się.
-    const { svgEl, raw } = renderRealMarkup();
+    // Kafle stanu są wnętrzem pola: poniżej progu wnętrza pól (R8 reguła 3, 0,5625) aparat
+    // rysuje sam obrys, więc parytet kolorów kafli sprawdza się w skali 1 nad środkiem sceny.
+    const { svgEl, raw } = renderRealMarkup(1);
     const wypelnienia = (root: ParentNode) =>
       [...root.querySelectorAll('[data-kafel="tlo"]')].map((n) => n.getAttribute('fill'));
     const przed = wypelnienia(svgEl);

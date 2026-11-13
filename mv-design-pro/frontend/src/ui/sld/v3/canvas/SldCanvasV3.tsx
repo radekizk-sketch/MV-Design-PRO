@@ -37,6 +37,7 @@ import { SYMBOL_GLYPHS, skalaZnacznikaKafla } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import {
   LABEL_TYPOGRAPHY,
+  MIN_READABLE_LABEL_SCREEN_PX,
   SLD_FONT_FAMILY,
   SLD_TEXT_STYLE,
   measureLabelWidth,
@@ -98,11 +99,13 @@ import {
 } from './camera';
 import { kotwicaWidoku, prostokatRefowWScenie } from './viewAnchor';
 import {
+  adnotacjaPolaUkryta,
+  obrysBezWnetrzaSymbolu,
   obwiedniaKsztaltu,
   obwiedniaLamanej,
   oknoRenderuSceny,
   przecinaOkno,
-  symbolBezWnetrza,
+  wnetrzePolRysowane,
 } from './oknoRenderu';
 import {
   najgorszyStanStacji,
@@ -156,6 +159,7 @@ import {
 // kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
 import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
 import { GpzAdnotacjeWarstwa } from './GpzAdnotacjeWarstwa';
+import { KLASA_DANYCH_GPZ } from '../compose/gpzAdnotacje';
 import { tekstBezWzorow } from '../../../proof/latexTekst';
 import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 import { atrybutStanuObiektu } from '../../../shared/stanObiektu';
@@ -306,6 +310,15 @@ export interface SldElementClickMeta {
  * ale nie konkuruje z celem; klik w niego nadal prowadzi do obiektu.
  */
 export const KURTYNA_KADRU_OPACITY = 0.22;
+
+/**
+ * Krycie NAPISÓW poza celem kadru (B-02 2026-11-13, P1-04). Napis pod kryciem rysunku
+ * (0,22) miał na tle ciemnym kontrast 1,8:1 — opis przewodu sąsiada („S01–S02 · YAKXS…”)
+ * był nieczytelny. Napis kurtyny zostaje przyciemniony (kontekst, nie cel), ale tusz
+ * zmieszany z tłem ma kontrast ≥ 4,5:1 (WCAG AA tekst) w OBU motywach — 0,6 daje 6,4:1 na
+ * tle ciemnym i 5,0:1 na bieli (`kurtynaKadru.contract.test.tsx`). Kolor toru bez zmian.
+ */
+export const KURTYNA_KADRU_OPACITY_TEKSTU = 0.6;
 
 export interface SldCanvasV3Props {
   readonly snapshot: EnergyNetworkModel;
@@ -3378,6 +3391,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     const adn = scene.meta.gpzAdnotacje;
     return adn ? { ...adn, panele: paneleWgPlanu(adn.panele, scene.symbols, ramkiBlokow, labelPlan.drawn) } : null;
   }, [scene, ramkiBlokow, labelPlan]);
+  // Karta SLD-SKALA-I-NAWIGACJA (R3, B-02 2026-11-13 P0-04): tabela „Pola GPZ" (próbki ról,
+  // plakietki automatyki, legenda) jest INFORMACJĄ — poniżej progu czytelności jej pisma
+  // (klasa danych GPZ × skala < 9 px) jej kształty bez treści były na kadrze całej sieci
+  // szumem (drobne kwadraty i przerywane prostokąty nad obrysem GPZ). Warunek stoi w miejscu
+  // montowania warstwy (warstwa paneli należy do karty pól): poniżej progu warstwa dostaje
+  // adnotacje bez tabeli; tła pól (`panele`) zostają — są częścią rysunku rozdzielnicy.
+  const tabelaGpzCzytelna = LABEL_TYPOGRAPHY[KLASA_DANYCH_GPZ].fontSize * skalaRysunku >= MIN_READABLE_LABEL_SCREEN_PX;
+  const adnotacjeGpzWSkali = useMemo(
+    () => (adnotacjeGpz && !tabelaGpzCzytelna && adnotacjeGpz.tabela ? { ...adnotacjeGpz, tabela: null } : null),
+    [adnotacjeGpz, tabelaGpzCzytelna],
+  );
   // K2b §0.2 (b): najmniejsza wysokość narysowanego opisu celu kadru na ekranie —
   // kanał audytu (`data-min-opis-celu-px`) liczony tym samym obiektem podłogi, który
   // dostał plan. Licznik ukrytych opisów nie istnieje (karta SLD-SKALA-I-NAWIGACJA:
@@ -3420,20 +3444,24 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // ten sam predykat (`isLayerVisible(layerIdForElementMeta(...))`) po obu
   // stronach (reguła KLASA, NIE INSTANCJA pkt 3: warunek WEJŚCIA i WYJŚCIA z
   // jednego źródła).
+  // Klucz memo: stan progu wnętrza, nie sama skala — zbiór zmienia się tylko na progu.
+  const wnetrzePol = wnetrzePolRysowane(skalaRysunku);
   const ukryteTestId = useMemo(() => {
     const ukryte = new Set<string>();
+    // Obiekt bez węzła rysunku nie ma uchwytu: ukryta warstwa i adnotacja zabezpieczeń pola przy
+    // skali, w której wnętrza pól nie są rysowane (LOD0, `oknoRenderu.adnotacjaPolaUkryta`).
     scene.segments.forEach((segment, index) => {
-      if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) {
+      if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility) || adnotacjaPolaUkryta(segment.meta, wnetrzePol)) {
         ukryte.add(segmentTestId(segment, index));
       }
     });
     scene.symbols.forEach((symbol, index) => {
-      if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) {
+      if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility) || adnotacjaPolaUkryta(symbol.meta, wnetrzePol)) {
         ukryte.add(symbolTestId(symbol, index));
       }
     });
     return ukryte;
-  }, [scene, layerVisibility]);
+  }, [scene, layerVisibility, wnetrzePol]);
 
   /** Znaczniki warstwy wynikowej (S9-2) jako obiekty trafienia — etykieta
    *  liczbowa i marker skupiska „+N wyniki" są obiektami kanwy tak samo jak
@@ -3623,8 +3651,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // AKTUALNYM transformie kamery — jedyny sposób uzyskania go z zewnątrz
   // (kamera jest stanem wewnętrznym od F6b). Wzorzec identyczny z
   // `SldCanvasV2`'s `onViewportTransformChange` (`useEffect` na zmianę
-  // `transform`, patrz docstring propa wyżej).
-  useEffect(() => {
+  // `transform`, patrz docstring propa wyżej). Faza UKŁADU (`useLayoutEffect`), nie efekt bierny:
+  // zgłoszenie biegnie w tym samym zatwierdzeniu co nowy `viewBox`, więc polecenie wydane zaraz
+  // po zmianie kadru (historia kadrów, `Alt+←`) widzi już nową kamerę — efekt bierny zostawiał
+  // okno, w którym DOM pokazywał nowy kadr, a wołający znał jeszcze stary.
+  useLayoutEffect(() => {
     onCameraChange?.(camera.transform, camera.viewportSize);
   }, [onCameraChange, camera.transform, camera.viewportSize]);
 
@@ -4125,7 +4156,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             opacity={pozaKadrem(scene.meta.gpzId) ? KURTYNA_KADRU_OPACITY : undefined}
           >
             <GpzAdnotacjeWarstwa
-              adnotacje={adnotacjeGpz}
+              adnotacje={adnotacjeGpzWSkali ?? adnotacjeGpz}
               gpzRef={scene.meta.gpzId}
               wyniki={overlay?.gpzWyniki ?? null}
               nieaktualny={overlay?.resultsStale === true}
@@ -4147,6 +4178,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-segments">
           {scene.segments.map((segment, index) => {
             if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) return null;
+            // LOD0: linia adnotacji zabezpieczeń pola bez węzła, gdy wnętrza pól nie są rysowane.
+            if (adnotacjaPolaUkryta(segment.meta, wnetrzePol)) return null;
             // R8: odcinek poza oknem renderu nie dostaje węzła (`oknoRenderu.ts`); odcinek pola
             // stacji rysowanej glifem zbiorczym jest w ścieżce stacji (`sld-v3-glify-zbiorcze`).
             if (!przecinaOkno(obwiednieOdcinkow[index], oknoRenderu)) return null;
@@ -4187,7 +4220,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           {scene.symbols.map((symbol, index) => {
             if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
             // R8: symbol poza oknem renderu nie dostaje węzła; symbol poniżej progu wnętrza
-            // rysuje sam obrys (`oknoRenderu.symbolBezWnetrza`).
+            // rysuje sam obrys (`oknoRenderu.obrysBezWnetrzaSymbolu`); adnotacja zabezpieczeń
+            // pola bez węzła, gdy wnętrza pól nie są rysowane (LOD0).
+            if (adnotacjaPolaUkryta(symbol.meta, wnetrzePol)) return null;
             const gabaryt = gabarytySymboli[index];
             if (!przecinaOkno(gabaryt, oknoRenderu)) return null;
             if (bezWezlaPrzegladuRenderu.symbole.has(index)) return null;
@@ -4199,7 +4234,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 overlay={effectiveOverlay}
                 cameraScale={skalaRysunku}
                 ramkaBloku={ramkiBlokow.get(index)}
-                obrysBezWnetrza={symbolBezWnetrza(gabaryt, skalaRysunku) ? gabaryt : undefined}
+                obrysBezWnetrza={obrysBezWnetrzaSymbolu(symbol, gabaryt, skalaRysunku) ? gabaryt : undefined}
                 znakPrzegladowy={transformatoryPrzegladowe.has(index) ? gabaryt : undefined}
                 przerwaWNodze={przerwyNog.get(index)}
               />
@@ -4229,7 +4264,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         >
           {labelPlan.drawn.map((planned) =>
             !przecinaOkno(planned.rect, oknoRenderu) ? null : pozaKadrem(planned.label.ownerRef) ? (
-              <g key={`label-${planned.index}`} data-kadr="poza" opacity={KURTYNA_KADRU_OPACITY}>
+              <g key={`label-${planned.index}`} data-kadr="poza" opacity={KURTYNA_KADRU_OPACITY_TEKSTU}>
                 <SceneLabelNode planned={planned} cameraScale={skalaRysunku} />
               </g>
             ) : (

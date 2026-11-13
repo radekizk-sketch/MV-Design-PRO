@@ -117,17 +117,23 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   // GEOMETRIA-STACJI: kadr całej sieci tej fikstury mieści się dziś w progu czytelności (stosy
   // pól bez rekordów są niższe i węższe — sylwetka braku danych zamiast stosu z konwencji),
   // więc stan „poniżej progu" osiągamy natywnym oddaleniem kółkiem, nie samym kadrem startowym.
-  it('pismo poniżej progu czytelności (oddalony kadr): teksty nie są rysowane, tła pól i próbki ról zostają', () => {
+  // Karta SLD-SKALA-I-NAWIGACJA (R3): tabela „Pola GPZ" jest informacją — poniżej progu nie ma
+  // ani pisma, ani jej kształtów (próbki ról, plakietki, legenda), bo kształty bez pisma były na
+  // kadrze całej sieci szumem nad obrysem GPZ (zrzut e2e `r7-kadr-calej-sieci`). Tła pól zostają.
+  it('pismo poniżej progu czytelności (oddalony kadr): bez tekstów i bez tabeli pól, tła pól zostają', () => {
     const container = renderKanwe();
     const warstwa = container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!;
     expect(warstwa).not.toBeNull();
     oddalPonizejCzytelnosci(container);
     expect(warstwa.getAttribute('data-gpz-teksty')).toBe('ponizej-progu-czytelnosci');
     expect(container.querySelector('[data-testid="sld-v3-gpz-bilans-zasilania"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v3-gpz-tabela-pol"]')).toBeNull();
+    expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-plakietka-"], [data-testid^="sld-v3-gpz-legenda-"]').length).toBe(0);
     expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]').length).toBeGreaterThan(0);
     powiekszDoCzytelnosci(container);
     expect(warstwa.getAttribute('data-gpz-teksty')).toBe('widoczne');
     expect(container.querySelector('[data-testid="sld-v3-gpz-bilans-zasilania"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v3-gpz-tabela-pol"]'), 'warunek sensu: fikstura niesie tabelę pól').not.toBeNull();
   });
 
   it('BRAK BIEGU: belka i tabela mówią jawnie „brak wyniku rozpływu mocy", wartości pól „brak" (nie zero)', () => {
@@ -201,6 +207,8 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
         expect(panel.getAttribute('fill')).toBe(paleta.rolaPola[rola]);
         expect(panel.getAttribute('fill-opacity')).toBe(String(KRYCIE_TLA_POLA_GPZ));
       }
+      // Legenda należy do tabeli pól — informacji rysowanej od progu czytelności (R3).
+      powiekszDoCzytelnosci(container);
       const roleLegendy = [...container.querySelectorAll('[data-testid^="sld-v3-gpz-legenda-"]')]
         .map((n) => n.getAttribute('data-testid')!)
         .filter((id) => !id.includes('-tekst-'))

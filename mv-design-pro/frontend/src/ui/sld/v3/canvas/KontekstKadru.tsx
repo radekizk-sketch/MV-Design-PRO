@@ -256,11 +256,12 @@ export function PasekKontekstuKadru(props: {
           <span
             className="font-mono-eng"
             data-testid="sld-v3-stacja-licznik"
-            // Licznik bez opisu był zagadką („3/5”): podpowiedź i nazwa dostępna mówią, co liczy.
+            // Licznik bez opisu był zagadką („3/5”), a obok „← Wstecz” (historia kamery) czytał się
+            // jak druga historia (B-02 2026-11-13, P1-01): tekst mówi wprost, że liczy stacje.
             title={`Stacja ${indeksStacji + 1} z ${stacje.length} w porządku magistrali${stacje[indeksStacji] ? `: ${stacje[indeksStacji].nazwa}` : ''}`}
             aria-label={`Stacja ${indeksStacji + 1} z ${stacje.length} w porządku magistrali`}
           >
-            {indeksStacji + 1}/{stacje.length}
+            Stacja {indeksStacji + 1} z {stacje.length}
           </span>
           <button
             type="button"

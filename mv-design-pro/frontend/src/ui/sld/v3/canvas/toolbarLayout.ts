@@ -21,7 +21,7 @@
  */
 
 /** Identyfikatory grup w KOLEJNOŚCI rysowania (od lewej). */
-export type CanvasToolbarGroupId = 'drzewo' | 'uklady' | 'widok' | 'eksport';
+export type CanvasToolbarGroupId = 'drzewo' | 'uklady' | 'widok' | 'arkusz' | 'eksport';
 
 export interface CanvasToolbarGroup {
   readonly id: CanvasToolbarGroupId;
@@ -36,6 +36,9 @@ export interface CanvasToolbarGroup {
    * eksport jest jednorazowy na końcu pracy.
    */
   readonly rank: number;
+  /** Grupa STAŁA — nie zwija się do menu przy żadnej szerokości (B-02 2026-11-13, P0-05:
+   *  „Dopasuj widok”, menu kadru, okno, „Wstecz” i wybór widoku są zawsze na pasie). */
+  readonly stala?: boolean;
 }
 
 /**
@@ -44,24 +47,21 @@ export interface CanvasToolbarGroup {
  * 16 px obudowy; odstęp wewnętrzny 4 px), zaokrąglone w górę do 4 px:
  *  - drzewo  „▸ Drzewo układu" ................................ 111 → 116
  *  - układy  etykieta + 3 przyciski PV/BESS/FW (＋ … ) ......... 476 → 480
- *  - widok   „⌖ Dopasuj widok" (15 zn. → 109) + rozwijacz „▾" menu
- *            „Dopasuj do…" (1 → 23) + „← Wstecz" (8 → 66, polecenie
- *            „Poprzedni widok") + „Cały arkusz" (11 → 85)
- *            + „▸ Legenda (NN)" (14 → 103) + „▸ Nawigator" (11 → 85)
- *            + 5 odstępów po 4 px (karta K2: polecenia kadru i historii
- *            kadrów w tym samym doku widoku; menu jako przycisk dzielony
- *            przy „Dopasuj widok", żeby dok widoku nie zwijał się na
- *            kanwie 800 px) ............................................ 491 → 492
- *            + przycisk ikonowy „⬚" (1 → 23, powiększenie oknem) + 1 odstęp
- *            4 px (karta SLD-SKALA-I-NAWIGACJA R7; wskaźnik skali stoi w
- *            dolnym doku prawym, poza pasem — z nim dok widoku zwijał się
- *            na kanwie 800 px) ...................................... 492 + 27 → 520
+ *  - widok   (STAŁA) „⌖ Dopasuj widok" (15 zn. → 109) + rozwijacz „▾" menu „Dopasuj do…"
+ *            (1 → 23) + „⬚" powiększenie oknem (1 → 23) + „← Wstecz" (8 → 66, polecenie
+ *            „Poprzedni widok") + „Widok: roboczy" (14 → 103) + 4 odstępy po 4 px ... 340 → 340
+ *            (B-02 2026-11-13, P0-05: te przyciski są stale widoczne; dawna jedna grupa 540 px
+ *            z „Cały arkusz” i „Legenda” zwijała się w całości do menu „Narzędzia” przy kanwie
+ *            zwężonej inspektorem, a przy błędnym minimum wychodziła poza kanwę)
+ *  - arkusz  „Cały arkusz" (11 → 85) + „▸ Legenda (NN)" (14 → 103) + 1 odstęp 4 px ... 192 → 196
+ *            (pomiar w Chromium 2026-11-13: dawna grupa widoku ≈ 511 px = 315 + 196)
  *  - eksport „↓ SVG" + menu formatów + „Dołącz legendę" ....... 314 → 320
  */
 export const CANVAS_TOOLBAR_GROUPS: readonly CanvasToolbarGroup[] = [
   { id: 'drzewo', label: 'Drzewo układu', minWidth: 116, rank: 4 },
   { id: 'uklady', label: 'Układy PV/BESS/FW', minWidth: 480, rank: 2 },
-  { id: 'widok', label: 'Widok', minWidth: 520, rank: 3 },
+  { id: 'widok', label: 'Widok', minWidth: 340, rank: 5, stala: true },
+  { id: 'arkusz', label: 'Arkusz i legenda', minWidth: 196, rank: 3 },
   { id: 'eksport', label: 'Eksport', minWidth: 320, rank: 1 },
 ];
 
@@ -69,8 +69,10 @@ export const CANVAS_TOOLBAR_GROUPS: readonly CanvasToolbarGroup[] = [
 export const TOOLBAR_GAP_PX = 8;
 /** Margines pasa od krawędzi kanwy [px] — `left-3`/`right-3`. */
 export const TOOLBAR_EDGE_PX = 12;
-/** Szerokość przycisku „Narzędzia ▾" [px] (pojawia się TYLKO przy zwinięciu). */
-export const TOOLBAR_MENU_WIDTH_PX = 116;
+/** Szerokość przycisku „▸ Narzędzia" [px] (pojawia się TYLKO przy zwinięciu) — ta sama reguła
+ *  co minima grup: 11 znaków × 6,2 px + 16 px obudowy = 84 (pomiar w Chromium 2026-11-13:
+ *  74–78 px). Dawne 116 nie wynikało z treści przycisku. */
+export const TOOLBAR_MENU_WIDTH_PX = 84;
 
 /** Wysokość rzędu kontrolek doku [px] — `h-7` Tailwinda. */
 export const TOOLBAR_ROW_HEIGHT_PX = 28;
@@ -141,6 +143,16 @@ export function stationInternalPanelWidthPx(canvasWidthPx: number): number {
 }
 
 /**
+ * Najmniejsza szerokość kanwy, przy której pas mieści się w jednym wierszu: grupy stałe, menu
+ * „Narzędzia” i marginesy. Węższa kanwa nie występuje w układzie powłoki (kanwa przy oknie
+ * 1280×720 z otwartym inspektorem ma ≈ 636 px) — test kontraktowy przypina oba fakty.
+ */
+export const TOOLBAR_MIN_WIDTH_PX =
+  CANVAS_TOOLBAR_GROUPS.filter((g) => g.stala === true).reduce((sum, g) => sum + g.minWidth + TOOLBAR_GAP_PX, 0) +
+  TOOLBAR_MENU_WIDTH_PX +
+  TOOLBAR_EDGE_PX * 2;
+
+/**
  * Szerokość, przy której WSZYSTKIE grupy mieszczą się rozwinięte. Liczona z
  * kontraktu (suma minimów + odstępy + marginesy), nie wpisana ręcznie —
  * dodanie grupy podnosi próg samo.
@@ -175,7 +187,7 @@ export interface CanvasToolbarLayout {
  */
 export function layoutCanvasToolbar(availableWidth: number): CanvasToolbarLayout {
   const width = Number.isFinite(availableWidth) ? Math.max(0, availableWidth) : 0;
-  const kolejnoscZwijania = [...CANVAS_TOOLBAR_GROUPS].sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
+  const kolejnoscZwijania = CANVAS_TOOLBAR_GROUPS.filter((g) => g.stala !== true).sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
 
   let rozwiniete = [...CANVAS_TOOLBAR_GROUPS];
   const zwiniete: CanvasToolbarGroupId[] = [];
@@ -215,4 +227,36 @@ export function layoutCanvasToolbar(availableWidth: number): CanvasToolbarLayout
 /** Czy grupa jest rozwinięta w danym układzie (wygoda dla renderu). */
 export function isToolbarGroupExpanded(layout: CanvasToolbarLayout, id: CanvasToolbarGroupId): boolean {
   return layout.slots.some((slot) => slot.id === id);
+}
+
+/**
+ * B-02 2026-11-13 (P0-02): ZASŁONA NAWIGATORA. Panel nawigatora stoi w prawym-dolnym doku
+ * (`SldCanvasV3Workspace.tsx`, `sld-v3-dok-prawy-dolny`: panel nad rzędem wskaźnika skali
+ * i warstw). Kadr („Dopasuj widok”, okno, wskazanie) liczony bez niej kładł wybrany obiekt pod
+ * panelem. Prostokąt bezpieczny jest prostokątem, więc zasłona narożna odejmuje JEDEN pas —
+ * dolny (panel z rzędem doku) albo prawy (szerokość panelu) — ten, który zabiera rysunkowi
+ * mniej pola. Obudowa panelu (`SldMinimapPanel`: `p-2`, ramka 1 px, nagłówek 16 px, odstęp
+ * 4 px) i odstęp doku 4 px — stałe tego modułu.
+ */
+export const NAWIGATOR_OBUDOWA_SZEROKOSC_PX = 18;
+export const NAWIGATOR_OBUDOWA_WYSOKOSC_PX = 38;
+export const DOK_ODSTEP_PX = 4;
+
+export interface ZaslonaNawigatora {
+  readonly right: number;
+  readonly bottom: number;
+}
+
+export function zaslonaNawigatora(
+  kanwa: { readonly width: number; readonly height: number },
+  projekcja: { readonly width: number; readonly height: number },
+): ZaslonaNawigatora {
+  const dolny = TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX + DOK_ODSTEP_PX + projekcja.height + NAWIGATOR_OBUDOWA_WYSOKOSC_PX;
+  const prawy = TOOLBAR_EDGE_PX + projekcja.width + NAWIGATOR_OBUDOWA_SZEROKOSC_PX;
+  const wysokoscPasa = Math.max(0, kanwa.height - SLD_CANVAS_DOCK_INSETS.top - SLD_CANVAS_DOCK_INSETS.bottom);
+  const strataDolna = Math.max(0, dolny - SLD_CANVAS_DOCK_INSETS.bottom) * kanwa.width;
+  const strataPrawa = prawy * wysokoscPasa;
+  return strataDolna <= strataPrawa
+    ? { right: SLD_CANVAS_DOCK_INSETS.right, bottom: Math.max(SLD_CANVAS_DOCK_INSETS.bottom, dolny) }
+    : { right: SLD_CANVAS_DOCK_INSETS.right + prawy, bottom: SLD_CANVAS_DOCK_INSETS.bottom };
 }

@@ -24,6 +24,7 @@ import { nazwaStanuObiektuPl } from '../../../../shared/stanObiektu';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3 } from '../SldCanvasV3';
 import { bezWezlaPrzegladu, stacjePrzegladu } from '../hitAreas';
+import { wnetrzePolRysowane } from '../oknoRenderu';
 import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { kameraNadSrodkiemSceny } from './kameraTestowa';
 
@@ -129,6 +130,13 @@ describe('stan obiektu na kanwie — iloczyn kompozycja × pochodzenie × stan',
     }
     for (const s of bezRekordu) {
       expect(s.meta?.stanObiektu).toBeUndefined();
+      // R8 reguła 3 (B-02 2026-11-13): poniżej progu wnętrza pól blok zabezpieczeń pola nie jest
+      // rysowany — nie ma węzła, a więc ani atrybutu stanu, ani podpowiedzi.
+      if (s.meta?.elementKind === 'protectionAnnotation' && !wnetrzePolRysowane(skala)) {
+        expect(dom.querySelector(`[data-testid="${s.meta!.testId}"]`), s.meta?.testId).toBeNull();
+        expect(dom.querySelector(`[data-hit-for="${s.meta!.testId}"]`), s.meta?.testId).toBeNull();
+        continue;
+      }
       const stacjaGlifu = glifSymbolu.get(s.meta!.testId!);
       const wezel =
         stacjaGlifu === undefined

@@ -4,7 +4,7 @@
  *
  * Legenda symboli NIE może być stałą treścią schematu — zabiera miejsce,
  * jest cięższa wizualnie niż sama sieć, pokazuje symbole nieobecne w
- * projekcie. Wywoływana z przycisku w doku widoku kanwy (`sld-v3-view-dock`),
+ * projekcie. Wywoływana z przycisku w doku arkusza kanwy (`sld-v3-sheet-dock`),
  * treść panelu liczona z FAKTYCZNIE narysowanej sceny (zero fabrykacji).
  *
  * Bramka 1 karty:
@@ -261,7 +261,7 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     await expect(page.getByTestId('sld-sheet-legend')).toHaveCount(0);
     // Dok istnieje (przycisk „na żądanie" jest jawnym, widocznym wejściem,
     // nie ukrytym skrótem) — panel jeszcze zamknięty.
-    await expect(page.getByTestId('sld-v3-view-dock')).toBeVisible();
+    await expect(page.getByTestId('sld-v3-sheet-dock')).toBeVisible();
     await expect(page.getByTestId('sld-v3-legend-toggle')).toBeVisible();
     await expect(page.getByTestId('sld-v3-legend-panel')).toHaveCount(0);
   });

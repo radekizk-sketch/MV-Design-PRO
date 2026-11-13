@@ -18,6 +18,7 @@ import {
   TOOLBAR_EDGE_PX,
   TOOLBAR_FULL_WIDTH_PX,
   TOOLBAR_GAP_PX,
+  TOOLBAR_MIN_WIDTH_PX,
   isToolbarGroupExpanded,
   layoutCanvasToolbar,
   type CanvasToolbarLayout,
@@ -30,7 +31,7 @@ function prostokaty(layout: CanvasToolbarLayout): readonly { x: number; width: n
 }
 
 const SZEROKOSCI: readonly number[] = [
-  320, 480, 640, 800, 960, 1020, 1152, 1280, 1366, 1440, 1600, 1680, 1920, 2048, 2560, 3840,
+  320, 480, 636, 640, 796, 800, 960, 1020, 1152, 1280, 1366, 1440, 1600, 1680, 1920, 2048, 2560, 3840,
 ];
 
 describe('pas narzędzi kanwy — rozłączność przy każdej szerokości', () => {
@@ -79,7 +80,7 @@ describe('pas narzędzi kanwy — rozłączność przy każdej szerokości', () 
         if (!kolejnosc.includes(id)) kolejnosc.push(id);
       }
     }
-    const wgRangi = [...CANVAS_TOOLBAR_GROUPS].sort((a, b) => a.rank - b.rank).map((g) => g.id);
+    const wgRangi = CANVAS_TOOLBAR_GROUPS.filter((g) => g.stala !== true).sort((a, b) => a.rank - b.rank).map((g) => g.id);
     expect(kolejnosc).toEqual(wgRangi.slice(0, kolejnosc.length));
   });
 
@@ -89,7 +90,7 @@ describe('pas narzędzi kanwy — rozłączność przy każdej szerokości', () 
   });
 
   // Kontrakt z komentarza minimów (`toolbarLayout.ts`): dok widoku (Dopasuj widok, Wstecz, Cały
-  // arkusz, Legenda, Nawigator, powiększenie oknem) NIE zwija się na kanwie 800 px. Pomiar
+  // arkusz, tryb widoku, Legenda, powiększenie oknem) NIE zwija się na kanwie 800 px. Pomiar
   // 2026-11-12: dopisanie do doku przycisku „⬚ Okno” i wskaźnika skali (616 px) zwijało go do
   // menu „Narzędzia” i przełączniki legendy i nawigatora znikały z pasa (workspacePanels ×7).
   it('dok widoku i drzewo układu zostają rozwinięte na kanwie 800 px', () => {
@@ -98,6 +99,44 @@ describe('pas narzędzi kanwy — rozłączność przy każdej szerokości', () 
       expect(isToolbarGroupExpanded(layout, 'widok'), `${width} px`).toBe(true);
       expect(isToolbarGroupExpanded(layout, 'drzewo'), `${width} px`).toBe(true);
     }
+  });
+
+  // Zrzut e2e `r7-kadr-roboczy-stacja` (1440×900, inspektor otwarty, kanwa 796 px): przycisk
+  // „Narzędzia” wychodził poza prawą krawędź kanwy, bo minimum grupy „widok” nie liczyło
+  // przełącznika „Widok: roboczy”. Pas (grupy + menu) mieści się w kanwie przy każdej szerokości,
+  // przy której mieści się choćby najwęższa grupa z menu.
+  it('pas narzędzi mieści się w kanwie (z marginesem) przy każdej szerokości od minimum pasa, także kanwy zwężonej inspektorem', () => {
+    for (let width = TOOLBAR_MIN_WIDTH_PX; width <= 3840; width += 1) {
+      const rects = prostokaty(layoutCanvasToolbar(width));
+      const ostatni = rects[rects.length - 1];
+      expect(ostatni.x + ostatni.width + TOOLBAR_EDGE_PX, `${width} px`).toBeLessThanOrEqual(width);
+    }
+  });
+
+  it('kanwa zwężona inspektorem (796 px przy oknie 1440×900): dok widoku i drzewo rozwinięte, eksport i układy w menu', () => {
+    const layout = layoutCanvasToolbar(796);
+    expect(isToolbarGroupExpanded(layout, 'widok')).toBe(true);
+    expect(isToolbarGroupExpanded(layout, 'arkusz')).toBe(true);
+    expect(isToolbarGroupExpanded(layout, 'drzewo')).toBe(true);
+    expect(layout.collapsed).toEqual(['uklady', 'eksport']);
+  });
+
+  // B-02 2026-11-13 (P0-05): „Dopasuj widok”, menu kadru, okno, „Wstecz” i wybór widoku są stale
+  // widoczne — grupa „widok” jest STAŁA, a „Cały arkusz” i legenda zwijają się do „Narzędzia”.
+  // Iloczyn: szerokość kanwy (pełny zakres) × grupa.
+  it('grupa „widok” jest rozwinięta przy KAŻDEJ szerokości, a do menu trafiają tylko grupy zwijane', () => {
+    for (let width = 0; width <= 3840; width += 2) {
+      const layout = layoutCanvasToolbar(width);
+      expect(isToolbarGroupExpanded(layout, 'widok'), `${width} px`).toBe(true);
+      expect(layout.collapsed, `${width} px`).not.toContain('widok');
+    }
+  });
+
+  it('minimum pasa mieści się w najwęższej kanwie powłoki (okno 1280×720 z inspektorem ≈ 636 px)', () => {
+    expect(TOOLBAR_MIN_WIDTH_PX).toBeLessThanOrEqual(636);
+    const layout = layoutCanvasToolbar(636);
+    expect(layout.collapsed).toEqual(['uklady', 'arkusz', 'eksport']);
+    expect(isToolbarGroupExpanded(layout, 'drzewo')).toBe(true);
   });
 
   it('każda grupa jest ZAWSZE osiągalna: rozwinięta albo w menu', () => {

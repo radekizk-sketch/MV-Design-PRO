@@ -19,7 +19,8 @@ import { cleanup, render } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
-import { KURTYNA_KADRU_OPACITY, SldCanvasV3, segmentTestId, symbolTestId } from '../SldCanvasV3';
+import { KURTYNA_KADRU_OPACITY, KURTYNA_KADRU_OPACITY_TEKSTU, SldCanvasV3, segmentTestId, symbolTestId } from '../SldCanvasV3';
+import { DARK_SCADA_SLD_PALETTE, LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { MIN_READABLE_LABEL_SCREEN_PX } from '../../core/text';
 import { hierarchiaCelowTrafienia, nalezyDoZakresu, zakresCelu } from '../zakresKadru';
 import { stopnieCeluObiektu, testIdObszaruCelu } from '../hitAreas';
@@ -72,7 +73,23 @@ describe('kurtyna kadru stacji (L2, DOM)', () => {
     expect(obce, 'sieć musi mieć obiekty spoza celu').toBeGreaterThan(0);
   });
 
-  it('etykiety: grupa kurtyny ma krycie KURTYNA_KADRU_OPACITY, a przyciemnione są dokładnie etykiety właścicieli spoza celu', () => {
+  it('napis poza celem (tusz zmieszany z tłem kryciem kurtyny) ma kontrast ≥ 4,5:1 w obu motywach; rysunek dalej 0,22', () => {
+    // B-02 2026-11-13 (P1-04): opis przewodu sąsiada pod kryciem rysunku miał 1,8:1 na tle ciemnym.
+    const kanal = (hex: string, i: number): number => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) / 255;
+    const lum = (k: readonly number[]): number => {
+      const l = k.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+    };
+    for (const paleta of [DARK_SCADA_SLD_PALETTE, LIGHT_TECHNICAL_SLD_PALETTE]) {
+      const tlo = [0, 1, 2].map((i) => kanal(paleta.canvasBackground, i));
+      const tusz = [0, 1, 2].map((i) => kanal(paleta.baseStroke, i) * KURTYNA_KADRU_OPACITY_TEKSTU + tlo[i] * (1 - KURTYNA_KADRU_OPACITY_TEKSTU));
+      const [jasny, ciemny] = [lum(tusz), lum(tlo)].sort((a, b) => b - a);
+      expect((jasny + 0.05) / (ciemny + 0.05), paleta.canvasBackground).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(KURTYNA_KADRU_OPACITY, 'krycie rysunku (tor, aparaty) bez zmian').toBe(0.22);
+  });
+
+  it('etykiety: grupa kurtyny ma krycie KURTYNA_KADRU_OPACITY_TEKSTU, a przyciemnione są dokładnie etykiety właścicieli spoza celu', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} refyKadru={refy} />);
     const warstwa = container.querySelector('[data-testid="sld-v3-labels"]')!;
     const kurtyny = [...warstwa.children].filter((el) => el.getAttribute('data-kadr') === 'poza');
@@ -85,7 +102,7 @@ describe('kurtyna kadru stacji (L2, DOM)', () => {
       if (nalezy) celu += 1;
     }
     expect(celu, 'opisy celu muszą być narysowane').toBeGreaterThan(0);
-    for (const k of kurtyny) expect(Number(k.getAttribute('opacity'))).toBe(KURTYNA_KADRU_OPACITY);
+    for (const k of kurtyny) expect(Number(k.getAttribute('opacity'))).toBe(KURTYNA_KADRU_OPACITY_TEKSTU);
     const svg = container.querySelector('svg[data-kadr-aktywny="true"]');
     expect(svg).not.toBeNull();
     // Kanał audytu podłogi opisów celu (R4 karty SLD-SKALA-I-NAWIGACJA): opis celu nie znika,

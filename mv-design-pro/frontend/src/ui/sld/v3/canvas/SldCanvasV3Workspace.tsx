@@ -198,6 +198,7 @@ import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
 // KD-8 poz. 2: deterministyczny układ JEDNEJ warstwy narzędzi kanwy.
 import {
   isToolbarGroupExpanded,
+  zaslonaNawigatora,
   KOMUNIKAT_KADRU_WIDTH_PX,
   layoutCanvasToolbar,
   SCIEZKA_KADRU_INSET_PX,
@@ -1221,6 +1222,7 @@ const TESTID_GRUPY: Readonly<Record<CanvasToolbarGroupId, string>> = {
   drzewo: 'sld-v3-hierarchy-tree-dock',
   uklady: 'sld-v3-der-palette',
   widok: 'sld-v3-view-dock',
+  arkusz: 'sld-v3-sheet-dock',
   eksport: 'sld-v3-export-dock',
 };
 
@@ -1786,8 +1788,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     const kadr = kadrProjektu(activeProjectId);
     return kadr ? { ...kadr, seq: -1, natychmiast: true as const } : null;
   });
+  // Kamera czytana przez polecenia historii kadrów W CHWILI polecenia (`useKadrowanieWidoku`) —
+  // ref ustawiany synchronicznie w zgłoszeniu kanwy (faza układu), nie kopia ze stanu, która
+  // dochodziła jedno odświeżenie po zmianie `viewBox`.
+  const kameraTerazRef = useRef<StanKameryWorkspace | null>(null);
   const handleCameraChange = useCallback(
     (transform: ViewportTransform, viewportSize: StanKameryWorkspace['viewportSize']) => {
+      kameraTerazRef.current = { transform, viewportSize };
       zapamietajKadrProjektu(projektKamery.current, { transform, viewportSize });
       setCameraState((prev) =>
         prev && prev.transform === transform && prev.viewportSize === viewportSize ? prev : { transform, viewportSize },
@@ -1865,7 +1872,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, []);
   const kadrowanie = useKadrowanieWidoku({
     snapshot,
-    kamera: cameraState,
+    kamera: kameraTerazRef,
     zaznaczenie: zaznaczenieRefy,
     caseId: activeCaseId,
     pobierzZaznaczenie,
@@ -2394,23 +2401,31 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // kanwą). Bez zasłon — referencja stała (`SLD_CANVAS_DOCK_INSETS`).
   const komunikatKadruWidoczny = kadrowanie.komunikat !== null;
   const prawaZaslonaPx = lvDomainPortalOpen ? lvDomainPortalWidth : 0;
-  // Obiekt, którego dotyczy zasłona prawego pasa: stacja portalu nN — kanwa
-  // odsłania ją przy otwarciu zasłony (`odslonRefy`).
+  // Obiekt, którego dotyczy zasłona: stacja portalu nN, a poza portalem ZAZNACZENIE — kanwa
+  // odsłania je przy każdej zmianie zasłon i rozmiaru (otwarcie/zamknięcie inspektora zwęża
+  // kanwę, nawigator zasłania prawy-dolny róg; B-02 2026-11-13, P1-03: zaznaczony obiekt nie
+  // chowa się pod panelem).
   const odslonRefy = useMemo(
-    () => (lvDomainPortalOpen && lvDomainStationRef ? [lvDomainStationRef] : []),
-    [lvDomainPortalOpen, lvDomainStationRef],
+    () => (lvDomainPortalOpen && lvDomainStationRef ? [lvDomainStationRef] : zaznaczenieRefy),
+    [lvDomainPortalOpen, lvDomainStationRef, zaznaczenieRefy],
+  );
+  // B-02 2026-11-13 (P0-02): otwarty nawigator jest zasłoną stanową prawego-dolnego rogu.
+  const zaslonaNaw = useMemo(
+    () => (minimapOpen && minimapProjection ? zaslonaNawigatora(size, minimapProjection) : null),
+    [minimapOpen, minimapProjection, size],
   );
   const effectiveCanvasInsets = useMemo(() => {
-    if (prawaZaslonaPx === 0 && !sciezkaWidoczna && !komunikatKadruWidoczny) return SLD_CANVAS_DOCK_INSETS;
+    if (prawaZaslonaPx === 0 && !sciezkaWidoczna && !komunikatKadruWidoczny && zaslonaNaw === null) return SLD_CANVAS_DOCK_INSETS;
     return {
       ...SLD_CANVAS_DOCK_INSETS,
       top: SLD_CANVAS_DOCK_INSETS.top + (sciezkaWidoczna ? SCIEZKA_KADRU_INSET_PX : 0),
       right:
-        SLD_CANVAS_DOCK_INSETS.right +
+        (zaslonaNaw?.right ?? SLD_CANVAS_DOCK_INSETS.right) +
         prawaZaslonaPx +
         (komunikatKadruWidoczny ? KOMUNIKAT_KADRU_WIDTH_PX + 12 : 0),
+      bottom: zaslonaNaw?.bottom ?? SLD_CANVAS_DOCK_INSETS.bottom,
     };
-  }, [prawaZaslonaPx, sciezkaWidoczna, komunikatKadruWidoczny]);
+  }, [prawaZaslonaPx, sciezkaWidoczna, komunikatKadruWidoczny, zaslonaNaw]);
   // UI-02b §0.3: klik elementu odsłania prawy inspektor aktywnej przestrzeni, jeśli
   // był zwinięty (`useInspektorZaZawartoscia` rozwija go tylko przy ZMIANIE treści,
   // a ponowny klik tego samego obiektu nie zmienia sygnału).
@@ -2776,24 +2791,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             title={
               kadrowanie.historia.length === 0
                 ? 'Poprzedni widok — brak wcześniejszego kadru (historia powstaje przy poleceniach widoku)'
-                : `Poprzedni widok — Alt+← (w historii: ${kadrowanie.historia.length})`
+                : `Poprzedni widok — historia kamery, nie poprzednia stacja; Alt+← (w historii: ${kadrowanie.historia.length})`
             }
             className={KLASA_PRZYCISKU_DOKU}
           >
             ← Wstecz
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              kadrowanie.zapamietajPrzedPoleceniem();
-              setFitTarget('arkusz');
-              setFitSignal((s) => s + 1);
-            }}
-            data-testid="sld-v3-fit-sheet"
-            title="Pokaż cały arkusz rysunkowy"
-            className={KLASA_PRZYCISKU_DOKU}
-          >
-            Cały arkusz
           </button>
           {/* K2b §0.4: tryb widoku kanwy (ten sam stan co menu Widok powłoki). */}
           <button
@@ -2811,6 +2813,27 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           >
             {trybWidokuSchematu === 'roboczy' ? 'Widok: roboczy' : 'Widok: arkusz'}
           </button>
+        </div>
+      </>
+    ),
+    // B-02 2026-11-13 (P0-05): „Cały arkusz” i legenda — grupa zwijana do menu „Narzędzia”;
+    // polecenia stale widoczne (dopasowanie, okno, Wstecz, wybór widoku) zostają w grupie „widok”.
+    arkusz: (
+      <>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              kadrowanie.zapamietajPrzedPoleceniem();
+              setFitTarget('arkusz');
+              setFitSignal((s) => s + 1);
+            }}
+            data-testid="sld-v3-fit-sheet"
+            title="Pokaż cały arkusz rysunkowy"
+            className={KLASA_PRZYCISKU_DOKU}
+          >
+            Cały arkusz
+          </button>
           <button
             type="button"
             onClick={() => setLegendPanelOpen((prev) => !prev)}
@@ -2821,24 +2844,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             className={KLASA_PRZYCISKU_DOKU}
           >
             {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
-          </button>
-          {/* K11-B (karta K11-B §0.1): przełącznik nawigatora — TEN SAM dok
-              widoku co „Dopasuj widok"/„Cały arkusz"/„Legenda" (jedno miejsce
-              na sterowanie WIDOKIEM; panel nawigatora rozwija się w wolnym
-              dolnym-środkowym obszarze kanwy, patrz komentarz przy doku
-              nawigatora niżej). Nieaktywny, gdy sieci nie ma — uczciwie
-              wyłączony zamiast otwierać pusty panel. */}
-          <button
-            type="button"
-            onClick={() => setMinimapOpen((prev) => !prev)}
-            data-testid="sld-v3-minimap-toggle"
-            aria-expanded={minimapOpen}
-            disabled={snapshot === null}
-            aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
-            title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
-            className={KLASA_PRZYCISKU_DOKU}
-          >
-            {minimapOpen ? '▾ Nawigator' : '▸ Nawigator'}
           </button>
         </div>
         {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
@@ -3096,6 +3101,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             {zawartoscGrup.widok}
           </div>
         )}
+        {isToolbarGroupExpanded(ukladPaska, 'arkusz') && (
+          <div className="pointer-events-auto flex flex-col items-end gap-1" data-testid={TESTID_GRUPY.arkusz} data-toolbar-group="arkusz">
+            {zawartoscGrup.arkusz}
+          </div>
+        )}
         {isToolbarGroupExpanded(ukladPaska, 'eksport') && (
           <div className="pointer-events-auto flex flex-col items-end gap-1" data-testid={TESTID_GRUPY.eksport} data-toolbar-group="eksport">
             {zawartoscGrup.eksport}
@@ -3136,28 +3146,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         )}
       </div>
 
-      {/* K11-B (karta K11-B §0.1): DOK NAWIGATORA — dolny-ŚRODEK kanwy.
-          Przegląd zajętości rogów (ten plik, doki wyżej/niżej): lewy-górny =
-          drzewo układu, prawy-górny = eksport + dok widoku, lewy-dolny =
-          dowody inżynierskie, prawy-DOLNY = warstwy i filtry wyników, górny-
-          środek = paleta PV/BESS/FW. Wolny pozostaje wyłącznie pas dolny-
-          środkowy — i tam siada nawigator (rozwijany, domyślnie zwinięty, więc
-          w stanie domyślnym nie zabiera schematowi ani piksela). z-index 20 =
-          ten sam poziom co doki narożne. */}
-      {minimapOpen && minimapProjection && minimapFrame && (
-        <div
-          className="pointer-events-auto absolute bottom-3 left-1/2 z-20 -translate-x-1/2"
-          data-testid="sld-v3-minimap-dock"
-        >
-          <SldMinimapPanel
-            projection={minimapProjection}
-            shapes={minimapShapes}
-            frame={minimapFrame}
-            onNavigate={handleMinimapNavigate}
-            onWheelZoom={handleMinimapWheel}
-          />
-        </div>
-      )}
+
 
 
       {/* F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): dok lewy-dolny. */}
@@ -3190,11 +3179,43 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
 
       {/* F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny
           filtr"): dok prawy-dolny. */}
-      <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1">
+      <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1" data-testid="sld-v3-dok-prawy-dolny">
+        {/* K11-B / SLD-SKALA-I-NAWIGACJA R7: NAWIGATOR zakotwiczony w prawym-dolnym rogu kanwy, nad
+            wskaźnikiem skali i przełącznikiem warstw — w tym samym doku (kolumna od dołu), więc
+            z definicji nie nachodzi na żaden dok. Dawne położenie (dolny środek, `left-1/2`)
+            zasłaniało środek schematu. Rozwijany, domyślnie zwinięty. */}
+        {minimapOpen && minimapProjection && minimapFrame && (
+          <div data-testid="sld-v3-minimap-dock">
+            <SldMinimapPanel
+              projection={minimapProjection}
+              shapes={minimapShapes}
+              frame={minimapFrame}
+              onNavigate={handleMinimapNavigate}
+              onWheelZoom={handleMinimapWheel}
+            />
+          </div>
+        )}
         {/* R7: wskaźnik skali (procent skali czytania) z menu kadru — w dolnym pasie, jak pole
             skali na pasku stanu programów CAD; menu otwiera się w górę. Poza pasem narzędzi,
             żeby dok widoku mieścił się na kanwie 800 px. */}
         <div className="flex items-center gap-1">
+          {/* K11-B / SLD-SKALA-I-NAWIGACJA R7: przełącznik nawigatora stoi w prawym-dolnym doku,
+              przy samym nawigatorze, wskaźniku skali i warstwach (sterowanie skalą i przeglądem
+              w jednym rogu). W doku widoku zabierał 89 px, przez które pas narzędzi nie mieścił
+              się na kanwie zwężonej inspektorem (zrzut e2e `r7-kadr-roboczy-stacja`). Nieaktywny,
+              gdy sieci nie ma — uczciwie wyłączony zamiast otwierać pusty panel. */}
+          <button
+            type="button"
+            onClick={() => setMinimapOpen((prev) => !prev)}
+            data-testid="sld-v3-minimap-toggle"
+            aria-expanded={minimapOpen}
+            disabled={snapshot === null}
+            aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
+            title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
+            className={KLASA_PRZYCISKU_DOKU}
+          >
+            {minimapOpen ? '▾ Nawigator' : '▴ Nawigator'}
+          </button>
           <WskaznikSkali
             procent={cameraState ? Math.round((cameraState.transform.scale / SKALA_CZYTANIA) * 100) : null}
             zaznaczenie={zaznaczenieRefy.length}

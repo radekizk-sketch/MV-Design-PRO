@@ -125,6 +125,7 @@ import { labelPriority, labelResolutionOrder } from '../layout/declutter';
 import { wyrownanieEtykiety, type OwnedLabel, type SimpleAnchorPlacement, type WyrownanieTekstu } from '../layout/labels';
 import { rectWithinSheet, type SheetOutline } from '../sheet/outline';
 import { czytelnyNaEkranie, klasaInformacjiEtykiety } from './gestoscInformacji';
+import { wnetrzePolRysowane } from './oknoRenderu';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
  *  powiększeniu pisma i skróceniu tekstu), nie surowa z sceny. */
@@ -1051,9 +1052,17 @@ export function planSceneLabels(
     const szerszaOdSlotu = measureTextWidth(label.text, fontSize, wagaPisma(label)) > rozciagloscWzdluzTekstu(label.rect, rotated) + 1e-9;
     return { label, index, fontSize, enlarged: powiekszona || szerszaOdSlotu, slot: label.rect, tekstBazowy: label.text };
   };
+  // Widok ogólny LOD0 (`oknoRenderu.wnetrzePolRysowane`): oznaczenie aparatu pola (Q1, Q0…) nie
+  // jest rysowane, gdy wnętrza pól nie są rysowane — przechodzi do podpowiedzi celu (informacja
+  // zostaje, rysunek ogólny nie dostaje napisów przy obrysach aparatów).
+  const wnetrzePol = wnetrzePolRysowane(scale);
   labels.forEach((label, index) => {
-    const standardowy = kandydatStandardowy(label, index);
     const tozsamosc = klasaInformacjiEtykiety(label) === 'tozsamosc';
+    if (tozsamosc && !wnetrzePol && label.ownerKind === 'apparatus') {
+      tozsamosciWPodpowiedzi.push({ label, index });
+      return;
+    }
+    const standardowy = kandydatStandardowy(label, index);
     const fontCelu =
       podlogaCelu !== undefined && podlogaCelu.nalezy(label)
         ? fontSizeForScreenFloorWithinProportion(label.labelClass, scale, podlogaCelu.screenPx)

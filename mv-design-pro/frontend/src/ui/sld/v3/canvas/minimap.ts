@@ -190,8 +190,8 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
  * świata kamery (dokładnie to, co niesie `viewBox` kanwy —
  * `camera.ts::cameraViewBox`), `cameraSceneBbox` to prostokąt sceny w świecie
  * kamery (przesunięty o margines arkusza). Wynik jest w pikselach panelu; może
- * wystawać poza panel (kadr szerszy niż sieć przy pełnym oddaleniu) — wołający
- * przycina go `clipPath`, bo obcięcie liczbowe kłamałoby o położeniu kamery.
+ * wystawać poza panel (kadr szerszy niż sieć przy pełnym oddaleniu) — rysunek bierze część
+ * wspólną z panelem (`ramkaWPanelu`), a liczby kadru zostają nieprzycięte w atrybutach.
  */
 export function worldRectToMinimap(
   cameraWorldRect: V3Rect,
@@ -210,6 +210,49 @@ export function worldRectToMinimap(
     width: cameraWorldRect.width * projection.scale,
     height: cameraWorldRect.height * projection.scale,
   };
+}
+
+/** Grubość obrysu ramki kadru w nawigatorze [px panelu]. */
+export const GRUBOSC_RAMKI_NAWIGATORA = 1.5;
+
+/**
+ * Karta SLD-SKALA-I-NAWIGACJA R7: ramka kadru RYSOWANA w nawigatorze — część wspólna kadru
+ * (`worldRectToMinimap`, liczbowo prawdziwa, może wystawać) z panelem, cofnięta o pół obrysu, żeby
+ * każdy bok ramki był widoczny w panelu. Przycięcie przez `clipPath` ucinało obrys po stronie
+ * wystającej (ramka „wychodziła” poza panel bez krawędzi). Prawdziwe położenie kamery zostaje
+ * w atrybutach `data-frame-*` (e2e `sld-minimapa`).
+ *
+ * B-02 2026-11-13 (P0-01): ramka ma ZAWSZE cztery krawędzie. Bok krótszy niż
+ * `MIN_BOK_RAMKI_NAWIGATORA` (kadr bardzo mały albo całkiem poza schematem) rozszerza się do
+ * tego minimum wokół swojego środka przyciętego do panelu — kadr poza schematem pokazuje się
+ * jako mała ramka przy krawędzi panelu po stronie kamery, nie znika.
+ */
+export const MIN_BOK_RAMKI_NAWIGATORA = 6;
+
+function bokWPanelu(od: number, dlugosc: number, panel: number): readonly [number, number] {
+  const pol = GRUBOSC_RAMKI_NAWIGATORA / 2;
+  const lo = pol;
+  const hi = panel - pol;
+  let s = Math.min(hi, Math.max(lo, od));
+  let e = Math.min(hi, Math.max(lo, od + dlugosc));
+  const min = Math.min(MIN_BOK_RAMKI_NAWIGATORA, hi - lo);
+  if (e - s < min) {
+    const srodek = Math.min(hi - min / 2, Math.max(lo + min / 2, (s + e) / 2));
+    s = srodek - min / 2;
+    e = srodek + min / 2;
+  }
+  return [s, e];
+}
+
+export function ramkaWPanelu(frame: MinimapRect, projection: MinimapProjection): MinimapRect {
+  const [x0, x1] = bokWPanelu(frame.x, frame.width, projection.width);
+  const [y0, y1] = bokWPanelu(frame.y, frame.height, projection.height);
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
+
+/** Czy kadr ma część wspólną z panelem (kadr całkiem poza schematem — nie). */
+export function kadrPrzecinaPanel(frame: MinimapRect, projection: MinimapProjection): boolean {
+  return frame.x < projection.width && frame.x + frame.width > 0 && frame.y < projection.height && frame.y + frame.height > 0;
 }
 
 /**

@@ -165,7 +165,11 @@ export interface OpcjeKadru {
 
 export function useKadrowanieWidoku(opcje: {
   readonly snapshot: EnergyNetworkModel | null;
-  readonly kamera: StanKameryWorkspace | null;
+  /** Bieżąca kamera kanwy jako REF czytany w chwili polecenia (`SldCanvasV3.onCameraChange`
+   *  zgłasza ją synchronicznie w fazie układu). Kopia ze stanu Reacta spóźniała się o jedno
+   *  odświeżenie: polecenie wydane tuż po zmianie kadru (np. `Alt+←` zaraz po „Cała sieć”)
+   *  zapisywało w drodze naprzód kadr SPRZED zmiany, więc `Alt+→` nie wracał do całej sieci. */
+  readonly kamera: { readonly current: StanKameryWorkspace | null };
   readonly zaznaczenie: readonly string[];
   readonly caseId: string | null;
   /** Bieżące zaznaczenie z kontekstem kliknięcia (do wpisu historii). */
@@ -188,8 +192,7 @@ export function useKadrowanieWidoku(opcje: {
   const seq = useRef(0);
   const zapytanieToru = useRef(0);
   // Bieżące wartości dla poleceń (stabilne referencje funkcji, aktualne dane).
-  const kameraRef = useRef(kamera);
-  kameraRef.current = kamera;
+  const kameraRef = kamera;
   const sciezkaRef = useRef(sciezka);
   sciezkaRef.current = sciezka;
   const historiaRef = useRef(historia);

@@ -2,7 +2,9 @@
  * Karta SLD-SKALA-I-NAWIGACJA, R8 — BUDŻET WĘZŁÓW DOM kanwy (odcinanie renderu, `oknoRenderu.ts`).
  *
  * Scena jest jedna w każdej skali (R1), więc liczba węzłów DOM zależy wyłącznie od renderu: okno
- * kamery z zapasem, jeden węzeł trafienia na obiekt, symbol poniżej 3 px jako obrys bez wnętrza,
+ * kamery z zapasem, jeden węzeł trafienia na obiekt, symbol poniżej progu wnętrza (9 px mniejszego
+ * boku, B-02 2026-11-13) jako obrys bez wnętrza, adnotacje zabezpieczeń pola bez węzła poniżej
+ * skali wnętrza pól,
  * a w kadrze całej sieci stacja SN/nN, której żaden aparat nie jest rozpoznawalny, jako SYMBOL
  * STACJI (`glifZbiorczy.ts`: szyna i nogi toru, bez TR i aparatury; łącznik otwarty w nodze
  * zostaje węzłem, przewody toru spoza stacji i GPZ — węzłami pojedynczymi;
@@ -22,6 +24,9 @@
  * Kadr roboczy bez zmian (symbolu stacji nie ma przy skali czytania): sieć wzorcowa 1 872 / 2 661,
  * GPZ2s40 2 164 / 4 075 węzłów; nie więcej niż drzewo sprzed karty + 20 % (9 955). Sieć wzorcowa
  * przed kartą — 1 867 i 8 296, po etapie 2 bez odcinania — 21 844 i 26 160.
+ * Pomiar 2026-11-13 po progu wnętrza 9 px i widoku ogólnym (cała sieć 1200×800 / 1920×1080): sieć
+ * wzorcowa 1 281 / 1 391, GPZ2s40 1 007 / 1 061 węzłów; kadr roboczy bez zmian. Progi obniżone
+ * zapadką do pomiaru + ok. 10 %: 1 410 / 1 530 i 1 110 / 1 170.
  * Iniekcja (pomiar 2026-11-12): kanwa bez symbolu stacji (`stacjePrzegladu` puste) — sieć wzorcowa
  * 5 224 / 10 669, GPZ2s40 7 166 / 8 675 węzłów: każdy kadr całej sieci ponad próg.
  */
@@ -48,8 +53,8 @@ const scene = buildSceneV3(enm);
 const enmGpz = wczytaj('../../../../../../public/test-fixtures/gpzDwusekcyjny40.enm.json');
 const sceneGpz = buildSceneV3(enmGpz);
 const FIKSTURY = [
-  { nazwa: 'sieć wzorcowa 52 stacji', enm, scene, calaSiec: { '1200x800': 1420, '1920x1080': 1570 } as Record<string, number> },
-  { nazwa: 'GPZ dwusekcyjny z 40 stacjami', enm: enmGpz, scene: sceneGpz, calaSiec: { '1200x800': 1180, '1920x1080': 1250 } as Record<string, number> },
+  { nazwa: 'sieć wzorcowa 52 stacji', enm, scene, calaSiec: { '1200x800': 1410, '1920x1080': 1530 } as Record<string, number> },
+  { nazwa: 'GPZ dwusekcyjny z 40 stacjami', enm: enmGpz, scene: sceneGpz, calaSiec: { '1200x800': 1110, '1920x1080': 1170 } as Record<string, number> },
 ] as const;
 
 /** Budżet kadru roboczego na 1200×800 (pomiar + ok. 10 %), skalowany polem kanwy; budżety kadru
@@ -95,10 +100,14 @@ describe('R8 — reguły renderu (funkcje czyste)', () => {
     expect(przecinaOkno({ x: 691, y: 0, width: 1, height: 1 }, okno)).toBe(false);
   });
 
-  it('obrys bez wnętrza wyłącznie poniżej 3 px (nigdy przy 3 px i więcej)', () => {
+  // B-02 2026-11-13 (P0-03): próg wnętrza = próg pisma R3 (9 px) liczony z MNIEJSZEGO boku
+  // gabarytu (dawniej 3 px z większego boku — aparat 16 × 30 j.św. miał „wnętrze” przy 1,4 px).
+  it('obrys bez wnętrza wyłącznie poniżej 9 px mniejszego boku (nigdy przy 9 px i więcej)', () => {
     const g = { x: 0, y: 0, width: 16, height: 30 };
-    expect(symbolBezWnetrza(g, (PROG_WNETRZA_SYMBOLU_PX - 1e-6) / 30)).toBe(true);
-    expect(symbolBezWnetrza(g, PROG_WNETRZA_SYMBOLU_PX / 30)).toBe(false);
+    expect(PROG_WNETRZA_SYMBOLU_PX).toBe(9);
+    expect(symbolBezWnetrza(g, (PROG_WNETRZA_SYMBOLU_PX - 1e-6) / 16)).toBe(true);
+    expect(symbolBezWnetrza(g, PROG_WNETRZA_SYMBOLU_PX / 16)).toBe(false);
+    expect(symbolBezWnetrza(g, PROG_WNETRZA_SYMBOLU_PX / 30), 'większy bok nie rozstrzyga').toBe(true);
     expect(symbolBezWnetrza(g, 1)).toBe(false);
   });
 
