@@ -23,7 +23,9 @@ import { SldCanvasV3, contentBoundingBoxOf, sceneBoxToCameraWorld } from '../Sld
 import { boundingBoxOfRect } from '../camera';
 import { NAJMNIEJSZY_GABARYT_SYMBOLU, PROG_WNETRZA_SYMBOLU_PX, SKALA_PODLOGI_ROZDZIELNICY } from '../oknoRenderu';
 import { obrysRefow, obrysyZaznaczenia } from '../obrysZaznaczenia';
-import { prostokatyZakresu, zakresCelu, type CelKadru } from '../zakresKadru';
+import { hierarchiaCelowTrafienia, prostokatyZakresu, zakresCelu, type CelKadru } from '../zakresKadru';
+import { kluczePrzynaleznosci, prostokatRefowWScenie } from '../viewAnchor';
+import { GRID } from '../../core/grid';
 
 const here = dirname(fileURLToPath(import.meta.url));
 function wczytaj(sciezka: string): EnergyNetworkModel {
@@ -137,6 +139,62 @@ describe('cel kadru obiektu = obrys zaznaczenia obiektu (jedno źródło, decyzj
         porownane += 1;
       }
       expect(porownane, 'warunek sensu — porównano obiekty').toBeGreaterThan(stacje.length);
+    });
+  }
+});
+
+describe('obszar kliku a cel kadru (decyzja architekta 2026-11-13)', () => {
+  // Iloczyn: fikstura × obiekt {stacja — każda, pole stacji — każde, pole GPZ — każde, sekcja
+  // każdego pola}. Obszar kliku (hierarchia celów trafienia; dla sekcji — ten sam prostokąt
+  // indeksu, którego hierarchia używa) = cel kadru bez marginesu pół rastru ∪ napisy obiektu
+  // w rozmiarze naturalnym: różnica wyłącznie o napisy, nigdy o obce symbole czy odcinki.
+  const suma = (a: { minX: number; minY: number; maxX: number; maxY: number }, b: { minX: number; minY: number; maxX: number; maxY: number }) => ({
+    minX: Math.min(a.minX, b.minX),
+    minY: Math.min(a.minY, b.minY),
+    maxX: Math.max(a.maxX, b.maxX),
+    maxY: Math.max(a.maxY, b.maxY),
+  });
+  for (const f of FIKSTURY) {
+    it(f.nazwa, () => {
+      const scene = buildSceneV3(f.enm);
+      const hier = hierarchiaCelowTrafienia(f.enm, scene);
+      const relacja = (opis: string, refy: readonly string[], klik: { minX: number; minY: number; maxX: number; maxY: number }, kadr: { minX: number; minY: number; maxX: number; maxY: number }) => {
+        const zbior = new Set(refy);
+        let oczekiwany = { minX: kadr.minX + GRID / 2, minY: kadr.minY + GRID / 2, maxX: kadr.maxX - GRID / 2, maxY: kadr.maxY - GRID / 2 };
+        for (const l of scene.labels) {
+          if (!kluczePrzynaleznosci(l.ownerRef).some((k) => zbior.has(k))) continue;
+          oczekiwany = suma(oczekiwany, { minX: l.rect.x, minY: l.rect.y, maxX: l.rect.x + l.rect.width, maxY: l.rect.y + l.rect.height });
+        }
+        for (const k of ['minX', 'minY', 'maxX', 'maxY'] as const) expect(klik[k], `${opis}: ${k}`).toBeCloseTo(oczekiwany[k], 6);
+      };
+      const naBox = (r: { x: number; y: number; width: number; height: number }) => ({ minX: r.x, minY: r.y, maxX: r.x + r.width, maxY: r.y + r.height });
+      let stacje = 0;
+      let polaStacji = 0;
+      let polaGpz = 0;
+      let sekcje = 0;
+      for (const [st, rect] of hier.stacje) {
+        const w = zakresCelu('stacja', f.enm, [st], scene);
+        if (!w.dostepny) continue;
+        const kadr = prostokatyZakresu(scene, w.zakres).cel;
+        if (!kadr || obrysRefow(scene, new Set(w.zakres.refy)) === null) continue;
+        relacja(`stacja ${st}`, w.zakres.refy, naBox(rect), kadr);
+        stacje += 1;
+      }
+      for (const [pole, obszar] of hier.pola) {
+        const w = zakresCelu('pole', f.enm, [pole], scene);
+        if (!w.dostepny || obrysRefow(scene, new Set(w.zakres.refy)) === null) continue;
+        relacja(`pole ${pole}`, w.zakres.refy, naBox(obszar.rect), prostokatyZakresu(scene, w.zakres).cel!);
+        if (pole.startsWith('gpz/')) polaGpz += 1;
+        else polaStacji += 1;
+        const s = zakresCelu('sekcja', f.enm, [pole], scene);
+        if (!s.dostepny || obrysRefow(scene, new Set(s.zakres.refy)) === null) continue;
+        relacja(`sekcja pola ${pole}`, s.zakres.refy, prostokatRefowWScenie(scene, s.zakres.refy)!, prostokatyZakresu(scene, s.zakres).cel!);
+        sekcje += 1;
+      }
+      expect(stacje, 'warunek sensu — stacje').toBeGreaterThan(5);
+      expect(polaStacji, 'warunek sensu — pola stacji').toBeGreaterThan(5);
+      expect(polaGpz, 'warunek sensu — pola GPZ').toBeGreaterThan(0);
+      expect(sekcje, 'warunek sensu — sekcje').toBeGreaterThan(0);
     });
   }
 });

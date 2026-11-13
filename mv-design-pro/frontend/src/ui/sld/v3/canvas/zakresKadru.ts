@@ -896,10 +896,14 @@ export interface ObszarPolaCelu {
 
 /**
  * Hierarchia celów trafienia (`canvas/hitAreas.ts` `celTrafienia`) z TYCH SAMYCH zbiorów refów,
- * którymi kanwa kadruje pole i stację (`refyPola`, `refyStacji`) i tego samego prostokąta sceny
- * (`prostokatRefowWScenie`) — cel kliku i cel kadru „Dopasuj do: pole/stacja” to jeden obszar
- * (predykaty parami). Stacje w kolejności refów; obiekt należący do kilku stacji (łącznik
- * międzystacyjny) przypisany pierwszej — deterministycznie.
+ * którymi kanwa kadruje pole i stację (`refyPola`, `refyStacji`). Obszary są z rozmysłem RÓŻNE
+ * (decyzja architekta 2026-11-13): obszar kliku to prostokąt indeksu przynależności
+ * (`prostokatRefowWScenie`: rysunek RAZEM z napisami obiektu w rozmiarze naturalnym — klik
+ * w napis stacji trafia stację), cel kadru to obrys zaznaczenia (`prostokatObiektuZakresu`:
+ * symbole i odcinki poszerzone o pół rastru). Relacja przypięta testem: obszar kliku = obrys
+ * bez marginesu ∪ napisy obiektu (`kadryObiektow.contract.test.tsx`, opis „obszar kliku a cel
+ * kadru”). Stacje w kolejności refów; obiekt należący do kilku stacji (łącznik międzystacyjny)
+ * przypisany pierwszej — deterministycznie.
  */
 export interface HierarchiaCelowTrafienia {
   readonly pola: ReadonlyMap<string, ObszarPolaCelu>;
