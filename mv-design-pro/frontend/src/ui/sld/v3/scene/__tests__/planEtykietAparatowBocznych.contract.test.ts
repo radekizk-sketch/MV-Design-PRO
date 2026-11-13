@@ -38,10 +38,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BayPrimaryDevice, BayPrimaryDeviceKind, BayPrimaryPlacement, EnergyNetworkModel } from '../../../../../types/enm';
-import {
-  SKALA_PODLOGI_ROZDZIELNICY,
-  SKALE_ODBIORU_PLANU_ETYKIET,
-} from '../../canvas/camera';
+import { SKALE_ODBIORU_PLANU_ETYKIET } from '../../canvas/camera';
+import { SKALA_PODLOGI_ROZDZIELNICY } from '../../canvas/oknoRenderu';
 import { klasaInformacjiEtykiety } from '../../canvas/gestoscInformacji';
 import {
   planSceneLabels,

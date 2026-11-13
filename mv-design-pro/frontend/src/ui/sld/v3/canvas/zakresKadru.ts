@@ -43,7 +43,7 @@ import { pickStationBus, stationSnSectionBusRefs, type StationBusSide } from '..
 import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 import { etykietaZapasowaRefu } from '../../../../ui2/wyniki/wzorzec/useNazwaObiektu';
 import type { TuszEtykietKadru } from './camera';
-import { planSceneLabels, type PodlogaOpisowCelu } from './labelLegibility';
+import { planSceneLabels, type EtykietyPrzegladuStacji, type PodlogaOpisowCelu } from './labelLegibility';
 import { kluczePrzynaleznosci, prostokatRefowWScenie } from './viewAnchor';
 import { przeszkodyEtykietPrzySkali } from './znacznikiStanu';
 
@@ -89,6 +89,11 @@ export interface ZakresKadru {
   readonly przeszkody: readonly PrzeszkodaKadru[];
   /** Ścieżka kontekstu od sieci do celu. */
   readonly sciezka: readonly PoziomSciezki[];
+  /** Kadr OBIEKTU Z WNĘTRZEM PÓL — stacja, sekcja, pole albo zaznaczenie, którego każdy element
+   *  należy do stacji (GPZ albo SN/nN): kanwa stosuje podłogę kadru
+   *  `oknoRenderu.SKALA_PODLOGI_ROZDZIELNICY` (LOD2). Jedno źródło dla wszystkich dróg do kadru
+   *  obiektu („Dopasuj do…”, „Dopasuj widok” zaznaczenia, wskazanie z wyników i gotowości). */
+  readonly rozdzielnica: boolean;
 }
 
 /**
@@ -543,6 +548,7 @@ function zakres(
   refy: Iterable<string>,
   sciezka: readonly PoziomSciezki[],
   przeszkody: readonly PrzeszkodaKadru[] = [],
+  rozdzielnica: boolean = cel === 'stacja' || cel === 'sekcja' || cel === 'pole',
 ): WynikZakresu {
   return {
     dostepny: true,
@@ -551,6 +557,7 @@ function zakres(
       refy: unikalnePosortowane(refy),
       przeszkody: [...przeszkody].sort((a, b) => a.ref.localeCompare(b.ref)),
       sciezka,
+      rozdzielnica,
     },
   };
 }
@@ -719,7 +726,10 @@ export function zakresCelu(
     posortowane.map((r) => stacjaElementu(ix, r)).filter((r): r is string => !!r),
   );
   const przeszkody = przeszkodyStacji(ix, stacjeZaznaczenia);
-  return zakres('zaznaczenie', refy, sciezka, przeszkody);
+  // Zaznaczenie w całości wewnątrz stacji (stacja, pole, aparat, szyna) kadruje obiekt z wnętrzem
+  // pól; zaznaczenie z elementem spoza stacji (odcinek magistrali) — bez podłogi.
+  const wewnatrzStacji = posortowane.length > 0 && posortowane.every((r) => !!stacjaElementu(ix, r));
+  return zakres('zaznaczenie', refy, sciezka, przeszkody, wewnatrzStacji);
 }
 
 /**
@@ -781,6 +791,9 @@ export interface ProstokatyZakresu {
 export interface PlanEtykietKadru {
   readonly przeszkody?: (skala: number) => readonly V3Rect[];
   readonly pierwszenstwo?: ReadonlySet<string>;
+  /** Opisy stacji przeglądowych LOD0 przy skali (`glifZbiorczy.przegladEtykietPrzySkali`) —
+   *  to samo wejście planu, które rysuje kanwa; brak — plan bez redukcji LOD0. */
+  readonly przeglad?: (skala: number) => EtykietyPrzegladuStacji;
 }
 
 /**
@@ -826,7 +839,7 @@ export function prostokatyZakresu(
             maxY: Math.max(box.maxY, r.y + r.height),
           }
         : { minX: r.x, minY: r.y, maxX: r.x + r.width, maxY: r.y + r.height };
-    const plan = planSceneLabels(scena.labels, przeszkodyEtykiet(scale), scale, sheetSizeFor(scena), podloga, undefined, planEtykiet.pierwszenstwo);
+    const plan = planSceneLabels(scena.labels, przeszkodyEtykiet(scale), scale, sheetSizeFor(scena), podloga, undefined, planEtykiet.pierwszenstwo, planEtykiet.przeglad?.(scale));
     for (const narysowana of plan.drawn) {
       const klucze = kluczePrzynaleznosci(narysowana.label.ownerRef);
       if (nalezyDoZakresu(narysowana.label.ownerRef, refyCelu)) cel = dolacz(cel, narysowana.rect);

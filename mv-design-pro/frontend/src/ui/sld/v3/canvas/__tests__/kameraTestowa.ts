@@ -24,6 +24,7 @@ import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { buildCanvasHitAreas } from '../hitAreas';
 import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import { obwiedniaKsztaltu } from '../oknoRenderu';
+import { przegladEtykietPrzySkali } from '../glifZbiorczy';
 
 /** Skala, przy której liczbowe etykiety wyników (`PISMO_WYNIKOW`, 9 px) pojawiają się przy
  *  powiększaniu (`skalaPojawieniaSie`, R3) — 1,0: kadr, na którym projektant czyta wartości. */
@@ -116,7 +117,9 @@ function punktEkranowySceny(svg: Element, punkt: Punkt): Punkt {
  */
 export function punktCeluTrafienia(model: EnergyNetworkModel, testId: string, skala = 1): Punkt {
   const scene = scenaSld(model);
-  const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene));
+  const hierarchia = hierarchiaCelowTrafienia(model, scene);
+  // Te same wejścia planu co kanwa: przeszkody i opisy stacji przeglądowych LOD0.
+  const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene), undefined, undefined, undefined, przegladEtykietPrzySkali(scene, hierarchia)(skala));
   const obszar = buildCanvasHitAreas({
     symbols: scene.symbols,
     segments: scene.segments,
@@ -124,7 +127,7 @@ export function punktCeluTrafienia(model: EnergyNetworkModel, testId: string, sk
     tozsamosciWPodpowiedzi: plan.tozsamosciWPodpowiedzi,
     resultMarkers: [],
     scale: skala,
-    hierarchiaCelow: hierarchiaCelowTrafienia(model, scene),
+    hierarchiaCelow: hierarchia,
   }).find((a) => a.testId === testId);
   if (!obszar) throw new Error(`obiekt ${testId} nie ma obszaru trafienia przy skali ${skala}`);
   const r = obwiedniaKsztaltu(obszar.obszar);

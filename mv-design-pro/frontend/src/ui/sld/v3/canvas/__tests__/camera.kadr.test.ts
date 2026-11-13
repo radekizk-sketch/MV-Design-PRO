@@ -560,3 +560,41 @@ describe('kadr nie zależy od drogi — skala kamery przed kadrem nie zmienia wy
     }
   });
 });
+
+describe("akcja 'kadruj' — podłoga skali: obiekt mieszczący się nie jest ucięty", () => {
+  // Cechy iloczynu: szerokość obiektu na ekranie przy podłodze {mieści się wyłącznie bez oddechu
+  // kadru, nie mieści się w prostokącie bezpiecznym} × tusz opisów {brak, wystający poza prostokąt
+  // bezpieczny z obu stron} × zasłony {brak, inspektor z prawej}. Defekt z e2e 2026-11-13 (okno
+  // 1280×720 z inspektorem): stacja węższa od wolnej kanwy, ale szersza od niej z oddechem albo
+  // z tuszem opisów, dostawała kadr „od początku" i zasłona ucinała ostatnie pole.
+  const PODLOGA = 1;
+  for (const insets of [BEZ_ZASLON, { top: 0, right: 360, bottom: 0, left: 0 }] as const) {
+    const wolna = VIEWPORT.width - insets.left - insets.right;
+    for (const tusz of [0, 150]) {
+      it(`obiekt węższy od wolnej kanwy, szerszy z oddechem · tusz ${tusz} · zasłona prawa ${insets.right}`, () => {
+        const anchor = cel(wolna - 20);
+        const akcja = kadr(anchor, {
+          safeInsets: insets,
+          podlogaSkali: PODLOGA,
+          ...(tusz > 0
+            ? { tuszEtykiet: () => ({ cel: { ...anchor, minX: anchor.minX - tusz, maxX: anchor.maxX + tusz }, przeszkody: [] }) }
+            : {}),
+        });
+        const k = cameraReducer(stan(0.3), akcja);
+        expect(k.transform.scale).toBeCloseTo(PODLOGA, 9);
+        const e = prostokatNaEkranie(anchor, k);
+        expect(e.minX).toBeGreaterThanOrEqual(insets.left - 1e-6);
+        expect(e.maxX).toBeLessThanOrEqual(VIEWPORT.width - insets.right + 1e-6);
+      });
+      it(`obiekt szerszy od wolnej kanwy — od początku · tusz ${tusz} · zasłona prawa ${insets.right}`, () => {
+        const anchor = cel(wolna + 200);
+        const tuszCelu = { ...anchor, minX: anchor.minX - tusz, maxX: anchor.maxX + tusz };
+        const k = cameraReducer(
+          stan(0.3),
+          kadr(anchor, { safeInsets: insets, podlogaSkali: PODLOGA, ...(tusz > 0 ? { tuszEtykiet: () => ({ cel: tuszCelu, przeszkody: [] }) } : {}) }),
+        );
+        expect(prostokatNaEkranie(tuszCelu, k).minX).toBeCloseTo(insets.left + PADDING, 6);
+      });
+    }
+  }
+});

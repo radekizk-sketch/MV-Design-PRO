@@ -995,6 +995,12 @@ function wKolumnieTla(r: V3Rect, kolumna: V3Rect): boolean {
   );
 }
 
+/** LOD0: opisy stacji rysowanych symbolem przeglądowym przeniesione do podpowiedzi — indeksy
+ *  etykiet sceny (`glifZbiorczy.etykietyPrzegladu`). */
+export interface EtykietyPrzegladuStacji {
+  readonly ukryte: ReadonlySet<number>;
+}
+
 export function planSceneLabels(
   labels: readonly OwnedLabel[],
   obstacles: readonly V3Rect[],
@@ -1003,6 +1009,10 @@ export function planSceneLabels(
   podlogaCelu?: PodlogaOpisowCelu,
   poprzednio?: ReadonlySet<number>,
   pierwszenstwo?: ReadonlySet<string>,
+  przeglad?: EtykietyPrzegladuStacji,
+  /** Skala reprezentująca poziom szczegółu z histerezą (`oknoRenderu.skalaPoziomu`);
+   *  domyślnie `scale`. */
+  skalaLod?: number,
 ): LabelRenderPlan {
   if (!Number.isFinite(scale) || scale <= 0) {
     return {
@@ -1055,8 +1065,14 @@ export function planSceneLabels(
   // Widok ogólny LOD0 (`oknoRenderu.wnetrzePolRysowane`): oznaczenie aparatu pola (Q1, Q0…) nie
   // jest rysowane, gdy wnętrza pól nie są rysowane — przechodzi do podpowiedzi celu (informacja
   // zostaje, rysunek ogólny nie dostaje napisów przy obrysach aparatów).
-  const wnetrzePol = wnetrzePolRysowane(scale);
+  const wnetrzePol = wnetrzePolRysowane(skalaLod ?? scale);
   labels.forEach((label, index) => {
+    // LOD0 (dyrektywa właściciela 2026-11-13 pkt 3a): stacja w symbolu przeglądowym bez wierszy
+    // pasma nazw poza nazwą i bez opisów obiektów nierysowanych (`glifZbiorczy.etykietyPrzegladu`).
+    if (przeglad?.ukryte.has(index)) {
+      tozsamosciWPodpowiedzi.push({ label, index });
+      return;
+    }
     const tozsamosc = klasaInformacjiEtykiety(label) === 'tozsamosc';
     if (tozsamosc && !wnetrzePol && label.ownerKind === 'apparatus') {
       tozsamosciWPodpowiedzi.push({ label, index });

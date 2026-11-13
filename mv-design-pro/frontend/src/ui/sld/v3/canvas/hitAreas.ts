@@ -61,8 +61,8 @@ import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../layout/measu
 import { MIN_SYMBOL_SCREEN_PX } from '../symbols/defs';
 import { kluczePrzynaleznosci } from './viewAnchor';
 import { podpowiedzStanuObiektuPl } from '../../../shared/stanObiektu';
-import { przerwaToru } from './torMocy';
-import { wnetrzePolRysowane } from './oknoRenderu';
+import { LACZNIKI_TORU_MOCY, przerwaToru } from './torMocy';
+import { polaJakoOdplywy } from './oknoRenderu';
 
 /**
  * Najmniejszy dopuszczalny wymiar obszaru trafienia w pikselach EKRANU.
@@ -408,6 +408,16 @@ export function poleIStacjaObiektu(
   return ownerRef ? poleIStacja(hierarchia, ownerRef) : { pole: undefined, stacja: undefined };
 }
 
+/** SPRZĘGŁO SZYN stacji albo GPZ: łącznik toru mocy przynależny stacji, poza polem (gałąź
+ *  `bus_coupler` modelu — `compose/station.ts`, `compose/gpz.ts` stawiają go między sekcjami
+ *  na wysokości szyny). Jedno źródło dla znaku stanu sprzęgła (`glifZbiorczy`) i symbolu stacji
+ *  (sprzęgło zostaje własnym węzłem także w LOD0). */
+export function sprzegloSzyn(hierarchia: HierarchiaCelowWejscie, symbol: PreviewSymbol): boolean {
+  if (symbol.meta?.elementKind !== 'apparatus' || !LACZNIKI_TORU_MOCY.has(symbol.symbolId)) return false;
+  const { pole, stacja } = poleIStacjaObiektu(hierarchia, symbol.meta?.ownerRef);
+  return pole === undefined && stacja !== undefined;
+}
+
 /** Stopnie hierarchii celu SYMBOLU (prostokąt tuszu); `null` — portal nN i adnotacje nie są
  *  obiektami pola i zostają własnymi celami. Jedno źródło dla warstwy trafień i glifu
  *  zbiorczego stacji (R8, `glifZbiorczy.ts`). */
@@ -459,20 +469,18 @@ export function rodzajeStacji(
 /**
  * R8: stacje rysowane w kadrze przeglądowym SYMBOLEM STACJI (`glifZbiorczy.ts`: szyna i nogi
  * toru, a punkt rozłącznikowy — romb R1 na linii) przy skali `scale`: stacja SN/nN albo punkt
- * rozłącznikowy z aparaturą w polach, gdy przy tej skali wnętrza pól nie są rysowane
- * (`oknoRenderu.wnetrzePolRysowane`: najmniejszy aparat biblioteki poniżej progu czytelności R3,
- * 9 px). GPZ rysuje się zawsze pełnym rysunkiem (wnętrza jego pól — obrysem, `oknoRenderu`).
- * Jedno źródło dla rysunku i trafienia.
+ * rozłącznikowy z aparaturą w polach w LOD0 (`oknoRenderu.polaJakoOdplywy` = fałsz). GPZ nie ma
+ * symbolu stacji: jego pola w LOD0 rysują się tak jak w LOD1 — przelot linii i znaki stanu
+ * (`oknoRenderu.wygladAparatuBezWnetrza`), bez wnętrz. Jedno źródło dla rysunku i trafienia.
  */
 export function stacjePrzegladu(
   symbols: readonly PreviewSymbol[],
   hierarchia: HierarchiaCelowWejscie,
   scale: number,
 ): ReadonlyMap<string, RodzajStacjiPrzegladu> {
-  // Wnętrza pól przy tej skali (`oknoRenderu.wnetrzePolRysowane`, próg czytelności R3): jedna
-  // odpowiedź dla wszystkich stacji — stacja z aparaturą w polach rysuje się symbolem stacji
-  // dokładnie wtedy, gdy wnętrza pól nie są rysowane (widok ogólny LOD0, B-02 2026-11-13 P0-03).
-  const czytelny = wnetrzePolRysowane(scale);
+  // Poziom szczegółu przy tej skali (`oknoRenderu.polaJakoOdplywy`): jedna odpowiedź dla
+  // wszystkich stacji — stacja z aparaturą w polach rysuje się symbolem stacji dokładnie w LOD0.
+  const czytelny = polaJakoOdplywy(scale);
   const zAparatem = new Map<string, boolean>();
   for (const symbol of symbols) {
     const stacja = stacjaObiektu(hierarchia, symbol.meta?.ownerRef);
@@ -559,7 +567,8 @@ export interface BezWezlaPrzegladu {
  *
  * - Odcinek: każdy odcinek stacji (szynę SN i nogi rysuje symbol stacji z ich geometrii).
  * - Symbol z przynależnością w hierarchii: każdy symbol stacji poza łącznikiem przerywającym tor
- *   (`torMocy.przerwaToru` — przerwa ze znacznikiem w nodze, także punkt NO). Transformator,
+ *   (`torMocy.przerwaToru` — przerwa ze znacznikiem w nodze, także punkt NO) i poza sprzęgłem szyn
+ *   (`sprzegloSzyn` — znak stanu ■ / □ na szynie, oględziny architekta 2026-11-13 pkt 2). Transformator,
  *   źródła OZE, adnotacje, portal nN i aparatura pól są w symbolu stacji (decyzja właściciela: bez
  *   symbolu TR w tym oddaleniu). Punkt rozłącznikowy nie ma żadnego węzła własnego — stan
  *   łączników niesie romb R1 (pusty = otwarty, także punkt NO).
@@ -596,7 +605,10 @@ export function bezWezlaPrzegladu(
     const ownerRef = symbol.meta?.ownerRef;
     if (ownerRef !== undefined) {
       const stacja = stacjaPrzegladuObiektu(hierarchia, przeglad, ownerRef);
-      if (stacja !== undefined && (przeglad.get(stacja) === 'punkt-rozlacznikowy' || !przerwaToru(symbol))) symbole.set(index, stacja);
+      // Sprzęgło szyn zostaje własnym węzłem (znak stanu ■ / □ na szynie symbolu stacji).
+      if (stacja !== undefined && (przeglad.get(stacja) === 'punkt-rozlacznikowy' || (!przerwaToru(symbol) && !sprzegloSzyn(hierarchia, symbol)))) {
+        symbole.set(index, stacja);
+      }
       return;
     }
     const g = gabarytSymbolu(symbol);
@@ -647,6 +659,9 @@ export interface CanvasHitAreaInput {
   readonly resultMarkers: readonly ResultMarkerHitInput[];
   /** Skala kamery [px ekranu na jednostkę świata]. */
   readonly scale: number;
+  /** Skala reprezentująca poziom szczegółu z histerezą (`oknoRenderu.skalaPoziomu`) — wybór
+   *  stacji rysowanych symbolem przeglądowym; domyślnie `scale`. */
+  readonly skalaLod?: number;
   /** `testId` obiektów UKRYTYCH filtrem warstw — bez węzła w DOM, więc i bez
    *  obszaru trafienia. Pusty zbiór = wszystko widoczne. */
   readonly ukryteTestId?: ReadonlySet<string>;
@@ -720,7 +735,7 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
     // własnego rysunku — jego klik przejmuje cel pola albo stacji (obiekt nierozpoznawalny).
     // Szyna SN zostaje własnym celem (rysowana grubą kreską symbolu stacji), łącznik otwarty
     // w nodze — własnym węzłem z przerwą toru.
-    const przeglad = stacjePrzegladu(symbols, hierarchia, scale);
+    const przeglad = stacjePrzegladu(symbols, hierarchia, input.skalaLod ?? scale);
     const ZERO = { x: 0, y: 0, width: 0, height: 0 };
     const bezWezla = bezWezlaPrzegladu(symbols, segments, hierarchia, przeglad);
     for (const [index, stacja] of bezWezla.symbole) {

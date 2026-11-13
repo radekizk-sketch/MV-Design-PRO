@@ -1,10 +1,10 @@
 /**
  * B-02 właściciela 2026-11-13, P0-03 — WIDOK OGÓLNY (LOD0) jako rozszerzenie reguły R8 (obrys bez
  * wnętrza) o PRÓG CZYTELNOŚCI R3 (`oknoRenderu.ts`: `PROG_WNETRZA_SYMBOLU_PX` = 9 px, skala wnętrza
- * pól `SKALA_WNETRZA_POL` = 9 / 16 = 0,5625).
+ * pól `SKALA_WNETRZA_POL` = 9 / 11 = 0,818; granica LOD0/LOD1 `SKALA_POL_ODPLYWOW` = 9 / 24 = 0,375).
  *
  * Przypina: (1) wyprowadzenie progu z R3; (2) iloczyn {fikstura: sieć wzorcowa 52 stacji, GPZ
- * dwusekcyjny z 40 stacjami, GPZ 110 kV z blokami zabezpieczeń} × {skala: 0,3; tuż pod progiem; próg; 0,6; 1,0; 2,0} × {obiekt:
+ * dwusekcyjny z 40 stacjami, GPZ 110 kV z blokami zabezpieczeń} × {skala: 0,3; obie granice ± tuż pod; 0,45; 0,6; 1,0; 2,0} × {obiekt:
  * aparat pola GPZ, adnotacja zabezpieczeń (węzeł i uchwyt), oznaczenie aparatu, stacja SN/nN,
  * łącznik przerywający tor} — poniżej progu wnętrza pól nie są rysowane, od progu są; (3) jedna
  * scena: zbiór obiektów sceny i ich identyfikatory nie zależą od skali, a pod progiem każdy
@@ -21,7 +21,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { MIN_READABLE_LABEL_SCREEN_PX } from '../../core/text';
+import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX } from '../../core/text';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { useSelectionStore } from '../../../../selection';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
@@ -32,9 +32,13 @@ import { hierarchiaCelowTrafienia } from '../zakresKadru';
 import {
   NAJMNIEJSZY_GABARYT_SYMBOLU,
   PROG_WNETRZA_SYMBOLU_PX,
+  SKALA_POL_ODPLYWOW,
   SKALA_WNETRZA_POL,
+  polaJakoOdplywy,
+  poziomSzczegolu,
   wnetrzePolRysowane,
 } from '../oknoRenderu';
+import { GRID } from '../../core/grid';
 import { przerwaToru } from '../torMocy';
 import { kameraNaPunkcieSceny, powiekszKolkiemDoSkali } from './kameraTestowa';
 import fxGpz110 from '../../../../../harness-fixtures/generated/geometria_stacji_gpz_110kv.json';
@@ -55,9 +59,16 @@ const FIKSTURY = [
   { nazwa: 'GPZ 110 kV z blokami zabezpieczeń', enm: enmGpz110, scene: buildSceneV3(enmGpz110) },
 ] as const;
 const KANWA = { width: 1200, height: 800 } as const;
-const SKALE = [0.3, SKALA_WNETRZA_POL - 1e-3, SKALA_WNETRZA_POL, 0.6, 1, 2] as const;
+const SKALE = [0.3, 9 / 24 - 1e-3, 9 / 24, 0.45, 9 / 11 - 1e-3, 9 / 11, 0.6, 1, 2] as const;
 
 afterEach(() => cleanup());
+
+/** Poziom OCZEKIWANY przy skali `s` (bez histerezy) z liczb kontraktu (`SLD_LOD_SPEC` R8 pkt 3:
+ *  9/24 = 0,375 i 9/11 = 0,818), nie z funkcji produktu — iniekcja w progach musi czerwienić
+ *  iloczyn, a nie przesuwać razem z nim oczekiwanie. */
+function oczekiwanyPoziom(s: number): 'LOD0' | 'LOD1' | 'LOD2' {
+  return s >= 9 / 11 ? 'LOD2' : s >= 9 / 24 ? 'LOD1' : 'LOD0';
+}
 
 /** Środek GPZ (prostokąt stacji z hierarchii celów) w układzie sceny. */
 function srodekGpz(enm: EnergyNetworkModel, scene: SceneV3): { x: number; y: number } {
@@ -73,18 +84,34 @@ function kanwa(container: HTMLElement): Element {
 }
 
 describe('LOD0 — próg czytelności wnętrza wyprowadzony z R3', () => {
-  it('próg wnętrza = próg pisma R3 (9 px); skala wnętrza pól = 9 px / najmniejszy gabaryt biblioteki (16 j.św.)', () => {
+  it('próg wnętrza = próg pisma R3 (9 px); skala wnętrza pól = 9 px / pismo danych t2 (11 j.św.); aparat 16 j.św. ma wtedy wnętrze ≥ 9 px', () => {
     expect(PROG_WNETRZA_SYMBOLU_PX).toBe(MIN_READABLE_LABEL_SCREEN_PX);
     expect(NAJMNIEJSZY_GABARYT_SYMBOLU).toBe(16);
-    expect(SKALA_WNETRZA_POL).toBeCloseTo(9 / 16, 12);
+    expect(LABEL_TYPOGRAPHY.t2.fontSize).toBe(11);
+    expect(SKALA_WNETRZA_POL).toBeCloseTo(9 / 11, 12);
+    expect(NAJMNIEJSZY_GABARYT_SYMBOLU * SKALA_WNETRZA_POL).toBeGreaterThanOrEqual(PROG_WNETRZA_SYMBOLU_PX);
+    // Tożsamości aparatów t4 przy tej skali mieszczą się w powiększeniu pisma.
+    expect(MIN_READABLE_LABEL_SCREEN_PX / (LABEL_TYPOGRAPHY.t4.fontSize * SKALA_WNETRZA_POL)).toBeLessThanOrEqual(LABEL_TYPOGRAPHY.t4.maxEnlargement);
     expect(wnetrzePolRysowane(SKALA_WNETRZA_POL)).toBe(true);
     expect(wnetrzePolRysowane(SKALA_WNETRZA_POL - 1e-9)).toBe(false);
     // Skala niewiarygodna (przed pomiarem widoku) nie jest dowodem nieczytelności.
     for (const s of [0, -1, Number.NaN]) expect(wnetrzePolRysowane(s)).toBe(true);
   });
+
+  it('skala pól jako odpływów (LOD1) = 9 px / (najmniejszy gabaryt 16 + GRID); trzy poziomy rozłączne i wyczerpujące', () => {
+    expect(SKALA_POL_ODPLYWOW).toBeCloseTo(9 / (16 + GRID), 12);
+    expect(SKALA_POL_ODPLYWOW).toBeLessThan(SKALA_WNETRZA_POL);
+    expect(poziomSzczegolu(0.3)).toBe('LOD0');
+    expect(poziomSzczegolu(SKALA_POL_ODPLYWOW - 1e-9)).toBe('LOD0');
+    expect(poziomSzczegolu(SKALA_POL_ODPLYWOW)).toBe('LOD1');
+    expect(poziomSzczegolu(0.45)).toBe('LOD1');
+    expect(poziomSzczegolu(SKALA_WNETRZA_POL - 1e-9)).toBe('LOD1');
+    expect(poziomSzczegolu(SKALA_WNETRZA_POL)).toBe('LOD2');
+    for (const s of [0, -1, Number.NaN]) expect(polaJakoOdplywy(s)).toBe(true);
+  });
 });
 
-describe('LOD0 — ILOCZYN {fikstura} × {skala} × {obiekt wnętrza pola}', () => {
+describe('LOD0/LOD1 — ILOCZYN {fikstura} × {skala} × {obiekt wnętrza pola}', () => {
   for (const f of FIKSTURY) {
     const srodek = srodekGpz(f.enm, f.scene);
     const adnotacjeSceny = f.scene.symbols.filter((s) => s.meta?.elementKind === 'protectionAnnotation').length;
@@ -96,35 +123,44 @@ describe('LOD0 — ILOCZYN {fikstura} × {skala} × {obiekt wnętrza pola}', () 
       });
     }
     for (const skala of SKALE) {
-      const lod0 = !wnetrzePolRysowane(skala);
-      it(`${f.nazwa}, skala ${skala.toFixed(4)} (${lod0 ? 'wnętrza pól nierysowane' : 'wnętrza pól rysowane'}), kamera nad GPZ`, () => {
+      const poziom = oczekiwanyPoziom(skala);
+      const bezWnetrzPol = poziom !== 'LOD2';
+      it(`${f.nazwa}, skala ${skala.toFixed(4)} (${poziom}), kamera nad GPZ`, () => {
         const { container } = render(
           <SldCanvasV3 snapshot={f.enm} {...KANWA} onElementClick={() => {}} cameraOverride={kameraNaPunkcieSceny(f.scene, srodek, skala, KANWA)} />,
         );
         const svg = kanwa(container);
+        expect(svg.getAttribute('data-poziom-szczegolu')).toBe(poziom);
         const symbole = svg.querySelector('[data-testid="sld-v3-symbols"]')!;
         // Adnotacje zabezpieczeń pola (blok, ramka, linie): bez węzła i bez uchwytu pod progiem.
         const adnotacje = svg.querySelectorAll('[data-element-kind="protectionAnnotation"]').length;
         const uchwytyAdnotacji = svg.querySelectorAll('[data-hit-klasa="adnotacja"]').length;
-        if (lod0) {
+        if (bezWnetrzPol) {
           expect(adnotacje, 'węzły adnotacji zabezpieczeń').toBe(0);
           expect(uchwytyAdnotacji, 'uchwyty adnotacji zabezpieczeń').toBe(0);
         } else if (adnotacjeSceny > 0 && skala >= 1) {
           expect(adnotacje + uchwytyAdnotacji, 'adnotacje wracają od progu').toBeGreaterThan(0);
         }
-        // Aparaty pola: pod progiem każdy narysowany bez wnętrza (obrys albo □ przerwy toru).
+        // Tła pól GPZ (panele aparatury): jeden próg wnętrza dla GPZ i stacji.
+        const panele = svg.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]').length;
+        if (bezWnetrzPol) expect(panele, 'tła pól GPZ bez wnętrz pól').toBe(0);
+        else if ((f.scene.meta.gpzAdnotacje?.panele.length ?? 0) > 0) expect(panele, 'tła pól GPZ od progu').toBeGreaterThan(0);
+        // Aparaty pola: bez wnętrz — przelot linii, kafel stanu łącznika albo □ przerwy toru;
+        // od progu — pełny glif (węzeł grupy bez atrybutu).
         const aparaty = [...symbole.querySelectorAll('[data-element-kind="apparatus"]')];
         expect(aparaty.length, 'aparaty pól GPZ narysowane w kadrze').toBeGreaterThan(0);
-        const bezWnetrza = aparaty.filter((a) => a.getAttribute('data-bez-wnetrza') === 'true').length;
-        expect(bezWnetrza, `aparaty bez wnętrza (${aparaty.length} narysowanych)`).toBe(lod0 ? aparaty.length : 0);
-        // Oznaczenia aparatów (Q1, Q0…): pod progiem w podpowiedzi, nie na rysunku.
+        const bezWnetrza = aparaty.filter((a) => ['przelot', 'kafel', 'true'].includes(a.getAttribute('data-bez-wnetrza') ?? '')).length;
+        expect(bezWnetrza, `aparaty bez wnętrza (${aparaty.length} narysowanych)`).toBe(bezWnetrzPol ? aparaty.length : 0);
+        // Obrys pustego gabarytu (dawny LOD0) nie wraca dla aparatu.
+        expect(aparaty.filter((a) => a.tagName === 'rect' && a.getAttribute('data-przerwa-toru') !== 'true').length, 'puste obrysy aparatów').toBe(0);
+        // Oznaczenia aparatów (Q1, Q0…): bez wnętrz w podpowiedzi, nie na rysunku.
         const oznaczenia = svg.querySelectorAll('[data-testid="sld-v3-labels"] [data-owner-kind="apparatus"]').length;
-        if (lod0) expect(oznaczenia, 'oznaczenia aparatów na rysunku').toBe(0);
+        if (bezWnetrzPol) expect(oznaczenia, 'oznaczenia aparatów na rysunku').toBe(0);
         else if (skala >= 1) expect(oznaczenia, 'oznaczenia aparatów wracają').toBeGreaterThan(0);
-        // Stacje SN/nN: pod progiem symbolem stacji, od progu — pełnym rysunkiem.
+        // Stacje SN/nN: w LOD0 symbolem stacji, w LOD1 i LOD2 — polami.
         const symboleStacji = svg.querySelector('[data-testid="sld-v3-symbole-stacji"]')!.children.length;
-        if (lod0 && maStacje) expect(symboleStacji, 'symbole stacji w oknie').toBeGreaterThan(0);
-        else if (!lod0) expect(symboleStacji, 'symbole stacji').toBe(0);
+        if (poziom === 'LOD0' && maStacje) expect(symboleStacji, 'symbole stacji w oknie').toBeGreaterThan(0);
+        else if (poziom !== 'LOD0') expect(symboleStacji, 'symbole stacji').toBe(0);
       }, 120000);
     }
   }
@@ -132,7 +168,7 @@ describe('LOD0 — ILOCZYN {fikstura} × {skala} × {obiekt wnętrza pola}', () 
 
 describe('LOD0 — jedna scena, stan łącznika toru zostaje', () => {
   // Kadr całej sieci jest widokiem ogólnym w fiksturach SIECI; sam GPZ 110 kV mieści się na kanwie
-  // w skali ≥ 0,5625 (LOD1), więc jego „cała sieć” nie jest przypadkiem tej cechy.
+  // w skali ≥ 0,375 (LOD1 albo LOD2), więc jego „cała sieć” nie jest przypadkiem tej cechy.
   for (const f of FIKSTURY.filter((x) => x.enm !== enmGpz110)) {
     it(`${f.nazwa}: pod progiem każdy symbol sceny ma węzeł z refem, jest w symbolu stacji, jest adnotacją ukrytą albo poza oknem; łącznik przerywający tor — znak □`, () => {
       const { container } = render(<SldCanvasV3 snapshot={f.enm} {...KANWA} onElementClick={() => {}} />);
@@ -148,7 +184,7 @@ describe('LOD0 — jedna scena, stan łącznika toru zostaje', () => {
           przerwy += 1;
           expect(wezel.getAttribute('data-przerwa-toru'), `${symbolTestId(symbol, index)} — □ przerwy toru`).toBe('true');
         }
-        if (symbol.meta?.elementKind === 'apparatus') expect(wezel.getAttribute('data-bez-wnetrza')).toBe('true');
+        if (symbol.meta?.elementKind === 'apparatus') expect(['przelot', 'kafel', 'true']).toContain(wezel.getAttribute('data-bez-wnetrza'));
       });
       // Kadr całej sieci obejmuje cały rysunek: każdy łącznik przerywający tor sceny jest znakiem □
       // (sieć wzorcowa ma punkty N.O.; GPZ dwusekcyjny z 40 stacjami — żadnego).

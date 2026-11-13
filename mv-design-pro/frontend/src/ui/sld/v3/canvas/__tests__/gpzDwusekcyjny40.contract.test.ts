@@ -24,7 +24,8 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
 import { MIN_READABLE_LABEL_SCREEN_PX } from '../../core/text';
 import { sheetSizeFor } from '../../sheet/outline';
-import { computeInitialCameraState, SKALA_PODLOGI_ROZDZIELNICY, SKALE_ODBIORU_PLANU_ETYKIET } from '../camera';
+import { computeInitialCameraState, SKALE_ODBIORU_PLANU_ETYKIET } from '../camera';
+import { SKALA_PODLOGI_ROZDZIELNICY } from '../oknoRenderu';
 import { planSceneLabels, plannedLabelCollisions } from '../labelLegibility';
 import { contentBoundingBoxOf, sceneBoxToCameraWorld } from '../SldCanvasV3';
 

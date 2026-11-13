@@ -95,21 +95,12 @@ export const KADR_MAX_SCALE = 2 * SKALA_KOMFORTU_CZYTANIA;
  */
 export const SKALE_ODBIORU_PLANU_ETYKIET: readonly number[] = [0.5, 0.69, SKALA_CZYTANIA, SKALA_KOMFORTU_CZYTANIA, 2];
 
-/**
- * PODŁOGA CZYTELNOŚCI KADRU ROZDZIELNICY (karta SLD-SKALA-I-NAWIGACJA, zgłoszenie
- * koordynatora): kadr stacji, sekcji albo pola nie schodzi poniżej skali czytania
- * (`SKALA_CZYTANIA`). Kolumny pól są wymiarowane pod pismo NATURALNE, a tożsamość
- * poniżej progu czytelności ma stały rozmiar ekranowy, więc jej tusz w świecie rośnie
- * jak 1/skala i przy skali mniejszej od czytania przestaje mieścić się w kolumnie —
- * nazwa pola trafia wtedy do podpowiedzi uchwytu. Pomiar 2026-11-12 (plan etykiet na
- * 14 fiksturach scen): przy skali 0,69 tożsamości w podpowiedzi 0–171 na fiksturę
- * (sieć 52 stacji: 171), przy 0,8 — 0–4, przy skali czytania 1 — zero na 13 fiksturach
- * (wyjątek: nazwa łącznika sekcyjnego toru szersza od slotu sceny, fikstura
- * `elementyCiagu-lacznik`). Rozdzielnica, która przy tej skali nie mieści się w kanwie,
- * jest pokazana od początku (lewy górny róg celu), a resztę projektant przewija —
- * nazwy pól nie są poświęcane za „cały kadr”.
- */
-export const SKALA_PODLOGI_ROZDZIELNICY = SKALA_CZYTANIA;
+
+/** Skala, przy której prostokąt `box` mieści się w prostokącie bezpiecznym `safeInsets`
+ *  z oddechem kadru (bez ograniczeń zakresu kamery) — porównanie wariantów zasłon kadru. */
+export function skalaDopasowaniaKadru(box: BoundingBox, viewportSize: Rozmiar, safeInsets: SafeInsets): number {
+  return dopasowanie(box, viewportSize, safeInsets).scale;
+}
 
 /** Oddech dopasowania od krawędzi prostokąta bezpiecznego [px] — ten sam, którego
  *  używa `fitToView` (domyślny padding refitu), więc kadr i „Dopasuj widok”
@@ -250,7 +241,7 @@ export interface AkcjaKadru {
    *  skali — kamera dokłada go do prostokątów przed ułożeniem kadru
    *  (`zTuszemEtykiet`). Brak = same prostokąty. */
   readonly tuszEtykiet?: (scale: number) => TuszEtykietKadru;
-  /** Najmniejsza skala kadru (podłoga czytelności, `SKALA_PODLOGI_ROZDZIELNICY`).
+  /** Najmniejsza skala kadru (podłoga czytelności, `oknoRenderu.SKALA_PODLOGI_ROZDZIELNICY`).
    *  Gdy cel przy tej skali się nie mieści — kadr od początku celu. Brak = bez podłogi. */
   readonly podlogaSkali?: number;
   /** WSKAZANIE z zewnątrz (`centerSldOnElement`, karta SLD-SKALA-I-NAWIGACJA R7) — jedna reguła
@@ -534,14 +525,27 @@ function applyKadrCelu(state: CameraState, action: AkcjaKadru & { readonly sufit
   const srodekCelu = { x: (cel.minX + cel.maxX) / 2, y: (cel.minY + cel.maxY) / 2 };
   let srodek: Punkt;
   if (scale > mieszczaca + 1e-12) {
-    // Podłoga czytelności: cel większy od okna — początek celu (lewa i górna krawędź)
-    // przy krawędzi prostokąta bezpiecznego z oddechem, oś mieszcząca się — środek.
+    // Podłoga czytelności, osobno na każdej osi (pierwsze spełnione wygrywa):
+    //  1. cel z tuszem opisów mieści się w prostokącie bezpiecznym (choćby bez oddechu kadru) —
+    //     środek celu;
+    //  2. sam obiekt (`anchor`, bez tuszu opisów) mieści się — środek obiektu: zasłona nie ucina
+    //     ostatnich pól, ucięty może być co najwyżej opis wystający poza obiekt;
+    //  3. obiekt dłuższy od prostokąta bezpiecznego — początek celu (lewa i górna krawędź) przy
+    //     krawędzi z oddechem, resztę daje przesuw kadru.
     const ins = safeInsets ?? ZERO_INSETS;
-    const oknoW = Math.max(viewportSize.width - ins.left - ins.right - 2 * KADR_PADDING_PX, 1) / scale;
-    const oknoH = Math.max(viewportSize.height - ins.top - ins.bottom - 2 * KADR_PADDING_PX, 1) / scale;
+    const obiekt = action.anchor ?? cel;
+    const wolnaW = Math.max(viewportSize.width - ins.left - ins.right, 1);
+    const wolnaH = Math.max(viewportSize.height - ins.top - ins.bottom, 1);
+    const oknoW = Math.max(wolnaW - 2 * KADR_PADDING_PX, 1) / scale;
+    const oknoH = Math.max(wolnaH - 2 * KADR_PADDING_PX, 1) / scale;
+    const os = (min: number, max: number, minO: number, maxO: number, wolna: number, okno: number, srodekC: number): number => {
+      if ((max - min) * scale <= wolna) return srodekC;
+      if ((maxO - minO) * scale <= wolna) return (minO + maxO) / 2;
+      return min + okno / 2;
+    };
     srodek = {
-      x: cel.maxX - cel.minX > oknoW ? cel.minX + oknoW / 2 : srodekCelu.x,
-      y: cel.maxY - cel.minY > oknoH ? cel.minY + oknoH / 2 : srodekCelu.y,
+      x: os(cel.minX, cel.maxX, obiekt.minX, obiekt.maxX, wolnaW, oknoW, srodekCelu.x),
+      y: os(cel.minY, cel.maxY, obiekt.minY, obiekt.maxY, wolnaH, oknoH, srodekCelu.y),
     };
   } else {
     srodek = srodekKadru(cel, istotne, scale, viewportSize, safeInsets) ?? srodekCelu;

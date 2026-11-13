@@ -100,6 +100,16 @@ function oddalPonizejCzytelnosci(container: HTMLElement): void {
   }
 }
 
+/** Powiększenie natywnym kółkiem do poziomu LOD2 (wnętrza pól rysowane — `oknoRenderu`):
+ *  tła pól GPZ są tłem aparatury pola, więc rysują się od tego samego progu co aparatura. */
+function powiekszDoWnetrzaPol(container: HTMLElement): void {
+  const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+  for (let i = 0; i < 60; i += 1) {
+    if (svg.getAttribute('data-poziom-szczegolu') === 'LOD2') return;
+    fireEvent.wheel(svg, { clientX: 40, clientY: 40, deltaY: -140 });
+  }
+}
+
 const tekst = (container: HTMLElement, testId: string): string | null =>
   container.querySelector(`[data-testid="${testId}"]`)?.textContent ?? null;
 
@@ -120,7 +130,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   // Karta SLD-SKALA-I-NAWIGACJA (R3): tabela „Pola GPZ" jest informacją — poniżej progu nie ma
   // ani pisma, ani jej kształtów (próbki ról, plakietki, legenda), bo kształty bez pisma były na
   // kadrze całej sieci szumem nad obrysem GPZ (zrzut e2e `r7-kadr-calej-sieci`). Tła pól zostają.
-  it('pismo poniżej progu czytelności (oddalony kadr): bez tekstów i bez tabeli pól, tła pól zostają', () => {
+  it('pismo poniżej progu czytelności (oddalony kadr): bez tekstów i bez tabeli pól; tła pól od progu wnętrza pól (jeden próg GPZ i stacji)', () => {
     const container = renderKanwe();
     const warstwa = container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!;
     expect(warstwa).not.toBeNull();
@@ -129,6 +139,10 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     expect(container.querySelector('[data-testid="sld-v3-gpz-bilans-zasilania"]')).toBeNull();
     expect(container.querySelector('[data-testid="sld-v3-gpz-tabela-pol"]')).toBeNull();
     expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-plakietka-"], [data-testid^="sld-v3-gpz-legenda-"]').length).toBe(0);
+    // Oddalony kadr jest poniżej progu wnętrza pól (LOD0/LOD1) — tło pola nie ma węzła.
+    expect(container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-poziom-szczegolu')).not.toBe('LOD2');
+    expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]').length).toBe(0);
+    powiekszDoWnetrzaPol(container);
     expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]').length).toBeGreaterThan(0);
     powiekszDoCzytelnosci(container);
     expect(warstwa.getAttribute('data-gpz-teksty')).toBe('widoczne');
@@ -197,6 +211,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     it(`TŁA PÓL × motyw ${motyw}: kolor każdego tła = token roli palety motywu, legenda tylko z ról obecnych`, () => {
       useThemeModeStore.getState().setMode(motyw);
       const container = renderKanwe();
+      powiekszDoWnetrzaPol(container);
       const paleta = sldPaletteForTheme(motyw);
       const panele = [...container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]')];
       const scena = buildSceneV3(enm);

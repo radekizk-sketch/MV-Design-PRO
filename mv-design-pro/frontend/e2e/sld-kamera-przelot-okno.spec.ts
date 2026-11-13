@@ -33,7 +33,7 @@
  * `katalogZrzutow`.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -465,8 +465,17 @@ async function obiektWidoczny(page: Page, kanwa: Locator, ref: string, opis: str
   expect(o, `${opis}: obiekt ${ref} narysowany`).not.toBeNull();
   const tol = 1;
   expect(o!.left, `${opis}: lewa krawędź obiektu w wolnej kanwie`).toBeGreaterThanOrEqual(wolna.left - tol);
-  expect(o!.right, `${opis}: prawa krawędź obiektu w wolnej kanwie`).toBeLessThanOrEqual(wolna.right + tol);
   expect(o!.top, `${opis}: górna krawędź obiektu pod pasem narzędzi`).toBeGreaterThanOrEqual(wolna.top - tol);
+  // Obiekt większy od wolnej kanwy przy podłodze kadru (dyrektywa właściciela 2026-11-13:
+  // czytelność i przesuw kadru zamiast pomniejszania do symbolu) jest pokazany od początku —
+  // lewy górny róg w wolnej kanwie, resztę daje przesuw; obiekt mieszczący się — w całości
+  // i poza panelami narożnymi.
+  const wiekszy = o!.right - o!.left > wolna.right - wolna.left + tol || o!.bottom - o!.top > wolna.bottom - wolna.top + tol;
+  if (wiekszy) {
+    expect(o!.left, `${opis}: początek obiektu widoczny`).toBeLessThan(wolna.right);
+    return;
+  }
+  expect(o!.right, `${opis}: prawa krawędź obiektu w wolnej kanwie`).toBeLessThanOrEqual(wolna.right + tol);
   expect(o!.bottom, `${opis}: dolna krawędź obiektu nad dokami`).toBeLessThanOrEqual(wolna.bottom + tol);
   for (const panel of ['[data-testid="sld-v3-minimap-panel"]', '[data-testid="sld-v3-proof-packs-dock"]']) {
     const r = await prostokat(page, panel);
@@ -492,6 +501,7 @@ for (const motyw of [
       test.setTimeout(600000);
       mkdirSync(KATALOG, { recursive: true });
       const zrzut = (nazwa: string) => page.screenshot({ path: resolve(KATALOG, `r7-${nazwa}-${motyw.klucz}-${rozmiar}.png`) });
+      const pomiaryDopasuj: Record<string, unknown>[] = [];
       const seed = await siecKadrow(request);
       await otworzAplikacje(page, seed, okno);
       await ustawMotyw(page, motyw.theme);
@@ -581,8 +591,37 @@ for (const motyw of [
         await page.getByTestId('sld-v3-fit-view').click();
         await kadrUstalony(page, kanwa);
         await obiektWidoczny(page, kanwa, stacja.ref_id, opisN);
+        // Decyzja architekta 2026-11-13 (pkt 6): „Dopasuj widok” obiektu daje jego WNĘTRZE — skala
+        // kadru ≥ skali wejścia do LOD2 (9 px / pismo danych t2 11 j.św. × histereza 1,1 = 0,9); nawigator, który spychałby kadr pod próg,
+        // zwija się na czas kadru. Pomiar: szerokość stacji przy 100 % wobec wolnej kanwy.
+        const skalaKadru = Number(await kanwa.getAttribute('data-skala-kamery'));
+        expect(skalaKadru, `${opisN}: skala kadru z wnętrzem pól`).toBeGreaterThanOrEqual((9 / 11) * 1.1 - 1e-4);
+        expect(await kanwa.getAttribute('data-poziom-szczegolu'), `${opisN}: poziom szczegółu`).toBe('LOD2');
+        const nawigatorPoKadrze = (await page.getByTestId('sld-v3-minimap-toggle').getAttribute('aria-expanded')) === 'true';
+        const o = (await prostokatObiektu(kanwa, stacja.ref_id))!;
+        const wolna = await wolnaKanwa(page, kanwa);
+        pomiaryDopasuj.push({
+          okno: rozmiar,
+          motyw: motyw.klucz,
+          nawigator_przed: nawigatorOtwarty,
+          nawigator_po_kadrze: nawigatorPoKadrze,
+          skala_kadru: skalaKadru,
+          szerokosc_stacji_przy_100_px: Math.round((o.right - o.left) / skalaKadru),
+          wysokosc_stacji_przy_100_px: Math.round((o.bottom - o.top) / skalaKadru),
+          wolna_kanwa_px: { szerokosc: Math.round(wolna.right - wolna.left), wysokosc: Math.round(wolna.bottom - wolna.top) },
+        });
         await zrzut(`dopasuj-widok-stacja-nawigator-${nawigatorOtwarty ? 'otwarty' : 'zwiniety'}`);
+        // Wybór projektanta wraca po opuszczeniu obiektu (zmiana zaznaczenia).
+        if (nawigatorOtwarty && !nawigatorPoKadrze) {
+          await page.keyboard.press('Escape');
+          await expect(page.getByTestId('sld-v3-minimap-toggle'), `${opisN}: nawigator wraca po opuszczeniu obiektu`).toHaveAttribute('aria-expanded', 'true');
+          // Stan dalszej części testu: stacja zaznaczona, inspektor otwarty (jak przed `Esc`).
+          await page.locator(`[data-hit-owner-ref^="${stacja.ref_id}#name-row"]`).last().click();
+          await expect.poll(() => page.locator(`[data-zaznaczenie-ref="${stacja.ref_id}"]`).count(), { message: `${opisN}: zaznaczenie wraca` }).toBeGreaterThan(0);
+        }
       }
+      mkdirSync(resolve(HERE, '..', 'test-results'), { recursive: true });
+      writeFileSync(resolve(HERE, '..', 'test-results', `pomiar-dopasuj-${motyw.klucz}-${rozmiar}.json`), JSON.stringify(pomiaryDopasuj, null, 2));
       await ustawNawigator(page, nawigatorPrzed);
       // Okno wokół stacji (z kadru całej sieci): stacja w wolnej kanwie po powiększeniu.
       await page.keyboard.press('Shift+F');

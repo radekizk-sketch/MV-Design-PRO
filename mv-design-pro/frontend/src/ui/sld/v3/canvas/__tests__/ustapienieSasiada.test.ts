@@ -28,7 +28,7 @@
  * wynik dotyczył mechanizmu ustąpienia, a nie przypadkowej geometrii.
  *
  * B-02 właściciela 2026-11-13 (P0-03, R8 reguła 3 kontraktu `SLD_LOD_SPEC_OPERATOR_GRADE.md`):
- * poniżej progu wnętrza pól (`SKALA_WNETRZA_POL` = 9 px / 16 j.św. = 0,5625) tożsamości
+ * poniżej progu wnętrza pól (`SKALA_WNETRZA_POL` = 9 px / 11 j.św. = 0,818; dyrektywa właściciela 2026-11-13) tożsamości
  * APARATÓW (oznaczniki Q, oznaczenia pól — `ownerKind: 'apparatus'`) nie wchodzą do planu, tylko
  * do podpowiedzi uchwytu. Skala 0,4034 z pomiaru leży poniżej progu, więc dla aparatów ten układ
  * już nie powstaje (przypięte testem „aparaty poniżej progu wnętrza"). Mechanizm (f) jest
@@ -42,6 +42,7 @@ import type { V3Rect } from '../../core/grid';
 import { measureLabelWidth, type LabelClass } from '../../core/text';
 import type { OwnedLabel, OwnerKind, SimpleAnchorPlacement } from '../../layout/labels';
 import type { SheetOutline } from '../../sheet/outline';
+import { SKALA_WNETRZA_POL } from '../oknoRenderu';
 import {
   planSceneLabels,
   plannedLabelCollisions,
@@ -108,7 +109,7 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     expect(plan.drawn).toEqual([]);
     expect(plan.tozsamosciWPodpowiedzi.map((t) => t.label.ownerRef).sort()).toEqual([aparatGpz.ownerRef, aparatQ1.ownerRef].sort());
     // Od progu wnętrza ta sama tożsamość aparatu znów wchodzi do planu.
-    const odProgu = planSceneLabels([aparatQ1], [WYLACZNIK], 0.5625, ARKUSZ);
+    const odProgu = planSceneLabels([aparatQ1], [WYLACZNIK], SKALA_WNETRZA_POL, ARKUSZ);
     expect(odProgu.drawn.map((p) => p.label.ownerRef)).toEqual([aparatQ1.ownerRef]);
   });
 

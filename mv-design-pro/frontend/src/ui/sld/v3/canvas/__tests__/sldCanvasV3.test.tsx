@@ -24,6 +24,7 @@ import { afterEach } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { planSceneLabels } from '../labelLegibility';
+import { przegladEtykietPrzySkali } from '../glifZbiorczy';
 import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { sheetSizeFor } from '../../sheet/outline';
 import { klasaInformacjiEtykiety } from '../gestoscInformacji';
@@ -138,7 +139,7 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     expect(symbolGroup!.children.length + bezWezlaWKadrze(container, scene).symbole.size).toBe(scene.symbols.length);
     const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
-    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene));
+    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene), undefined, undefined, undefined, przegladEtykietPrzySkali(scene, hierarchiaCelowTrafienia(enm, scene))(skala));
     const wPodpowiedzi = Number(labelGroup?.getAttribute('data-tozsamosci-w-podpowiedzi') ?? 'NaN');
     expect(labelGroup?.children.length).toBe(plan.drawn.length);
     expect(wPodpowiedzi).toBe(plan.tozsamosciWPodpowiedzi.length);
@@ -154,7 +155,7 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     const scene = buildSceneV3(enm);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
     const skala = Number(container.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-skala-kamery'));
-    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene));
+    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(skala), skala, sheetSizeFor(scene), undefined, undefined, undefined, przegladEtykietPrzySkali(scene, hierarchiaCelowTrafienia(enm, scene))(skala));
     const widoczne = new Set([...plan.drawn, ...plan.tozsamosciWPodpowiedzi].map((p) => p.index));
     expect(scene.labels.filter((_, i) => !widoczne.has(i)).length).toBeGreaterThan(0);
     expect(container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]')).toBeNull();
@@ -194,8 +195,14 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
       new Map([...c.querySelector(`[data-testid="${grupa}"]`)!.children].map((n) => [n.getAttribute('data-testid') ?? '', n] as const));
     const odcinkiMaly = wezly(maly, 'sld-v3-segments');
     const odcinkiDuzy = wezly(duzy, 'sld-v3-segments');
-    expect(odcinkiMaly.size + bezMaly.odcinki.size).toBe(scene.segments.length);
-    expect(odcinkiDuzy.size + bezDuzy.odcinki.size).toBe(scene.segments.length);
+    // Poniżej LOD2 linie adnotacji zabezpieczeń pola nie mają węzła (R8 reguła 3,
+    // `oknoRenderu.adnotacjaPolaUkryta`) — trzecia dozwolona różnica renderu.
+    const adnotacjeBezWezla = (c: ParentNode, bez: ReadonlyMap<number, string>) =>
+      c.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-poziom-szczegolu') === 'LOD2'
+        ? 0
+        : scene.segments.filter((sg, i) => sg.meta?.elementKind === 'protectionAnnotation' && !bez.has(i)).length;
+    expect(odcinkiMaly.size + bezMaly.odcinki.size + adnotacjeBezWezla(maly, bezMaly.odcinki)).toBe(scene.segments.length);
+    expect(odcinkiDuzy.size + bezDuzy.odcinki.size + adnotacjeBezWezla(duzy, bezDuzy.odcinki)).toBe(scene.segments.length);
     let odcinkowNaObu = 0;
     for (const [id, n] of odcinkiMaly) {
       const m = odcinkiDuzy.get(id);
@@ -212,8 +219,9 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     // (`data-znak-przegladowy`, R8 — dwa okręgi zamiast glifu z uzwojeniami w kadrze całej sieci)
     // to ten sam obiekt sceny narysowany prościej przy małej skali; porównanie glifów dotyczy
     // symboli pełnych na obu kanwach. W kadrze całej sieci KAŻDY symbol z własnym węzłem jest
-    // uproszczony (skala < 0,5625 — próg wnętrza 9 px / 16 j.św., B-02 2026-11-13), więc pełne
-    // glify porównują dwie kamery nad środkiem sceny w skalach 0,6 i 1,2 (obie od progu wnętrza)
+    // uproszczony (poniżej LOD2 — próg wnętrza 9 px / 11 j.św. = 0,818, dyrektywa właściciela
+    // 2026-11-13), więc pełne glify porównują dwie kamery nad środkiem sceny w skalach 1,0 i 1,2
+    // (obie w LOD2)
     // — ten sam obiekt, ten sam rysunek przy każdej skali.
     const uproszczony = (e: Element) => e.hasAttribute('data-bez-wnetrza') || e.hasAttribute('data-znak-przegladowy');
     let pelnychNaObu = 0;
@@ -232,7 +240,7 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     porownajZDuza(symbole(sredni));
     const widok = { width: CANVAS_WIDTH * 2, height: CANVAS_HEIGHT * 2 };
     const srodek = { x: scene.bbox.x + scene.bbox.width / 2, y: scene.bbox.y + scene.bbox.height / 2 };
-    const { container: blisko } = render(<SldCanvasV3 snapshot={enm} {...widok} cameraOverride={kameraNaPunkcieSceny(scene, srodek, 0.6, widok)} />);
+    const { container: blisko } = render(<SldCanvasV3 snapshot={enm} {...widok} cameraOverride={kameraNaPunkcieSceny(scene, srodek, 1.0, widok)} />);
     const { container: blizej } = render(<SldCanvasV3 snapshot={enm} {...widok} cameraOverride={kameraNaPunkcieSceny(scene, srodek, 1.2, widok)} />);
     const naBlizszej = new Map(symbole(blizej).map((n) => [n.getAttribute('data-testid') ?? '', n] as const));
     for (const n of symbole(blisko)) {
@@ -243,7 +251,12 @@ describe('SldCanvasV3 — jedna scena niezależna od skali (karta SLD-SKALA-I-NA
     }
     expect(pelnychNaObu, 'część symboli ma pełny glif w obu skalach (porównanie nie jest puste)').toBeGreaterThan(0);
     expect(a.some((n) => n.hasAttribute('data-bez-wnetrza')), 'mała kanwa ma symbole poniżej progu wnętrza').toBe(true);
-    expect(b.filter((n) => n.hasAttribute('data-bez-wnetrza')).length).toBeLessThanOrEqual(a.filter((n) => n.hasAttribute('data-bez-wnetrza')).length);
+    // Monotoniczność uproszczeń: obiekty bez pełnego glifu (bez wnętrza albo bez własnego węzła
+    // w symbolu stacji LOD0) — na dużej kanwie nie więcej niż na małej. Samych `data-bez-wnetrza`
+    // się nie porównuje: przejście LOD0 → LOD1 daje aparatom stacji węzły bez wnętrza.
+    const uproszczonych = (wezly: readonly Element[], bez: { readonly symbole: ReadonlyMap<number, string> }) =>
+      wezly.filter((n) => n.hasAttribute('data-bez-wnetrza')).length + bez.symbole.size;
+    expect(uproszczonych(b, bezDuzy)).toBeLessThanOrEqual(uproszczonych(a, bezMaly));
   });
 
   it('kanwa nie niesie atrybutu poziomu szczegółu — jedynym parametrem widoku jest skala kamery', () => {
@@ -1394,10 +1407,13 @@ describe('SldCanvasV3 — S8: ciągłość widoku przy zmianie skali', () => {
       );
     // Start od progu wnętrza pól (R8 reguła 3, SKALA_WNETRZA_POL): poniżej niego stacja jest
     // symbolem przeglądu bez węzłów własnych aparatów, więc „ten sam rysunek” porównuje się
-    // dopiero od poziomu, na którym aparaty mają węzły (LOD1 → LOD2).
-    for (let i = 0; i < 12 && skalaOf(container) < SKALA_WNETRZA_POL; i += 1) {
+    // dopiero od poziomu LOD2, na którym aparaty i adnotacje zabezpieczeń mają węzły. Poziom
+    // czytany z kanwy (`data-poziom-szczegolu`), nie ze skali: przy powiększaniu histereza
+    // trzyma LOD1 do skali wejścia 0,818 × 1,1 (`oknoRenderu.skalaWejsciaPoziomu`).
+    for (let i = 0; i < 12 && svg.getAttribute('data-poziom-szczegolu') !== 'LOD2'; i += 1) {
       fireEvent.wheel(svg, { clientX: W / 2, clientY: H / 2, deltaY: -140 });
     }
+    expect(svg.getAttribute('data-poziom-szczegolu')).toBe('LOD2');
     expect(skalaOf(container)).toBeGreaterThanOrEqual(SKALA_WNETRZA_POL);
     const przed = { skala: skalaOf(container), symbole: wezly('sld-v3-symbols'), odcinki: wezly('sld-v3-segments') };
     expect([...przed.symbole.values()].some((h) => h.includes('data-energized="true"'))).toBe(true);

@@ -245,7 +245,7 @@ describe('exportPalette — integracja na realnym markupie kanwy (parytet ekspor
   it(`kafle stanu łączników mają w eksporcie TEN SAM kolor co na kanwie`, () => {
     // Iniekcja: inna para dokumentowa kafla (np. dawna czerwień drukowalna #B71C1C dla
     // zamkniętego) — wypełnienia kafli przed i po transformacji rozjeżdżają się.
-    // Kafle stanu są wnętrzem pola: poniżej progu wnętrza pól (R8 reguła 3, 0,5625) aparat
+    // Kafle stanu są wnętrzem pola: poniżej progu wnętrza pól (R8 reguła 3, LOD2 od 0,818) aparat
     // rysuje sam obrys, więc parytet kolorów kafli sprawdza się w skali 1 nad środkiem sceny.
     const { svgEl, raw } = renderRealMarkup(1);
     const wypelnienia = (root: ParentNode) =>

@@ -2,7 +2,7 @@
  * B-02 właściciela 2026-11-13 — MACIERZ SKALI i POMIAR NAWIGACJI na REALNYM backendzie, ścieżką
  * natywną (kółko, klawisze i kliki Playwrighta w żywej aplikacji).
  *
- * 1. Macierz zrzutów: skala {30, 60, 100, 200 %} × okno {1440×900, 1280×720} × motyw {jasny,
+ * 1. Macierz zrzutów: skala {30, 45, 60, 100, 200 %} × okno {1440×900, 1280×720} × motyw {jasny,
  *    ciemny} × inspektor {zamknięty, otwarty} × cel {cała sieć, stacja, pole} — każdy zrzut ma
  *    w polu widzenia rzeczywisty obiekt (nazwa pliku mówi, jaki cel i jaka skala); asercja: skala
  *    kamery osiągnięta (albo dolny kraniec skali, jawnie w nazwie pliku), środek celu w wolnej
@@ -34,7 +34,17 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'sld-skala-i-nawigacja', 'macierz'));
 /** Czułość kółka kanwy (`SldCanvasV3.tsx`, `WHEEL_ZOOM_SENSITIVITY`). */
 const CZULOSC_KOLKA = 0.0015;
-const SKALE = [0.3, 0.6, 1, 2] as const;
+// Dyrektywa właściciela 2026-11-13: LOD0 do ~40 %, LOD1 ~40–85 %, LOD2 od ~85 % — 30 % (LOD0),
+// 45 i 60 % (LOD1), 100 i 200 % (LOD2). Granice z `oknoRenderu.ts`: 9/24 = 0,375 i 9/11 = 0,818,
+// histereza ±10 % (`PASMO_HISTEREZY_CZYTELNOSCI`) — w paśmie dopuszczalny poziom sąsiedni.
+const SKALE = [0.3, 0.45, 0.6, 1, 2] as const;
+const GRANICE_LOD = [9 / 24, 9 / 11] as const;
+const PASMO_LOD = 0.1;
+const POZIOMY = (s: number): readonly string[] => {
+  const poziom = (x: number): number => GRANICE_LOD.filter((g) => x >= g).length;
+  const mozliwe = new Set([poziom(s), poziom(s * (1 + PASMO_LOD)), poziom(s / (1 + PASMO_LOD))]);
+  return [...mozliwe].sort().map((n) => `LOD${n}`);
+};
 
 /** CRC-32 (IEEE 802.3) — suma kontrolna wpisu ZIP. */
 const TABLICA_CRC = Array.from({ length: 256 }, (_, n) => {
@@ -271,6 +281,7 @@ for (const motyw of [
             expect(c.y, `${cel.nazwa} ${skala}: środek celu w wolnej kanwie (y)`).toBeGreaterThanOrEqual(w.top);
             expect(c.y).toBeLessThanOrEqual(w.bottom);
             expect(await napisyNieczytelne(kanwa), `${cel.nazwa} ${skala}: napisy narysowane czytelne`).toBe(0);
+            expect(POZIOMY(osiagnieta), `${cel.nazwa} ${skala}: poziom szczegółu`).toContain(await kanwa.getAttribute('data-poziom-szczegolu'));
             const procent = kraniec ? `kraniec-${Math.round(osiagnieta * 100)}` : `${Math.round(skala * 100)}`;
             await page.screenshot({
               path: resolve(KATALOG, `${cel.nazwa}-skala-${procent}-inspektor-${otwarty ? 'otwarty' : 'zamkniety'}-${motyw.klucz}-${rozmiar}.png`),
@@ -288,7 +299,7 @@ for (const motyw of [
       await kadrUstalony(page, kanwa);
       const punkt = await srodekCelu(page, kanwa, stacja.ref_id);
       let poprzedniSrodek: { x: number; y: number } | undefined;
-      for (const [lod, s] of [['lod0', 0.5], ['lod1', 0.6], ['lod2', 1]] as const) {
+      for (const [lod, s] of [['lod0', 0.3], ['lod1', 0.6], ['lod2', 1]] as const) {
         await page.mouse.move(punkt.x, punkt.y);
         const przed = await kanwa.getAttribute('viewBox');
         const teraz = await skalaKamery(kanwa);
@@ -298,6 +309,7 @@ for (const motyw of [
           await spoczynek(kanwa);
         }
         expect(await page.locator(`[data-zaznaczenie-ref="${stacja.ref_id}"]`).count(), `${lod}: zaznaczenie stacji`).toBeGreaterThan(0);
+        expect(await kanwa.getAttribute('data-poziom-szczegolu'), `${lod}: poziom szczegółu`).toBe(lod.toUpperCase());
         expect(await napisyNieczytelne(kanwa), `${lod}: napisy czytelne`).toBe(0);
         // Punkt stały kółka: punkt świata pod kursorem nieruchomy — środek stacji na ekranie w miejscu
         // (uchwyt stacji zmienia klasę między poziomami, więc mierzymy obrys zaznaczenia).

@@ -32,6 +32,7 @@ import userEvent from '@testing-library/user-event';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { planSceneLabels } from '../labelLegibility';
+import { przegladEtykietPrzySkali } from '../glifZbiorczy';
 import { przeszkodyEtykietPrzySkali } from '../znacznikiStanu';
 import { sheetSizeFor } from '../../sheet/outline';
 import { SldCanvasV3 } from '../SldCanvasV3';
@@ -93,7 +94,9 @@ function hitNode(container: HTMLElement, testId: string): Element | null {
 /** Obszary, które render buduje dla tej sceny i skali (hierarchia celów i podpowiedzi — R6, R4). */
 function oczekiwaneObszary(scale: number): readonly CanvasHitArea[] {
   const scene = buildSceneV3(enm);
-  const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(scale), scale, sheetSizeFor(scene));
+  const hierarchia = hierarchiaCelowTrafienia(enm, scene);
+  // Te same wejścia planu co kanwa: przeszkody i opisy stacji przeglądowych LOD0.
+  const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(scale), scale, sheetSizeFor(scene), undefined, undefined, undefined, przegladEtykietPrzySkali(scene, hierarchia)(scale));
   return buildCanvasHitAreas({
     symbols: scene.symbols,
     segments: scene.segments,
@@ -101,7 +104,7 @@ function oczekiwaneObszary(scale: number): readonly CanvasHitArea[] {
     tozsamosciWPodpowiedzi: plan.tozsamosciWPodpowiedzi,
     resultMarkers: [],
     scale,
-    hierarchiaCelow: hierarchiaCelowTrafienia(enm, scene),
+    hierarchiaCelow: hierarchia,
   });
 }
 
@@ -402,7 +405,7 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     );
     const scene = buildSceneV3(enm);
     const scale = scaleOf(container, CANVAS_FHD_WIDTH);
-    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(scale), scale, sheetSizeFor(scene));
+    const plan = planSceneLabels(scene.labels, przeszkodyEtykietPrzySkali(scene)(scale), scale, sheetSizeFor(scene), undefined, undefined, undefined, przegladEtykietPrzySkali(scene, hierarchiaCelowTrafienia(enm, scene))(scale));
     const etykieta = plan.drawn.find((p) => p.label.ownerKind === 'apparatus')
       ?? plan.drawn.find((p) => p.label.ownerKind === 'station-name')!;
     await user.click(hitNode(container, `sld-v3-label-${etykieta.index}`)!);

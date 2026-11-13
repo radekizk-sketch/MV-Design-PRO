@@ -2426,6 +2426,37 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       bottom: zaslonaNaw?.bottom ?? SLD_CANVAS_DOCK_INSETS.bottom,
     };
   }, [prawaZaslonaPx, sciezkaWidoczna, komunikatKadruWidoczny, zaslonaNaw]);
+  // Decyzja architekta 2026-11-13 (pkt 6): prostokąt bezpieczny bez zasłony nawigatora — kadr
+  // obiektu, którego podłogę wnętrza przekracza wyłącznie ta zasłona, zwija nawigator na czas kadru
+  // (`SldCanvasV3.onZwinNawigatorDlaKadru`); wybór projektanta wraca, gdy zaznaczenie opuści obiekt.
+  const insetsBezNawigatora = useMemo(() => {
+    if (zaslonaNaw === null) return undefined;
+    return {
+      ...effectiveCanvasInsets,
+      right: effectiveCanvasInsets.right - zaslonaNaw.right + SLD_CANVAS_DOCK_INSETS.right,
+      bottom: SLD_CANVAS_DOCK_INSETS.bottom,
+    };
+  }, [zaslonaNaw, effectiveCanvasInsets]);
+  const nawigatorDoPrzywroceniaRef = useRef(false);
+  const kluczZaznaczenia = zaznaczenieRefy.join('|');
+  // Zaznaczenie, przy którym nawigator zwinięto (efekt kanwy biegnie przed efektem obszaru
+  // roboczego w tym samym zatwierdzeniu — klucz bieżący z renderu, nie z efektu).
+  const kluczZaznaczeniaTerazRef = useRef(kluczZaznaczenia);
+  kluczZaznaczeniaTerazRef.current = kluczZaznaczenia;
+  const kluczZaznaczeniaKadruRef = useRef(kluczZaznaczenia);
+  const zwinNawigatorDlaKadru = useCallback(() => {
+    nawigatorDoPrzywroceniaRef.current = true;
+    kluczZaznaczeniaKadruRef.current = kluczZaznaczeniaTerazRef.current;
+    setMinimapOpen(false);
+  }, []);
+  useEffect(() => {
+    if (kluczZaznaczeniaKadruRef.current === kluczZaznaczenia) return;
+    kluczZaznaczeniaKadruRef.current = kluczZaznaczenia;
+    if (!nawigatorDoPrzywroceniaRef.current) return;
+    nawigatorDoPrzywroceniaRef.current = false;
+    setMinimapOpen(true);
+  }, [kluczZaznaczenia]);
+
   // UI-02b §0.3: klik elementu odsłania prawy inspektor aktywnej przestrzeni, jeśli
   // był zwinięty (`useInspektorZaZawartoscia` rozwija go tylko przy ZMIANIE treści,
   // a ponowny klik tego samego obiektu nie zmienia sygnału).
@@ -2919,6 +2950,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           refyKadru={kadrowanie.refyKurtyny}
           trybWidoku={trybWidokuSchematu}
           safeInsets={effectiveCanvasInsets}
+          insetsBezNawigatora={insetsBezNawigatora}
+          onZwinNawigatorDlaKadru={zwinNawigatorDlaKadru}
           odslonRefy={odslonRefy}
           zaznaczenieRefy={zaznaczenieRefy}
         />
@@ -3206,7 +3239,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               gdy sieci nie ma — uczciwie wyłączony zamiast otwierać pusty panel. */}
           <button
             type="button"
-            onClick={() => setMinimapOpen((prev) => !prev)}
+            onClick={() => {
+              // Ręczny wybór projektanta zastępuje zwinięcie na czas kadru.
+              nawigatorDoPrzywroceniaRef.current = false;
+              setMinimapOpen((prev) => !prev);
+            }}
             data-testid="sld-v3-minimap-toggle"
             aria-expanded={minimapOpen}
             disabled={snapshot === null}

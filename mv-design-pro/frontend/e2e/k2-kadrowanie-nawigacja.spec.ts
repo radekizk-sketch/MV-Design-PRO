@@ -34,7 +34,7 @@
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-import { SKALA_CZYTANIA, skalaKamery } from './skalaKamery';
+import { skalaKamery } from './skalaKamery';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -307,9 +307,12 @@ for (const motyw of [
       await wrocDoSieci(page);
       await dwuklikStacji(page, ref);
       await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(stacja.nazwa, { timeout: 10000 });
-      // Kadr stacji jest w skali czytania (jedna scena niezależna od skali — karta
-      // SLD-SKALA-I-NAWIGACJA; dawniej: „poziom szczegółu ≠ przegląd”).
-      await expect.poll(() => skalaKamery(page.getByTestId('sld-canvas-v3'))).toBeGreaterThanOrEqual(SKALA_CZYTANIA);
+      // Kadr stacji ma pełny rysunek pól: podłoga kadru obiektu = skala wejścia do LOD2
+      // (`oknoRenderu.SKALA_PODLOGI_ROZDZIELNICY` = 9/11 × 1,1 = 0,9; dyrektywa właściciela
+      // 2026-11-13 — dawniej skala czytania 1,0). Liczba wprost: moduł `oknoRenderu` niesie
+      // import JSON metryk kroju, którego Node e2e nie ładuje.
+      await expect.poll(() => skalaKamery(page.getByTestId('sld-canvas-v3'))).toBeGreaterThanOrEqual((9 / 11) * 1.1 - 1e-4);
+      await expect(page.getByTestId('sld-canvas-v3')).toHaveAttribute('data-poziom-szczegolu', 'LOD2');
       const vb = await kadrUstalony(page);
       const pomiar = await zmierzKadr(page, enm, ref);
       console.log(`K2b pomiar ${stacja.plik} ${motyw.klucz}: ${JSON.stringify({ ...pomiar, widoczneOwnerRef: pomiar.widoczneOwnerRef.length })}`);

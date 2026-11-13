@@ -33,7 +33,7 @@ import {
 import { scenaSld } from '../scene/scenaSld';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
-import { SYMBOL_GLYPHS, skalaZnacznikaKafla } from '../symbols/glyphs';
+import { OPIS_POLOZENIA_PL, SYMBOL_GLYPHS, skalaZnacznikaKafla, stanKaflaLacznika } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import {
   LABEL_TYPOGRAPHY,
@@ -89,7 +89,7 @@ import {
   cameraReducer,
   cameraViewBox,
   SKALA_CZYTANIA,
-  SKALA_PODLOGI_ROZDZIELNICY,
+  skalaDopasowaniaKadru,
   computeInitialCameraState,
   type CameraState,
   pointerDistance,
@@ -100,7 +100,15 @@ import {
 import { kotwicaWidoku, prostokatRefowWScenie } from './viewAnchor';
 import {
   adnotacjaPolaUkryta,
+  aparatBezWnetrza,
   obrysBezWnetrzaSymbolu,
+  poziomSzczegolu,
+  SKALA_PODLOGI_ROZDZIELNICY,
+  skalaPoziomu,
+  type PoziomSzczegolu,
+  wygladAparatuBezWnetrza,
+  znacznikPrzerwyToru,
+  type WygladAparatuBezWnetrza,
   obwiedniaKsztaltu,
   obwiedniaLamanej,
   oknoRenderuSceny,
@@ -115,9 +123,11 @@ import {
   xZawieszeniaZnaku,
   sciezkaNog,
   symboleStacji,
-  znacznikPrzerwyToru,
   znakOze,
   znakPrzegladowyTransformatora,
+  lacznikiZeZnakiemStanu,
+  przegladEtykietPrzySkali,
+  sciezkaSzyny,
   type SymbolStacji,
   type StanAlarmowyStacji,
 } from './glifZbiorczy';
@@ -337,6 +347,11 @@ export interface SldCanvasV3Props {
    * karty (kadr do pełnego prostokąta kanwy).
    */
   readonly safeInsets?: SafeInsets;
+  /** Prostokąt bezpieczny BEZ zasłony otwartego nawigatora (`undefined` — nawigator zamknięty).
+   *  Kadr rozdzielnicy, którego podłogę wnętrza (`SKALA_PODLOGI_ROZDZIELNICY`) przekracza wyłącznie
+   *  ta zasłona, liczy się na nim i woła `onZwinNawigatorDlaKadru` (decyzja architekta 2026-11-13). */
+  readonly insetsBezNawigatora?: SafeInsets;
+  readonly onZwinNawigatorDlaKadru?: () => void;
   /**
    * K2: refy obiektu, którego dotyczy zasłona wołającego (stacja portalu nN).
    * Przy zmianie zasłon kanwa poza
@@ -622,8 +637,11 @@ function SceneSymbolNode(props: {
   readonly znakPrzegladowy?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   /** R8: znacznik □ łącznika otwartego w środku nogi symbolu stacji (`glifZbiorczy.przerwyWNogach`). */
   readonly przerwaWNodze?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** LOD1 i LOD0 (`oknoRenderu.wygladAparatuBezWnetrza`): aparat pola bez wnętrza — przelot
+   *  linii toru, ■ łącznika zamkniętego ze znakiem stanu albo □ łącznika przerywającego tor. */
+  readonly bezWnetrza?: WygladAparatuBezWnetrza;
 }): JSX.Element {
-  const { symbol, index, overlay, cameraScale, obrysBezWnetrza, znakPrzegladowy, przerwaWNodze } = props;
+  const { symbol, index, overlay, cameraScale, obrysBezWnetrza, znakPrzegladowy, przerwaWNodze, bezWnetrza } = props;
   const palette = useSldPalette();
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
@@ -669,6 +687,40 @@ function SceneSymbolNode(props: {
         stroke={stroke}
         strokeWidth={apparatusStrokeWidthForScale(cameraScale)}
       />
+    );
+  }
+  if (bezWnetrza && !przerwaWNodze) {
+    const kreska = apparatusStrokeWidthForScale(cameraScale);
+    if (bezWnetrza.rodzaj === 'przelot') {
+      return <path {...atrybuty} data-bez-wnetrza="przelot" d={bezWnetrza.przelot} fill="none" stroke={stroke} strokeWidth={kreska} />;
+    }
+    const z = bezWnetrza.znak;
+    if (bezWnetrza.rodzaj === 'przerwa') {
+      return (
+        <rect
+          {...atrybuty}
+          data-bez-wnetrza="true"
+          data-przerwa-toru="true"
+          x={z.x}
+          y={z.y}
+          width={z.width}
+          height={z.height}
+          fill={palette.canvasBackground}
+          stroke={stroke}
+          strokeWidth={kreska}
+        />
+      );
+    }
+    // Kafel stanu bez wnętrza: barwa położenia z tej samej tabeli co kafel pełnego rysunku
+    // (`palette.state`), linia toru tylko przez łącznik zamknięty.
+    return (
+      <g {...atrybuty} data-bez-wnetrza="kafel" data-przerwa-toru={przerwaToru(symbol) ? 'true' : undefined}>
+        {bezWnetrza.przelot !== '' && <path d={bezWnetrza.przelot} fill="none" stroke={stroke} strokeWidth={kreska} />}
+        <g data-kafel-stanu={bezWnetrza.stan} data-kafel-symbol={symbol.symbolId}>
+          <title>{OPIS_POLOZENIA_PL[symbol.state ?? 'unknown']}</title>
+          <rect data-kafel="tlo" x={z.x} y={z.y} width={z.width} height={z.height} fill={palette.state[bezWnetrza.stan]} stroke={palette.state.glif} strokeWidth={kreska} />
+        </g>
+      </g>
     );
   }
   if ((obrysBezWnetrza || przerwaWNodze) && przerwaToru(symbol)) {
@@ -980,8 +1032,7 @@ function SymbolStacjiNode(props: {
           (() => {
             const odcinek = scene.segments[szynaSceny];
             const w = wygladOdcinka(odcinek, segmentTestId(odcinek, szynaSceny), overlay, palette, cameraScale);
-            const sz = stacja.szynaPrzegladu;
-            return { d: `M ${sz.x0} ${sz.y} H ${sz.x1}`, stroke: barwaAlarmu ?? w.stroke, strokeWidth: w.strokeWidth };
+            return { d: sciezkaSzyny(stacja), stroke: barwaAlarmu ?? w.stroke, strokeWidth: w.strokeWidth };
           })(),
         ];
   const nogi = new Map<string, { stroke: string; strokeWidth: number; dash: string | undefined; nogi: SymbolStacji['nogi'][number][] }>();
@@ -2955,6 +3006,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const trybDokumentu = props.trybDokumentu === true;
   const skalaRysunku = trybDokumentu ? 1 : camera.transform.scale;
   const skalaPlanu = trybDokumentu ? Number.POSITIVE_INFINITY : camera.transform.scale;
+  // Poziom szczegółu z HISTEREZĄ (`oknoRenderu.poziomSzczegolu`, pasmo ±10 % wokół granic
+  // LOD0/LOD1 i LOD1/LOD2): zoom tuż przy granicy nie przełącza rysunku tam i z powrotem.
+  // `skalaLod` — skala reprezentująca trzymany poziom (`skalaPoziomu`) dla WSZYSTKICH predykatów
+  // poziomu (rysunek, warstwa trafień, plan etykiet); rozmiary ekranowe ze skali bieżącej.
+  const poziomRef = useRef<PoziomSzczegolu | undefined>(undefined);
+  const poziomLod: PoziomSzczegolu = trybDokumentu ? 'LOD2' : poziomSzczegolu(camera.transform.scale, poziomRef.current);
+  useEffect(() => {
+    poziomRef.current = poziomLod;
+  }, [poziomLod]);
+  const skalaLod = trybDokumentu ? 1 : skalaPoziomu(poziomLod, camera.transform.scale);
+  const skalaLodPlanu = trybDokumentu ? Number.POSITIVE_INFINITY : skalaLod;
 
   // -------------------------------------------------------------------------
   // B-2 (audyt §4.3) — ZMIANA MIGAWKI: kotwiczenie na miejscu edycji zamiast
@@ -3037,16 +3099,30 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     const { cel, przeszkody, tuszEtykiet } = prostokatyZakresu(scene, zadanie.zakres, sceneBoxToCameraWorld, {
       przeszkody: przeszkodyEtykietPrzySkali(scene, nosnikiStanu),
       pierwszenstwo: pierwszenstwoNazw,
+      przeglad: przegladEtykiet,
     });
-    // Kadr rozdzielnicy (stacja, sekcja, pole) ma podłogę czytelności nazw pól.
-    const rozdzielnica = zadanie.zakres.cel === 'stacja' || zadanie.zakres.cel === 'sekcja' || zadanie.zakres.cel === 'pole';
+    // Kadr rozdzielnicy (stacja, sekcja, pole, zaznaczenie wewnątrz stacji — `ZakresKadru.rozdzielnica`)
+    // ma podłogę WNĘTRZA (`SKALA_PODLOGI_ROZDZIELNICY`).
+    const rozdzielnica = zadanie.zakres.rozdzielnica;
+    // Zasłona nawigatora nie może zepchnąć kadru obiektu pod próg wnętrza: gdy obiekt mieści się
+    // nad podłogą wyłącznie bez niej, kadr liczy się bez zasłony, a obszar roboczy zwija nawigator
+    // na czas kadru (wybór projektanta wraca po opuszczeniu obiektu — `SldCanvasV3Workspace`).
+    const insetyBez = props.insetsBezNawigatora;
+    const bezNawigatora =
+      rozdzielnica &&
+      !zadanie.wskazanie &&
+      cel !== null &&
+      insetyBez !== undefined &&
+      skalaDopasowaniaKadru(cel, viewportSize, effectiveSafeInsets) < SKALA_PODLOGI_ROZDZIELNICY &&
+      skalaDopasowaniaKadru(cel, viewportSize, insetyBez) >= SKALA_PODLOGI_ROZDZIELNICY;
+    if (bezNawigatora) props.onZwinNawigatorDlaKadru?.();
     dispatch({
       type: 'kadruj',
       anchor: cel,
       przeszkody,
       tuszEtykiet,
       viewportSize,
-      safeInsets: effectiveSafeInsets,
+      safeInsets: bezNawigatora && insetyBez !== undefined ? insetyBez : effectiveSafeInsets,
       ...(rozdzielnica ? { podlogaSkali: SKALA_PODLOGI_ROZDZIELNICY } : {}),
       ...(zadanie.wskazanie ? { wskazanie: true } : {}),
       przelot: true,
@@ -3344,12 +3420,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const szynyPunktowBezRysunku = useMemo(() => {
     const out = new Set<string>();
     if (trybDokumentu) return out;
-    const przeglad = stacjePrzegladu(scene.symbols, hierarchiaCelow, skalaRysunku);
+    const przeglad = stacjePrzegladu(scene.symbols, hierarchiaCelow, skalaLod);
     for (const [index, stacja] of szynySnPrzegladu(scene.segments, hierarchiaCelow, przeglad)) {
       if (przeglad.get(stacja) === 'punkt-rozlacznikowy') out.add((scene.segments[index].meta?.ownerRef ?? '').split('#')[0]);
     }
     return out;
-  }, [trybDokumentu, scene, hierarchiaCelow, skalaRysunku]);
+  }, [trybDokumentu, scene, hierarchiaCelow, skalaLod]);
   const alarmyStacji = useMemo(
     () => najgorszyStanStacji(hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements),
     [hierarchiaCelow, przekroczeniaWynikow, faultPointMarkerPlacements],
@@ -3365,12 +3441,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
     return out;
   }, [alarmyStacji, zaznaczenieRefy, hierarchiaCelow]);
+  // LOD0: opisy stacji przeglądowych — jedno wejście planu dla rysunku i tuszu kadru.
+  const przegladEtykiet = useMemo(() => przegladEtykietPrzySkali(scene, hierarchiaCelow), [scene, hierarchiaCelow]);
   const poprzedniPlanRef = useRef<{ readonly scene: SceneV3; readonly narysowane: ReadonlySet<number> } | null>(null);
   const labelPlan = useMemo((): LabelRenderPlan => {
     if (!isLayerVisible('labels', layerVisibility)) return { drawn: [], tozsamosciWPodpowiedzi: [] };
     const poprzedni = poprzedniPlanRef.current;
     const poprzednio = poprzedni !== null && poprzedni.scene === scene ? poprzedni.narysowane : undefined;
-    const plan = planSceneLabels(scene.labels, labelObstacles, skalaPlanu, sheetSize, podlogaCelu, poprzednio, pierwszenstwoNazw);
+    // LOD0 (punkt 3a): stacja w symbolu przeglądowym bez wierszy „Szyna nN” i opisów obiektów
+    // nierysowanych (`glifZbiorczy.etykietyPrzegladu`).
+    const przeglad = trybDokumentu ? undefined : przegladEtykiet(skalaLodPlanu);
+    const plan = planSceneLabels(scene.labels, labelObstacles, skalaPlanu, sheetSize, podlogaCelu, poprzednio, pierwszenstwoNazw, przeglad, skalaLodPlanu);
     if (szynyPunktowBezRysunku.size === 0) return plan;
     const opisRysowany = (ownerRef: string | undefined) => !szynyPunktowBezRysunku.has((ownerRef ?? '').split('#')[0]);
     return {
@@ -3378,7 +3459,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       drawn: plan.drawn.filter((p) => opisRysowany(p.label.ownerRef)),
       tozsamosciWPodpowiedzi: plan.tozsamosciWPodpowiedzi.filter((t) => opisRysowany(t.label.ownerRef)),
     };
-  }, [scene, labelObstacles, skalaPlanu, layerVisibility, sheetSize, podlogaCelu, szynyPunktowBezRysunku, pierwszenstwoNazw]);
+  }, [scene, labelObstacles, skalaPlanu, skalaLodPlanu, layerVisibility, sheetSize, podlogaCelu, szynyPunktowBezRysunku, pierwszenstwoNazw, trybDokumentu, przegladEtykiet]);
   const obrysArkusza = useMemo(() => obrysArkuszaPlanu(labelPlan, sheetSize), [labelPlan, sheetSize]);
   useEffect(() => {
     poprzedniPlanRef.current = { scene, narysowane: new Set(labelPlan.drawn.map((p) => p.index)) };
@@ -3396,12 +3477,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // (klasa danych GPZ × skala < 9 px) jej kształty bez treści były na kadrze całej sieci
   // szumem (drobne kwadraty i przerywane prostokąty nad obrysem GPZ). Warunek stoi w miejscu
   // montowania warstwy (warstwa paneli należy do karty pól): poniżej progu warstwa dostaje
-  // adnotacje bez tabeli; tła pól (`panele`) zostają — są częścią rysunku rozdzielnicy.
+  // adnotacje bez tabeli. Tła pól (`panele`) są tłem WNĘTRZA pola (aparatury) — gdy wnętrza
+  // pól nie są rysowane (LOD1, LOD0: `oknoRenderu.wnetrzePolRysowane`), pole GPZ jest odpływem
+  // jak pole stacji i tło nie ma węzła (oględziny architekta 2026-11-13 pkt 1: jeden próg
+  // wnętrza dla GPZ i stacji).
   const tabelaGpzCzytelna = LABEL_TYPOGRAPHY[KLASA_DANYCH_GPZ].fontSize * skalaRysunku >= MIN_READABLE_LABEL_SCREEN_PX;
-  const adnotacjeGpzWSkali = useMemo(
-    () => (adnotacjeGpz && !tabelaGpzCzytelna && adnotacjeGpz.tabela ? { ...adnotacjeGpz, tabela: null } : null),
-    [adnotacjeGpz, tabelaGpzCzytelna],
-  );
+  const tlaPolGpzRysowane = wnetrzePolRysowane(skalaLod);
+  const adnotacjeGpzWSkali = useMemo(() => {
+    if (!adnotacjeGpz) return null;
+    const bezTabeli = !tabelaGpzCzytelna && adnotacjeGpz.tabela !== null;
+    const bezTel = !tlaPolGpzRysowane && adnotacjeGpz.panele.length > 0;
+    if (!bezTabeli && !bezTel) return null;
+    return { ...adnotacjeGpz, tabela: bezTabeli ? null : adnotacjeGpz.tabela, panele: bezTel ? [] : adnotacjeGpz.panele };
+  }, [adnotacjeGpz, tabelaGpzCzytelna, tlaPolGpzRysowane]);
   // K2b §0.2 (b): najmniejsza wysokość narysowanego opisu celu kadru na ekranie —
   // kanał audytu (`data-min-opis-celu-px`) liczony tym samym obiektem podłogi, który
   // dostał plan. Licznik ukrytych opisów nie istnieje (karta SLD-SKALA-I-NAWIGACJA:
@@ -3445,7 +3533,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // stronach (reguła KLASA, NIE INSTANCJA pkt 3: warunek WEJŚCIA i WYJŚCIA z
   // jednego źródła).
   // Klucz memo: stan progu wnętrza, nie sama skala — zbiór zmienia się tylko na progu.
-  const wnetrzePol = wnetrzePolRysowane(skalaRysunku);
+  const wnetrzePol = wnetrzePolRysowane(skalaLod);
   const ukryteTestId = useMemo(() => {
     const ukryte = new Set<string>();
     // Obiekt bez węzła rysunku nie ma uchwytu: ukryta warstwa i adnotacja zabezpieczeń pola przy
@@ -3498,6 +3586,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         tozsamosciWPodpowiedzi: labelPlan.tozsamosciWPodpowiedzi,
         resultMarkers: resultMarkerHits,
         scale: camera.transform.scale,
+        skalaLod,
         ukryteTestId,
         hierarchiaCelow,
       }),
@@ -3604,11 +3693,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [scene],
   );
   const gabarytySymboli = useMemo(() => scene.symbols.map(gabarytSymbolu), [scene]);
+  // LOD1 i LOD0: znak stanu (kafel) niesie sprzęgło szyn i łącznik podstawowy pola
+  // (`glifZbiorczy.lacznikiZeZnakiemStanu`); pozostałe łączniki — przelot albo □.
+  const lacznikiZeZnakiemStanuRenderu = useMemo(() => lacznikiZeZnakiemStanu(scene.symbols, hierarchiaCelow), [scene, hierarchiaCelow]);
   // R8: stacje rysowane w kadrze przeglądowym symbolem stacji (szyna i nogi, `glifZbiorczy.ts`);
   // tryb dokumentu rysuje każdy obiekt własnym węzłem (skala rysunku 1).
   const symboleStacjiRenderu = useMemo(
-    () => (trybDokumentu ? [] : symboleStacji(scene.symbols, scene.segments, hierarchiaCelow, skalaRysunku)),
-    [trybDokumentu, scene, hierarchiaCelow, skalaRysunku],
+    () => (trybDokumentu ? [] : symboleStacji(scene.symbols, scene.segments, hierarchiaCelow, skalaLod)),
+    [trybDokumentu, scene, hierarchiaCelow, skalaLod],
   );
   // R8: obiekty stacji kadru przeglądowego bez własnego węzła — TEN SAM predykat co warstwa
   // trafień (`hitAreas.bezWezlaPrzegladu`).
@@ -3620,8 +3712,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     () =>
       symboleStacjiRenderu.length === 0
         ? { symbole: new Map<number, string>(), odcinki: new Map<number, string>() }
-        : bezWezlaPrzegladu(scene.symbols, scene.segments, hierarchiaCelow, stacjePrzegladu(scene.symbols, hierarchiaCelow, skalaRysunku)),
-    [symboleStacjiRenderu, scene, hierarchiaCelow, skalaRysunku],
+        : bezWezlaPrzegladu(scene.symbols, scene.segments, hierarchiaCelow, stacjePrzegladu(scene.symbols, hierarchiaCelow, skalaLod)),
+    [symboleStacjiRenderu, scene, hierarchiaCelow, skalaLod],
   );
   // R8: stan łącznika, który w kadrze przeglądowym niesie symbol stacji (□ w nodze, romb R1,
   // obiekt bez węzła), nie dostaje drugiego znacznika R5 — ref nośnika z tej samej formuły co
@@ -4029,6 +4121,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       data-skala-kamery={trybDokumentu ? undefined : camera.transform.scale.toFixed(4)}
       // R7: stan kamery — e2e czeka na „spoczynek” deterministycznie (bez odczytu klatek przelotu).
       data-stan-kamery={stanPrzelotu ? 'przelot' : 'spoczynek'}
+      // Poziom szczegółu (`oknoRenderu.poziomSzczegolu`: LOD0 symbol stacji, LOD1 pola jako
+      // odpływy, LOD2 pełny rysunek) — kanał audytu e2e i zrzutów.
+      data-poziom-szczegolu={trybDokumentu ? undefined : poziomLod}
       data-kadr-aktywny={zbiorKadru ? 'true' : undefined}
       data-min-opis-celu-px={zbiorKadru && opisyCelu.minPx !== null ? opisyCelu.minPx.toFixed(2) : undefined}
       width={width}
@@ -4234,7 +4329,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 overlay={effectiveOverlay}
                 cameraScale={skalaRysunku}
                 ramkaBloku={ramkiBlokow.get(index)}
-                obrysBezWnetrza={obrysBezWnetrzaSymbolu(symbol, gabaryt, skalaRysunku) ? gabaryt : undefined}
+                obrysBezWnetrza={obrysBezWnetrzaSymbolu(symbol, gabaryt, skalaRysunku, skalaLod) ? gabaryt : undefined}
+                bezWnetrza={
+                  aparatBezWnetrza(symbol, skalaLod)
+                    ? wygladAparatuBezWnetrza(symbol, gabaryt, skalaRysunku, lacznikiZeZnakiemStanuRenderu.has(index) ? stanKaflaLacznika(symbol.symbolId, symbol.state) : null)
+                    : undefined
+                }
                 znakPrzegladowy={transformatoryPrzegladowe.has(index) ? gabaryt : undefined}
                 przerwaWNodze={przerwyNog.get(index)}
               />

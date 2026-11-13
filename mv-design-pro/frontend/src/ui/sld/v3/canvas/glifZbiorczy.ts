@@ -23,6 +23,7 @@
  * Czyste funkcje, bez DOM.
  */
 import { GRID, type V3Rect } from '../core/grid';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { PreviewSegment, PreviewSymbol } from '../compose/preview';
 import { resultSeverityRank } from '../theme/colorTokens';
 import {
@@ -31,10 +32,15 @@ import {
   stacjePrzegladu,
   szynySnPrzegladu,
   stacjaPrzegladuObiektu,
+  sprzegloSzyn,
   type HierarchiaCelowWejscie,
   type RodzajStacjiPrzegladu,
 } from './hitAreas';
-import { przerwaToru } from './torMocy';
+import { ZNACZNIK_PRZERWY_PX } from './oknoRenderu';
+import { LACZNIKI_TORU_MOCY, przerwaToru } from './torMocy';
+import type { SymbolId } from '../symbols/defs';
+import type { OwnedLabel } from '../layout/labels';
+import type { EtykietyPrzegladuStacji } from './labelLegibility';
 
 /** Noga symbolu stacji: oś pola od szyny do portu toru (współrzędne sceny). */
 export interface NogaStacji {
@@ -67,6 +73,10 @@ export interface SymbolStacji {
   /** Szyna rysowana w kadrze przeglądowym: rozpiętość nóg (odgałęzienie wychodzi z KOŃCA szyny,
    *  decyzja właściciela O4), a przy jednej nodze (stacja końcowa) — rozpiętość szyny SN sceny. */
   readonly szynaPrzegladu: { readonly x0: number; readonly x1: number; readonly y: number } | undefined;
+  /** Przerwy szyny przeglądowej: rozpiętość [x0, x1] każdego sprzęgła szyn przerywającego tor
+   *  (otwarte, nieustalone — `torMocy.przerwaToru`), rosnąco. Sprzęgło zamknięte nie przerywa
+   *  szyny; stan obu niesie kafel stanu sprzęgła (`oknoRenderu.wygladAparatuBezWnetrza`). */
+  readonly przerwySzyny: readonly { readonly x0: number; readonly x1: number }[];
 }
 
 const EPS = 1e-6;
@@ -154,13 +164,86 @@ export function symboleStacji(
       const xs = pts.map((p) => p.x);
       szynaPrzegladu = { x0: Math.min(...xs), x1: Math.max(...xs), y: pts[0].y };
     }
+    // Sprzęgło szyn (oględziny architekta 2026-11-13 pkt 2): znak stanu stoi na szynie
+    // przeglądowej — szyna obejmuje środek każdego sprzęgła stacji (sekcje po obu stronach).
+    const przerwySzyny: { x0: number; x1: number }[] = [];
+    if (szynaPrzegladu !== undefined) {
+      for (const sx of symbole) {
+        if (!sprzegloSzyn(hierarchia, sx) || stacjaPrzegladuObiektu(hierarchia, przeglad, sx.meta?.ownerRef) !== stacjaRef) continue;
+        const g = gabarytSymbolu(sx);
+        const cx = g.x + g.width / 2;
+        szynaPrzegladu = { x0: Math.min(szynaPrzegladu.x0, cx), x1: Math.max(szynaPrzegladu.x1, cx), y: szynaPrzegladu.y };
+        if (przerwaToru(sx)) przerwySzyny.push({ x0: g.x, x1: g.x + g.width });
+      }
+      przerwySzyny.sort((a, b) => a.x0 - b.x0);
+    }
     if (rodzaj === 'punkt-rozlacznikowy') {
       const otwarty = symbole.some((s) => przerwaToru(s) && stacjaPrzegladuObiektu(hierarchia, przeglad, s.meta?.ownerRef) === stacjaRef);
-      out.push({ stacjaRef, rodzaj, szyny, nogi, szynaPrzegladu, stanPunktu: otwarty ? 'otwarty' : 'zamkniety' });
+      out.push({ stacjaRef, rodzaj, szyny, nogi, szynaPrzegladu, przerwySzyny, stanPunktu: otwarty ? 'otwarty' : 'zamkniety' });
     } else {
-      out.push({ stacjaRef, rodzaj, szyny, nogi, szynaPrzegladu });
+      out.push({ stacjaRef, rodzaj, szyny, nogi, szynaPrzegladu, przerwySzyny });
     }
   }
+  return out;
+}
+
+/**
+ * Ranga łącznika jako ŁĄCZNIKA PODSTAWOWEGO pola wg zdolności łączeniowej (mniejsza — ważniejsza):
+ * 0 — wyłącznik (łączy i wyłącza prądy zwarciowe; także reklozer i wyłącznik w torze poziomym);
+ * 1 — łącznik łączący prąd roboczy: rozłącznik, rozłącznik z bezpiecznikami, łącznik
+ * trójpołożeniowy, łącznik w torze poziomym, punkt normalnie otwarty; 2 — odłącznik (łączy
+ * bez prądu, przerwa widoczna). Kolejność biblioteki `CONTINUITY_APPARATUS_SYMBOL_IDS` stawia
+ * odłącznik przed rozłącznikiem (pierwszeństwo rysunku L0), dlatego tu tabela jawna: w polu
+ * „odłącznik + rozłącznik” stanem pola jest rozłącznik. Tabela pokrywa cały zbiór
+ * `LACZNIKI_TORU_MOCY` (test kontraktu).
+ */
+export const RANGA_LACZNIKA_PODSTAWOWEGO: Readonly<Partial<Record<SymbolId, 0 | 1 | 2>>> = {
+  breaker: 0,
+  qetBreaker: 0,
+  qetBreakerZNapedem: 0,
+  qetBreakerWysuwny: 0,
+  qetBreakerWysuwnyZNapedem: 0,
+  lineBreaker: 0,
+  recloser: 0,
+  loadBreakSwitch: 1,
+  qetLoadBreakSwitch: 1,
+  fuseSwitch: 1,
+  qetFuseSwitch: 1,
+  qetThreePositionSwitch: 1,
+  qetThreePositionSwitchZNapedem: 1,
+  lineSwitch: 1,
+  noPoint: 1,
+  disconnector: 2,
+  qetDisconnector: 2,
+};
+
+/**
+ * Łączniki ze ZNAKIEM STANU (kafel w barwie położenia) w LOD1 i LOD0 (dyrektywa właściciela
+ * 2026-11-13: LOD1 — „podstawowy łącznik i stan”; LOD0 — stan sprzęgła): każde sprzęgło szyn
+ * (`hitAreas.sprzegloSzyn`) i ŁĄCZNIK PODSTAWOWY każdego pola — łącznik toru mocy o najmniejszej
+ * randze `RANGA_LACZNIKA_PODSTAWOWEGO`, przy remisie pierwszy w kolejności sceny (determinizm).
+ * Pozostałe łączniki pola: zamknięte — przelot linii, otwarte — □ przerwy toru
+ * (`oknoRenderu.wygladAparatuBezWnetrza`). Wynik: indeksy symboli sceny.
+ */
+export function lacznikiZeZnakiemStanu(
+  symbole: readonly PreviewSymbol[],
+  hierarchia: HierarchiaCelowWejscie,
+): ReadonlySet<number> {
+  const out = new Set<number>();
+  const podstawowy = new Map<string, { index: number; ranga: number }>();
+  symbole.forEach((symbol, index) => {
+    if (symbol.meta?.elementKind !== 'apparatus' || !LACZNIKI_TORU_MOCY.has(symbol.symbolId)) return;
+    if (sprzegloSzyn(hierarchia, symbol)) {
+      out.add(index);
+      return;
+    }
+    const { pole } = poleIStacjaObiektu(hierarchia, symbol.meta?.ownerRef);
+    const ranga = RANGA_LACZNIKA_PODSTAWOWEGO[symbol.symbolId];
+    if (pole === undefined || ranga === undefined) return;
+    const dotychczas = podstawowy.get(pole);
+    if (dotychczas === undefined || ranga < dotychczas.ranga) podstawowy.set(pole, { index, ranga });
+  });
+  for (const { index } of podstawowy.values()) out.add(index);
   return out;
 }
 
@@ -209,6 +292,20 @@ export function przerwyWNogach(
     out.set(index, { x: noga.x - bok / 2, y: cy - bok / 2, width: bok, height: bok });
   });
   return out;
+}
+
+/** Ścieżka szyny przeglądowej z przerwami sprzęgieł przerywających tor (`przerwySzyny`). */
+export function sciezkaSzyny(stacja: SymbolStacji): string {
+  const sz = stacja.szynaPrzegladu;
+  if (sz === undefined) return '';
+  const czesci: string[] = [];
+  let x = sz.x0;
+  for (const p of stacja.przerwySzyny) {
+    if (p.x0 > x) czesci.push(`M ${x} ${sz.y} H ${p.x0}`);
+    x = Math.max(x, p.x1);
+  }
+  if (sz.x1 > x) czesci.push(`M ${x} ${sz.y} H ${sz.x1}`);
+  return czesci.join(' ');
 }
 
 /** Ścieżka nóg symbolu stacji: każda noga osobną podścieżką pionową od szyny do portu toru. */
@@ -308,19 +405,6 @@ export function najgorszyStanStacji(
   return out;
 }
 
-/** Bok znacznika przerwy toru [px EKRANU] — łącznik otwarty bez czytelnego wnętrza. */
-export const ZNACZNIK_PRZERWY_PX = 6;
-
-/**
- * Znacznik przerwy toru dla łącznika otwartego bez czytelnego wnętrza: kwadrat o boku
- * `ZNACZNIK_PRZERWY_PX` ekranu, wyśrodkowany na gabarycie symbolu — wypełniony tłem kanwy
- * (przerywa linię toru) i obrysowany kolorem stanu łącznika.
- */
-export function znacznikPrzerwyToru(gabaryt: V3Rect, skala: number): V3Rect {
-  const bok = ZNACZNIK_PRZERWY_PX / (Number.isFinite(skala) && skala > 0 ? skala : 1);
-  return { x: gabaryt.x + gabaryt.width / 2 - bok / 2, y: gabaryt.y + gabaryt.height / 2 - bok / 2, width: bok, height: bok };
-}
-
 /**
  * Znak przeglądowy transformatora (wymaganie „transformator jako znak zmiany poziomu napięcia”):
  * dwa stykające się okręgi uzwojeń w gabarycie symbolu, jedną ścieżką — porty na górnej i dolnej
@@ -334,4 +418,58 @@ export function znakPrzegladowyTransformatora(g: V3Rect): string {
   const c2 = g.y + g.height - r;
   const okrag = (cy: number) => `M ${cx - r} ${cy} a ${r} ${r} 0 1 0 ${2 * r} 0 a ${r} ${r} 0 1 0 ${-2 * r} 0`;
   return `${okrag(c1)} ${okrag(c2)}`;
+}
+
+/**
+ * LOD0 — OPISY STACJI W SYMBOLU PRZEGLĄDOWYM (dyrektywa właściciela 2026-11-13, punkt 3a): stacja
+ * rysowana symbolem nie ma pod sobą wiersza „Szyna nN · 0,4 kV” ani innych wierszy pasma nazw
+ * poza pierwszym (nazwa stacji) — w sieci 52 stacji ten sam wiersz powtarzał się 52 razy. Opisy
+ * obiektów, których w LOD0 nie ma na rysunku (pola, źródła i odbiory w stacji), też przechodzą do
+ * podpowiedzi celu stacji. Zostają: nazwa stacji (`<stacja>#name-row-0`) i opisy szyn SN (sekcje —
+ * stacja dwusekcyjna rozpoznawalna). Położenie nazwy względem obrysu należy do układu
+ * (`sld/v3/layout/**`, wykonawca geometrii), nie do tej funkcji. Przynależność opisu do stacji —
+ * z hierarchii celów (właściciel bez sufiksu „#…”), a dla właściciela spoza hierarchii — z
+ * przedrostka referencji stacji. Wynik: indeksy etykiet sceny przeniesionych do podpowiedzi.
+ */
+export function etykietyPrzegladu(
+  labels: readonly OwnedLabel[],
+  stacje: readonly SymbolStacji[],
+  hierarchia: HierarchiaCelowWejscie,
+): EtykietyPrzegladuStacji {
+  const ukryte = new Set<number>();
+  if (stacje.length === 0) return { ukryte };
+  const poRef = new Map(stacje.map((s) => [s.stacjaRef, s] as const));
+  const przedrostki = stacje.map((s) => [s.stacjaRef.slice(0, s.stacjaRef.lastIndexOf('/') + 1), s.stacjaRef] as const).filter(([p]) => p.length > 0);
+  labels.forEach((label, index) => {
+    const baza = label.ownerRef.split('#')[0];
+    const { pole, stacja } = poleIStacjaObiektu(hierarchia, baza);
+    let ref = stacja ?? (pole === undefined ? undefined : hierarchia.pola.get(pole)?.stacjaRef);
+    if (ref === undefined || !poRef.has(ref)) ref = przedrostki.find(([p]) => baza.startsWith(p))?.[1];
+    const st = ref === undefined ? undefined : poRef.get(ref);
+    if (st === undefined) return;
+    if (label.ownerRef === `${st.stacjaRef}#name-row-0` || label.ownerKind === 'busbar-voltage') return;
+    ukryte.add(index);
+  });
+  return { ukryte };
+}
+
+/**
+ * Opisy stacji przeglądowych przy skali (`etykietyPrzegladu` na symbolach stacji tej skali) —
+ * JEDNO wejście planu etykiet dla kanwy, tuszu kadru (`zakresKadru.prostokatyZakresu`) i sond
+ * testowych (para z `znacznikiStanu.przeszkodyEtykietPrzySkali`). `skala` jest skalą poziomu
+ * szczegółu (kanwa podaje `oknoRenderu.skalaPoziomu`); wynik pamiętany per skala.
+ */
+export function przegladEtykietPrzySkali(
+  scene: { readonly symbols: readonly PreviewSymbol[]; readonly segments: readonly PreviewSegment[]; readonly labels: readonly OwnedLabel[] },
+  hierarchia: HierarchiaCelowWejscie,
+): (skala: number) => EtykietyPrzegladuStacji {
+  const pamiec = new Map<number, EtykietyPrzegladuStacji>();
+  return (skala) => {
+    let wynik = pamiec.get(skala);
+    if (wynik === undefined) {
+      wynik = etykietyPrzegladu(scene.labels, symboleStacji(scene.symbols, scene.segments, hierarchia, skala), hierarchia);
+      pamiec.set(skala, wynik);
+    }
+    return wynik;
+  };
 }

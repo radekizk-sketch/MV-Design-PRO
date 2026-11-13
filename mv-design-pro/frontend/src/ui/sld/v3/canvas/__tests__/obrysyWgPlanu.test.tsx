@@ -322,7 +322,11 @@ describe('kanwa: ramka bloku i tło pola w kadrze pola obejmują powiększone wi
     // (korekta v2 2026-11-04: ramka sceny bloku bez okręgu ma zapas do oczka siatki i szerokość
     // minimalną z wejść linii — przy 3000 × 1300 powiększone wiersze mieściły się jeszcze w ramce
     // sceny i iniekcja niżej przestała rozróżniać; przy 1700 × 736 plan ukrywa wiersze).
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={2400} height={1040} refyKadru={z.zakres.refy} />);
+    // Korekta 2026-11-13 (dyrektywa właściciela, LOD2 od 9/11 = 0,818): przy 2400 × 1040 kadr
+    // dawał skalę 0,809 — LOD1, w którym ramka bloku zabezpieczeń nie jest rysowana. Kanwa
+    // 2800 × 1213 daje 0,968 (pomiar): LOD2, a pismo t4 (8 × 0,968 = 7,7 px) wciąż poniżej
+    // podłogi celu, więc wiersze są powiększone i iniekcja ramki sceny nadal rozróżnia.
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={2800} height={1213} refyKadru={z.zakres.refy} />);
     const grupa = container.querySelector(`[data-testid="${CSS.escape(symbolTestId(przekaznik, indeks))}"]`)!;
     const rama = grupa.querySelector('[data-przekaznik="ramka-bloku"]');
     expect(rama, 'ramka bloku narysowana').not.toBeNull();
