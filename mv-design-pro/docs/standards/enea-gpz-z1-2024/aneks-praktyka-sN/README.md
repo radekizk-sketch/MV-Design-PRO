@@ -15,6 +15,13 @@ Nie ujawniać w repo: nazwy GPZ, adresu/lokalizacji, osób, numerów inwestycji,
 
 Wartości nastaw z P2 wykorzystano do **wzorców grup parametrów, klas wielkości i testów składni/jednostek**, ale nie do publikacji operacyjnego „pliku nastaw stacji”. Rozdzielamy numer katalogowy urządzenia, dane konkretnego wykonania oraz regułę inżynierską.
 
+
+## Katalog pól dostępny w API referencji
+
+[Pełne profile e²ALPHA i dane producentów](PAKIET_E2ALPHA_PELNE_POLA_DANE_PRODUCENTA.md) — 86 pozycji, 7 profili oraz 10 zanonimizowanych przykładów, połączonych z istniejącym pakietem `elektrometal_e2alpha`.
+
+Plik: `backend/src/reference_engine/packs/elektrometal_e2alpha/approved_project_fields.json`. Kontrakt: `GET /api/reference/packs/elektrometal_e2alpha` → `approved_project_reference`. Dane zatwierdzone projektowo nie są mieszane z `cell_configurations` oficjalnego katalogu producenta. Kod ładowania i 10 testów integralności dodano w tym samym PR; nie przeprowadzono jeszcze uruchomienia CI.
+
 ## Zawartość aneksu
 
 - [PRODUCENCI_I_KATALOGI.md](PRODUCENCI_I_KATALOGI.md): osobne katalogi produktów, cech, wariantów i źródeł producenta.
