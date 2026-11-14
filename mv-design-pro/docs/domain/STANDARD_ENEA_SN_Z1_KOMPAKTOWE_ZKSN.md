@@ -188,6 +188,13 @@ wymaganiami minimalnymi (§1).
 
 - **DECYZJA WŁAŚCICIELA 2026-11-13 (reklozery):** w sieci ENEA generalnie nie stosuje się
   reklozerów. Produkt nie proponuje reklozera jako aparatu pola stacji ani ZKSN.
+- **DECYZJA WŁAŚCICIELA 2026-11-14 (doprecyzowanie: wyłącznik poza GPZ tylko wyjątkowo):**
+  typ aparatu „reklozer” (gotowy reklozer słupowy) jest wykluczony z profilu ENEA. Poza GPZ
+  aparatem domyślnym pola liniowego jest rozłącznik trzypołożeniowy (stacja: 4.3.8; ZKSN: 5.5.1). Wyłącznik
+  z zabezpieczeniem i SPZ (Zeszyt 1 §5.5.1 „dopuszcza się”, standard telemechaniki §6.3.4,
+  Katalog sygnałów „Punkt wyłącznikowy SN”) jest dopuszczony wyłącznie jako jawny wybór
+  projektanta z uzasadnieniem: walidator zgłasza ostrzeżenie, a uzasadnienie trafia
+  do raportu.
 - **DECYZJA WŁAŚCICIELA 2026-11-13 (odgałęzienia):** odgałęzienie na gołej szynie jest
   zakazane. Odgałęzienie z kabla wykonuje się wyłącznie przez ZKSN (rysowany jak stacja bez
   transformatora). Odgałęzienie z linii napowietrznej — przez słup z rozłącznikiem. Odgałęzienie
@@ -232,8 +239,11 @@ wymaganiami minimalnymi (§1).
    liniowym, a 4.3.13 i 5.5.5 przewidują przy nim zabezpieczenia. Standard nie mówi
    o reklozerze (wyłączniku z SPZ na linii); standard telemechaniki 6.3.4 przewiduje funkcję
    SPZ w wyłączniku z zabezpieczeniem, a Katalog sygnałów definiuje „Punkt wyłącznikowy SN”
-   z SPZ. Decyzja właściciela (§5) rozstrzyga dla produktu: wyłącznik w polu stacji
-   dopuszczalny, reklozer nieproponowany.
+   z SPZ. Decyzja właściciela z 2026-11-13 wykluczała reklozer, nie wyłącznik.
+   **Rozstrzygnięte 2026-11-14** decyzją właściciela „wyłącznik poza GPZ tylko wyjątkowo”
+   (sekcja decyzji właściciela): reklozer wykluczony z profilu ENEA; domyślnie rozłącznik
+   trzypołożeniowy; wyłącznik z zabezpieczeniem i SPZ tylko jako jawny wybór projektanta
+   z uzasadnieniem, ostrzeżeniem walidatora i uzasadnieniem w raporcie.
 9. **Odgałęzienia:** Zeszyt 1 nie formułuje wprost zakazu odgałęzienia na szynie; ZKSN jest
    w nim jedynym obiektem rozdziału sieci kablowej bez TR, co jest zgodne z decyzją
    właściciela. Sprzecznej treści nie znaleziono.

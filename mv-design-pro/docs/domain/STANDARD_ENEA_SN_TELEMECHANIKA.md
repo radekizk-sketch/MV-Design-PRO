@@ -110,6 +110,13 @@ jest zgodnością; wartość robocza (`ESTIMATED`) daje dowód `NIEPELNY`.
   Produkt nie proponuje reklozera w polu stacji ani ZKSN, mimo że standard telemechaniki
   (ET-22, funkcja SPZ) i Katalog sygnałów (ETS-06, punkt wyłącznikowy z SPZ) opisują
   wyłącznik z SPZ — patrz luka 1.
+- **DECYZJA WŁAŚCICIELA 2026-11-14 (doprecyzowanie: wyłącznik poza GPZ tylko wyjątkowo):**
+  typ aparatu „reklozer” (gotowy reklozer słupowy) jest wykluczony z profilu ENEA. Poza GPZ
+  aparatem domyślnym pola liniowego jest rozłącznik trzypołożeniowy (Zeszyt 1 4.3.8 i 5.5.1). Wyłącznik
+  z zabezpieczeniem i SPZ (Zeszyt 1 §5.5.1 „dopuszcza się”, standard telemechaniki §6.3.4,
+  Katalog sygnałów „Punkt wyłącznikowy SN”) jest dopuszczony wyłącznie jako jawny wybór
+  projektanta z uzasadnieniem: walidator zgłasza ostrzeżenie, a uzasadnienie trafia
+  do raportu.
 - **DECYZJA WŁAŚCICIELA 2026-11-13:** odgałęzienia — z kabla przez ZKSN, z linii przez słup
   z rozłącznikiem, mieszane przez słup z rozłącznikiem i głowicą; na gołej szynie zakazane.
   Katalog sygnałów zna „Punkt rozłącznikowy SN” (ETS-05), co jest zgodne z decyzją.
@@ -127,9 +134,11 @@ jest zgodnością; wartość robocza (`ESTIMATED`) daje dowód `NIEPELNY`.
 1. **Reklozer / wyłącznik z SPZ:** ET-21–ET-23 (funkcja SPZ w wyłączniku z zabezpieczeniem)
    i ETS-06 (punkt wyłącznikowy SN z „cyklem SPZ” i „definitywnym wyłączeniem”) opisują
    urządzenie funkcjonalnie równe reklozerowi. Decyzja właściciela z 2026-11-13 mówi, że ENEA
-   generalnie nie stosuje reklozerów. Obie wersje zapisane; produkt stosuje decyzję
-   właściciela, a punkt wyłącznikowy z SPZ dopuszcza wyłącznie jako jawny wyjątek projektanta
-   (z podstawą: standard telemechaniki 6.3.4).
+   generalnie nie stosuje reklozerów. Obie wersje zapisane.
+   **Rozstrzygnięte 2026-11-14** decyzją właściciela „wyłącznik poza GPZ tylko wyjątkowo”
+   (sekcja decyzji właściciela): reklozer wykluczony z profilu ENEA; domyślnie rozłącznik
+   trzypołożeniowy; wyłącznik z zabezpieczeniem i SPZ tylko jako jawny wybór projektanta
+   z uzasadnieniem, ostrzeżeniem walidatora i uzasadnieniem w raporcie.
 2. **„Pole zasilające ZKSN” (6.7.2):** rysunki ZKSN w Zeszycie 1 (rys. 4a–4j) nie wyróżniają
    pola zasilającego; rys. 4b pokazuje przekładnik na odpływie kablowym pola 1, poza
    rozdzielnicą. Standard telemechaniki nie definiuje pojęcia. Produkt przyjmuje pole

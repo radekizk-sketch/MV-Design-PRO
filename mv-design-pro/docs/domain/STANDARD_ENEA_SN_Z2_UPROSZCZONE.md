@@ -104,6 +104,13 @@ przewiduje się rozbudowy o dodatkowe pola SN ani nN.
 ## 4. Decyzje właściciela (NIE są wymaganiami ENEA)
 
 - **DECYZJA WŁAŚCICIELA 2026-11-13:** w sieci ENEA generalnie nie stosuje się reklozerów.
+- **DECYZJA WŁAŚCICIELA 2026-11-14 (doprecyzowanie: wyłącznik poza GPZ tylko wyjątkowo):**
+  typ aparatu „reklozer” (gotowy reklozer słupowy) jest wykluczony z profilu ENEA. Poza GPZ
+  aparatem domyślnym pola liniowego jest rozłącznik trzypołożeniowy (Zeszyt 2 4.3.8). Wyłącznik
+  z zabezpieczeniem i SPZ (Zeszyt 1 §5.5.1 „dopuszcza się”, standard telemechaniki §6.3.4,
+  Katalog sygnałów „Punkt wyłącznikowy SN”) jest dopuszczony wyłącznie jako jawny wybór
+  projektanta z uzasadnieniem: walidator zgłasza ostrzeżenie, a uzasadnienie trafia
+  do raportu.
 - **DECYZJA WŁAŚCICIELA 2026-11-13:** odgałęzienie na gołej szynie zakazane; z kabla tylko
   przez ZKSN, z linii napowietrznej przez słup z rozłącznikiem, mieszane przez słup
   z rozłącznikiem i głowicą.
@@ -136,6 +143,10 @@ przewiduje się rozbudowy o dodatkowe pola SN ani nN.
    do 400 kVA — zakres przekaźnika przeniesiony z Zeszytu 1 bez zawężenia.
 9. **Reklozery:** 4.3.8 i 4.3.11 dopuszczają wyłącznik w polu liniowym; decyzja właściciela
    wyklucza reklozer, nie wyłącznik.
+   **Rozstrzygnięte 2026-11-14** decyzją właściciela „wyłącznik poza GPZ tylko wyjątkowo”
+   (sekcja decyzji właściciela): reklozer wykluczony z profilu ENEA; domyślnie rozłącznik
+   trzypołożeniowy; wyłącznik z zabezpieczeniem i SPZ tylko jako jawny wybór projektanta
+   z uzasadnieniem, ostrzeżeniem walidatora i uzasadnieniem w raporcie.
 
 ## 7. Mapa wdrożenia (stan głównego checkoutu, pomiar 2026-11-13)
 

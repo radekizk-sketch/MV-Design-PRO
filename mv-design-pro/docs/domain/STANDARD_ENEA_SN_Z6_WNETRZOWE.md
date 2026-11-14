@@ -93,6 +93,13 @@ wyjaśnialnym; wartość robocza daje dowód `NIEPELNY`.
 ## 4. Decyzje właściciela (NIE są wymaganiami ENEA)
 
 - **DECYZJA WŁAŚCICIELA 2026-11-13:** w sieci ENEA generalnie nie stosuje się reklozerów.
+- **DECYZJA WŁAŚCICIELA 2026-11-14 (doprecyzowanie: wyłącznik poza GPZ tylko wyjątkowo):**
+  typ aparatu „reklozer” (gotowy reklozer słupowy) jest wykluczony z profilu ENEA. Poza GPZ
+  aparatem domyślnym pola liniowego jest rozłącznik trzypołożeniowy (Zeszyt 6 4.3.8). Wyłącznik
+  z zabezpieczeniem i SPZ (Zeszyt 1 §5.5.1 „dopuszcza się”, standard telemechaniki §6.3.4,
+  Katalog sygnałów „Punkt wyłącznikowy SN”) jest dopuszczony wyłącznie jako jawny wybór
+  projektanta z uzasadnieniem: walidator zgłasza ostrzeżenie, a uzasadnienie trafia
+  do raportu.
 - **DECYZJA WŁAŚCICIELA 2026-11-13:** odgałęzienie z kabla tylko przez ZKSN; odgałęzienie
   na gołej szynie zakazane. Zeszyt 6 §2 jest z tym zgodny: wnętrzowe rozwiązanie zastępuje
   ZKSN, gdy prefabrykowanego nie da się postawić.
@@ -119,6 +126,13 @@ wyjaśnialnym; wartość robocza daje dowód `NIEPELNY`.
    określa numeracji pól.
 6. **Zeszyt 4 §5.1** nie wymienia Zeszytu 6 jako miejsca montażu szafy AMI (patrz
    `STANDARD_ENEA_SN_Z4_AMI.md`, luka 2).
+7. **Reklozery a tekst standardu:** 4.3.8–4.3.11 i 4.3.13 dopuszczają wyłącznik w polu
+   liniowym z zabezpieczeniami, a decyzja właściciela z 2026-11-13 mówiła, że ENEA generalnie
+   nie stosuje reklozerów.
+   **Rozstrzygnięte 2026-11-14** decyzją właściciela „wyłącznik poza GPZ tylko wyjątkowo”
+   (sekcja decyzji właściciela): reklozer wykluczony z profilu ENEA; domyślnie rozłącznik
+   trzypołożeniowy; wyłącznik z zabezpieczeniem i SPZ tylko jako jawny wybór projektanta
+   z uzasadnieniem, ostrzeżeniem walidatora i uzasadnieniem w raporcie.
 
 ## 7. Mapa wdrożenia (stan głównego checkoutu, pomiar 2026-11-13)
 
