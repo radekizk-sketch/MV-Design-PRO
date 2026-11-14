@@ -45,7 +45,7 @@ myląca.
 | Nr | Punkt IRiESD | Standard techniczny | Opis |
 |----|--------------|---------------------|------|
 | LI-01 | II.4.5.4.7.1 ppkt 1 | Zeszyt 1 §26.9.3 (`STANDARD_ENEA_GPZ_Z1.md` E-42, L-04) | IRiESD: SCO nie uruchamia się w liniach z przyłączonymi jednostkami wytwórczymi i nie instaluje w rozdzielniach SN GPO; Zeszyt 1 przewiduje SCO także w polach linii z generacją. Sprzeczność. |
-| LI-02 | II.4.5.4.7.1 ppkt 2 | Zeszyt 1 §26.10.6 (E-50, L-05) | IRiESD: SPZ/SCO tylko w uzgodnieniu z ENEA Operator; Zeszyt 1 opisuje funkcję bez tego warunku. |
+| LI-02 | II.4.5.4.7.1 ppkt 2 | Zeszyt 1 §26.10.6 (E-50, L-05) | IRiESD: SPZ/SCO tylko w uzgodnieniu z ENEA Operator; Zeszyt 1 opisuje funkcję bez tego warunku.  Warunek dotyczy automatyki SPZ/SCO rozdzielni, nie SPZ (ANSI 79) wyłącznika liniowego — ten poza GPZ reguluje decyzja właściciela 2026-11-14 (`STANDARD_ENEA_LINIE_NAPOWIETRZNE_SN.md` §3 pkt 5). |
 | LI-03 | II.4.5.4.2.1 ppkt 3 | Zeszyt 1 §26.10.1 (E-45, L-06) | IRiESD: automatyka wielokrotnego SPZ z programowaniem i blokowaniem dla pól linii napowietrznych i napowietrzno-kablowych SN; Zeszyt 1 mówi o SPZ jedno- albo dwukrotnym. |
 | LI-04 | II.4.5.4.7.1 ppkt 4 | Zeszyt 1 §26.9.9 (E-19) | IRiESD uzupełnia: zabezpieczenie szyn zbiorczych SN (różnicowe poprzeczne albo nadprądowo-logiczne) działa w czasie nie dłuższym niż 0,3 s i wyłącza także linie z elektrowniami lokalnymi. |
 | LI-05 | II.4.5.4.7.1 ppkt 3 i 5, II.4.5.4.7.2 | Zeszyt 1 §13, §26.10.2, §26.10.5 (E-35, E-46, E-49) | IRiESD uzupełnia: LRW wyłącza także linie z elektrowniami lokalnymi; SZR zakazany w rozdzielniach SN GPO; przy jednostkach wytwórczych SZR z kontrolą napięcia szczątkowego (zalecane) albo wyłączenie linii z generacją przed załączeniem rezerwy. |

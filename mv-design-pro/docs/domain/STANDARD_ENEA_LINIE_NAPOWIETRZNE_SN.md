@@ -122,6 +122,27 @@ punkt standardu, wartość w modelu, wymaganie, margines. Brak danej ≠ zgodno�
 4. Przypisanie rodzaju łącznika do „magistrali” albo „odgałęzienia” na podstawie topologii
    modelu (np. odgałęzienie dłuższe niż pewna długość = „rozbudowane”) jest interpretacją
    produktu; standard nie podaje progu długości.
+5. **DECYZJA WŁAŚCICIELA 2026-11-14 — SPZ (ANSI 79) poza GPZ dopuszczalne warunkowo.** Nie ma
+   globalnego zakazu ani ograniczenia lokalizacyjnego „tylko GPZ”. Podstawa przywołana przez
+   właściciela i sprawdzona w tekście (prywatne repozytorium źródeł, `enea/tekst/`):
+   - IRiESD 2.3, pkt II.4.5.4.1.6 (s. 51): zalecenie automatyki EAZ w głębi sieci SN;
+   - IRiESD 2.3, pkt II.4.5.4.2.1 ppkt 3 i II.4.5.4.2.2 ppkt 3 (s. 51–52): wielokrotny SPZ,
+     programowalny i blokowalny, w polach linii napowietrznych i napowietrzno-kablowych SN;
+   - II.4.5.4.2.2 ppkt 7 i II.4.5.4.2.3 ppkt 6: blokada załączenia przy obecności napięcia w linii
+     albo kontrola synchronizmu w polach z generacją;
+   - ten standard: §4.9 (ELN-28) dopuszcza wyłącznik z automatyką zabezpieczeniową w linii w
+     uzgodnieniu z operatorem; odczyt rysunku płyty szafy sterowniczej łącznika — załącznik 2
+     s. 91 (PDF 214) i załącznik 3 s. 76 (PDF 313, ELN-49): przełącznik „SPZ załączony / odłączony”.
+     Tekst §4.9 nie wymienia SPZ z nazwy; SPZ wynika z rysunków szafy i z IRiESD.
+   Reguły produktu: SPZ na wyłączniku poza GPZ jest opcją projektową, domyślnie nieaktywną;
+   aktywacja eksploatacyjna wymaga uzgodnienia konkretnego rozwiązania z ENEA Operator — bez
+   uzgodnienia status „Wymaga uzgodnienia ENEA” (nie „Niedozwolone”); ocena obejmuje
+   selektywność, koordynację z SPZ pola w GPZ, sekwencję załączeń, blokady i obecność OZE, a dla
+   linii z generacją kontrolę obecności napięcia i synchronizmu, gdy wymagają tego warunki sieci
+   lub ENEA; raport podaje lokalizację, nastawy SPZ, status i dokument uzgodnienia.
+   SPZ (ANSI 79) nie jest tym samym co SPZ po SCO: warunek uzgodnienia z pkt II.4.5.4.7.1 ppkt 2
+   dotyczy automatyki SPZ/SCO rozdzielni i nie jest samodzielną podstawą dla SPZ wyłącznika
+   liniowego. Norma IEC nie rozstrzyga zgody operatora na lokalizację SPZ.
 
 ## 4. Luki i niejednoznaczności
 
@@ -137,8 +158,9 @@ punkt standardu, wartość w modelu, wymaganie, margines. Brak danej ≠ zgodno�
   wersji w produkcie: łącznik sterowany radiowo z załącznika 3 wchodzi do katalogu wariantu ENEA
   jako rozłącznik (domyślnie) albo jako wyłącznik dostępny wyłącznie przez jawny wybór
   z uzasadnieniem; pozycja typu „reklozer” nie jest oferowana. Rozstrzygnięcie, czy wyłącznik
-  z SPZ z załącznika 3 wybrany jawnie może nieść funkcję SPZ w modelu zabezpieczeń, należy do
-  architekta.
+  z SPZ z załącznika 3 wybrany jawnie może nieść funkcję SPZ w modelu zabezpieczeń, rozstrzyga
+  decyzja właściciela 2026-11-14 (§3 pkt 5): może, jako opcja domyślnie nieaktywna, wymagająca
+  uzgodnienia z ENEA Operator.
 - **L-02 (decyzja właściciela ostrzejsza niż album).** Album załącznika 1 zawiera słupy Kg, Og,
   ONg z głowicami kablowymi bez rozłącznika. Decyzja właściciela wymaga rozłącznika na słupie
   przy każdym odgałęzieniu napowietrznym i mieszanym. Dodatkowo ELN-29 wymaga przed słupową
