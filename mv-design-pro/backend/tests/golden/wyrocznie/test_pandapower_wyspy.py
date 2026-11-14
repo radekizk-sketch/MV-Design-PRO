@@ -24,15 +24,17 @@ from tests.golden.wyrocznie import pandapower as most
 
 pytestmark = pytest.mark.pandapower
 
-#: |ΔU| [pu] i |Δφ| [°] między solverem kanonicznym a pandapower — pomiar 2026-09-06
-#: (scenariusze 02 i 05, 15/16 szyn): max |ΔU| = 5,4·10⁻⁵ pu, max |Δφ| = 2,5·10⁻³ °;
-#: różnica pochodzi z modelu ZAMKNIĘTEGO łącznika (solver: R = X = 0,1 mΩ w każdym
-#: łączniku pola nN; pandapower: łącznik idealny scala szyny) — spadek ~10 mV na 400 V.
-TOLERANCJA_U_PU = 1e-4
-TOLERANCJA_KAT_DEG = 5e-3
-#: Moc źródła [MW/Mvar] — ta sama przyczyna (straty na łącznikach 0,1 mΩ): pomiar
-#: max 3,8·10⁻⁶ MW (02), 2,1·10⁻⁶ MW (05).
-TOLERANCJA_MOC_MW = 1e-5
+#: |ΔU| [pu] i |Δφ| [°] między solverem kanonicznym a pandapower — pomiar 2026-11-13
+#: (scenariusze 02 i 05, po 7 zamkniętych łączników): max |ΔU| = 1,1·10⁻⁸ pu, max |Δφ| =
+#: 2,6·10⁻⁷ ° (zbieżność solvera kanonicznego przy domyślnej tolerancji). Karta
+#: RDZEN-PF-LACZNIK-SCALENIE: zamknięty łącznik scala szyny w obu narzędziach — do niej solver
+#: stemplował łącznik impedancją 0,1 mΩ i rozjazd wynosił 5,4·10⁻⁵ pu i 2,5·10⁻³ ° (pomiar
+#: 2026-09-06), progi były 1e-4 pu i 5e-3 °.
+TOLERANCJA_U_PU = 1e-7
+TOLERANCJA_KAT_DEG = 1e-6
+#: Moc źródła [MW/Mvar] — pomiar 2026-11-13: max 8,2·10⁻⁸ MW (02), 4,5·10⁻⁸ MW (05); do karty
+#: scalenia łączników (straty na łącznikach 0,1 mΩ) 3,8·10⁻⁶ MW i próg 1e-5.
+TOLERANCJA_MOC_MW = 1e-6
 #: Ik'' — względna; pomiar 2026-09-06 (02, 05, 06 — 47 szyn): ≤ 1·10⁻⁴ przy K_T
 #: liczonym po obu stronach (IEC 60909-0 §6.3.3) i c z tej samej Tab. 1.
 TOLERANCJA_IK_WZGL = 1e-4

@@ -36,6 +36,19 @@ istnieje. Wklad `Y*V`
 w postaci rzeczywistej to blok `[[G, -B], [B, G]]`, wklad kazdego urzadzenia i
 odbioru to blok 2x2 w wierszu/kolumnie jego wezla.
 
+LACZNIK BEZ IMPEDANCJI (karta RDZEN-PF-LACZNIK-SCALENIE). Galaz rodzaju „lacznik" nie
+jest stemplowana: zamkniety lacznik nie ma impedancji, wiec jego zaciski sa JEDNYM wezlem
+elektrycznym — ta sama fizyka co rozplyw i zwarcia (scalenie wezlow, reprezentant grupy =
+najmniejszy identyfikator). Wymiar `y` zostaje `2n` (zdarzenie otwarcia/zamkniecia
+lacznika nie zmienia liczby niewiadomych), a scalenie jest LINIOWA operacja na wierszach
+`g' = S g + D y`: wiersz reprezentanta grupy niesie SUME rownan KCL jej wezlow (bilans
+wezla elektrycznego), wiersz kazdego innego wezla grupy — `V_m - V_rep = 0`. Grupa
+z wierszem ograniczenia (zrodlo napieciowe, zwarcie metaliczne, obszar beznapieciowy)
+nie ma wiersza KCL: wezly grupy dostaja `V_m - V_k = 0` wzgledem wezla narzucajacego
+(zero narzucone obejmuje cala grupe). Prad lacznika nie wynika z impedancji, tylko
+z bilansu wezlow grupy (`prady_lacznikow`, rozwiazanie o najmniejszej normie w petli
+lacznikow). Dawna impedancja zastepcza 0,0001 + j0,0001 Ohm adaptera usunieta.
+
 ELEMENTY STANOWE. Funkcje algebry dostaja odbiory (`kontrakty.ModelOdbioru`, KAZDY odbior
 wejscia — odbior bez obwodu ma prad zero i nie jest sumowany) i urzadzenia, a krotka
 `stany` jest wyrownana z `(*odbiory, *urzadzenia)` (`kontrakty.rozdziel_stany`). Prady
@@ -74,6 +87,20 @@ WSPOLCZYNNIK_ARMIJO = 1.0e-4
 
 
 @dataclass(frozen=True)
+class GrupaLacznikow:
+    """Wezly scalone aktywnymi lacznikami w jeden wezel elektryczny (pozycje wezlow modelu).
+
+    `reprezentant` — pozycja wezla o NAJMNIEJSZYM identyfikatorze (ta sama regula co
+    `network_model.core.scalenie_lacznikow`, rozplyw i zwarcia); `czlonkowie` — pozycje
+    rosnaco (z reprezentantem); `laczniki` — identyfikatory aktywnych lacznikow grupy.
+    """
+
+    reprezentant: int
+    czlonkowie: tuple[int, ...]
+    laczniki: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class ModelSieci:
     """Zlozony stan sieci: indeksacja wezlow + Ybus skladowej zgodnej.
 
@@ -102,6 +129,9 @@ class ModelSieci:
     #: Zwarcia w galeziach: (galaz, polozenie wzgledne x, admitancja zwarcia pu albo
     #: `None` dla zwarcia metalicznego), posortowane po (galaz, x).
     zwarcia_galezi: tuple[tuple[str, float, complex | None], ...]
+    #: Wezly scalone aktywnymi lacznikami (tylko grupy wielowezlowe, wg numeru wyspy
+    #: lacznikow). Pusta krotka = siec bez aktywnego lacznika (dawna sciezka bit w bit).
+    grupy_lacznikow: tuple[GrupaLacznikow, ...] = ()
 
     @property
     def liczba_wezlow(self) -> int:
@@ -250,6 +280,46 @@ def zwarcia_galezi_modelu(model: ModelSieci, galaz: str) -> tuple[ZwarcieWGalezi
     )
 
 
+def grupy_lacznikow(
+    identy: tuple[str, ...],
+    indeks: dict[str, int],
+    galezie: tuple[GalazDynamiki, ...],
+    aktywne: frozenset[str],
+) -> tuple[GrupaLacznikow, ...]:
+    """Grupy wezlow polaczonych AKTYWNYMI lacznikami — spojne skladowe grafu lacznikow.
+
+    Ten sam rozklad na skladowe, co wyspy (`wyspy.przydzial_wysp`), na zbiorze galezi
+    rodzaju „lacznik"; reprezentant — najmniejszy identyfikator wezla grupy (niezalezny od
+    kolejnosci zapisu, determinizm). Grupy w kolejnosci numerow skladowych.
+    """
+    laczniki = frozenset(
+        galaz.ident for galaz in galezie if galaz.rodzaj == "lacznik" and galaz.ident in aktywne
+    )
+    if not laczniki:
+        return ()
+    przydzial = przydzial_wysp(identy, indeks, galezie, laczniki)
+    czlonkowie: dict[int, list[int]] = {}
+    for pozycja, numer in enumerate(przydzial):
+        czlonkowie.setdefault(numer, []).append(pozycja)
+    laczniki_skladowej: dict[int, list[str]] = {}
+    for galaz in galezie:
+        if galaz.ident in laczniki:
+            laczniki_skladowej.setdefault(przydzial[indeks[galaz.wezel_od]], []).append(galaz.ident)
+    grupy: list[GrupaLacznikow] = []
+    for numer in sorted(czlonkowie):
+        pozycje = czlonkowie[numer]
+        if len(pozycje) < 2:
+            continue
+        grupy.append(
+            GrupaLacznikow(
+                reprezentant=min(pozycje, key=lambda pozycja: identy[pozycja]),
+                czlonkowie=tuple(pozycje),
+                laczniki=tuple(sorted(laczniki_skladowej[numer])),
+            )
+        )
+    return tuple(grupy)
+
+
 def _indeksacja(wezly: tuple[WezelDynamiki, ...]) -> tuple[tuple[str, ...], dict[str, int]]:
     """Kolejnosc wezlow = KOLEJNOSC ZAPISU wejscia (nie sortowanie alfabetyczne).
 
@@ -329,6 +399,28 @@ def zloz_model_sieci(
                 rodzaj=galaz_zwarta.rodzaj,
             )
 
+    for galaz in galezie:
+        if galaz.rodzaj != "lacznik":
+            continue
+        if galaz.y_szeregowa_pu != 0 or galaz.b_poprzeczna_pu != 0 or galaz.przekladnia != 1:
+            raise OdmowaDynamiki(
+                KOD_SIEC_NIESPOJNA,
+                f"Łącznik {galaz.ident} niesie impedancję albo przekładnię "
+                f"(y = {galaz.y_szeregowa_pu}, b = {galaz.b_poprzeczna_pu}, "
+                f"a = {galaz.przekladnia}) — łącznik nie ma impedancji, zamknięty scala węzły.",
+                galaz=galaz.ident,
+            )
+        if galaz.wezel_od in indeks and galaz.wezel_do in indeks:
+            u_od = wezly[indeks[galaz.wezel_od]].u_n_kv
+            u_do = wezly[indeks[galaz.wezel_do]].u_n_kv
+            if u_od != u_do:
+                raise OdmowaDynamiki(
+                    KOD_SIEC_NIESPOJNA,
+                    f"Łącznik {galaz.ident} łączy węzły o różnych napięciach znamionowych "
+                    f"({u_od} kV i {u_do} kV) — scalenie galwaniczne jest błędem modelu.",
+                    galaz=galaz.ident,
+                )
+
     wiersze: list[int] = []
     kolumny: list[int] = []
     wartosci: list[complex] = []
@@ -349,6 +441,9 @@ def zloz_model_sieci(
                 f"Gałąź {galaz.ident} ma zerową przekładnię.",
                 galaz=galaz.ident,
             )
+        if galaz.rodzaj == "lacznik":
+            # Lacznik bez impedancji: nie wnosi admitancji, scala wezly (`grupy_lacznikow`).
+            continue
         od = indeks[galaz.wezel_od]
         do = indeks[galaz.wezel_do]
         wiersze.extend((od, od, do, do))
@@ -418,6 +513,13 @@ def zloz_model_sieci(
                 wezel=wezel_ograniczony,
             )
     aktywne_zamrozone = frozenset(aktywne)
+    grupy = grupy_lacznikow(identy, indeks, galezie, aktywne_zamrozone)
+    zerowe = {indeks[wezel] for wezel in (*zwarcia_metaliczne, *wezly_beznapieciowe)}
+    for grupa in grupy:
+        # Napiecie zero narzucone w jednym wezle grupy jest napieciem calego wezla
+        # elektrycznego — kazdy wezel grupy dostaje wiersz `V = 0` (zero DOKLADNE).
+        if zerowe.intersection(grupa.czlonkowie):
+            zerowe.update(grupa.czlonkowie)
     return ModelSieci(
         identy_wezlow=identy,
         indeks_wezla=indeks,
@@ -436,10 +538,9 @@ def zloz_model_sieci(
         ),
         zwarcia_metaliczne=frozenset(zwarcia_metaliczne),
         wezly_beznapieciowe=frozenset(wezly_beznapieciowe),
-        pozycje_zerowe=tuple(
-            sorted({indeks[wezel] for wezel in (*zwarcia_metaliczne, *wezly_beznapieciowe)})
-        ),
+        pozycje_zerowe=tuple(sorted(zerowe)),
         zwarcia_galezi=zwarcia_uporzadkowane,
+        grupy_lacznikow=grupy,
     )
 
 
@@ -510,7 +611,99 @@ def ograniczenia_napiecia(
                 urzadzenie=urzadzenie.ident,
             )
         wynik[pozycja] = indeks
+    for grupa in model.grupy_lacznikow:
+        # Dwa zrodla napieciowe w jednym WEZLE ELEKTRYCZNYM (polaczone zamknietym
+        # lacznikiem) — ta sama sprzecznosc co dwa zrodla w jednym wezle.
+        zrodla = [
+            indeks_zrodla
+            for pozycja in grupa.czlonkowie
+            if (indeks_zrodla := wynik.get(pozycja)) is not None
+        ]
+        if len(zrodla) > 1:
+            pierwsze, drugie = urzadzenia[zrodla[0]], urzadzenia[zrodla[1]]
+            raise OdmowaDynamiki(
+                KOD_NAPIECIE_NARZUCONE_SPRZECZNE,
+                f"Węzły {pierwsze.wezel} i {drugie.wezel} są połączone zamkniętym łącznikiem "
+                f"(jeden węzeł elektryczny), a urządzenia {pierwsze.ident} i {drugie.ident} "
+                "narzucają każde swoje napięcie — pierwsze prawo Kirchhoffa żądałoby "
+                "nieskończonego prądu w łączniku.",
+                wezel=pierwsze.wezel,
+                urzadzenie=drugie.ident,
+            )
     return tuple(sorted(wynik.items()))
+
+
+@dataclass(frozen=True)
+class WierszeScalenia:
+    """Operacja na wierszach algebry `g' = S g + D y` dla wezlow scalonych lacznikami.
+
+    `sumy` — (wiersz reprezentanta, pozycje wezlow grupy): wiersz niesie sume rownan KCL
+    grupy; `roznice` — (wiersz wezla, pozycja odniesienia): wiersz `V_m - V_odn = 0`;
+    `bez_kcl` — pozycje, ktorych wlasne rownanie KCL nie wchodzi do algebry (wiersz
+    ograniczenia albo wezel grupy z ograniczeniem); `ujscia` — pozycje elementow
+    narzucajacych napiecie w grupach (zrodlo napieciowe, zwarcie metaliczne): w nich prad
+    elementu domyka bilans grupy. Jedno zrodlo dla residuum, jakobianu, granicy zaokraglen,
+    prawej strony rozniczkowanej algebry i pradow lacznikow (regula predykatow parami).
+    """
+
+    sumy: tuple[tuple[int, tuple[int, ...]], ...]
+    roznice: tuple[tuple[int, int], ...]
+    bez_kcl: frozenset[int]
+    ujscia: frozenset[int]
+
+
+def wiersze_scalenia(model: ModelSieci, urzadzenia: tuple[Urzadzenie, ...]) -> WierszeScalenia:
+    """Wiersze scalenia grup lacznikow przy biezacych ograniczeniach napiecia."""
+    ograniczenia = ograniczenia_napiecia(model, urzadzenia)
+    ograniczone = {pozycja for pozycja, _ in ograniczenia}
+    zrodla = {pozycja for pozycja, indeks in ograniczenia if indeks is not None}
+    metaliczne = {model.indeks_wezla[wezel] for wezel in model.zwarcia_metaliczne}
+    sumy: list[tuple[int, tuple[int, ...]]] = []
+    roznice: list[tuple[int, int]] = []
+    bez_kcl = set(ograniczone)
+    ujscia: set[int] = set()
+    for grupa in model.grupy_lacznikow:
+        narzucone = [pozycja for pozycja in grupa.czlonkowie if pozycja in ograniczone]
+        if not narzucone:
+            sumy.append((grupa.reprezentant, grupa.czlonkowie))
+            roznice.extend(
+                (pozycja, grupa.reprezentant)
+                for pozycja in grupa.czlonkowie
+                if pozycja != grupa.reprezentant
+            )
+            continue
+        bez_kcl.update(grupa.czlonkowie)
+        ujscia.update(
+            pozycja for pozycja in grupa.czlonkowie if pozycja in zrodla or pozycja in metaliczne
+        )
+        odniesienie = narzucone[0]
+        roznice.extend(
+            (pozycja, odniesienie) for pozycja in grupa.czlonkowie if pozycja not in ograniczone
+        )
+    return WierszeScalenia(
+        sumy=tuple(sumy),
+        roznice=tuple(roznice),
+        bez_kcl=frozenset(bez_kcl),
+        ujscia=frozenset(ujscia),
+    )
+
+
+def scal_wiersze(model: ModelSieci, scalenie: WierszeScalenia, wektor: np.ndarray) -> np.ndarray:
+    """`S w` dla wektora rzeczywistego `[Re; Im]` (2n): sumy grup, zera w wierszach roznic."""
+    if not scalenie.sumy and not scalenie.roznice:
+        return wektor
+    liczba = model.liczba_wezlow
+    wynik = np.array(wektor, dtype=float, copy=True)
+    for wiersz, czlonkowie in scalenie.sumy:
+        for przesuniecie in (0, liczba):
+            suma = 0.0
+            for pozycja in czlonkowie:
+                suma += float(wektor[pozycja + przesuniecie])
+            wynik[wiersz + przesuniecie] = suma
+    for wiersz, _ in scalenie.roznice:
+        wynik[wiersz] = 0.0
+        wynik[wiersz + liczba] = 0.0
+    return wynik
 
 
 def rzutuj_napiecia_zerowe(model: ModelSieci, napiecia: np.ndarray) -> np.ndarray:
@@ -552,7 +745,7 @@ def skladniki_wstrzykniec(
     wprowadzeniu stanow odbiorow: granica liczyla prad odbioru z charakterystyki bez
     czestotliwosci widzianej i sumowala odbiory bez obwodu, ktorych w residuum nie ma.
     """
-    ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
+    ograniczone = wiersze_scalenia(model, urzadzenia).bez_kcl
     stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
     skladniki: list[tuple[int, complex]] = []
     for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
@@ -623,6 +816,18 @@ def residuum_algebry(
     )
     for pozycja, narzucone in napiecia_narzucone(model, odbiory, urzadzenia, stany):
         niezbilansowanie[pozycja] = complex(napiecia[pozycja]) - narzucone
+    if model.grupy_lacznikow:
+        scalenie = wiersze_scalenia(model, urzadzenia)
+        sumy = []
+        for wiersz, czlonkowie in scalenie.sumy:
+            suma = 0j
+            for pozycja in czlonkowie:
+                suma += complex(niezbilansowanie[pozycja])
+            sumy.append((wiersz, suma))
+        for wiersz, odniesienie in scalenie.roznice:
+            niezbilansowanie[wiersz] = complex(napiecia[wiersz]) - complex(napiecia[odniesienie])
+        for wiersz, suma in sumy:
+            niezbilansowanie[wiersz] = suma
     return np.concatenate((niezbilansowanie.real, niezbilansowanie.imag))
 
 
@@ -683,6 +888,23 @@ def granica_zaokraglen_residuum(
     )
     for pozycja, narzucone in napiecia_narzucone(model, odbiory, urzadzenia, stany):
         granica[pozycja] = _gamma(2) * (abs(complex(napiecia[pozycja])) + abs(narzucone))
+    if model.grupy_lacznikow:
+        # Wiersz sumy grupy: te same skladniki co wiersze wezlow grupy, plus sumowanie
+        # wierszy (`len - 1` dodawan); wiersz roznicy `V_m - V_odn`: dwa skladniki.
+        scalenie = wiersze_scalenia(model, urzadzenia)
+        for wiersz, czlonkowie in scalenie.sumy:
+            dzialania = sum(
+                int(niezerowe[pozycja]) + int(liczba_wstrzykniec[pozycja]) for pozycja in czlonkowie
+            )
+            moduly = sum(
+                float(suma_ybus[pozycja]) + float(suma_wstrzykniec[pozycja])
+                for pozycja in czlonkowie
+            )
+            granica[wiersz] = _gamma(dzialania + 3 + len(czlonkowie)) * moduly
+        for wiersz, odniesienie in scalenie.roznice:
+            granica[wiersz] = _gamma(2) * (
+                abs(complex(napiecia[wiersz])) + abs(complex(napiecia[odniesienie]))
+            )
     return granica
 
 
@@ -774,13 +996,138 @@ def jakobian_algebry(
         shape=(2 * liczba, 2 * liczba),
     )
     jakobian = (baza + korekta).tocsc()
-    if not ograniczenia:
+    if ograniczenia:
+        maska = np.ones(2 * liczba, dtype=float)
+        for pozycja in ograniczone:
+            maska[pozycja] = 0.0
+            maska[pozycja + liczba] = 0.0
+        jakobian = (sparse.diags(maska) @ jakobian + sparse.diags(1.0 - maska)).tocsc()
+    if not model.grupy_lacznikow:
         return jakobian
-    maska = np.ones(2 * liczba, dtype=float)
-    for pozycja in ograniczone:
-        maska[pozycja] = 0.0
-        maska[pozycja + liczba] = 0.0
-    return (sparse.diags(maska) @ jakobian + sparse.diags(1.0 - maska)).tocsc()
+    return _jakobian_scalony(model, wiersze_scalenia(model, urzadzenia), jakobian)
+
+
+def _jakobian_scalony(
+    model: ModelSieci, scalenie: WierszeScalenia, jakobian: sparse.csc_matrix
+) -> sparse.csc_matrix:
+    """`S J + D`: wiersz reprezentanta = suma wierszy grupy, wiersz roznicy = `e_m - e_odn`."""
+    liczba = model.liczba_wezlow
+    rozmiar = 2 * liczba
+    wiersze_s: list[int] = []
+    kolumny_s: list[int] = []
+    zastapione = {wiersz for wiersz, _ in scalenie.sumy} | {
+        wiersz for wiersz, _ in scalenie.roznice
+    }
+    for pozycja in range(liczba):
+        if pozycja in zastapione:
+            continue
+        wiersze_s.extend((pozycja, pozycja + liczba))
+        kolumny_s.extend((pozycja, pozycja + liczba))
+    for wiersz, czlonkowie in scalenie.sumy:
+        for pozycja in czlonkowie:
+            wiersze_s.extend((wiersz, wiersz + liczba))
+            kolumny_s.extend((pozycja, pozycja + liczba))
+    macierz_s = sparse.coo_matrix(
+        (np.ones(len(wiersze_s), dtype=float), (wiersze_s, kolumny_s)), shape=(rozmiar, rozmiar)
+    ).tocsc()
+    wiersze_d: list[int] = []
+    kolumny_d: list[int] = []
+    wartosci_d: list[float] = []
+    for wiersz, odniesienie in scalenie.roznice:
+        for przesuniecie in (0, liczba):
+            wiersze_d.extend((wiersz + przesuniecie, wiersz + przesuniecie))
+            kolumny_d.extend((wiersz + przesuniecie, odniesienie + przesuniecie))
+            wartosci_d.extend((1.0, -1.0))
+    macierz_d = sparse.coo_matrix(
+        (np.array(wartosci_d, dtype=float), (wiersze_d, kolumny_d)), shape=(rozmiar, rozmiar)
+    ).tocsc()
+    return (macierz_s @ jakobian + macierz_d).tocsc()
+
+
+def _prad_elementow_wezla(
+    model: ModelSieci,
+    odbiory: tuple[ModelOdbioru, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+    pozycja: int,
+) -> tuple[complex, ...]:
+    """Prady wstrzykiwane do wezla przez jego odbiory i urzadzenia o sprzezeniu pradowym.
+
+    W wezle o napieciu narzuconym ZEREM odbior nie pobiera pradu: w obszarze
+    beznapieciowym jest odciety (bez obwodu), a w wezle zwartym metalicznie jest w galezi
+    impedancyjnej (kazdy odbior z przejsciem ma zadeklarowane `U_min`, odbior czysto
+    impedancyjny jest impedancja), gdzie `I = -Y*0 = 0` dokladnie. Pominiecie jest wiec
+    DOKLADNE, a nie przyblizeniem. Urzadzenie o sprzezeniu napieciowym nie ma lokalnego
+    wzoru na prad (jego prad domyka bilans — `prad_wezla_ograniczonego`).
+    """
+    wezel = model.identy_wezlow[pozycja]
+    napiecie = complex(napiecia[pozycja])
+    zerowy = pozycja in model.pozycje_zerowe
+    prady: list[complex] = []
+    stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+    for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
+        if odbior.wezel == wezel and not zerowy and odbior.przylaczony:
+            prady.append(odbior.prad_pu(stan_odbioru, napiecie))
+    for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
+        if urzadzenie.wezel == wezel and urzadzenie.sprzezenie != "napieciowe":
+            prady.append(urzadzenie.prad_pu(stan, napiecie))
+    return tuple(prady)
+
+
+def prady_lacznikow(
+    model: ModelSieci,
+    odbiory: tuple[ModelOdbioru, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+) -> dict[str, complex]:
+    """Prad kazdego AKTYWNEGO lacznika `od -> do` (pu, wplywajacy do lacznika zaciskiem `od`).
+
+    Lacznik nie ma impedancji, wiec jego prad wynika z I prawa Kirchhoffa wezlow grupy:
+    w wezle `m` prad elementow minus prad oddany do galezi (`(Y V)_m`) odplywa lacznikami,
+    `A i = b`, gdzie `A` — macierz incydencji lacznikow grupy (+1 zacisk `od`, -1 `do`).
+    Wiersze wezlow z elementem narzucajacym napiecie (zrodlo napieciowe, zwarcie metaliczne)
+    sa NIEZNANE (prad elementu domyka bilans), w grupie bez nich jeden wiersz jest zalezny
+    (suma bilansow = rezyduum algebry) i odpada wiersz reprezentanta. Rozwiazanie:
+    `i = A_K^T (A_K A_K^T)^-1 b_K` — jednoznaczne, gdy laczniki grupy tworza drzewo,
+    a w petli lacznikow (bilans nie wyznacza rozdzialu) — o najmniejszej normie (zasada
+    Thomsona: granica rozplywu przez rowne impedancje stykow dazace do zera). Ta sama
+    regula co rekonstrukcja przeplywu lacznika rozplywu (`power_flow_scalenie`).
+    """
+    if not model.grupy_lacznikow:
+        return {}
+    scalenie = wiersze_scalenia(model, urzadzenia)
+    prad_galezi = model.ybus @ napiecia
+    galezie = {galaz.ident: galaz for galaz in model.galezie}
+    wynik: dict[str, complex] = {}
+    for grupa in model.grupy_lacznikow:
+        pozycja_w_grupie = {pozycja: i for i, pozycja in enumerate(grupa.czlonkowie)}
+        incydencja = np.zeros((len(grupa.czlonkowie), len(grupa.laczniki)), dtype=float)
+        for k, ident in enumerate(grupa.laczniki):
+            galaz = galezie[ident]
+            incydencja[pozycja_w_grupie[model.indeks_wezla[galaz.wezel_od]], k] += 1.0
+            incydencja[pozycja_w_grupie[model.indeks_wezla[galaz.wezel_do]], k] -= 1.0
+        bilans = np.array(
+            [
+                sum(
+                    _prad_elementow_wezla(model, odbiory, urzadzenia, stany, napiecia, pozycja),
+                    0j,
+                )
+                - complex(prad_galezi[pozycja])
+                for pozycja in grupa.czlonkowie
+            ],
+            dtype=complex,
+        )
+        ujscia = [pozycja for pozycja in grupa.czlonkowie if pozycja in scalenie.ujscia]
+        pominiete = set(ujscia) if ujscia else {grupa.reprezentant}
+        znane = [pozycja_w_grupie[p] for p in grupa.czlonkowie if p not in pominiete]
+        macierz_znana = incydencja[znane, :]
+        potencjal = np.linalg.solve(macierz_znana @ macierz_znana.T, bilans[znane])
+        prady = macierz_znana.T @ potencjal
+        for k, ident in enumerate(grupa.laczniki):
+            wynik[ident] = complex(prady[k])
+    return wynik
 
 
 def prad_wezla_ograniczonego(
@@ -793,29 +1140,31 @@ def prad_wezla_ograniczonego(
 ) -> complex:
     """Prad WSTRZYKIWANY do wezla przez element narzucajacy jego napiecie (konwencja generacji).
 
-    `I = sum_j Y_kj V_j - (pozostale wstrzykniecia wezla k)` — bilans wezla, bo element
-    narzucajacy napiecie (idealne zrodlo, zwarcie metaliczne) nie ma wlasnego wzoru na
-    prad. Dla zwarcia metalicznego prad PLYNACY DO ZIEMI w miejscu zwarcia jest liczba
-    przeciwna. JEDNA funkcja dla mocy urzadzenia o sprzezeniu napieciowym i dla kanalow
-    pradu zwarcia metalicznego.
+    `I = sum_j Y_kj V_j - (pozostale wstrzykniecia wezla k) + (prad odplywajacy lacznikami)`
+    — bilans wezla, bo element narzucajacy napiecie (idealne zrodlo, zwarcie metaliczne)
+    nie ma wlasnego wzoru na prad. Dla zwarcia metalicznego prad PLYNACY DO ZIEMI w miejscu
+    zwarcia jest liczba przeciwna. Wezel scalony lacznikami: prad lacznikow z bilansu grupy
+    (`prady_lacznikow`) — element narzucajacy domyka bilans calego wezla elektrycznego.
+    JEDNA funkcja dla mocy urzadzenia o sprzezeniu napieciowym i dla kanalow pradu zwarcia
+    metalicznego.
     """
     pozycja = model.indeks_wezla[wezel]
     wiersz = model.ybus.getrow(pozycja)
     prad = complex((wiersz @ napiecia)[0])
-    napiecie = complex(napiecia[pozycja])
-    # W wezle o napieciu narzuconym ZEREM odbior nie pobiera pradu: w obszarze
-    # beznapieciowym jest odciety (bez obwodu), a w wezle zwartym metalicznie jest w galezi
-    # impedancyjnej (kazdy odbior z przejsciem ma zadeklarowane `U_min`, odbior czysto
-    # impedancyjny jest impedancja), gdzie `I = -Y*0 = 0` dokladnie. Pominiecie jest wiec
-    # DOKLADNE, a nie przyblizeniem.
-    zerowy = pozycja in model.pozycje_zerowe
-    stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
-    for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
-        if odbior.wezel == wezel and not zerowy and odbior.przylaczony:
-            prad -= odbior.prad_pu(stan_odbioru, napiecie)
-    for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
-        if urzadzenie.wezel == wezel and urzadzenie.sprzezenie != "napieciowe":
-            prad -= urzadzenie.prad_pu(stan, napiecie)
+    for prad_elementu in _prad_elementow_wezla(
+        model, odbiory, urzadzenia, stany, napiecia, pozycja
+    ):
+        prad -= prad_elementu
+    if any(pozycja in grupa.czlonkowie for grupa in model.grupy_lacznikow):
+        galezie = {galaz.ident: galaz for galaz in model.galezie}
+        for ident, prad_lacznika in prady_lacznikow(
+            model, odbiory, urzadzenia, stany, napiecia
+        ).items():
+            galaz = galezie[ident]
+            if galaz.wezel_od == wezel:
+                prad += prad_lacznika
+            if galaz.wezel_do == wezel:
+                prad -= prad_lacznika
     return prad
 
 
@@ -957,7 +1306,7 @@ def residuum_kcl_niezalezne(
     bilans = np.zeros(liczba, dtype=complex)
 
     for galaz in model.galezie:
-        if galaz.ident not in model.galezie_aktywne:
+        if galaz.ident not in model.galezie_aktywne or galaz.rodzaj == "lacznik":
             continue
         od = model.indeks_wezla[galaz.wezel_od]
         do = model.indeks_wezla[galaz.wezel_do]
@@ -992,7 +1341,8 @@ def residuum_kcl_niezalezne(
         pozycja = model.indeks_wezla[wezel_zwarcia]
         bilans[pozycja] += admitancja * complex(napiecia[pozycja])
 
-    ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
+    scalenie = wiersze_scalenia(model, urzadzenia)
+    ograniczone = scalenie.bez_kcl
     stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
     for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
         pozycja = model.indeks_wezla[odbior.wezel]
@@ -1010,6 +1360,14 @@ def residuum_kcl_niezalezne(
     # „residuum niezalezne" takiego wezla byloby tautologia, nie pomiarem.
     for pozycja in ograniczone:
         bilans[pozycja] = 0j
+    # Wezel scalony lacznikami: prad lacznika nie ma wzoru elementu (lacznik bez
+    # impedancji), wiec mierzalny jest bilans WEZLA ELEKTRYCZNEGO — suma bilansow grupy.
+    for wiersz, czlonkowie in scalenie.sumy:
+        suma = 0j
+        for pozycja in czlonkowie:
+            suma += bilans[pozycja]
+            bilans[pozycja] = 0j
+        bilans[wiersz] = suma
     return float(np.max(np.abs(bilans))) if liczba else 0.0
 
 
@@ -1036,35 +1394,41 @@ def _prad_zacisku_odcinkami(
 
 
 def wezly_ograniczone(model: ModelSieci, urzadzenia: tuple[Urzadzenie, ...]) -> tuple[str, ...]:
-    """Identyfikatory wezlow z wierszem ograniczenia (kolejnosc wezlow modelu)."""
-    return tuple(
-        model.identy_wezlow[pozycja] for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)
-    )
+    """Identyfikatory wezlow o napieciu NARZUCONYM (kolejnosc wezlow modelu): wiersz
+    ograniczenia i wezly scalone lacznikiem z wezlem ograniczonym (`WierszeScalenia.bez_kcl`)."""
+    bez_kcl = wiersze_scalenia(model, urzadzenia).bez_kcl
+    return tuple(model.identy_wezlow[pozycja] for pozycja in sorted(bez_kcl))
 
 
 __all__ = [
     "WSPOLCZYNNIK_ARMIJO",
+    "GrupaLacznikow",
     "ModelSieci",
+    "WierszeScalenia",
     "WynikAlgebry",
     "ZwarcieWGalezi",
     "czesc_pewna_residuum",
     "czwornik_galezi",
     "galezie_laczace",
     "granica_zaokraglen_residuum",
+    "grupy_lacznikow",
     "jakobian_algebry",
     "miejsca_zwarcia_galezi",
     "napiecia_narzucone",
     "ograniczenia_napiecia",
     "prad_wezla_ograniczonego",
+    "prady_lacznikow",
     "przezloz",
     "residuum_algebry",
     "residuum_kcl_niezalezne",
     "residuum_ponad_granica_zaokraglen",
     "rozwiaz_algebre",
     "rzutuj_napiecia_zerowe",
+    "scal_wiersze",
     "skladniki_wstrzykniec",
     "stempel_czwornika_zwarcia",
     "wezly_ograniczone",
+    "wiersze_scalenia",
     "wstrzykniecia",
     "zloz_model_sieci",
     "zwarcia_galezi_modelu",

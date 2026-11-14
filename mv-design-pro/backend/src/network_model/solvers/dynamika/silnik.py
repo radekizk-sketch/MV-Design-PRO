@@ -131,10 +131,12 @@ from .siec import (
     miejsca_zwarcia_galezi,
     ograniczenia_napiecia,
     prad_wezla_ograniczonego,
+    prady_lacznikow,
     residuum_algebry,
     residuum_ponad_granica_zaokraglen,
     rozwiaz_algebre,
     rzutuj_napiecia_zerowe,
+    wezly_ograniczone,
     zloz_model_sieci,
     zwarcia_galezi_modelu,
 )
@@ -2013,20 +2015,21 @@ class SilnikDynamiki:
         self._probkuj_zwarcia(
             probki, model, odbiory, urzadzenia, stany, napiecia, probkowanie.miejsca_zwarc
         )
-        self._probkuj_stany_i_katy(probki, model, urzadzenia, napiecia)
+        self._probkuj_stany_i_katy(probki, model, odbiory, urzadzenia, stany, napiecia)
         _probkuj_odbiory(probki, model, odbiory, stany_odbiorow, napiecia)
 
     def _probkuj_stany_i_katy(
         self,
         probki: dict[str, list[float | None]],
         model: ModelSieci,
+        odbiory: tuple[OdbiorCharakterystyczny, ...],
         urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
     ) -> None:
         """Stan zasilania wezlow, stan galezi i katy fazorow pradow zaciskow."""
-        narzucone = {
-            model.identy_wezlow[pozycja] for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)
-        }
+        narzucone = set(wezly_ograniczone(model, urzadzenia))
+        laczniki = prady_lacznikow(model, odbiory, urzadzenia, stany, napiecia)
         for ident in model.identy_wezlow:
             if ident in model.wezly_beznapieciowe:
                 kod = STAN_ZASILANIA_BEZNAPIECIOWY
@@ -2037,7 +2040,7 @@ class SilnikDynamiki:
             probki[f"stan_zasilania@{ident}"].append(kod)
         rozdzielczosc = self.wejscie.nastawy.tolerancja
         for galaz in model.galezie:
-            wielkosci = wielkosci_galezi(model, galaz, napiecia)
+            wielkosci = wielkosci_galezi(model, galaz, napiecia, laczniki)
             probki[f"stan_galezi@{galaz.ident}"].append(
                 1.0 if galaz.ident in model.galezie_aktywne else 0.0
             )
@@ -2153,8 +2156,9 @@ class SilnikDynamiki:
             probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
             probki[f"u_f_est_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
             probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
+        laczniki = prady_lacznikow(model, odbiory, urzadzenia, stany, napiecia)
         for galaz in model.galezie:
-            wielkosci = wielkosci_galezi(model, galaz, napiecia)
+            wielkosci = wielkosci_galezi(model, galaz, napiecia, laczniki)
             probki[f"i_od_pu@{galaz.ident}"].append(abs(wielkosci.i_od_pu))
             probki[f"i_do_pu@{galaz.ident}"].append(abs(wielkosci.i_do_pu))
             probki[f"p_od_pu@{galaz.ident}"].append(float(wielkosci.s_od_pu.real))
@@ -2252,6 +2256,16 @@ class SilnikDynamiki:
                 "liczba_wezlow": model.liczba_wezlow,
                 "liczba_galezi_aktywnych": len(model.galezie_aktywne),
                 "niezerowe_ybus": int(model.ybus.nnz),
+                # Wezly scalone aktywnymi lacznikami (lacznik bez impedancji — ten sam
+                # predykat, co rozplyw i zwarcia): reprezentant, czlonkowie i laczniki grupy.
+                "grupy_lacznikow": [
+                    {
+                        "reprezentant": model.identy_wezlow[grupa.reprezentant],
+                        "czlonkowie": [model.identy_wezlow[p] for p in grupa.czlonkowie],
+                        "laczniki": list(grupa.laczniki),
+                    }
+                    for grupa in model.grupy_lacznikow
+                ],
                 "odcisk_ybus": skrot_kanoniczny(
                     sorted(
                         [

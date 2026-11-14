@@ -65,7 +65,7 @@ from .kontrakty import (
     rozdziel_stany,
 )
 from .obserwable import czestotliwosci_wezlow, moc_urzadzenia_pu, wielkosci_galezi
-from .siec import ModelSieci
+from .siec import ModelSieci, prady_lacznikow
 
 if TYPE_CHECKING:  # pragma: no cover — wylacznie adnotacja (zdarzenia importuje ten modul)
     from .zdarzenia import WpisHarmonogramu
@@ -278,7 +278,12 @@ def wartosc_wielkosci(
         )[model.indeks_wezla[wielkosc.wezel]].f_hz
     if isinstance(wielkosc, ModulPraduZacisku):
         galaz = next(g for g in model.galezie if g.ident == wielkosc.galaz)
-        wielkosci = wielkosci_galezi(model, galaz, uklad.napiecia)
+        wielkosci = wielkosci_galezi(
+            model,
+            galaz,
+            uklad.napiecia,
+            prady_lacznikow(model, uklad.odbiory, uklad.urzadzenia, uklad.stany, uklad.napiecia),
+        )
         return abs(wielkosci.i_od_pu if wielkosc.zacisk == "od" else wielkosci.i_do_pu)
     indeks = next(
         pozycja

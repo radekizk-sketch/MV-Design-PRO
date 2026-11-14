@@ -7,8 +7,10 @@ Trzy pomiary, każdy przypięty liczbą Z POMIARU (pandapower 3.5.4, most ``pand
    moc źródła 5713,39 MW / 21 399 Mvar, |ΔP| = 2,5·10⁻⁷ MW. Rozwiązanie zerowe szyny PQ
    o zerowej mocy nie jest defektem naszego rdzenia, lecz własnością równań rozpływu.
 2. TR1 nietknięty (25 MVA) i i0 = P0 = 0 na obu transformatorach: gałąź robocza zgodna
-   z pandapower do |ΔU| ≤ 1·10⁻⁶ p.u. (pomiar 5,9·10⁻⁷; reszta to model łącznika
-   zamkniętego 0,1 mΩ, jak w ``test_pandapower_wyspy.py``) i |ΔP| ≤ 1·10⁻⁵ MW.
+   z pandapower do |ΔU| ≤ 1·10⁻¹² p.u. i |ΔP|, |ΔQ| ≤ 1·10⁻⁹ MW (pomiar 2026-11-13:
+   8,2·10⁻¹⁵ p.u., 6,7·10⁻¹² MW, 8,8·10⁻¹² Mvar; karta RDZEN-PF-LACZNIK-SCALENIE — łącznik
+   zamknięty scala szyny w obu narzędziach; do niej rdzeń stemplował łącznik 0,1 mΩ i rozjazd
+   wynosił 5,9·10⁻⁷ p.u., próg 1·10⁻⁶ p.u. i 1·10⁻⁵ MW).
 3. TR1 nietknięty z i0/P0 Z KATALOGU (0,35 % / 25 kW; stacja 1,5 % / 1,3 kW): rozjazd
    |ΔU_110| = 1,87·10⁻⁴ p.u., |ΔU_nN| = 3,0·10⁻⁴ p.u., ΔQ = 93 kvar, ΔP = 26 kW — bo
    rdzeń rozpływu NR pomija gałąź magnesującą transformatora
@@ -35,10 +37,12 @@ from tests.reference_networks.w3g2_pasma_rozplywu import NAZWA_SZYNY_110, siec_w
 
 pytestmark = pytest.mark.pandapower
 
-#: Kryterium karty PF-OD19 dla gałęzi roboczej (pomiar 5,855·10⁻⁷ p.u.).
-TOLERANCJA_U_PU = 1e-6
-#: Moc źródła [MW/Mvar] — jak ``test_pandapower_wyspy.TOLERANCJA_MOC_MW`` (pomiar 2,5·10⁻⁷).
-TOLERANCJA_MOC_MW = 1e-5
+#: Gałąź robocza (pomiar 2026-11-13: 8,2·10⁻¹⁵ p.u.; rozwiązanie zerowe speca 4,2·10⁻¹⁵ p.u.).
+#: Do karty scalenia łączników 5,855·10⁻⁷ p.u. (łącznik 0,1 mΩ) i próg 1e-6.
+TOLERANCJA_U_PU = 1e-12
+#: Moc źródła [MW/Mvar] — pomiar 2026-11-13: 6,7·10⁻¹² MW (gałąź robocza), 8,2·10⁻¹² MW
+#: (rozwiązanie zerowe); do karty scalenia łączników 2,5·10⁻⁷ MW i próg 1e-5.
+TOLERANCJA_MOC_MW = 1e-9
 #: Rozwiązanie zerowe: |U| poniżej tej wartości to numeryczne zero.
 U_ZERO_PU = 1e-9
 #: Luka gałęzi magnesującej na szynie 110 kV (pomiar 1,87·10⁻⁴ p.u.) — pas przypięcia.

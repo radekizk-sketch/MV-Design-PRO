@@ -388,7 +388,9 @@ def test_liczby_pomiarow_estymacji_po_polsku(pomiar, tresc: str) -> None:
     from application.analyses.state_estimation.service import _parse_measurements
 
     with pytest.raises(OdmowaDanychError) as odmowa:
-        _parse_measurements([{"meas_type": "V_MAGNITUDE", "bus_ref": "b1", **pomiar}], {"b1": 0})
+        _parse_measurements(
+            [{"meas_type": "V_MAGNITUDE", "bus_ref": "b1", **pomiar}], {"b1": 0}, ()
+        )
 
     assert str(odmowa.value) == tresc
     _bez_tekstu_biblioteki([str(odmowa.value)])

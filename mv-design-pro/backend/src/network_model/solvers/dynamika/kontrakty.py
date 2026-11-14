@@ -240,6 +240,10 @@ class GalazDynamiki:
     `przekladnia` = 1+0j dla linii i kabli; dla transformatora niesie moduł
     (zaczep, zmiana bazy napieciowej) i przesuniecie fazowe grupy polaczen —
     ten sam ksztalt, ktorym liczy rozplyw.
+    Lacznik (`rodzaj="lacznik"`) NIE MA impedancji: niesie `y_szeregowa_pu = 0`,
+    `b_poprzeczna_pu = 0`, `przekladnia = 1` i laczy wezly o tym samym napieciu
+    znamionowym; aktywny scala swoje wezly w jeden wezel elektryczny (ten sam predykat, co
+    rozplyw i zwarcia) — `zloz_model_sieci` odmawia lacznika o innych parametrach.
     `y_szeregowa_pu` to ADMITANCJA galezi (1/z), `b_poprzeczna_pu` to CALKOWITA
     susceptancja poprzeczna modelu pi (dzielona po polowie na obie strony).
 

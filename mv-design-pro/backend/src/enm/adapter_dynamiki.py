@@ -25,20 +25,17 @@ gorzej, `eps_init` „dobrany pod wynik" przemilcza niespójność. Dlatego:
   rozpływu (moduł: zaczep × przekładnia poza-znamionowa; kąt: przesunięcie grupy
   połączeń) — stempel rdzenia (`siec.zloz_model_sieci`) sprowadza się wtedy bit
   w bit do stempla rozpływu;
-* łącznik ZAMKNIĘTY wchodzi jako gałąź o impedancji zastępczej łącznika — tej
-  samej, którą stempluje rozpływ.
+* łącznik wchodzi jako gałąź rodzaju „lacznik" BEZ impedancji: rdzeń (`siec`) scala
+  węzły zamkniętego łącznika w jeden węzeł elektryczny — ta sama fizyka i ten sam
+  reprezentant grupy (najmniejszy identyfikator), co macierz rozpływu (`build_ybus_pu`,
+  `power_flow_scalenie`) i zwarć (`core/ybus.py`). Dawna impedancja zastępcza
+  0,0001 + j0,0001 Ω (stała tego modułu i zmienna lokalna rozpływu) usunięta — karta
+  RDZEN-PF-LACZNIK-SCALENIE zamknęła nazwany tu dług dwóch kopii tej liczby.
 
-Równość Y-bus obu torów nie jest tu deklaracją: przypina ją test
+Równość obu torów nie jest tu deklaracją: przypina ją test
 `tests/enm/test_adapter_dynamiki.py::TestParytetYbus`, który porównuje macierz
-złożoną z tego wejścia z macierzą `build_ybus_pu` na sieci Z ŁĄCZNIKAMI,
+rdzenia po scaleniu wierszy łączników z macierzą `build_ybus_pu` na sieci Z ŁĄCZNIKAMI,
 transformatorem z zaczepem i grupą połączeń przesuwającą fazę.
-
-DŁUG NAZWANY (nie zamknięty w tej karcie). Impedancja zastępcza łącznika
-zamkniętego żyje w DWÓCH miejscach: jako zmienna lokalna w zamrożonym rdzeniu
-rozpływu (`power_flow_newton_internal._build_ybus_ohm`) i jako stała
-`IMPEDANCJA_LACZNIKA_ZAMKNIETEGO_OHM` tutaj. Skonsolidowanie ich wymaga edycji
-rdzenia FROZEN (bramka właściciela B-01), więc w tej karcie jest wyłącznie
-PRZYPIĘTE testem parytetu — rozjazd wartości wywala test, nie produkcję.
 
 PUNKT PRACY NIGDY Z DOMYSŁU (karta W6-3 §0 p. 5). `PunktPracy` pochodzi z
 ZAKOŃCZONEGO biegu rozpływu na TEJ SAMEJ migawce efektywnej. Płaski start 1,0 p.u.
@@ -114,7 +111,7 @@ from enm.scenariusze import SkokObciazenia as SkokObciazeniaScenariusza
 from enm.scenariusze import UtrataCzesciowaZrodla as UtrataCzesciowaZrodlaScenariusza
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
-from network_model.core.switch import SwitchState
+from network_model.core.scalenie_lacznikow import lacznik_przewodzi
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
 from network_model.solvers.dynamika import (
@@ -232,6 +229,9 @@ KOD_ZRODLO_BEZ_IMPEDANCJI = "dynamika.zrodlo_bez_impedancji"
 KOD_GALAZ_NIEOBSLUGIWANA = "dynamika.galaz_nieobslugiwana"
 #: Wytwórca, źródło albo odbiór wskazuje szynę, której model nie ma.
 KOD_ELEMENT_BEZ_SZYNY = "dynamika.element_bez_szyny"
+#: Łącznik między szynami o różnych napięciach znamionowych (błąd modelu: łącznik nie ma
+#: przekładni) — ten sam predykat co odmowa rozpływu (`power_flow_scalenie`).
+KOD_LACZNIK_ROZNE_NAPIECIA = "dynamika.lacznik_laczy_rozne_napiecia_znamionowe"
 
 #: Zamknięty rejestr kodów odmów adaptera. Nowy kod DOPISUJESZ tutaj —
 #: `OdmowaWejsciaDynamiki` odrzuca kod spoza rejestru (deklaracja z przypiętym
@@ -239,6 +239,7 @@ KOD_ELEMENT_BEZ_SZYNY = "dynamika.element_bez_szyny"
 KODY_ODMOW_ADAPTERA: tuple[str, ...] = (
     KOD_ELEMENT_BEZ_SZYNY,
     KOD_GALAZ_NIEOBSLUGIWANA,
+    KOD_LACZNIK_ROZNE_NAPIECIA,
     KOD_NASTAWY_BRAK,
     KOD_ODBIOR_BEZ_BLOKU,
     KOD_ODBIOR_NIEODWZOROWANY,
@@ -983,14 +984,6 @@ def harmonogram_z_scenariusza(
 # Widok sieci: węzły, gałęzie, odsprzęgi, odbiory, urządzenia
 # ---------------------------------------------------------------------------
 
-#: Impedancja zastępcza łącznika ZAMKNIĘTEGO [Ω] — ta sama wartość, którą
-#: stempluje Y-bus rozpływu (`power_flow_newton_internal._build_ybus_ohm`, zmienna
-#: lokalna `Y_CLOSED_SWITCH = 1/(0,0001 + j0,0001)`). Łącznik nie ma impedancji
-#: fizycznej; ta wartość jest wyłącznie liczbowym odwzorowaniem zwarcia
-#: galwanicznego dwóch szyn w macierzy admitancyjnej. Rozjazd z rozpływem wywala
-#: test parytetu Y-bus (`tests/enm/test_adapter_dynamiki.py::TestParytetYbus`).
-IMPEDANCJA_LACZNIKA_ZAMKNIETEGO_OHM = complex(0.0001, 0.0001)
-
 
 @dataclass(frozen=True)
 class WidokSieciDynamiki:
@@ -1099,20 +1092,34 @@ def zloz_widok_sieci(
                     f"Łącznik {branch.ref_id!r} nie ma odwzorowania w modelu obliczeniowym",
                     elementy=(branch.ref_id,),
                 )
-            # Lacznik OTWARTY (albo poza ruchem) jest galezia NIEAKTYWNA o impedancji
-            # zastepczej lacznika zamknietego — ta sama liczba, ktora stempluje rozplyw
-            # dla stanu zamknietego, wiec zamkniecie zdarzeniem daje macierz rozplywu
-            # migawki z lacznikiem zamknietym (twierdzenie D-19).
-            aktywny = lacznik.in_service and lacznik.state == SwitchState.CLOSED
-            z_bazowa = impedancja_z_napiecia_i_mocy_ohm(
-                _napiecie_wezla_kv(graph, lacznik.to_node_id), base_mva
+            # Lacznik nie ma impedancji: galaz rodzaju „lacznik" scala wezly w rdzeniu
+            # (admitancja i susceptancja NIEUZYWANE, zero z kontraktu). Lacznik OTWARTY
+            # (albo poza ruchem) jest galezia NIEAKTYWNA, wiec zamkniecie zdarzeniem daje
+            # wezly scalone tak samo, jak rozplyw migawki z lacznikiem zamknietym
+            # (twierdzenie D-19). Predykat przewodzenia — ten sam co rozplywu i zwarc.
+            aktywny = lacznik_przewodzi(lacznik)
+            napiecia_koncow = (
+                _napiecie_wezla_kv(graph, lacznik.from_node_id),
+                _napiecie_wezla_kv(graph, lacznik.to_node_id),
             )
+            if napiecia_koncow[0] != napiecia_koncow[1]:
+                # Ten sam predykat co odmowa rozpływu `rozplyw.lacznik_laczy_rozne_napiecia_
+                # znamionowe` — tu dla KAŻDEGO łącznika (także otwartego), bo zdarzenie może
+                # go zamknąć w trakcie biegu.
+                raise OdmowaWejsciaDynamiki(
+                    KOD_LACZNIK_ROZNE_NAPIECIA,
+                    f"Łącznik {branch.ref_id!r} łączy szyny o różnych napięciach znamionowych "
+                    f"({napiecia_koncow[0]:g} kV i {napiecia_koncow[1]:g} kV) — łącznik nie ma "
+                    "impedancji ani przekładni; przejście między napięciami tylko przez "
+                    "transformator",
+                    elementy=(branch.ref_id, branch.from_bus_ref, branch.to_bus_ref),
+                )
             galezie.append(
                 GalazDynamiki(
                     ident=branch.ref_id,
                     wezel_od=branch.from_bus_ref,
                     wezel_do=branch.to_bus_ref,
-                    y_szeregowa_pu=z_bazowa / IMPEDANCJA_LACZNIKA_ZAMKNIETEGO_OHM,
+                    y_szeregowa_pu=0j,
                     b_poprzeczna_pu=0.0,
                     przekladnia=complex(1.0, 0.0),
                     aktywna_na_starcie=aktywny,
@@ -1684,8 +1691,9 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
         "(zero płaskiego startu).",
         "Impedancja zastępcza sieci nadrzędnej jest tą samą impedancją, którą model "
         "podaje obliczeniom zwarciowym (impedancja sieci zasilającej wg IEC 60909).",
-        "Łącznik zamknięty wchodzi do macierzy admitancyjnej jako gałąź o impedancji "
-        "zastępczej łącznika — tak samo jak w rozpływie mocy.",
+        "Łącznik zamknięty nie ma impedancji: scala swoje węzły w jeden węzeł elektryczny "
+        "(ten sam podział co rozpływ mocy i zwarcia), a prąd łącznika wynika z bilansu "
+        "prądów węzłów połączonych łącznikami.",
     ]
     szyny_wytworcow = {gen.bus_ref for gen in enm.generators}
     for szyna, zrodla in sorted(_zrodla_szyn(enm).items()):
@@ -1726,13 +1734,13 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
 
 
 __all__ = [
-    "IMPEDANCJA_LACZNIKA_ZAMKNIETEGO_OHM",
     "KLUCZ_BIEGU_ROZPLYWU",
     "KLUCZ_NASTAW",
     "KLUCZ_SCENARIUSZA",
     "KODY_ODMOW_ADAPTERA",
     "KOD_ELEMENT_BEZ_SZYNY",
     "KOD_GALAZ_NIEOBSLUGIWANA",
+    "KOD_LACZNIK_ROZNE_NAPIECIA",
     "KOD_NASTAWY_BRAK",
     "KOD_ODBIOR_BEZ_BLOKU",
     "KOD_ODBIOR_NIEODWZOROWANY",

@@ -89,6 +89,7 @@ from network_model.catalog.wartosci_robocze import (
 )
 from network_model.core.branch import TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.scalenie_lacznikow import lacznik_przewodzi
 from network_model.core.switch import SwitchState, SwitchType
 from network_model.core.topologia import skladowe_spojne
 from network_model.odmowa_danych import odmowa_rdzenia_b01
@@ -1247,7 +1248,8 @@ def _krawedzie_przewodzace(
         if switch_id == bez_lacznika:
             continue
         lacznik = graph.switches[switch_id]
-        if lacznik.state != SwitchState.CLOSED or not lacznik.in_service:
+        # Jeden predykat przewodzenia łącznika (rozpływ, zwarcia, estymacja, dynamika).
+        if not lacznik_przewodzi(lacznik):
             continue
         laczniki.append((lacznik.from_node_id, lacznik.to_node_id))
     return galezie, laczniki

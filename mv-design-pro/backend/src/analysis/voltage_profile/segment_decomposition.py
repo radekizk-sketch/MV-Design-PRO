@@ -20,15 +20,18 @@ prawda topologii, żadnego powielania filtra ``in_service``/``state``).
 Segmenty w wyniku obejmują WYŁĄCZNIE gałęzie (kabel/linia/transformator) —
 łączniki na trasie są używane do połączenia topologicznego, ale pomijane w
 liście segmentów (zerowa impedancja, nic do zdekomponowania w rozkładzie
-ΔU). Ponieważ zamknięty łącznik jest w solverze modelowany jako gałąź o
-BARDZO DUŻEJ admitancji (nie dosłownie nieskończonej — patrz
-``Y_CLOSED_SWITCH`` w ``power_flow_newton_internal.py``), spadek napięcia na
-nim jest numerycznie znikomy, ale nie dokładnie zerowy bitowo — stąd
-wewnętrzna asercja telescoping sum poniżej używa małej tolerancji
-numerycznej, a nie równości bitowej.
+ΔU). Solver rozpływu SCALA węzły zamkniętego łącznika w jeden węzeł
+elektryczny (``network_model/core/scalenie_lacznikow.py`` — ten sam predykat
+co zwarcia), więc oba końce łącznika mają TO SAMO napięcie, a łącznik łączy
+wyłącznie węzły o tym samym napięciu znamionowym (inny przypadek to odmowa
+rozpływu) — spadek na łączniku jest DOKŁADNIE zerowy. Asercja telescoping sum
+poniżej ma więc wyłącznie granicę zaokrągleń odejmowań i sumy (``_granica_sumy_kv``),
+nie tolerancję modelu łącznika.
 """
 
 from __future__ import annotations
+
+import sys
 
 from analysis.voltage_profile.models import VoltageProfileSegment, VoltageProfileSegmentPath
 from network_model.core.graph import NetworkGraph
@@ -38,17 +41,17 @@ from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.power_flow_result import PowerFlowResultV1
 
-# Tolerancja telescoping-sum (§0.2 karty P0.4): suma delta_u segmentów musi
-# odpowiadać u_source_kv - u_node_kv. Łączniki zamknięte na trasie (pomijane
-# w segmentach) mają numerycznie znikomy, ale niezerowy spadek — patrz
-# docstring modułu. Stała 1e-4 kV (0,1 V) — dowód empiryczny: rezyduum
-# pojedynczego zamkniętego łącznika w rzeczywistych sieciach testowych tego
-# pliku mieści się w 5e-7..4e-6 kV (0,4..15 kV źródła), więc próg zostaje o
-# 1-2 rzędy wielkości NAD szumem numerycznym łącznika, a jednocześnie o 2-4
-# rzędy wielkości POD realnym spadkiem napięcia na gałęzi z impedancją
-# (dziesiąte części V do kV) — nie maskuje błędu fizyki, tylko szum modelu
-# łącznika (`Y_CLOSED_SWITCH`, `power_flow_newton_internal.py`).
-_TELESCOPING_TOLERANCE_KV = 1e-4
+
+def _granica_sumy_kv(napiecia_kv: list[float], liczba_segmentow: int) -> float:
+    """Granica zaokrągleń niezmiennika telescoping-sum (§0.2 karty P0.4) [kV].
+
+    Każdy segment to jedno odejmowanie, suma segmentów — `liczba_segmentow` dodawań, prawa
+    strona — jedno odejmowanie; każde działanie wnosi co najwyżej ε·max|U| (ε — epsilon
+    maszynowy). Dawna stała 1e-4 kV mieściła spadek na impedancji zastępczej łącznika
+    (0,0001 + j0,0001 Ω), usuniętej kartą scalenia łączników — granica jest teraz
+    arytmetyczna, więc niezmiennik wykrywa każdy spadek nieprzypisany do segmentu.
+    """
+    return (2 * liczba_segmentow + 2) * sys.float_info.epsilon * max(map(abs, napiecia_kv))
 
 
 class VoltageProfileSegmentPathError(OdmowaDanychError):
@@ -123,7 +126,16 @@ class VoltageProfileSegmentBuilder:
 
         total_delta_u_kv = sum(segment.delta_u_kv for segment in segments)
         expected_delta_u_kv = u_source_kv - u_node_kv
-        if abs(total_delta_u_kv - expected_delta_u_kv) > _TELESCOPING_TOLERANCE_KV:
+        granica_kv = _granica_sumy_kv(
+            [
+                u_source_kv,
+                u_node_kv,
+                *(s.u_from_kv for s in segments),
+                *(s.u_to_kv for s in segments),
+            ],
+            len(segments),
+        )
+        if abs(total_delta_u_kv - expected_delta_u_kv) > granica_kv:
             raise AssertionError(
                 "Niezmiennik dekompozycji ΔU naruszony: suma segmentów "
                 f"({total_delta_u_kv!r} kV) != u_source_kv - u_node_kv "

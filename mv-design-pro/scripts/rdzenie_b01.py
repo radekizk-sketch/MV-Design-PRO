@@ -73,6 +73,9 @@ RDZENIE_B01: dict[str, tuple[str, ...]] = {
         "network_model/solvers/power_flow_newton_internal.py",
         "network_model/solvers/power_flow_gauss_seidel.py",
         "network_model/solvers/power_flow_fast_decoupled.py",
+        # Karta RDZEN-PF-LACZNIK-SCALENIE (B-01 architekta 2026-11-13): scalenie zamkniętych
+        # łączników w węzły elektryczne wyspy — część rdzenia rozpływu (wołają go NR/GS/FD).
+        "network_model/solvers/power_flow_scalenie.py",
     ),
     "Zabezpieczenia IEC 60255": ("network_model/solvers/protection_iec60255.py",),
     "NC RfG / PTPiREE (T01–T20) z profilami regulacyjnymi": (

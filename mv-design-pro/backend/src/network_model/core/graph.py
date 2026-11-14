@@ -17,6 +17,7 @@ from .grid_source import GridShortCircuitSource
 from .inverter import InverterSource
 from .machine import AsynchronousMachineSource, SynchronousMachineSource
 from .node import Node, NodeType
+from .scalenie_lacznikow import lacznik_przewodzi
 from .station import Station
 from .switch import Switch
 from .topologia import skladowe_spojne
@@ -916,18 +917,6 @@ class NetworkGraph:
         """
         return getattr(source, "in_service", True)
 
-    def _is_switch_in_service(self, switch: Switch) -> bool:
-        """
-        Sprawdza czy łącznik jest aktywny (in_service).
-
-        Args:
-            switch: Łącznik do sprawdzenia.
-
-        Returns:
-            True jeśli łącznik jest aktywny, False w przeciwnym razie.
-        """
-        return getattr(switch, "in_service", True)
-
     def _is_switch_active(self, switch: Switch) -> bool:
         """
         Sprawdza czy łącznik tworzy połączenie topologiczne.
@@ -936,7 +925,7 @@ class NetworkGraph:
         - in_service=True
         - state=CLOSED
         """
-        return self._is_switch_in_service(switch) and switch.is_closed
+        return lacznik_przewodzi(switch)
 
     def __repr__(self) -> str:
         """Zwraca czytelną reprezentację tekstową grafu."""

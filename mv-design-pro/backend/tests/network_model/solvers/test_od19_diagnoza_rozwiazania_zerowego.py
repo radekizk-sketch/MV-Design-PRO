@@ -48,13 +48,13 @@ from network_model.solvers.power_flow_newton import (
     solve_power_flow_physics,
 )
 from network_model.solvers.power_flow_newton_internal import (
-    build_initial_voltage,
+    ZadanieRozplywuWyspy,
     build_jacobian_v2,
-    build_power_spec_v2,
     build_slack_island,
-    build_ybus_pu,
     compute_power_injections,
     newton_raphson_solve_v2,
+    przygotuj_rozplyw_wyspy,
+    wyniki_rozplywu_wyspy,
 )
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -87,18 +87,25 @@ PRZEKLADNIA_TR1_NADPISANEGO = (15.0 / 110.0) / (0.4 / 15.0)
 # --- narzędzia pomiaru (poza rdzeniem) -------------------------------------------
 
 
-def _ybus_i_indeksy(pfi: PowerFlowInput) -> tuple[np.ndarray, dict[str, int], list[str], int]:
+def _zadanie(pfi: PowerFlowInput) -> tuple[ZadanieRozplywuWyspy, list[str]]:
+    """Zadanie wyspy zasilanej z TEJ SAMEJ drogi, którą idzie solver (`przygotuj_rozplyw_wyspy`).
+
+    Indeksy są indeksami WĘZŁÓW ELEKTRYCZNYCH (zamknięte łączniki scalone — karta scalenia
+    łączników); pomiar diagnozy liczy na tej samej macierzy i tym samym punkcie startowym
+    co rdzeń, a nie na własnej kopii jego przygotowania.
+    """
     graph = pfi.typed_graph()
     wyspa, _ = build_slack_island(graph, pfi.slack.node_id)
-    zaczepy = {s.branch_id: s.tap_ratio for s in pfi.taps}
-    ybus, indeks, _, _, _ = build_ybus_pu(
-        graph, wyspa, pfi.base_mva, pfi.slack.node_id, pfi.shunts, zaczepy
-    )
-    return ybus, indeks, wyspa, indeks[pfi.slack.node_id]
+    return przygotuj_rozplyw_wyspy(pfi, graph, wyspa, False), wyspa
+
+
+def _ybus_i_indeksy(pfi: PowerFlowInput) -> tuple[np.ndarray, dict[str, int], list[str], int]:
+    z, wyspa = _zadanie(pfi)
+    return z.ybus_pu, z.node_index_map, wyspa, z.slack_index
 
 
 def _wektor_napiec(sol: PowerFlowNewtonSolution, indeks: dict[str, int]) -> np.ndarray:
-    v = np.zeros(len(indeks), dtype=complex)
+    v = np.zeros(max(indeks.values()) + 1, dtype=complex)
     for node_id, i in indeks.items():
         v[i] = sol.node_voltage[node_id]
     return v
@@ -107,55 +114,58 @@ def _wektor_napiec(sol: PowerFlowNewtonSolution, indeks: dict[str, int]) -> np.n
 def zredukowany_jakobian(
     pfi: PowerFlowInput, v: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray, list[str]]:
-    """``(J, J_R, kolejność szyn PQ)`` w punkcie ``v`` — J_R = J_QV − J_Qθ·J_Pθ⁻¹·J_PV."""
-    ybus, indeks, _, slack_i = _ybus_i_indeksy(pfi)
-    pq = sorted(indeks[s.node_id] for s in pfi.pq if s.node_id in indeks)
-    pv = sorted(indeks[s.node_id] for s in pfi.pv if s.node_id in indeks)
-    ns = sorted(i for i in pq + pv if i != slack_i)
+    """``(J, J_R, szyny PQ)`` w punkcie ``v`` — J_R = J_QV − J_Qθ·J_Pθ⁻¹·J_PV.
+
+    Szyny PQ: KAŻDY węzeł wyspy, którego węzeł elektryczny jest typu PQ.
+    """
+    z, _ = _zadanie(pfi)
+    ybus = z.ybus_pu
+    pq = sorted(z.pq_indices)
+    ns = sorted(i for i in pq + list(z.pv_indices) if i != z.slack_index)
     p_calc, q_calc = compute_power_injections(ybus, v)
     jac = build_jacobian_v2(ybus, v, ns, pq, p_calc, q_calc)
     n_p = len(ns)
     j_pth, j_pv = jac[:n_p, :n_p], jac[:n_p, n_p:]
     j_qth, j_qv = jac[n_p:, :n_p], jac[n_p:, n_p:]
     j_r = j_qv - j_qth @ np.linalg.solve(j_pth, j_pv)
-    odwrotny = {i: node_id for node_id, i in indeks.items()}
-    return jac, j_r, [odwrotny[i] for i in pq]
+    zbior_pq = set(pq)
+    return jac, j_r, sorted(w for w, i in z.node_index_map.items() if i in zbior_pq)
 
 
 def _rozwiaz_ze_startu(
     pfi: PowerFlowInput, *, node_id: str, u_start_pu: float
 ) -> tuple[np.ndarray, bool, float]:
     """NR rdzenia (``newton_raphson_solve_v2``) ze startem płaskim, w którym JEDNA szyna
-    ma zadany moduł startowy — reszta parametrów jak w ``PowerFlowNewtonSolver.solve``."""
-    ybus, indeks, wyspa, slack_i = _ybus_i_indeksy(pfi)
-    graph = pfi.typed_graph()
-    pq = sorted(indeks[s.node_id] for s in pfi.pq if s.node_id in indeks)
-    pv = sorted(indeks[s.node_id] for s in pfi.pv if s.node_id in indeks)
-    p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
-        wyspa, pfi.base_mva, pfi.pq, pfi.pv
-    )
-    v0 = build_initial_voltage(
-        wyspa, pfi.slack.node_id, pfi.slack.u_pu, pfi.slack.angle_rad, pfi.options, graph
-    )
-    i = indeks[node_id]
+    ma zadany moduł startowy — reszta parametrów jak w ``PowerFlowNewtonSolver.solve``
+    (to samo zadanie wyspy, `przygotuj_rozplyw_wyspy`); moc bilansująca — ta sama funkcja
+    co wynik solvera (`wyniki_rozplywu_wyspy`)."""
+    z, wyspa = _zadanie(pfi)
+    v0 = z.v0.copy()
+    i = z.node_index_map[node_id]
     v0[i] = u_start_pu * np.exp(1j * np.angle(v0[i]))
-    odwrotny = {i: node_id for node_id, i in indeks.items()}
     v, converged, _, _, _, _ = newton_raphson_solve_v2(
-        ybus,
-        slack_i,
-        pq,
-        pv,
-        p_spec,
-        q_spec,
-        pv_setpoints,
-        pv_q_limits,
+        z.ybus_pu,
+        z.slack_index,
+        z.pq_indices,
+        z.pv_indices,
+        z.p_spec,
+        z.q_spec,
+        z.pv_setpoints,
+        z.pv_q_limits,
         v0,
         pfi.options,
         pfi.base_mva,
-        odwrotny,
+        z.node_index_to_id,
+        z.zip_table,
+        z.inv_table,
+        z.zip_const,
+        z.inv_shaping,
+        scalenie=z.scalenie,
+        pv_pelne=z.pv_pelne,
     )
-    p_calc, _ = compute_power_injections(ybus, v)
-    return v, converged, float(p_calc[slack_i] * pfi.base_mva)
+    wyniki = wyniki_rozplywu_wyspy(pfi, pfi.typed_graph(), z, v, wyspa, [])
+    moc = complex(wyniki["slack_power"])
+    return v, converged, float(moc.real * pfi.base_mva)
 
 
 # --- 1. Klasa na sieci dwuszynowej: slack — linia — PQ(0, 0) ----------------------
@@ -433,7 +443,13 @@ def test_w3g2_start_plaski_zbiega_do_rozwiazania_zerowego_a_j_r_jest_dodatni(mig
     wartosci = np.linalg.eigvals(j_r)
     assert np.abs(wartosci.imag).max() < 1e-9
     assert wartosci.real.min() > 0.0, wartosci
-    assert wartosci.real.min() == pytest.approx(0.080879, abs=1e-5)
+    # Pomiar po karcie scalenia łączników (z 0,080879 na 0,162171): J_R liczony jest na
+    # węzłach ELEKTRYCZNYCH. Dawniej para węzłów połączona łącznikiem 1e-4 Ω dawała blok
+    # [[a+s, −s], [−s, b+s]] ze sztywnym s ~ 1e4 — wartości własne ≈ (a+b)/2 = 0,0809 i 2s;
+    # po scaleniu wiersz węzła elektrycznego jest SUMĄ wierszy członków, więc ten sam tryb
+    # ma wartość a+b ≈ 0,1622 (2 × 0,0809), a sztywny tryb 2s znika. Znak (wniosek STOP-
+    # warunku) bez zmian.
+    assert wartosci.real.min() == pytest.approx(0.162171, abs=1e-5)
     assert szyna_110 in szyny_pq
     assert np.linalg.svd(jac, compute_uv=False).min() < SIGMA_MIN_OSOBLIWY
 

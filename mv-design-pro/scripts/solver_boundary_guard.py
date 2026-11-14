@@ -49,6 +49,10 @@ DODATKOWE_CHRONIONE: tuple[str, ...] = (
     # więc każda zmiana stempli tego pliku jest zmianą liczb rdzenia IEC 60909 (3F/2F/1F/2F+G,
     # wkłady, maszyny, pętla IEC 60364, ekwiwalent nN). Do karty plik był poza ochroną.
     "backend/src/network_model/core/ybus.py",
+    # Karta RDZEN-PF-LACZNIK-SCALENIE (zgoda B-01 architekta 2026-11-13): jedno zrodlo
+    # predykatu przewodzenia lacznika i scalenia wezlow — wspolne dla macierzy zwarc
+    # (`core/ybus.py`) i rozplywu NR/GS/FD, wiec kazda zmiana jest zmiana liczb obu rdzeni.
+    "backend/src/network_model/core/scalenie_lacznikow.py",
 )
 
 #: Ścieżki chronione: CAŁA lista B-01 (jedno źródło `rdzenie_b01.py`, wpis-katalog z `/`
@@ -368,6 +372,8 @@ SANCTIONED_CHANGES = {
         "spoza `LineBranch`/`TransformerBranch` jako AssertionError bledu programu (dawniej "
         "ValueError z angielskim tekstem i kodem rodzaju) z testem kompletu "
         "tests/network_model/core/test_rodzaje_galezi_zamkniete.py. Zero zmian liczb."
+        " Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): "
+        "scalenie wezlow przez jedno zrodlo `core/scalenie_lacznikow.scal_laczniki` (ten sam predykat przewodzenia i reprezentant `UniaWezlow`, co dotad lokalnie) — porzadek wierszy i liczby zwarc bit w bit (golden zwarc bez zmian). Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
@@ -399,6 +405,8 @@ SANCTIONED_CHANGES = {
         "argumenty wyjatkow i komunikatow, stale str, dopuszczone nazwy importu) — poza "
         "argumentami wyjatkow i dozwolona stala IDENTYCZNE (log "
         "/tmp/claude-0/logs/ast_b01_c4.log), golden i determinizm rdzeni bez zmian."
+        " Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): "
+        "lacznik zamkniety bez impedancji — dawny stempel 0,0001 + j0,0001 Ohm (K30-14) usuniety; Y-bus budowana na wezlach elektrycznych (`power_flow_scalenie`, predykat `core/scalenie_lacznikow.lacznik_przewodzi`, reprezentant najmniejszy identyfikator — ten sam co zwarcia), wspolna sciezka przygotowania i wynikow wyspy dla NR/GS/FD (`przygotuj_rozplyw_wyspy`, `wyniki_rozplywu_wyspy`), przeplyw lacznika z bilansu wezlow (drzewo dokladnie, petla najmniejsza norma) w sladzie `scalenie_lacznikow`; wyspa bez lacznika — sciezka tozsamosciowa bit w bit. Wersja solvera 1.0.0 -> 1.1.0. Kontrakt PowerFlowResult bez zmian ksztaltu. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/frt_hvrt/": (
         "Decyzja B-01 architekta z 2026-10-29 (karta komunikatow, commit 3): w "
@@ -437,6 +445,8 @@ SANCTIONED_CHANGES = {
         "porownanie drzew skladniowych z wymazanym calym argumentem wywolania wyjatku "
         "identyczne poza ta jedna dodana stala (typ wyjatku i warunek bez zmian); testy "
         "liczbowe i determinizm WLS bez zmian."
+        " Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): "
+        "WYLACZNIE docstring `ybus_from_network_graph` (macierz wezlow elektrycznych, mapa wezel -> indeks nieodwracalna); kod bez zmian. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/v126_academic.py": (
         "O-59 (plan A/B par. 12.2 (d)(k), karta B01-RUNDA-3 i decyzja B-01 partii 9): "
@@ -660,6 +670,8 @@ SANCTIONED_CHANGES = {
         "drzew skladniowych wobec 98c6f8d20 (wymazane argumenty wyjatkow, stale str) — "
         "poza argumentami wyjatkow IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c5.log), "
         "golden, determinizm i parytet liczb bez zmian."
+        " Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): "
+        "rozplyw GS przez wspolna sciezke wezlow elektrycznych NR (`przygotuj_rozplyw_wyspy`, `wyniki_rozplywu_wyspy`) zamiast wlasnej kopii przygotowania wyspy i stempla lacznika; kontrakt wyniku bez zmian ksztaltu. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_fast_decoupled.py": (
         "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
@@ -676,6 +688,20 @@ SANCTIONED_CHANGES = {
         "drzew skladniowych wobec 98c6f8d20 (wymazane argumenty wyjatkow, stale str) — "
         "poza argumentami wyjatkow IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c5.log), "
         "golden, determinizm i parytet liczb bez zmian."
+        " Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): "
+        "rozplyw FD przez wspolna sciezke wezlow elektrycznych NR (`przygotuj_rozplyw_wyspy`, `wyniki_rozplywu_wyspy`) zamiast wlasnej kopii przygotowania wyspy i stempla lacznika; kontrakt wyniku bez zmian ksztaltu. Wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/power_flow_scalenie.py": (
+        "Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): NOWY modul "
+        "rdzenia rozplywu — scalenie zamknietych lacznikow w wezly elektryczne wyspy, odmowy "
+        "nazwane (lacznik miedzy roznymi napieciami, sprzeczne nastawy PV, PV scalony z "
+        "bilansujacym), podzial Q grupy PV (regula MATPOWER pfsoln), moc bilansujaca grupy, "
+        "przeplyw lacznika z bilansu wezlow i slad grup. Wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/core/scalenie_lacznikow.py": (
+        "Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): NOWE jedno "
+        "zrodlo predykatu przewodzenia lacznika i scalenia wezlow dla zwarc (`core/ybus.py`), "
+        "rozplywu NR/GS/FD, estymacji stanu i dynamiki. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton.py": (
         "Decyzja B-01 architekta z 2026-10-30 (commit 5 karty komunikatow, regula jezyka "
@@ -685,6 +711,8 @@ SANCTIONED_CHANGES = {
         "poza argumentami wyjatkow IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c5.log), "
         "golden, determinizm i parytet liczb bez zmian."
         " Wpis do usuniecia po scaleniu do main."
+        " Karta RDZEN-PF-LACZNIK-SCALENIE (decyzja B-01 architekta 2026-11-13): "
+        "rozplyw NR przez wspolna sciezke wezlow elektrycznych (`przygotuj_rozplyw_wyspy`, `wyniki_rozplywu_wyspy`); kontrakt wyniku bez zmian ksztaltu. Wpis do usuniecia po scaleniu do main."
     ),
 }
 

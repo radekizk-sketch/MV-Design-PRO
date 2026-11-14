@@ -10,6 +10,7 @@ grafu, zero fizyki.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 
 import pytest
@@ -244,8 +245,8 @@ class TestSegmentDecompositionNetworkB:
 class TestSegmentDecompositionSwitchOnPath:
     """Sieć z ŁĄCZNIKIEM (bez równoległej gałęzi) na trasie źródło->węzeł —
     wymusza przejście BFS przez krawędź typu switch (pomijaną w segmentach),
-    dowodząc niezmiennika sumy mimo znikomego (nie dokładnie zerowego)
-    spadku na łączniku (patrz docstring `segment_decomposition.py`)."""
+    dowodząc niezmiennika sumy: spadek na zamkniętym łączniku jest DOKŁADNIE
+    zerowy, bo rozpływ scala jego węzły (karta scalenia łączników)."""
 
     def _network_with_switch(self) -> tuple[NetworkGraph, PowerFlowResultV1]:
         graph = NetworkGraph()
@@ -304,11 +305,30 @@ class TestSegmentDecompositionSwitchOnPath:
         assert path.segments[0].from_bus == "B"
 
         total_delta_u_kv = sum(segment.delta_u_kv for segment in path.segments)
-        # Niezmiennik trzyma się mimo pominięcia hopa łącznika — bo spadek na
-        # zamkniętym łączniku jest numerycznie znikomy (patrz tolerancja
-        # `segment_decomposition._TELESCOPING_TOLERANCE_KV`), NIE dlatego że
-        # jest dokładnie zero.
-        assert total_delta_u_kv == pytest.approx(path.u_source_kv - path.u_node_kv, abs=1e-4)
+        # Przepisane wg karty scalenia łączników — INTENCJA ZACHOWANA (niezmiennik sumy przy
+        # pominiętym hopie łącznika). Dawniej spadek na łączniku 1e-4 Ω był „numerycznie
+        # znikomy” (tolerancja 1e-4 kV); teraz węzły łącznika mają TO SAMO napięcie, więc
+        # spadek jest zerem DOKŁADNYM, a suma zamyka się bitowo (jeden segment).
+        assert path.u_source_kv == path.segments[0].u_from_kv
+        assert total_delta_u_kv == path.u_source_kv - path.u_node_kv
+
+    def test_spadek_nieprzypisany_do_segmentu_lamie_niezmiennik(self) -> None:
+        """Iniekcja: napięcie końca łącznika różne od drugiego końca o 1e-9 pu (4e-10 kV).
+
+        Granica niezmiennika jest arytmetyczna (`_granica_sumy_kv`), więc nawet tak mały
+        spadek, którego żaden segment nie niesie, jest wykryty — dawna stała 1e-4 kV
+        przepuszczała spadek 2,5e5 razy większy.
+        """
+        graph, result_v1 = self._network_with_switch()
+        zepsute = dataclasses.replace(
+            result_v1,
+            bus_results=tuple(
+                dataclasses.replace(bus, v_pu=bus.v_pu + 1e-9) if bus.bus_id == "B" else bus
+                for bus in result_v1.bus_results
+            ),
+        )
+        with pytest.raises(AssertionError, match="Niezmiennik dekompozycji"):
+            VoltageProfileSegmentBuilder(graph).build_path(zepsute, "C")
 
     def test_unreachable_node_raises(self) -> None:
         graph, result_v1 = self._network_with_switch()

@@ -8,8 +8,9 @@ z pozycji katalogu projektu (`enm/katalog_projektu.py`), więc test dowodzi, że
 arkusza materializuje się w torze solvera dokładnie jak typ producenta — i że wynik
 zgadza się z niezależnym solverem.
 
-Tolerancje jak w `test_pandapower_wyspy.py` (ta sama klasa różnic: łączniki pól
-0,1 mΩ w solverze vs łącznik idealny w pandapower).
+Tolerancje jak w `test_pandapower_wyspy.py` (łączniki pól scalają szyny w solverze
+i w pandapower — karta RDZEN-PF-LACZNIK-SCALENIE; do niej solver stemplował łącznik
+0,1 mΩ i progi mieściły ten rozjazd).
 
 Marker ``pandapower``: biegnie wyłącznie w izolowanym jobie CI
 ``pandapower-cross-validation`` (scipy<1.17); import pandapower leniwy w moście.

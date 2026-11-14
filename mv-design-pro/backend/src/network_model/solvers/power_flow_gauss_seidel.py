@@ -27,38 +27,21 @@ from typing import Any
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
-from network_model.solvers.power_flow_inverter import (
-    InverterControl,
-    apply_inverter_setpoint,
-    build_inverter_table,
-    inverter_q_seed,
-    inverter_relax_q,
-)
+from network_model.solvers.power_flow_inverter import InverterControl, inverter_relax_q
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
     PowerFlowNewtonSolver,
 )
 from network_model.solvers.power_flow_newton_internal import (
-    build_initial_voltage,
-    build_power_spec,
-    build_power_spec_v2,
     build_slack_island,
-    build_ybus_pu,
-    compute_branch_flows,
     compute_power_injections,
-    effective_pq_injections,
-    pv_calculated_injections,
+    przygotuj_rozplyw_wyspy,
     validate_input,
+    wyniki_rozplywu_wyspy,
 )
+from network_model.solvers.power_flow_scalenie import ScalenieWyspy, zadanie_wezla
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
-from network_model.solvers.power_flow_zip import (
-    ZipCoeffs,
-    apply_zip_frequency,
-    build_zip_table,
-    split_zip_constant_part,
-    zip_effective_spec,
-    zip_factor,
-)
+from network_model.solvers.power_flow_zip import ZipCoeffs, zip_effective_spec
 
 
 @dataclass
@@ -172,92 +155,9 @@ class PowerFlowGaussSeidelSolver:
                 "zasilanej z sieci zasilającej."
             )
 
-        # Build tap ratios map
-        tap_ratios = {spec.branch_id: spec.tap_ratio for spec in pf_input.taps}
-
-        # Build Y-bus matrix
-        ybus_pu, node_index_map, ybus_trace, applied_taps, applied_shunts = build_ybus_pu(
-            graph,
-            slack_island_nodes,
-            pf_input.base_mva,
-            pf_input.slack.node_id,
-            pf_input.shunts,
-            tap_ratios,
-        )
-
-        slack_index = node_index_map[pf_input.slack.node_id]
-        node_index_to_id = {idx: node_id for node_id, idx in node_index_map.items()}
-
-        # Identify PQ and PV nodes
-        pq_node_ids = [spec.node_id for spec in pf_input.pq if spec.node_id in node_index_map]
-        pv_node_ids = [spec.node_id for spec in pf_input.pv if spec.node_id in node_index_map]
-        pq_indices = sorted([node_index_map[node_id] for node_id in pq_node_ids])
-        pv_indices = sorted([node_index_map[node_id] for node_id in pv_node_ids])
-
-        # Build initial voltage
-        v0 = build_initial_voltage(
-            slack_island_nodes,
-            pf_input.slack.node_id,
-            pf_input.slack.u_pu,
-            pf_input.slack.angle_rad,
-            options,
-            graph,
-        )
-
-        # P20a: Build init_state for white-box trace
-        init_state: dict[str, dict[str, float]] | None = None
-        if full_trace:
-            init_state = {}
-            for node_id in sorted(slack_island_nodes):
-                idx = node_index_map[node_id]
-                init_state[node_id] = {
-                    "v_pu": float(np.abs(v0[idx])),
-                    "theta_rad": float(np.angle(v0[idx])),
-                }
-
-        # Build power specifications
-        if pv_indices:
-            p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
-                slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
-            )
-            # Initialize PV voltage magnitudes
-            for idx, u_pu in pv_setpoints.items():
-                v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
-        else:
-            p_spec, q_spec = build_power_spec(slack_island_nodes, pf_input.base_mva, pf_input.pq)
-            pv_setpoints = {}
-            pv_q_limits = {}
-
-        # Defect D1 (audit 2026-08-01): rebase ZIP buses onto their LOAD part and
-        # keep the rest (generation) as a constant term. BEFORE the frequency
-        # scaling, so P(f) scales the load only. None => nothing to split.
-        zip_const = split_zip_constant_part(
-            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_mva
-        )
-        # ADR-011 ZIP: one-time frequency base scaling (constant w.r.t. V) and the
-        # voltage-dependent ZIP table (per-iteration recompute). Empty table =>
-        # classic constant-power path (reduce-to-NR: identical code, identical output).
-        apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
-        zip_table = build_zip_table(pf_input.pq, node_index_map)
-
-        # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes); Q(U)
-        # sources are recomputed per sweep via inv_table. Empty table => classic
-        # constant-PQ path (reduce-to-NR: identical code, identical output).
-        # Defect B: the shaping reads the SOURCE's own power and enters as a
-        # component of the bus — on a ZIP bus into the constant part, so the load
-        # polynomial never scales it (hence zip_table/zip_const are handed over).
-        inv_shaping = apply_inverter_setpoint(
-            p_spec,
-            q_spec,
-            pf_input.pq,
-            node_index_map,
-            pf_input.base_frequency_hz,
-            pf_input.base_mva,
-            zip_table,
-            zip_const,
-        )
-        inv_table = build_inverter_table(pf_input.pq, node_index_map)
-        q_inv_seed = inverter_q_seed(inv_table, inv_shaping)
+        # Węzły elektryczne (zamknięte łączniki scalone), zadania mocy i punkt startowy —
+        # jedno przygotowanie dla NR/GS/FD (`przygotuj_rozplyw_wyspy`).
+        z = przygotuj_rozplyw_wyspy(pf_input, graph, slack_island_nodes, full_trace)
 
         # Run Gauss-Seidel iteration
         (
@@ -268,25 +168,27 @@ class PowerFlowGaussSeidelSolver:
             gs_trace,
             pv_to_pq_switches,
         ) = self._gauss_seidel_solve(
-            ybus_pu,
-            slack_index,
-            pq_indices,
-            pv_indices,
-            p_spec,
-            q_spec,
-            pv_setpoints,
-            pv_q_limits,
-            v0,
+            z.ybus_pu,
+            z.slack_index,
+            z.pq_indices,
+            z.pv_indices,
+            z.p_spec,
+            z.q_spec,
+            z.pv_setpoints,
+            z.pv_q_limits,
+            z.v0,
             options.tolerance,
             options.max_iter,
             accel,
             full_trace,
-            node_index_to_id,
+            z.node_index_to_id,
             pf_input.base_mva,
-            zip_table,
-            inv_table,
-            zip_const,
-            q_inv_seed,
+            z.zip_table,
+            z.inv_table,
+            z.zip_const,
+            z.q_inv_seed,
+            scalenie=z.scalenie,
+            pv_pelne=z.pv_pelne,
         )
 
         # Handle non-convergence with optional fallback to Newton-Raphson
@@ -375,124 +277,25 @@ class PowerFlowGaussSeidelSolver:
                     }
                 )
 
-        # Build node voltage results
-        node_voltage = {node_id: v[node_index_map[node_id]] for node_id in slack_island_nodes}
-        node_u_mag = {node_id: float(abs(voltage)) for node_id, voltage in node_voltage.items()}
-        node_angle = {
-            node_id: float(np.angle(voltage)) for node_id, voltage in node_voltage.items()
-        }
-        # K30-14 NO-GO #10 (parity z power_flow_newton): include not_solved
-        # nodes z NaN markerem dla downstream JSON-safe propagation.
-        for not_solved_id in not_solved_nodes:
-            node_u_mag[not_solved_id] = float("nan")
-            node_angle[not_solved_id] = float("nan")
-
-        # Compute branch flows
-        slack_voltage_kv = graph.nodes[pf_input.slack.node_id].voltage_level
-        (
-            branch_current,
-            branch_s_from,
-            branch_s_to,
-            losses_total,
-            branch_flow_note,
-        ) = compute_branch_flows(
-            graph,
-            node_voltage,
-            pf_input.base_mva,
-            slack_voltage_kv,
-            {entry["branch_id"]: entry["tap_ratio"] for entry in applied_taps},
-        )
-
-        # Build voltage in kV
-        node_voltage_kv: dict[str, float] = {}
-        missing_voltage_base_nodes: list[str] = []
-        for node_id, voltage in node_voltage.items():
-            voltage_level = graph.nodes[node_id].voltage_level
-            if voltage_level and voltage_level > 0:
-                node_voltage_kv[node_id] = float(abs(voltage) * voltage_level)
-            else:
-                missing_voltage_base_nodes.append(node_id)
-        # K30-14 NO-GO #10: NaN-mark not_solved_nodes (parity z newton solver).
-        for not_solved_id in not_solved_nodes:
-            if not_solved_id not in node_voltage_kv:
-                node_voltage_kv[not_solved_id] = float("nan")
-
-        # Build branch current in kA
-        branch_current_ka: dict[str, float] = {}
-        for branch_id, current_pu in branch_current.items():
-            branch = graph.branches[branch_id]
-            voltage_level = graph.nodes[branch.from_node_id].voltage_level
-            if voltage_level and voltage_level > 0:
-                i_base_ka = pf_input.base_mva / (np.sqrt(3) * voltage_level)
-                branch_current_ka[branch_id] = float(abs(current_pu) * i_base_ka)
-
-        # Convert branch power to MVA
-        branch_s_from_mva = {
-            branch_id: value * pf_input.base_mva for branch_id, value in branch_s_from.items()
-        }
-        branch_s_to_mva = {
-            branch_id: value * pf_input.base_mva for branch_id, value in branch_s_to.items()
-        }
-
-        # Compute slack power
-        p_calc, q_calc = compute_power_injections(ybus_pu, v)
-        slack_power = complex(p_calc[slack_index], q_calc[slack_index])
-        # Defect D1: after the split p_spec/q_spec hold only the ZIP base, so the
-        # constant part is added back here — this diagnostic keeps its historical
-        # meaning (sum of the SPECIFIED PQ powers) and its historical value.
-        sum_pq_spec = complex(float(np.sum(p_spec)), float(np.sum(q_spec)))
-        if zip_const is not None:
-            sum_pq_spec += complex(float(np.sum(zip_const[0])), float(np.sum(zip_const[1])))
-        node_p_spec_effective_pu, node_q_spec_effective_pu = effective_pq_injections(
-            pf_input.pq, node_index_map, p_spec, q_spec, v, zip_table, inv_table, zip_const
-        )
-        # DLUG W2-D1 (V12K-318) ZAMKNIETY: szyna PV tez wstrzykuje moc — jej moc
-        # bierna jest WYNIKIEM zbieznosci, nie zadaniem. Te same slowniki niosa
-        # teraz odpowiedz „ile faktycznie wstrzyknela kazda szyna niebilansujaca":
-        # dla szyny PQ z wielomianu/regulacji, dla szyny PV z rownania wezlowego.
-        # (Nazwa pola pochodzi sprzed rozszerzenia — patrz dlug X1-D1.)
-        node_p_pv_pu, node_q_pv_pu = pv_calculated_injections(
-            pf_input.pv, node_index_map, p_calc, q_calc
-        )
-        node_p_spec_effective_pu.update(node_p_pv_pu)
-        node_q_spec_effective_pu.update(node_q_pv_pu)
-
-        if branch_flow_note:
-            losses_total = 0.0 + 0.0j
+        wyniki = wyniki_rozplywu_wyspy(pf_input, graph, z, v, slack_island_nodes, not_solved_nodes)
 
         return PowerFlowNewtonSolution(
             converged=converged,
             iterations=iterations,
             max_mismatch=max_mismatch,
-            node_voltage=node_voltage,
-            node_u_mag=node_u_mag,
-            node_angle=node_angle,
-            node_voltage_kv=node_voltage_kv,
-            branch_current=branch_current,
-            branch_s_from=branch_s_from,
-            branch_s_to=branch_s_to,
-            branch_current_ka=branch_current_ka,
-            branch_s_from_mva=branch_s_from_mva,
-            branch_s_to_mva=branch_s_to_mva,
-            losses_total=losses_total,
-            slack_power=slack_power,
-            sum_pq_spec=sum_pq_spec,
-            branch_flow_note=branch_flow_note,
-            missing_voltage_base_nodes=missing_voltage_base_nodes,
             validation_warnings=validation_warnings,
             validation_errors=validation_errors,
             slack_island_nodes=slack_island_nodes,
             not_solved_nodes=not_solved_nodes,
-            ybus_trace=ybus_trace,
+            ybus_trace=z.ybus_trace,
             nr_trace=gs_trace,  # Same trace format, "nr" for compatibility
-            applied_taps=applied_taps,
-            applied_shunts=applied_shunts,
+            applied_taps=z.applied_taps,
+            applied_shunts=z.applied_shunts,
             pv_to_pq_switches=pv_to_pq_switches,
-            init_state=init_state,
-            node_p_spec_effective_pu=node_p_spec_effective_pu,
-            node_q_spec_effective_pu=node_q_spec_effective_pu,
+            init_state=z.init_state,
             solver_method="gauss-seidel",
             fallback_info=fallback_info,
+            **wyniki,
         )
 
     def _gauss_seidel_solve(
@@ -516,6 +319,9 @@ class PowerFlowGaussSeidelSolver:
         inv_table: dict[int, InverterControl] | None = None,
         zip_const: tuple[np.ndarray, np.ndarray] | None = None,
         q_inv_seed: dict[int, float] | None = None,
+        *,
+        scalenie: ScalenieWyspy,
+        pv_pelne: frozenset[int],
     ) -> tuple[
         np.ndarray,
         bool,
@@ -554,6 +360,14 @@ class PowerFlowGaussSeidelSolver:
                 the whole bus power (historical path).
             q_inv_seed: Start value of the Q(U) relaxation state per bus — the
                 SOURCE's own declared Q (defect B), from ``inverter_q_seed``.
+            scalenie: Węzły elektryczne wyspy (zamknięte łączniki scalone). ``ybus``,
+                ``v0``, indeksy typów i nastawy PV — na indeksie węzła elektrycznego;
+                ``p_spec``, ``q_spec``, ``zip_table``, ``inv_table``, ``zip_const``,
+                ``q_inv_seed`` — na indeksie węzła wyspy (zadanie węzła elektrycznego =
+                suma zadań jego węzłów, `zadanie_wezla`). Wyspa bez łącznika — dawna
+                ścieżka bit w bit.
+            pv_pelne: Indeksy węzłów wyspy ze źródłem PV (granica Q dotyczy mocy źródeł;
+                zadanie Q po przełączeniu PV→PQ trafia do pierwszego źródła PV grupy).
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
@@ -578,13 +392,16 @@ class PowerFlowGaussSeidelSolver:
         # ∂Q/∂V Jacobian feedback). Converged value == qu_q(v*) => parity with NR and
         # reduce-to-NR preserved (empty inv_table => no-op).
         q_inv_state = dict(q_inv_seed or {})
+        scalona = not scalenie.trywialne
+        sc = scalenie
+        id_pelny = dict(enumerate(sc.wezly)) if scalona else node_index_to_id
 
         for iteration in range(1, max_iter + 1):
             v_old = v.copy()
             switched_this_iter: list[str] = []
 
             # Advance the under-relaxed Q(U) state using the current voltages.
-            inverter_relax_q(q_inv_state, v, inv_table)
+            inverter_relax_q(q_inv_state, sc.rozwin(v), inv_table)
 
             # --- PV bus Q-limit check and switching ---
             for idx in list(active_pv):
@@ -596,15 +413,34 @@ class PowerFlowGaussSeidelSolver:
                 i_inj = sum(ybus[idx, k] * v[k] for k in range(n))
                 s_calc = v[idx] * np.conj(i_inj)
                 q_calc = s_calc.imag  # Q injection (positive = generating reactive power)
+                if scalona:
+                    # Granica dotyczy mocy ŹRÓDEŁ PV: moc węzła elektrycznego minus
+                    # zadania pozostałych węzłów grupy (odbiory, źródła PQ).
+                    q_calc = (
+                        q_calc
+                        - zadanie_wezla(
+                            sc,
+                            idx,
+                            abs(v[idx]),
+                            p_spec,
+                            q_spec,
+                            zip_table,
+                            zip_const,
+                            inv_table,
+                            q_inv_state,
+                            pomin=pv_pelne,
+                        )[1]
+                    )
 
                 q_min_pu, q_max_pu = pv_q_limits[idx]
                 if q_calc < q_min_pu or q_calc > q_max_pu:
                     limit_pu = q_min_pu if q_calc < q_min_pu else q_max_pu
-                    q_spec[idx] = limit_pu  # Set Q injection to limit value
+                    nosnik = sc.nosnik(idx, pv_pelne) if scalona else idx
+                    q_spec[nosnik] = limit_pu  # Set Q injection to limit value
                     active_pv.remove(idx)
                     active_pq.append(idx)
                     active_pq.sort()
-                    node_id = node_index_to_id[idx]
+                    node_id = id_pelny[nosnik]
                     pv_to_pq_switches.append(
                         {
                             "iter": iteration,
@@ -634,19 +470,20 @@ class PowerFlowGaussSeidelSolver:
                 # chain, so a prosumer bus (ZIP load + volt-var source) took the ZIP
                 # branch and the volt-var control was silently dropped — GS then
                 # disagreed with NR/FD, which instead overwrote the load's Q.
-                p_i = p_spec[idx]
-                q_i = q_spec[idx]
-                if idx in zip_table:
-                    c = zip_table[idx]
-                    p_i = p_i * zip_factor(c.a_p, c.b_p, c.c_p, abs(v[idx]), c.v0_pu)
-                    q_i = q_i * zip_factor(c.a_q, c.b_q, c.c_q, abs(v[idx]), c.v0_pu)
-                    if zip_const is not None:
-                        # Defect D1: generation on a ZIP bus is constant power —
-                        # added AFTER the load polynomial, never scaled by it.
-                        p_i += zip_const[0][idx]
-                        q_i += zip_const[1][idx]
-                if idx in inv_table:
-                    q_i += q_inv_state[idx]
+                # Defect D1: generation on a ZIP bus is constant power — added AFTER
+                # the load polynomial, never scaled by it (`zadanie_wezla`). A merged
+                # electrical node sums the specs of its nodes, each by its own formula.
+                p_i, q_i = zadanie_wezla(
+                    sc,
+                    idx,
+                    abs(v[idx]),
+                    p_spec,
+                    q_spec,
+                    zip_table,
+                    zip_const,
+                    inv_table,
+                    q_inv_state,
+                )
                 s_i = complex(p_i, q_i)
 
                 # Gauss-Seidel update for PQ bus
@@ -674,13 +511,44 @@ class PowerFlowGaussSeidelSolver:
                 s_calc = v[idx] * np.conj(i_inj)
                 q_i = s_calc.imag  # Calculated Q injection
 
-                # Apply Q limits if defined
-                if idx in pv_q_limits:
-                    q_min_pu, q_max_pu = pv_q_limits[idx]
-                    q_i = np.clip(q_i, q_min_pu, q_max_pu)
+                if scalona:
+                    # Węzeł elektryczny z odbiorami: P = zadania wszystkich węzłów grupy,
+                    # granica Q obejmuje tylko moc źródeł PV (Q węzła minus pozostałe).
+                    p_grupy, _q = zadanie_wezla(
+                        sc,
+                        idx,
+                        abs(v[idx]),
+                        p_spec,
+                        q_spec,
+                        zip_table,
+                        zip_const,
+                        inv_table,
+                        q_inv_state,
+                    )
+                    _p, q_inne = zadanie_wezla(
+                        sc,
+                        idx,
+                        abs(v[idx]),
+                        p_spec,
+                        q_spec,
+                        zip_table,
+                        zip_const,
+                        inv_table,
+                        q_inv_state,
+                        pomin=pv_pelne,
+                    )
+                    if idx in pv_q_limits:
+                        q_min_pu, q_max_pu = pv_q_limits[idx]
+                        q_i = np.clip(q_i - q_inne, q_min_pu, q_max_pu) + q_inne
+                    s_i = complex(p_grupy, q_i)
+                else:
+                    # Apply Q limits if defined
+                    if idx in pv_q_limits:
+                        q_min_pu, q_max_pu = pv_q_limits[idx]
+                        q_i = np.clip(q_i, q_min_pu, q_max_pu)
 
-                # Specified P for PV bus (already in injection convention)
-                s_i = complex(p_spec[idx], q_i)
+                    # Specified P for PV bus (already in injection convention)
+                    s_i = complex(p_spec[idx], q_i)
 
                 # Gauss-Seidel update (but preserve |V|)
                 if abs(ybus[idx, idx]) > 1e-12:
@@ -715,11 +583,13 @@ class PowerFlowGaussSeidelSolver:
             # Defect B: ADDED to the composed bus power, exactly as the sweep does
             # above — assigning here would make the convergence test disagree with
             # the update on a prosumer bus (and never converge).
-            p_eff, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
+            p_eff, q_eff = zip_effective_spec(p_spec, q_spec, sc.rozwin(v), zip_table, zip_const)
             if inv_table:
                 q_eff = q_eff.copy()
                 for idx in inv_table:
                     q_eff[idx] += q_inv_state[idx]
+            p_eff = sc.zredukuj(p_eff)
+            q_eff = sc.zredukuj(q_eff)
             d_p = p_eff[non_slack_indices] - p_calc[non_slack_indices]
             d_q = q_eff[active_pq] - q_calc[active_pq]
 

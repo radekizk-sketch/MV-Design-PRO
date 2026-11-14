@@ -139,9 +139,10 @@ from .siec import (
     czwornik_galezi,
     granica_zaokraglen_residuum,
     jakobian_algebry,
-    ograniczenia_napiecia,
     prad_wezla_ograniczonego,
     residuum_algebry,
+    scal_wiersze,
+    wiersze_scalenia,
     zwarcia_galezi_modelu,
 )
 
@@ -241,10 +242,14 @@ def _prawa_strona_dae(
     sprzezeniu napieciowym, a dla `E = 0` (obszar beznapieciowy, zwarcie metaliczne)
     zero. Element pradowy w wezle ograniczonym nie wnosi nic (jego wiersz KCL nie
     istnieje), odbior bez obwodu tez nie (prad zero).
+
+    Wezly scalone lacznikiem: ta sama operacja na wierszach co w algebrze (`S`,
+    `siec.scal_wiersze`) — wiersz reprezentanta sumuje wklady grupy, wiersz `V_m - V_odn`
+    ma prawa strone zero (rownanie nie zalezy od stanow).
     """
     liczba = model.liczba_wezlow
     prawa_strona = np.zeros(2 * liczba, dtype=float)
-    ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
+    ograniczone = wiersze_scalenia(model, urzadzenia).bez_kcl
     stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
     for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
         if not odbior.nazwy_stanow or not odbior.przylaczony:
@@ -273,6 +278,8 @@ def _prawa_strona_dae(
             )
         prawa_strona[pozycja] += float(wklad[0])
         prawa_strona[pozycja + liczba] += float(wklad[1])
+    if model.grupy_lacznikow:
+        return scal_wiersze(model, wiersze_scalenia(model, urzadzenia), prawa_strona)
     return prawa_strona
 
 
@@ -671,7 +678,10 @@ def moc_urzadzenia_pu(
 
 
 def wielkosci_galezi(
-    model: ModelSieci, galaz: GalazDynamiki, napiecia: np.ndarray
+    model: ModelSieci,
+    galaz: GalazDynamiki,
+    napiecia: np.ndarray,
+    prady_lacznikow: dict[str, complex],
 ) -> WielkosciGalezi:
     """Prady i moce OBU zaciskow galezi — model pi z przekladnia zespolona.
 
@@ -684,12 +694,25 @@ def wielkosci_galezi(
     GALAZ ZE ZWARCIEM w miejscu x*L (karta AB-1b.1 par. 0 pkt 5): prady zaciskow z TEGO
     SAMEGO stempla czwornika, ktorym galaz wchodzi do Ybus (`siec.czwornik_galezi`) —
     wzor pi zdrowej galezi przestaje wtedy opisywac galaz.
+
+    LACZNIK (bez impedancji): prad z bilansu wezlow grupy (`siec.prady_lacznikow`,
+    przekazane przez wolajacego — jedno wyznaczenie na probke dla wszystkich lacznikow);
+    prad wplywajacy zaciskiem `do` jest przeciwny (`i_do = -i_od`), a moc zacisku `do` liczona
+    z napiecia tego zacisku (rowne napieciu `od` z wiersza `V_do - V_od = 0` grupy).
     """
     if galaz.ident not in model.galezie_aktywne:
         return WielkosciGalezi(i_od_pu=0j, i_do_pu=0j, s_od_pu=0j, s_do_pu=0j)
 
     napiecie_od = complex(napiecia[model.indeks_wezla[galaz.wezel_od]])
     napiecie_do = complex(napiecia[model.indeks_wezla[galaz.wezel_do]])
+    if galaz.rodzaj == "lacznik":
+        prad = prady_lacznikow[galaz.ident]
+        return WielkosciGalezi(
+            i_od_pu=prad,
+            i_do_pu=-prad,
+            s_od_pu=napiecie_od * prad.conjugate(),
+            s_do_pu=napiecie_do * (-prad).conjugate(),
+        )
     zwarcia = zwarcia_galezi_modelu(model, galaz.ident)
     if zwarcia:
         y_oo, y_od, y_do, y_dd = czwornik_galezi(

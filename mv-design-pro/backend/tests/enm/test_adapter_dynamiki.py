@@ -28,6 +28,7 @@ import numpy as np
 import pytest
 from enm.adapter_dynamiki import (
     KOD_ELEMENT_BEZ_SZYNY,
+    KOD_LACZNIK_ROZNE_NAPIECIA,
     KOD_NASTAWY_BRAK,
     KOD_ODBIOR_BEZ_BLOKU,
     KOD_ODBIOR_NIEODWZOROWANY,
@@ -278,10 +279,38 @@ class TestParytetYbus:
     To jest warunek, od którego zależy SENS punktu pracy: jeśli macierze się
     rozjadą, rozwiązanie rozpływu przestaje spełniać `Y·V = I(x,V)` i bramka
     równowagi rdzenia odrzuca bieg (albo — gorzej — `eps_init` dobrany „pod
-    wynik" przykrywa niespójność). Test jest zarazem PRZYPIĘCIEM długu nazwanego
-    w module: impedancja zastępcza łącznika zamkniętego żyje w dwóch miejscach
-    (rdzeń rozpływu FROZEN i adapter), więc rozjazd wartości musi wywalić test.
+    wynik" przykrywa niespójność).
+
+    Łącznik zamknięty nie ma impedancji: rozpływ liczy na WĘZŁACH ELEKTRYCZNYCH (węzły
+    scalone łącznikami → jeden indeks macierzy zredukowanej), dynamika trzyma węzły
+    fizyczne i scala je wierszami grup (`ModelSieci.grupy_lacznikow`). Porównanie
+    sumuje więc wpisy macierzy dynamiki po węzłach elektrycznych rozpływu —
+    `Σ_{i∈a, j∈b} Y_dyn[i, j] = Y_pf[a, b]` — a podział na grupy obu analiz musi być
+    TEN SAM (ten sam predykat i ten sam reprezentant).
     """
+
+    @staticmethod
+    def _zagregowana(model: Any, indeks_pf: dict[str, int], rozmiar: int) -> Any:
+        """Macierz dynamiki zsumowana po węzłach elektrycznych rozpływu + zgodność grup."""
+        ybus_dyn = model.ybus.toarray()
+        pozycja_pf = [indeks_pf[ref_to_graph_id(ident)] for ident in model.identy_wezlow]
+        zagregowana = np.zeros((rozmiar, rozmiar), dtype=complex)
+        for i, a in enumerate(pozycja_pf):
+            for j, b in enumerate(pozycja_pf):
+                zagregowana[a, b] += ybus_dyn[i, j]
+        grupy_dyn = sorted(
+            tuple(sorted(model.identy_wezlow[p] for p in grupa.czlonkowie))
+            for grupa in model.grupy_lacznikow
+        )
+        czlonkowie_pf: dict[int, list[str]] = {}
+        for ident, a in zip(model.identy_wezlow, pozycja_pf, strict=True):
+            czlonkowie_pf.setdefault(a, []).append(ident)
+        grupy_pf = sorted(tuple(sorted(c)) for c in czlonkowie_pf.values() if len(c) > 1)
+        assert grupy_dyn == grupy_pf, "podział na węzły elektryczne dynamiki ≠ rozpływu"
+        for grupa in model.grupy_lacznikow:
+            reprezentant = model.identy_wezlow[grupa.reprezentant]
+            assert reprezentant == min(model.identy_wezlow[p] for p in grupa.czlonkowie)
+        return zagregowana
 
     def _macierze(self, snapshot: dict[str, Any]):
         graph = zbuduj_graf(snapshot)
@@ -302,18 +331,11 @@ class TestParytetYbus:
 
     def test_ybus_dynamiki_rowna_ybus_rozplywu(self, snapshot_g16: dict[str, Any]) -> None:
         ybus_pf, indeks_pf, model = self._macierze(snapshot_g16)
-        ybus_dyn = model.ybus.toarray()
         assert len(model.identy_wezlow) == len(indeks_pf)
-        najwieksza_roznica = 0.0
-        for i, ident_i in enumerate(model.identy_wezlow):
-            for j, ident_j in enumerate(model.identy_wezlow):
-                roznica = abs(
-                    ybus_dyn[i, j]
-                    - ybus_pf[
-                        indeks_pf[ref_to_graph_id(ident_i)], indeks_pf[ref_to_graph_id(ident_j)]
-                    ]
-                )
-                najwieksza_roznica = max(najwieksza_roznica, roznica)
+        # G16 ma zamknięte sprzęgło szyn — przynajmniej jedna grupa scalona (iloczyn cech).
+        assert model.grupy_lacznikow
+        zagregowana = self._zagregowana(model, indeks_pf, ybus_pf.shape[0])
+        najwieksza_roznica = float(np.max(np.abs(zagregowana - np.asarray(ybus_pf))))
         # Różnica pochodzi WYŁĄCZNIE z kolejności mnożeń bazowych (rozpływ skaluje
         # gałąź ilorazem baz, potem całą macierz bazą szyny bilansującej; adapter
         # mnoży od razu bazą własnej szyny) — jest rzędu błędu maszynowego wobec
@@ -401,6 +423,27 @@ class TestParytetYbus:
         with pytest.raises(OdmowaWejsciaDynamiki) as blad:
             zloz_widok_sieci(snapshot, zbuduj_graf(snapshot_g16), base_mva=100.0)
         assert blad.value.kod == KOD_ELEMENT_BEZ_SZYNY
+
+    @pytest.mark.parametrize(("lacznik", "stan"), [("spr-szyn", "closed"), ("odl-rezerwa", "open")])
+    def test_zloz_widok_sieci_odmawia_lacznika_miedzy_roznymi_napieciami(
+        self, snapshot_g16: dict[str, Any], lacznik: str, stan: str
+    ) -> None:
+        """Łącznik nie ma przekładni: szyny o różnych napięciach znamionowych → odmowa.
+
+        Ten sam predykat co odmowa rozpływu (`rozplyw.lacznik_laczy_rozne_napiecia_
+        znamionowe`); w dynamice także dla łącznika OTWARTEGO, bo zdarzenie może go
+        zamknąć w trakcie biegu (scalenie węzłów o różnych bazach napięcia).
+        """
+        snapshot = copy.deepcopy(snapshot_g16)
+        galaz = next(b for b in snapshot["branches"] if b["ref_id"] == lacznik)
+        assert galaz["status"] == stan
+        for szyna in snapshot["buses"]:
+            if szyna["ref_id"] == galaz["to_bus_ref"]:
+                szyna["voltage_kv"] = szyna["voltage_kv"] + 5.0
+        with pytest.raises(OdmowaWejsciaDynamiki) as blad:
+            zloz_widok_sieci(snapshot, zbuduj_graf(snapshot), base_mva=100.0)
+        assert blad.value.kod == KOD_LACZNIK_ROZNE_NAPIECIA
+        assert blad.value.elementy == (lacznik, galaz["from_bus_ref"], galaz["to_bus_ref"])
 
 
 # ---------------------------------------------------------------------------
@@ -491,15 +534,8 @@ class TestAktywnoscElementow:
         ybus_pf, indeks_pf, _ = TestParytetYbus()._macierze(
             _ze_statusem(snapshot, ref_id, "closed")
         )
-        ybus_dyn = model.ybus.toarray()
-        najwieksza = max(
-            abs(
-                ybus_dyn[i, j]
-                - ybus_pf[indeks_pf[ref_to_graph_id(wi)], indeks_pf[ref_to_graph_id(wj)]]
-            )
-            for i, wi in enumerate(model.identy_wezlow)
-            for j, wj in enumerate(model.identy_wezlow)
-        )
+        zagregowana = TestParytetYbus._zagregowana(model, indeks_pf, ybus_pf.shape[0])
+        najwieksza = float(np.max(np.abs(zagregowana - np.asarray(ybus_pf))))
         # Ten sam próg i to samo uzasadnienie, co `test_ybus_dynamiki_rowna_ybus_rozplywu`.
         assert najwieksza < 1.0e-9, f"rozjazd Y-bus po załączeniu {ref_id}: {najwieksza}"
 

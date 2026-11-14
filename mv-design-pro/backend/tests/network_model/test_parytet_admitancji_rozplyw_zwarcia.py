@@ -16,11 +16,12 @@ parytet jest TESTEM, nie refaktorem (ten plik). Żaden rdzeń nie jest tu zmieni
 RÓŻNICE REPREZENTACJI — NAZWANE, NIE UKRYTE. Porównanie przechodzi przez jawnie opisane
 przekształcenia; każde z nich ma własny test pokazujący, że różnica istnieje:
 
-R1 — łącznik zamknięty. Zwarcia SCALAJĄ węzły zamkniętego łącznika dokładnie (zerowa
-     impedancja, `UniaWezlow`); rozpływ modeluje go impedancją 1e-4 + j1e-4 Ω
-     (`_build_ybus_ohm`, `Y_CLOSED_SWITCH`). Porównujemy Y rozpływu PO SCALENIU węzłów
-     (Pᵀ·Y·P, P — macierz przynależności węzła do reprezentanta): stempel łącznika znosi się
-     w sumie wiersza i kolumny. Rozstrzygnięcie reprezentacji należy do osobnej decyzji.
+R1 — łącznik zamknięty. Obie macierze SCALAJĄ węzły zamkniętego łącznika (zerowa
+     impedancja) TYM SAMYM predykatem i TYM SAMYM reprezentantem
+     (`core/scalenie_lacznikow.scal_laczniki`, karta scalenia łączników — dawna impedancja
+     zastępcza rozpływu 1e-4 + j1e-4 Ω usunięta). Podział na węzły elektryczne obu macierzy
+     musi być identyczny (sprawdzane w `rozbieznosc`); porównanie przechodzi przez permutację
+     indeksów (Pᵀ·Y·P, P — bijekcja węzeł elektryczny rozpływu → węzeł zwarć).
 R2 — gałąź równoległa do zamkniętego łącznika (oba końce w jednym węźle scalonym). Zwarcia
      pomijają ją W CAŁOŚCI (`from_idx == to_idx: continue`), także jej susceptancję B/2;
      rozpływ po scaleniu zachowuje 2·(B/2) tej gałęzi na przekątnej reprezentanta. Test
@@ -54,8 +55,7 @@ co najwyżej c działań zmiennoprzecinkowych (zliczone w obu budowniczych: dla 
 uk/100, pk/S, pierwiastek, K_T — 3 działania, zmiana bazy 4, odwrotność, przekładnia
 poza-znamionowa 4, dzielenie przez a i a², obrót fazy 2 — razem 20). Błąd bezwzględny
 ograniczamy więc przez (m + c)·ε·max|Y|, gdzie ε = np.finfo(float).eps, a max|Y| — największy
-moduł elementu obu macierzy (w tym stempla łącznika rozpływu, którego znoszenie się po scaleniu
-jest źródłem największego błędu zaokrąglenia).
+moduł elementu obu macierzy.
 
 ILOCZYN CECH: przekładnia transformatora {znamionowa, zaczep ≠ 0, szyny poza tabliczką} ×
 grupa połączeń {Yy0, Dyn11} × susceptancja linii {B = 0, B > 0} × gałąź wyłączona {nie, tak}
@@ -158,14 +158,23 @@ def rozbieznosc(graf: NetworkGraph) -> tuple[float, float]:
     # całego grafu, więc parytet obejmuje także wyspy bez zasilania.
     y_rozplywu, indeks_rozplywu, *_ = build_ybus_pu(graf, wezly, S_BASE_MVA, slack, [], {})
 
+    # R1: ten sam podział na węzły elektryczne — bijekcja indeksów rozpływu i zwarć.
+    para = {(indeks_rozplywu[w], wezel_na_indeks[w]) for w in wezly}
+    assert len(para) == y_rozplywu.shape[0] == y_zwarcia.shape[0]
+    assert len({a for a, _ in para}) == len({b for _, b in para}) == len(para)
+
     katy = _katy_cechowania(graf, wezly)
-    d = np.diag([np.exp(1j * katy[w]) for w in wezly])
+    # Węzły jednej grupy scalonej mają ten sam kąt cechowania (łącznik nie przesuwa fazy).
+    kat_indeksu = {indeks_rozplywu[w]: katy[w] for w in wezly}
+    for w in wezly:
+        assert katy[w] == kat_indeksu[indeks_rozplywu[w]]
+    d = np.diag([np.exp(1j * kat_indeksu[i]) for i in range(y_rozplywu.shape[0])])
     y_bez_przesuniecia = d.conj().T @ y_rozplywu @ d  # R3
 
-    p = np.zeros((len(wezly), y_zwarcia.shape[0]))
-    for wezel, i in indeks_rozplywu.items():
-        p[i, wezel_na_indeks[wezel]] = 1.0
-    y_scalona = p.T @ y_bez_przesuniecia @ p  # R1
+    p = np.zeros((y_rozplywu.shape[0], y_zwarcia.shape[0]))
+    for i, j in para:
+        p[i, j] = 1.0
+    y_scalona = p.T @ y_bez_przesuniecia @ p  # R1 (permutacja)
     y_scalona -= _bocznik_galezi_wewnetrznych(graf, wezel_na_indeks, y_zwarcia.shape[0])  # R2
 
     if y_zwarcia.size == 0:
@@ -407,15 +416,23 @@ def test_parytet_y_iloczyn_cech(cechy: tuple[str, str, float, bool, str]) -> Non
 # ---------------------------------------------------------------------------
 
 
-def test_r1_lacznik_zamkniety_rozplyw_ma_impedancje_zwarcia_scalaja() -> None:
+def test_r1_lacznik_zamkniety_rozplyw_i_zwarcia_scalaja_tym_samym_predykatem() -> None:
+    """Przepisany wg karty scalenia łączników — INTENCJA ZACHOWANA (R1 nazwany i przypięty).
+
+    Dawniej: rozpływ miał o jeden wiersz więcej (stempel 1/(1e-4 + j1e-4) Ω), zwarcia
+    scalały. Teraz obie macierze scalają SN_C z SN_D w jeden wiersz o tym samym
+    reprezentancie (najmniejszy identyfikator), a w macierzy rozpływu nie ma stempla
+    impedancji zastępczej (największy element rzędu admitancji kabla, nie 1,6e4 pu).
+    """
     graf = siec_cech("znamionowa", "Yy0", 0.0, False, "lacznik")
-    y_rozplywu, *_ = build_ybus_pu(graf, sorted(graf.nodes), S_BASE_MVA, "GPZ", [], {})
+    y_rozplywu, indeks, *_ = build_ybus_pu(graf, sorted(graf.nodes), S_BASE_MVA, "GPZ", [], {})
     budowniczy = AdmittanceMatrixBuilder(graf)
     y_zwarcia = budowniczy.build(siec_zwarciowa=False)
-    assert y_rozplywu.shape[0] == y_zwarcia.shape[0] + 1
+    assert y_rozplywu.shape[0] == y_zwarcia.shape[0] == len(graf.nodes) - 1
     assert budowniczy.node_id_to_index["SN_C"] == budowniczy.node_id_to_index["SN_D"]
-    # Stempel łącznika rozpływu: 1/(1e-4 + j1e-4) Ω na bazie 15 kV / 100 MVA.
-    assert abs(y_rozplywu.max()) > 1e4
+    assert indeks["SN_C"] == indeks["SN_D"]
+    # Dawny stempel: 1/(1e-4 + j1e-4) Ω × Z_b(15 kV, 100 MVA) ≈ 1,6e4 pu; kable sieci — ~10 pu.
+    assert float(np.max(np.abs(y_rozplywu))) < 1e2
 
 
 def test_r2_galaz_rownolegla_do_lacznika_zwarcia_pomijaja_b() -> None:

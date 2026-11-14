@@ -400,6 +400,8 @@ def rule_i_d01_full_analysis_available(
 
 def rule_i_d02_topology_type(graph: NetworkGraph) -> list[DiagnosticIssue]:
     """I-D02: Sieć radialna / oczkowa (informacyjnie)."""
+    from network_model.core.scalenie_lacznikow import lacznik_przewodzi
+
     if not graph.nodes or not graph.branches:
         return []
 
@@ -407,7 +409,7 @@ def rule_i_d02_topology_type(graph: NetworkGraph) -> list[DiagnosticIssue]:
     edge_count = len([b for b in graph.branches.values() if getattr(b, "in_service", True)])
     switch_edges = 0
     if hasattr(graph, "switches"):
-        switch_edges = len([s for s in graph.switches.values() if s.is_closed and s.in_service])
+        switch_edges = len([s for s in graph.switches.values() if lacznik_przewodzi(s)])
     total_edges = edge_count + switch_edges
 
     # Radial: edges == nodes - 1; Mesh: edges > nodes - 1

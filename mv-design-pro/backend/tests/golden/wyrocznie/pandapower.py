@@ -96,9 +96,14 @@ GRUPA_DOMYSLNA = "Dyn11"
 #: Wersja reguł mostu (D-2): podnoszona przy KAŻDEJ zmianie odwzorowania ENM → pandapower.
 #: "1" = CV-4.3 K3b (rozpływ per wyspa, zwarcie 3F MAX); "2" = CV-4.3 K7 (ext_grid z
 #: parametrami MIN z Z_Qmin, proweniencja); "3" = karta WSPOLCZYNNIK-C-JEDEN-NOSNIK
-#: (``lv_tol_percent`` i c z tolerancji sieci nN modelu). Skrót SHA-256 pliku w rekordzie proweniencji
-#: identyfikuje dokładną treść mostu niezależnie od tej etykiety.
-WERSJA_MOSTU = "3"
+#: (``lv_tol_percent`` i c z tolerancji sieci nN modelu); "4" = karta RDZEN-PF-LACZNIK-SCALENIE
+#: (napięcie zadane ``ext_grid`` z ``Source.u_set_pu`` — ta sama reguła co assembler: brak
+#: nastawy = 1,0 p.u.; zaczep z kanonicznego ``Transformer.tap_changer`` — ta sama reguła co
+#: ``TransformerBranch.get_tap_ratio``; do tej karty most podawał zawsze 1,0 p.u. i czytał
+#: tylko pola ``tap_position``, więc IEEE case14 liczył w pandapower inną sieć). Skrót
+#: SHA-256 pliku w rekordzie proweniencji identyfikuje dokładną treść mostu niezależnie od
+#: tej etykiety.
+WERSJA_MOSTU = "4"
 
 
 def _pandapower_wersja() -> str:
@@ -209,7 +214,29 @@ def zbuduj_siec(
         if trafo.hv_bus_ref not in szyny or trafo.lv_bus_ref not in szyny:
             continue
         zaczep: dict[str, Any] = {}
-        if trafo.tap_position is not None and trafo.tap_position != 0:
+        przelacznik = trafo.tap_changer
+        if przelacznik is not None and przelacznik.regulation_type in ("DETC", "OLTC"):
+            # Ta sama reguła co `TransformerBranch.get_tap_ratio`: kanoniczny przełącznik
+            # zaczepów wygrywa z polami `tap_position`/`tap_step_percent`; uzwojenie
+            # regulowane LV = współczynnik 1/τ po stronie HV, czyli `tap_side="lv"`
+            # pandapower. Regulacja automatyczna (OLTC z regulatorem) jest poza zakresem
+            # mostu — `runpp` nie ma regulatora zaczepów.
+            if przelacznik.regulation_type == "OLTC" and przelacznik.control_mode != "MANUAL":
+                raise ValueError(
+                    f"Most pandapower nie modeluje automatycznej regulacji zaczepów "
+                    f"({trafo.ref_id})"
+                )
+            if przelacznik.current_position != przelacznik.neutral_position:
+                zaczep = {
+                    "tap_side": "hv" if przelacznik.regulated_winding == "HV" else "lv",
+                    "tap_neutral": przelacznik.neutral_position,
+                    "tap_pos": przelacznik.current_position,
+                    "tap_min": przelacznik.min_position,
+                    "tap_max": przelacznik.max_position,
+                    "tap_step_percent": przelacznik.step_percent,
+                    "tap_changer_type": "Ratio",
+                }
+        elif trafo.tap_position is not None and trafo.tap_position != 0:
             zaczep = {
                 "tap_side": "hv",
                 "tap_neutral": 0,
@@ -219,6 +246,10 @@ def zbuduj_siec(
                 "tap_step_percent": (
                     trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
                 ),
+                # pandapower 3.x stosuje zaczep wyłącznie z jawnym rodzajem przełącznika —
+                # bez `tap_changer_type` pozycja zaczepu jest pomijana (pomiar 2026-11-13,
+                # pandapower 3.5.4: IEEE case14 liczony bez przekładni poza-znamionowych).
+                "tap_changer_type": "Ratio",
             }
         pp.create_transformer_from_parameters(
             net,
@@ -244,7 +275,7 @@ def zbuduj_siec(
         pp.create_ext_grid(
             net,
             szyny[source.bus_ref],
-            vm_pu=1.0,
+            vm_pu=1.0 if source.u_set_pu is None else float(source.u_set_pu),
             va_degree=0.0,
             name=source.ref_id,
             **_parametry_ext_grid(source, u_kv, tolerancje_nn.get(source.bus_ref)),

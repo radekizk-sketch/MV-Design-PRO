@@ -9,8 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-# P20a: Solver version for trace compatibility
-POWER_FLOW_SOLVER_VERSION = "1.0.0"
+# P20a: Solver version for trace compatibility.
+# 1.1.0 — łącznik zamknięty bez impedancji: węzły scalone w węzeł elektryczny
+# (`power_flow_scalenie`, ten sam predykat co zwarcia), przepływ łącznika z bilansu węzłów;
+# dawna impedancja zastępcza 0,0001 + j0,0001 Ω usunięta (karta RDZEN-PF-LACZNIK-SCALENIE).
+POWER_FLOW_SOLVER_VERSION = "1.1.0"
 
 
 @dataclass(frozen=True)

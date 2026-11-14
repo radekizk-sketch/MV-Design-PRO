@@ -8,7 +8,7 @@ elementu` (W6-A Z-03). Teraz kazdy element istnieje w rdzeniu od t = 0 i niesie
 stan aktywny/nieaktywny; zdarzenie zmienia stan, a siec jest skladana od nowa.
 
 ILOCZYN CECH (CLAUDE.md „KLASA, NIE INSTANCJA" p. 2): {linia z susceptancja, kabel,
-transformator z przekladnia zespolona, lacznik (impedancja zastepcza), bateria,
+transformator z przekladnia zespolona, lacznik (bez impedancji — scala wezly), bateria,
 odbior} x {aktywny w t = 0, nieaktywny} x {zalaczenie, wylaczenie}. Kazdy element
 badany stoi ROWNOLEGLE do galezi stale czynnej, wiec zadna kombinacja nie tworzy
 obszaru beznapieciowego (to jest zakres P3) — test mierzy WYLACZNIE mechanizm
@@ -80,7 +80,8 @@ RODZAJE_GALEZI: dict[str, tuple[complex, float, complex]] = {
     "linia": (1.0 / complex(0.02, 0.1), 0.004, complex(1.0, 0.0)),
     "kabel": (1.0 / complex(0.03, 0.015), 0.01, complex(1.0, 0.0)),
     "transformator": (1.0 / complex(0.002, 0.08), 0.0, 1.02 * cmath.exp(-0.01j)),
-    "lacznik": ((15.0**2 / 100.0) / complex(0.0001, 0.0001), 0.0, complex(1.0, 0.0)),
+    # Lacznik nie ma impedancji: zamkniety scala GEN i AUX w jeden wezel elektryczny.
+    "lacznik": (0j, 0.0, complex(1.0, 0.0)),
 }
 
 
@@ -95,7 +96,9 @@ def _uklad(
 
     Punkt pracy jest wyznaczony DOKLADNIE z algebry liniowej: AUX nie ma wstrzykniec,
     wiec `V_AUX = -Y[AUX,GEN] V_GEN / Y[AUX,AUX]`, a prady urzadzen to `(Y V)` w ich
-    wezlach (z odbiorem na GEN — plus prad odbioru).
+    wezlach (z odbiorem na GEN — plus prad odbioru). Lacznik aktywny w t = 0 scala AUX z
+    GEN: `V_AUX = V_GEN`, a prad wezla elektrycznego {GEN, AUX} to suma `(Y V)` obu
+    czlonkow (KCL wezla scalonego) — caly naplywa przez generator.
     """
     smib = uklady.zbuduj_smib()
     wezly = (*smib.wezly, WezelDynamiki("AUX", uklady.U_N_KV))
@@ -117,10 +120,14 @@ def _uklad(
     v_gen = smib.punkt_pracy.napiecia_pu["GEN"]
     v_sys = smib.punkt_pracy.napiecia_pu["SYS"]
     i_gen, i_sys, i_aux = (model.indeks_wezla[w] for w in ("GEN", "SYS", "AUX"))
-    v_aux = -(y_bus[i_aux, i_gen] * v_gen) / y_bus[i_aux, i_aux]
+    scalone = galaz == "lacznik" and aktywna
+    v_aux = v_gen if scalone else -(y_bus[i_aux, i_gen] * v_gen) / y_bus[i_aux, i_aux]
     napiecia = np.zeros(3, dtype=complex)
     napiecia[i_gen], napiecia[i_sys], napiecia[i_aux] = v_gen, v_sys, v_aux
     prady = y_bus @ napiecia
+    if scalone:
+        prady[i_gen] += prady[i_aux]
+        prady[i_aux] = 0j
     prad_odbioru = complex(0.2, 0.05).conjugate() / v_gen.conjugate() if odbior else 0j
     punkt = PunktPracy(
         napiecia_pu={"GEN": v_gen, "SYS": v_sys, "AUX": v_aux},
@@ -174,6 +181,18 @@ def test_zdarzenie_galezi_daje_te_sama_siec_co_stan_poczatkowy_w_danych(
     )
     oczekiwany = zloz_model_sieci(kontekst["wezly"], galezie_docelowe, kontekst["odsprzegi"])
     assert wynik.slad_white_box["siec"]["odcisk_ybus"] == _odcisk_ybus(oczekiwany.ybus)
+    # Lacznik nie zmienia macierzy (bez impedancji) — zmienia SCALENIE wezlow; slad niesie
+    # grupy, wiec ta sama wyrocznia (zdarzenie vs flaga w danych) obejmuje i jego.
+    assert wynik.slad_white_box["siec"]["grupy_lacznikow"] == [
+        {
+            "reprezentant": oczekiwany.identy_wezlow[g.reprezentant],
+            "czlonkowie": [oczekiwany.identy_wezlow[p] for p in g.czlonkowie],
+            "laczniki": list(g.laczniki),
+        }
+        for g in oczekiwany.grupy_lacznikow
+    ]
+    if rodzaj == "lacznik":
+        assert bool(oczekiwany.grupy_lacznikow) is zalacz
     assert [(z.rodzaj, z.ref) for z in wynik.zdarzenia_wykonane] == [
         ("zalaczenie_galezi" if zalacz else "wylaczenie_galezi", "BADANA")
     ]

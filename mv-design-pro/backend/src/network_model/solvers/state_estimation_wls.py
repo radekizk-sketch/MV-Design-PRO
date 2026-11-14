@@ -850,7 +850,10 @@ def ybus_from_network_graph(
     modyfikuje buildera ani solvera (solver_diff_guard pozostaje zielony).
 
     Zwraca:
-        (ybus_pu, node_id_to_index) — macierz admitancji i mapowanie węzeł→indeks.
+        (ybus_pu, node_id_to_index) — macierz admitancji WĘZŁÓW ELEKTRYCZNYCH (zamknięte
+        łączniki scalone, impedancja zerowa — ten sam podział co rozpływ i zwarcia) oraz
+        mapowanie KAŻDEGO węzła wyspy na indeks jego węzła elektrycznego (węzły połączone
+        zamkniętym łącznikiem dzielą indeks; mapa nie jest odwracalna).
     """
     from network_model.solvers.power_flow_newton_internal import (  # noqa: PLC0415
         build_slack_island,

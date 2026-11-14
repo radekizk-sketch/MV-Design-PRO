@@ -56,7 +56,8 @@ from enm.zabezpieczenie import aparaty_sterownika
 from network_model.catalog.wartosci_robocze import liczba_pl, rozstrzygnij_czas_trwania_zwarcia
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
-from network_model.core.switch import SwitchState, SwitchType
+from network_model.core.scalenie_lacznikow import lacznik_przewodzi
+from network_model.core.switch import SwitchType
 from network_model.core.topologia import przeglad_wszerz_od
 from network_model.nazwy import nazwa_nadana
 from network_model.solvers.short_circuit_contributions import NAZWA_WKLADU_POMINIETEGO
@@ -167,9 +168,8 @@ def _sasiedztwo(graph: NetworkGraph) -> dict[str, list[tuple[str, str, str]]]:
 
     for switch_id in sorted(graph.switches):
         switch = graph.switches[switch_id]
-        if switch.state != SwitchState.CLOSED:
-            continue
-        if not switch.in_service:
+        # Jeden predykat przewodzenia łącznika (rozpływ, zwarcia, estymacja, dynamika).
+        if not lacznik_przewodzi(switch):
             continue
         dodaj(switch.from_node_id, switch.to_node_id, "lacznik", switch_id)
         dodaj(switch.to_node_id, switch.from_node_id, "lacznik", switch_id)

@@ -282,12 +282,15 @@ def test_zwarcie_galezi_z_przekladnia_to_odmowa_nazwana(przekladnia: complex) ->
 
 
 def test_zwarcie_w_laczniku_to_odmowa_nazwana() -> None:
+    """Lacznik nie ma dlugosci elektrycznej — zwarcie „w miejscu x·L” lacznika to odmowa.
+
+    Lacznik niesie `y = 0` (bez impedancji, scala wezly): odmowa zwarcia ma przyjsc PRZED
+    jakimkolwiek innym skutkiem, wiec punkt pracy ukladu nie musi byc z lacznikiem zgodny.
+    """
     uklad = _uklad_b()
     galezie = tuple(
         (
-            GalazDynamiki(
-                g.ident, g.wezel_od, g.wezel_do, g.y_szeregowa_pu, 0.0, 1 + 0j, True, "lacznik"
-            )
+            GalazDynamiki(g.ident, g.wezel_od, g.wezel_do, 0j, 0.0, 1 + 0j, True, "lacznik")
             if g.ident == "LB"
             else g
         )

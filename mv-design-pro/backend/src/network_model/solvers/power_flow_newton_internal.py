@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Iterable
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import numpy as np
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.scalenie_lacznikow import lacznik_przewodzi
 from network_model.odmowa_danych import (
     RODZAJ_GALAZ,
     RODZAJ_WEZEL,
@@ -18,9 +19,27 @@ from network_model.odmowa_danych import (
 from network_model.solvers.power_flow_inverter import (
     InverterControl,
     InverterShaping,
+    apply_inverter_setpoint,
+    build_inverter_table,
     inverter_effective_spec,
+    inverter_q_seed,
     qu_dq_dv,
     qu_q,
+)
+from network_model.solvers.power_flow_scalenie import (
+    PODSTAWA_PODZIALU_Q_PV,
+    ScalenieWyspy,
+    indeksy_typow,
+    moc_bilansujaca,
+    odmowy_napiec_lacznikow,
+    odmowy_wezlow_napieciowych,
+    przeplywy_lacznikow,
+    q_pozostalych,
+    slad_grup,
+    wstrzykniecia_elementow,
+    wstrzykniecia_pv,
+    zbuduj_scalenie,
+    zredukuj_pv,
 )
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -31,6 +50,9 @@ from network_model.solvers.power_flow_types import (
 )
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
+    apply_zip_frequency,
+    build_zip_table,
+    split_zip_constant_part,
     zip_effective_spec,
     zip_factor,
     zip_factor_derivative,
@@ -108,10 +130,9 @@ def _seed_phase_shift_angles(
     −150°) would otherwise pull a flat 0° start toward a spurious low-voltage
     root. Seeding only moves the starting point — the converged |V|/θ are the
     same solution. Traversal is deterministic (BFS from the slack, neighbours in
-    sorted order); only closed switches conduct, matching the Y-bus.
+    sorted order); only conducting switches (`lacznik_przewodzi` — the predicate of the
+    Y-bus merge) connect, with zero phase displacement.
     """
-    from network_model.core.switch import SwitchState
-
     node_set = set(node_list)
     seed = {node_id: 0.0 for node_id in node_list}
     if slack_node_id not in node_set:
@@ -131,7 +152,7 @@ def _seed_phase_shift_angles(
         adjacency[u].append((v, theta))
         adjacency[v].append((u, -theta))
     for switch in graph.switches.values():
-        if not switch.in_service or switch.state != SwitchState.CLOSED:
+        if not lacznik_przewodzi(switch):
             continue
         u, v = switch.from_node_id, switch.to_node_id
         if u not in node_set or v not in node_set:
@@ -160,6 +181,7 @@ def _apply_zip_jacobian_v2(
     p_spec: np.ndarray,
     q_spec: np.ndarray,
     zip_table: dict[int, ZipCoeffs],
+    mapa: np.ndarray | None = None,
 ) -> None:
     """ADR-011: ZIP correction for the v2 (PV/PQ-switching) Jacobian.
 
@@ -169,16 +191,21 @@ def _apply_zip_jacobian_v2(
 
     Defect D1: p_spec/q_spec here are the ZIP BASE (the load part, after
     split_zip_constant_part), so the derivative is taken over the load alone —
-    the constant part (generation) contributes zero, as physics requires."""
+    the constant part (generation) contributes zero, as physics requires.
+
+    ``mapa`` (węzeł wyspy → węzeł elektryczny, `ScalenieWyspy.mapa`): odbiór ZIP węzła
+    scalonego wnosi pochodną do wiersza/kolumny SWOJEGO węzła elektrycznego (pochodna sumy
+    zadań = suma pochodnych). None = każdy węzeł jest swoim węzłem elektrycznym."""
     n_p = len(non_slack_indices)
     v_mag = np.abs(v)
     for z_idx, z_c in zip_table.items():
-        if z_idx not in active_pq or z_idx not in non_slack_indices:
+        e_idx = z_idx if mapa is None else int(mapa[z_idx])
+        if e_idx not in active_pq or e_idx not in non_slack_indices:
             continue
-        row_p = non_slack_indices.index(z_idx)
-        col_q = active_pq.index(z_idx)
-        dp_dv = p_spec[z_idx] * zip_factor_derivative(z_c.a_p, z_c.b_p, v_mag[z_idx], z_c.v0_pu)
-        dq_dv = q_spec[z_idx] * zip_factor_derivative(z_c.a_q, z_c.b_q, v_mag[z_idx], z_c.v0_pu)
+        row_p = non_slack_indices.index(e_idx)
+        col_q = active_pq.index(e_idx)
+        dp_dv = p_spec[z_idx] * zip_factor_derivative(z_c.a_p, z_c.b_p, v_mag[e_idx], z_c.v0_pu)
+        dq_dv = q_spec[z_idx] * zip_factor_derivative(z_c.a_q, z_c.b_q, v_mag[e_idx], z_c.v0_pu)
         jacobian[row_p, n_p + col_q] -= dp_dv
         jacobian[n_p + col_q, n_p + col_q] -= dq_dv
 
@@ -335,6 +362,7 @@ def _apply_inverter_jacobian_v2(
     non_slack_indices: list[int],
     active_pq: list[int],
     inv_table: dict[int, InverterControl],
+    mapa: np.ndarray | None = None,
 ) -> None:
     """ADR-011 §5b: inverter Q(U) correction for the v2 Jacobian.
 
@@ -342,14 +370,15 @@ def _apply_inverter_jacobian_v2(
     only voltage derivative is ∂Q_spec/∂V (the droop slope), so it touches the
     J22 diagonal exactly like the ZIP ∂Q/∂V term. P is frequency- (not voltage-)
     dependent, so there is no J12 term. In the deadband or where Q is clamped the
-    slope is 0 → no change (reduce-to-NR)."""
+    slope is 0 → no change (reduce-to-NR). ``mapa`` — jak w `_apply_zip_jacobian_v2`."""
     n_p = len(non_slack_indices)
     v_mag = np.abs(v)
     for idx, c in inv_table.items():
-        if idx not in active_pq or idx not in non_slack_indices:
+        e_idx = idx if mapa is None else int(mapa[idx])
+        if e_idx not in active_pq or e_idx not in non_slack_indices:
             continue
-        col_q = active_pq.index(idx)
-        jacobian[n_p + col_q, n_p + col_q] -= qu_dq_dv(c, v_mag[idx])
+        col_q = active_pq.index(e_idx)
+        jacobian[n_p + col_q, n_p + col_q] -= qu_dq_dv(c, v_mag[e_idx])
 
 
 def _odwolania(rodzaj: str, refs: Iterable[str]) -> tuple[OdwolanieElementu, ...]:
@@ -530,6 +559,18 @@ def odmowy_wejscia(pf_input: PowerFlowInput) -> tuple[list[str], list[RekordOdmo
                 )
             )
 
+    if pf_input.slack.node_id in graph.nodes:
+        # Węzły elektryczne wyspy zasilanej (zamknięte łączniki scalają węzły): łącznik między
+        # różnymi napięciami znamionowymi i sprzeczne nastawy napięcia w jednym węźle
+        # elektrycznym — te same funkcje woła przygotowanie rozpływu (jedno źródło predykatu).
+        wyspa, _poza = build_slack_island(graph, pf_input.slack.node_id)
+        errors.extend(odmowy_napiec_lacznikow(graph, wyspa))
+        errors.extend(
+            odmowy_wezlow_napieciowych(
+                graph, pf_input.pv, pf_input.slack.node_id, pf_input.slack.u_pu, wyspa
+            )
+        )
+
     if pf_input.slack.u_pu < 0.8 or pf_input.slack.u_pu > 1.2:
         warnings.append(
             f"Napięcie zadane węzła bilansującego {pf_input.slack.u_pu:.3f} j.w. jest poza "
@@ -568,40 +609,53 @@ def build_ybus_pu(
     shunts: Iterable[ShuntSpec],
     tap_ratios: dict[str, float],
 ) -> tuple[np.ndarray, dict[str, int], dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
-    node_ids_sorted = sorted(graph.nodes.keys())
-    node_id_to_index_full = {node_id: idx for idx, node_id in enumerate(node_ids_sorted)}
+    """Macierz admitancyjna [pu] WĘZŁÓW ELEKTRYCZNYCH wyspy (zamknięte łączniki scalone).
+
+    Wiersz/kolumna = węzeł elektryczny (`power_flow_scalenie.zbuduj_scalenie`: grupa węzłów
+    połączonych zamkniętymi łącznikami, reprezentant — najmniejszy identyfikator, ten sam
+    co sieć zwarciowa `core/ybus.py`). Zwracana mapa przypisuje KAŻDEMU węzłowi wyspy indeks
+    jego węzła elektrycznego (węzły grupy dzielą indeks). Łącznik nie wnosi admitancji —
+    nie ma impedancji. Wyspa bez zamkniętego łącznika: macierz, mapa i ślad bit w bit jak
+    przed scaleniem (każdy węzeł jest swoim węzłem elektrycznym).
+    """
+    island_nodes_sorted = sorted(slack_island_nodes)
+    scalenie = zbuduj_scalenie(graph, island_nodes_sorted)
+    node_id_to_index = dict(scalenie.indeks_wezla)
 
     slack_voltage_kv = graph.nodes[slack_node_id].voltage_level
 
     ybus_ohm, applied_taps, applied_phase_shifts = _build_ybus_ohm(
-        graph, node_id_to_index_full, tap_ratios, slack_voltage_kv
+        graph,
+        node_id_to_index,
+        tap_ratios,
+        slack_voltage_kv,
+        size=len(scalenie.reprezentanci),
     )
     ybus_note = ""
     ybus_source = "network_model.solvers.power_flow_newton_internal.build_ybus_pu"
 
     if slack_voltage_kv and slack_voltage_kv > 0:
         z_base = (slack_voltage_kv**2) / base_mva
-        ybus_pu_full = ybus_ohm * z_base
+        ybus_pu = ybus_ohm * z_base
     else:
         ybus_note = "Slack node voltage_level missing or zero; Ybus treated as per-unit."
-        ybus_pu_full = ybus_ohm
-
-    island_nodes_sorted = sorted(slack_island_nodes)
-    island_indices = [node_id_to_index_full[node_id] for node_id in island_nodes_sorted]
-    ybus_pu = ybus_pu_full[np.ix_(island_indices, island_indices)]
-    node_id_to_index = {node_id: idx for idx, node_id in enumerate(island_nodes_sorted)}
+        ybus_pu = ybus_ohm
 
     applied_shunts = _apply_shunts_pu(ybus_pu, node_id_to_index, shunts)
 
-    trace_info = {
+    trace_info: dict[str, Any] = {
         "source": ybus_source,
-        "n": int(len(island_nodes_sorted)),
+        "n": int(len(scalenie.reprezentanci)),
         "node_index_map": node_id_to_index,
         "note": ybus_note,
         # SM-2 (V12K-180): white-box record of transformer vector-group phase
         # displacements applied to the Y-bus (empty when no group shifts angles).
         "applied_phase_shifts": applied_phase_shifts,
     }
+    if not scalenie.trywialne:
+        # WHITE BOX: węzły elektryczne (reprezentant + członkowie + łączniki); przepływy
+        # łączników dopisuje `wyniki_rozplywu_wyspy` po zbieżności.
+        trace_info["scalenie_lacznikow"] = slad_grup(scalenie)
 
     return ybus_pu, node_id_to_index, trace_info, applied_taps, applied_shunts
 
@@ -881,6 +935,44 @@ def _build_state_dict(
     return state
 
 
+def _zadania_efektywne_nr(
+    p_spec: np.ndarray,
+    q_spec: np.ndarray,
+    v: np.ndarray,
+    zip_table: dict[int, ZipCoeffs] | None,
+    inv_table: dict[int, InverterControl] | None,
+    zip_const: tuple[np.ndarray, np.ndarray] | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Zadane wstrzyknięcia węzłów przy napięciach ``v`` (ten sam indeks co ``p_spec``).
+
+    ADR-011: ZIP loads scale their base with the polynomial at |V|; defect D1: generation
+    on a ZIP bus is constant power — it is added AFTER the load polynomial, never scaled by
+    it. ADR-011 §5b: Q(U) volt-var sources recompute Q from |V| each iteration (P is
+    frequency-, not voltage-dependent → unchanged). Defect B: ADDED to the bus power, not
+    assigned over it — the source's own declared Q was already taken out of the base by
+    apply_inverter_setpoint, so what remains is the (ZIP-scaled) load of a prosumer bus.
+    Assigning deleted that load's reactive demand. Source-only bus => base is exactly 0.0.
+    """
+    v_mag_now = np.abs(v)
+    p_spec_eff = p_spec.copy()
+    q_spec_eff = q_spec.copy()
+    if zip_table:
+        for z_idx, z_c in zip_table.items():
+            p_spec_eff[z_idx] = p_spec[z_idx] * zip_factor(
+                z_c.a_p, z_c.b_p, z_c.c_p, v_mag_now[z_idx], z_c.v0_pu
+            )
+            q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
+                z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
+            )
+            if zip_const is not None:
+                p_spec_eff[z_idx] += zip_const[0][z_idx]
+                q_spec_eff[z_idx] += zip_const[1][z_idx]
+    if inv_table:
+        for i_idx, i_c in inv_table.items():
+            q_spec_eff[i_idx] += qu_q(i_c, v_mag_now[i_idx])
+    return p_spec_eff, q_spec_eff
+
+
 def newton_raphson_solve_v2(
     ybus: np.ndarray,
     slack_index: int,
@@ -898,6 +990,8 @@ def newton_raphson_solve_v2(
     inv_table: dict[int, InverterControl] | None = None,
     zip_const: tuple[np.ndarray, np.ndarray] | None = None,
     inv_shaping: dict[int, InverterShaping] | None = None,
+    scalenie: ScalenieWyspy | None = None,
+    pv_pelne: frozenset[int] = frozenset(),
 ) -> tuple[
     np.ndarray,
     bool,
@@ -918,7 +1012,20 @@ def newton_raphson_solve_v2(
     Defect B: ``inv_shaping`` is the WHITE BOX record of the one-time source
     shaping (from ``apply_inverter_setpoint``) — trace-only, so the auditor can
     reproduce the source's Q from the source's own P.
+
+    Węzły elektryczne (`scalenie`, zamknięte łączniki scalone): ``ybus``, ``v0``, indeksy
+    typów, ``pv_setpoints``/``pv_q_limits`` są na indeksie WĘZŁA ELEKTRYCZNEGO; ``p_spec``,
+    ``q_spec``, ``zip_table``, ``inv_table``, ``zip_const`` — na indeksie WĘZŁA WYSPY
+    (każde zadanie liczone w napięciu swojego węzła elektrycznego, sumowane
+    `ScalenieWyspy.zredukuj`). ``pv_pelne`` — indeksy węzłów wyspy ze źródłem PV: granica Q
+    dotyczy mocy źródeł (moc węzła elektrycznego minus odbiory grupy), a zadanie Q po
+    przełączeniu PV→PQ trafia do pierwszego źródła PV grupy. None albo wyspa bez łącznika —
+    dawna ścieżka bit w bit.
     """
+    mapa = None if scalenie is None or scalenie.trywialne else scalenie.mapa
+    id_pelny = (
+        node_index_to_id if scalenie is None or mapa is None else dict(enumerate(scalenie.wezly))
+    )
     v = v0.copy()
     trace: list[dict[str, Any]] = []
     pv_to_pq_switches: list[dict[str, Any]] = []
@@ -938,20 +1045,43 @@ def newton_raphson_solve_v2(
                 v[idx] = v_mag[idx] * np.exp(1j * v_ang[idx])
 
         p_calc, q_calc = compute_power_injections(ybus, v)
+        v_pelne = v if scalenie is None or mapa is None else scalenie.rozwin(v)
+
+        # ADR-011: voltage-dependent (ZIP) injections and Q(U) sources from current |V|,
+        # per node of the island (each spec at the voltage of its electrical node). Gated —
+        # with no ZIP load and no Q(U) source the base p_spec/q_spec are used unchanged
+        # (reduce-to-NR). Evaluated before the PV-limit check (the source-only Q of a merged
+        # PV node needs the group's other injections); a PV→PQ switch rewrites only the PV
+        # carrier, which has no ZIP/Q(U) term, so the copy is patched there.
+        if zip_table or inv_table:
+            p_eff_pelne, q_eff_pelne = _zadania_efektywne_nr(
+                p_spec, q_spec, v_pelne, zip_table, inv_table, zip_const
+            )
+        else:
+            p_eff_pelne = p_spec
+            q_eff_pelne = q_spec
 
         switched_this_iter = []
         for idx in list(active_pv):
             if idx not in pv_q_limits:
                 continue
             q_min_pu, q_max_pu = pv_q_limits[idx]
-            q_calc_consumption = -q_calc[idx]
+            q_zrodel = q_calc[idx]
+            if scalenie is not None and mapa is not None:
+                q_zrodel = q_calc[idx] - q_pozostalych(scalenie, idx, pv_pelne, q_eff_pelne)
+            q_calc_consumption = -q_zrodel
             if q_calc_consumption < q_min_pu or q_calc_consumption > q_max_pu:
                 limit_pu = q_min_pu if q_calc_consumption < q_min_pu else q_max_pu
-                q_spec[idx] = -limit_pu
+                nosnik = idx
+                if scalenie is not None and mapa is not None:
+                    nosnik = scalenie.nosnik(idx, pv_pelne)
+                q_spec[nosnik] = -limit_pu
+                if q_eff_pelne is not q_spec:
+                    q_eff_pelne[nosnik] = q_spec[nosnik]
                 active_pv.remove(idx)
                 active_pq.append(idx)
                 active_pq.sort()
-                node_id = node_index_to_id[idx]
+                node_id = id_pelny[nosnik]
                 pv_to_pq_switches.append(
                     {
                         "iter": iteration,
@@ -965,40 +1095,12 @@ def newton_raphson_solve_v2(
 
         non_slack_indices = sorted([idx for idx in active_pq + active_pv if idx != slack_index])
 
-        # ADR-011: recompute voltage-dependent (ZIP) injections from current |V|.
-        # Gated — with no ZIP load the base p_spec/q_spec are used unchanged
-        # (reduce-to-NR). Placed after PV-limit handling so switched-bus q_spec
-        # values are respected; ZIP touches only ZIP (PQ-load) buses.
-        if zip_table or inv_table:
-            v_mag_now = np.abs(v)
-            p_spec_eff = p_spec.copy()
-            q_spec_eff = q_spec.copy()
-            if zip_table:
-                for z_idx, z_c in zip_table.items():
-                    p_spec_eff[z_idx] = p_spec[z_idx] * zip_factor(
-                        z_c.a_p, z_c.b_p, z_c.c_p, v_mag_now[z_idx], z_c.v0_pu
-                    )
-                    q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
-                        z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
-                    )
-                    if zip_const is not None:
-                        # Defect D1: generation on a ZIP bus is constant power —
-                        # it is added AFTER the load polynomial, never scaled by it.
-                        p_spec_eff[z_idx] += zip_const[0][z_idx]
-                        q_spec_eff[z_idx] += zip_const[1][z_idx]
-            if inv_table:
-                # ADR-011 §5b: Q(U) volt-var sources recompute Q from |V| each
-                # iteration (P is frequency-, not voltage-dependent → unchanged).
-                # Defect B: ADDED to the bus power, not assigned over it — the
-                # source's own declared Q was already taken out of the base by
-                # apply_inverter_setpoint, so what remains is the (ZIP-scaled)
-                # load of a prosumer bus. Assigning deleted that load's reactive
-                # demand. Source-only bus => base is exactly 0.0 => unchanged.
-                for i_idx, i_c in inv_table.items():
-                    q_spec_eff[i_idx] += qu_q(i_c, v_mag_now[i_idx])
+        if scalenie is not None and mapa is not None:
+            p_spec_eff = scalenie.zredukuj(p_eff_pelne)
+            q_spec_eff = scalenie.zredukuj(q_eff_pelne)
         else:
-            p_spec_eff = p_spec
-            q_spec_eff = q_spec
+            p_spec_eff = p_eff_pelne
+            q_spec_eff = q_eff_pelne
         d_p = p_spec_eff[non_slack_indices] - p_calc[non_slack_indices]
         d_q = q_spec_eff[active_pq] - q_calc[active_pq]
 
@@ -1054,16 +1156,16 @@ def newton_raphson_solve_v2(
                 if zip_table:
                     trace_entry["zip_loads"] = _zip_loads_trace(
                         zip_table,
-                        node_index_to_id,
+                        id_pelny,
                         p_spec,
                         q_spec,
-                        p_spec_eff,
-                        q_spec_eff,
+                        p_eff_pelne,
+                        q_eff_pelne,
                         zip_const,
                     )
                 if inv_table or inv_shaping:
                     trace_entry["inverter_sources"] = _inverter_sources_trace(
-                        inv_table, inv_shaping, node_index_to_id, v, p_spec_eff, q_spec_eff
+                        inv_table, inv_shaping, id_pelny, v_pelne, p_eff_pelne, q_eff_pelne
                     )
             trace.append(trace_entry)
             break
@@ -1071,10 +1173,10 @@ def newton_raphson_solve_v2(
         jacobian = build_jacobian_v2(ybus, v, non_slack_indices, active_pq, p_calc, q_calc)
         if zip_table:
             _apply_zip_jacobian_v2(
-                jacobian, v, non_slack_indices, active_pq, p_spec, q_spec, zip_table
+                jacobian, v, non_slack_indices, active_pq, p_spec, q_spec, zip_table, mapa
             )
         if inv_table:
-            _apply_inverter_jacobian_v2(jacobian, v, non_slack_indices, active_pq, inv_table)
+            _apply_inverter_jacobian_v2(jacobian, v, non_slack_indices, active_pq, inv_table, mapa)
         try:
             step = np.linalg.solve(jacobian, mismatch)
         except np.linalg.LinAlgError:
@@ -1148,16 +1250,22 @@ def newton_raphson_solve_v2(
             if zip_table:
                 trace_entry["zip_loads"] = _zip_loads_trace(
                     zip_table,
-                    node_index_to_id,
+                    id_pelny,
                     p_spec,
                     q_spec,
-                    p_spec_eff,
-                    q_spec_eff,
+                    p_eff_pelne,
+                    q_eff_pelne,
                     zip_const,
                 )
             if inv_table or inv_shaping:
+                # Stan po kroku: napięcia węzłów wyspy z nowego wektora węzłów elektrycznych.
                 trace_entry["inverter_sources"] = _inverter_sources_trace(
-                    inv_table, inv_shaping, node_index_to_id, v, p_spec_eff, q_spec_eff
+                    inv_table,
+                    inv_shaping,
+                    id_pelny,
+                    v if scalenie is None or mapa is None else scalenie.rozwin(v),
+                    p_eff_pelne,
+                    q_eff_pelne,
                 )
 
         trace.append(trace_entry)
@@ -1370,45 +1478,31 @@ def _build_ybus_ohm(
     node_id_to_index: dict[str, int],
     tap_ratios: dict[str, float],
     reference_kv: float = 0.0,
+    *,
+    size: int,
 ) -> tuple[np.ndarray, list[dict[str, Any]], list[dict[str, Any]]]:
-    size = len(node_id_to_index)
+    """Macierz admitancyjna [S] węzłów `node_id_to_index` (indeks = węzeł elektryczny).
+
+    Zamknięty łącznik NIE jest tu stemplowany: nie ma impedancji, jego końce mają ten sam
+    indeks (scalenie w `build_ybus_pu`). Dawna impedancja zastępcza 0,0001 + j0,0001 Ω
+    (obejście osobliwego jakobianu, K30-14) usunięta — była drugą fizyką łącznika obok
+    sieci zwarciowej. Gałąź spoza mapy (inna wyspa) nie jest stemplowana, ale jej zaczep
+    i przesunięcie grupy trafiają do śladu jak dotąd (ślad obejmuje wszystkie gałęzie
+    grafu). Gałąź o obu końcach w jednym węźle elektrycznym (równoległa do zamkniętego
+    łącznika): suma czterech stempli w jednym wyrazie przekątnym — dla gałęzi bez
+    przekładni człon podłużny znosi się DOKŁADNIE (to samo napięcie na obu końcach), zostaje
+    admitancja poprzeczna obu końców.
+    """
     y_bus = np.zeros((size, size), dtype=complex)
     applied_taps: list[dict[str, Any]] = []
     applied_phase_shifts: list[dict[str, Any]] = []
-
-    # K30-14 NO-GO #10 (singular Jacobian fix): closed switches connect buses
-    # topologically ale dotychczas NIE wstawiały do Y-bus admittance. Buses
-    # connected only via switches były dangling rows in Y-bus → Jacobian
-    # singular → Newton-Raphson divergence z step_norm=0.
-    # Standard engineering practice: zamknięty łącznik = bardzo mała impedancja
-    # (R=X=0.0001 ohm). Y_short = 1/(R+jX) = bardzo duża admittance →
-    # voltage equalization between bus endpoints przy minimalnym wpływie na flow.
-    # Open switches → no edge (correct: galvanic break).
-    Y_CLOSED_SWITCH = 1.0 / complex(0.0001, 0.0001)
-    for switch in graph.switches.values():
-        if not switch.in_service:
-            continue
-        # SwitchState.CLOSED only — open switches don't conduct
-        from network_model.core.switch import SwitchState
-
-        if switch.state != SwitchState.CLOSED:
-            continue
-        from_idx = node_id_to_index.get(switch.from_node_id)
-        to_idx = node_id_to_index.get(switch.to_node_id)
-        if from_idx is None or to_idx is None:
-            continue
-        y_switch = Y_CLOSED_SWITCH * _base_scale(graph, switch.to_node_id, reference_kv)
-        y_bus[from_idx, to_idx] -= y_switch
-        y_bus[to_idx, from_idx] -= y_switch
-        y_bus[from_idx, from_idx] += y_switch
-        y_bus[to_idx, to_idx] += y_switch
 
     for branch in graph.branches.values():
         if not branch.in_service:
             continue
 
-        from_idx = node_id_to_index[branch.from_node_id]
-        to_idx = node_id_to_index[branch.to_node_id]
+        from_idx = node_id_to_index.get(branch.from_node_id)
+        to_idx = node_id_to_index.get(branch.to_node_id)
 
         y_series, y_shunt = _get_branch_admittances_ohm(branch)
         # V12K-187: admitancja jest liczona na WŁASNYM poziomie napięcia gałęzi
@@ -1459,10 +1553,20 @@ def _build_ybus_ohm(
             # is physical for a phase shifter.
             e_pos = np.exp(1j * theta_shift)
             e_neg = np.exp(-1j * theta_shift)
-            y_bus[from_idx, from_idx] += y_series / (tap_ratio**2)
-            y_bus[from_idx, to_idx] += -y_series / tap_ratio * e_neg
-            y_bus[to_idx, from_idx] += -y_series / tap_ratio * e_pos
-            y_bus[to_idx, to_idx] += y_series
+            if from_idx is None or to_idx is None:
+                pass
+            elif from_idx == to_idx:
+                y_bus[from_idx, from_idx] += (
+                    y_series / (tap_ratio**2)
+                    + (-y_series / tap_ratio * e_neg)
+                    + (-y_series / tap_ratio * e_pos)
+                    + y_series
+                )
+            else:
+                y_bus[from_idx, from_idx] += y_series / (tap_ratio**2)
+                y_bus[from_idx, to_idx] += -y_series / tap_ratio * e_neg
+                y_bus[to_idx, from_idx] += -y_series / tap_ratio * e_pos
+                y_bus[to_idx, to_idx] += y_series
             if theta_shift != 0.0:
                 clock = transformer_clock_number(branch.vector_group)
                 t_complex = tap_ratio * e_neg
@@ -1478,6 +1582,10 @@ def _build_ybus_ohm(
                         "tap_complex_imag": float(t_complex.imag),
                     }
                 )
+        elif from_idx is None or to_idx is None:
+            pass
+        elif from_idx == to_idx:
+            y_bus[from_idx, from_idx] += y_shunt + y_shunt
         else:
             y_bus[from_idx, to_idx] -= y_series
             y_bus[to_idx, from_idx] -= y_series
@@ -1525,3 +1633,397 @@ def _apply_shunts_pu(
             }
         )
     return applied
+
+
+@dataclass
+class ZadanieRozplywuWyspy:
+    """Zadanie rozpływu wyspy zasilanej — JEDNO przygotowanie dla NR, GS i FD.
+
+    Indeksy: ``ybus_pu``, ``v0``, ``slack_index``, ``pq_indices``, ``pv_indices``,
+    ``pv_setpoints``, ``pv_q_limits``, ``node_index_to_id`` — węzły ELEKTRYCZNE (zamknięte
+    łączniki scalone, `ScalenieWyspy`); ``p_spec``, ``q_spec``, ``zip_table``,
+    ``inv_table``, ``zip_const``, ``inv_shaping``, ``q_inv_seed``, ``pv_pelne`` — węzły
+    WYSPY (`ScalenieWyspy.indeks_pelny`). ``node_index_map`` przypisuje każdemu węzłowi
+    wyspy indeks jego węzła elektrycznego. Wyspa bez zamkniętego łącznika: oba indeksy są
+    tym samym (dawna ścieżka bit w bit).
+    """
+
+    scalenie: ScalenieWyspy
+    ybus_pu: np.ndarray
+    node_index_map: dict[str, int]
+    node_index_to_id: dict[int, str]
+    ybus_trace: dict[str, Any]
+    applied_taps: list[dict[str, Any]]
+    applied_shunts: list[dict[str, Any]]
+    slack_index: int
+    pq_indices: list[int]
+    pv_indices: list[int]
+    v0: np.ndarray
+    init_state: dict[str, dict[str, float]] | None
+    p_spec: np.ndarray
+    q_spec: np.ndarray
+    pv_setpoints: dict[int, float]
+    pv_q_limits: dict[int, tuple[float, float]]
+    pv_pelne: frozenset[int]
+    zip_table: dict[int, ZipCoeffs]
+    inv_table: dict[int, InverterControl]
+    zip_const: tuple[np.ndarray, np.ndarray] | None
+    inv_shaping: dict[int, InverterShaping]
+    q_inv_seed: dict[int, float]
+
+
+def _napiecie_poczatkowe_wezlow_elektrycznych(
+    scalenie: ScalenieWyspy, v0_pelne: np.ndarray, slack_node_id: str
+) -> np.ndarray:
+    """Punkt startowy węzłów elektrycznych: wartość reprezentanta, węzeł bilansujący — zadana.
+
+    Punkt startowy nie zmienia rozwiązania (zbieżny stan jest ten sam), więc wybór wartości
+    członka grupy dotyczy wyłącznie startu; napięcie zadane węzła bilansującego przechodzi
+    na jego węzeł elektryczny dokładnie.
+    """
+    if scalenie.trywialne:
+        return v0_pelne
+    v0 = np.array([v0_pelne[scalenie.indeks_pelny[rep]] for rep in scalenie.reprezentanci])
+    v0[scalenie.indeks_wezla[slack_node_id]] = v0_pelne[scalenie.indeks_pelny[slack_node_id]]
+    return v0
+
+
+def przygotuj_rozplyw_wyspy(
+    pf_input: PowerFlowInput,
+    graph: NetworkGraph,
+    slack_island_nodes: list[str],
+    full_trace: bool,
+) -> ZadanieRozplywuWyspy:
+    """Macierz, typy węzłów, punkt startowy i zadania mocy wyspy zasilanej (NR/GS/FD).
+
+    Kolejność kroków przygotowania zadań — rozdział ZIP (defekt D1) przed skalowaniem
+    częstotliwościowym, kształtowanie źródeł falownikowych (defekt B) po nim — jest tą
+    samą, którą solvery wykonywały osobno; tu jest jedna.
+    """
+    tap_ratios = {spec.branch_id: spec.tap_ratio for spec in pf_input.taps}
+    ybus_pu, node_index_map, ybus_trace, applied_taps, applied_shunts = build_ybus_pu(
+        graph,
+        slack_island_nodes,
+        pf_input.base_mva,
+        pf_input.slack.node_id,
+        pf_input.shunts,
+        tap_ratios,
+    )
+    scalenie = zbuduj_scalenie(graph, slack_island_nodes)
+    odmowy = odmowy_wezlow_napieciowych(
+        graph, pf_input.pv, pf_input.slack.node_id, pf_input.slack.u_pu, slack_island_nodes
+    )
+    if odmowy:
+        raise OdmowaWejsciaRdzenia(odmowy)
+    indeks_pelny = scalenie.indeks_pelny
+
+    pq_node_ids = [spec.node_id for spec in pf_input.pq if spec.node_id in node_index_map]
+    pv_node_ids = [spec.node_id for spec in pf_input.pv if spec.node_id in node_index_map]
+    if scalenie.trywialne:
+        slack_index = node_index_map[pf_input.slack.node_id]
+        pq_indices = sorted([node_index_map[node_id] for node_id in pq_node_ids])
+        pv_indices = sorted([node_index_map[node_id] for node_id in pv_node_ids])
+        node_index_to_id = {idx: node_id for node_id, idx in node_index_map.items()}
+    else:
+        slack_index, pq_indices, pv_indices = indeksy_typow(
+            scalenie, pf_input.slack.node_id, pq_node_ids, pv_node_ids
+        )
+        node_index_to_id = scalenie.reprezentant_indeksu
+
+    v0_pelne = build_initial_voltage(
+        slack_island_nodes,
+        pf_input.slack.node_id,
+        pf_input.slack.u_pu,
+        pf_input.slack.angle_rad,
+        pf_input.options,
+        graph,
+    )
+    v0 = _napiecie_poczatkowe_wezlow_elektrycznych(scalenie, v0_pelne, pf_input.slack.node_id)
+
+    # P20a: init_state for the white-box trace (before the PV setpoints and the solver).
+    init_state: dict[str, dict[str, float]] | None = None
+    if full_trace:
+        init_state = {}
+        for node_id in sorted(slack_island_nodes):
+            idx = node_index_map[node_id]
+            init_state[node_id] = {
+                "v_pu": float(np.abs(v0[idx])),
+                "theta_rad": float(np.angle(v0[idx])),
+            }
+
+    p_spec, q_spec, pv_setpoints_pelne, pv_q_limits_pelne = build_power_spec_v2(
+        slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
+    )
+    # Defect D1 (audit 2026-08-01): rebase ZIP buses onto their LOAD part and keep the
+    # rest (generation) as a constant term. BEFORE the frequency scaling, so P(f) scales
+    # the load only. None => nothing to split.
+    zip_const = split_zip_constant_part(
+        p_spec, q_spec, pf_input.pq, indeks_pelny, pf_input.base_mva
+    )
+    # ADR-011 ZIP: one-time frequency base scaling (constant w.r.t. V) and the
+    # voltage-dependent ZIP table (per-iteration recompute). Empty table => classic
+    # constant-power path (reduce-to-NR).
+    apply_zip_frequency(p_spec, q_spec, pf_input.pq, indeks_pelny, pf_input.base_frequency_hz)
+    zip_table = build_zip_table(pf_input.pq, indeks_pelny)
+    # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes); Q(U) sources are
+    # recomputed per iteration via inv_table. Defect B: the shaping reads the SOURCE's own
+    # power and enters as a component of the bus — on a ZIP bus into the constant part, so
+    # the load polynomial never scales it (hence zip_table/zip_const are handed over).
+    inv_shaping = apply_inverter_setpoint(
+        p_spec,
+        q_spec,
+        pf_input.pq,
+        indeks_pelny,
+        pf_input.base_frequency_hz,
+        pf_input.base_mva,
+        zip_table,
+        zip_const,
+    )
+    inv_table = build_inverter_table(pf_input.pq, indeks_pelny)
+    q_inv_seed = inverter_q_seed(inv_table, inv_shaping)
+
+    pv_setpoints, pv_q_limits = zredukuj_pv(scalenie, pv_setpoints_pelne, pv_q_limits_pelne)
+    for idx, u_pu in pv_setpoints.items():
+        v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
+
+    return ZadanieRozplywuWyspy(
+        scalenie=scalenie,
+        ybus_pu=ybus_pu,
+        node_index_map=node_index_map,
+        node_index_to_id=node_index_to_id,
+        ybus_trace=ybus_trace,
+        applied_taps=applied_taps,
+        applied_shunts=applied_shunts,
+        slack_index=slack_index,
+        pq_indices=pq_indices,
+        pv_indices=pv_indices,
+        v0=v0,
+        init_state=init_state,
+        p_spec=p_spec,
+        q_spec=q_spec,
+        pv_setpoints=pv_setpoints,
+        pv_q_limits=pv_q_limits,
+        pv_pelne=frozenset(pv_setpoints_pelne),
+        zip_table=zip_table,
+        inv_table=inv_table,
+        zip_const=zip_const,
+        inv_shaping=inv_shaping,
+        q_inv_seed=q_inv_seed,
+    )
+
+
+def wyniki_rozplywu_wyspy(
+    pf_input: PowerFlowInput,
+    graph: NetworkGraph,
+    zadanie: ZadanieRozplywuWyspy,
+    v: np.ndarray,
+    slack_island_nodes: list[str],
+    not_solved_nodes: list[str],
+) -> dict[str, Any]:
+    """Wielkości wynikowe wyspy z napięć węzłów elektrycznych — JEDNO miejsce dla NR/GS/FD.
+
+    Węzły grupy scalonej mają napięcie swojego węzła elektrycznego. Moc źródła
+    bilansującego i źródeł PV w grupie: moc węzła elektrycznego minus moc pozostałych
+    węzłów grupy (`moc_bilansujaca`, `wstrzykniecia_pv`). Przepływ każdego zamkniętego
+    łącznika — z bilansu mocy węzłów grupy (`przeplywy_lacznikow`), w śladzie
+    ``ybus_trace["scalenie_lacznikow"]``.
+    """
+    scalenie = zadanie.scalenie
+    node_index_map = zadanie.node_index_map
+    node_voltage = {node_id: v[node_index_map[node_id]] for node_id in slack_island_nodes}
+    node_u_mag = {node_id: float(abs(voltage)) for node_id, voltage in node_voltage.items()}
+    node_angle = {node_id: float(np.angle(voltage)) for node_id, voltage in node_voltage.items()}
+
+    # K30-14 NO-GO #10 fix: include not_solved_nodes z NaN marker — bez tego
+    # frontend overlay payload pomijał te bus refs, fallbackując do nominal
+    # voltage co user widział jako 'flat 15.0 kV everywhere'. NaN signals
+    # 'solver did not compute' (vs. 1.0 pu signaling 'solved at nominal').
+    # JSON serialization converts NaN → null (via float_nan_to_none helper).
+    for not_solved_id in not_solved_nodes:
+        node_u_mag[not_solved_id] = float("nan")
+        node_angle[not_solved_id] = float("nan")
+
+    slack_voltage_kv = graph.nodes[pf_input.slack.node_id].voltage_level
+    (
+        branch_current,
+        branch_s_from,
+        branch_s_to,
+        losses_total,
+        branch_flow_note,
+    ) = compute_branch_flows(
+        graph,
+        node_voltage,
+        pf_input.base_mva,
+        slack_voltage_kv,
+        {entry["branch_id"]: entry["tap_ratio"] for entry in zadanie.applied_taps},
+    )
+
+    node_voltage_kv: dict[str, float] = {}
+    missing_voltage_base_nodes: list[str] = []
+    for node_id, voltage in node_voltage.items():
+        voltage_level = graph.nodes[node_id].voltage_level
+        if voltage_level and voltage_level > 0:
+            node_voltage_kv[node_id] = float(abs(voltage) * voltage_level)
+        else:
+            missing_voltage_base_nodes.append(node_id)
+
+    # K30-14 NO-GO #10 fix: not_solved_nodes z NaN kV (signals 'no solver
+    # result' — frontend distinguishes from actual computed nominal).
+    for not_solved_id in not_solved_nodes:
+        if not_solved_id in node_voltage_kv:
+            continue
+        node_voltage_kv[not_solved_id] = float("nan")
+
+    branch_current_ka: dict[str, float] = {}
+    for branch_id, current_pu in branch_current.items():
+        branch = graph.branches[branch_id]
+        voltage_level = graph.nodes[branch.from_node_id].voltage_level
+        if voltage_level and voltage_level > 0:
+            i_base_ka = pf_input.base_mva / (np.sqrt(3) * voltage_level)
+            branch_current_ka[branch_id] = float(abs(current_pu) * i_base_ka)
+
+    branch_s_from_mva = {
+        branch_id: value * pf_input.base_mva for branch_id, value in branch_s_from.items()
+    }
+    branch_s_to_mva = {
+        branch_id: value * pf_input.base_mva for branch_id, value in branch_s_to.items()
+    }
+
+    p_calc, q_calc = compute_power_injections(zadanie.ybus_pu, v)
+    slack_power = complex(p_calc[zadanie.slack_index], q_calc[zadanie.slack_index])
+    # Defect D1: after the split p_spec/q_spec hold only the ZIP base, so the
+    # constant part is added back here — this diagnostic keeps its historical
+    # meaning (sum of the SPECIFIED PQ powers) and its historical value.
+    sum_pq_spec = complex(float(np.sum(zadanie.p_spec)), float(np.sum(zadanie.q_spec)))
+    if zadanie.zip_const is not None:
+        sum_pq_spec += complex(
+            float(np.sum(zadanie.zip_const[0])), float(np.sum(zadanie.zip_const[1]))
+        )
+    node_p_spec_effective_pu, node_q_spec_effective_pu = effective_pq_injections(
+        pf_input.pq,
+        scalenie.indeks_pelny,
+        zadanie.p_spec,
+        zadanie.q_spec,
+        scalenie.rozwin(v),
+        zadanie.zip_table,
+        zadanie.inv_table,
+        zadanie.zip_const,
+    )
+    p_pq = dict(node_p_spec_effective_pu)
+    q_pq = dict(node_q_spec_effective_pu)
+    slack_power = moc_bilansujaca(scalenie, pf_input.slack.node_id, slack_power, p_pq, q_pq)
+    # DLUG W2-D1 (V12K-318) ZAMKNIETY: szyna PV tez wstrzykuje moc — jej moc
+    # bierna jest WYNIKIEM zbieznosci, nie zadaniem. Te same slowniki niosa
+    # teraz odpowiedz „ile faktycznie wstrzyknela kazda szyna niebilansujaca":
+    # dla szyny PQ z wielomianu/regulacji, dla szyny PV z rownania wezlowego.
+    # (Nazwa pola pochodzi sprzed rozszerzenia — patrz dlug X1-D1.)
+    if scalenie.trywialne:
+        node_p_pv_pu, node_q_pv_pu = pv_calculated_injections(
+            pf_input.pv, node_index_map, p_calc, q_calc
+        )
+    else:
+        node_p_pv_pu, node_q_pv_pu = wstrzykniecia_pv(
+            scalenie, pf_input.pv, p_calc, q_calc, p_pq, q_pq, pf_input.base_mva
+        )
+    node_p_spec_effective_pu.update(node_p_pv_pu)
+    node_q_spec_effective_pu.update(node_q_pv_pu)
+
+    if not scalenie.trywialne:
+        zadanie.ybus_trace["scalenie_lacznikow"] = _slad_przeplywow_lacznikow(
+            pf_input,
+            graph,
+            zadanie,
+            node_voltage,
+            p_pq,
+            q_pq,
+            node_p_pv_pu,
+            node_q_pv_pu,
+            slack_power,
+            branch_s_from,
+            branch_s_to,
+            branch_flow_note,
+        )
+
+    if branch_flow_note:
+        losses_total = 0.0 + 0.0j
+
+    return {
+        "node_voltage": node_voltage,
+        "node_u_mag": node_u_mag,
+        "node_angle": node_angle,
+        "node_voltage_kv": node_voltage_kv,
+        "branch_current": branch_current,
+        "branch_s_from": branch_s_from,
+        "branch_s_to": branch_s_to,
+        "branch_current_ka": branch_current_ka,
+        "branch_s_from_mva": branch_s_from_mva,
+        "branch_s_to_mva": branch_s_to_mva,
+        "losses_total": losses_total,
+        "slack_power": slack_power,
+        "sum_pq_spec": sum_pq_spec,
+        "branch_flow_note": branch_flow_note,
+        "missing_voltage_base_nodes": missing_voltage_base_nodes,
+        "node_p_spec_effective_pu": node_p_spec_effective_pu,
+        "node_q_spec_effective_pu": node_q_spec_effective_pu,
+    }
+
+
+def _slad_przeplywow_lacznikow(
+    pf_input: PowerFlowInput,
+    graph: NetworkGraph,
+    zadanie: ZadanieRozplywuWyspy,
+    node_voltage: dict[str, complex],
+    p_pq: dict[str, float],
+    q_pq: dict[str, float],
+    p_pv: dict[str, float],
+    q_pv: dict[str, float],
+    slack_power: complex,
+    branch_s_from: dict[str, complex],
+    branch_s_to: dict[str, complex],
+    branch_flow_note: str,
+) -> dict[str, Any]:
+    """Ślad WHITE BOX węzłów elektrycznych z przepływem mocy i prądem każdego łącznika."""
+    scalenie = zadanie.scalenie
+    if branch_flow_note:
+        slad = slad_grup(scalenie)
+        slad["laczniki"] = []
+        slad["uwaga"] = (
+            "Przepływów łączników nie wyznaczono: brak przepływów gałęzi (" + branch_flow_note + ")"
+        )
+        return slad
+    wstrzykniecia = wstrzykniecia_elementow(
+        scalenie,
+        pf_input.pq,
+        p_pq,
+        q_pq,
+        p_pv,
+        q_pv,
+        pf_input.slack.node_id,
+        slack_power,
+    )
+    boczniki = {
+        shunt.node_id: complex(shunt.g_pu, shunt.b_pu)
+        for shunt in pf_input.shunts
+        if shunt.node_id in scalenie.indeks_pelny
+    }
+    slad = przeplywy_lacznikow(
+        scalenie,
+        graph,
+        node_voltage,
+        wstrzykniecia,
+        branch_s_from,
+        branch_s_to,
+        boczniki,
+        pf_input.base_mva,
+    )
+    if any(len(spec_grupy) > 1 for spec_grupy in _zrodla_pv_grup(zadanie)):
+        slad["podzial_q_pv"] = PODSTAWA_PODZIALU_Q_PV
+    return slad
+
+
+def _zrodla_pv_grup(zadanie: ZadanieRozplywuWyspy) -> list[list[int]]:
+    """Źródła PV (indeksy węzłów wyspy) każdego węzła elektrycznego ze źródłem PV."""
+    po_grupach: dict[int, list[int]] = {}
+    for pelny in sorted(zadanie.pv_pelne):
+        po_grupach.setdefault(int(zadanie.scalenie.mapa[pelny]), []).append(pelny)
+    return [po_grupach[k] for k in sorted(po_grupach)]

@@ -395,33 +395,21 @@ def _wyspy(sekcje: int, liczba_tr: int, sprzeglo: str) -> list[tuple[list[int], 
     return [([s], [t for t in range(liczba_tr) if t % sekcje == s]) for s in range(sekcje)]
 
 
-#: Impedancja zamkniętego łącznika w macierzy admitancyjnej rozpływu NR [Ω] — stała
-#: `Y_CLOSED_SWITCH = 1/(0,0001 + j0,0001)` rdzenia `power_flow_newton_internal.py`
-#: (FROZEN, B-01). Zwarcie IEC 60909 scala węzły zamkniętego łącznika (impedancja zerowa,
-#: `network_model/core/ybus.py`), rozpływ NIE — stąd jawny człon sprzęgła w tolerancjach.
-Z_LACZNIKA_ROZPLYWU_OHM = complex(1e-4, 1e-4)
 #: Próg niezbilansowania NR 1·10⁻⁸ pu na bazie 100 MVA = 1·10⁻⁶ MW.
 TOLERANCJA_NR_MW = 1e-6
 
 
-def _sprzeglo_przewodzi(sekcje: int, sprzeglo: str) -> bool:
-    return sekcje == 2 and sprzeglo == "closed"
-
-
-def _tolerancje_rozplywu(sekcje: int, sprzeglo: str) -> tuple[float, float]:
+def _tolerancje_rozplywu() -> tuple[float, float]:
     """(tolerancja P na transformator [MW], tolerancja U sekcji [kV]).
 
-    Bez przewodzącego sprzęgła obwód niezależny jest DOKŁADNIE obwodem solvera, więc
-    granicą jest zbieżność NR: 1·10⁻⁶ MW i 1·10⁻⁶ kV (zmierzone 2026-10-21: ≤ 1·10⁻¹¹).
-    Przy zamkniętym sprzęgle solver wstawia łącznik |Z_ł| = 1,41·10⁻⁴ Ω, którego obwód
-    niezależny (sekcje jako jeden węzeł — fizyczny łącznik bez impedancji) nie ma:
-    transformator sekcji 2 zasilający odbiór sekcji 1 widzi dodatkowo |Z_ł|/|Z_T| ≈
-    1,4·10⁻⁴ swojej impedancji, a spadek na łączniku to √3·I·|Z_ł| ≈ 1·10⁻⁴ kV przy
-    0,42 kA. Zmierzone 2026-10-21: ΔP ≤ 2,5·10⁻⁵ MW, ΔU ≤ 3,8·10⁻⁵ kV — tolerancje
-    2·10⁻⁴ MW i 1·10⁻⁴ kV mieszczą ten człon z zapasem, a wciąż wykrywają przydział
-    transformatora do złej szyny (różnica rzędu MW i setek V)."""
-    if _sprzeglo_przewodzi(sekcje, sprzeglo):
-        return 2e-4, 1e-4
+    Obwód niezależny jest DOKŁADNIE obwodem solvera także przy zamkniętym sprzęgle: rozpływ
+    scala sekcje połączone zamkniętym łącznikiem w jeden węzeł elektryczny (łącznik bez
+    impedancji — ten sam predykat co zwarcia IEC 60909, karta scalenia łączników), tak jak
+    obwód niezależny. Granicą jest zbieżność NR: 1·10⁻⁶ MW i 1·10⁻⁶ kV. Przepisane wg karty
+    scalenia — INTENCJA ZACHOWANA: dawny człon sprzęgła (łącznik 1e-4 + j1e-4 Ω,
+    zmierzone ΔP ≤ 2,5·10⁻⁵ MW, ΔU ≤ 3,8·10⁻⁵ kV, tolerancje 2·10⁻⁴ MW i 1·10⁻⁴ kV) zniknął
+    razem z impedancją zastępczą, więc tolerancja wraca do progu zbieżności dla każdego
+    stanu sprzęgła — i dalej wykrywa przydział transformatora do złej szyny (MW, setki V)."""
     return 1e-6, 1e-6
 
 
@@ -434,7 +422,7 @@ def test_rozplyw_przez_kazdy_transformator_z_niezaleznego_obwodu(
     transformatory = sorted(migawka["transformers"], key=lambda t: t["ref_id"])
     szyny = _sekcje(migawka)
     odbiory = (ODBIOR_S1, ODBIOR_S2)
-    tolerancja_p, tolerancja_u = _tolerancje_rozplywu(sekcje, sprzeglo)
+    tolerancja_p, tolerancja_u = _tolerancje_rozplywu()
     for indeksy_sekcji, indeksy_tr in _wyspy(sekcje, liczba_tr, sprzeglo):
         p = sum(odbiory[s][0] for s in indeksy_sekcji)
         q = sum(odbiory[s][1] for s in indeksy_sekcji)
@@ -457,8 +445,8 @@ def test_rozplyw_przez_kazdy_transformator_z_niezaleznego_obwodu(
 def test_bilans_mocy_rozplywu(
     klient: TestClient, sekcje: int, liczba_tr: int, sprzeglo: str
 ) -> None:
-    """P_źródła = Σ P_TR (strona 110 kV) = Σ P_odbiorów + Σ strat TR (+ strata łącznika
-    sprzęgła, której wynik nie raportuje); straty TR są stratami w miedzi P_k·(S/S_r)² —
+    """P_źródła = Σ P_TR (strona 110 kV) = Σ P_odbiorów + Σ strat TR (łącznik sprzęgła
+    nie ma impedancji, więc nie ma straty); straty TR są stratami w miedzi P_k·(S/S_r)² —
     gałąź magnesowania nie wchodzi do rozpływu."""
     budowa, migawka = _zbuduj(klient, "110kV", sekcje, liczba_tr, sprzeglo)
     metryki = _bieg(klient, budowa.case_id, "LOAD_FLOW")
@@ -469,19 +457,9 @@ def test_bilans_mocy_rozplywu(
     straty = sum(w["LOSSES_P_MW"] for w in wyniki_tr)
     assert p_zrodla == pytest.approx(sum(w["P_MW"] for w in wyniki_tr), abs=TOLERANCJA_NR_MW)
     niezbilansowanie = p_zrodla - (p_odbiorow + straty)
-    if _sprzeglo_przewodzi(sekcje, sprzeglo):
-        # Górne ograniczenie straty łącznika: CAŁA moc odbiorów przez sprzęgło,
-        # 3·I²·R_ł przy I = S/(√3·U_min sekcji).
-        s_calk = math.hypot(sum(p for p, _ in (ODBIOR_S1, ODBIOR_S2)), 3.5)
-        u_min = min(metryki[sz]["U_kV"] for sz in _sekcje(migawka))
-        prad_max = s_calk / (math.sqrt(3.0) * u_min)
-        strata_max = 3.0 * prad_max**2 * Z_LACZNIKA_ROZPLYWU_OHM.real
-        assert -TOLERANCJA_NR_MW <= niezbilansowanie <= strata_max + TOLERANCJA_NR_MW, (
-            niezbilansowanie,
-            strata_max,
-        )
-    else:
-        assert niezbilansowanie == pytest.approx(0.0, abs=TOLERANCJA_NR_MW)
+    # Łącznik sprzęgła nie ma impedancji (węzły scalone), więc nie ma i straty: bilans
+    # zamyka się do progu zbieżności przy każdym stanie sprzęgła.
+    assert niezbilansowanie == pytest.approx(0.0, abs=TOLERANCJA_NR_MW)
     typ = get_default_mv_catalog().get_transformer_type(TRANSFORMATOR_WN_SN)
     assert typ is not None
     for w in wyniki_tr:

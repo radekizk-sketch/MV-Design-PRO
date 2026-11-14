@@ -336,7 +336,7 @@ def test_b1_galaz_bezstratna_ma_zerowy_bilans_mocy_i_przeciwne_prady() -> None:
     """Reaktancja czysta: `s_od + s_do = 0` DOKLADNIE, `i_od = -i_do`."""
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU))
     napiecia = np.array([1.05 * cmath.exp(1j * 0.25), complex(1.0, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     assert wynik.i_do_pu == pytest.approx(-wynik.i_od_pu, rel=1e-12)
     assert (wynik.s_od_pu + wynik.s_do_pu).real == pytest.approx(0.0, abs=1e-12)
 
@@ -348,7 +348,7 @@ def test_b2_galaz_rezystancyjna_ma_strate_rowna_kwadratowi_pradu() -> None:
     impedancja = complex(rezystancja, reaktancja)
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / impedancja)
     napiecia = np.array([1.04 * cmath.exp(1j * 0.18), complex(1.0, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     prad_oczekiwany = (napiecia[0] - napiecia[1]) / impedancja
     strata_oczekiwana = abs(prad_oczekiwany) ** 2 * rezystancja
     assert wynik.i_od_pu == pytest.approx(prad_oczekiwany, rel=1e-12)
@@ -365,8 +365,8 @@ def test_b3_odwrocenie_przeplywu_zmienia_znak_mocy_a_nie_orientacji() -> None:
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.02, 0.2))
     naprzod = np.array([1.05 * cmath.exp(1j * 0.2), complex(1.0, 0.0)], dtype=complex)
     wstecz = np.array([complex(1.0, 0.0), 1.05 * cmath.exp(1j * 0.2)], dtype=complex)
-    assert wielkosci_galezi(model, galaz, naprzod).s_od_pu.real > 0.0
-    assert wielkosci_galezi(model, galaz, wstecz).s_od_pu.real < 0.0
+    assert wielkosci_galezi(model, galaz, naprzod, {}).s_od_pu.real > 0.0
+    assert wielkosci_galezi(model, galaz, wstecz, {}).s_od_pu.real < 0.0
 
 
 def test_b4_galaz_wylaczona_nie_przewodzi() -> None:
@@ -374,7 +374,7 @@ def test_b4_galaz_wylaczona_nie_przewodzi() -> None:
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU))
     model_bez = zloz_model_sieci(model.wezly, model.galezie, (), galezie_aktywne=frozenset())
     napiecia = np.array([1.05 * cmath.exp(1j * 0.25), complex(1.0, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model_bez, galaz, napiecia)
+    wynik = wielkosci_galezi(model_bez, galaz, napiecia, {})
     assert wynik.i_od_pu == 0j
     assert wynik.i_do_pu == 0j
     assert wynik.s_od_pu == 0j
@@ -387,7 +387,7 @@ def test_b5_susceptancja_poprzeczna_rozjezdza_prady_zaciskow() -> None:
     y_szeregowa = 1.0 / complex(0.0, X_LINII_PU)
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa, b_poprzeczna_pu=b_calkowite)
     napiecia = np.array([complex(1.0, 0.0), complex(1.0, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     # Przy rownych napieciach prad szeregowy znika, zostaje samo ladowanie polowa b.
     assert wynik.i_od_pu == pytest.approx(complex(0.0, b_calkowite / 2.0), rel=1e-12)
     assert wynik.i_do_pu == pytest.approx(complex(0.0, b_calkowite / 2.0), rel=1e-12)
@@ -399,7 +399,7 @@ def test_b6_transformator_z_przekladnia_zgadza_sie_z_wzorami_ybus() -> None:
     y_szeregowa = 1.0 / complex(0.01, 0.1)
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa, przekladnia=przekladnia)
     napiecia = np.array([1.03 * cmath.exp(1j * 0.12), complex(1.0, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     modul_kwadrat = abs(przekladnia) ** 2
     i_od_oczekiwany = (
         napiecia[0] * y_szeregowa / modul_kwadrat
@@ -414,7 +414,7 @@ def test_b7_moc_zacisku_jest_iloczynem_napiecia_i_sprzezonego_pradu() -> None:
     """Konwencja `S = V conj(I)` — sprawdzana WPROST, bo pomylka sprzezenia odwraca Q."""
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.03, 0.25))
     napiecia = np.array([1.02 * cmath.exp(1j * 0.3), 0.99 * cmath.exp(-1j * 0.05)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     assert wynik.s_od_pu == pytest.approx(napiecia[0] * wynik.i_od_pu.conjugate(), rel=1e-12)
     assert wynik.s_do_pu == pytest.approx(napiecia[1] * wynik.i_do_pu.conjugate(), rel=1e-12)
 
@@ -585,7 +585,7 @@ def test_iniekcja_zamiana_zaciskow_galezi_jest_wykrywalna() -> None:
     """Defekt: `i_do` policzony wzorem `i_od` (odwrocona orientacja)."""
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.03, 0.22))
     napiecia = np.array([1.05 * cmath.exp(1j * 0.22), complex(0.99, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     zepsute_s_do = napiecia[1] * wynik.i_od_pu.conjugate()
     assert abs(zepsute_s_do - wynik.s_do_pu) > 1.0e-3
 
@@ -594,7 +594,7 @@ def test_iniekcja_bledne_sprzezenie_odwraca_znak_mocy_biernej() -> None:
     """Defekt: `S = V * I` zamiast `V * conj(I)` — znak `Q` sie odwraca."""
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.03, 0.22))
     napiecia = np.array([1.05 * cmath.exp(1j * 0.22), complex(0.99, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     zepsute = napiecia[0] * wynik.i_od_pu
     assert wynik.s_od_pu.imag != pytest.approx(zepsute.imag, abs=1e-6)
 
@@ -606,7 +606,7 @@ def test_iniekcja_polowa_susceptancji_pominieta_jest_wykrywalna() -> None:
         y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU), b_poprzeczna_pu=b_calkowite
     )
     napiecia = np.array([complex(1.0, 0.0), complex(1.0, 0.0)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     assert wynik.i_od_pu.imag == pytest.approx(b_calkowite / 2.0, rel=1e-12)
     assert wynik.i_od_pu.imag != pytest.approx(b_calkowite, rel=1e-6)
 
@@ -991,7 +991,7 @@ def test_b9_przekladnia_i_susceptancja_naraz_zgadzaja_sie_ze_wzorami_ybus() -> N
         y_szeregowa_pu=y_szeregowa, b_poprzeczna_pu=b_poprzeczna, przekladnia=przekladnia
     )
     napiecia = np.array([1.04 * cmath.exp(1j * 0.21), 0.97 * cmath.exp(-1j * 0.08)], dtype=complex)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
 
     polowa = complex(0.0, b_poprzeczna / 2.0)
     modul_kwadrat = abs(przekladnia) ** 2
@@ -1018,7 +1018,7 @@ def test_b10_bilans_zaciskow_rowna_sie_stratom_galezi() -> None:
     napiecia = np.array([1.03 * cmath.exp(1j * 0.17), 0.98 * cmath.exp(-1j * 0.06)], dtype=complex)
 
     model, galaz = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa)
-    wynik = wielkosci_galezi(model, galaz, napiecia)
+    wynik = wielkosci_galezi(model, galaz, napiecia, {})
     prad_szeregowy = (napiecia[0] - napiecia[1]) * y_szeregowa
     impedancja = 1.0 / y_szeregowa
     bilans = wynik.s_od_pu + wynik.s_do_pu
@@ -1028,7 +1028,7 @@ def test_b10_bilans_zaciskow_rowna_sie_stratom_galezi() -> None:
 
     b_poprzeczna = 0.18
     model_b, galaz_b = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa, b_poprzeczna_pu=b_poprzeczna)
-    wynik_b = wielkosci_galezi(model_b, galaz_b, napiecia)
+    wynik_b = wielkosci_galezi(model_b, galaz_b, napiecia, {})
     bilans_b = wynik_b.s_od_pu + wynik_b.s_do_pu
     generacja_bierna = (abs(napiecia[0]) ** 2 + abs(napiecia[1]) ** 2) * b_poprzeczna / 2.0
     assert bilans_b.real == pytest.approx(bilans.real, rel=1e-10)
